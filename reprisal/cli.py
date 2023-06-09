@@ -24,6 +24,7 @@ def version() -> None:
     echo(__version__)
 
 
+# dummy callback to force subcommands, can be removed once a second subcommand is added
 @cli.callback()
-def callback():  # dummy callback to force subcommands, can be removed once a second subcommand is added
+def callback() -> None:
     pass
