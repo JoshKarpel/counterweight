@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from typing import Callable, ParamSpec, TypeVar
+from dataclasses import dataclass
+from typing import Callable, Generic, ParamSpec, TypeVar
 
 T = TypeVar("T")
 A = TypeVar("A")
 P = ParamSpec("P")
 
 Setter = Callable[[T], None]
+Reducer = Callable[[T, A], T]
+Dispatch = Callable[[A], None]
+
+
+@dataclass
+class Ref(Generic[T]):
+    current: T
