@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, ParamSpec, TypeVar
+from typing import Any, Generic, ParamSpec, TypeVar
 
 T = TypeVar("T")
 A = TypeVar("A")
@@ -86,7 +87,7 @@ def use_ref(initial_value: T) -> Ref[T]:
     return ref
 
 
-def use_effect(callback, deps: Sequence[object] | None = None) -> None:  # type: ignore[no-untyped-def]
+def use_effect(callback: Callable[[], None], deps: Sequence[object] | None = None) -> None:
     anchor = CURRENT_ANCHOR.get()
 
     previous_deps = anchor.hook_state.get(anchor.current_hook, [])
@@ -97,3 +98,16 @@ def use_effect(callback, deps: Sequence[object] | None = None) -> None:  # type:
         anchor.hook_state[anchor.current_hook] = list(deps)
 
     anchor.current_hook += 1
+
+
+def use_context(context: ContextVar[T]) -> T:
+    return context.get()
+
+
+@contextmanager
+def provide_context(context: ContextVar[T], value: T) -> Iterator[None]:
+    token = context.set(value)
+
+    yield
+
+    context.reset(token)
