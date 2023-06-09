@@ -1,0 +1,111 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "reprisal"
+version = "0.1.0"
+description = ""
+readme="README.md"
+homepage="https://github.com/JoshKarpel/reprisal"
+repository="https://github.com/JoshKarpel/reprisal"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Artistic Software",
+    "Topic :: Multimedia :: Graphics :: Presentation",
+    "Typing :: Typed",
+]
+keywords = [
+    "tui",
+    "terminal",
+]
+authors = ["JoshKarpel <josh.karpel@gmail.com>"]
+license = "MIT"
+include = ["py.typed"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4"
+typer = ">=0.6"
+more-itertools = ">=9"
+app = "^0.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=3"
+pytest = ">=7"
+pytest-cov = ">=3"
+pytest-xdist = ">=3"
+pytest-asyncio = ">=0.20"
+pytest-mock = ">=3"
+hypothesis = ">=6"
+mypy = ">=1"
+mkdocs = ">=1.4"
+mkdocs-material = ">=9"
+mkdocstrings = {extras = ["python"], version = ">=0.19.0"}
+
+[tool.poetry.scripts]
+reprisal = 'reprisal.cli:cli'
+
+[tool.black]
+line-length = 100
+include = "\\.pyi?$"
+
+[tool.pytest.ini_options]
+addopts = ["--strict-markers"]
+testpaths = ["tests", "reprisal", "docs"]
+
+markers = ["slow"]
+
+asyncio_mode = "auto"
+
+[tool.mypy]
+pretty = false
+show_error_codes = true
+
+files = ["."]
+
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+disallow_any_generics = true
+
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+warn_redundant_casts = true
+
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+
+select = [
+    "I",   # https://beta.ruff.rs/docs/rules/#isort-i
+    "F",   # https://beta.ruff.rs/docs/rules/#pyflakes-f
+    "E",   # https://beta.ruff.rs/docs/rules/#error-e
+    "W",   # https://beta.ruff.rs/docs/rules/#warning-w
+    "T20", # https://beta.ruff.rs/docs/rules/#flake8-print-t20
+    "PIE", # https://beta.ruff.rs/docs/rules/#flake8-pie-pie
+    "PLC", # https://beta.ruff.rs/docs/rules/#convention-plc
+    "PLE", # https://beta.ruff.rs/docs/rules/#error-ple
+    "PLW", # https://beta.ruff.rs/docs/rules/#warning-plw
+    "PTH", # https://beta.ruff.rs/docs/rules/#flake8-use-pathlib-pth
+    "PGH", # https://beta.ruff.rs/docs/rules/#pygrep-hooks-pgh
+    "RUF", # https://beta.ruff.rs/docs/rules/#ruff-specific-rules-ruf
+]
+
+ignore = [
+    "E501",  # line length exceeds limit
+]
