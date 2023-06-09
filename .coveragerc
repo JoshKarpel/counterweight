@@ -25,6 +25,7 @@ exclude_lines =
     if TYPE_CHECKING:
     @overload
     assert False
+    assert_never
 
     pragma: unreachable
     pragma: debugging

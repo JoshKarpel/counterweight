@@ -1,5 +1,7 @@
 from typing import Literal
 
+from typing_extensions import assert_never
+
 from reprisal.hooks import Anchor, use_reducer
 
 CounterAction = Literal["inc", "dec", "reset"]
@@ -13,6 +15,8 @@ def counter(state: int, action: CounterAction) -> int:
             return state - 1
         case "reset":
             return 0
+        case _:  # pragma: unreachable
+            assert_never(action)
 
 
 def test_counter() -> None:
