@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextvars import ContextVar
-from typing import Any, Callable, Generic
+from typing import Any, Generic
 
 from reprisal.constants import PACKAGE_NAME
 from reprisal.hooks.types import A, Dispatch, P, Reducer, Ref, Setter, T

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Generic, ParamSpec, TypeVar
+from typing import Generic, ParamSpec, TypeVar
 
 T = TypeVar("T")
 A = TypeVar("A")
