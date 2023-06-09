@@ -1,6 +1,6 @@
 import pytest
 
-from reprisal.hooks import Anchor, use_state
+from reprisal.render import Root, use_state
 
 
 def count(inc: int = 1) -> int:
@@ -12,40 +12,40 @@ def count(inc: int = 1) -> int:
 
 
 @pytest.fixture
-def counter() -> Anchor[[int], int]:
-    return Anchor(count)
+def counter() -> Root[[int], int]:
+    return Root(count)
 
 
 @pytest.fixture
-def two_counters() -> Anchor[[], tuple[int, int]]:
+def two_counters() -> Root[[], tuple[int, int]]:
     def two_counts() -> tuple[int, int]:
         return count(inc=1), count(inc=-1)
 
-    return Anchor(two_counts)
+    return Root(two_counts)
 
 
-def test_setter_affects_subsequent_returns(counter: Anchor[[], int]) -> None:
-    assert counter() == 0
-    assert counter() == 1
-    assert counter() == 2
+def test_setter_affects_subsequent_returns(counter: Root[[], int]) -> None:
+    assert counter.render() == 0
+    assert counter.render() == 1
+    assert counter.render() == 2
 
 
-def test_states_are_isolated_from_each_other(two_counters: Anchor[[], tuple[int, int]]) -> None:
-    assert two_counters() == (0, 0)
-    assert two_counters() == (1, -1)
-    assert two_counters() == (2, -2)
+def test_states_are_isolated_from_each_other(two_counters: Root[[], tuple[int, int]]) -> None:
+    assert two_counters.render() == (0, 0)
+    assert two_counters.render() == (1, -1)
+    assert two_counters.render() == (2, -2)
 
 
-def test_anchors_are_isolated_from_each_other() -> None:
-    a = Anchor(count)
-    b = Anchor(count)
+def test_roots_are_isolated_from_each_other() -> None:
+    a = Root(count)
+    b = Root(count)
 
-    assert a() == 0
-    assert a() == 1
+    assert a.render() == 0
+    assert a.render() == 1
 
-    assert b() == 0
-    assert b() == 1
+    assert b.render() == 0
+    assert b.render() == 1
 
-    assert a() == 2
+    assert a.render() == 2
 
-    assert b() == 2
+    assert b.render() == 2

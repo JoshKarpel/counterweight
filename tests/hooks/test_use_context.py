@@ -2,9 +2,9 @@ from contextvars import ContextVar
 
 import pytest
 
-from reprisal.hooks import Anchor, provide_context, use_context
+from reprisal.render import Root, provide_context, use_context
 
-ctx = ContextVar("ctx", default="default")
+ctx = ContextVar("root", default="default")
 
 
 def test_context_is_reset_after_with_block() -> None:
@@ -21,8 +21,8 @@ def test_context_is_reset_after_with_block() -> None:
 
         assert use_context(ctx) == "default"
 
-    anchor = Anchor(_)
-    anchor()
+    root = Root(_)
+    root.render()
 
 
 def inner() -> str:
@@ -45,6 +45,6 @@ def outer(value: str | None) -> str:
     ],
 )
 def test_context_is_used_in_inner_if_set(value: str | None, expected: str) -> None:
-    anchor = Anchor(outer)
+    root = Root(outer)
 
-    assert anchor(value) == expected
+    assert root.render(value) == expected

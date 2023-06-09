@@ -2,7 +2,7 @@ from typing import Literal
 
 from typing_extensions import assert_never
 
-from reprisal.hooks import Anchor, use_reducer
+from reprisal.render import Root, use_reducer
 
 CounterAction = Literal["inc", "dec", "reset"]
 
@@ -25,12 +25,12 @@ def test_counter() -> None:
         dispatch(action)
         return count  # previous value!
 
-    anchor = Anchor(_)
+    root = Root(_)
 
-    assert anchor("inc") == 0
-    assert anchor("dec") == 1
-    assert anchor("inc") == 0
-    assert anchor("inc") == 1
-    assert anchor("reset") == 2
-    assert anchor("dec") == 0
-    assert anchor("reset") == -1
+    assert root.render("inc") == 0
+    assert root.render("dec") == 1
+    assert root.render("inc") == 0
+    assert root.render("inc") == 1
+    assert root.render("reset") == 2
+    assert root.render("dec") == 0
+    assert root.render("reset") == -1

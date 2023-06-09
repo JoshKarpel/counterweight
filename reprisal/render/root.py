@@ -5,7 +5,7 @@ from contextvars import ContextVar
 from typing import Any, Generic
 
 from reprisal.constants import PACKAGE_NAME
-from reprisal.hooks.types import (
+from reprisal.render.types import (
     A,
     Callback,
     Deps,
@@ -18,24 +18,24 @@ from reprisal.hooks.types import (
     UseStateReturn,
 )
 
-CURRENT_ANCHOR: ContextVar[Anchor[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-anchor")
+CURRENT_ROOT: ContextVar[Root[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-root")
 
 
-class Anchor(Generic[P, T]):
+class Root(Generic[P, T]):
     def __init__(self, func: Callable[P, T]):
         self.func = func
 
         self.current_hook_idx = 0
         self.hook_state: dict[int, object] = {}
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        token = CURRENT_ANCHOR.set(self)
+    def render(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        token = CURRENT_ROOT.set(self)
         self.current_hook_idx = 0
 
         rv = self.func(*args, **kwargs)
 
         self.current_hook_idx = 0
-        CURRENT_ANCHOR.reset(token)
+        CURRENT_ROOT.reset(token)
 
         return rv
 
