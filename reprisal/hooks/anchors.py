@@ -59,7 +59,7 @@ class Anchor(Generic[P, T]):
 
         return ref
 
-    def use_effect(self, callback: Callable[[], None], deps: tuple[object] | None = None) -> None:
+    def use_effect(self, callback: Callable[[], None], deps: tuple[object, ...] | None = None) -> None:
         previous_deps = self.hook_state.get(self.current_hook_idx, ())
         if deps is None:
             callback()

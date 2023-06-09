@@ -23,9 +23,10 @@ def test_callback_is_called_every_time_if_no_deps(mocker: MockerFixture) -> None
 
 def test_callback_is_called_based_on_whether_dependencies_changed(mocker: MockerFixture) -> None:
     mock = mocker.Mock()
-    deps = [0]  # you wouldn't normally mutate it like this...
+    deps = (0,)  # you wouldn't normally mutate it like this...
 
     def _() -> None:
+        nonlocal deps
         use_effect(mock, deps)
 
     anchor = Anchor(_)
@@ -36,7 +37,7 @@ def test_callback_is_called_based_on_whether_dependencies_changed(mocker: Mocker
     anchor()
     assert mock.call_count == 1
 
-    deps[0] = 1
+    deps = (1,)
 
     anchor()
     assert mock.call_count == 2
@@ -44,7 +45,7 @@ def test_callback_is_called_based_on_whether_dependencies_changed(mocker: Mocker
     anchor()
     assert mock.call_count == 2
 
-    deps[0] = 0
+    deps = (2,)
 
     anchor()
     assert mock.call_count == 3
