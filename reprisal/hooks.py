@@ -22,9 +22,15 @@ class Anchor(Generic[P, T]):
         self.hook_state: dict[int, object] = {}
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        CURRENT_ANCHOR.set(self)
+        token = CURRENT_ANCHOR.set(self)
         self.current_hook = 0
-        return self.root(*args, **kwargs)
+
+        rv = self.root(*args, **kwargs)
+
+        self.current_hook = 0
+        CURRENT_ANCHOR.reset(token)
+
+        return rv
 
 
 Setter = Callable[[T], None]
