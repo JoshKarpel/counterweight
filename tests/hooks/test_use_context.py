@@ -7,6 +7,24 @@ from reprisal.hooks import Anchor, provide_context, use_context
 ctx = ContextVar("ctx", default="default")
 
 
+def test_context_is_reset_after_with_block() -> None:
+    def _() -> None:
+        assert use_context(ctx) == "default"
+
+        with provide_context(ctx, "foo"):
+            assert use_context(ctx) == "foo"
+
+        assert use_context(ctx) == "default"
+
+        with provide_context(ctx, "bar"):
+            assert use_context(ctx) == "bar"
+
+        assert use_context(ctx) == "default"
+
+    anchor = Anchor(_)
+    anchor()
+
+
 def inner() -> str:
     return use_context(ctx)
 
@@ -30,21 +48,3 @@ def test_context_is_used_in_inner_if_set(value: str | None, expected: str) -> No
     anchor = Anchor(outer)
 
     assert anchor(value) == expected
-
-
-def test_context_is_reset_after_with_block() -> None:
-    def _() -> None:
-        assert use_context(ctx) == "default"
-
-        with provide_context(ctx, "foo"):
-            assert use_context(ctx) == "foo"
-
-        assert use_context(ctx) == "default"
-
-        with provide_context(ctx, "bar"):
-            assert use_context(ctx) == "bar"
-
-        assert use_context(ctx) == "default"
-
-    anchor = Anchor(_)
-    anchor()

@@ -6,13 +6,15 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Generic, ParamSpec, TypeVar
 
+from reprisal.constants import PACKAGE_NAME
+
 T = TypeVar("T")
 A = TypeVar("A")
 P = ParamSpec("P")
 
 HookRoot = Callable[P, T]
 
-CURRENT_ANCHOR: ContextVar[Anchor[Any, Any]] = ContextVar("current_context")
+CURRENT_ANCHOR: ContextVar[Anchor[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-anchor")
 
 
 class Anchor(Generic[P, T]):
