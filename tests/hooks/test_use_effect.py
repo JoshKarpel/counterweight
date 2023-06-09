@@ -1,6 +1,6 @@
 from pytest_mock import MockerFixture
 
-from reprisal.hooks import HookContext, use_effect
+from reprisal.hooks import Anchor, use_effect
 
 
 def test_callback_is_called_every_time_if_no_deps(mocker: MockerFixture) -> None:
@@ -9,7 +9,7 @@ def test_callback_is_called_every_time_if_no_deps(mocker: MockerFixture) -> None
     def _() -> None:
         use_effect(mock)
 
-    ctx = HookContext(_)
+    ctx = Anchor(_)
 
     ctx()
     assert mock.call_count == 1
@@ -28,7 +28,7 @@ def test_callback_is_called_based_on_whether_dependencies_changed(mocker: Mocker
     def _() -> None:
         use_effect(mock, deps)
 
-    ctx = HookContext(_)
+    ctx = Anchor(_)
 
     ctx()
     assert mock.call_count == 1

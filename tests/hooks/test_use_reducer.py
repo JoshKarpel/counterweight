@@ -1,6 +1,6 @@
 from typing import Literal
 
-from reprisal.hooks import HookContext, use_reducer
+from reprisal.hooks import Anchor, use_reducer
 
 CounterAction = Literal["inc", "dec", "reset"]
 
@@ -21,7 +21,7 @@ def test_counter() -> None:
         dispatch(action)
         return count  # previous value!
 
-    ctx = HookContext(_)
+    ctx = Anchor(_)
 
     assert ctx("inc") == 0
     assert ctx("dec") == 1
