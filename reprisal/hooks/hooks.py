@@ -4,39 +4,10 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Generic, ParamSpec, TypeVar
+from typing import Generic
 
-from reprisal.constants import PACKAGE_NAME
-
-T = TypeVar("T")
-A = TypeVar("A")
-P = ParamSpec("P")
-
-HookRoot = Callable[P, T]
-
-CURRENT_ANCHOR: ContextVar[Anchor[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-anchor")
-
-
-class Anchor(Generic[P, T]):
-    def __init__(self, root: HookRoot[P, T]):
-        self.root = root
-
-        self.current_hook = 0
-        self.hook_state: dict[int, object] = {}
-
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        token = CURRENT_ANCHOR.set(self)
-        self.current_hook = 0
-
-        rv = self.root(*args, **kwargs)
-
-        self.current_hook = 0
-        CURRENT_ANCHOR.reset(token)
-
-        return rv
-
-
-Setter = Callable[[T], None]
+from reprisal.hooks.anchors import CURRENT_ANCHOR
+from reprisal.hooks.types import A, Setter, T
 
 
 def use_state(initial_value: T) -> tuple[T, Setter[T]]:

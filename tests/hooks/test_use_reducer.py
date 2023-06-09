@@ -25,12 +25,12 @@ def test_counter() -> None:
         dispatch(action)
         return count  # previous value!
 
-    ctx = Anchor(_)
+    anchor = Anchor(_)
 
-    assert ctx("inc") == 0
-    assert ctx("dec") == 1
-    assert ctx("inc") == 0
-    assert ctx("inc") == 1
-    assert ctx("reset") == 2
-    assert ctx("dec") == 0
-    assert ctx("reset") == -1
+    assert anchor("inc") == 0
+    assert anchor("dec") == 1
+    assert anchor("inc") == 0
+    assert anchor("inc") == 1
+    assert anchor("reset") == 2
+    assert anchor("dec") == 0
+    assert anchor("reset") == -1

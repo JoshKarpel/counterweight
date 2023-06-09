@@ -28,26 +28,26 @@ def test_callback_is_called_based_on_whether_dependencies_changed(mocker: Mocker
     def _() -> None:
         use_effect(mock, deps)
 
-    ctx = Anchor(_)
+    anchor = Anchor(_)
 
-    ctx()
+    anchor()
     assert mock.call_count == 1
 
-    ctx()
+    anchor()
     assert mock.call_count == 1
 
     deps[0] = 1
 
-    ctx()
+    anchor()
     assert mock.call_count == 2
 
-    ctx()
+    anchor()
     assert mock.call_count == 2
 
     deps[0] = 0
 
-    ctx()
+    anchor()
     assert mock.call_count == 3
 
-    ctx()
+    anchor()
     assert mock.call_count == 3
