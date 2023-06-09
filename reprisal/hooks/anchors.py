@@ -40,9 +40,7 @@ class Anchor(Generic[P, T]):
         return value, setter
 
     def use_reducer(self, reducer: Callable[[T, A], T], initial_state: T) -> tuple[T, Dispatch[A]]:
-        reducer_: Reducer[T, A] = self.hook_state.setdefault(
-            self.current_hook_idx, reducer
-        )  # type: ignore[assignment]
+        reducer_: Reducer[T, A] = self.hook_state.setdefault(self.current_hook_idx, reducer)  # type: ignore[assignment]
 
         state_idx = self.current_hook_idx + 1
         state: T = self.hook_state.setdefault(state_idx, initial_state)  # type: ignore[assignment]
@@ -55,9 +53,7 @@ class Anchor(Generic[P, T]):
         return state, dispatch
 
     def use_ref(self, initial_value: T) -> Ref[T]:
-        ref: Ref[T] = self.hook_state.setdefault(
-            self.current_hook_idx, Ref(initial_value)
-        )  # type: ignore[assignment]
+        ref: Ref[T] = self.hook_state.setdefault(self.current_hook_idx, Ref(initial_value))  # type: ignore[assignment]
 
         self.current_hook_idx += 1
 
