@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -20,7 +20,7 @@ def use_ref(initial_value: T) -> Ref[T]:
     return CURRENT_ANCHOR.get().use_ref(initial_value=initial_value)
 
 
-def use_effect(callback: Callable[[], None], deps: Sequence[object] | None = None) -> None:
+def use_effect(callback: Callable[[], None], deps: tuple[object, ...] | None = None) -> None:
     return CURRENT_ANCHOR.get().use_effect(callback=callback, deps=deps)
 
 

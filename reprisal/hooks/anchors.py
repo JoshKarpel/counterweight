@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import Any, Callable, Generic, Sequence
+from typing import Any, Callable, Generic
 
 from reprisal.constants import PACKAGE_NAME
 from reprisal.hooks.types import A, Dispatch, P, Reducer, Ref, Setter, T
@@ -63,14 +63,12 @@ class Anchor(Generic[P, T]):
 
         return ref
 
-    def use_effect(
-        self, callback: Callable[[], None], deps: Sequence[object] | None = None
-    ) -> None:
-        previous_deps = self.hook_state.get(self.current_hook_idx, [])
+    def use_effect(self, callback: Callable[[], None], deps: tuple[object] | None = None) -> None:
+        previous_deps = self.hook_state.get(self.current_hook_idx, ())
         if deps is None:
             callback()
         elif deps != previous_deps:
             callback()
-            self.hook_state[self.current_hook_idx] = list(deps)
+            self.hook_state[self.current_hook_idx] = deps
 
         self.current_hook_idx += 1
