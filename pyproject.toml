@@ -40,6 +40,7 @@ typer = ">=0.9"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"
+watchfiles = ">=0.19"
 pytest = ">=7"
 pytest-cov = ">=3"
 pytest-xdist = ">=3"
