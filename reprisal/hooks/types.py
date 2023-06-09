@@ -11,8 +11,15 @@ P = ParamSpec("P")
 Setter = Callable[[T], None]
 Reducer = Callable[[T, A], T]
 Dispatch = Callable[[A], None]
+Callback = Callable[[], None]
+Deps = tuple[object, ...] | None
 
 
 @dataclass
 class Ref(Generic[T]):
     current: T
+
+
+UseStateReturn = tuple[T, Setter[T]]
+UseReducerReturn = tuple[T, Dispatch[A]]
+UseRefReturn = Ref[T]

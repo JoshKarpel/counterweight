@@ -5,7 +5,18 @@ from contextvars import ContextVar
 from typing import Any, Generic
 
 from reprisal.constants import PACKAGE_NAME
-from reprisal.hooks.types import A, Dispatch, P, Reducer, Ref, Setter, T
+from reprisal.hooks.types import (
+    A,
+    Callback,
+    Deps,
+    P,
+    Reducer,
+    Ref,
+    T,
+    UseReducerReturn,
+    UseRefReturn,
+    UseStateReturn,
+)
 
 CURRENT_ANCHOR: ContextVar[Anchor[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-anchor")
 
@@ -28,7 +39,7 @@ class Anchor(Generic[P, T]):
 
         return rv
 
-    def use_state(self, initial_value: T) -> tuple[T, Setter[T]]:
+    def use_state(self, initial_value: T) -> UseStateReturn[T]:
         value: T = self.hook_state.setdefault(self.current_hook_idx, initial_value)  # type: ignore[assignment]
 
         hook_idx = self.current_hook_idx  # capture value now for setter closure
@@ -40,7 +51,7 @@ class Anchor(Generic[P, T]):
 
         return value, setter
 
-    def use_reducer(self, reducer: Callable[[T, A], T], initial_state: T) -> tuple[T, Dispatch[A]]:
+    def use_reducer(self, reducer: Reducer[T, A], initial_state: T) -> UseReducerReturn[T, A]:
         reducer_: Reducer[T, A] = self.hook_state.setdefault(self.current_hook_idx, reducer)  # type: ignore[assignment]
 
         state_idx = self.current_hook_idx + 1
@@ -53,14 +64,14 @@ class Anchor(Generic[P, T]):
 
         return state, dispatch
 
-    def use_ref(self, initial_value: T) -> Ref[T]:
+    def use_ref(self, initial_value: T) -> UseRefReturn[T]:
         ref: Ref[T] = self.hook_state.setdefault(self.current_hook_idx, Ref(initial_value))  # type: ignore[assignment]
 
         self.current_hook_idx += 1
 
         return ref
 
-    def use_effect(self, callback: Callable[[], None], deps: tuple[object, ...] | None = None) -> None:
+    def use_effect(self, callback: Callback, deps: Deps = None) -> None:
         previous_deps = self.hook_state.get(self.current_hook_idx, ())
         if deps is None:
             callback()
