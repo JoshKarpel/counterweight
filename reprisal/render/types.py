@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Generic, ParamSpec, TypeVar
 
-R = TypeVar("T")
+R = TypeVar("R")
 H = TypeVar("H")
 A = TypeVar("A")
 P = ParamSpec("P")
