@@ -40,6 +40,7 @@ typer = ">=0.9"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"
+watchfiles = ">=0.19"
 pytest = ">=7"
 pytest-cov = ">=3"
 pytest-xdist = ">=3"
@@ -54,7 +55,7 @@ mkdocstrings = {extras = ["python"], version = ">=0.19.0"}
 reprisal = 'reprisal.cli:cli'
 
 [tool.black]
-line-length = 100
+line-length = 120
 include = "\\.pyi?$"
 
 [tool.pytest.ini_options]
@@ -66,7 +67,7 @@ markers = ["slow"]
 asyncio_mode = "auto"
 
 [tool.mypy]
-pretty = false
+pretty = true
 show_error_codes = true
 
 files = ["."]
@@ -86,7 +87,7 @@ warn_redundant_casts = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 
 select = [
     "I",   # https://beta.ruff.rs/docs/rules/#isort-i
