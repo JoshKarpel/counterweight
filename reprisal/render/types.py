@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Generic, ParamSpec, TypeVar
 
 T = TypeVar("T")
+H = TypeVar("H")
 A = TypeVar("A")
 P = ParamSpec("P")
 

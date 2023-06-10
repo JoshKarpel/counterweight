@@ -9,6 +9,7 @@ from reprisal.render.types import (
     A,
     Callback,
     Deps,
+    H,
     P,
     Reducer,
     Ref,
@@ -39,23 +40,23 @@ class Root(Generic[P, T]):
 
         return rv
 
-    def use_state(self, initial_value: T) -> UseStateReturn[T]:
-        value: T = self.hook_state.setdefault(self.current_hook_idx, initial_value)  # type: ignore[assignment]
+    def use_state(self, initial_value: H) -> UseStateReturn[H]:
+        value: H = self.hook_state.setdefault(self.current_hook_idx, initial_value)  # type: ignore[assignment]
 
         hook_idx = self.current_hook_idx  # capture value now for setter closure
 
-        def setter(value: T) -> None:
+        def setter(value: H) -> None:
             self.hook_state[hook_idx] = value
 
         self.current_hook_idx += 1
 
         return value, setter
 
-    def use_reducer(self, reducer: Reducer[T, A], initial_state: T) -> UseReducerReturn[T, A]:
-        reducer_: Reducer[T, A] = self.hook_state.setdefault(self.current_hook_idx, reducer)  # type: ignore[assignment]
+    def use_reducer(self, reducer: Reducer[H, A], initial_state: H) -> UseReducerReturn[H, A]:
+        reducer_: Reducer[H, A] = self.hook_state.setdefault(self.current_hook_idx, reducer)  # type: ignore[assignment]
 
         state_idx = self.current_hook_idx + 1
-        state: T = self.hook_state.setdefault(state_idx, initial_state)  # type: ignore[assignment]
+        state: H = self.hook_state.setdefault(state_idx, initial_state)  # type: ignore[assignment]
 
         def dispatch(action: A) -> None:
             self.hook_state[state_idx] = reducer_(self.hook_state[state_idx], action)  # type: ignore[arg-type]
@@ -64,8 +65,8 @@ class Root(Generic[P, T]):
 
         return state, dispatch
 
-    def use_ref(self, initial_value: T) -> UseRefReturn[T]:
-        ref: Ref[T] = self.hook_state.setdefault(self.current_hook_idx, Ref(initial_value))  # type: ignore[assignment]
+    def use_ref(self, initial_value: H) -> UseRefReturn[H]:
+        ref: Ref[H] = self.hook_state.setdefault(self.current_hook_idx, Ref(initial_value))  # type: ignore[assignment]
 
         self.current_hook_idx += 1
 
