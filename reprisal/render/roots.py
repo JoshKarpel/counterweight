@@ -11,9 +11,9 @@ from reprisal.render.types import (
     Deps,
     H,
     P,
+    R,
     Reducer,
     Ref,
-    T,
     UseReducerReturn,
     UseRefReturn,
     UseStateReturn,
@@ -22,23 +22,23 @@ from reprisal.render.types import (
 CURRENT_ROOT: ContextVar[Root[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-root")
 
 
-class Root(Generic[P, T]):
-    def __init__(self, func: Callable[P, T]):
+class Root(Generic[P, R]):
+    def __init__(self, func: Callable[P, R]):
         self.func = func
 
         self.current_hook_idx = 0
         self.hook_state: dict[int, object] = {}
 
-    def render(self, *args: P.args, **kwargs: P.kwargs) -> T:
+    def render(self, *args: P.args, **kwargs: P.kwargs) -> R:
         token = CURRENT_ROOT.set(self)
         self.current_hook_idx = 0
 
-        rv = self.func(*args, **kwargs)
+        result = self.func(*args, **kwargs)
 
         self.current_hook_idx = 0
         CURRENT_ROOT.reset(token)
 
-        return rv
+        return result
 
     def use_state(self, initial_value: H) -> UseStateReturn[H]:
         value: H = self.hook_state.setdefault(self.current_hook_idx, initial_value)  # type: ignore[assignment]

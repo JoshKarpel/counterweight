@@ -4,23 +4,23 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Generic, ParamSpec, TypeVar
 
-T = TypeVar("T")
+R = TypeVar("T")
 H = TypeVar("H")
 A = TypeVar("A")
 P = ParamSpec("P")
 
-Setter = Callable[[T], None]
-Reducer = Callable[[T, A], T]
+Setter = Callable[[H], None]
+Reducer = Callable[[H, A], H]
 Dispatch = Callable[[A], None]
 Callback = Callable[[], None]
 Deps = tuple[object, ...] | None
 
 
 @dataclass
-class Ref(Generic[T]):
-    current: T
+class Ref(Generic[H]):
+    current: H
 
 
-UseStateReturn = tuple[T, Setter[T]]
-UseReducerReturn = tuple[T, Dispatch[A]]
-UseRefReturn = Ref[T]
+UseStateReturn = tuple[H, Setter[H]]
+UseReducerReturn = tuple[H, Dispatch[A]]
+UseRefReturn = Ref[H]
