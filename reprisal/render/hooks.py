@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from reprisal.render.root import CURRENT_ROOT
+from reprisal.render.roots import CURRENT_ROOT
 from reprisal.render.types import (
     A,
     Callback,
