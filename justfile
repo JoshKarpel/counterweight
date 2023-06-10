@@ -5,7 +5,7 @@ alias tw := test-watch
 
 test:
   mypy
-  pytest --cov
+  pytest -v --cov --durations=10
 
 test-watch:
-  watchfiles 'just test' reprisal/ tests/ docs/
+  watchfiles 'just test' reprisal/ tests/ docs/ justfile
