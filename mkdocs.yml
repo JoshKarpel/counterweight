@@ -55,7 +55,7 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.highlight:
-      root_linenums: true
+      anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
       base_path: ['docs']
