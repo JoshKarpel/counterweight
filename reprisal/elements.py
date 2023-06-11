@@ -11,44 +11,27 @@ class FrozenForbidExtras(BaseModel):
         extras = Extra.forbid
 
 
-class Cells(FrozenForbidExtras):
-    cells: int = 0
-
-
-AnyDistance = Cells
-
-
-class BoxDimensions(FrozenForbidExtras):
-    top: AnyDistance
-    bottom: AnyDistance
-    left: AnyDistance
-    right: AnyDistance
-
-    @classmethod
-    def zero(cls) -> BoxDimensions:
-        return BoxDimensions(
-            top=Cells(cells=0),
-            bottom=Cells(cells=0),
-            left=Cells(cells=0),
-            right=Cells(cells=0),
-        )
+class Edge(FrozenForbidExtras):
+    top: int
+    bottom: int
+    left: int
+    right: int
 
 
 class BorderKind(Enum):
-    Blank = "      "
+    Star = "******"
     Light = "│─┌┐└┘"
     Heavy = "┃━┏┓┗┛"
 
 
 class Border(FrozenForbidExtras):
-    kind: BorderKind = Field(default=BorderKind.Blank)
-    dimensions: BoxDimensions = Field(default=BoxDimensions.zero())
+    kind: BorderKind = Field(default=BorderKind.Light)
 
 
 class Style(FrozenForbidExtras):
-    margin: BoxDimensions = Field(default=BoxDimensions.zero())
-    border: Border = Field(default=Border())
-    padding: BoxDimensions = Field(default=BoxDimensions.zero())
+    margin: Edge | None = Field(default=None)
+    border: Border | None = Field(default=None)
+    padding: Edge | None = Field(default=None)
 
 
 class Div(FrozenForbidExtras):
