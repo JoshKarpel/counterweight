@@ -68,6 +68,7 @@ def compose(
             if child_span.height == "fit":
                 if isinstance(child, Text):
                     child_height = lines_at_width(child.text, width=child_width) + child.style.box_height()
+                    print(child_height)
                 elif isinstance(child, Div):
                     # how do you drill through the tree here to fit the height?
                     # I guess the problem with this model is that you kind of need to
@@ -86,10 +87,16 @@ def compose(
                 left=inside_padding.left,
                 top=inside_padding.top,
                 right=inside_padding.left + child_width,
-                bottom=inside_padding.top + child_height,
+                bottom=inside_padding.top + child_height - 1,  # I don't understand this off-by-one...
             )
 
             element_comp |= compose(child, child_region)
+            inside_padding = Region(
+                left=inside_padding.left,
+                right=inside_padding.right,
+                top=child_region.bottom + 1,
+                bottom=inside_padding.bottom,
+            )
     else:
         assert_never(element)
 
