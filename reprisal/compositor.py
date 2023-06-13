@@ -20,138 +20,118 @@ class Span(NamedTuple):
 
 
 class Region(NamedTuple):
-    x: int
-    y: int
-    width: int
-    height: int
+    left: int
+    right: int
+    top: int
+    bottom: int
 
     def span(self) -> Span:
         return Span(width=self.width, height=self.height)
 
+    @property
+    def width(self) -> int:
+        return self.right - self.left
 
-class Composition(NamedTuple):
-    span: Span
-    chars: dict[Position, str]
+    @property
+    def height(self) -> int:
+        return self.bottom - self.top
 
-    def underlay(self, composition: Composition, region: Region) -> Composition:
-        overlay = {pos.shift(region.x, region.y): c for pos, c in composition.chars.items()}
+    def x_range(self) -> list[int]:
+        return list(range(self.left, self.right + 1))
 
-        return Composition(chars=self.chars | overlay, span=self.span)
+    def y_range(self) -> list[int]:
+        return list(range(self.top, self.bottom + 1))
+
+    def origin(self) -> Position:
+        return Position(x=self.left, y=self.top)
 
 
 def compose(
     element: Text,
-    span: Span,
-) -> Composition:
-    base = Composition(chars={}, span=span)
+    region: Region,
+):
+    margin_comp, inside_margin = edge(edge=element.style.margin, region=region, char="M")
+    border_comp, inside_border = border(border=element.style.border, region=inside_margin)
+    padding_comp, inside_padding = edge(edge=element.style.padding, region=inside_border, char="P")
+    element_comp = text(text=element, region=inside_padding)
 
-    margin_comp, inside_margin = edge(edge=element.style.margin, span=span)
-    border_comp, inside_border = border(border=element.style.border, span=inside_margin.span())
-    padding_comp, inside_padding = edge(edge=element.style.padding, span=inside_border.span())
-    element_comp, inside_element = text(element, inside_padding.span())
-
-    with_margin = base.underlay(margin_comp, inside_margin)
-    with_border = with_margin.underlay(border_comp, inside_border)
-    with_padding = with_border.underlay(padding_comp, inside_padding)
-    with_padding.underlay(element_comp, inside_element)
-
-    print(inside_margin)
-    print(inside_border)
-    print(inside_padding)
-
-    return with_padding
+    return margin_comp | border_comp | padding_comp | element_comp
 
 
-def text(
-    text: Text,
-    span: Span,
-) -> tuple[Composition, Region]:
+def text(text: Text, region: Region):
     chars = {}
-    wrapper = TextWrapper(width=span.width, max_lines=span.height)
+    wrapper = TextWrapper(width=region.width, max_lines=region.height)
     wrapped = wrapper.wrap(text.text)
     for y, line in enumerate(wrapped):
         for x, char in enumerate(line):
+            chars[Position(x, y).shift(x=region.left, y=region.top)] = char
+
+    return chars
+
+
+def edge(edge: Edge, region: Region, char: str = " "):
+    chars = {}
+
+    for y in range(region.top, region.top + edge.top):
+        for x in region.x_range():
             chars[Position(x, y)] = char
 
-    return (
-        Composition(
-            span=span,
-            chars=chars,
-        ),
-        Region(
-            x=1,
-            y=1,
-            width=span.width - 1,
-            height=span.height - 1,
-        ),
+    for y in range(region.bottom, region.bottom - edge.bottom, -1):
+        for x in region.x_range():
+            chars[Position(x, y)] = char
+
+    for x in range(region.left, region.left + edge.left):
+        for y in region.y_range():
+            chars[Position(x, y)] = char
+
+    for x in range(region.right, region.right - edge.right, -1):
+        for y in region.y_range():
+            chars[Position(x, y)] = char
+
+    return chars, Region(
+        left=region.left + edge.left,
+        right=region.right - edge.right,
+        top=region.top + edge.top,
+        bottom=region.bottom - edge.bottom,
     )
 
 
-def edge(edge: Edge, span: Span) -> tuple[Composition, Region]:
+def border(border: Border, region: Region):
     chars = {}
 
-    for y in range(edge.top):
-        for x in range(span.width):
-            chars[Position(x, y)] = " "
+    for x in region.x_range():
+        chars[Position(x, region.top)] = "T"
 
-    for y in range(edge.bottom):
-        for x in range(span.width):
-            chars[Position(x, span.height - y - 1)] = " "
+    for x in region.x_range():
+        chars[Position(x, region.bottom)] = "B"
 
-    for x in range(edge.left):
-        for y in range(span.height):
-            chars[Position(x, y)] = " "
+    for y in region.y_range():
+        chars[Position(region.left, y)] = "L"
 
-    for x in range(edge.right):
-        for y in range(span.height):
-            chars[Position(span.width - x - 1, y)] = " "
+    for y in region.y_range():
+        chars[Position(region.right, y)] = "R"
+
+    for x in (region.left, region.right):
+        for y in (region.top, region.bottom):
+            chars[Position(x, y)] = "C"
 
     return (
-        Composition(
-            chars=chars,
-            span=span,
-        ),
+        chars,
         Region(
-            x=edge.left,
-            y=edge.top,
-            width=span.width - (edge.left + edge.right),
-            height=span.height - (edge.top + edge.bottom),
+            left=region.left + 1,
+            right=region.right - 1,
+            top=region.top + 1,
+            bottom=region.bottom - 1,
         ),
     )
 
 
-def border(border: Border, span: Span) -> tuple[Composition, Region]:
-    chars = {}
-
-    for x in range(span.width):
-        chars[Position(x, 0)] = "T"
-        chars[Position(x, span.height - 1)] = "B"
-
-    for y in range(span.height):
-        chars[Position(0, y)] = "L"
-        chars[Position(span.width - 1, y)] = "R"
-
-    return (
-        Composition(
-            chars=chars,
-            span=span,
-        ),
-        Region(
-            x=1,
-            y=1,
-            width=span.width - 1,
-            height=span.height - 1,
-        ),
-    )
-
-
-def debug(comp: Composition) -> str:
+def debug(chars, region) -> str:
     lines = []
-    for y in range(comp.span.height):
+    for y in region.y_range():
         line = []
-
-        for x in range(comp.span.width):
-            line.append(comp.chars.get(Position(x, y), " "))
+        for x in region.x_range():
+            line.append(chars.get(Position(x, y), " "))
 
         lines.append(line)
 
