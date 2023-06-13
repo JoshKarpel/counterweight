@@ -50,9 +50,9 @@ def compose(
     element: Text,
     region: Region,
 ):
-    margin_comp, inside_margin = edge(edge=element.style.margin, region=region, char="M")
+    margin_comp, inside_margin = edge(edge=element.style.margin, region=region, char=" ")
     border_comp, inside_border = border(border=element.style.border, region=inside_margin)
-    padding_comp, inside_padding = edge(edge=element.style.padding, region=inside_border, char="P")
+    padding_comp, inside_padding = edge(edge=element.style.padding, region=inside_border, char=" ")
     element_comp = text(text=element, region=inside_padding)
 
     return margin_comp | border_comp | padding_comp | element_comp
@@ -72,18 +72,22 @@ def text(text: Text, region: Region):
 def edge(edge: Edge, region: Region, char: str = " "):
     chars = {}
 
+    # top
     for y in range(region.top, region.top + edge.top):
         for x in region.x_range():
             chars[Position(x, y)] = char
 
+    # bottom
     for y in range(region.bottom, region.bottom - edge.bottom, -1):
         for x in region.x_range():
             chars[Position(x, y)] = char
 
+    # left
     for x in range(region.left, region.left + edge.left):
         for y in region.y_range():
             chars[Position(x, y)] = char
 
+    # right
     for x in range(region.right, region.right - edge.right, -1):
         for y in region.y_range():
             chars[Position(x, y)] = char
@@ -99,21 +103,26 @@ def edge(edge: Edge, region: Region, char: str = " "):
 def border(border: Border, region: Region):
     chars = {}
 
+    # top
     for x in region.x_range():
-        chars[Position(x, region.top)] = "T"
+        chars[Position(x, region.top)] = border.kind.value[1]
 
+    # bottom
     for x in region.x_range():
-        chars[Position(x, region.bottom)] = "B"
+        chars[Position(x, region.bottom)] = border.kind.value[1]
 
+    # left
     for y in region.y_range():
-        chars[Position(region.left, y)] = "L"
+        chars[Position(region.left, y)] = border.kind.value[0]
 
+    # right
     for y in region.y_range():
-        chars[Position(region.right, y)] = "R"
+        chars[Position(region.right, y)] = border.kind.value[0]
 
-    for x in (region.left, region.right):
-        for y in (region.top, region.bottom):
-            chars[Position(x, y)] = "C"
+    chars[Position(x=region.left, y=region.top)] = border.kind.value[2]
+    chars[Position(x=region.right, y=region.top)] = border.kind.value[3]
+    chars[Position(x=region.left, y=region.bottom)] = border.kind.value[4]
+    chars[Position(x=region.right, y=region.bottom)] = border.kind.value[5]
 
     return (
         chars,
