@@ -42,6 +42,13 @@ class Region(NamedTuple):
 
 # https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_flow_layout/Block_and_inline_layout_in_normal_flow
 # https://www.w3.org/TR/CSS2/visudet.html#blockwidth
+
+# maybe I can do two passes: one turns the initial "abstract" style tree
+# with measures like fractions or special instructions like "auto" or "fit"
+# into a "concrete" tree specified exclusively in cells,
+# then the second pass actually renders things.
+
+
 def compose(
     element: Div | Text,
     region: Region,
