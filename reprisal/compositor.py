@@ -1,177 +1,202 @@
 from __future__ import annotations
 
 from math import ceil, floor
-from typing import Literal, NamedTuple
 
+from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.elements import Border, Div, Text
+from reprisal.elements import Div, ForbidExtras, Text
 
 
-class Position(NamedTuple):
-    x: int
-    y: int
+class Rect(ForbidExtras):
+    x: int = Field(default=0)
+    y: int = Field(default=0)
+    width: int = Field(default=0)
+    height: int = Field(default=0)
 
-    def shift(self, x: int, y: int) -> Position:
-        return Position(self.x + x, self.y + y)
-
-
-class Region(NamedTuple):
-    left: int
-    right: int
-    top: int
-    bottom: int
-
-    @property
-    def width(self) -> int:
-        return self.right - self.left
-
-    @property
-    def height(self) -> int:
-        return self.bottom - self.top
-
-    def x_range(self) -> list[int]:
-        return list(range(self.left, self.right + 1))
-
-    def y_range(self) -> list[int]:
-        return list(range(self.top, self.bottom + 1))
-
-    def origin(self) -> Position:
-        return Position(x=self.left, y=self.top)
-
-
-class Rect(NamedTuple):
-    left: int
-    top: int
-    width: int
-    height: int
-
-    @property
-    def right(self) -> int:
-        return self.left + self.width
-
-    @property
-    def bottom(self) -> int:
-        return self.top + self.height
-
-
-class Edge(NamedTuple):
-    left: int = 0
-    right: int = 0
-    top: int = 0
-    bottom: int = 0
-
-
-class Dimensions(NamedTuple):
-    content: Rect
-    margin: Edge
-    border: Border | None
-    padding: Edge
-
-
-class LeftRight(NamedTuple):
-    left: int = 0
-    right: int = 0
-
-
-class Widths(NamedTuple):
-    width: int
-    margin: LeftRight
-    border: LeftRight
-    padding: LeftRight
-
-
-class LayoutBox(NamedTuple):
-    dims: Dimensions
-    type: Literal["block", "inline", "anonymous"]
-    children: list[Dimensions]
-
-
-def layout(element: Div | Text, containing_box: Dimensions) -> LayoutBox:
-    match element.style.display:
-        case "block":
-            widths = calculate_widths(element.style, containing_box)
-            print(widths)
-        case display:
-            assert_never(display)
-
-
-def calculate_widths(element_style, containing_block: Dimensions) -> Widths:
-    width = element_style.span.width
-
-    margin_left = element_style.margin.left
-    margin_right = element_style.margin.right
-
-    border_left = 1 if element_style.border is not None else 0
-    border_right = 1 if element_style.border is not None else 0
-
-    padding_left = element_style.padding.left
-    padding_right = element_style.padding.right
-
-    # Add up all the widths, excluding any that can be automatically set
-    # by treating them as zeros. We'll fill in their values later,
-    # based on the minimum block width.
-    minimum_block_width = sum(
-        w if isinstance(w, int) else 0
-        for w in (
-            width,
-            margin_left,
-            margin_right,
-            border_left,
-            border_right,
-            padding_left,
-            padding_right,
+    def expand_by(self, edge: Edge) -> Rect:
+        return Rect(
+            x=self.x - edge.left,
+            y=self.y - edge.top,
+            width=self.width + edge.left + edge.right,
+            height=self.height + edge.top + edge.bottom,
         )
-    )
 
-    # This block is going to be laid out inside the content region of the containing block.
-    # If it's already too wide, the content width of this box is fixed, and the margins are expandable,
-    # we definitely cannot expand the margins, so set them to zero.
-    if minimum_block_width > containing_block.content.width:
-        if margin_left == "auto":
-            margin_left = 0
-        if margin_right == "auto":
-            margin_right = 0
 
-    # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
-    underflow = containing_block.content.width - minimum_block_width
+class Edge(ForbidExtras):
+    left: int = Field(default=0)
+    right: int = Field(default=0)
+    top: int = Field(default=0)
+    bottom: int = Field(default=0)
 
-    match (width == "auto", margin_left == "auto", margin_right == "auto"):
-        # Woops, overconstrained dimensions!
-        # We have to do something, so we move the right margin, since we're effectively in left-to-right mode.
-        case (False, False, False):
-            margin_right = margin_right + underflow
 
-        # If the width is not auto and only one margin is auto, put the underflow on that margin.
-        case (False, True, False):
-            margin_left = underflow
-        case (False, False, True):
-            margin_right = underflow
+class Dimensions(ForbidExtras):
+    content: Rect = Field(default_factory=Rect)
+    margin: Edge = Field(default_factory=Edge)
+    border: Edge = Field(default_factory=Edge)
+    padding: Edge = Field(default_factory=Edge)
 
-        # If the width is not auto and both margins are auto, divide the underflow evenly between them.
-        case (False, True, True):
-            margin_left, margin_right = halve_integer(underflow)
+    def padding_rect(self) -> Rect:
+        return self.content.expand_by(self.margin)
 
-        # If the width is auto, we put all the underflow there, regardless of whether the margins are auto.
-        case (True, _, _):
-            # If the margins were auto, they shrink to 0.
+    def border_box(self) -> Rect:
+        return self.padding_rect().expand_by(self.border)
+
+    def margin_box(self) -> Rect:
+        return self.border_box().expand_by(self.margin)
+
+
+class LayoutBox(ForbidExtras):
+    element: Div | Text
+    dims: Dimensions = Field(default_factory=Dimensions)
+    children: list[LayoutBox] = Field(default_factory=list)
+
+    def layout(self, containing_box: Dimensions) -> LayoutBox:
+        # this is Extremely Mutable in a scary way
+        match self.element.style.display:
+            case "block":
+                self.calculate_block_width(containing_box)
+                self.calculate_block_position(containing_box)
+                self.layout_block_children(containing_box)
+                self.calculate_block_height(containing_box)
+            case display:
+                assert_never(display)
+
+    def calculate_block_width(self, containing_block: Dimensions) -> None:
+        element_style = self.element.style
+
+        width = element_style.span.width
+
+        margin_left = element_style.margin.left
+        margin_right = element_style.margin.right
+
+        border_left = 1 if element_style.border is not None else 0
+        border_right = 1 if element_style.border is not None else 0
+
+        padding_left = element_style.padding.left
+        padding_right = element_style.padding.right
+
+        # Add up all the widths, excluding any that can be automatically set
+        # by treating them as zeros. We'll fill in their values later,
+        # based on the minimum block width.
+        minimum_block_width = sum(
+            w if isinstance(w, int) else 0
+            for w in (
+                width,
+                margin_left,
+                margin_right,
+                border_left,
+                border_right,
+                padding_left,
+                padding_right,
+            )
+        )
+
+        # This block is going to be laid out inside the content region of the containing block.
+        # If it's already too wide, the content width of this box is fixed, and the margins are expandable,
+        # we definitely cannot expand the margins, so set them to zero.
+        if minimum_block_width > containing_block.content.width:
             if margin_left == "auto":
                 margin_left = 0
             if margin_right == "auto":
                 margin_right = 0
 
-            if underflow > 0:
-                width = underflow
-            else:
-                # Oops, we overflowed! Set the width to 0 and adjust the right margin instead.
-                width = 0
+        # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
+        underflow = containing_block.content.width - minimum_block_width
+
+        match (width == "auto", margin_left == "auto", margin_right == "auto"):
+            # Woops, overconstrained dimensions!
+            # We have to do something, so we move the right margin, since we're effectively in left-to-right mode.
+            case (False, False, False):
                 margin_right = margin_right + underflow
 
-    return Widths(
-        width=width,
-        margin=LeftRight(left=margin_left, right=margin_right),
-        border=LeftRight(left=border_left, right=border_right),
-        padding=LeftRight(left=padding_left, right=padding_right),
+            # If the width is not auto and only one margin is auto, put the underflow on that margin.
+            case (False, True, False):
+                margin_left = underflow
+            case (False, False, True):
+                margin_right = underflow
+
+            # If the width is not auto and both margins are auto, divide the underflow evenly between them.
+            case (False, True, True):
+                margin_left, margin_right = halve_integer(underflow)
+
+            # If the width is auto, we put all the underflow there, regardless of whether the margins are auto.
+            case (True, _, _):
+                # If the margins were auto, they shrink to 0.
+                if margin_left == "auto":
+                    margin_left = 0
+                if margin_right == "auto":
+                    margin_right = 0
+
+                if underflow > 0:
+                    width = underflow
+                else:
+                    # Oops, we overflowed! Set the width to 0 and adjust the right margin instead.
+                    width = 0
+                    margin_right = margin_right + underflow
+
+        dims = self.dims
+
+        dims.content.width = width
+
+        dims.margin.left = margin_left
+        dims.margin.right = margin_right
+
+        dims.border.left = border_left
+        dims.border.right = border_right
+
+        dims.padding.left = padding_left
+        dims.padding.right = padding_right
+
+    def calculate_block_position(self, containing_block: Dimensions) -> None:
+        element_style = self.element.style
+        dims = self.dims
+
+        # Transfer top and bottom box params from style to self
+        dims.margin.top = element_style.margin.top
+        dims.margin.bottom = element_style.margin.bottom
+
+        dims.border.top = 1 if element_style.border else 0
+        dims.border.bottom = 1 if element_style.border else 0
+
+        dims.padding.top = element_style.padding.top
+        dims.padding.bottom = element_style.padding.bottom
+
+        # These left and right box params were set previously by self.calculate_block_width()
+        dims.content.x = containing_block.content.x + dims.margin.left + dims.border.left + dims.padding.left
+
+        # containing_block.content.height is going to be updated *between* each child layout,
+        # so that when each child of a block calls this method, it sees a different height
+        # for the containing block. It's really the "current height" during layout, then becomes
+        # the final height when the layout is complete.
+        dims.content.y = (
+            containing_block.content.y
+            + containing_block.content.height
+            + dims.margin.top
+            + dims.border.top
+            + dims.padding.top
+        )
+
+    def layout_block_children(self, containing_block: Dimensions) -> None:
+        for child in self.children:
+            child.layout(self.dims)
+
+            # Update our own height between child layouts, so that our height
+            # reflects the "current height" that each child sees and lays itself out below.
+            # This is for "block" layout, not "inline"!
+            self.dims.content.height += child.dims.margin_box().height
+
+    def calculate_block_height(self, containing_block: Dimensions) -> None:
+        # If a height was set explicitly, use it override.
+        # Note that this can override the "current height" calculations done in self.layout_block_children()
+        if self.element.style.span.height != "auto":
+            self.dims.content.height = self.element.style.span.height
+
+
+def build_layout_tree(element: Div | Text) -> LayoutBox:
+    return LayoutBox(
+        element=element,
+        children=[build_layout_tree(e) for e in element.children] if isinstance(element, Div) else [],
     )
 
 

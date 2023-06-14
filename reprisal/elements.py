@@ -6,6 +6,11 @@ from typing import Literal
 from pydantic import BaseModel, Extra, Field
 
 
+class ForbidExtras(BaseModel):
+    class Config:
+        extra = Extra.forbid
+
+
 class FrozenForbidExtras(BaseModel):
     class Config:
         frozen = True
