@@ -57,7 +57,10 @@ class Style(FrozenForbidExtras):
 
 
 class Div(FrozenForbidExtras):
-    children: tuple[AnyElement, ...]
+    children: tuple[AnyElement, ...] = Field(
+        default=...,
+        exclude=True,
+    )
     style: Style = Field(default=Style())
 
 
