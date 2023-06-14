@@ -12,19 +12,6 @@ class FrozenForbidExtras(BaseModel):
         extras = Extra.forbid
 
 
-class Edge(FrozenForbidExtras):
-    top: int = 0
-    bottom: int = 0
-    left: int = 0
-    right: int = 0
-
-    def height(self) -> int:
-        return self.top + self.bottom
-
-    def width(self) -> int:
-        return self.left + self.right
-
-
 # https://www.compart.com/en/unicode/block/U+2500
 class BorderKind(Enum):
     Star = "******"
@@ -37,23 +24,31 @@ class Border(FrozenForbidExtras):
     kind: BorderKind = Field(default=BorderKind.Light)
 
 
-class Cells(FrozenForbidExtras):
-    cells: int
+class Margin(FrozenForbidExtras):
+    top: int = Field(default=0)
+    bottom: int = Field(default=0)
+    left: int | Literal["auto"] = Field(default=0)
+    right: int | Literal["auto"] = Field(default="auto")
+
+
+class Padding(FrozenForbidExtras):
+    top: int = Field(default=0)
+    bottom: int = Field(default=0)
+    left: int = Field(default=0)
+    right: int = Field(default=0)
 
 
 class Span(FrozenForbidExtras):
-    width: Cells | Literal["fill"] = "fill"
-    height: Cells | Literal["fill"] | Literal["fit"] = "fit"
+    width: int | Literal["auto"] = Field(default="auto")
+    height: int | Literal["auto"] = Field(default="auto")
 
 
 class Style(FrozenForbidExtras):
+    display: Literal["block"] = Field(default="block")
     span: Span = Field(default=Span())
-    margin: Edge = Field(default=Edge())
+    margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)
-    padding: Edge = Field(default=Edge())
-
-    def box_height(self) -> int:
-        return self.margin.height() + self.padding.height() + 2 if self.border else 0
+    padding: Padding = Field(default=Padding(top=0, bottom=0, left=0, right=0))
 
 
 class Div(FrozenForbidExtras):
