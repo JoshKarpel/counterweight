@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from math import ceil, floor
-from pprint import pprint
 from typing import NamedTuple
 
 from pydantic import Field
@@ -66,7 +65,7 @@ class Dimensions(ForbidExtras):
     padding: Edge = Field(default_factory=Edge)
 
     def padding_rect(self) -> Rect:
-        return self.content.expand_by(self.margin)
+        return self.content.expand_by(self.padding)
 
     def border_rect(self) -> Rect:
         return self.padding_rect().expand_by(self.border)
@@ -214,7 +213,6 @@ class LayoutBox(ForbidExtras):
             # reflects the "current height" that each child sees and lays itself out below.
             # This is for "block" layout, not "inline"!
             self.dims.content.height += child.dims.margin_rect().height
-            print(f"{child.dims.margin_rect().height=}")
 
     def calculate_block_height(self, containing_block: Dimensions) -> None:
         # If a height was set explicitly, use it override.
@@ -253,31 +251,15 @@ def paint_element(element: Div | Text, dims: Dimensions) -> dict[Position, str]:
     if isinstance(element, Div):
         return {} | box
     elif isinstance(element, Text):
-        return {} | box
+        return text(element, dims.content) | box
     else:
         assert_never(element)
 
 
-#
-# PLACEHOLDER = " ..."
-#
-#
-# def lines_at_width(text: str, width: int) -> int:
-#     wrapper = TextWrapper(width=width, max_lines=None, placeholder=PLACEHOLDER)
-#     return len(wrapper.wrap(text))
-#
-#
-# def text(text: Text, region: Region):
-#     chars = {}
-#     wrapper = TextWrapper(width=region.width, max_lines=region.height, placeholder=PLACEHOLDER)
-#     wrapped = wrapper.wrap(text.text)
-#     for y, line in enumerate(wrapped):
-#         for x, char in enumerate(line):
-#             chars[Position(x, y).shift(x=region.left, y=region.top)] = char
-#
-#     return chars
-#
-#
+def text(text: Text, rect: Rect) -> dict[Position, str]:
+    return {Position(x, rect.y): c for c, x in zip(text.text, rect.x_range())}
+
+
 def edge(edge: Edge, rect: Rect, char: str = " ") -> dict[Position, str]:
     chars = {}
 
@@ -327,8 +309,6 @@ def border(border: Border, rect: Rect) -> dict[Position, str]:
     chars[Position(x=rect.right, y=rect.top)] = border.kind.value[3]
     chars[Position(x=rect.left, y=rect.bottom)] = border.kind.value[4]
     chars[Position(x=rect.right, y=rect.bottom)] = border.kind.value[5]
-
-    pprint(chars)
 
     return chars
 
