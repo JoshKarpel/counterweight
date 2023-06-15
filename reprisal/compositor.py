@@ -6,7 +6,9 @@ from typing import NamedTuple
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.elements import Border, Div, ForbidExtras, Text
+from reprisal.elements.elements import Div, Text
+from reprisal.styles.styles import Border
+from reprisal.types import ForbidExtras
 
 
 class Position(NamedTuple):
@@ -215,7 +217,7 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height += child.dims.margin_rect().height
 
     def calculate_block_height(self, containing_block: Dimensions) -> None:
-        # If a height was set explicitly, use it override.
+        # If a height was set explicitly, use it to override.
         # Note that this can override the "current height" calculations done in self.layout_block_children()
         if self.element.style.span.height != "auto":
             self.dims.content.height = self.element.style.span.height
@@ -249,7 +251,7 @@ def paint_element(element: Div | Text, dims: Dimensions) -> dict[Position, str]:
     box = m | b | t
 
     if isinstance(element, Div):
-        return {} | box
+        return box
     elif isinstance(element, Text):
         return text(element, dims.content) | box
     else:
@@ -289,26 +291,26 @@ def edge(edge: Edge, rect: Rect, char: str = " ") -> dict[Position, str]:
 def border(border: Border, rect: Rect) -> dict[Position, str]:
     chars = {}
 
-    # top
-    for x in rect.x_range():
-        chars[Position(x, rect.top)] = border.kind.value[1]
-
-    # bottom
-    for x in rect.x_range():
-        chars[Position(x, rect.bottom)] = border.kind.value[1]
-
     # left
     for y in rect.y_range():
         chars[Position(rect.left, y)] = border.kind.value[0]
 
     # right
     for y in rect.y_range():
-        chars[Position(rect.right, y)] = border.kind.value[0]
+        chars[Position(rect.right, y)] = border.kind.value[1]
 
-    chars[Position(x=rect.left, y=rect.top)] = border.kind.value[2]
-    chars[Position(x=rect.right, y=rect.top)] = border.kind.value[3]
-    chars[Position(x=rect.left, y=rect.bottom)] = border.kind.value[4]
-    chars[Position(x=rect.right, y=rect.bottom)] = border.kind.value[5]
+    # top
+    for x in rect.x_range():
+        chars[Position(x, rect.top)] = border.kind.value[2]
+
+    # bottom
+    for x in rect.x_range():
+        chars[Position(x, rect.bottom)] = border.kind.value[3]
+
+    chars[Position(x=rect.left, y=rect.top)] = border.kind.value[4]
+    chars[Position(x=rect.right, y=rect.top)] = border.kind.value[5]
+    chars[Position(x=rect.left, y=rect.bottom)] = border.kind.value[6]
+    chars[Position(x=rect.right, y=rect.bottom)] = border.kind.value[7]
 
     return chars
 

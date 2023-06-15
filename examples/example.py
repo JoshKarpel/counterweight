@@ -1,7 +1,9 @@
 import shutil
 
 from reprisal.compositor import Dimensions, Edge, Rect, build_layout_tree, debug, paint
-from reprisal.elements import Border, BorderKind, Div, Margin, Padding, Span, Style, Text
+from reprisal.elements.elements import Div, Text
+from reprisal.styles.styles import Border, BorderKind, Padding, Span, Style
+from reprisal.styles.utilities import ml_auto, mr_auto, mx_auto
 
 w, h = shutil.get_terminal_size()
 b = containing_box = Dimensions(
@@ -13,17 +15,12 @@ b = containing_box = Dimensions(
 
 t = build_layout_tree(
     element=Div(
-        # there seems to be margin even though I didn't ask for any?
-        # off-by-one errors in how I nest boxes?
-        # padding seems to behave just like margin...
         children=[
             Text(
                 text="width=auto",
                 style=Style(
                     span=Span(width="auto", height=1),
-                    margin=Margin(top=0, bottom=0, left=0, right=0),
-                    border=Border(kind=BorderKind.LightRounded),
-                    # border=None,
+                    border=Border(kind=BorderKind.Light),
                     padding=Padding(top=0, bottom=0, left=0, right=0),
                 ),
             ),
@@ -31,30 +28,47 @@ t = build_layout_tree(
                 text="width=20,right=auto",
                 style=Style(
                     span=Span(width=20, height=1),
-                    margin=Margin(top=0, bottom=0, left=0, right="auto"),
                     border=Border(kind=BorderKind.LightRounded),
-                    # border=None,
                     padding=Padding(top=0, bottom=0, left=0, right=0),
-                ),
+                )
+                | mr_auto,
             ),
             Text(
                 text="width=20,left=auto",
                 style=Style(
                     span=Span(width=20, height=1),
-                    margin=Margin(top=0, bottom=0, left="auto", right=0),
-                    border=Border(kind=BorderKind.LightRounded),
-                    # border=None,
+                    border=Border(kind=BorderKind.Heavy),
                     padding=Padding(top=0, bottom=0, left=0, right=0),
-                ),
+                )
+                | ml_auto,
             ),
             Text(
                 text="width=20,rl=auto",
-                style=Style(
-                    span=Span(width=20, height=1),
-                    margin=Margin(top=0, bottom=0, left="auto", right="auto"),
-                    border=Border(kind=BorderKind.LightRounded),
-                    # border=None,
-                    padding=Padding(top=0, bottom=0, left=0, right=0),
+                style=(
+                    Style(
+                        span=Span(width=20, height=1),
+                        border=Border(kind=BorderKind.Double),
+                    )
+                    | mx_auto
+                ),
+            ),
+            Text(
+                text="width=20,default,pad",
+                style=(
+                    Style(
+                        span=Span(width=20, height=1),
+                        border=Border(kind=BorderKind.LightShade),
+                        padding=Padding(top=1, left=3),
+                    )
+                ),
+            ),
+            Text(
+                text="width=20,default",
+                style=(
+                    Style(
+                        span=Span(width=20, height=1),
+                        border=Border(kind=BorderKind.Thick),
+                    )
                 ),
             ),
         ],

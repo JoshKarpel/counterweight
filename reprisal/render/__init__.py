@@ -1,6 +1,6 @@
-from .hooks import provide_context, use_context, use_effect, use_reducer, use_ref, use_state
-from .roots import Root
-from .types import Setter
+from reprisal.render.hooks import provide_context, use_context, use_effect, use_reducer, use_ref, use_state
+from reprisal.render.roots import Root
+from reprisal.render.types import Setter
 
 __all__ = [
     "provide_context",
