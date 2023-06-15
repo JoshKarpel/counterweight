@@ -15,7 +15,7 @@ b = containing_box = Dimensions(
 
 t = build_layout_tree(
     element=Div(
-        children=[
+        children=(
             Text(
                 text="width=auto",
                 style=Style(
@@ -71,7 +71,7 @@ t = build_layout_tree(
                     )
                 ),
             ),
-        ],
+        ),
         style=Style(
             border=Border(kind=BorderKind.Heavy),
         ),

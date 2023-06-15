@@ -81,7 +81,7 @@ class LayoutBox(ForbidExtras):
     dims: Dimensions = Field(default_factory=Dimensions)
     children: list[LayoutBox] = Field(default_factory=list)
 
-    def layout(self, containing_box: Dimensions) -> LayoutBox:
+    def layout(self, containing_box: Dimensions) -> None:
         # this is Extremely Mutable in a scary way
         match self.element.style.display:
             case "block":
@@ -138,7 +138,7 @@ class LayoutBox(ForbidExtras):
             # Woops, overconstrained dimensions!
             # We have to do something, so we move the right margin, since we're effectively in left-to-right mode.
             case (False, False, False):
-                margin_right = margin_right + underflow
+                margin_right = margin_right + underflow  # type: ignore[operator]
 
             # If the width is not auto and only one margin is auto, put the underflow on that margin.
             case (False, True, False):
@@ -167,10 +167,10 @@ class LayoutBox(ForbidExtras):
 
         dims = self.dims
 
-        dims.content.width = width
+        dims.content.width = width  # type: ignore[assignment]
 
-        dims.margin.left = margin_left
-        dims.margin.right = margin_right
+        dims.margin.left = margin_left  # type: ignore[assignment]
+        dims.margin.right = margin_right  # type: ignore[assignment]
 
         dims.border.left = border_left
         dims.border.right = border_right

@@ -2,4 +2,6 @@ from __future__ import annotations
 
 from typing import TypeVar
 
-S = TypeVar("S")
+from pydantic import BaseModel
+
+S = TypeVar("S", bound=BaseModel)
