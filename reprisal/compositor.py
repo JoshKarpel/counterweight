@@ -60,7 +60,7 @@ class Edge(ForbidExtras):
     bottom: int = Field(default=0)
 
 
-class Dimensions(ForbidExtras):
+class BoxDimensions(ForbidExtras):
     content: Rect = Field(default_factory=Rect)
     margin: Edge = Field(default_factory=Edge)
     border: Edge = Field(default_factory=Edge)
@@ -78,21 +78,20 @@ class Dimensions(ForbidExtras):
 
 class LayoutBox(ForbidExtras):
     element: Div | Text
-    dims: Dimensions = Field(default_factory=Dimensions)
+    dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
 
-    def layout(self, containing_box: Dimensions) -> None:
-        # this is Extremely Mutable in a scary way
+    def layout(self, parent_dims: BoxDimensions) -> None:
         match self.element.style.display:
             case "block":
-                self.calculate_block_width(containing_box)
-                self.calculate_block_position(containing_box)
-                self.layout_block_children(containing_box)
-                self.calculate_block_height(containing_box)
+                self.determine_width(parent_dims)
+                self.determine_position(parent_dims)
+                self.layout_children(parent_dims)
+                self.determine_height(parent_dims)
             case display:
                 assert_never(display)
 
-    def calculate_block_width(self, containing_block: Dimensions) -> None:
+    def determine_width(self, parent_dims: BoxDimensions) -> None:
         element_style = self.element.style
 
         width = element_style.span.width
@@ -125,14 +124,14 @@ class LayoutBox(ForbidExtras):
         # This block is going to be laid out inside the content region of the containing block.
         # If it's already too wide, the content width of this box is fixed, and the margins are expandable,
         # we definitely cannot expand the margins, so set them to zero.
-        if minimum_block_width > containing_block.content.width:
+        if minimum_block_width > parent_dims.content.width:
             if margin_left == "auto":
                 margin_left = 0
             if margin_right == "auto":
                 margin_right = 0
 
         # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
-        underflow = containing_block.content.width - minimum_block_width
+        underflow = parent_dims.content.width - minimum_block_width
 
         match (width == "auto", margin_left == "auto", margin_right == "auto"):
             # Woops, overconstrained dimensions!
@@ -178,7 +177,7 @@ class LayoutBox(ForbidExtras):
         dims.padding.left = padding_left
         dims.padding.right = padding_right
 
-    def calculate_block_position(self, containing_block: Dimensions) -> None:
+    def determine_position(self, parent_dims: BoxDimensions) -> None:
         element_style = self.element.style
         dims = self.dims
 
@@ -193,30 +192,26 @@ class LayoutBox(ForbidExtras):
         dims.padding.bottom = element_style.padding.bottom
 
         # These left and right box params were set previously by self.calculate_block_width()
-        dims.content.x = containing_block.content.x + dims.margin.left + dims.border.left + dims.padding.left
+        dims.content.x = parent_dims.content.x + dims.margin.left + dims.border.left + dims.padding.left
 
         # containing_block.content.height is going to be updated *between* each child layout,
         # so that when each child of a block calls this method, it sees a different height
         # for the containing block. It's really the "current height" during layout, then becomes
         # the final height when the layout is complete.
         dims.content.y = (
-            containing_block.content.y
-            + containing_block.content.height
-            + dims.margin.top
-            + dims.border.top
-            + dims.padding.top
+            parent_dims.content.y + parent_dims.content.height + dims.margin.top + dims.border.top + dims.padding.top
         )
 
-    def layout_block_children(self, containing_block: Dimensions) -> None:
+    def layout_children(self, parent_dims: BoxDimensions) -> None:
         for child in self.children:
-            child.layout(self.dims)
+            child.layout(parent_dims=self.dims)
 
             # Update our own height between child layouts, so that our height
             # reflects the "current height" that each child sees and lays itself out below.
             # This is for "block" layout, not "inline"!
             self.dims.content.height += child.dims.margin_rect().height
 
-    def calculate_block_height(self, containing_block: Dimensions) -> None:
+    def determine_height(self, parent_dims: BoxDimensions) -> None:
         # If a height was set explicitly, use it to override.
         # Note that this can override the "current height" calculations done in self.layout_block_children()
         if self.element.style.span.height != "auto":
@@ -243,7 +238,7 @@ def paint(layout: LayoutBox) -> dict[Position, str]:
     return painted
 
 
-def paint_element(element: Div | Text, dims: Dimensions) -> dict[Position, str]:
+def paint_element(element: Div | Text, dims: BoxDimensions) -> dict[Position, str]:
     m = edge(dims.margin, dims.margin_rect())
     b = border(element.style.border, dims.border_rect()) if element.style.border else {}
     t = edge(dims.padding, dims.padding_rect())
