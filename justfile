@@ -8,4 +8,4 @@ test:
   pytest -v --cov --durations=10
 
 test-watch:
-  watchfiles 'just test' reprisal/ tests/ docs/ justfile
+  watchfiles 'just test' reprisal/ tests/ docs/ examples/ justfile
