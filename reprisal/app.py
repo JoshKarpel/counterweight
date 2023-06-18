@@ -5,8 +5,8 @@ from typing import List, TypeVar
 
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
 from reprisal.driver import no_echo, queue_keys
+from reprisal.input import VTParser
 from reprisal.render import Root
-from reprisal.vtparser import VTParser
 
 
 def app(root):

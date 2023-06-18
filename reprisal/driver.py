@@ -7,7 +7,7 @@ from io import UnsupportedOperation
 from queue import Queue
 from typing import Any, TextIO
 
-from reprisal.vtparser import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, UNESCAPED, Action, Keys
+from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action, Keys
 
 LFLAG = 3
 CC = 6
@@ -52,16 +52,18 @@ def queue_keys(action, intermediate_chars, params, char, queue: Queue[tuple[Keys
     print(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
     match action, intermediate_chars, params, char:
         case Action.CSI_DISPATCH, _, params, char:
-            keys = CSI_LOOKUP[(params, char)]
+            keys = CSI_LOOKUP.get((params, char), None)
         case Action.ESC_DISPATCH, intermediate_chars, _, char:
-            keys = ESC_LOOKUP[(intermediate_chars, char)]
+            keys = ESC_LOOKUP.get((intermediate_chars, char), None)
         case Action.PRINT, _, _, char:
-            keys = UNESCAPED.get(char, chr(char))
+            # some PRINT characters are just plain ascii and should get passed through
+            keys = PRINT.get(char, chr(char))
         case Action.EXECUTE, _, _, char:
             keys = EXECUTE_LOOKUP[char]
         case _:
-            print("unrecognized")
             keys = None
 
     if keys:
         queue.put(keys)
+    else:
+        print("unrecognized")

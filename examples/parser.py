@@ -6,7 +6,7 @@ from copy import deepcopy
 from io import UnsupportedOperation
 from typing import Any, TextIO
 
-from reprisal.vtparser import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, UNESCAPED, Action, VTParser, build_transitions
+from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action, VTParser, build_transitions
 
 transitions = build_transitions()
 
@@ -25,7 +25,7 @@ def handler(action, intermediate_chars, params, char):
         case Action.ESC_DISPATCH, intermediate_chars, (), char:
             keys = ESC_LOOKUP[(intermediate_chars, char)]
         case Action.PRINT, (), (), char:
-            keys = (UNESCAPED.get(char, chr(char)),)
+            keys = (PRINT.get(char, chr(char)),)
         case Action.EXECUTE, (), (), char:
             keys = EXECUTE_LOOKUP[char]
         case _, _, _, _:

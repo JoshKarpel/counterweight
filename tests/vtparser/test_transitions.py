@@ -1,4 +1,4 @@
-from reprisal.vtparser import TRANSITIONS, State
+from reprisal.input import TRANSITIONS, State
 
 
 def test_transition_table_is_complete() -> None:

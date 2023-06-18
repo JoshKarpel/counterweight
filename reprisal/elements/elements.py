@@ -4,9 +4,9 @@ from collections.abc import Callable
 
 from pydantic import Field
 
+from reprisal.input import Keys
 from reprisal.styles import Style
 from reprisal.types import FrozenForbidExtras
-from reprisal.vtparser import Keys
 
 
 class Div(FrozenForbidExtras):
