@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from math import ceil, floor
 from typing import NamedTuple
 
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.elements.elements import Div, Text
+from reprisal.components.components import Div, Text
 from reprisal.styles.styles import Border
 from reprisal.types import ForbidExtras
 
@@ -80,6 +81,11 @@ class LayoutBox(ForbidExtras):
     element: Div | Text
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
+
+    def walk_from_bottom(self) -> Iterator[Div | Text]:
+        for child in self.children:
+            yield from child.walk_from_bottom()
+        yield self.element
 
     def layout(self, parent_dims: BoxDimensions) -> None:
         match self.element.style.display:

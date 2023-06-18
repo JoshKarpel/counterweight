@@ -4,6 +4,8 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, Generic
 
+from structlog import get_logger
+
 from reprisal.constants import PACKAGE_NAME
 from reprisal.render.types import (
     A,
@@ -21,6 +23,8 @@ from reprisal.render.types import (
 
 CURRENT_ROOT: ContextVar[Root[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-root")
 
+logger = get_logger()
+
 
 class Root(Generic[P, R]):
     def __init__(self, func: Callable[P, R]):
@@ -28,6 +32,8 @@ class Root(Generic[P, R]):
 
         self.current_hook_idx = 0
         self.hook_state: dict[int, object] = {}
+
+        self.needs_render = False
 
     def render(self, *args: P.args, **kwargs: P.kwargs) -> R:
         token = CURRENT_ROOT.set(self)
@@ -38,6 +44,8 @@ class Root(Generic[P, R]):
         self.current_hook_idx = 0
         CURRENT_ROOT.reset(token)
 
+        self.needs_render = False
+
         return result
 
     def use_state(self, initial_value: H) -> UseStateReturn[H]:
@@ -47,6 +55,7 @@ class Root(Generic[P, R]):
 
         def setter(value: H) -> None:
             self.hook_state[hook_idx] = value
+            self.needs_render = True
 
         self.current_hook_idx += 1
 

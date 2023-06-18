@@ -25,7 +25,7 @@ class BorderKind(Enum):
     Thick = "▌▐▀▄▛▜▙▟"
     LightShade = "░░░░░░░░"
     MediumShade = "▒▒▒▒▒▒▒▒"
-    HeavyShade = "▓▓▓▓▓▓▓"
+    HeavyShade = "▓▓▓▓▓▓▓▓"
 
 
 class Border(StylePart):
