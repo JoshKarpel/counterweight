@@ -1,7 +1,6 @@
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
 from reprisal.elements.elements import Div, Text
-from reprisal.styles.styles import Border, BorderKind, Padding, Span, Style
-from reprisal.styles.utilities import ml_auto, mr_auto, mx_auto
+from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 
 b = BoxDimensions(
     content=Rect(x=0, y=0, width=30, height=0),
@@ -9,6 +8,7 @@ b = BoxDimensions(
     border=Edge(),
     padding=Edge(),
 )
+
 e = Div(
     children=(
         Text(
