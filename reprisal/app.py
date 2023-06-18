@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Callable
 from functools import partial
 from queue import Empty, Queue
 from threading import Thread
@@ -8,16 +9,18 @@ from structlog import get_logger
 
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
 from reprisal.driver import no_echo, queue_keys
+from reprisal.elements import Div, Text
 from reprisal.input import VTParser
 from reprisal.render import Root
+from reprisal.types import KeyQueueItem
 
 logger = get_logger()
 
 
-def app(root):
-    root = Root(root)
+def app(func: Callable[[], Div | Text]) -> None:
+    root = Root(func)
 
-    key_queue = Queue()
+    key_queue: Queue[KeyQueueItem] = Queue()
     b = BoxDimensions(
         content=Rect(x=0, y=0, width=60, height=0),
         margin=Edge(),
@@ -64,7 +67,7 @@ def drain_queue(queue: Queue[T]) -> List[T]:
     return items
 
 
-def read_keys(key_queue: Queue) -> None:
+def read_keys(key_queue: Queue[KeyQueueItem]) -> None:
     parser = VTParser()
     handler = partial(queue_keys, queue=key_queue)
 

@@ -321,7 +321,7 @@ class VTParser:
             case _:
                 handler(action, tuple(self.intermediate_chars), tuple(self.params), char)
 
-    def do_state_change(self, change: Change, char: int, handler: Callable[[VTParser, Action, int], None]) -> None:
+    def do_state_change(self, change: Change, char: int, handler: Handler) -> None:
         action, new_state = change
 
         if new_state:
@@ -343,7 +343,7 @@ class VTParser:
             logger.debug(f"{char=} {chr(char)=!r} {hex(char)=} {action=} {new_state=}")
             self.do_action(action=action, char=char, handler=handler)
 
-    def advance(self, char: int, handler: Callable[[VTParser, Action, int], None]) -> None:
+    def advance(self, char: int, handler: Handler) -> None:
         change = TRANSITIONS[self.state][char]
         self.do_state_change(change=change, char=char, handler=handler)
 
@@ -351,7 +351,7 @@ class VTParser:
 # From https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py
 
 
-class Keys(str, Enum):  # type: ignore[no-redef]
+class Keys(str, Enum):
     Escape = "escape"  # Also Control-[
     ShiftEscape = "shift+escape"
     Return = "return"
@@ -594,7 +594,7 @@ CSI_LOOKUP = {
     ((3, 4), 0x7E): (Keys.F20,),
 }
 
-ESC_LOOKUP = {
+ESC_LOOKUP: dict[tuple[tuple[int, ...], int], tuple[Keys, ...]] = {
     # See comment in transition table, these are not reachable right now
     # ((0x4F,), 0x50): (Keys.F1,),
     # ((0x4F,), 0x51): (Keys.F2,),

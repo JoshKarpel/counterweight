@@ -4,17 +4,20 @@ from itertools import cycle
 from reprisal.app import app
 from reprisal.elements import Div, Text
 from reprisal.input import Keys
-from reprisal.render import use_ref, use_state
+from reprisal.render import Setter, use_ref, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style
+from reprisal.types import KeyQueueItem
 
 
-def time():
+def time() -> Div:
     now, set_now = use_state(datetime.now())
+    buffer: list[str]
+    set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
     border_cycle_ref = use_ref(cycle(BorderKind))
     border, set_border = use_state(next(border_cycle_ref.current))
 
-    def on_key(keys: tuple[Keys, ...] | str):
+    def on_key(keys: KeyQueueItem) -> None:
         if keys == (Keys.Space,):
             set_now(datetime.now())
         elif keys == (Keys.Backspace,):

@@ -9,7 +9,8 @@ from typing import Any, TextIO
 
 from structlog import get_logger
 
-from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action, Keys
+from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action
+from reprisal.types import KeyQueueItem
 
 logger = get_logger()
 
@@ -51,8 +52,15 @@ def no_echo() -> Iterator[None]:
         reset_tty(sys.stdin)
 
 
-def queue_keys(action, intermediate_chars, params, char, queue: Queue[tuple[Keys, ...]]):
+def queue_keys(
+    action: Action,
+    intermediate_chars: tuple[int, ...],
+    params: tuple[int, ...],
+    char: int,
+    queue: Queue[KeyQueueItem],
+) -> None:
     logger.debug(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
+    keys: KeyQueueItem | None
     match action, intermediate_chars, params, char:
         case Action.CSI_DISPATCH, _, params, char:
             keys = CSI_LOOKUP.get((params, char), None)

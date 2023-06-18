@@ -4,9 +4,8 @@ from collections.abc import Callable
 
 from pydantic import Field
 
-from reprisal.input import Keys
 from reprisal.styles import Style
-from reprisal.types import FrozenForbidExtras
+from reprisal.types import FrozenForbidExtras, KeyQueueItem
 
 
 class Div(FrozenForbidExtras):
@@ -15,13 +14,13 @@ class Div(FrozenForbidExtras):
         exclude=True,
     )
     style: Style = Field(default=Style())
-    on_key: Callable[[Keys], None] | None = None
+    on_key: Callable[[KeyQueueItem], None] | None = None
 
 
 class Text(FrozenForbidExtras):
     text: str
     style: Style = Field(default=Style())
-    on_key: Callable[[Keys], None] | None = None
+    on_key: Callable[[KeyQueueItem], None] | None = None
 
 
 AnyElement = Div | Text
