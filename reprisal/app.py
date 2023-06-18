@@ -3,10 +3,14 @@ from functools import partial
 from queue import Empty, Queue
 from typing import List, TypeVar
 
+from structlog import get_logger
+
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
 from reprisal.driver import no_echo, queue_keys
 from reprisal.input import VTParser
 from reprisal.render import Root
+
+logger = get_logger()
 
 
 def app(root):
@@ -33,7 +37,7 @@ def app(root):
     with no_echo():
         while True:
             char = sys.stdin.read(1)
-            print(f"read {char=} {ord(char)=} {hex(ord(char))=}")
+            logger.debug(f"read {char=} {ord(char)=} {hex(ord(char))=}")
             parser.advance(ord(char), handler=handler)
 
             try:

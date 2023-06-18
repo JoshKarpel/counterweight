@@ -38,6 +38,7 @@ include = ["py.typed"]
 python = ">=3.10,<4"
 typer = ">=0.9"
 pydantic = ">=1.10,<2"
+structlog = ">=23.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"

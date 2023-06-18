@@ -6,6 +6,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal, TypeVar
 
+from structlog import get_logger
+
+logger = get_logger()
+
+
 # Based on https://github.com/haberman/vtparse/blob/198ea4382f824dbb3f0e5b5553a9eb3290764694
 
 
@@ -323,7 +328,7 @@ class VTParser:
             exit_action, _ = TRANSITIONS[self.state].get("on_exit", (None, None))
             entry_action, _ = TRANSITIONS.get(new_state, {}).get("on_entry", (None, None))
 
-            print(f"{char=} {chr(char)=!r} {hex(char)=} {action=} {new_state=} {exit_action=} {entry_action=}")
+            logger.debug(f"{char=} {chr(char)=!r} {hex(char)=} {action=} {new_state=} {exit_action=} {entry_action=}")
             if exit_action is not None:
                 self.do_action(action=exit_action, char=0, handler=handler)
 
@@ -335,7 +340,7 @@ class VTParser:
 
             self.state = new_state
         elif action:
-            print(f"{char=} {chr(char)=!r} {hex(char)=} {action=} {new_state=}")
+            logger.debug(f"{char=} {chr(char)=!r} {hex(char)=} {action=} {new_state=}")
             self.do_action(action=action, char=char, handler=handler)
 
     def advance(self, char: int, handler: Callable[[VTParser, Action, int], None]) -> None:

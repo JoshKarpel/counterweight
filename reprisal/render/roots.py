@@ -4,6 +4,8 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, Generic
 
+from structlog import get_logger
+
 from reprisal.constants import PACKAGE_NAME
 from reprisal.render.types import (
     A,
@@ -20,6 +22,8 @@ from reprisal.render.types import (
 )
 
 CURRENT_ROOT: ContextVar[Root[Any, Any]] = ContextVar(f"{PACKAGE_NAME}-current-root")
+
+logger = get_logger()
 
 
 class Root(Generic[P, R]):
@@ -50,7 +54,6 @@ class Root(Generic[P, R]):
         hook_idx = self.current_hook_idx  # capture value now for setter closure
 
         def setter(value: H) -> None:
-            print("set", value)
             self.hook_state[hook_idx] = value
             self.needs_render = True
 

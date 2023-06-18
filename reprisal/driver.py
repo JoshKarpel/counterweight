@@ -7,7 +7,11 @@ from io import UnsupportedOperation
 from queue import Queue
 from typing import Any, TextIO
 
+from structlog import get_logger
+
 from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action, Keys
+
+logger = get_logger()
 
 LFLAG = 3
 CC = 6
@@ -42,14 +46,13 @@ def reset_tty(stream: TextIO) -> None:
 def no_echo() -> Iterator[None]:
     try:
         start_no_echo(sys.stdin)
-
         yield
     finally:
         reset_tty(sys.stdin)
 
 
 def queue_keys(action, intermediate_chars, params, char, queue: Queue[tuple[Keys, ...]]):
-    print(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
+    logger.debug(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
     match action, intermediate_chars, params, char:
         case Action.CSI_DISPATCH, _, params, char:
             keys = CSI_LOOKUP.get((params, char), None)
@@ -66,4 +69,4 @@ def queue_keys(action, intermediate_chars, params, char, queue: Queue[tuple[Keys
     if keys:
         queue.put(keys)
     else:
-        print("unrecognized")
+        logger.debug("unrecognized")
