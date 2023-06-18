@@ -21,6 +21,7 @@ class Div(FrozenForbidExtras):
 class Text(FrozenForbidExtras):
     text: str
     style: Style = Field(default=Style())
+    on_key: Callable[[Keys], None] | None = None
 
 
 AnyElement = Div | Text

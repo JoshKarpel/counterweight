@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from math import ceil, floor
 from typing import NamedTuple
 
@@ -80,6 +81,11 @@ class LayoutBox(ForbidExtras):
     element: Div | Text
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
+
+    def walk_from_bottom(self) -> Iterator[Div | Text]:
+        for child in self.children:
+            yield from child.walk_from_bottom()
+        yield self.element
 
     def layout(self, parent_dims: BoxDimensions) -> None:
         match self.element.style.display:
