@@ -1,5 +1,5 @@
+from reprisal.components.components import Div, Text
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
-from reprisal.elements.elements import Div, Text
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 
 b = BoxDimensions(

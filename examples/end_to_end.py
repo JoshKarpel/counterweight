@@ -2,7 +2,7 @@ from datetime import datetime
 from itertools import cycle
 
 from reprisal.app import app
-from reprisal.elements import Div, Text
+from reprisal.components import Div, Text
 from reprisal.input import Keys
 from reprisal.render import Setter, use_ref, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style

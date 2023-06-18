@@ -6,31 +6,41 @@ flowchart TB
     en[Entrypoint]
     r[Render]
     l[Layout]
-    fp[Full Paint]
-    ph[Store Paint History]
-    op[Optimize Paint]
-    d[Drive VT]
-    t[Terminal Output]
+    p[Paint]
 
-    i[Keyboard/Mouse Input]
-    vp[Parse VT Commands]
-    ev[Populate Event Stream]
-    eh[Call Event Handlers]
+    subgraph Output
+        d[Drive VT]
+        t[Terminal Output]
+    end
 
-    en -- Trigger Initial Render --> r
-    r -- Element Tree --> l
-    l -- Layout Tree --> fp
-    fp -- Current Paint --> op
-    fp -- Current Paint --> ph
-    ph -- Previous Paint --> op
-    op -- Diff From Previous Paint --> d
+    subgraph Input
+        i[Keyboard/Mouse Input]
+        vp[Parse VT Commands]
+        ev[Populate Event Stream]
+        eh[Call Event Handlers]
+    end
+
+    subgraph Effects
+        efm[Mount/Unmount Effects]
+        eff[Mounted Effects]
+    end
+
+    en -- Initial Render --> r
+    r -- Component Tree --> l
+    l -- Layout Tree --> p
+    p -- Paint Map --> d
     d -- VT Commands --> t
 
     i -- VT Commands --> vp
     vp -- Keys/Mouse Position --> ev
     ev -- Events --> eh
-    l -- Handlers --> eh
+    l -- Handler Tree --> eh
+    p -- Event Targets --> eh
 
     eh -- Set State --> r
+
+    l -- Mounted Components --> efm
+    efm --> eff
+    eff -- Set State --> r
 
 ```

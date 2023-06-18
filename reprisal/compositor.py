@@ -7,7 +7,7 @@ from typing import NamedTuple
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.elements.elements import Div, Text
+from reprisal.components.components import Div, Text
 from reprisal.styles.styles import Border
 from reprisal.types import ForbidExtras
 
