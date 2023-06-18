@@ -11,14 +11,12 @@ from reprisal.vtparser import (
 
 
 def time():
-    print("rendering...")
     now, set_now = use_state(datetime.now())
     buffer, set_buffer = use_state([])
     box, set_box = use_state(BorderKind.Light)
     border_cycle_ref = use_ref(cycle(BorderKind))
 
     def on_key(keys: tuple[Keys, ...] | str):
-        print("on key", buffer, keys)
         if keys == (Keys.Space,):
             set_now(datetime.now())
         elif keys == (Keys.Backspace,):
