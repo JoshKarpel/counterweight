@@ -16,14 +16,11 @@ LFLAG = 3
 CC = 6
 
 
-tcgetattrtype = list[int | list[int | bytes]]
-
-
 class Driver:
     def __init__(self, input_stream: TextIO = sys.stdin, output_stream: TextIO = sys.stdout):
         self.input_stream = input_stream
         self.output_stream = output_stream
-        self.original_tcgetattr: tcgetattrtype | None = None
+        self.original_tcgetattr: list[int | list[int | bytes]] | None = None
 
     def start(self) -> None:
         self.original_tcgetattr = termios.tcgetattr(self.input_stream)
