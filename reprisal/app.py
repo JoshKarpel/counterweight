@@ -11,6 +11,7 @@ from reprisal.components import Div, Text
 from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
 from reprisal.driver import no_echo, queue_keys
 from reprisal.input import VTParser
+from reprisal.logging import configure_logging
 from reprisal.render import Root
 from reprisal.types import KeyQueueItem
 
@@ -18,6 +19,10 @@ logger = get_logger()
 
 
 def app(func: Callable[[], Div | Text]) -> None:
+    configure_logging()
+
+    logger.info("Application starting...")
+
     root = Root(func)
 
     key_queue: Queue[KeyQueueItem] = Queue()
