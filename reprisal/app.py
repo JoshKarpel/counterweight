@@ -9,7 +9,7 @@ from typing import List, TypeVar
 from structlog import get_logger
 
 from reprisal.components import Div, Text
-from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, paint
+from reprisal.compositor import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
 from reprisal.driver import Driver, queue_keys
 from reprisal.input import VTParser
 from reprisal.logging import configure_logging
@@ -44,7 +44,7 @@ def app(func: Callable[[], Div | Text]) -> None:
         key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
         key_thread.start()
 
-        pp = {}
+        pp: dict[Position, str] = {}
 
         while True:
             if root.needs_render:
@@ -97,7 +97,7 @@ def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
     d = {}
     for key in a.keys() | b.keys():
         a_val = a.get(key)
-        if a_val != b.get(key):
+        if a_val != b.get(key) and a_val is not None:
             d[key] = a_val
 
     return d

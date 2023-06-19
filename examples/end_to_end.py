@@ -11,41 +11,56 @@ from reprisal.types import KeyQueueItem
 
 def time() -> Div:
     now, set_now = use_state(datetime.now())
+
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
+
+    border: BorderKind
+    set_border: Setter[BorderKind]
     border_cycle_ref = use_ref(cycle(BorderKind))
-    border, set_border = use_state(next(border_cycle_ref.current))
+
+    def advance_border() -> BorderKind:
+        return next(border_cycle_ref.current)
+
+    border, set_border = use_state(advance_border)  # type: ignore[arg-type]
+
+    margin_style: Style
+    set_margin_style: Setter[Style]
     margin_cycle_ref = use_ref(cycle([mr_auto, mx_auto, ml_auto]))
-    margin, set_margin = use_state(next(margin_cycle_ref.current))
+
+    def advance_margin() -> Style:
+        return next(margin_cycle_ref.current)
+
+    margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
     def on_key(keys: KeyQueueItem) -> None:
         if keys == (Keys.Space,):
             set_now(datetime.now())
         elif keys == (Keys.Enter,):
-            set_border(next(border_cycle_ref.current))
+            set_border(advance_border())
         elif keys == (Keys.Tab,):
-            set_margin(next(margin_cycle_ref.current))
+            set_margin_style(advance_margin())
         elif keys == (Keys.Backspace,):
             set_buffer(buffer[:-1])
         elif isinstance(keys, str):
             s = [*buffer, keys]
             set_buffer(s)
 
-    now = f"{now}"
+    n = f"{now}"
     text = "".join(buffer)
-    m = f"{margin.margin}"
+    m = f"{margin_style.margin}"
 
     return Div(
         children=(
             Text(
-                text=now,
+                text=n,
                 style=Style(
-                    span=Span(width=len(now), height=1),
+                    span=Span(width=len(n), height=1),
                     border=Border(kind=border),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 )
-                | margin,
+                | margin_style,
             ),
             Text(
                 text=text,
@@ -54,7 +69,7 @@ def time() -> Div:
                     border=Border(kind=border),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 )
-                | margin,
+                | margin_style,
             ),
             Text(
                 text=m,
@@ -63,7 +78,7 @@ def time() -> Div:
                     border=Border(kind=border),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 )
-                | margin,
+                | margin_style,
             ),
         ),
         style=Style(

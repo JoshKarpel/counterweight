@@ -2,6 +2,7 @@ import sys
 import termios
 from copy import deepcopy
 from queue import Queue
+from typing import TextIO
 
 from structlog import get_logger
 
@@ -15,19 +16,22 @@ LFLAG = 3
 CC = 6
 
 
+tcgetattrtype = list[int | list[int | bytes]]
+
+
 class Driver:
-    def __init__(self):
-        self.input_stream = sys.stdin
-        self.output_stream = sys.stdout
-        self.original_tcgetattr = None
+    def __init__(self, input_stream: TextIO = sys.stdin, output_stream: TextIO = sys.stdout):
+        self.input_stream = input_stream
+        self.output_stream = output_stream
+        self.original_tcgetattr: tcgetattrtype | None = None
 
     def start(self) -> None:
         self.original_tcgetattr = termios.tcgetattr(self.input_stream)
         mode = deepcopy(self.original_tcgetattr)
 
-        mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)
-        mode[CC][termios.VMIN] = 1
-        mode[CC][termios.VTIME] = 0
+        mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)  # type: ignore[operator]
+        mode[CC][termios.VMIN] = 1  # type: ignore[index]
+        mode[CC][termios.VTIME] = 0  # type: ignore[index]
 
         termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, mode)
 
@@ -48,7 +52,7 @@ class Driver:
 
         self.output_stream.flush()
 
-    def apply_paint(self, paint: dict[Position, str]):
+    def apply_paint(self, paint: dict[Position, str]) -> None:
         logger.debug("Applying paint", len=len(paint))
         for pos, char in paint.items():
             # moving is silly right now but will make more sense
