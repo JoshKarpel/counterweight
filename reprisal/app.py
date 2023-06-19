@@ -44,17 +44,21 @@ def app(func: Callable[[], Div | Text]) -> None:
         key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
         key_thread.start()
 
-        pp: dict[Position, str] = {}
+        previous_paint: dict[Position, str] = {}
 
         while True:
             if root.needs_render:
                 element_tree = root.render()
+
                 layout_tree = build_layout_tree(element_tree)
                 layout_tree.layout(b)
-                p = paint(layout_tree)
-                pd = diff(p, pp)
-                driver.apply_paint(pd)
-                pp = p
+
+                full_paint = paint(layout_tree)
+                diffed_paint = diff(full_paint, previous_paint)
+
+                driver.apply_paint(diffed_paint)
+
+                previous_paint = full_paint
 
             key_events = drain_queue(key_queue)
             for element in layout_tree.walk_from_bottom():
@@ -62,7 +66,9 @@ def app(func: Callable[[], Div | Text]) -> None:
                     for key_event in key_events:
                         element.on_key(key_event)
     finally:
+        logger.info("Application stopping...")
         driver.stop()
+        logger.info("Application stopped")
 
 
 T = TypeVar("T")

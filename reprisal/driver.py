@@ -10,6 +10,12 @@ from reprisal.compositor import Position
 from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action
 from reprisal.types import KeyQueueItem
 
+CURSOR_ON = "\x1b[?25h"
+ALT_SCREEN_OFF = "\x1b[?1049l"
+CLEAR_SCREEN = "\x1b[2J"
+CURSOR_OFF = "\x1b[?25l"
+ALT_SCREEN_ON = "\x1b[?1049h"
+
 logger = get_logger()
 
 LFLAG = 3
@@ -32,22 +38,21 @@ class Driver:
 
         termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, mode)
 
-        self.output_stream.write("\x1b[?1049h")  # alt screen on
-        self.output_stream.write("\x1b[?25l")  # cursor off
-        self.output_stream.write("\x1b[2J")  # clear screen, move to 0,0
+        self.output_stream.write(ALT_SCREEN_ON)  # alt screen on
+        self.output_stream.write(CURSOR_OFF)  # cursor off
+        self.output_stream.write(CLEAR_SCREEN)  # clear screen, move to 0,0
 
         self.output_stream.flush()
 
     def stop(self) -> None:
-        self.output_stream.write("\x1b[?1049l")  # alt screen off
-        self.output_stream.write("\x1b[?25h")  # cursor on
+        self.output_stream.write(ALT_SCREEN_OFF)  # alt screen off
+        self.output_stream.write(CURSOR_ON)  # cursor on
+        self.output_stream.flush()
 
         if self.original_tcgetattr is None:
             return
 
         termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, self.original_tcgetattr)
-
-        self.output_stream.flush()
 
     def apply_paint(self, paint: dict[Position, str]) -> None:
         logger.debug("Applying paint", len=len(paint))
