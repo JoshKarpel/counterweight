@@ -1,14 +1,11 @@
 import sys
 import termios
-from collections.abc import Iterator
-from contextlib import contextmanager
 from copy import deepcopy
-from io import UnsupportedOperation
 from queue import Queue
-from typing import Any, TextIO
 
 from structlog import get_logger
 
+from reprisal.compositor import Position
 from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action
 from reprisal.types import KeyQueueItem
 
@@ -17,39 +14,49 @@ logger = get_logger()
 LFLAG = 3
 CC = 6
 
-try:
-    ORIGINAL_TCGETATTR: list[Any] | None = termios.tcgetattr(sys.stdin)
-except (UnsupportedOperation, termios.error):
-    ORIGINAL_TCGETATTR = None
 
+class Driver:
+    def __init__(self):
+        self.input_stream = sys.stdin
+        self.output_stream = sys.stdout
+        self.original_tcgetattr = None
 
-def start_no_echo(stream: TextIO) -> None:
-    if ORIGINAL_TCGETATTR is None:
-        return
+    def start(self) -> None:
+        self.original_tcgetattr = termios.tcgetattr(self.input_stream)
+        mode = deepcopy(self.original_tcgetattr)
 
-    mode = deepcopy(ORIGINAL_TCGETATTR)
+        mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)
+        mode[CC][termios.VMIN] = 1
+        mode[CC][termios.VTIME] = 0
 
-    mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)
-    mode[CC][termios.VMIN] = 1
-    mode[CC][termios.VTIME] = 0
+        termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, mode)
 
-    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, mode)
+        self.output_stream.write("\x1b[?1049h")  # alt screen on
+        self.output_stream.write("\x1b[?25l")  # cursor off
+        self.output_stream.write("\x1b[2J")  # clear screen, move to 0,0
 
+        self.output_stream.flush()
 
-def reset_tty(stream: TextIO) -> None:
-    if ORIGINAL_TCGETATTR is None:
-        return
+    def stop(self) -> None:
+        self.output_stream.write("\x1b[?1049l")  # alt screen off
+        self.output_stream.write("\x1b[?25h")  # cursor on
 
-    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, ORIGINAL_TCGETATTR)
+        if self.original_tcgetattr is None:
+            return
 
+        termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, self.original_tcgetattr)
 
-@contextmanager
-def no_echo() -> Iterator[None]:
-    try:
-        start_no_echo(sys.stdin)
-        yield
-    finally:
-        reset_tty(sys.stdin)
+        self.output_stream.flush()
+
+    def apply_paint(self, paint: dict[Position, str], size: tuple[int, int]):
+        w, h = size
+        for x in range(w):
+            for y in range(h):
+                # moving is silly right now but will make more sense
+                # once we paint diffs instead of full screens
+                self.output_stream.write(f"\x1b[{y+1};{x+1}f{paint.get(Position(x,y), ' ')}")
+
+        self.output_stream.flush()
 
 
 def queue_keys(

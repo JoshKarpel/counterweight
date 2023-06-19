@@ -29,10 +29,5 @@ def version() -> None:
 
 @cli.command()
 def devlog() -> None:
+    """Tail the developer log file."""
     tail_devlog()
-
-
-# dummy callback to force subcommands, can be removed once a second subcommand is added
-@cli.callback()
-def callback() -> None:
-    pass

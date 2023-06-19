@@ -9,7 +9,7 @@ flowchart TB
     p[Paint]
 
     subgraph Output
-        d[Drive VT]
+        d[Apply Paint]
         t[Terminal Output]
     end
 

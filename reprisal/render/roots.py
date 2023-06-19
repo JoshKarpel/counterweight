@@ -33,7 +33,7 @@ class Root(Generic[P, R]):
         self.current_hook_idx = 0
         self.hook_state: dict[int, object] = {}
 
-        self.needs_render = False
+        self.needs_render = True
 
     def render(self, *args: P.args, **kwargs: P.kwargs) -> R:
         token = CURRENT_ROOT.set(self)
