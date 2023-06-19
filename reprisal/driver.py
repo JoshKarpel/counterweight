@@ -47,6 +47,7 @@ class Driver:
     def stop(self) -> None:
         self.output_stream.write(ALT_SCREEN_OFF)  # alt screen off
         self.output_stream.write(CURSOR_ON)  # cursor on
+
         self.output_stream.flush()
 
         if self.original_tcgetattr is None:
@@ -55,13 +56,14 @@ class Driver:
         termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, self.original_tcgetattr)
 
     def apply_paint(self, paint: dict[Position, str]) -> None:
-        logger.debug("Applying paint", len=len(paint))
         for pos, char in paint.items():
             # moving is silly right now but will make more sense
             # once we paint diffs instead of full screens
             self.output_stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char or ' '}")
 
         self.output_stream.flush()
+
+        logger.debug("Applied paint", cells=len(paint))
 
 
 def queue_keys(

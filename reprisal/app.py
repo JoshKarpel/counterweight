@@ -4,6 +4,7 @@ from collections.abc import Callable
 from functools import partial
 from queue import Empty, Queue
 from threading import Thread
+from time import perf_counter
 from typing import List, TypeVar
 
 from structlog import get_logger
@@ -44,21 +45,32 @@ def app(func: Callable[[], Div | Text]) -> None:
         key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
         key_thread.start()
 
-        previous_paint: dict[Position, str] = {}
+        previous_full_paint: dict[Position, str] = {}
 
         while True:
             if root.needs_render:
-                element_tree = root.render()
+                start_render = perf_counter()
+                component_tree = root.render()
+                logger.debug("Rendered component tree", elapsed_ms=(perf_counter() - start_render) * 1000)
 
-                layout_tree = build_layout_tree(element_tree)
+                start_layout = perf_counter()
+                layout_tree = build_layout_tree(component_tree)
                 layout_tree.layout(b)
+                logger.debug("Calculated layout", elapsed_ms=(perf_counter() - start_layout) * 1000)
 
+                start_paint = perf_counter()
                 full_paint = paint(layout_tree)
-                diffed_paint = diff(full_paint, previous_paint)
+                logger.debug("Generated full paint", elapsed_ms=(perf_counter() - start_paint) * 1000)
+
+                start_diff = perf_counter()
+                diffed_paint = diff(full_paint, previous_full_paint)
+                logger.debug(
+                    "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
+                )
 
                 driver.apply_paint(diffed_paint)
 
-                previous_paint = full_paint
+                previous_full_paint = full_paint
 
             key_events = drain_queue(key_queue)
             for element in layout_tree.walk_from_bottom():
