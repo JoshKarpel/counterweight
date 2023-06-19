@@ -48,13 +48,12 @@ class Driver:
 
         self.output_stream.flush()
 
-    def apply_paint(self, paint: dict[Position, str], size: tuple[int, int]):
-        w, h = size
-        for x in range(w):
-            for y in range(h):
-                # moving is silly right now but will make more sense
-                # once we paint diffs instead of full screens
-                self.output_stream.write(f"\x1b[{y+1};{x+1}f{paint.get(Position(x,y), ' ')}")
+    def apply_paint(self, paint: dict[Position, str]):
+        logger.debug("Applying paint", len=len(paint))
+        for pos, char in paint.items():
+            # moving is silly right now but will make more sense
+            # once we paint diffs instead of full screens
+            self.output_stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char or ' '}")
 
         self.output_stream.flush()
 

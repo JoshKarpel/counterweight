@@ -44,15 +44,17 @@ def app(func: Callable[[], Div | Text]) -> None:
         key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
         key_thread.start()
 
+        pp = {}
+
         while True:
             if root.needs_render:
                 element_tree = root.render()
                 layout_tree = build_layout_tree(element_tree)
                 layout_tree.layout(b)
                 p = paint(layout_tree)
-                driver.apply_paint(p, (w, h))
-                # driver.apply_paint({Position(0, 0): "*"})
-                # print(debug(p, layout_tree.dims.margin_rect()))
+                pd = diff(p, pp)
+                driver.apply_paint(pd)
+                pp = p
 
             key_events = drain_queue(key_queue)
             for element in layout_tree.walk_from_bottom():
@@ -85,3 +87,17 @@ def read_keys(key_queue: Queue[KeyQueueItem]) -> None:
         char = sys.stdin.read(1)
         logger.debug(f"read {char=} {ord(char)=} {hex(ord(char))=}")
         parser.advance(ord(char), handler=handler)
+
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
+    d = {}
+    for key in a.keys() | b.keys():
+        a_val = a.get(key)
+        if a_val != b.get(key):
+            d[key] = a_val
+
+    return d
