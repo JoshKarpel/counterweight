@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Extra
 
-from reprisal.input import Keys
+from reprisal.keys import Key
 
-KeyQueueItem = tuple[Keys, ...] | str
+KeyQueueItem = tuple[Key, ...] | str
 
 
 class ForbidExtras(BaseModel):

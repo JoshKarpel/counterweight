@@ -1,4 +1,5 @@
-from reprisal.input import Keys
+from string import printable
+
 from reprisal.types import FrozenForbidExtras
 
 
@@ -7,7 +8,11 @@ class TerminalResized(FrozenForbidExtras):
 
 
 class KeyPressed(FrozenForbidExtras):
-    keys: tuple[Keys, ...] | str
+    key: str
+
+    @property
+    def printable(self) -> bool:
+        return self.key in printable
 
 
 AnyEvent = TerminalResized | KeyPressed
