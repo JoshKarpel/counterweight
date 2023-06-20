@@ -3,10 +3,10 @@ from itertools import cycle
 
 from reprisal.app import app
 from reprisal.components import Div, Text
+from reprisal.events import KeyPressed
 from reprisal.input import Keys
 from reprisal.render import Setter, use_ref, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
-from reprisal.types import KeyQueueItem
 
 
 def time() -> Div:
@@ -34,17 +34,17 @@ def time() -> Div:
 
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
-    def on_key(keys: KeyQueueItem) -> None:
-        if keys == (Keys.Space,):
+    def on_key(event: KeyPressed) -> None:
+        if event.keys == (Keys.Space,):
             set_now(datetime.now())
-        elif keys == (Keys.Enter,):
+        elif event.keys == (Keys.Enter,):
             set_border(advance_border())
-        elif keys == (Keys.Tab,):
+        elif event.keys == (Keys.Tab,):
             set_margin_style(advance_margin())
-        elif keys == (Keys.Backspace,):
+        elif event.keys == (Keys.Backspace,):
             set_buffer(buffer[:-1])
-        elif isinstance(keys, str):
-            s = [*buffer, keys]
+        elif isinstance(event.keys, str):
+            s = [*buffer, event.keys]
             set_buffer(s)
 
     n = f"{now}"

@@ -6,6 +6,7 @@ from typing import TextIO
 from structlog import get_logger
 
 from reprisal.compositor import Position
+from reprisal.events import AnyEvent, KeyPressed
 from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action
 from reprisal.types import KeyQueueItem
 
@@ -71,7 +72,7 @@ def queue_keys(
     intermediate_chars: tuple[int, ...],
     params: tuple[int, ...],
     char: int,
-    queue: Queue[KeyQueueItem],
+    queue: Queue[AnyEvent],
 ) -> None:
     logger.debug(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
     keys: KeyQueueItem | None
@@ -89,6 +90,6 @@ def queue_keys(
             keys = None
 
     if keys:
-        queue.put(keys)
+        queue.put(KeyPressed(keys=keys))
     else:
         logger.debug("unrecognized")
