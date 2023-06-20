@@ -5,13 +5,20 @@ from functools import partial
 from queue import Empty, Queue
 from threading import Thread
 from time import perf_counter
-from typing import List, TypeVar
+from typing import List, TextIO, TypeVar
 
 from structlog import get_logger
 
 from reprisal.components import Div, Text
 from reprisal.compositor import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
-from reprisal.driver import Driver, queue_keys
+from reprisal.driver import (
+    apply_paint,
+    queue_keys,
+    start_input_control,
+    start_output_control,
+    stop_input_control,
+    stop_output_control,
+)
 from reprisal.input import VTParser
 from reprisal.logging import configure_logging
 from reprisal.render import Root
@@ -20,7 +27,11 @@ from reprisal.types import KeyQueueItem
 logger = get_logger()
 
 
-def app(func: Callable[[], Div | Text]) -> None:
+def app(
+    func: Callable[[], Div | Text],
+    output: TextIO = sys.stdout,
+    input: TextIO = sys.stdin,
+) -> None:
     configure_logging()
 
     logger.info("Application starting...")
@@ -38,9 +49,9 @@ def app(func: Callable[[], Div | Text]) -> None:
         padding=Edge(),
     )
 
-    driver = Driver()
+    original = start_input_control(stream=input)
     try:
-        driver.start()
+        start_output_control(stream=output)
 
         key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
         key_thread.start()
@@ -68,7 +79,7 @@ def app(func: Callable[[], Div | Text]) -> None:
                     "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
                 )
 
-                driver.apply_paint(diffed_paint)
+                apply_paint(stream=output, paint=diffed_paint)
 
                 previous_full_paint = full_paint
 
@@ -79,7 +90,8 @@ def app(func: Callable[[], Div | Text]) -> None:
                         element.on_key(key_event)
     finally:
         logger.info("Application stopping...")
-        driver.stop()
+        stop_output_control(stream=output)
+        stop_input_control(stream=input, original=original)
         logger.info("Application stopped")
 
 

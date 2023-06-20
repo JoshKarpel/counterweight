@@ -1,4 +1,3 @@
-import sys
 import termios
 from copy import deepcopy
 from queue import Queue
@@ -22,48 +21,51 @@ LFLAG = 3
 CC = 6
 
 
-class Driver:
-    def __init__(self, input_stream: TextIO = sys.stdin, output_stream: TextIO = sys.stdout):
-        self.input_stream = input_stream
-        self.output_stream = output_stream
-        self.original_tcgetattr: list[int | list[int | bytes]] | None = None
+def start_output_control(stream: TextIO) -> list[int | list[int | bytes]]:
+    stream.write(ALT_SCREEN_ON)
+    stream.write(CURSOR_OFF)
+    stream.write(CLEAR_SCREEN)
 
-    def start(self) -> None:
-        self.original_tcgetattr = termios.tcgetattr(self.input_stream)
-        mode = deepcopy(self.original_tcgetattr)
+    stream.flush()
 
-        mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)  # type: ignore[operator]
-        mode[CC][termios.VMIN] = 1  # type: ignore[index]
-        mode[CC][termios.VTIME] = 0  # type: ignore[index]
 
-        termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, mode)
+def stop_output_control(stream: TextIO) -> None:
+    stream.write(ALT_SCREEN_OFF)
+    stream.write(CURSOR_ON)
 
-        self.output_stream.write(ALT_SCREEN_ON)  # alt screen on
-        self.output_stream.write(CURSOR_OFF)  # cursor off
-        self.output_stream.write(CLEAR_SCREEN)  # clear screen, move to 0,0
+    stream.flush()
 
-        self.output_stream.flush()
 
-    def stop(self) -> None:
-        self.output_stream.write(ALT_SCREEN_OFF)  # alt screen off
-        self.output_stream.write(CURSOR_ON)  # cursor on
+def apply_paint(stream: TextIO, paint: dict[Position, str]) -> None:
+    for pos, char in paint.items():
+        # moving is silly right now but will make more sense
+        # once we paint diffs instead of full screens
+        stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char or ' '}")
 
-        self.output_stream.flush()
+    stream.flush()
 
-        if self.original_tcgetattr is None:
-            return
+    logger.debug("Applied paint", cells=len(paint))
 
-        termios.tcsetattr(self.input_stream.fileno(), termios.TCSADRAIN, self.original_tcgetattr)
 
-    def apply_paint(self, paint: dict[Position, str]) -> None:
-        for pos, char in paint.items():
-            # moving is silly right now but will make more sense
-            # once we paint diffs instead of full screens
-            self.output_stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char or ' '}")
+TCGetAttr = list[int | list[int | bytes]]
 
-        self.output_stream.flush()
 
-        logger.debug("Applied paint", cells=len(paint))
+def start_input_control(stream: TextIO) -> TCGetAttr:
+    original = termios.tcgetattr(stream)
+
+    modified = deepcopy(original)
+
+    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)  # type: ignore[operator]
+    modified[CC][termios.VMIN] = 1  # type: ignore[index]
+    modified[CC][termios.VTIME] = 0  # type: ignore[index]
+
+    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, modified)
+
+    return original
+
+
+def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
+    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)
 
 
 def queue_keys(
