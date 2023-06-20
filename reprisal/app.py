@@ -97,15 +97,25 @@ def app(
 
                 needs_render = False
 
-            for event in drain_queue(event_queue):
+            start_event_handling = perf_counter()
+            events = drain_queue(event_queue)
+            components = layout_tree.walk_from_bottom()
+            for event in events:
+                start_handle_event = perf_counter()
                 match event:
                     case TerminalResized():
                         needs_render = True
                         previous_full_paint = {}
                     case KeyPressed():
-                        for element in layout_tree.walk_from_bottom():
-                            if element.on_key:
-                                element.on_key(event)
+                        for component in components:
+                            if component.on_key:
+                                component.on_key(event)
+                logger.debug("Handled event", event_=event, elapsed_ms=(perf_counter() - start_handle_event) * 1000)
+
+            logger.debug(
+                "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
+            )
+
     except KeyboardInterrupt as e:
         logger.debug(f"Caught {e!r}")
     finally:
