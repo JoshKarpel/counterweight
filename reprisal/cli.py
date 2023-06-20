@@ -6,6 +6,7 @@ from click import echo
 from typer import Typer
 
 from reprisal.constants import PACKAGE_NAME, __version__
+from reprisal.logging import tail_devlog
 
 cli = Typer(
     name=PACKAGE_NAME,
@@ -26,7 +27,7 @@ def version() -> None:
     echo(__version__)
 
 
-# dummy callback to force subcommands, can be removed once a second subcommand is added
-@cli.callback()
-def callback() -> None:
-    pass
+@cli.command()
+def devlog() -> None:
+    """Tail the developer log file."""
+    tail_devlog()

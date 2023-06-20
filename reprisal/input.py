@@ -533,6 +533,7 @@ class Keys(str, Enum):
 # Adapated from https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/_ansi_sequences.py
 
 PRINT = {
+    0x09: (Keys.Tab,),
     0x0A: (Keys.Enter,),
     0x20: (Keys.Space,),
     0x7F: (Keys.Backspace,),

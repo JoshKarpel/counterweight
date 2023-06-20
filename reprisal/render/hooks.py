@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Callable
 
 from reprisal.render.roots import CURRENT_ROOT
 from reprisal.render.types import (
@@ -17,7 +18,7 @@ from reprisal.render.types import (
 )
 
 
-def use_state(initial_value: H) -> UseStateReturn[H]:
+def use_state(initial_value: H | Callable[[], H]) -> UseStateReturn[H]:
     return CURRENT_ROOT.get().use_state(initial_value=initial_value)
 
 

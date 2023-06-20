@@ -33,7 +33,7 @@ class Root(Generic[P, R]):
         self.current_hook_idx = 0
         self.hook_state: dict[int, object] = {}
 
-        self.needs_render = False
+        self.needs_render = True
 
     def render(self, *args: P.args, **kwargs: P.kwargs) -> R:
         token = CURRENT_ROOT.set(self)
@@ -48,8 +48,11 @@ class Root(Generic[P, R]):
 
         return result
 
-    def use_state(self, initial_value: H) -> UseStateReturn[H]:
-        value: H = self.hook_state.setdefault(self.current_hook_idx, initial_value)  # type: ignore[assignment]
+    def use_state(self, initial_value: H | Callable[[], H]) -> UseStateReturn[H]:
+        if self.current_hook_idx not in self.hook_state:
+            self.hook_state[self.current_hook_idx] = initial_value() if callable(initial_value) else initial_value
+
+        value: H = self.hook_state[self.current_hook_idx]  # type: ignore[assignment]
 
         hook_idx = self.current_hook_idx  # capture value now for setter closure
 

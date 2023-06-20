@@ -1,55 +1,70 @@
-import sys
 import termios
-from collections.abc import Iterator
-from contextlib import contextmanager
 from copy import deepcopy
-from io import UnsupportedOperation
 from queue import Queue
-from typing import Any, TextIO
+from typing import TextIO
 
 from structlog import get_logger
 
+from reprisal.compositor import Position
+from reprisal.events import AnyEvent, KeyPressed
 from reprisal.input import CSI_LOOKUP, ESC_LOOKUP, EXECUTE_LOOKUP, PRINT, Action
 from reprisal.types import KeyQueueItem
+
+CURSOR_ON = "\x1b[?25h"
+ALT_SCREEN_OFF = "\x1b[?1049l"
+CLEAR_SCREEN = "\x1b[2J"
+CURSOR_OFF = "\x1b[?25l"
+ALT_SCREEN_ON = "\x1b[?1049h"
 
 logger = get_logger()
 
 LFLAG = 3
 CC = 6
 
-try:
-    ORIGINAL_TCGETATTR: list[Any] | None = termios.tcgetattr(sys.stdin)
-except (UnsupportedOperation, termios.error):
-    ORIGINAL_TCGETATTR = None
+
+def start_output_control(stream: TextIO) -> None:
+    stream.write(ALT_SCREEN_ON)
+    stream.write(CURSOR_OFF)
+    stream.write(CLEAR_SCREEN)
+
+    stream.flush()
 
 
-def start_no_echo(stream: TextIO) -> None:
-    if ORIGINAL_TCGETATTR is None:
-        return
+def stop_output_control(stream: TextIO) -> None:
+    stream.write(ALT_SCREEN_OFF)
+    stream.write(CURSOR_ON)
 
-    mode = deepcopy(ORIGINAL_TCGETATTR)
-
-    mode[LFLAG] = mode[LFLAG] & ~(termios.ECHO | termios.ICANON)
-    mode[CC][termios.VMIN] = 1
-    mode[CC][termios.VTIME] = 0
-
-    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, mode)
+    stream.flush()
 
 
-def reset_tty(stream: TextIO) -> None:
-    if ORIGINAL_TCGETATTR is None:
-        return
+def apply_paint(stream: TextIO, paint: dict[Position, str]) -> None:
+    for pos, char in paint.items():
+        stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char}")
 
-    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, ORIGINAL_TCGETATTR)
+    stream.flush()
+
+    logger.debug("Applied paint", cells=len(paint))
 
 
-@contextmanager
-def no_echo() -> Iterator[None]:
-    try:
-        start_no_echo(sys.stdin)
-        yield
-    finally:
-        reset_tty(sys.stdin)
+TCGetAttr = list[int | list[int | bytes]]
+
+
+def start_input_control(stream: TextIO) -> TCGetAttr:
+    original = termios.tcgetattr(stream)
+
+    modified = deepcopy(original)
+
+    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)
+    modified[CC][termios.VMIN] = 1
+    modified[CC][termios.VTIME] = 0
+
+    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, modified)
+
+    return original
+
+
+def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
+    termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)
 
 
 def queue_keys(
@@ -57,7 +72,7 @@ def queue_keys(
     intermediate_chars: tuple[int, ...],
     params: tuple[int, ...],
     char: int,
-    queue: Queue[KeyQueueItem],
+    queue: Queue[AnyEvent],
 ) -> None:
     logger.debug(f"{intermediate_chars=} {params=} {action=} {char=} {chr(char)=} {hex(char)=}")
     keys: KeyQueueItem | None
@@ -75,6 +90,6 @@ def queue_keys(
             keys = None
 
     if keys:
-        queue.put(keys)
+        queue.put(KeyPressed(keys=keys))
     else:
         logger.debug("unrecognized")

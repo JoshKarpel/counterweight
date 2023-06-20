@@ -1,56 +1,131 @@
+import shutil
 import sys
 from collections.abc import Callable
 from functools import partial
 from queue import Empty, Queue
+from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
-from typing import List, TypeVar
+from time import perf_counter
+from typing import List, TextIO, TypeVar
 
 from structlog import get_logger
 
 from reprisal.components import Div, Text
-from reprisal.compositor import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
-from reprisal.driver import no_echo, queue_keys
+from reprisal.compositor import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
+from reprisal.driver import (
+    apply_paint,
+    queue_keys,
+    start_input_control,
+    start_output_control,
+    stop_input_control,
+    stop_output_control,
+)
+from reprisal.events import AnyEvent, KeyPressed, TerminalResized
 from reprisal.input import VTParser
+from reprisal.logging import configure_logging
 from reprisal.render import Root
-from reprisal.types import KeyQueueItem
 
 logger = get_logger()
 
 
-def app(func: Callable[[], Div | Text]) -> None:
+def start_handling_resize_signal(queue: Queue[AnyEvent]) -> None:
+    signal(SIGWINCH, lambda _, __: queue.put(TerminalResized()))
+
+
+def stop_handling_resize_signal() -> None:
+    signal(SIGWINCH, SIG_DFL)
+
+
+def app(
+    func: Callable[[], Div | Text],
+    output: TextIO = sys.stdout,
+    input: TextIO = sys.stdin,
+) -> None:
+    configure_logging()
+
+    logger.info("Application starting...")
+
     root = Root(func)
 
-    key_queue: Queue[KeyQueueItem] = Queue()
-    b = BoxDimensions(
-        content=Rect(x=0, y=0, width=60, height=0),
-        margin=Edge(),
-        border=Edge(),
-        padding=Edge(),
-    )
+    event_queue: Queue[AnyEvent] = Queue()
 
-    element_tree = root.render()
-    layout_tree = build_layout_tree(element_tree)
-    layout_tree.layout(b)
-    p = paint(layout_tree)
-    print(debug(p, layout_tree.dims.margin_rect()))
+    start_handling_resize_signal(queue=event_queue)
+    original = start_input_control(stream=input)
+    try:
+        start_output_control(stream=output)
 
-    with no_echo():
-        key_thread = Thread(target=read_keys, args=(key_queue,), daemon=True)
+        key_thread = Thread(target=read_keys, args=(event_queue,), daemon=True)
         key_thread.start()
 
-        while True:
-            key_events = drain_queue(key_queue)
-            for element in layout_tree.walk_from_bottom():
-                if element.on_key:
-                    for key_event in key_events:
-                        element.on_key(key_event)
+        previous_full_paint: dict[Position, str] = {}
 
-            if root.needs_render:
-                element_tree = root.render()
-                layout_tree = build_layout_tree(element_tree)
+        needs_render = True
+        while True:
+            if root.needs_render or needs_render:
+                w, h = shutil.get_terminal_size()
+                b = BoxDimensions(
+                    # height is always zero here because this is the starting height of the context box in the layout algorithm
+                    # screen boundary will need to be controlled by max height style and paint cutoff
+                    content=Rect(x=0, y=0, width=w, height=0),
+                    margin=Edge(),
+                    border=Edge(),
+                    padding=Edge(),
+                )
+
+                start_render = perf_counter()
+                component_tree = root.render()
+                logger.debug("Rendered component tree", elapsed_ms=(perf_counter() - start_render) * 1000)
+
+                start_layout = perf_counter()
+                layout_tree = build_layout_tree(component_tree)
                 layout_tree.layout(b)
-                p = paint(layout_tree)
-                print(debug(p, layout_tree.dims.margin_rect()))
+                logger.debug("Calculated layout", elapsed_ms=(perf_counter() - start_layout) * 1000)
+
+                start_paint = perf_counter()
+                full_paint = paint(layout_tree)
+                logger.debug("Generated full paint", elapsed_ms=(perf_counter() - start_paint) * 1000)
+
+                start_diff = perf_counter()
+                diffed_paint = diff(full_paint, previous_full_paint)
+                logger.debug(
+                    "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
+                )
+
+                apply_paint(stream=output, paint=diffed_paint)
+
+                previous_full_paint = full_paint
+
+                needs_render = False
+
+            start_event_handling = perf_counter()
+            events = drain_queue(event_queue)
+            components = layout_tree.walk_from_bottom()
+            for event in events:
+                start_handle_event = perf_counter()
+                match event:
+                    case TerminalResized():
+                        needs_render = True
+                        previous_full_paint = {}
+                    case KeyPressed():
+                        for component in components:
+                            if component.on_key:
+                                component.on_key(event)
+                logger.debug("Handled event", event_=event, elapsed_ms=(perf_counter() - start_handle_event) * 1000)
+
+            logger.debug(
+                "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
+            )
+
+    except KeyboardInterrupt as e:
+        logger.debug(f"Caught {e!r}")
+    finally:
+        logger.info("Application stopping...")
+
+        stop_output_control(stream=output)
+        stop_input_control(stream=input, original=original)
+        stop_handling_resize_signal()
+
+        logger.info("Application stopped")
 
 
 T = TypeVar("T")
@@ -67,11 +142,25 @@ def drain_queue(queue: Queue[T]) -> List[T]:
     return items
 
 
-def read_keys(key_queue: Queue[KeyQueueItem]) -> None:
+def read_keys(queue: Queue[AnyEvent]) -> None:
     parser = VTParser()
-    handler = partial(queue_keys, queue=key_queue)
+    handler = partial(queue_keys, queue=queue)
 
     while True:
         char = sys.stdin.read(1)
         logger.debug(f"read {char=} {ord(char)=} {hex(ord(char))=}")
         parser.advance(ord(char), handler=handler)
+
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
+    d = {}
+    for key in a.keys() | b.keys():
+        a_val = a.get(key)
+        if a_val != b.get(key) and a_val is not None:
+            d[key] = a_val
+
+    return d

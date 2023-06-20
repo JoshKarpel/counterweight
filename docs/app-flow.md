@@ -9,7 +9,9 @@ flowchart TB
     p[Paint]
 
     subgraph Output
-        d[Drive VT]
+        ph[Paint History]
+        dp[Diff Paint]
+        d[Apply Paint]
         t[Terminal Output]
     end
 
@@ -28,7 +30,12 @@ flowchart TB
     en -- Initial Render --> r
     r -- Component Tree --> l
     l -- Layout Tree --> p
-    p -- Paint Map --> d
+    p -- Paint --> dp
+
+    ph -- Previous Paint --> dp
+    dp -- Store Paint --> ph
+    dp -- Diffed Paint --> d
+
     d -- VT Commands --> t
 
     i -- VT Commands --> vp
