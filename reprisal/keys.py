@@ -116,6 +116,8 @@ class Key(str, Enum):
     ControlShiftPageUp = "ctrl+shift+pageup"
     ControlShiftPageDown = "ctrl+shift+pagedown"
 
+    AltDelete = "alt+delete"
+
     BackTab = "shift+tab"  # shift + tab
 
     F1 = "f1"
@@ -192,7 +194,7 @@ class Key(str, Enum):
 
 KeyGenerator = Generator[Parser, str, str]
 
-TRANSFORMS: Mapping[str, Key] = {
+SINGLE_CHAR_TRANSFORMS: Mapping[str, Key] = {
     "\x1b": Key.Escape,
     "\t": Key.Tab,
     "\n": Key.Enter,
@@ -224,14 +226,14 @@ TRANSFORMS: Mapping[str, Key] = {
     "\x7f": Key.Backspace,
 }
 
-CHARS = "".join((*printable, *TRANSFORMS.keys()))
+CHARS = "".join((*printable, *SINGLE_CHAR_TRANSFORMS.keys()))
 
 
 @generate
 def single_char() -> KeyGenerator:
     c = yield char_from(CHARS)
 
-    return TRANSFORMS.get(c, c)
+    return SINGLE_CHAR_TRANSFORMS.get(c, c)
 
 
 @generate
@@ -264,39 +266,55 @@ def shift_tab() -> KeyGenerator:
     return Key.BackTab
 
 
-CSI_LOOKUP: Mapping[tuple[tuple[str, ...], str], str] = {
-    (("",), "A"): Key.Up,
-    (("",), "B"): Key.Down,
-    (("",), "C"): Key.Left,
-    (("",), "D"): Key.Right,
-    (("3",), "~"): Key.Delete,
-    (("11",), "~"): Key.F1,
-    (("12",), "~"): Key.F2,
-    (("13",), "~"): Key.F3,
-    (("14",), "~"): Key.F4,
-    (("15",), "~"): Key.F5,
+CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
+    ("", "A"): Key.Up,
+    ("", "B"): Key.Down,
+    ("", "C"): Key.Right,
+    ("", "D"): Key.Left,
+    ("", "F"): Key.End,
+    ("2", "~"): Key.Insert,
+    ("3", "~"): Key.Delete,
+    ("11", "~"): Key.F1,
+    ("12", "~"): Key.F2,
+    ("13", "~"): Key.F3,
+    ("14", "~"): Key.F4,
+    ("15", "~"): Key.F5,
     # skip 16
-    (("17",), "~"): Key.F6,
-    (("18",), "~"): Key.F7,
-    (("19",), "~"): Key.F8,
-    (("20",), "~"): Key.F9,
-    (("21",), "~"): Key.F10,
+    ("17", "~"): Key.F6,
+    ("18", "~"): Key.F7,
+    ("19", "~"): Key.F8,
+    ("20", "~"): Key.F9,
+    ("21", "~"): Key.F10,
     # skip 22
-    (("23",), "~"): Key.F11,
-    (("24",), "~"): Key.F12,
-    (("25",), "~"): Key.F13,
-    (("26",), "~"): Key.F14,
-    (("28",), "~"): Key.F15,
-    (("29",), "~"): Key.F16,
+    ("23", "~"): Key.F11,
+    ("24", "~"): Key.F12,
+    ("25", "~"): Key.F13,
+    ("26", "~"): Key.F14,
+    ("28", "~"): Key.F15,
+    ("29", "~"): Key.F16,
     # skip 30
-    (("31",), "~"): Key.F17,
-    (("32",), "~"): Key.F18,
-    (("33",), "~"): Key.F19,
-    (("34",), "~"): Key.F20,
-    (("3", "2"), "~"): Key.ShiftDelete,
-    (("3", "5"), "~"): Key.ControlDelete,
-    (("3", "6"), "~"): Key.ControlShiftInsert,
+    ("31", "~"): Key.F17,
+    ("32", "~"): Key.F18,
+    ("33", "~"): Key.F19,
+    ("34", "~"): Key.F20,
+    ("1", "2", "A"): Key.ShiftUp,
+    ("1", "2", "B"): Key.ShiftDown,
+    ("1", "2", "C"): Key.ShiftRight,
+    ("1", "2", "D"): Key.ShiftLeft,
+    ("1", "5", "A"): Key.ControlUp,
+    ("1", "5", "B"): Key.ControlDown,
+    ("1", "5", "C"): Key.ControlRight,
+    ("1", "5", "D"): Key.ControlLeft,
+    ("1", "6", "A"): Key.ControlShiftUp,
+    ("1", "6", "B"): Key.ControlShiftDown,
+    ("1", "6", "C"): Key.ControlShiftRight,
+    ("1", "6", "D"): Key.ControlShiftLeft,
+    ("3", "3", "~"): Key.AltDelete,
+    ("3", "5", "~"): Key.ControlDelete,
+    ("3", "6", "~"): Key.ControlShiftInsert,
 }
+
+FINAL_CHARS = "".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
 
 
 @generate
@@ -306,9 +324,9 @@ def two_params() -> KeyGenerator:
     p1 = yield decimal_digit.many().concat()
     yield string(";")
     p2 = yield decimal_digit.many().concat()
-    e = yield char_from("~")
+    e = yield char_from(FINAL_CHARS)
 
-    return CSI_LOOKUP[((p1, p2), e)]
+    return CSI_LOOKUP[(p1, p2, e)]
 
 
 @generate
@@ -318,9 +336,9 @@ def zero_or_one_params() -> KeyGenerator:
     # zero params => ""
     p1 = yield decimal_digit.many().concat()
 
-    e = yield char_from("~ABCD")
+    e = yield char_from(FINAL_CHARS)
 
-    return CSI_LOOKUP[((p1,), e)]
+    return CSI_LOOKUP[(p1, e)]
 
 
 @generate
