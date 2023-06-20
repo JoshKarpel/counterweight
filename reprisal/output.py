@@ -2,21 +2,21 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.compositor import Position
-
-UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
-
-UNSET_VT200_MOUSE = "\x1b[?1000l"
-
-SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
-
-SET_VT200_MOUSE = "\x1b[?1000h"
+from reprisal.layout import Position
 
 CURSOR_ON = "\x1b[?25h"
-ALT_SCREEN_OFF = "\x1b[?1049l"
-CLEAR_SCREEN = "\x1b[2J"
 CURSOR_OFF = "\x1b[?25l"
+
 ALT_SCREEN_ON = "\x1b[?1049h"
+ALT_SCREEN_OFF = "\x1b[?1049l"
+
+UNSET_VT200_MOUSE = "\x1b[?1000l"
+SET_VT200_MOUSE = "\x1b[?1000h"
+
+SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
+UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
+
+CLEAR_SCREEN = "\x1b[2J"
 
 logger = get_logger()
 

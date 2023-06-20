@@ -43,7 +43,7 @@ def time() -> Div:
             set_margin_style(advance_margin())
         elif event.key == Key.Backspace:
             set_buffer(buffer[:-1])
-        elif event.printable:
+        elif event.key.isprintable():
             s = [*buffer, event.key]
             set_buffer(s)
 

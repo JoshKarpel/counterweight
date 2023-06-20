@@ -1,5 +1,3 @@
-from string import printable
-
 from reprisal.types import FrozenForbidExtras
 
 
@@ -9,10 +7,6 @@ class TerminalResized(FrozenForbidExtras):
 
 class KeyPressed(FrozenForbidExtras):
     key: str
-
-    @property
-    def printable(self) -> bool:
-        return self.key in printable
 
 
 class MouseMoved(FrozenForbidExtras):

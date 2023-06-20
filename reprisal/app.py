@@ -10,9 +10,9 @@ from typing import List, TextIO, TypeVar
 from structlog import get_logger
 
 from reprisal.components import Div, Text
-from reprisal.compositor import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
 from reprisal.events import AnyEvent, KeyPressed, TerminalResized
 from reprisal.input import read_keys, start_input_control, stop_input_control
+from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
 from reprisal.logging import configure_logging
 from reprisal.output import (
     apply_paint,
@@ -37,8 +37,8 @@ def stop_handling_resize_signal() -> None:
 
 def app(
     func: Callable[[], Div | Text],
-    output: TextIO = sys.stdout,
-    input: TextIO = sys.stdin,
+    output_stream: TextIO = sys.stdout,
+    input_stream: TextIO = sys.stdin,
 ) -> None:
     configure_logging()
 
@@ -48,13 +48,13 @@ def app(
 
     event_queue: Queue[AnyEvent] = Queue()
 
-    start_handling_resize_signal(queue=event_queue)
-    original = start_input_control(stream=input)
+    original = start_input_control(stream=input_stream)
     try:
-        start_output_control(stream=output)
-        start_mouse_reporting(stream=output)
+        start_handling_resize_signal(queue=event_queue)
+        start_output_control(stream=output_stream)
+        start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(event_queue, input), daemon=True)
+        key_thread = Thread(target=read_keys, args=(event_queue, input_stream), daemon=True)
         key_thread.start()
 
         previous_full_paint: dict[Position, str] = {}
@@ -91,7 +91,7 @@ def app(
                     "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
                 )
 
-                apply_paint(stream=output, paint=diffed_paint)
+                apply_paint(stream=output_stream, paint=diffed_paint)
 
                 previous_full_paint = full_paint
 
@@ -115,15 +115,14 @@ def app(
             logger.debug(
                 "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
             )
-
     except KeyboardInterrupt as e:
         logger.debug(f"Caught {e!r}")
     finally:
         logger.info("Application stopping...")
 
-        stop_mouse_reporting(stream=output)
-        stop_output_control(stream=output)
-        stop_input_control(stream=input, original=original)
+        stop_mouse_reporting(stream=output_stream)
+        stop_output_control(stream=output_stream)
+        stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()
 
         logger.info("Application stopped")

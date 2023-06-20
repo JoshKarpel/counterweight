@@ -238,7 +238,7 @@ def single_char() -> KeyGenerator:
 
 @generate
 def escape_sequence() -> KeyGenerator:
-    keys = yield string("\x1b") >> (f1to4 | shift_tab | two_params | zero_or_one_params)
+    keys = yield string("\x1b") >> (f1to4 | (string("[") >> (shift_tab | two_params | zero_or_one_params)))
 
     return keys
 
@@ -261,7 +261,7 @@ def f1to4() -> KeyGenerator:
 
 @generate
 def shift_tab() -> KeyGenerator:
-    yield string("[Z")
+    yield string("Z")
 
     return Key.BackTab
 
@@ -319,8 +319,6 @@ FINAL_CHARS = "".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
 
 @generate
 def two_params() -> KeyGenerator:
-    yield string("[")
-
     p1 = yield decimal_digit.many().concat()
     yield string(";")
     p2 = yield decimal_digit.many().concat()
@@ -331,8 +329,6 @@ def two_params() -> KeyGenerator:
 
 @generate
 def zero_or_one_params() -> KeyGenerator:
-    yield string("[")
-
     # zero params => ""
     p1 = yield decimal_digit.many().concat()
 

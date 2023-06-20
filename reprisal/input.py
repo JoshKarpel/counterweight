@@ -6,6 +6,7 @@ import termios
 from copy import deepcopy
 from queue import Queue
 from selectors import DefaultSelector
+from time import perf_counter
 from typing import TextIO
 
 from parsy import ParseError
@@ -25,29 +26,43 @@ def read_keys(queue: Queue[AnyEvent], stream: TextIO) -> None:
     selector.register(stream, selectors.EVENT_READ)
 
     while True:
-        selector.select(timeout=0.001)
+        selector.select()
         # We're just reading from one file,
         # so we can dispense with the ceremony of actually using the results of the select.
 
-        # Read only up to 6 bytes at a time to make checking for mouse events easier
+        start_parsing = perf_counter()
+        # Read only up to 6 bytes at a time to make checking for multiple mouse events easier
+        # TODO: would be better to not do bytes[4:] below...
         b = os.read(stream.fileno(), 6)
         bytes = list(b)
 
         if bytes[:4] == [27, 91, 77, 67]:
-            logger.debug("Parsed mount event", bytes=bytes)
             x, y = bytes[4:]
             # there appear to be other states where the mouse might be up or down... hard to check on laptop
             queue.put(MouseMoved(x=x - 33, y=y - 33))
+            logger.debug("Parsed mount event", bytes=bytes)
         else:
-            # What if we just did everything with a huge match statement? Would that be slower?
             buffer = b.decode("utf-8")
             try:
                 keys = vt_keys.parse(buffer)
-                logger.debug("Parsed user input", keys=keys, buffer=repr(buffer), bytes=bytes)
                 for key in keys:
                     queue.put(KeyPressed(key=key))
+                logger.debug(
+                    "Parsed user input",
+                    keys=keys,
+                    buffer=repr(buffer),
+                    bytes=bytes,
+                    len_buffer=len(buffer),
+                    elapsed_ms=(perf_counter() - start_parsing) * 1000,
+                )
             except (ParseError, KeyError) as e:
-                logger.error("Failed to parse input", error=str(e), buffer=repr(buffer))
+                logger.error(
+                    "Failed to parse input",
+                    error=str(e),
+                    buffer=repr(buffer),
+                    len_buffer=len(buffer),
+                    elapsed_ms=(perf_counter() - start_parsing) * 1000,
+                )
 
 
 LFLAG = 3
