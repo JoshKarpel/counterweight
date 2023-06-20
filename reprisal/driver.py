@@ -22,7 +22,7 @@ LFLAG = 3
 CC = 6
 
 
-def start_output_control(stream: TextIO) -> list[int | list[int | bytes]]:
+def start_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_ON)
     stream.write(CURSOR_OFF)
     stream.write(CLEAR_SCREEN)
@@ -54,9 +54,9 @@ def start_input_control(stream: TextIO) -> TCGetAttr:
 
     modified = deepcopy(original)
 
-    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)  # type: ignore[operator]
-    modified[CC][termios.VMIN] = 1  # type: ignore[index]
-    modified[CC][termios.VTIME] = 0  # type: ignore[index]
+    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)
+    modified[CC][termios.VMIN] = 1
+    modified[CC][termios.VTIME] = 0
 
     termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, modified)
 
