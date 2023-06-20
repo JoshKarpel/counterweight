@@ -15,4 +15,9 @@ class KeyPressed(FrozenForbidExtras):
         return self.key in printable
 
 
+class MouseMoved(FrozenForbidExtras):
+    x: int
+    y: int
+
+
 AnyEvent = TerminalResized | KeyPressed
