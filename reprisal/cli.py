@@ -40,7 +40,7 @@ def devlog() -> None:
 
 
 @cli.command()
-def keys(mouse: bool = False) -> None:
+def check_input(mouse: bool = False) -> None:
     event_queue: Queue[AnyEvent] = Queue()
 
     input_stream = sys.stdin
