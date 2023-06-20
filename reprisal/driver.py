@@ -38,9 +38,7 @@ def stop_output_control(stream: TextIO) -> None:
 
 def apply_paint(stream: TextIO, paint: dict[Position, str]) -> None:
     for pos, char in paint.items():
-        # moving is silly right now but will make more sense
-        # once we paint diffs instead of full screens
-        stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char or ' '}")
+        stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char}")
 
     stream.flush()
 
