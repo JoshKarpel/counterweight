@@ -26,9 +26,6 @@ def start_output_control(stream: TextIO) -> None:
     stream.write(CURSOR_OFF)
     stream.write(CLEAR_SCREEN)
 
-    stream.write(SET_VT200_MOUSE)
-    stream.write(SET_ANY_EVENT_MOUSE)
-
     stream.flush()
 
 
@@ -36,6 +33,17 @@ def stop_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_OFF)
     stream.write(CURSOR_ON)
 
+    stream.flush()
+
+
+def start_mouse_reporting(stream: TextIO) -> None:
+    stream.write(SET_VT200_MOUSE)
+    stream.write(SET_ANY_EVENT_MOUSE)
+
+    stream.flush()
+
+
+def stop_mouse_reporting(stream: TextIO) -> None:
     stream.write(UNSET_VT200_MOUSE)
     stream.write(UNSET_ANY_EVENT_MOUSE)
 

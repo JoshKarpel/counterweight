@@ -29,21 +29,17 @@ def read_keys(queue: Queue[AnyEvent], stream: TextIO) -> None:
         # We're just reading from one file,
         # so we can dispense with the ceremony of actually using the results of the select.
 
-        b = os.read(stream.fileno(), 1024)
+        # Read only up to 6 bytes at a time to make checking for mouse events easier
+        b = os.read(stream.fileno(), 6)
         bytes = list(b)
 
         if bytes[:4] == [27, 91, 77, 67]:
             logger.debug("Parsed mount event", bytes=bytes)
             x, y = bytes[4:]
             # there appear to be other states where the mouse might be up or down... hard to check on laptop
-            queue.put(
-                MouseMoved(
-                    x=x - 33,
-                    y=y - 33,
-                )
-            )
-
+            queue.put(MouseMoved(x=x - 33, y=y - 33))
         else:
+            # What if we just did everything with a huge match statement? Would that be slower?
             buffer = b.decode("utf-8")
             try:
                 keys = vt_keys.parse(buffer)

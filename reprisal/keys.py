@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from enum import Enum
 from string import printable
 
-from parsy import char_from, decimal_digit, generate, string
+from parsy import Parser, char_from, decimal_digit, generate, string
 
 
 class Key(str, Enum):
@@ -190,35 +190,7 @@ class Key(str, Enum):
         return str(self)
 
 
-EXECUTE_LOOKUP = {
-    0x00: (Key.ControlSpace,),
-    0x01: (Key.ControlA,),
-    0x02: (Key.ControlB,),
-    0x03: (Key.ControlC,),
-    0x04: (Key.ControlD,),
-    0x05: (Key.ControlE,),
-    0x06: (Key.ControlF,),
-    0x07: (Key.ControlG,),
-    0x08: (Key.Backspace,),
-    0x09: (Key.Tab,),
-    0x0A: (Key.Enter,),
-    0x0B: (Key.ControlK,),
-    0x0C: (Key.ControlL,),
-    0x0E: (Key.ControlN,),
-    0x0F: (Key.ControlO,),
-    0x10: (Key.ControlP,),
-    0x11: (Key.ControlQ,),
-    0x12: (Key.ControlR,),
-    0x13: (Key.ControlS,),
-    0x14: (Key.ControlT,),
-    0x15: (Key.ControlU,),
-    0x16: (Key.ControlV,),
-    0x17: (Key.ControlW,),
-    0x18: (Key.ControlX,),
-    0x19: (Key.ControlY,),
-    0x1A: (Key.ControlZ,),
-}
-
+KeyGenerator = Generator[Parser, str, str]
 
 TRANSFORMS: Mapping[str, Key] = {
     "\x1b": Key.Escape,
@@ -256,14 +228,14 @@ CHARS = "".join((*printable, *TRANSFORMS.keys()))
 
 
 @generate
-def single_char() -> str | Key:
+def single_char() -> KeyGenerator:
     c = yield char_from(CHARS)
 
     return TRANSFORMS.get(c, c)
 
 
 @generate
-def escape_sequence() -> Key:
+def escape_sequence() -> KeyGenerator:
     keys = yield string("\x1b") >> (f1to4 | shift_tab | two_params | zero_or_one_params)
 
     return keys
@@ -278,7 +250,7 @@ F1TO4 = {
 
 
 @generate
-def f1to4() -> Key:
+def f1to4() -> KeyGenerator:
     yield string("O")
     final = yield char_from("PQRS")
 
@@ -286,13 +258,13 @@ def f1to4() -> Key:
 
 
 @generate
-def shift_tab() -> Key:
+def shift_tab() -> KeyGenerator:
     yield string("[Z")
 
     return Key.BackTab
 
 
-CSI_LOOKUP = {
+CSI_LOOKUP: Mapping[tuple[tuple[str, ...], str], str] = {
     (("",), "A"): Key.Up,
     (("",), "B"): Key.Down,
     (("",), "C"): Key.Left,
@@ -321,13 +293,14 @@ CSI_LOOKUP = {
     (("32",), "~"): Key.F18,
     (("33",), "~"): Key.F19,
     (("34",), "~"): Key.F20,
+    (("3", "2"), "~"): Key.ShiftDelete,
     (("3", "5"), "~"): Key.ControlDelete,
     (("3", "6"), "~"): Key.ControlShiftInsert,
 }
 
 
 @generate
-def two_params() -> Key:
+def two_params() -> KeyGenerator:
     yield string("[")
 
     p1 = yield decimal_digit.many().concat()
@@ -339,10 +312,10 @@ def two_params() -> Key:
 
 
 @generate
-def zero_or_one_params() -> Key:
+def zero_or_one_params() -> KeyGenerator:
     yield string("[")
 
-    # zero params = ""
+    # zero params => ""
     p1 = yield decimal_digit.many().concat()
 
     e = yield char_from("~ABCD")
@@ -351,6 +324,6 @@ def zero_or_one_params() -> Key:
 
 
 @generate
-def vt_keys():
+def vt_keys() -> KeyGenerator:
     commands = yield (escape_sequence | single_char).many()
     return commands

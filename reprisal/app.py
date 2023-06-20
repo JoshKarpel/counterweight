@@ -16,7 +16,9 @@ from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.logging import configure_logging
 from reprisal.output import (
     apply_paint,
+    start_mouse_reporting,
     start_output_control,
+    stop_mouse_reporting,
     stop_output_control,
 )
 from reprisal.render import Root
@@ -50,6 +52,7 @@ def app(
     original = start_input_control(stream=input)
     try:
         start_output_control(stream=output)
+        start_mouse_reporting(stream=output)
 
         key_thread = Thread(target=read_keys, args=(event_queue, input), daemon=True)
         key_thread.start()
@@ -118,6 +121,7 @@ def app(
     finally:
         logger.info("Application stopping...")
 
+        stop_mouse_reporting(stream=output)
         stop_output_control(stream=output)
         stop_input_control(stream=input, original=original)
         stop_handling_resize_signal()

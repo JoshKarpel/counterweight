@@ -20,4 +20,4 @@ class MouseMoved(FrozenForbidExtras):
     y: int
 
 
-AnyEvent = TerminalResized | KeyPressed
+AnyEvent = TerminalResized | KeyPressed | MouseMoved

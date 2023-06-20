@@ -9,8 +9,10 @@ from click import echo
 from typer import Typer
 
 from reprisal.constants import PACKAGE_NAME, __version__
+from reprisal.events import AnyEvent
 from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.logging import tail_devlog
+from reprisal.output import start_mouse_reporting, stop_mouse_reporting
 
 cli = Typer(
     name=PACKAGE_NAME,
@@ -38,15 +40,18 @@ def devlog() -> None:
 
 
 @cli.command()
-def keys() -> None:
-    event_queue = Queue()
+def keys(mouse: bool = False) -> None:
+    event_queue: Queue[AnyEvent] = Queue()
 
     input_stream = sys.stdin
+    output_stream = sys.stdout
 
     key_thread = Thread(target=read_keys, args=(event_queue, input_stream), daemon=True)
     key_thread.start()
 
     original = start_input_control(stream=input_stream)
+    if mouse:
+        start_mouse_reporting(stream=output_stream)
     try:
         while True:
             print("Waiting for input...")
@@ -56,3 +61,5 @@ def keys() -> None:
         print("Exiting...")
     finally:
         stop_input_control(stream=input_stream, original=original)
+        if mouse:
+            stop_mouse_reporting(stream=output_stream)
