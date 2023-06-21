@@ -1,7 +1,6 @@
 import shutil
 import sys
 from collections.abc import Callable
-from functools import partial
 from queue import Empty, Queue
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
@@ -11,19 +10,19 @@ from typing import List, TextIO, TypeVar
 from structlog import get_logger
 
 from reprisal.components import Div, Text
-from reprisal.compositor import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
-from reprisal.driver import (
+from reprisal.events import AnyEvent, KeyPressed, TerminalResized
+from reprisal.input import read_keys, start_input_control, stop_input_control
+from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
+from reprisal.logging import configure_logging
+from reprisal.output import (
     apply_paint,
-    queue_keys,
-    start_input_control,
+    start_mouse_reporting,
     start_output_control,
-    stop_input_control,
+    stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.events import AnyEvent, KeyPressed, TerminalResized
-from reprisal.input import VTParser
-from reprisal.logging import configure_logging
 from reprisal.render import Root
+from reprisal.utils import diff
 
 logger = get_logger()
 
@@ -38,8 +37,8 @@ def stop_handling_resize_signal() -> None:
 
 def app(
     func: Callable[[], Div | Text],
-    output: TextIO = sys.stdout,
-    input: TextIO = sys.stdin,
+    output_stream: TextIO = sys.stdout,
+    input_stream: TextIO = sys.stdin,
 ) -> None:
     configure_logging()
 
@@ -49,12 +48,13 @@ def app(
 
     event_queue: Queue[AnyEvent] = Queue()
 
-    start_handling_resize_signal(queue=event_queue)
-    original = start_input_control(stream=input)
+    original = start_input_control(stream=input_stream)
     try:
-        start_output_control(stream=output)
+        start_handling_resize_signal(queue=event_queue)
+        start_output_control(stream=output_stream)
+        start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(event_queue,), daemon=True)
+        key_thread = Thread(target=read_keys, args=(event_queue, input_stream), daemon=True)
         key_thread.start()
 
         previous_full_paint: dict[Position, str] = {}
@@ -91,7 +91,7 @@ def app(
                     "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
                 )
 
-                apply_paint(stream=output, paint=diffed_paint)
+                apply_paint(stream=output_stream, paint=diffed_paint)
 
                 previous_full_paint = full_paint
 
@@ -115,14 +115,14 @@ def app(
             logger.debug(
                 "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
             )
-
     except KeyboardInterrupt as e:
         logger.debug(f"Caught {e!r}")
     finally:
         logger.info("Application stopping...")
 
-        stop_output_control(stream=output)
-        stop_input_control(stream=input, original=original)
+        stop_mouse_reporting(stream=output_stream)
+        stop_output_control(stream=output_stream)
+        stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()
 
         logger.info("Application stopped")
@@ -140,27 +140,3 @@ def drain_queue(queue: Queue[T]) -> List[T]:
             break
 
     return items
-
-
-def read_keys(queue: Queue[AnyEvent]) -> None:
-    parser = VTParser()
-    handler = partial(queue_keys, queue=queue)
-
-    while True:
-        char = sys.stdin.read(1)
-        logger.debug(f"read {char=} {ord(char)=} {hex(ord(char))=}")
-        parser.advance(ord(char), handler=handler)
-
-
-K = TypeVar("K")
-V = TypeVar("V")
-
-
-def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
-    d = {}
-    for key in a.keys() | b.keys():
-        a_val = a.get(key)
-        if a_val != b.get(key) and a_val is not None:
-            d[key] = a_val
-
-    return d

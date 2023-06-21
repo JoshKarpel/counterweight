@@ -4,7 +4,7 @@ from itertools import cycle
 from reprisal.app import app
 from reprisal.components import Div, Text
 from reprisal.events import KeyPressed
-from reprisal.input import Keys
+from reprisal.keys import Key
 from reprisal.render import Setter, use_ref, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 
@@ -35,16 +35,16 @@ def time() -> Div:
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
     def on_key(event: KeyPressed) -> None:
-        if event.keys == (Keys.Space,):
+        if event.key == Key.Space:
             set_now(datetime.now())
-        elif event.keys == (Keys.Enter,):
+        elif event.key == Key.Enter:
             set_border(advance_border())
-        elif event.keys == (Keys.Tab,):
+        elif event.key == Key.Tab:
             set_margin_style(advance_margin())
-        elif event.keys == (Keys.Backspace,):
+        elif event.key == Key.Backspace:
             set_buffer(buffer[:-1])
-        elif isinstance(event.keys, str):
-            s = [*buffer, event.keys]
+        elif event.key.isprintable():
+            s = [*buffer, event.key]
             set_buffer(s)
 
     n = f"{now}"

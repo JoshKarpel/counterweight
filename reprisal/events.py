@@ -1,4 +1,3 @@
-from reprisal.input import Keys
 from reprisal.types import FrozenForbidExtras
 
 
@@ -7,7 +6,12 @@ class TerminalResized(FrozenForbidExtras):
 
 
 class KeyPressed(FrozenForbidExtras):
-    keys: tuple[Keys, ...] | str
+    key: str
 
 
-AnyEvent = TerminalResized | KeyPressed
+class MouseMoved(FrozenForbidExtras):
+    x: int
+    y: int
+
+
+AnyEvent = TerminalResized | KeyPressed | MouseMoved
