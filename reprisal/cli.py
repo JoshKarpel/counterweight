@@ -6,7 +6,7 @@ from textwrap import dedent
 from threading import Thread
 
 from click import echo
-from typer import Typer
+from typer import Option, Typer
 
 from reprisal.constants import PACKAGE_NAME, __version__
 from reprisal.events import AnyEvent
@@ -40,7 +40,11 @@ def devlog() -> None:
 
 
 @cli.command()
-def check_input(mouse: bool = False) -> None:
+def check_input(mouse: bool = Option(default=False, help="Also capture mouse inputs and show mouse events.")) -> None:
+    """
+    Enter the same input-capture state used during application mode,
+    and show the results of reading input (e.g., key events).
+    """
     event_queue: Queue[AnyEvent] = Queue()
 
     input_stream = sys.stdin
