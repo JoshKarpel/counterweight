@@ -1,16 +1,18 @@
 from pprint import pprint
 
 from reprisal.components import Div, Text
-from reprisal.components.components import build_shadow_tree, build_value_tree, component
+from reprisal.components.components import build_initial_shadow_tree, component, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style
 
 
 @component
 def root():
+    state, set_state = use_state("second")
+
     return Div(
         children=(
             child("first"),
-            child("second"),
+            child(state),
         ),
         style=Style(
             border=Border(kind=BorderKind.Heavy),
@@ -20,6 +22,7 @@ def root():
 
 @component
 def child(text: str):
+    print(f"{text=}")
     return Text(
         text=text,
         style=Style(
@@ -34,10 +37,10 @@ r = root()
 
 # pprint(r.dict())
 
-shadow = build_shadow_tree(r)
+shadow = build_initial_shadow_tree(r)
 
 pprint(shadow.dict())
 
-values = build_value_tree(shadow)
-
-pprint(values.dict())
+# values = build_value_tree(shadow)
+#
+# pprint(values.dict())
