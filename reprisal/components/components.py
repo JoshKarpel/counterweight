@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextvars import ContextVar
+from itertools import zip_longest
 from typing import Literal, TypeVar
 
 from pydantic import Field
@@ -19,13 +20,13 @@ class Component(FrozenForbidExtras):
     func: Callable[[object, ...], AnyElement]
 
     def __call__(self, *args, **kwargs):
-        return RenderCall(component=self, args=args, kwargs=tuple(kwargs.items()))
+        return RenderCall(component=self, args=args, kwargs=kwargs)
 
 
 class RenderCall(FrozenForbidExtras):
     component: Component
     args: tuple[object, ...]
-    kwargs: tuple[tuple[str, object], ...]
+    kwargs: dict[str, object]
 
 
 class Div(FrozenForbidExtras):
@@ -40,7 +41,7 @@ class Text(FrozenForbidExtras):
     text: str
     style: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], None] | None = None
-    children: list[AnyElement] = Field(default_factory=list)  # TODO: max_items=0 doesn't work here?
+    children: list[AnyElement] = Field(default_factory=list, exclude=True)  # TODO: max_items=0 doesn't work here?
 
 
 AnyElement = Div | Text
@@ -105,6 +106,40 @@ def build_initial_shadow_tree(root: RenderCall) -> ShadowNode:
             sn.children.append(child)
 
     return sn
+
+
+def reconcile_shadow_tree(root: ShadowNode) -> ShadowNode:
+    if root.dirty:
+        print(f"dirty {root=}")
+
+        reset_token = current_shadow_node.set(root)
+
+        root.value = root.render_call.component.func(*root.render_call.args, **dict(root.render_call.kwargs))
+
+        current_shadow_node.reset(reset_token)
+        root.hook_idx = 0
+
+        root.dirty = False
+
+    new = []
+    for prev_child, new_child in zip_longest(root.children, root.value.children):
+        if isinstance(new_child, RenderCall):
+            if not isinstance(prev_child, ShadowNode):
+                new.append(build_initial_shadow_tree(new_child))
+            else:
+                if prev_child.render_call == new_child and not prev_child.dirty:
+                    # cache hit
+                    new.append(prev_child)
+
+                else:
+                    # cache miss
+                    new.append(reconcile_shadow_tree(prev_child.copy(update={"render_call": new_child})))
+        else:
+            new.append(new_child)
+
+    root.children = new
+
+    return root
 
 
 def build_value_tree(root: ShadowNode) -> AnyElement:
