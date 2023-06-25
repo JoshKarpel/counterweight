@@ -2,8 +2,8 @@ from pprint import pprint
 
 from reprisal.components import Div, Text
 from reprisal.components.components import (
+    build_concrete_element_tree,
     build_initial_shadow_tree,
-    build_value_tree,
     component,
     reconcile_shadow_tree,
     use_state,
@@ -57,7 +57,7 @@ reconciled = reconcile_shadow_tree(shadow)
 
 # pprint(reconciled.dict())
 
-values = build_value_tree(reconciled)
+values = build_concrete_element_tree(reconciled)
 
 pprint(values.dict())
 

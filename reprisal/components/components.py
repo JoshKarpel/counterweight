@@ -17,34 +17,31 @@ def component(func: Callable[[object, ...], object]) -> Component:
 
 
 class Component(FrozenForbidExtras):
-    func: Callable[[object, ...], AnyElement]
+    func: Callable[[object, ...], Element]
 
-    def __call__(self, *args, **kwargs):
-        return RenderCall(component=self, args=args, kwargs=kwargs)
+    def __call__(self, *args, **kwargs) -> Composite:
+        return Composite(component=self, args=args, kwargs=kwargs)
 
 
-class RenderCall(FrozenForbidExtras):
+class Composite(FrozenForbidExtras):
     component: Component
     args: tuple[object, ...]
     kwargs: dict[str, object]
 
 
-class Div(FrozenForbidExtras):
-    type: Literal["div"] = "div"
-    children: tuple[AnyElement | RenderCall, ...] = Field(default=...)
-    style: Style = Field(default=Style())
+class Element(FrozenForbidExtras):
+    children: tuple[Element | Composite, ...] = Field(default_factory=tuple)
     on_key: Callable[[KeyPressed], None] | None = None
+    style: Style = Field(default=Style())
 
 
-class Text(FrozenForbidExtras):
+class Div(Element):
+    type: Literal["div"] = "div"
+
+
+class Text(Element):
     type: Literal["text"] = "text"
     text: str
-    style: Style = Field(default=Style())
-    on_key: Callable[[KeyPressed], None] | None = None
-    children: list[AnyElement] = Field(default_factory=list, exclude=True)  # TODO: max_items=0 doesn't work here?
-
-
-AnyElement = Div | Text
 
 
 T = TypeVar("T")
@@ -59,9 +56,9 @@ AnyHook = UseState
 
 
 class ShadowNode(ForbidExtras):
-    render_call: RenderCall
-    value: AnyElement | None = None
-    children: list[ShadowNode | AnyElement] = Field(default_factory=list)
+    render_call: Composite
+    value: Element | None = None
+    children: list[ShadowNode | Element] = Field(default_factory=list)
     hooks: list[AnyHook] = Field(default_factory=list)
     hook_idx: int = 0
     dirty: bool = False
@@ -89,7 +86,7 @@ def use_state(initial_value: T | Callable[[], T]) -> tuple[T, Callable[[T], None
     return current_shadow_node.get().use_state(initial_value)
 
 
-def build_initial_shadow_tree(root: RenderCall) -> ShadowNode:
+def build_initial_shadow_tree(root: Composite) -> ShadowNode:
     sn = ShadowNode(render_call=root)
 
     reset_token = current_shadow_node.set(sn)
@@ -100,7 +97,7 @@ def build_initial_shadow_tree(root: RenderCall) -> ShadowNode:
     sn.hook_idx = 0
 
     for child in sn.value.children:
-        if isinstance(child, RenderCall):
+        if isinstance(child, Composite):
             sn.children.append(build_initial_shadow_tree(child))
         else:
             sn.children.append(child)
@@ -123,7 +120,7 @@ def reconcile_shadow_tree(root: ShadowNode) -> ShadowNode:
 
     new = []
     for prev_child, new_child in zip_longest(root.children, root.value.children):
-        if isinstance(new_child, RenderCall):
+        if isinstance(new_child, Composite):
             if not isinstance(prev_child, ShadowNode):
                 new.append(build_initial_shadow_tree(new_child))
             else:
@@ -142,13 +139,14 @@ def reconcile_shadow_tree(root: ShadowNode) -> ShadowNode:
     return root
 
 
-def build_value_tree(root: ShadowNode) -> AnyElement:
+def build_concrete_element_tree(root: ShadowNode) -> Element:
     return root.value.copy(
         update={"children": [child.value if isinstance(child, ShadowNode) else child for child in root.children]}
     )
 
 
 Component.update_forward_refs()
+Element.update_forward_refs()
 Div.update_forward_refs()
 Text.update_forward_refs()
 UseState.update_forward_refs()
