@@ -1,5 +1,6 @@
 import shutil
 import sys
+from collections.abc import Callable
 from queue import Empty, Queue
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
@@ -8,7 +9,7 @@ from typing import List, TextIO, TypeVar
 
 from structlog import get_logger
 
-from reprisal.components.components import Component, build_initial_shadow_tree, reconcile_shadow_tree
+from reprisal.components.components import Component, build_concrete_element_tree, render_shadow_node_from_previous
 from reprisal.events import AnyEvent, KeyPressed, TerminalResized
 from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
@@ -34,7 +35,7 @@ def stop_handling_resize_signal() -> None:
 
 
 def app(
-    root: Component,
+    root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
 ) -> None:
@@ -56,7 +57,7 @@ def app(
         previous_full_paint: dict[Position, str] = {}
 
         needs_render = True
-        shadow = build_initial_shadow_tree(root)
+        shadow = render_shadow_node_from_previous(root(), None)
         while True:
             if needs_render:
                 w, h = shutil.get_terminal_size()
@@ -70,14 +71,17 @@ def app(
                 )
 
                 start_render = perf_counter()
+                shadow = render_shadow_node_from_previous(root(), shadow)
+                logger.debug("Rendered shadow tree", elapsed_ms=(perf_counter() - start_render) * 1000)
 
-                shadow = reconcile_shadow_tree(shadow)
-
-                component_tree = root.render()
-                logger.debug("Rendered component tree", elapsed_ms=(perf_counter() - start_render) * 1000)
+                start_render = perf_counter()
+                element_tree = build_concrete_element_tree(shadow)
+                logger.debug(
+                    "Derived concrete element tree from shadow tree", elapsed_ms=(perf_counter() - start_render) * 1000
+                )
 
                 start_layout = perf_counter()
-                layout_tree = build_layout_tree(component_tree)
+                layout_tree = build_layout_tree(element_tree)
                 layout_tree.layout(b)
                 logger.debug("Calculated layout", elapsed_ms=(perf_counter() - start_layout) * 1000)
 
@@ -109,6 +113,7 @@ def app(
                     case KeyPressed():
                         for component in components:
                             if component.on_key:
+                                needs_render = True
                                 component.on_key(event)
                 logger.debug("Handled event", event_=event, elapsed_ms=(perf_counter() - start_handle_event) * 1000)
 

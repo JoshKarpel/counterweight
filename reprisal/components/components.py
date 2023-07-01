@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextvars import ContextVar
+from dataclasses import dataclass
 from functools import wraps
 from itertools import zip_longest
-from typing import Literal, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import Field
 
@@ -50,22 +51,27 @@ class UseState(ForbidExtras):
     value: object
 
 
-AnyHook = UseState
+@dataclass(slots=True)
+class Ref(Generic[T]):
+    current: T
+
+
+Getter = Callable[[], T]
+Setter = Callable[[T], None]
 
 current_hook_idx = ContextVar("current_hook_idx")
-current_shadow_node = ContextVar("current_shadow_node")
 current_hook_state = ContextVar("current_hook_state")
 
 
 class Hooks(ForbidExtras):
-    hooks: list[AnyHook] = Field(default_factory=list)
+    data: list[UseState | Ref] = Field(default_factory=list)
 
-    def use_state(self, initial_value: T | Callable[[], T]) -> tuple[T, Callable[[T], None]]:
+    def use_state(self, initial_value: T | Getter[T]) -> tuple[T, Setter[T]]:
         try:
-            hook = self.hooks[current_hook_idx.get()]
+            hook = self.data[current_hook_idx.get()]
         except IndexError:
             hook = UseState(value=initial_value() if callable(initial_value) else initial_value)
-            self.hooks.append(hook)
+            self.data.append(hook)
 
         def set_state(value: T) -> None:
             hook.value = value
@@ -74,9 +80,24 @@ class Hooks(ForbidExtras):
 
         return hook.value, set_state
 
+    def use_ref(self, initial_value: T) -> Ref[T]:
+        try:
+            hook = self.data[current_hook_idx.get()]
+        except IndexError:
+            hook = Ref(current=initial_value)
+            self.data.append(hook)
 
-def use_state(initial_value: T | Callable[[], T]) -> tuple[T, Callable[[T], None]]:
+        current_hook_idx.set(current_hook_idx.get() + 1)
+
+        return hook
+
+
+def use_state(initial_value: T | Getter[T]) -> tuple[T, Setter[T]]:
     return current_hook_state.get().use_state(initial_value)
+
+
+def use_ref(initial_value: T) -> Ref[T]:
+    return current_hook_state.get().use_ref(initial_value)
 
 
 class ShadowNode(ForbidExtras):

@@ -7,7 +7,7 @@ from typing import NamedTuple
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.components.components import Div, Text
+from reprisal.components.components import Div, Element, Text
 from reprisal.styles.styles import Border
 from reprisal.types import ForbidExtras
 
@@ -78,11 +78,11 @@ class BoxDimensions(ForbidExtras):
 
 
 class LayoutBox(ForbidExtras):
-    element: Div | Text
+    element: Element
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
 
-    def walk_from_bottom(self) -> Iterator[Div | Text]:
+    def walk_from_bottom(self) -> Iterator[Element]:
         for child in self.children:
             yield from child.walk_from_bottom()
         yield self.element
@@ -224,7 +224,7 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height = self.element.style.span.height
 
 
-def build_layout_tree(element: Div | Text) -> LayoutBox:
+def build_layout_tree(element: Element) -> LayoutBox:
     return LayoutBox(
         element=element,
         children=[build_layout_tree(e) for e in element.children] if isinstance(element, Div) else [],
