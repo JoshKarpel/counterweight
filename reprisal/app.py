@@ -1,6 +1,5 @@
 import shutil
 import sys
-from collections.abc import Callable
 from queue import Empty, Queue
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
@@ -9,7 +8,7 @@ from typing import List, TextIO, TypeVar
 
 from structlog import get_logger
 
-from reprisal.components import Div, Text
+from reprisal.components.components import Component, build_initial_shadow_tree, reconcile_shadow_tree
 from reprisal.events import AnyEvent, KeyPressed, TerminalResized
 from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
@@ -21,7 +20,6 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.render import Root
 from reprisal.utils import diff
 
 logger = get_logger()
@@ -36,15 +34,13 @@ def stop_handling_resize_signal() -> None:
 
 
 def app(
-    func: Callable[[], Div | Text],
+    root: Component,
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
 ) -> None:
     configure_logging()
 
     logger.info("Application starting...")
-
-    root = Root(func)
 
     event_queue: Queue[AnyEvent] = Queue()
 
@@ -60,8 +56,9 @@ def app(
         previous_full_paint: dict[Position, str] = {}
 
         needs_render = True
+        shadow = build_initial_shadow_tree(root)
         while True:
-            if root.needs_render or needs_render:
+            if needs_render:
                 w, h = shutil.get_terminal_size()
                 b = BoxDimensions(
                     # height is always zero here because this is the starting height of the context box in the layout algorithm
@@ -73,6 +70,9 @@ def app(
                 )
 
                 start_render = perf_counter()
+
+                shadow = reconcile_shadow_tree(shadow)
+
                 component_tree = root.render()
                 logger.debug("Rendered component tree", elapsed_ms=(perf_counter() - start_render) * 1000)
 

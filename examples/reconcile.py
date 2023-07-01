@@ -3,62 +3,53 @@ from pprint import pprint
 from reprisal.components import Div, Text
 from reprisal.components.components import (
     build_concrete_element_tree,
-    build_initial_shadow_tree,
     component,
-    reconcile_shadow_tree,
+    render_shadow_node_from_previous,
     use_state,
 )
-from reprisal.styles import Border, BorderKind, Padding, Span, Style
 
-set_state = None
+setters = {}
 
 
 @component
-def root():
+def root() -> Div:
     return Div(
         children=(
             child("first"),
             child("second"),
         ),
-        style=Style(
-            border=Border(kind=BorderKind.Heavy),
-        ),
     )
 
 
 @component
-def child(text: str):
-    global set_state
-    state, set_state = use_state("initial")
+def child(text: str) -> Text:
+    a, set_a = use_state("a")
+    b, set_b = use_state("b")
+
+    setters[text, "a"] = set_a
+    setters[text, "b"] = set_b
 
     return Text(
-        text=f"{text=} {state=}",
-        style=Style(
-            span=Span(width="auto", height=1),
-            border=Border(kind=BorderKind.Light),
-            padding=Padding(top=0, bottom=0, left=0, right=0),
-        ),
+        text=f"{text=} {a=} {b=}",
     )
 
 
-r = root()
+print("-" * 40)
 
-# pprint(r.dict())
+r = render_shadow_node_from_previous(root(), None)
+pprint(r.dict(exclude_defaults=True))
+print("-" * 40)
 
-shadow = build_initial_shadow_tree(r)
+e = build_concrete_element_tree(r)
+pprint(e.dict(exclude_defaults=True))
+print("-" * 40)
 
-# pprint(shadow.dict())
+setters["first", "a"]("c")
 
-set_state("changed")
+r2 = render_shadow_node_from_previous(root(), r)
+pprint(r2.dict(exclude_defaults=True))
+print("-" * 40)
 
-# pprint(shadow.dict())
-
-reconciled = reconcile_shadow_tree(shadow)
-
-# pprint(reconciled.dict())
-
-values = build_concrete_element_tree(reconciled)
-
-pprint(values.dict())
-
-print("done")
+e2 = build_concrete_element_tree(r2)
+pprint(e2.dict(exclude_defaults=True))
+print("-" * 40)
