@@ -44,7 +44,7 @@ def paint_element(element: Element, dims: BoxDimensions) -> Paint:
 
 
 def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
-    style = paragraph.style.text.style
+    style = paragraph.style.text.style.copy(deep=True)
     return {Position(x, rect.y): CellPaint(char=c, style=style) for c, x in zip(paragraph.content, rect.x_range())}
 
 
@@ -79,28 +79,25 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
 
 def paint_border(border: Border, rect: Rect) -> Paint:
     style = border.style.copy(deep=True)
+    left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value
     chars = {}
 
-    # left
     for y in rect.y_range():
-        chars[Position(rect.left, y)] = CellPaint(char=border.kind.value[0], style=style)
+        chars[Position(rect.left, y)] = CellPaint(char=left, style=style)
 
-    # right
     for y in rect.y_range():
-        chars[Position(rect.right, y)] = CellPaint(char=border.kind.value[1], style=style)
+        chars[Position(rect.right, y)] = CellPaint(char=right, style=style)
 
-    # top
     for x in rect.x_range():
-        chars[Position(x, rect.top)] = CellPaint(char=border.kind.value[2], style=style)
+        chars[Position(x, rect.top)] = CellPaint(char=top, style=style)
 
-    # bottom
     for x in rect.x_range():
-        chars[Position(x, rect.bottom)] = CellPaint(char=border.kind.value[3], style=style)
+        chars[Position(x, rect.bottom)] = CellPaint(char=bottom, style=style)
 
-    chars[Position(x=rect.left, y=rect.top)] = CellPaint(char=border.kind.value[4], style=style)
-    chars[Position(x=rect.right, y=rect.top)] = CellPaint(char=border.kind.value[5], style=style)
-    chars[Position(x=rect.left, y=rect.bottom)] = CellPaint(char=border.kind.value[6], style=style)
-    chars[Position(x=rect.right, y=rect.bottom)] = CellPaint(char=border.kind.value[7], style=style)
+    chars[Position(x=rect.left, y=rect.top)] = CellPaint(char=left_top, style=style)
+    chars[Position(x=rect.right, y=rect.top)] = CellPaint(char=right_top, style=style)
+    chars[Position(x=rect.left, y=rect.bottom)] = CellPaint(char=left_bottom, style=style)
+    chars[Position(x=rect.right, y=rect.bottom)] = CellPaint(char=right_bottom, style=style)
 
     return chars
 
