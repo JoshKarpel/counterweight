@@ -39,15 +39,7 @@ def toggle() -> Div:
 
     margin_style: Style
     set_margin_style: Setter[Style]
-    margin_cycle_ref = use_ref(
-        cycle(
-            [
-                mr_auto,
-                mx_auto,
-                ml_auto,
-            ]
-        )
-    )
+    margin_cycle_ref = use_ref(cycle([mr_auto, mx_auto, ml_auto]))
 
     def advance_margin() -> Style:
         return next(margin_cycle_ref.current)
@@ -56,15 +48,7 @@ def toggle() -> Div:
 
     border_color: Style
     set_border_color: Setter[Style]
-    border_color_ref = use_ref(
-        cycle(
-            [
-                border_lime_700,
-                border_amber_700,
-                border_sky_700,
-            ]
-        )
-    )
+    border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
 
     def advance_border_color() -> Style:
         return next(border_color_ref.current)
