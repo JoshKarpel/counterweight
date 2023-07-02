@@ -5,9 +5,9 @@ from itertools import cycle
 from structlog import get_logger
 
 from reprisal.app import app
-from reprisal.components import Div, Text
-from reprisal.components.components import Setter, component, use_effect, use_ref, use_state
+from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
+from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 

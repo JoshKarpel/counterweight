@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
@@ -9,15 +11,10 @@ from typing import List, TextIO, TypeVar
 
 from structlog import get_logger
 
-from reprisal.components.components import (
-    Component,
-    ShadowNode,
-    UseEffect,
-    build_concrete_element_tree,
-    render_shadow_node_from_previous,
-)
-from reprisal.context_vars import current_event_queue
+from reprisal._context_vars import current_event_queue
+from reprisal.components import Component, Element
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
+from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
 from reprisal.logging import configure_logging
@@ -28,6 +25,7 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
+from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 from reprisal.utils import diff
 
 logger = get_logger()
@@ -67,7 +65,7 @@ async def app(
 
         needs_render = True
         shadow = render_shadow_node_from_previous(root(), None)
-        active_effects = set()
+        active_effects: set[Task[None]] = set()
 
         async with TaskGroup() as tg:
             while True:
@@ -174,8 +172,8 @@ async def drain_queue(queue: Queue[T]) -> List[T]:
     return items
 
 
-async def handle_effects(shadow: ShadowNode, active_effects: set[Task], task_group: TaskGroup) -> set[Task]:
-    new_effects = set()
+async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
+    new_effects: set[Task[None]] = set()
     for node in shadow.walk():
         for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
@@ -186,6 +184,8 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task], task_gro
                     effect.task = t
                     logger.debug("Created effect", task=t, effect=effect)
                 else:
+                    if effect.task is None:
+                        raise Exception("Effect task should never be None at this point")
                     new_effects.add(effect.task)
 
     for task in active_effects - new_effects:
@@ -193,3 +193,9 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task], task_gro
         task.cancel()
 
     return new_effects
+
+
+def build_concrete_element_tree(root: ShadowNode) -> Element:
+    return root.element.copy(
+        update={"children": [child.element if isinstance(child, ShadowNode) else child for child in root.children]}
+    )

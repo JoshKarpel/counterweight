@@ -7,7 +7,7 @@ from typing import NamedTuple
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.components.components import Div, Element, Text
+from reprisal.components import Div, Element, Text
 from reprisal.styles.styles import Border
 from reprisal.types import ForbidExtras
 
@@ -244,7 +244,7 @@ def paint(layout: LayoutBox) -> dict[Position, str]:
     return painted
 
 
-def paint_element(element: Div | Text, dims: BoxDimensions) -> dict[Position, str]:
+def paint_element(element: Element, dims: BoxDimensions) -> dict[Position, str]:
     m = edge(dims.margin, dims.margin_rect())
     b = border(element.style.border, dims.border_rect()) if element.style.border else {}
     t = edge(dims.padding, dims.padding_rect())
