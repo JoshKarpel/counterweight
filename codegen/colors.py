@@ -315,11 +315,13 @@ for color, shades in colors.items():
 
     generated_lines.append("")
 
-x = [
-    *utils_text[: start + 1],
-    *generated_lines,
-    *utils_text[stop:],
-    "",
-]
-
-utils_path.write_text("\n".join(x))
+utils_path.write_text(
+    "\n".join(
+        [
+            *utils_text[: start + 1],
+            *generated_lines,
+            *utils_text[stop:],
+            "",
+        ]
+    )
+)
