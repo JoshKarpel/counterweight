@@ -32,8 +32,8 @@ from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 logger = get_logger()
 
 
-def start_handling_resize_signal(queue: Queue[AnyEvent]) -> None:
-    signal(SIGWINCH, lambda _, __: queue.put_nowait(TerminalResized()))
+def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
+    signal(SIGWINCH, lambda _, __: put_event(TerminalResized()))
 
 
 def stop_handling_resize_signal() -> None:
@@ -50,19 +50,24 @@ async def app(
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
+    current_event_queue.set(event_queue)
+
+    loop = get_running_loop()
+
+    def put_event(event: AnyEvent) -> None:
+        loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
     original = start_input_control(stream=input_stream)
+
     try:
-        start_handling_resize_signal(queue=event_queue)
+        start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
         start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
+        key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
 
         previous_full_paint: Paint = {}
-
-        current_event_queue.set(event_queue)
 
         needs_render = True
         shadow = render_shadow_node_from_previous(root(), None)
