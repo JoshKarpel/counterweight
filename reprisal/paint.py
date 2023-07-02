@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 from structlog import get_logger
 
-from reprisal.components import Div, Element, Text
+from reprisal.components import Div, Element, Paragraph
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
 from reprisal.styles.styles import CellStyle
@@ -20,10 +20,10 @@ class CellPaint(FrozenForbidExtras):
 Paint = dict[Position, CellPaint]
 
 
-def paint(layout: LayoutBox) -> Paint:
+def paint_layout(layout: LayoutBox) -> Paint:
     painted = paint_element(layout.element, layout.dims)
     for child in layout.children:
-        painted |= paint(child)  # no Z-level support! need something like a chainmap
+        painted |= paint_layout(child)  # no Z-level support! need something like a chainmap
     return painted
 
 
@@ -37,14 +37,15 @@ def paint_element(element: Element, dims: BoxDimensions) -> Paint:
     match element:
         case Div():
             return box
-        case Text() as e:
-            return paint_text(e, dims.content) | box
+        case Paragraph() as e:
+            return paint_paragraph(e, dims.content) | box
         case _:
             raise NotImplementedError(f"Painting {element} is not implemented")
 
 
-def paint_text(text: Text, rect: Rect) -> Paint:
-    return {Position(x, rect.y): CellPaint(char=c) for c, x in zip(text.text, rect.x_range())}
+def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
+    style = paragraph.style.text.style
+    return {Position(x, rect.y): CellPaint(char=c, style=style) for c, x in zip(paragraph.content, rect.x_range())}
 
 
 def paint_edge(edge: Edge, rect: Rect, char: str = " ") -> Paint:

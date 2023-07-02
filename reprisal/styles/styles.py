@@ -234,9 +234,15 @@ class Span(StylePart):
     height: int | Literal["auto"] = Field(default="auto")
 
 
+class Text(StylePart):
+    style: CellStyle = Field(default_factory=CellStyle)
+    # wrap, overflow, alignment, etc.
+
+
 class Style(StylePart):
     display: Literal["block"] = Field(default="block")
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)
     padding: Padding = Field(default=Padding(top=0, bottom=0, left=0, right=0))
+    text: Text = Field(default=Text())

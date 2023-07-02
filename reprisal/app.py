@@ -26,7 +26,7 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.paint import Paint, paint
+from reprisal.paint import Paint, paint_layout
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 
 logger = get_logger()
@@ -98,7 +98,7 @@ async def app(
                     logger.debug("Calculated layout", elapsed_ms=(perf_counter() - start_layout) * 1000)
 
                     start_paint = perf_counter()
-                    full_paint = paint(layout_tree)
+                    full_paint = paint_layout(layout_tree)
                     logger.debug("Generated full paint", elapsed_ms=(perf_counter() - start_paint) * 1000)
 
                     start_diff = perf_counter()

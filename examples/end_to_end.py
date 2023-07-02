@@ -5,7 +5,7 @@ from itertools import cycle
 from structlog import get_logger
 
 from reprisal.app import app
-from reprisal.components import Div, Text, component
+from reprisal.components import Div, Paragraph, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
@@ -91,15 +91,15 @@ def time(margin_style: Style) -> Div:
 
     use_effect(tick, deps=())
 
-    n = f"{now}"
+    content = f"{now}"
 
     return Div(
         children=[
-            Text(
-                text=n,
+            Paragraph(
+                content=content,
                 style=margin_style
                 | Style(
-                    span=Span(width=len(n), height=1),
+                    span=Span(width=len(content), height=1),
                     border=Border(kind=BorderKind.LightRounded),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 ),
@@ -122,15 +122,15 @@ def textpad(margin_style: Style) -> Div:
                 s = [*buffer, event.key]
                 set_buffer(s)
 
-    text = "".join(buffer)
+    content = "".join(buffer)
 
     return Div(
         children=[
-            Text(
-                text=text,
+            Paragraph(
+                content=content,
                 style=margin_style
                 | Style(
-                    span=Span(width=len(text), height=1),
+                    span=Span(width=len(content), height=1),
                     border=Border(kind=BorderKind.LightRounded),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 ),
