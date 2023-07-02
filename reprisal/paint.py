@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 from pydantic import Field
-from pydantic.color import Color
+from structlog import get_logger
 
 from reprisal.components import Div, Element, Text
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
+from reprisal.styles.styles import CellStyle
 from reprisal.types import FrozenForbidExtras
 
-
-class CellStyle(FrozenForbidExtras):
-    fg: Color = Field(default=Color("white"))
-    bg: Color = Field(default=Color("black"))
-    bold: bool = False
-    dim: bool = False
-    italic: bool = False
+logger = get_logger()
 
 
 class CellPaint(FrozenForbidExtras):
@@ -34,11 +29,7 @@ def paint(layout: LayoutBox) -> Paint:
 
 def paint_element(element: Element, dims: BoxDimensions) -> Paint:
     m = paint_edge(dims.margin, dims.margin_rect())
-    b = (
-        paint_border(element.style.border, dims.border_rect(), style=CellStyle(fg=element.style.border_color))
-        if element.style.border
-        else {}
-    )
+    b = paint_border(element.style.border, dims.border_rect()) if element.style.border else {}
     t = paint_edge(dims.padding, dims.padding_rect())
 
     box = m | b | t
@@ -82,7 +73,8 @@ def paint_edge(edge: Edge, rect: Rect, char: str = " ") -> Paint:
     return chars
 
 
-def paint_border(border: Border, rect: Rect, style: CellStyle) -> Paint:
+def paint_border(border: Border, rect: Rect) -> Paint:
+    style = border.style.copy(deep=True)
     chars = {}
 
     # left

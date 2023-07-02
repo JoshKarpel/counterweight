@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 from itertools import cycle
 
-from pydantic.color import Color
 from structlog import get_logger
 
 from reprisal.app import app
@@ -11,6 +10,7 @@ from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
+from reprisal.styles.styles import CellStyle, Color
 
 logger = get_logger()
 
@@ -28,7 +28,15 @@ def toggle() -> Div:
 
     margin_style: Style
     set_margin_style: Setter[Style]
-    margin_cycle_ref = use_ref(cycle([mr_auto, mx_auto, ml_auto]))
+    margin_cycle_ref = use_ref(
+        cycle(
+            [
+                mr_auto,
+                mx_auto,
+                ml_auto,
+            ]
+        )
+    )
 
     def advance_margin() -> Style:
         return next(margin_cycle_ref.current)
@@ -40,9 +48,9 @@ def toggle() -> Div:
     border_color_ref = use_ref(
         cycle(
             [
-                Style(border_color=Color("red")),
-                Style(border_color=Color("green")),
-                Style(border_color=Color("blue")),
+                Style(border=Border(style=CellStyle(foreground=Color.from_name("red")))),
+                Style(border=Border(style=CellStyle(foreground=Color.from_name("blue")))),
+                Style(border=Border(style=CellStyle(foreground=Color.from_name("green")))),
             ]
         )
     )
@@ -67,10 +75,7 @@ def toggle() -> Div:
 
     return Div(
         children=[time(margin_style) if toggled else textpad(margin_style)],
-        style=Style(
-            border=Border(kind=border),
-        )
-        | border_color,
+        style=border_color | Style(border=Border(kind=border)),
         on_key=on_key,
     )
 
@@ -92,12 +97,12 @@ def time(margin_style: Style) -> Div:
         children=[
             Text(
                 text=n,
-                style=Style(
+                style=margin_style
+                | Style(
                     span=Span(width=len(n), height=1),
                     border=Border(kind=BorderKind.LightRounded),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
-                )
-                | margin_style,
+                ),
             )
         ]
     )
@@ -123,12 +128,12 @@ def textpad(margin_style: Style) -> Div:
         children=[
             Text(
                 text=text,
-                style=Style(
+                style=margin_style
+                | Style(
                     span=Span(width=len(text), height=1),
                     border=Border(kind=BorderKind.MediumShade),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
-                )
-                | margin_style,
+                ),
             )
         ],
         on_key=on_key,

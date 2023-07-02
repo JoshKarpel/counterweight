@@ -21,6 +21,22 @@ def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
     return d
 
 
+def merge(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
+    merged: dict[str, object] = {}
+
+    for key in a.keys() | b.keys():
+        a_val, b_val = a.get(key), b.get(key)
+
+        if isinstance(a_val, dict) and isinstance(b_val, dict):
+            merged[key] = merge(a_val, b_val)
+        elif b_val is not None:
+            merged[key] = b_val
+        elif a_val is not None:
+            merged[key] = a_val
+
+    return merged
+
+
 async def drain_queue(queue: Queue[T]) -> List[T]:
     items = [await queue.get()]
 

@@ -17,7 +17,7 @@ from reprisal.components import Component, Element
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree
+from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     paint_to_instructions,
@@ -26,7 +26,7 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.paint import paint
+from reprisal.paint import Paint, paint
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 
 logger = get_logger()
@@ -60,7 +60,7 @@ async def app(
         key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
         key_thread.start()
 
-        previous_full_paint: dict[Position, str] = {}
+        previous_full_paint: Paint = {}
 
         current_event_queue.set(event_queue)
 
