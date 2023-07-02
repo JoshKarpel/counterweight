@@ -10,7 +10,8 @@ from typing import Coroutine, Generic, Literal, TypeVar
 
 from pydantic import Field
 
-from reprisal.events import KeyPressed
+from reprisal.context_vars import current_event_queue
+from reprisal.events import KeyPressed, StateSet
 from reprisal.styles import Style
 from reprisal.types import ForbidExtras, FrozenForbidExtras
 
@@ -94,6 +95,7 @@ class Hooks(ForbidExtras):
 
         def set_state(value: T) -> None:
             hook.value = value
+            current_event_queue.get().put_nowait(StateSet())
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
@@ -215,3 +217,4 @@ Element.update_forward_refs()
 Div.update_forward_refs()
 Text.update_forward_refs()
 UseState.update_forward_refs()
+UseEffect.update_forward_refs()

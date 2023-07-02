@@ -16,7 +16,8 @@ from reprisal.components.components import (
     build_concrete_element_tree,
     render_shadow_node_from_previous,
 )
-from reprisal.events import AnyEvent, KeyPressed, TerminalResized
+from reprisal.context_vars import current_event_queue
+from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
 from reprisal.logging import configure_logging
@@ -49,7 +50,6 @@ async def app(
 
     logger.info("Application starting...")
 
-    # This is not strictly thread-safe, but it's good enough for now
     event_queue: Queue[AnyEvent] = Queue()
 
     original = start_input_control(stream=input_stream)
@@ -62,6 +62,8 @@ async def app(
         key_thread.start()
 
         previous_full_paint: dict[Position, str] = {}
+
+        current_event_queue.set(event_queue)
 
         needs_render = True
         shadow = render_shadow_node_from_previous(root(), None)
@@ -84,11 +86,11 @@ async def app(
                     shadow = render_shadow_node_from_previous(root(), shadow)
                     logger.debug("Rendered shadow tree", elapsed_ms=(perf_counter() - start_render) * 1000)
 
-                    start_render = perf_counter()
+                    start_concrete = perf_counter()
                     element_tree = build_concrete_element_tree(shadow)
                     logger.debug(
                         "Derived concrete element tree from shadow tree",
-                        elapsed_ms=(perf_counter() - start_render) * 1000,
+                        elapsed_ms=(perf_counter() - start_concrete) * 1000,
                     )
 
                     start_layout = perf_counter()
@@ -110,23 +112,32 @@ async def app(
 
                     previous_full_paint = full_paint
 
+                    start_effects = perf_counter()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
+                    logger.debug(
+                        "Handled effects",
+                        elapsed_ms=(perf_counter() - start_effects) * 1000,
+                        num_effects=len(active_effects),
+                    )
 
                     needs_render = False
 
-                start_event_handling = perf_counter()
                 events = await drain_queue(event_queue)
+
+                start_event_handling = perf_counter()
                 components = layout_tree.walk_from_bottom()
                 for event in events:
-                    needs_render = True
                     start_handle_event = perf_counter()
                     match event:
                         case TerminalResized():
+                            needs_render = True
                             previous_full_paint = {}
                         case KeyPressed():
                             for component in components:
                                 if component.on_key:
                                     component.on_key(event)
+                        case StateSet():
+                            needs_render = True
                     logger.debug(
                         "Handled event", event_obj=event, elapsed_ms=(perf_counter() - start_handle_event) * 1000
                     )
@@ -166,18 +177,19 @@ async def drain_queue(queue: Queue[T]) -> List[T]:
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task], task_group: TaskGroup) -> set[Task]:
     new_effects = set()
     for node in shadow.walk():
-        for effect in node.hooks:
+        for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
                 if effect.deps != effect.new_deps:
                     effect.deps = effect.new_deps
                     t = task_group.create_task(effect.setup())
                     new_effects.add(t)
-                    effect.t = t
+                    effect.task = t
+                    logger.debug("Created effect", task=t, effect=effect)
                 else:
                     new_effects.add(effect.task)
 
-    for effect in new_effects - active_effects:
-        logger.debug("Cancelled effect", task=effect)
-        effect.cancel()
+    for task in active_effects - new_effects:
+        logger.debug("Cancelled effect task", task=task)
+        task.cancel()
 
     return new_effects

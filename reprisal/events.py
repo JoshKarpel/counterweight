@@ -14,4 +14,8 @@ class MouseMoved(FrozenForbidExtras):
     y: int
 
 
-AnyEvent = TerminalResized | KeyPressed | MouseMoved
+class StateSet(FrozenForbidExtras):
+    pass
+
+
+AnyEvent = TerminalResized | KeyPressed | MouseMoved | StateSet
