@@ -10,7 +10,7 @@ b = BoxDimensions(
 )
 
 e = Div(
-    children=(
+    children=[
         Text(
             text="width=auto",
             style=Style(
@@ -66,7 +66,7 @@ e = Div(
                 )
             ),
         ),
-    ),
+    ],
     style=Style(
         border=Border(kind=BorderKind.Heavy),
     ),

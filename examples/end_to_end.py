@@ -1,21 +1,21 @@
+import asyncio
 from datetime import datetime
 from itertools import cycle
 
+from structlog import get_logger
+
 from reprisal.app import app
-from reprisal.components import Div, Text
+from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
+from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
-from reprisal.render import Setter, use_ref, use_state
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 
+logger = get_logger()
 
-def time() -> Div:
-    now, set_now = use_state(datetime.now())
 
-    buffer: list[str]
-    set_buffer: Setter[list[str]]
-    buffer, set_buffer = use_state([])
-
+@component
+def toggle() -> Div:
     border: BorderKind
     set_border: Setter[BorderKind]
     border_cycle_ref = use_ref(cycle(BorderKind))
@@ -34,58 +34,87 @@ def time() -> Div:
 
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
-    def on_key(event: KeyPressed) -> None:
-        if event.key == Key.Space:
-            set_now(datetime.now())
-        elif event.key == Key.Enter:
-            set_border(advance_border())
-        elif event.key == Key.Tab:
-            set_margin_style(advance_margin())
-        elif event.key == Key.Backspace:
-            set_buffer(buffer[:-1])
-        elif event.key.isprintable():
-            s = [*buffer, event.key]
-            set_buffer(s)
+    toggled, set_toggled = use_state(False)
 
-    n = f"{now}"
-    text = "".join(buffer)
-    m = f"{margin_style.margin}"
+    def on_key(event: KeyPressed) -> None:
+        match event.key:
+            case Key.Tab:
+                logger.debug("toggle")
+                set_toggled(not toggled)
+            case Key.Space:
+                logger.debug("border")
+                set_border(advance_border())
+            case Key.Enter:
+                logger.debug("margin")
+                set_margin_style(advance_margin())
 
     return Div(
-        children=(
-            Text(
-                text=n,
-                style=Style(
-                    span=Span(width=len(n), height=1),
-                    border=Border(kind=border),
-                    padding=Padding(top=1, bottom=1, left=1, right=1),
-                )
-                | margin_style,
-            ),
-            Text(
-                text=text,
-                style=Style(
-                    span=Span(width=len(text), height=1),
-                    border=Border(kind=border),
-                    padding=Padding(top=1, bottom=1, left=1, right=1),
-                )
-                | margin_style,
-            ),
-            Text(
-                text=m,
-                style=Style(
-                    span=Span(width=len(m), height=1),
-                    border=Border(kind=border),
-                    padding=Padding(top=1, bottom=1, left=1, right=1),
-                )
-                | margin_style,
-            ),
-        ),
+        children=[time(margin_style) if toggled else textpad(margin_style)],
         style=Style(
-            border=Border(kind=BorderKind.Heavy),
+            border=Border(kind=border),
         ),
         on_key=on_key,
     )
 
 
-app(time)
+@component
+def time(margin_style: Style) -> Div:
+    now, set_now = use_state(datetime.now())
+
+    async def tick() -> None:
+        while True:
+            await asyncio.sleep(1)
+            set_now(datetime.now())
+
+    use_effect(tick, deps=())
+
+    n = f"{now}"
+
+    return Div(
+        children=[
+            Text(
+                text=n,
+                style=Style(
+                    span=Span(width=len(n), height=1),
+                    border=Border(kind=BorderKind.LightRounded),
+                    padding=Padding(top=1, bottom=1, left=1, right=1),
+                )
+                | margin_style,
+            )
+        ]
+    )
+
+
+@component
+def textpad(margin_style: Style) -> Div:
+    buffer: list[str]
+    set_buffer: Setter[list[str]]
+    buffer, set_buffer = use_state([])
+
+    def on_key(event: KeyPressed) -> None:
+        match event.key:
+            case Key.Backspace:
+                set_buffer(buffer[:-1])
+            case _ if event.key.isprintable() and len(event.key) == 1:  # TODO: gross
+                s = [*buffer, event.key]
+                set_buffer(s)
+
+    text = "".join(buffer)
+
+    return Div(
+        children=[
+            Text(
+                text=text,
+                style=Style(
+                    span=Span(width=len(text), height=1),
+                    border=Border(kind=BorderKind.MediumShade),
+                    padding=Padding(top=1, bottom=1, left=1, right=1),
+                )
+                | margin_style,
+            )
+        ],
+        on_key=on_key,
+    )
+
+
+asyncio.run(app(toggle))

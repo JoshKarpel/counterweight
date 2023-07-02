@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import sys
-from queue import Queue
+from asyncio import Queue, get_running_loop, run
 from textwrap import dedent
 from threading import Thread
 
 from click import echo
 from typer import Option, Typer
 
+from reprisal._context_vars import current_event_queue
 from reprisal.constants import PACKAGE_NAME, __version__
 from reprisal.events import AnyEvent
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -45,12 +46,18 @@ def check_input(mouse: bool = Option(default=False, help="Also capture mouse inp
     Enter the same input-capture state used during application mode,
     and show the results of reading input (e.g., key events).
     """
+
+    run(_check_input(mouse=mouse))
+
+
+async def _check_input(mouse: bool) -> None:
     event_queue: Queue[AnyEvent] = Queue()
+    current_event_queue.set(event_queue)
 
     input_stream = sys.stdin
     output_stream = sys.stdout
 
-    key_thread = Thread(target=read_keys, args=(event_queue, input_stream), daemon=True)
+    key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
     key_thread.start()
 
     original = start_input_control(stream=input_stream)
@@ -59,7 +66,7 @@ def check_input(mouse: bool = Option(default=False, help="Also capture mouse inp
     try:
         while True:
             print("Waiting for input...")
-            key = event_queue.get()
+            key = await event_queue.get()
             print(f"Event: {key!r}")
     except KeyboardInterrupt:
         print("Exiting...")
