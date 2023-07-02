@@ -302,12 +302,17 @@ stop = utils_text.index("# Stop generated Tailwind colors")
 generated_lines = [""]
 for color, shades in colors.items():
     for shade, hex in shades.items():
-        generated_lines.append(
-            f'text_{color}_{shade} = Style(text=Text(style=CellStyle(foreground=Color.from_hex("{hex}"))))'
+        generated_lines.extend(
+            [
+                f'text_{color}_{shade} = Style(text=Text(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
+                f'text_bg_{color}_{shade} = Style(text=Text(style=CellStyle(background=Color.from_hex("{hex}"))))',
+                f'border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
+                f'border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background=Color.from_hex("{hex}"))))',
+                f'margin_{color}_{shade} = Style(margin=Margin(color=Color.from_hex("{hex}")))',
+                f'padding_{color}_{shade} = Style(padding=Padding(color=Color.from_hex("{hex}")))',
+            ]
         )
-        generated_lines.append(
-            f'border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground=Color.from_hex("{hex}"))))'
-        )
+
     generated_lines.append("")
 
 x = [

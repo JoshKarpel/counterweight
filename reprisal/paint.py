@@ -6,7 +6,7 @@ from structlog import get_logger
 from reprisal.components import Div, Element, Paragraph
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
-from reprisal.styles.styles import CellStyle
+from reprisal.styles.styles import CellStyle, Margin, Padding
 from reprisal.types import FrozenForbidExtras
 
 logger = get_logger()
@@ -28,9 +28,9 @@ def paint_layout(layout: LayoutBox) -> Paint:
 
 
 def paint_element(element: Element, dims: BoxDimensions) -> Paint:
-    m = paint_edge(dims.margin, dims.margin_rect())
+    m = paint_edge(element.style.margin, dims.margin, dims.margin_rect())
     b = paint_border(element.style.border, dims.border_rect()) if element.style.border else {}
-    t = paint_edge(dims.padding, dims.padding_rect())
+    t = paint_edge(element.style.padding, dims.padding, dims.padding_rect())
 
     box = m | b | t
 
@@ -48,28 +48,31 @@ def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
     return {Position(x, rect.y): CellPaint(char=c, style=style) for c, x in zip(paragraph.content, rect.x_range())}
 
 
-def paint_edge(edge: Edge, rect: Rect, char: str = " ") -> Paint:
+def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
+    style = CellStyle(background=mp.color)
+
     chars = {}
+    cell_paint = CellPaint(char=char, style=style)
 
     # top
     for y in range(rect.top, rect.top + edge.top):
         for x in rect.x_range():
-            chars[Position(x, y)] = CellPaint(char=char)
+            chars[Position(x, y)] = cell_paint
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
         for x in rect.x_range():
-            chars[Position(x, y)] = CellPaint(char=char)
+            chars[Position(x, y)] = cell_paint
 
     # left
     for x in range(rect.left, rect.left + edge.left):
         for y in rect.y_range():
-            chars[Position(x, y)] = CellPaint(char=char)
+            chars[Position(x, y)] = cell_paint
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
         for y in rect.y_range():
-            chars[Position(x, y)] = CellPaint(char=char)
+            chars[Position(x, y)] = cell_paint
 
     return chars
 

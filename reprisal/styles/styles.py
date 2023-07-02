@@ -9,17 +9,22 @@ from pydantic import Field
 from reprisal._utils import merge
 from reprisal.types import FrozenForbidExtras
 
-S = TypeVar("S", bound="StylePart")
+S = TypeVar("S", bound="StyleFragment")
 
 
-class StylePart(FrozenForbidExtras):
-    def __or__(self: S, other: S) -> S:
-        return type(self).parse_obj(
-            merge(
-                self.dict(exclude_unset=True),
-                other.dict(exclude_unset=True),
-            )
+@lru_cache(maxsize=2**16)
+def merge_style_fragments(left: S, right: S) -> S:
+    return type(left).parse_obj(
+        merge(
+            left.dict(exclude_unset=True),
+            right.dict(exclude_unset=True),
         )
+    )
+
+
+class StyleFragment(FrozenForbidExtras):
+    def __or__(self: S, other: S) -> S:
+        return merge_style_fragments(self, other)
 
 
 class Color(NamedTuple):
@@ -189,7 +194,7 @@ COLORS_BY_NAME = {
 }
 
 
-class CellStyle(StylePart):
+class CellStyle(StyleFragment):
     foreground: Color = Field(default=Color.from_name("white"))
     background: Color = Field(default=Color.from_name("black"))
     bold: bool = False
@@ -210,36 +215,38 @@ class BorderKind(Enum):
     Star = "********"
 
 
-class Border(StylePart):
+class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
     style: CellStyle = Field(default_factory=CellStyle)
 
 
-class Margin(StylePart):
+class Margin(StyleFragment):
     top: int = Field(default=0)
     bottom: int = Field(default=0)
     left: int | Literal["auto"] = Field(default=0)
     right: int | Literal["auto"] = Field(default=0)
+    color: Color = Field(default=Color.from_name("black"))
 
 
-class Padding(StylePart):
+class Padding(StyleFragment):
     top: int = Field(default=0)
     bottom: int = Field(default=0)
     left: int = Field(default=0)
     right: int = Field(default=0)
+    color: Color = Field(default=Color.from_name("black"))
 
 
-class Span(StylePart):
+class Span(StyleFragment):
     width: int | Literal["auto"] = Field(default="auto")
     height: int | Literal["auto"] = Field(default="auto")
 
 
-class Text(StylePart):
+class Text(StyleFragment):
     style: CellStyle = Field(default_factory=CellStyle)
     # wrap, overflow, alignment, etc.
 
 
-class Style(StylePart):
+class Style(StyleFragment):
     display: Literal["block"] = Field(default="block")
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))

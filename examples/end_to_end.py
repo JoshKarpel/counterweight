@@ -12,10 +12,13 @@ from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 from reprisal.styles.utilities import (
     border_amber_700,
+    border_bg_slate_700,
     border_lime_700,
     border_rose_500,
     border_sky_700,
     border_violet_500,
+    padding_amber_400,
+    text_bg_slate_300,
     text_indigo_500,
     text_teal_600,
 )
@@ -107,7 +110,10 @@ def time(margin_style: Style) -> Div:
                 content=content,
                 style=margin_style
                 | text_indigo_500
+                | text_bg_slate_300
                 | border_violet_500
+                | border_bg_slate_700
+                | padding_amber_400
                 | Style(
                     span=Span(width=len(content), height=1),
                     border=Border(kind=BorderKind.LightRounded),
