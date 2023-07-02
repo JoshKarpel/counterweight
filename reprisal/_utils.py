@@ -10,6 +10,10 @@ V = TypeVar("V")
 
 
 def diff(a: dict[K, V], b: dict[K, V]) -> dict[K, V]:
+    # Optimization for the case where b is empty
+    if not b:
+        return a
+
     d = {}
     for key, val in a.items():
         if val != b.get(key):

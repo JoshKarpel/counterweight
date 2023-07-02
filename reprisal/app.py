@@ -20,7 +20,7 @@ from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
-    apply_paint,
+    paint_to_instructions,
     start_mouse_reporting,
     start_output_control,
     stop_mouse_reporting,
@@ -104,10 +104,27 @@ async def app(
                     start_diff = perf_counter()
                     diffed_paint = diff(full_paint, previous_full_paint)
                     logger.debug(
-                        "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
+                        "Diffed full paint from previous full paint",
+                        elapsed_ms=(perf_counter() - start_diff) * 1000,
+                        cells=len(diffed_paint),
                     )
 
-                    apply_paint(stream=output_stream, paint=diffed_paint)
+                    start_instructions = perf_counter()
+                    instructions = paint_to_instructions(paint=diffed_paint)
+                    logger.debug(
+                        "Generated instructions from paint",
+                        elapsed_ms=(perf_counter() - start_instructions) * 1000,
+                    )
+
+                    start_write = perf_counter()
+                    output_stream.write(instructions)
+                    output_stream.flush()
+                    logger.debug(
+                        "Wrote and flushed instructions to output stream",
+                        elapsed_ms=(perf_counter() - start_write) * 1000,
+                        stream=output_stream,
+                        bytes=len(instructions),
+                    )
 
                     previous_full_paint = full_paint
 

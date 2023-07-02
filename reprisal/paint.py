@@ -12,6 +12,9 @@ from reprisal.types import FrozenForbidExtras
 class CellStyle(FrozenForbidExtras):
     fg: Color = Field(default=Color("white"))
     bg: Color = Field(default=Color("black"))
+    bold: bool = False
+    dim: bool = False
+    italic: bool = False
 
 
 class CellPaint(FrozenForbidExtras):
