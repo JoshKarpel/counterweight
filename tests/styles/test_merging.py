@@ -47,9 +47,4 @@ from reprisal.styles.styles import BorderKind, CellStyle, Color
     ],
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:
-    print(f"left=\n{left.json(indent=2)}")
-    print(f"right=\n{right.json(indent=2)}")
-    print(f"expected=\n{expected.json(indent=2)}")
-    print(f"left | right=\n{(left | right).json(indent=2)}")
-
     assert left | right == expected
