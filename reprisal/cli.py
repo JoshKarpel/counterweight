@@ -50,6 +50,7 @@ def check_input(mouse: bool = Option(default=False, help="Also capture mouse inp
     input_stream = sys.stdin
     output_stream = sys.stdout
 
+    # TODO: busted
     key_thread = Thread(target=read_keys, args=(event_queue, input_stream), daemon=True)
     key_thread.start()
 

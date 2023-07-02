@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from itertools import cycle
 
@@ -44,7 +45,7 @@ def time() -> Div:
             set_margin_style(advance_margin())
         elif event.key == Key.Backspace:
             set_buffer(buffer[:-1])
-        elif event.key.isprintable():
+        elif event.key.isprintable() and len(event.key) == 1:  # TODO: gross
             s = [*buffer, event.key]
             set_buffer(s)
 
@@ -89,4 +90,4 @@ def time() -> Div:
     )
 
 
-app(time)
+asyncio.run(app(time))
