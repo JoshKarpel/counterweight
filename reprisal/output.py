@@ -2,7 +2,7 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.layout import Position
+from reprisal.layout import CellPaint, Position
 
 CURSOR_ON = "\x1b[?25h"
 CURSOR_OFF = "\x1b[?25l"
@@ -50,9 +50,20 @@ def stop_mouse_reporting(stream: TextIO) -> None:
     stream.flush()
 
 
-def apply_paint(stream: TextIO, paint: dict[Position, str]) -> None:
-    for pos, char in paint.items():
-        stream.write(f"\x1b[{pos.y+1};{pos.x+1}f{char}")
+def apply_paint(stream: TextIO, paint: dict[Position, CellPaint]) -> None:
+    for pos, cell in paint.items():
+        fg_r, fg_g, fg_b = cell.style.fg.as_rgb_tuple(alpha=False)
+        bg_r, bg_g, bg_b = cell.style.bg.as_rgb_tuple(alpha=False)
+
+        parts = [
+            f"\x1b[{pos.y+1};{pos.x+1}f",  # move
+            f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m",  # fg
+            f"\x1b[48;2;{bg_r};{bg_g};{bg_b}m",  # bg
+            cell.char,
+            "\x1b[0m",  # reset
+        ]
+
+        stream.write("".join(parts))
 
     stream.flush()
 

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Literal, TypeVar
 
 from pydantic import Field
+from pydantic.color import Color
 
 from reprisal.styles.merge import merge
-from reprisal.styles.types import S
 from reprisal.types import FrozenForbidExtras
+
+S = TypeVar("S", bound="StylePart")
 
 
 class StylePart(FrozenForbidExtras):
@@ -56,4 +58,5 @@ class Style(StylePart):
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)
+    border_color: Color = Field(default=Color("white"))
     padding: Padding = Field(default=Padding(top=0, bottom=0, left=0, right=0))

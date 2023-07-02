@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from itertools import cycle
 
+from pydantic.color import Color
 from structlog import get_logger
 
 from reprisal.app import app
@@ -34,25 +35,42 @@ def toggle() -> Div:
 
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
+    border_color: Style
+    set_border_color: Setter[Style]
+    border_color_ref = use_ref(
+        cycle(
+            [
+                Style(border_color=Color("red")),
+                Style(border_color=Color("green")),
+                Style(border_color=Color("blue")),
+            ]
+        )
+    )
+
+    def advance_border_color() -> Style:
+        return next(border_color_ref.current)
+
+    border_color, set_border_color = use_state(advance_border_color)  # type: ignore[arg-type]
+
     toggled, set_toggled = use_state(False)
 
     def on_key(event: KeyPressed) -> None:
         match event.key:
             case Key.Tab:
-                logger.debug("toggle")
                 set_toggled(not toggled)
-            case Key.Space:
-                logger.debug("border")
+            case Key.F1:
                 set_border(advance_border())
-            case Key.Enter:
-                logger.debug("margin")
+            case Key.F2:
+                set_border_color(advance_border_color())
+            case Key.F3:
                 set_margin_style(advance_margin())
 
     return Div(
         children=[time(margin_style) if toggled else textpad(margin_style)],
         style=Style(
             border=Border(kind=border),
-        ),
+        )
+        | border_color,
         on_key=on_key,
     )
 
