@@ -174,7 +174,7 @@ async def drain_queue(queue: Queue[T]) -> List[T]:
 
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
-    for node in shadow.walk():
+    for node in shadow.walk_shadow_tree():
         for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
                 if effect.deps != effect.new_deps:

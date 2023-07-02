@@ -227,7 +227,8 @@ class LayoutBox(ForbidExtras):
 def build_layout_tree(element: Element) -> LayoutBox:
     return LayoutBox(
         element=element,
-        children=[build_layout_tree(e) for e in element.children] if isinstance(element, Div) else [],
+        # the children must be concrete at this point
+        children=[build_layout_tree(e) for e in element.children],  # type: ignore[arg-type]
     )
 
 
@@ -251,12 +252,13 @@ def paint_element(element: Element, dims: BoxDimensions) -> dict[Position, str]:
 
     box = m | b | t
 
-    if isinstance(element, Div):
-        return box
-    elif isinstance(element, Text):
-        return text(element, dims.content) | box
-    else:
-        assert_never(element)
+    match element:
+        case Div():
+            return box
+        case Text() as e:
+            return text(e, dims.content) | box
+        case _:
+            raise NotImplementedError(f"Painting {element} is not implemented")
 
 
 def text(text: Text, rect: Rect) -> dict[Position, str]:

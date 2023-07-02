@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from itertools import zip_longest
-from typing import Generator
 
 from pydantic import Field
 
@@ -17,11 +17,18 @@ class ShadowNode(FrozenForbidExtras):
     children: list[ShadowNode | Element] = Field(default_factory=list)
     hooks: Hooks
 
-    def walk(self) -> Generator[ShadowNode]:
+    def walk_shadow_tree(self) -> Iterator[ShadowNode]:
         yield self
         for child in self.children:
             if isinstance(child, ShadowNode):
-                yield from child.walk()
+                yield from child.walk_shadow_tree()
+
+    def concrete_element_tree(self) -> Element:
+        return self.element.copy(
+            update={
+                "children": [child.element if isinstance(child, ShadowNode) else child for child in self.children],
+            }
+        )
 
 
 def render_shadow_node_from_previous(component: Component, previous: ShadowNode | None) -> ShadowNode:
@@ -33,7 +40,7 @@ def render_shadow_node_from_previous(component: Component, previous: ShadowNode 
 
         element = component.func(*component.args, **component.kwargs)
 
-        children = []
+        children: list[ShadowNode | Element] = []
         for child in element.children:
             if isinstance(child, Component):
                 children.append(render_shadow_node_from_previous(child, None))
