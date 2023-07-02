@@ -67,6 +67,16 @@ e = Div(
                 )
             ),
         ),
+        Paragraph(
+            content="none",
+            style=(
+                Style(
+                    display="none",
+                    span=Span(width=20, height=1),
+                    border=Border(kind=BorderKind.Thick),
+                )
+            ),
+        ),
     ],
     style=Style(
         border=Border(kind=BorderKind.Heavy),

@@ -224,8 +224,18 @@ class LayoutBox(ForbidExtras):
 
 
 def build_layout_tree(element: Element) -> LayoutBox:
-    return LayoutBox(
-        element=element,
-        # the children must be concrete at this point
-        children=[build_layout_tree(e) for e in element.children],  # type: ignore[arg-type]
-    )
+    children = []
+    for child in element.children:
+        if not isinstance(child, Element):
+            raise Exception("Layout tree must be built from concrete Elements, not Components")
+
+        match child.style.display:
+            case "block":
+                children.append(build_layout_tree(child))
+            case "none":
+                # Don't recurse into children with display="none".
+                pass
+            case _:
+                assert_never(child.style.display)
+
+    return LayoutBox(element=element, children=children)
