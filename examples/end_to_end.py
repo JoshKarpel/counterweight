@@ -10,7 +10,15 @@ from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
-from reprisal.styles.styles import CellStyle, Color
+from reprisal.styles.utilities import (
+    border_amber_700,
+    border_lime_700,
+    border_rose_500,
+    border_sky_700,
+    border_violet_500,
+    text_indigo_500,
+    text_teal_600,
+)
 
 logger = get_logger()
 
@@ -48,9 +56,9 @@ def toggle() -> Div:
     border_color_ref = use_ref(
         cycle(
             [
-                Style(border=Border(style=CellStyle(foreground=Color.from_name("red")))),
-                Style(border=Border(style=CellStyle(foreground=Color.from_name("blue")))),
-                Style(border=Border(style=CellStyle(foreground=Color.from_name("green")))),
+                border_lime_700,
+                border_amber_700,
+                border_sky_700,
             ]
         )
     )
@@ -98,6 +106,8 @@ def time(margin_style: Style) -> Div:
             Paragraph(
                 content=content,
                 style=margin_style
+                | text_indigo_500
+                | border_violet_500
                 | Style(
                     span=Span(width=len(content), height=1),
                     border=Border(kind=BorderKind.LightRounded),
@@ -129,6 +139,8 @@ def textpad(margin_style: Style) -> Div:
             Paragraph(
                 content=content,
                 style=margin_style
+                | text_teal_600
+                | border_rose_500
                 | Style(
                     span=Span(width=len(content), height=1),
                     border=Border(kind=BorderKind.LightRounded),

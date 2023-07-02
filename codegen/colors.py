@@ -305,6 +305,9 @@ for color, shades in colors.items():
         generated_lines.append(
             f'text_{color}_{shade} = Style(text=Text(style=CellStyle(foreground=Color.from_hex("{hex}"))))'
         )
+        generated_lines.append(
+            f'border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground=Color.from_hex("{hex}"))))'
+        )
     generated_lines.append("")
 
 x = [
