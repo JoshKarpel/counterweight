@@ -131,7 +131,7 @@ def textpad(margin_style: Style) -> Div:
                 style=margin_style
                 | Style(
                     span=Span(width=len(text), height=1),
-                    border=Border(kind=BorderKind.MediumShade),
+                    border=Border(kind=BorderKind.LightRounded),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 ),
             )
