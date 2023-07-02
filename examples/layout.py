@@ -1,5 +1,6 @@
 from reprisal.components import Div, Text
-from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree, debug, paint
+from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
+from reprisal.paint import debug_paint, paint
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 
 b = BoxDimensions(
@@ -75,4 +76,4 @@ e = Div(
 t = build_layout_tree(e)
 t.layout(b)
 p = paint(t)
-print(debug(p, t.dims.margin_rect()))
+print(debug_paint(p, t.dims.margin_rect()))

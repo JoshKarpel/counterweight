@@ -2,7 +2,8 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.layout import CellPaint, Position
+from reprisal.layout import Position
+from reprisal.paint import CellPaint
 
 CURSOR_ON = "\x1b[?25h"
 CURSOR_OFF = "\x1b[?25l"

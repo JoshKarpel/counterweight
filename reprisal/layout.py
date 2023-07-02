@@ -4,13 +4,11 @@ from collections.abc import Iterator
 from typing import NamedTuple
 
 from pydantic import Field
-from pydantic.color import Color
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
-from reprisal.components import Div, Element, Text
-from reprisal.styles.styles import Border
-from reprisal.types import ForbidExtras, FrozenForbidExtras
+from reprisal.components import Element
+from reprisal.types import ForbidExtras
 
 
 class Position(NamedTuple):
@@ -231,109 +229,3 @@ def build_layout_tree(element: Element) -> LayoutBox:
         # the children must be concrete at this point
         children=[build_layout_tree(e) for e in element.children],  # type: ignore[arg-type]
     )
-
-
-class CellStyle(FrozenForbidExtras):
-    fg: Color = Field(default=Color("white"))
-    bg: Color = Field(default=Color("black"))
-
-
-class CellPaint(FrozenForbidExtras):
-    char: str
-    style: CellStyle = Field(default_factory=CellStyle)
-
-
-def paint(layout: LayoutBox) -> dict[Position, CellPaint]:
-    painted = paint_element(layout.element, layout.dims)
-    for child in layout.children:
-        painted |= paint(child)  # no Z-level support! need something like a chainmap
-    return painted
-
-
-def paint_element(element: Element, dims: BoxDimensions) -> dict[Position, CellPaint]:
-    m = edge(dims.margin, dims.margin_rect())
-    b = (
-        border(element.style.border, dims.border_rect(), style=CellStyle(fg=element.style.border_color))
-        if element.style.border
-        else {}
-    )
-    t = edge(dims.padding, dims.padding_rect())
-
-    box = m | b | t
-
-    match element:
-        case Div():
-            return box
-        case Text() as e:
-            return text(e, dims.content) | box
-        case _:
-            raise NotImplementedError(f"Painting {element} is not implemented")
-
-
-def text(text: Text, rect: Rect) -> dict[Position, CellPaint]:
-    return {Position(x, rect.y): CellPaint(char=c) for c, x in zip(text.text, rect.x_range())}
-
-
-def edge(edge: Edge, rect: Rect, char: str = " ") -> dict[Position, CellPaint]:
-    chars = {}
-
-    # top
-    for y in range(rect.top, rect.top + edge.top):
-        for x in rect.x_range():
-            chars[Position(x, y)] = CellPaint(char=char)
-
-    # bottom
-    for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
-        for x in rect.x_range():
-            chars[Position(x, y)] = CellPaint(char=char)
-
-    # left
-    for x in range(rect.left, rect.left + edge.left):
-        for y in rect.y_range():
-            chars[Position(x, y)] = CellPaint(char=char)
-
-    # right
-    for x in range(rect.right, rect.right - edge.right, -1):
-        for y in rect.y_range():
-            chars[Position(x, y)] = CellPaint(char=char)
-
-    return chars
-
-
-def border(border: Border, rect: Rect, style: CellStyle) -> dict[Position, CellPaint]:
-    chars = {}
-
-    # left
-    for y in rect.y_range():
-        chars[Position(rect.left, y)] = CellPaint(char=border.kind.value[0], style=style)
-
-    # right
-    for y in rect.y_range():
-        chars[Position(rect.right, y)] = CellPaint(char=border.kind.value[1], style=style)
-
-    # top
-    for x in rect.x_range():
-        chars[Position(x, rect.top)] = CellPaint(char=border.kind.value[2], style=style)
-
-    # bottom
-    for x in rect.x_range():
-        chars[Position(x, rect.bottom)] = CellPaint(char=border.kind.value[3], style=style)
-
-    chars[Position(x=rect.left, y=rect.top)] = CellPaint(char=border.kind.value[4], style=style)
-    chars[Position(x=rect.right, y=rect.top)] = CellPaint(char=border.kind.value[5], style=style)
-    chars[Position(x=rect.left, y=rect.bottom)] = CellPaint(char=border.kind.value[6], style=style)
-    chars[Position(x=rect.right, y=rect.bottom)] = CellPaint(char=border.kind.value[7], style=style)
-
-    return chars
-
-
-def debug(chars: dict[Position, CellPaint], rect: Rect) -> str:
-    lines = []
-    for y in rect.y_range():
-        line = []
-        for x in rect.x_range():
-            line.append(chars.get(Position(x, y), CellPaint(char=" ")).char)
-
-        lines.append(line)
-
-    return "\n".join("".join(line) for line in lines)
