@@ -16,7 +16,7 @@ from reprisal.styles import Style
 from reprisal.types import ForbidExtras, FrozenForbidExtras
 
 
-def component(func: Callable[[object, ...], Component | Element]) -> Callable[[object, ...], Component]:
+def component(func: Callable[..., Component | Element]) -> Callable[[object, ...], Component]:
     @wraps(func)
     def wrapper(*args: object, **kwargs: object) -> Component:
         return Component(func=func, args=args, kwargs=kwargs)
