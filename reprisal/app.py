@@ -1,6 +1,6 @@
 import shutil
 import sys
-from asyncio import Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
@@ -146,7 +146,7 @@ async def app(
                     "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
                 )
 
-    except KeyboardInterrupt as e:
+    except (KeyboardInterrupt, CancelledError) as e:
         logger.debug(f"Caught {e!r}")
     finally:
         logger.info("Application stopping...")
