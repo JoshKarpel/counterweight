@@ -2,12 +2,16 @@ import asyncio
 from datetime import datetime
 from itertools import cycle
 
+from structlog import get_logger
+
 from reprisal.app import app
 from reprisal.components import Div, Text
 from reprisal.components.components import Setter, component, use_effect, use_ref, use_state
 from reprisal.events import KeyPressed
 from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
+
+logger = get_logger()
 
 
 @component
@@ -30,34 +34,36 @@ def toggle() -> Div:
 
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Enter:
-                set_toggled(not toggled)
-            case Key.Enter:
-                set_border(advance_border())
-            case Key.Tab:
-                set_margin_style(advance_margin())
-
     toggled, set_toggled = use_state(False)
 
+    def on_key(event: KeyPressed) -> None:
+        match event.key:
+            case Key.Tab:
+                logger.debug("toggle")
+                set_toggled(not toggled)
+            case Key.Space:
+                logger.debug("border")
+                set_border(advance_border())
+            case Key.Enter:
+                logger.debug("margin")
+                set_margin_style(advance_margin())
+
     return Div(
-        children=[time() if toggled else textpad()],
-        on_key=on_key,
+        children=[time(margin_style) if toggled else textpad(margin_style)],
         style=Style(
-            border=Border(kind=BorderKind.Heavy),
-        )
-        | margin_style,
+            border=Border(kind=border),
+        ),
+        on_key=on_key,
     )
 
 
 @component
-def time() -> Div:
+def time(margin_style: Style) -> Div:
     now, set_now = use_state(datetime.now())
 
     async def tick() -> None:
         while True:
-            await asyncio.sleep(1 / 60)
+            await asyncio.sleep(1)
             set_now(datetime.now())
 
     use_effect(tick, deps=())
@@ -73,14 +79,14 @@ def time() -> Div:
                     border=Border(kind=BorderKind.LightRounded),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 )
-                | mx_auto,
+                | margin_style,
             )
         ]
     )
 
 
 @component
-def textpad() -> Div:
+def textpad(margin_style: Style) -> Div:
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
@@ -104,7 +110,7 @@ def textpad() -> Div:
                     border=Border(kind=BorderKind.MediumShade),
                     padding=Padding(top=1, bottom=1, left=1, right=1),
                 )
-                | mx_auto,
+                | margin_style,
             )
         ],
         on_key=on_key,
