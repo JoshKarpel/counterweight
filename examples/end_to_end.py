@@ -37,17 +37,16 @@ def time() -> Div:
     margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
 
     def on_key(event: KeyPressed) -> None:
-        if event.key == Key.Space:
-            set_now(datetime.now())
-        elif event.key == Key.Enter:
-            set_border(advance_border())
-        elif event.key == Key.Tab:
-            set_margin_style(advance_margin())
-        elif event.key == Key.Backspace:
-            set_buffer(buffer[:-1])
-        elif event.key.isprintable() and len(event.key) == 1:  # TODO: gross
-            s = [*buffer, event.key]
-            set_buffer(s)
+        match event.key:
+            case Key.Enter:
+                set_border(advance_border())
+            case Key.Tab:
+                set_margin_style(advance_margin())
+            case Key.Backspace:
+                set_buffer(buffer[:-1])
+            case _ if event.key.isprintable() and len(event.key) == 1:  # TODO: gross
+                s = [*buffer, event.key]
+                set_buffer(s)
 
     async def tick() -> None:
         while True:
