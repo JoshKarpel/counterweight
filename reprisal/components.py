@@ -45,3 +45,5 @@ AnyElement = Union[
     Div,
     Text,
 ]
+
+Component.update_forward_refs()

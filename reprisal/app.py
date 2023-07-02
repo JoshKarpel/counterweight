@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import shutil
 import sys
-from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter
-from typing import List, TextIO, TypeVar
+from typing import TextIO
 
 from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
+from reprisal._utils import diff, drain_queue
 from reprisal.components import Component, Element
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
@@ -26,7 +27,6 @@ from reprisal.output import (
     stop_output_control,
 )
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
-from reprisal.utils import diff
 
 logger = get_logger()
 
@@ -157,21 +157,6 @@ async def app(
         logger.info("Application stopped")
 
 
-T = TypeVar("T")
-
-
-async def drain_queue(queue: Queue[T]) -> List[T]:
-    items = [await queue.get()]
-
-    while True:
-        try:
-            items.append(queue.get_nowait())
-        except QueueEmpty:
-            break
-
-    return items
-
-
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
     for node in shadow.walk_shadow_tree():
@@ -189,8 +174,8 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
                     new_effects.add(effect.task)
 
     for task in active_effects - new_effects:
-        logger.debug("Cancelled effect task", task=task)
         task.cancel()
+        logger.debug("Cancelled effect task", task=task)
 
     return new_effects
 
