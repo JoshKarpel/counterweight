@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from math import ceil, floor
 from typing import NamedTuple
 
 from pydantic import Field
 from pydantic.color import Color
 from typing_extensions import assert_never
 
+from reprisal._utils import halve_integer
 from reprisal.components import Div, Element, Text
 from reprisal.styles.styles import Border
 from reprisal.types import ForbidExtras, FrozenForbidExtras
@@ -140,24 +140,24 @@ class LayoutBox(ForbidExtras):
         # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
         underflow = parent_dims.content.width - minimum_block_width
 
-        match (width == "auto", margin_left == "auto", margin_right == "auto"):
+        match width == "auto", margin_left == "auto", margin_right == "auto":
             # Woops, overconstrained dimensions!
             # We have to do something, so we move the right margin, since we're effectively in left-to-right mode.
-            case (False, False, False):
+            case False, False, False:
                 margin_right = margin_right + underflow  # type: ignore[operator]
 
             # If the width is not auto and only one margin is auto, put the underflow on that margin.
-            case (False, True, False):
+            case False, True, False:
                 margin_left = underflow
-            case (False, False, True):
+            case False, False, True:
                 margin_right = underflow
 
             # If the width is not auto and both margins are auto, divide the underflow evenly between them.
-            case (False, True, True):
+            case False, True, True:
                 margin_left, margin_right = halve_integer(underflow)
 
             # If the width is auto, we put all the underflow there, regardless of whether the margins are auto.
-            case (True, _, _):
+            case True, _, _:
                 # If the margins were auto, they shrink to 0.
                 if margin_left == "auto":
                     margin_left = 0
@@ -231,12 +231,6 @@ def build_layout_tree(element: Element) -> LayoutBox:
         # the children must be concrete at this point
         children=[build_layout_tree(e) for e in element.children],  # type: ignore[arg-type]
     )
-
-
-def halve_integer(x: int) -> tuple[int, int]:
-    """Halve an integer, accounting for odd integers by making the second "half" larger by one than the first "half"."""
-    half = x / 2
-    return floor(half), ceil(half)
 
 
 class CellStyle(FrozenForbidExtras):

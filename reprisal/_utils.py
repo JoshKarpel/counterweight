@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Queue, QueueEmpty
+from math import ceil, floor
 from typing import List, TypeVar
 
 T = TypeVar("T")
@@ -26,3 +27,9 @@ async def drain_queue(queue: Queue[T]) -> List[T]:
             break
 
     return items
+
+
+def halve_integer(x: int) -> tuple[int, int]:
+    """Halve an integer, accounting for odd integers by making the second "half" larger by one than the first "half"."""
+    half = x / 2
+    return floor(half), ceil(half)
