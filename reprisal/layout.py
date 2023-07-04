@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from math import ceil, floor
 from typing import NamedTuple
 
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal.components import Div, Element, Text
-from reprisal.styles.styles import Border
+from reprisal._utils import halve_integer
+from reprisal.components import Element
 from reprisal.types import ForbidExtras
 
 
@@ -139,24 +138,24 @@ class LayoutBox(ForbidExtras):
         # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
         underflow = parent_dims.content.width - minimum_block_width
 
-        match (width == "auto", margin_left == "auto", margin_right == "auto"):
+        match width == "auto", margin_left == "auto", margin_right == "auto":
             # Woops, overconstrained dimensions!
             # We have to do something, so we move the right margin, since we're effectively in left-to-right mode.
-            case (False, False, False):
+            case False, False, False:
                 margin_right = margin_right + underflow  # type: ignore[operator]
 
             # If the width is not auto and only one margin is auto, put the underflow on that margin.
-            case (False, True, False):
+            case False, True, False:
                 margin_left = underflow
-            case (False, False, True):
+            case False, False, True:
                 margin_right = underflow
 
             # If the width is not auto and both margins are auto, divide the underflow evenly between them.
-            case (False, True, True):
+            case False, True, True:
                 margin_left, margin_right = halve_integer(underflow)
 
             # If the width is auto, we put all the underflow there, regardless of whether the margins are auto.
-            case (True, _, _):
+            case True, _, _:
                 # If the margins were auto, they shrink to 0.
                 if margin_left == "auto":
                     margin_left = 0
@@ -230,101 +229,3 @@ def build_layout_tree(element: Element) -> LayoutBox:
         # the children must be concrete at this point
         children=[build_layout_tree(e) for e in element.children],  # type: ignore[arg-type]
     )
-
-
-def halve_integer(x: int) -> tuple[int, int]:
-    """Halve an integer, accounting for odd integers by making the second "half" larger by one than the first "half"."""
-    half = x / 2
-    return floor(half), ceil(half)
-
-
-def paint(layout: LayoutBox) -> dict[Position, str]:
-    painted = paint_element(layout.element, layout.dims)
-    for child in layout.children:
-        painted |= paint(child)  # no Z-level support! need something like a chainmap
-    return painted
-
-
-def paint_element(element: Element, dims: BoxDimensions) -> dict[Position, str]:
-    m = edge(dims.margin, dims.margin_rect())
-    b = border(element.style.border, dims.border_rect()) if element.style.border else {}
-    t = edge(dims.padding, dims.padding_rect())
-
-    box = m | b | t
-
-    match element:
-        case Div():
-            return box
-        case Text() as e:
-            return text(e, dims.content) | box
-        case _:
-            raise NotImplementedError(f"Painting {element} is not implemented")
-
-
-def text(text: Text, rect: Rect) -> dict[Position, str]:
-    return {Position(x, rect.y): c for c, x in zip(text.text, rect.x_range())}
-
-
-def edge(edge: Edge, rect: Rect, char: str = " ") -> dict[Position, str]:
-    chars = {}
-
-    # top
-    for y in range(rect.top, rect.top + edge.top):
-        for x in rect.x_range():
-            chars[Position(x, y)] = char
-
-    # bottom
-    for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
-        for x in rect.x_range():
-            chars[Position(x, y)] = char
-
-    # left
-    for x in range(rect.left, rect.left + edge.left):
-        for y in rect.y_range():
-            chars[Position(x, y)] = char
-
-    # right
-    for x in range(rect.right, rect.right - edge.right, -1):
-        for y in rect.y_range():
-            chars[Position(x, y)] = char
-
-    return chars
-
-
-def border(border: Border, rect: Rect) -> dict[Position, str]:
-    chars = {}
-
-    # left
-    for y in rect.y_range():
-        chars[Position(rect.left, y)] = border.kind.value[0]
-
-    # right
-    for y in rect.y_range():
-        chars[Position(rect.right, y)] = border.kind.value[1]
-
-    # top
-    for x in rect.x_range():
-        chars[Position(x, rect.top)] = border.kind.value[2]
-
-    # bottom
-    for x in rect.x_range():
-        chars[Position(x, rect.bottom)] = border.kind.value[3]
-
-    chars[Position(x=rect.left, y=rect.top)] = border.kind.value[4]
-    chars[Position(x=rect.right, y=rect.top)] = border.kind.value[5]
-    chars[Position(x=rect.left, y=rect.bottom)] = border.kind.value[6]
-    chars[Position(x=rect.right, y=rect.bottom)] = border.kind.value[7]
-
-    return chars
-
-
-def debug(chars: dict[Position, str], rect: Rect) -> str:
-    lines = []
-    for y in rect.y_range():
-        line = []
-        for x in rect.x_range():
-            line.append(chars.get(Position(x, y), " "))
-
-        lines.append(line)
-
-    return "\n".join("".join(line) for line in lines)

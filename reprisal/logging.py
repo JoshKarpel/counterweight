@@ -1,5 +1,6 @@
 from logging import NOTSET
 from pathlib import Path
+from shutil import get_terminal_size
 from tempfile import gettempdir
 from time import sleep
 
@@ -34,6 +35,7 @@ def tail_devlog() -> None:
     while True:
         DEVLOG_FILE.touch(exist_ok=True)
         with DEVLOG_FILE.open(mode="r") as f:
+            w, _ = get_terminal_size()
             while True:
                 line = f.readline()
                 if line:
@@ -41,6 +43,7 @@ def tail_devlog() -> None:
                 else:
                     if f.tell() > DEVLOG_FILE.stat().st_size:
                         # the file is shorter than our current position, so it was trunacted
+                        print(" DevLog Rotated ".center(w, "━"))
                         break
                     else:
                         sleep(0.01)

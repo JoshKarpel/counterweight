@@ -6,7 +6,7 @@ from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
-from time import perf_counter
+from time import perf_counter_ns
 from typing import TextIO
 
 from structlog import get_logger
@@ -17,15 +17,16 @@ from reprisal.components import Component, Element
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import BoxDimensions, Edge, Position, Rect, build_layout_tree, paint
+from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
-    apply_paint,
+    paint_to_instructions,
     start_mouse_reporting,
     start_output_control,
     stop_mouse_reporting,
     stop_output_control,
 )
+from reprisal.paint import Paint, paint_layout
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 
 logger = get_logger()
@@ -59,7 +60,7 @@ async def app(
         key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
         key_thread.start()
 
-        previous_full_paint: dict[Position, str] = {}
+        previous_full_paint: Paint = {}
 
         current_event_queue.set(event_queue)
 
@@ -80,41 +81,66 @@ async def app(
                         padding=Edge(),
                     )
 
-                    start_render = perf_counter()
+                    start_render = perf_counter_ns()
                     shadow = render_shadow_node_from_previous(root(), shadow)
-                    logger.debug("Rendered shadow tree", elapsed_ms=(perf_counter() - start_render) * 1000)
+                    logger.debug(
+                        "Rendered shadow tree",
+                        elapsed_ns=f"{perf_counter_ns() - start_render:_}",
+                    )
 
-                    start_concrete = perf_counter()
+                    start_concrete = perf_counter_ns()
                     element_tree = build_concrete_element_tree(shadow)
                     logger.debug(
                         "Derived concrete element tree from shadow tree",
-                        elapsed_ms=(perf_counter() - start_concrete) * 1000,
+                        elapsed_ns=f"{perf_counter_ns() - start_concrete:_}",
                     )
 
-                    start_layout = perf_counter()
+                    start_layout = perf_counter_ns()
                     layout_tree = build_layout_tree(element_tree)
                     layout_tree.layout(b)
-                    logger.debug("Calculated layout", elapsed_ms=(perf_counter() - start_layout) * 1000)
-
-                    start_paint = perf_counter()
-                    full_paint = paint(layout_tree)
-                    logger.debug("Generated full paint", elapsed_ms=(perf_counter() - start_paint) * 1000)
-
-                    start_diff = perf_counter()
-                    diffed_paint = diff(full_paint, previous_full_paint)
                     logger.debug(
-                        "Diffed full paint from previous full paint", elapsed_ms=(perf_counter() - start_diff) * 1000
+                        "Calculated layout",
+                        elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
                     )
 
-                    apply_paint(stream=output_stream, paint=diffed_paint)
+                    start_paint = perf_counter_ns()
+                    full_paint = paint_layout(layout_tree)
+                    logger.debug(
+                        "Generated full paint",
+                        elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
+                    )
+
+                    start_diff = perf_counter_ns()
+                    diffed_paint = diff(full_paint, previous_full_paint)
+                    logger.debug(
+                        "Diffed full paint from previous full paint",
+                        elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
+                        cells=len(diffed_paint),
+                    )
+
+                    start_instructions = perf_counter_ns()
+                    instructions = paint_to_instructions(paint=diffed_paint)
+                    logger.debug(
+                        "Generated instructions from paint",
+                        elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
+                    )
+
+                    start_write = perf_counter_ns()
+                    output_stream.write(instructions)
+                    output_stream.flush()
+                    logger.debug(
+                        "Wrote and flushed instructions to output stream",
+                        elapsed_ns=f"{perf_counter_ns() - start_write:_}",
+                        bytes=f"{len(instructions):_}",
+                    )
 
                     previous_full_paint = full_paint
 
-                    start_effects = perf_counter()
+                    start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
                     logger.debug(
                         "Handled effects",
-                        elapsed_ms=(perf_counter() - start_effects) * 1000,
+                        elapsed_ns=f"{perf_counter_ns() - start_effects:_}",
                         num_effects=len(active_effects),
                     )
 
@@ -122,26 +148,29 @@ async def app(
 
                 events = await drain_queue(event_queue)
 
-                start_event_handling = perf_counter()
-                components = layout_tree.walk_from_bottom()
+                start_event_handling = perf_counter_ns()
                 for event in events:
-                    start_handle_event = perf_counter()
+                    start_handle_event = perf_counter_ns()
                     match event:
                         case TerminalResized():
                             needs_render = True
                             previous_full_paint = {}
                         case KeyPressed():
-                            for component in components:
+                            for component in layout_tree.walk_from_bottom():
                                 if component.on_key:
                                     component.on_key(event)
                         case StateSet():
                             needs_render = True
                     logger.debug(
-                        "Handled event", event_obj=event, elapsed_ms=(perf_counter() - start_handle_event) * 1000
+                        "Handled event",
+                        event_obj=event,
+                        elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
                     )
 
                 logger.debug(
-                    "Handled events", num_events=len(events), elapsed_ms=(perf_counter() - start_event_handling) * 1000
+                    "Handled events",
+                    num_events=len(events),
+                    elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
                 )
 
     except (KeyboardInterrupt, CancelledError) as e:

@@ -5,7 +5,7 @@ alias w := watch
 
 test:
   mypy
-  pytest -v --cov --durations=10
+  pytest -vv --failed-first --cov --durations=10
 
 watch CMD:
   watchfiles '{{CMD}}' reprisal/ tests/ docs/ examples/
