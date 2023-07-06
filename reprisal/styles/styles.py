@@ -246,8 +246,21 @@ class Text(StyleFragment):
     # wrap, overflow, alignment, etc.
 
 
+class Block(StyleFragment):
+    type: Literal["block"] = "block"
+
+
+class Inline(StyleFragment):
+    type: Literal["inline"] = "inline"
+    justify: Literal["left", "right"] = Field(default="left")
+
+
+class AnonymousBlock(StyleFragment):
+    type: Literal["anonymous-block"] = "anonymous-block"
+
+
 class Style(StyleFragment):
-    display: Literal["block", "inline", "none"] = Field(default="block")
+    display: Block | Inline | Literal["none"] = Field(default_factory=Block)
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)

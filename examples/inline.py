@@ -3,7 +3,8 @@ from pprint import pprint
 from reprisal.components import Div, Paragraph
 from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
 from reprisal.paint import debug_paint, paint_layout
-from reprisal.styles import Border, BorderKind, Span, Style
+from reprisal.styles import Border, BorderKind, Margin, Span, Style
+from reprisal.styles.styles import Inline
 
 b = BoxDimensions(
     content=Rect(x=0, y=0, width=30, height=0),
@@ -19,7 +20,6 @@ e = Div(
         Paragraph(
             content="top",
             style=Style(
-                display="block",
                 span=Span(width=width, height=1),
                 border=Border(kind=BorderKind.LightRounded),
             ),
@@ -27,7 +27,7 @@ e = Div(
         Paragraph(
             content="left",
             style=Style(
-                display="inline",
+                display=Inline(),
                 span=Span(width=width, height=1),
                 border=Border(kind=BorderKind.LightRounded),
             ),
@@ -35,15 +35,15 @@ e = Div(
         Paragraph(
             content="right",
             style=Style(
-                display="inline",
+                display=Inline(justify="right"),
                 span=Span(width=width, height=1),
+                margin=Margin(left=5),
                 border=Border(kind=BorderKind.LightRounded),
             ),
         ),
         Paragraph(
             content="bottom",
             style=Style(
-                display="block",
                 span=Span(width=width, height=1),
                 border=Border(kind=BorderKind.LightRounded),
             ),

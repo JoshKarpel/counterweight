@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 from pydantic import Field
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
 from reprisal.components import Div, Element
+from reprisal.styles.styles import AnonymousBlock, Block, Inline
 from reprisal.types import ForbidExtras
 
 
@@ -78,7 +79,7 @@ class BoxDimensions(ForbidExtras):
 
 class LayoutBox(ForbidExtras):
     element: Element
-    type: Literal["block", "inline", "anonymous-block"]
+    display: Block | Inline | AnonymousBlock
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
 
@@ -88,7 +89,7 @@ class LayoutBox(ForbidExtras):
         yield self.element
 
     def layout(self, parent_content: Rect) -> None:
-        match self.type:
+        match self.display.type:
             case "block":
                 self.determine_block_width(parent_content)
                 self.determine_block_position(parent_content)
@@ -293,7 +294,18 @@ class LayoutBox(ForbidExtras):
         dims.padding.top = element_style.padding.top
         dims.padding.bottom = element_style.padding.bottom
 
-        dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
+        match self.display.justify:
+            case "left":
+                dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
+            case "right":
+                dims.content.x = (
+                    parent_content.right
+                    - dims.margin.right
+                    - dims.border.right
+                    - dims.padding.right
+                    - dims.content.width
+                    + 1  # TODO: Why is this needed?
+                )
         dims.content.y = parent_content.y + dims.margin.top + dims.border.top + dims.padding.top
 
     def layout_inline_children(self, parent_content: Rect) -> None:
@@ -321,9 +333,9 @@ class LayoutBox(ForbidExtras):
 
 
 def build_layout_tree(element: Element) -> LayoutBox:
-    type = element.style.display
+    display = element.style.display
 
-    if type == "none":
+    if display == "none":
         raise Exception("Root element cannot have display='none'")
 
     children = []
@@ -332,23 +344,23 @@ def build_layout_tree(element: Element) -> LayoutBox:
             raise Exception("Layout tree must be built from concrete Elements, not Components")
 
         # Each block must only have children of one type: block or inline.
-        match type, child.style.display:
+        match display.type, child.style.display.type:
             case ("block", "block") | ("inline", "inline"):
                 children.append(build_layout_tree(child))
             case "block", "inline":
-                if children and children[-1].type == "anonymous-block":
+                if children and children[-1].display.type == "anonymous-block":
                     # Re-use previous anonymous block
                     children[-1].children.append(build_layout_tree(child))
                 else:
                     # Create a new anonymous block level box and put the child inline box inside it.
-                    box = LayoutBox(element=Div(), type="anonymous-block", children=[build_layout_tree(child)])
+                    box = LayoutBox(element=Div(), display=AnonymousBlock(), children=[build_layout_tree(child)])
                     children.append(box)
             case "inline", "block":
                 raise NotImplementedError("Inline blocks cannot have block children yet")
             case _, "none":
                 # Don't recurse into children with display="none".
                 pass
-            case _:
-                assert_never(child.style.display)
+            case foo:
+                assert_never(foo)
 
-    return LayoutBox(element=element, type=type, children=children)
+    return LayoutBox(element=element, display=display, children=children)
