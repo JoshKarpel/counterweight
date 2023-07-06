@@ -247,7 +247,7 @@ class Text(StyleFragment):
 
 
 class Style(StyleFragment):
-    display: Literal["block", "none"] = Field(default="block")
+    display: Literal["block", "inline", "none"] = Field(default="block")
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)

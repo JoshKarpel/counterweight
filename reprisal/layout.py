@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 from pydantic import Field
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
-from reprisal.components import Element
+from reprisal.components import Div, Element
 from reprisal.types import ForbidExtras
 
 
@@ -78,6 +78,7 @@ class BoxDimensions(ForbidExtras):
 
 class LayoutBox(ForbidExtras):
     element: Element
+    type: Literal["block", "inline", "anonymous-block"]
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
 
@@ -224,18 +225,34 @@ class LayoutBox(ForbidExtras):
 
 
 def build_layout_tree(element: Element) -> LayoutBox:
+    type = element.style.display
+
+    if type == "none":
+        raise Exception("Root element cannot have display='none'")
+
     children = []
     for child in element.children:
         if not isinstance(child, Element):
             raise Exception("Layout tree must be built from concrete Elements, not Components")
 
-        match child.style.display:
-            case "block":
+        # Each block must only have children of one type: block or inline.
+        match type, child.style.display:
+            case ("block", "block") | ("inline", "inline"):
                 children.append(build_layout_tree(child))
-            case "none":
+            case "block", "inline":
+                if children and children[-1].type == "anonymous-block":
+                    # Re-use previous anonymous block
+                    children[-1].children.append(build_layout_tree(child))
+                else:
+                    # Create a new anonymous block level box and put the child inline box inside it.
+                    box = LayoutBox(element=Div(), type="anonymous-block", children=[build_layout_tree(child)])
+                    children.append(box)
+            case "inline", "block":
+                raise NotImplementedError("Inline blocks cannot have block children yet")
+            case _, "none":
                 # Don't recurse into children with display="none".
                 pass
             case _:
                 assert_never(child.style.display)
 
-    return LayoutBox(element=element, children=children)
+    return LayoutBox(element=element, type=type, children=children)
