@@ -7,7 +7,7 @@ from pydantic import Field
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
-from reprisal.components import Div, Element
+from reprisal.components import AnyElement, Div, Element
 from reprisal.styles.styles import AnonymousBlock, Block, Inline
 from reprisal.types import ForbidExtras
 
@@ -78,7 +78,7 @@ class BoxDimensions(ForbidExtras):
 
 
 class LayoutBox(ForbidExtras):
-    element: Element
+    element: AnyElement
     display: Block | Inline | AnonymousBlock
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
     children: list[LayoutBox] = Field(default_factory=list)
@@ -264,8 +264,8 @@ class LayoutBox(ForbidExtras):
         if margin_right == "auto":
             margin_right = 0
 
-        if width == "auto" and self.type == "anonymous-block":
-            width = 0
+        if width == "auto" and self.element.type == "text":
+            width = len(self.element.content)
 
         dims = self.dims
 
@@ -298,6 +298,9 @@ class LayoutBox(ForbidExtras):
             case "left":
                 dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
             case "right":
+                # TODO: This is wrong, because you are supposed to adjust the whole line after the line is laid out
+                # TODO: move this up, do wrapping
+                # how does this even work when there are multiple inline elements on a line with different justify settings?
                 dims.content.x = (
                     parent_content.right
                     - dims.margin.right

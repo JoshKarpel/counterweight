@@ -260,7 +260,7 @@ class AnonymousBlock(StyleFragment):
 
 
 class Style(StyleFragment):
-    display: Block | Inline | Literal["none"] = Field(default_factory=Block)
+    display: Block | Inline | Literal["none"] = Field(default=Block())
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)

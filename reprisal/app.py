@@ -17,7 +17,7 @@ from reprisal.components import Component, Element
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
+from reprisal.layout import Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     paint_to_instructions,
@@ -77,14 +77,9 @@ async def app(
             while True:
                 if needs_render:
                     w, h = shutil.get_terminal_size()
-                    b = BoxDimensions(
-                        # height is always zero here because this is the starting height of the context box in the layout algorithm
-                        # screen boundary will need to be controlled by max height style and paint cutoff
-                        content=Rect(x=0, y=0, width=w, height=0),
-                        margin=Edge(),
-                        border=Edge(),
-                        padding=Edge(),
-                    )
+                    # height is always zero here because this is the starting height of the context box in the layout algorithm
+                    # screen boundary will need to be controlled by max height style and paint cutoff
+                    b = Rect(x=0, y=0, width=w, height=0)
 
                     start_render = perf_counter_ns()
                     shadow = render_shadow_node_from_previous(root(), shadow)
