@@ -87,17 +87,33 @@ class LayoutBox(ForbidExtras):
             yield from child.walk_from_bottom()
         yield self.element
 
-    def layout(self, parent_dims: BoxDimensions) -> None:
-        match self.element.style.display:
+    def layout(self, parent_content: Rect) -> None:
+        match self.type:
             case "block":
-                self.determine_width(parent_dims)
-                self.determine_position(parent_dims)
-                self.layout_children(parent_dims)
-                self.determine_height(parent_dims)
+                self.determine_block_width(parent_content)
+                self.determine_block_position(parent_content)
+                self.layout_block_children(parent_content)
+                self.determine_block_height(parent_content)
+            case "inline":
+                self.determine_inline_width(parent_content=parent_content)
+                self.determine_inline_position(parent_content=parent_content)
+                self.layout_inline_children(parent_content=parent_content)
+                self.determine_inline_height(parent_content=parent_content)
+            case "anonymous-block":
+                self.determine_block_width(parent_content)
+                self.determine_block_position(parent_content)
+                self.layout_inline_children(parent_content=parent_content)
+                self.determine_inline_height(parent_content=parent_content)
             case display:
                 assert_never(display)
 
-    def determine_width(self, parent_dims: BoxDimensions) -> None:
+    def layout_block(self, parent_content: Rect) -> None:
+        self.determine_block_width(parent_content)
+        self.determine_block_position(parent_content)
+        self.layout_block_children(parent_content)
+        self.determine_block_height(parent_content)
+
+    def determine_block_width(self, parent_content: Rect) -> None:
         element_style = self.element.style
 
         width = element_style.span.width
@@ -130,14 +146,14 @@ class LayoutBox(ForbidExtras):
         # This block is going to be laid out inside the content region of the containing block.
         # If it's already too wide, the content width of this box is fixed, and the margins are expandable,
         # we definitely cannot expand the margins, so set them to zero.
-        if minimum_block_width > parent_dims.content.width:
+        if minimum_block_width > parent_content.width:
             if margin_left == "auto":
                 margin_left = 0
             if margin_right == "auto":
                 margin_right = 0
 
         # The underflow is how much extra space we have (it may be negative if the minimum width is too wide)
-        underflow = parent_dims.content.width - minimum_block_width
+        underflow = parent_content.width - minimum_block_width
 
         match width == "auto", margin_left == "auto", margin_right == "auto":
             # Woops, overconstrained dimensions!
@@ -183,7 +199,7 @@ class LayoutBox(ForbidExtras):
         dims.padding.left = padding_left
         dims.padding.right = padding_right
 
-    def determine_position(self, parent_dims: BoxDimensions) -> None:
+    def determine_block_position(self, parent_content: Rect) -> None:
         element_style = self.element.style
         dims = self.dims
 
@@ -198,28 +214,108 @@ class LayoutBox(ForbidExtras):
         dims.padding.bottom = element_style.padding.bottom
 
         # These left and right box params were set previously by self.calculate_block_width()
-        dims.content.x = parent_dims.content.x + dims.margin.left + dims.border.left + dims.padding.left
+        dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
 
-        # containing_block.content.height is going to be updated *between* each child layout,
+        # parent_content.height is going to be updated *between* each child layout,
         # so that when each child of a block calls this method, it sees a different height
         # for the containing block. It's really the "current height" during layout, then becomes
         # the final height when the layout is complete.
-        dims.content.y = (
-            parent_dims.content.y + parent_dims.content.height + dims.margin.top + dims.border.top + dims.padding.top
-        )
+        dims.content.y = parent_content.y + parent_content.height + dims.margin.top + dims.border.top + dims.padding.top
 
-    def layout_children(self, parent_dims: BoxDimensions) -> None:
+    def layout_block_children(self, parent_content: Rect) -> None:
         for child in self.children:
-            child.layout(parent_dims=self.dims)
+            child.layout(parent_content=self.dims.content)
 
             # Update our own height between child layouts, so that our height
             # reflects the "current height" that each child sees and lays itself out below.
             # This is for "block" layout, not "inline"!
             self.dims.content.height += child.dims.margin_rect().height
 
-    def determine_height(self, parent_dims: BoxDimensions) -> None:
+    def determine_block_height(self, parent_content: Rect) -> None:
         # If a height was set explicitly, use it to override.
         # Note that this can override the "current height" calculations done in self.layout_block_children()
+        if self.element.style.span.height != "auto":
+            self.dims.content.height = self.element.style.span.height
+
+    def layout_inline(self, parent_content: Rect) -> None:
+        self.determine_inline_width(parent_content=parent_content)
+        self.determine_inline_position(parent_content=parent_content)
+        self.layout_inline_children(parent_content=parent_content)
+        self.determine_inline_height(parent_content=parent_content)
+
+    def determine_inline_width(self, parent_content: Rect) -> None:
+        element_style = self.element.style
+
+        width = element_style.span.width
+
+        margin_left = element_style.margin.left
+        margin_right = element_style.margin.right
+
+        border_left = 1 if element_style.border is not None else 0
+        border_right = 1 if element_style.border is not None else 0
+
+        padding_left = element_style.padding.left
+        padding_right = element_style.padding.right
+
+        # auto margins are treated as 0 for inline elements
+        if margin_left == "auto":
+            margin_left = 0
+        if margin_right == "auto":
+            margin_right = 0
+
+        if width == "auto" and self.type == "anonymous-block":
+            width = 0
+
+        dims = self.dims
+
+        dims.content.width = width  # type: ignore[assignment]
+
+        dims.margin.left = margin_left  # type: ignore[assignment]
+        dims.margin.right = margin_right  # type: ignore[assignment]
+
+        dims.border.left = border_left
+        dims.border.right = border_right
+
+        dims.padding.left = padding_left
+        dims.padding.right = padding_right
+
+    def determine_inline_position(self, parent_content: Rect) -> None:
+        element_style = self.element.style
+        dims = self.dims
+
+        # Transfer top and bottom box params from style to self
+        dims.margin.top = element_style.margin.top
+        dims.margin.bottom = element_style.margin.bottom
+
+        dims.border.top = 1 if element_style.border else 0
+        dims.border.bottom = 1 if element_style.border else 0
+
+        dims.padding.top = element_style.padding.top
+        dims.padding.bottom = element_style.padding.bottom
+
+        dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
+        dims.content.y = parent_content.y + dims.margin.top + dims.border.top + dims.padding.top
+
+    def layout_inline_children(self, parent_content: Rect) -> None:
+        left = 0
+        for child in self.children:
+            child.layout(
+                parent_content=Rect(
+                    x=self.dims.content.x + left,
+                    y=self.dims.content.y,
+                    width=self.dims.content.width - left,
+                    height=self.dims.content.height,
+                )
+            )
+
+            left += child.dims.margin_rect().width
+
+            # The height of an inline block is the height of its tallest child
+            self.dims.content.height = max(self.dims.content.height, child.dims.margin_rect().height)
+
+    def determine_inline_height(self, parent_content: Rect) -> None:
+        # If a height was set explicitly, use it to override.
+        # Note that this can override the "current height" calculations done in self.layout_inline_children()
         if self.element.style.span.height != "auto":
             self.dims.content.height = self.element.style.span.height
 
