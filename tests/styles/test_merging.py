@@ -1,7 +1,9 @@
+from pprint import pprint
+
 import pytest
 
 from reprisal.styles import Border, Span, Style
-from reprisal.styles.styles import BorderKind, CellStyle, Color
+from reprisal.styles.styles import BorderKind, CellStyle, Color, Inline
 
 
 @pytest.mark.parametrize(
@@ -44,7 +46,21 @@ from reprisal.styles.styles import BorderKind, CellStyle, Color
             Style(border=Border(kind=BorderKind.LightRounded)),
             Style(border=Border(kind=BorderKind.LightRounded, style=CellStyle(foreground=Color.from_name("green")))),
         ),
+        (
+            Style(),
+            Style(display=Inline()),
+            Style(display=Inline()),
+        ),
+        (
+            Style(display=Inline()),
+            Style(),
+            Style(display=Inline()),
+        ),
     ],
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:
-    assert left | right == expected
+    print("Left:")
+    pprint(left.dict(exclude_unset=True))
+    print("\nRight:")
+    pprint(right.dict(exclude_unset=True))
+    assert (left | right).dict() == expected.dict()

@@ -26,6 +26,16 @@ class StyleFragment(FrozenForbidExtras):
     def __or__(self: S, other: S) -> S:
         return merge_style_fragments(self, other)
 
+    def dict(self, **kwargs) -> dict[str, object]:
+        d = super().dict(**kwargs)
+
+        # Always include the "type" field if present,
+        # even if it was not set (important for style merging).
+        if "type" in self.__dict__:
+            d["type"] = self.__dict__["type"]
+
+        return d
+
 
 class Color(NamedTuple):
     red: int
@@ -255,12 +265,16 @@ class Inline(StyleFragment):
     justify: Literal["left", "right"] = Field(default="left")
 
 
+class Hidden(StyleFragment):
+    type: Literal["hidden"] = "hidden"
+
+
 class AnonymousBlock(StyleFragment):
     type: Literal["anonymous-block"] = "anonymous-block"
 
 
 class Style(StyleFragment):
-    display: Block | Inline | Literal["none"] = Field(default=Block())
+    display: Block | Inline | Hidden = Field(default=Block())
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)
