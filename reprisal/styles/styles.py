@@ -298,20 +298,20 @@ class Flex(StyleFragment):
     direction: Literal["row", "column"] = "row"
     position: Literal["relative"] = "relative"
     weight: int | None = 1
-    justify_content: Literal[
-        "flex-start",
+    justify_children: Literal[
+        "start",
         "center",
-        "flex-end",
+        "end",
         "space-between",
         "space-around",
         "space-evenly",
-    ] = "flex-start"
-    align_items: Literal[
-        "flex-start",
+    ] = "start"
+    align_children: Literal[
+        "start",
         "center",
-        "flex-end",
+        "end",
         "stretch",
-    ] = "flex-start"
+    ] = "start"
 
 
 class Style(StyleFragment):
