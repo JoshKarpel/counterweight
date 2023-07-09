@@ -18,18 +18,26 @@ e = Div(
             Div(
                 children=[
                     Paragraph(
-                        content=f"{align_items}",
+                        content=f"{align_items} weight=1",
                         style=Style(
-                            display=Flex(weight=2),
-                            span=Span(width=10, height=1 if align_items != "stretch" else "auto"),
+                            display=Flex(weight=1),
+                            span=Span(width="auto", height=1 if align_items != "stretch" else "auto"),
                             border=Border(kind=BorderKind.Light),
                         ),
                     ),
                     Paragraph(
-                        content=f"{align_items}",
+                        content=f"{align_items} weight=2",
                         style=Style(
                             display=Flex(weight=2),
-                            span=Span(width=10, height=1 if align_items != "stretch" else "auto"),
+                            span=Span(width="auto", height=1 if align_items != "stretch" else "auto"),
+                            border=Border(kind=BorderKind.Light),
+                        ),
+                    ),
+                    Paragraph(
+                        content=f"{align_items} weight=3",
+                        style=Style(
+                            display=Flex(weight=3),
+                            span=Span(width="auto", height=1 if align_items != "stretch" else "auto"),
                             border=Border(kind=BorderKind.Light),
                         ),
                     ),
