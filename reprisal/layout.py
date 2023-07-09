@@ -7,7 +7,7 @@ from more_itertools import take
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal._utils import halve_integer
+from reprisal._utils import halve_integer, partition_int
 from reprisal.components import AnyElement, Component, Element
 from reprisal.styles.styles import AnonymousBlock, Block, Flex, Inline
 from reprisal.types import ForbidExtras
@@ -77,6 +77,30 @@ class BoxDimensions(ForbidExtras):
     def margin_rect(self) -> Rect:
         return self.border_rect().expand_by(self.margin)
 
+    def left_edge_width(self) -> int:
+        return self.margin.left + self.border.left + self.padding.left
+
+    def right_edge_width(self) -> int:
+        return self.margin.right + self.border.right + self.padding.right
+
+    def top_edge_width(self) -> int:
+        return self.margin.top + self.border.top + self.padding.top
+
+    def bottom_edge_width(self) -> int:
+        return self.margin.bottom + self.border.bottom + self.padding.bottom
+
+    def horizontal_edge_width(self) -> int:
+        return self.left_edge_width() + self.right_edge_width()
+
+    def vertical_edge_width(self) -> int:
+        return self.top_edge_width() + self.bottom_edge_width()
+
+    def width(self) -> int:
+        return self.content.width + self.horizontal_edge_width()
+
+    def height(self) -> int:
+        return self.content.height + self.vertical_edge_width()
+
 
 class LayoutBox(ForbidExtras):
     element: AnyElement
@@ -105,23 +129,42 @@ class LayoutBox(ForbidExtras):
 
         for node in reversed(top_down):
             node.first_pass()
+            print(f"{node.dims.dict(exclude_defaults=True)=}")
 
         for node in top_down:
             node.second_pass()
 
     def first_pass(self) -> None:
-        s = self.element.style
-        display = s.display
+        style = self.element.style
+        display = style.display
 
         if display.type != "flex":
             raise Exception("Root must be flex")
 
-        if s.span.width != "auto":  # i.e., if it's a fixed width
-            self.dims.content.width = s.span.width
-        if s.span.height != "auto":  # i.e., if it's a fixed height
-            self.dims.content.height = s.span.height
+        # transfer margin/border/padding to dimensions
+        # TODO handle "auto" here -> 0, or maybe get rid of auto margins/padding?
+        self.dims.margin.top = style.margin.top
+        self.dims.margin.bottom = style.margin.bottom
+        self.dims.margin.left = style.margin.left
+        self.dims.margin.right = style.margin.right
 
-        if s.span.width == "auto":
+        self.dims.border.top = 1 if style.border else 0
+        self.dims.border.bottom = 1 if style.border else 0
+        self.dims.border.left = 1 if style.border else 0
+        self.dims.border.right = 1 if style.border else 0
+
+        self.dims.padding.top = style.padding.top
+        self.dims.padding.bottom = style.padding.bottom
+        self.dims.padding.left = style.padding.left
+        self.dims.padding.right = style.padding.right
+
+        if style.span.width != "auto":  # i.e., if it's a fixed width
+            self.dims.content.width = style.span.width
+        if style.span.height != "auto":  # i.e., if it's a fixed height
+            self.dims.content.height = style.span.height
+
+        # missing height symmetry here
+        if style.span.width == "auto":
             for child_box in self.children:
                 child_element = child_box.element
                 child_style = child_element.style
@@ -151,6 +194,7 @@ class LayoutBox(ForbidExtras):
                             self.dims.content.height = max(self.dims.content.height, child_margin_rect.height)
 
     def second_pass(self) -> None:
+        print("\n second pass")
         pass
 
         # TODO: positions
@@ -160,6 +204,104 @@ class LayoutBox(ForbidExtras):
         # calculate available width for children, minus how much they use,
         # then divide that between them based on the content justification
         # We are in the parent, justifying the children!
+        style = self.element.style
+        display = style.display
+
+        # TODO: this is a hack
+        if not isinstance(display, Flex):
+            raise Exception("Must be flex")
+
+        available_width = self.dims.content.width
+        available_height = self.dims.content.height
+
+        relative_children = [child for child in self.children if child.element.style.display.position == "relative"]
+
+        # subtract off fixed-width/height children from what's available to flex
+        # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
+        for child in relative_children:
+            if child.element.style.display.weight is None:
+                if display.direction == "row":
+                    available_width -= child.dims.margin_rect().width
+                elif display.direction == "column":
+                    available_height -= child.dims.margin_rect().height
+
+        # when does flex element width get set for space-* justify?
+        if relative_children and display.justify_content not in ("space-between", "space-around", "space-evenly"):
+            weights = [child.element.style.display.weight for child in relative_children]
+            if display.direction == "row":
+                for child, flex_portion in zip(
+                    relative_children, partition_int(total=available_width, weights=weights)
+                ):
+                    child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
+            elif display.direction == "column":
+                for child, flex_portion in zip(
+                    relative_children, partition_int(total=available_height, weights=weights)
+                ):
+                    print(flex_portion, child.dims.horizontal_edge_width())
+                    child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
+
+        # determine positions
+
+        print("shifting content box by margin, border, and padding")
+        print(f"{self.dims.content=}")
+        self.dims.content.x += self.dims.margin.left + self.dims.border.left + self.dims.padding.left
+        self.dims.content.y += self.dims.margin.top + self.dims.border.top + self.dims.padding.top
+        print(f"{self.dims.content=}")
+        print("done")
+
+        # these x and y persist between children and set the top left corner of their margin box
+        # start in top left corner of our own context box
+        x = self.dims.content.x
+        y = self.dims.content.y
+        print(f"{x=} {y=}")
+
+        if display.direction == "row":
+            if display.justify_content == "center":
+                x += available_width / 2
+            elif display.justify_content == "flex-end":
+                x += available_width
+        elif display.direction:
+            if display.justify_content == "center":
+                y += available_height / 2
+            elif display.justify_content == "flex-end":
+                y += available_height
+
+        if display.justify_content == "space-between":
+            raise NotImplementedError
+        elif display.justify_content == "space-around":
+            raise NotImplementedError
+        elif display.justify_content == "space-evenly":
+            raise NotImplementedError
+        else:
+            for child in relative_children:
+                child.dims.content.x = x
+                child.dims.content.y = y
+                if display.direction == "row":
+                    x += child.dims.width()
+                elif display.direction == "column":
+                    y += child.dims.height()
+
+        # alignment
+        for child in relative_children:
+            if display.direction == "row":
+                if display.align_items == "center":
+                    child.dims.content.y = (
+                        self.dims.content.y + self.dims.content.height // 2 - child.dims.content.height // 2
+                    )
+                elif display.align_items == "flex-end":
+                    child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.content.height
+                elif display.align_items == "stretch" and child.dims.content.height == "auto":
+                    child.dims.content.height = self.dims.content.height
+
+            elif display.direction == "column":
+                if display.align_items == "center":
+                    child.dims.content.x = (
+                        self.dims.content.x + self.dims.content.width // 2 - child.dims.content.width // 2
+                    )
+                elif display.align_items == "flex-end":
+                    child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.content.width
+                elif display.align_items == "stretch" and child.dims.content.width == "auto":
+                    child.dims.content.width = self.dims.content.width
 
     def layout(self, parent_content: Rect) -> None:
         match self.display.type:

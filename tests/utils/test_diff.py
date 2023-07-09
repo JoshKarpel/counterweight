@@ -24,8 +24,10 @@ def test_examples(a: dict[object, object], b: dict[object, object], expected: di
     b=dictionaries(keys=text(), values=text()),
 )
 def test_properties(a: dict[str, str], b: dict[str, str]) -> None:
+    result = diff(a, b)
+
     # all keys in the diff are from the left
-    assert diff(a, b).keys() <= a.keys()
+    assert result.keys() <= a.keys()
 
     # all values in diff are from the left
-    assert all(v == a[k] for k, v in diff(a, b).items())
+    assert all(v == a[k] for k, v in result.items())

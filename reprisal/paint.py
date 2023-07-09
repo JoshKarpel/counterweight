@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 from structlog import get_logger
 
-from reprisal.components import Div, Element, Paragraph
+from reprisal.components import AnyElement, Div, Paragraph
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
 from reprisal.styles.styles import CellStyle, Margin, Padding
@@ -27,7 +27,7 @@ def paint_layout(layout: LayoutBox) -> Paint:
     return painted
 
 
-def paint_element(element: Element, dims: BoxDimensions) -> Paint:
+def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
     m = paint_edge(element.style.margin, dims.margin, dims.margin_rect())
     b = paint_border(element.style.border, dims.border_rect()) if element.style.border else {}
     t = paint_edge(element.style.padding, dims.padding, dims.padding_rect())

@@ -297,12 +297,27 @@ class Flex(StyleFragment):
     type: Literal["flex"] = "flex"
     direction: Literal["row", "column"] = "row"
     position: Literal["relative"] = "relative"
+    weight: int | None = 1
+    justify_content: Literal[
+        "flex-start",
+        "center",
+        "flex-end",
+        "space-between",
+        "space-around",
+        "space-evenly",
+    ] = "flex-start"
+    align_items: Literal[
+        "flex-start",
+        "center",
+        "flex-end",
+        "stretch",
+    ] = "flex-start"
 
 
 class Style(StyleFragment):
     display: Block | Inline | Flex | Hidden = Field(default=Block())
     span: Span = Field(default=Span())
-    margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
+    margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)
-    padding: Padding = Field(default=Padding(top=0, bottom=0, left=0, right=0))
+    padding: Padding = Field(default=Padding())
     text: Text = Field(default=Text())
