@@ -129,7 +129,6 @@ class LayoutBox(ForbidExtras):
 
         for node in reversed(top_down):
             node.first_pass()
-            print(f"{node.dims.dict(exclude_defaults=True)=}")
 
         for node in top_down:
             node.second_pass()
@@ -226,6 +225,7 @@ class LayoutBox(ForbidExtras):
         relative_children_with_weights = [
             child for child in relative_children if child.element.style.display.weight is not None
         ]
+        num_relative_children = len(relative_children)
         # subtract off fixed-width/height children from what's available to flex
         for child in relative_children:
             if child.element.style.display.weight is None:
@@ -236,6 +236,7 @@ class LayoutBox(ForbidExtras):
 
         # when does flex element width get set for space-* justify?
         # space-* justify assumes children have fixed widths! it distributes the leftover space
+        # but what if you DO put flex children in there? who sets their widths?
         # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
         if relative_children_with_weights and display.justify_content not in (
             "space-between",
@@ -267,21 +268,53 @@ class LayoutBox(ForbidExtras):
 
         if display.direction == "row":
             if display.justify_content == "center":
-                x += available_width / 2
+                # TODO: floordivs
+                x += available_width // 2
             elif display.justify_content == "flex-end":
                 x += available_width
-        elif display.direction:
+        elif display.direction == "column":
             if display.justify_content == "center":
-                y += available_height / 2
+                # TODO: floordivs
+                y += available_height // 2
             elif display.justify_content == "flex-end":
                 y += available_height
 
+        # TODO: many floordivs below
+        # need to distribute the gaps with equal weight?
+        # TODO: some bad interaction with space-around and space-evenly when align_items="stretch"
         if display.justify_content == "space-between":
-            raise NotImplementedError
+            horizontal_gap = available_width // (num_relative_children - 1)
+            vertical_gap = available_height // (num_relative_children - 1)
+            for child in relative_children:
+                child.dims.content.x = x
+                child.dims.content.y = y
+                if display.direction == "row":
+                    x += child.dims.width() + horizontal_gap
+                elif display.direction == "column":
+                    y += child.dims.height() + vertical_gap
+
         elif display.justify_content == "space-around":
-            raise NotImplementedError
+            horizontal_gap = available_width // num_relative_children
+            vertical_gap = available_height // num_relative_children
+            for child in relative_children:
+                child.dims.content.x = x + horizontal_gap // 2
+                child.dims.content.y = y + vertical_gap // 2
+                if display.direction == "row":
+                    x += child.dims.width() + horizontal_gap
+                elif display.direction == "column":
+                    y += child.dims.height() + vertical_gap
+
         elif display.justify_content == "space-evenly":
-            raise NotImplementedError
+            horizontal_gap = available_width // (num_relative_children + 1)
+            vertical_gap = available_height // (num_relative_children + 1)
+            for child in relative_children:
+                child.dims.content.x = x + horizontal_gap
+                child.dims.content.y = y + vertical_gap
+                if display.direction == "row":
+                    x += child.dims.width() + horizontal_gap
+                elif display.direction == "column":
+                    y += child.dims.height() + vertical_gap
+
         else:
             for child in relative_children:
                 child.dims.content.x = x
@@ -295,12 +328,9 @@ class LayoutBox(ForbidExtras):
         # content width/height of self, but full width/height of children
         for child in relative_children:
             if display.direction == "row":
-                print(display.align_items, child.dims)
                 if display.align_items == "center":
                     # TODO: these floordivs aren't great
-                    child.dims.content.y = (
-                        self.dims.content.y + self.dims.content.height // 2 - child.dims.height() // 2
-                    )
+                    child.dims.content.y = self.dims.content.y + ((self.dims.content.height - child.dims.height()) // 2)
                 elif display.align_items == "flex-end":
                     child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.height()
                 elif display.align_items == "stretch" and child.element.style.span.height == "auto":
@@ -309,7 +339,7 @@ class LayoutBox(ForbidExtras):
             elif display.direction == "column":
                 if display.align_items == "center":
                     # TODO: these floordivs aren't great
-                    child.dims.content.x = self.dims.content.x + self.dims.content.width // 2 - child.dims.width() // 2
+                    child.dims.content.x = self.dims.content.x + ((self.dims.content.width - child.dims.width()) // 2)
                 elif display.align_items == "flex-end":
                     child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.width()
                 elif display.align_items == "stretch" and child.element.style.span.width == "auto":
