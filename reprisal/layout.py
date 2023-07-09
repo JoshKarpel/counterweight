@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import NamedTuple
 
+from more_itertools import take
 from pydantic import Field
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
-from reprisal.components import AnyElement, Component, Div, Element
-from reprisal.styles.styles import AnonymousBlock, Block, Inline
+from reprisal.components import AnyElement, Component, Element
+from reprisal.styles.styles import AnonymousBlock, Block, Flex, Inline
 from reprisal.types import ForbidExtras
 
 
@@ -79,14 +80,86 @@ class BoxDimensions(ForbidExtras):
 
 class LayoutBox(ForbidExtras):
     element: AnyElement
-    display: Block | Inline | AnonymousBlock
+    display: Block | Inline | Flex | AnonymousBlock
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
+    parent: LayoutBox | None = Field(default=None, exclude=True)
     children: list[LayoutBox] = Field(default_factory=list)
 
-    def walk_from_bottom(self) -> Iterator[Element]:
+    def walk_elements_from_bottom(self) -> Iterator[Element]:
         for child in self.children:
-            yield from child.walk_from_bottom()
+            yield from child.walk_elements_from_bottom()
         yield self.element
+
+    def walk_levels(self) -> Iterator[LayoutBox]:
+        yield self
+
+        next_level = []
+        for child in self.children:
+            c = child.walk_levels()
+            yield take(1, c)[0]
+            next_level.extend(c)
+        yield from next_level
+
+    def flex(self) -> None:
+        top_down = list(self.walk_levels())
+
+        for node in reversed(top_down):
+            node.first_pass()
+
+        for node in top_down:
+            node.second_pass()
+
+    def first_pass(self) -> None:
+        s = self.element.style
+        display = s.display
+
+        if display.type != "flex":
+            raise Exception("Root must be flex")
+
+        if s.span.width != "auto":  # i.e., if it's a fixed width
+            self.dims.content.width = s.span.width
+        if s.span.height != "auto":  # i.e., if it's a fixed height
+            self.dims.content.height = s.span.height
+
+        if s.span.width == "auto":
+            for child_box in self.children:
+                child_element = child_box.element
+                child_style = child_element.style
+
+                child_display = child_style.display
+                if child_display.type != "flex":
+                    raise Exception("Flex children must be flex")
+
+                child_margin_rect = child_box.dims.margin_rect()
+
+                if child_margin_rect.width or child_style.span.width != "auto":
+                    if child_display.position == "relative":
+                        if display.direction == "row":
+                            # We are growing the box to the right
+                            self.dims.content.width += child_margin_rect.width
+                        elif display.direction == "column":
+                            # The box is as wide as its widest child
+                            self.dims.content.width = max(self.dims.content.width, child_margin_rect.width)
+
+                if child_margin_rect.height or child_style.span.height != "auto":
+                    if child_display.position == "relative":
+                        if display.direction == "column":
+                            # We are growing the box downward
+                            self.dims.content.height += child_margin_rect.height
+                        elif display.direction == "row":
+                            # The box is as tall as its tallest child
+                            self.dims.content.height = max(self.dims.content.height, child_margin_rect.height)
+
+    def second_pass(self) -> None:
+        pass
+
+        # TODO: positions
+
+        # TODO: align self
+
+        # calculate available width for children, minus how much they use,
+        # then divide that between them based on the content justification
+        # We are in the parent, justifying the children!
 
     def layout(self, parent_content: Rect) -> None:
         match self.display.type:
@@ -321,11 +394,13 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height = self.element.style.span.height
 
 
-def build_layout_tree(element: AnyElement) -> LayoutBox:
+def build_layout_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
     display = element.style.display
 
     if display.type == "hidden":
         raise Exception("Root element cannot have display='hidden'")
+
+    box = LayoutBox(element=element, display=display, parent=parent)
 
     children = []
     for child in element.children:
@@ -334,21 +409,22 @@ def build_layout_tree(element: AnyElement) -> LayoutBox:
 
         # Each block must only have children of one type: block or inline.
         match display.type, child.style.display.type:
-            case ("block", "block") | ("inline", "inline"):
-                children.append(build_layout_tree(child))
-            case "block", "inline":
-                if children and children[-1].display.type == "anonymous-block":
-                    # Re-use previous anonymous block
-                    children[-1].children.append(build_layout_tree(child))
-                else:
-                    # Create a new anonymous block level box and put the child inline box inside it.
-                    box = LayoutBox(element=Div(), display=AnonymousBlock(), children=[build_layout_tree(child)])
-                    children.append(box)
-            case "inline", "block":
-                raise NotImplementedError("Inline blocks cannot have block children yet")
-            case _, "hidden":
-                pass
-            case l, r:
-                raise NotImplementedError(f"Unsupported display type combination: {l} and {r}")
+            case ("block", "block") | ("inline", "inline") | ("flex", "flex"):
+                children.append(build_layout_tree(child, parent=box))
+            # case "block", "inline":
+            #     if children and children[-1].display.type == "anonymous-block":
+            #         # Re-use previous anonymous block
+            #         children[-1].children.append(build_layout_tree(child))
+            #     else:
+            #         # Create a new anonymous block level box and put the child inline box inside it.
+            #         box = LayoutBox(element=Div(), display=AnonymousBlock(), children=[build_layout_tree(child)])
+            #         children.append(box)
+            # case "inline", "block":
+            #     raise NotImplementedError("Inline blocks cannot have block children yet")
+            # case _, "hidden":
+            #     pass
+            # case l, r:
+            #     raise NotImplementedError(f"Unsupported display type combination: {l} and {r}")
 
-    return LayoutBox(element=element, display=display, children=children)
+    box.children = children
+    return box

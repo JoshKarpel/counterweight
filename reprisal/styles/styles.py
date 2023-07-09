@@ -293,8 +293,14 @@ class AnonymousBlock(StyleFragment):
     type: Literal["anonymous-block"] = "anonymous-block"
 
 
+class Flex(StyleFragment):
+    type: Literal["flex"] = "flex"
+    direction: Literal["row", "column"] = "row"
+    position: Literal["relative"] = "relative"
+
+
 class Style(StyleFragment):
-    display: Block | Inline | Hidden = Field(default=Block())
+    display: Block | Inline | Flex | Hidden = Field(default=Block())
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)

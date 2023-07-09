@@ -4,6 +4,7 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
+from pprint import pformat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
@@ -97,11 +98,12 @@ async def app(
 
                     start_layout = perf_counter_ns()
                     layout_tree = build_layout_tree(element_tree)
-                    layout_tree.layout(b)
+                    layout_tree.flex(b)
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
                     )
+                    logger.debug("Layout tree", layout_tree=pformat(layout_tree.dict()))
 
                     start_paint = perf_counter_ns()
                     full_paint = paint_layout(layout_tree)
@@ -156,7 +158,7 @@ async def app(
                             needs_render = True
                             previous_full_paint = {}
                         case KeyPressed():
-                            for component in layout_tree.walk_from_bottom():
+                            for component in layout_tree.walk_elements_from_bottom():
                                 if component.on_key:
                                     component.on_key(event)
                         case StateSet():
@@ -188,7 +190,7 @@ async def app(
 
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
-    for node in shadow.walk_shadow_tree():
+    for node in shadow.walk():
         for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
                 if effect.deps != effect.new_deps:

@@ -17,11 +17,11 @@ class ShadowNode(FrozenForbidExtras):
     children: list[ShadowNode | Element] = Field(default_factory=list)
     hooks: Hooks
 
-    def walk_shadow_tree(self) -> Iterator[ShadowNode]:
+    def walk(self) -> Iterator[ShadowNode]:
         yield self
         for child in self.children:
             if isinstance(child, ShadowNode):
-                yield from child.walk_shadow_tree()
+                yield from child.walk()
 
     def concrete_element_tree(self) -> AnyElement:
         return self.element.copy(
