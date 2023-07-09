@@ -163,7 +163,7 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
-        # grow to fit children
+        # grow to fit children with fixed sizes
         if style.span.width == "auto":
             for child_box in self.children:
                 child_element = child_box.element
@@ -173,25 +173,14 @@ class LayoutBox(ForbidExtras):
                 if child_display.type != "flex":
                     raise Exception("Flex children must be flex")
 
-                child_margin_rect = child_box.dims.margin_rect()
-
-                if child_margin_rect.width or child_style.span.width != "auto":
+                if child_style.span.width != "auto":
                     if child_display.position == "relative":
                         if display.direction == "row":
                             # We are growing the box to the right
-                            self.dims.content.width += child_margin_rect.width
+                            self.dims.content.width += child_box.dims.width()
                         elif display.direction == "column":
                             # The box is as wide as its widest child
-                            self.dims.content.width = max(self.dims.content.width, child_margin_rect.width)
-
-                if child_margin_rect.height or child_style.span.height != "auto":
-                    if child_display.position == "relative":
-                        if display.direction == "column":
-                            # We are growing the box downward
-                            self.dims.content.height += child_margin_rect.height
-                        elif display.direction == "row":
-                            # The box is as tall as its tallest child
-                            self.dims.content.height = max(self.dims.content.height, child_margin_rect.height)
+                            self.dims.content.width = max(self.dims.content.width, child_box.dims.width())
 
         if style.span.height == "auto":
             for child_box in self.children:
@@ -202,30 +191,16 @@ class LayoutBox(ForbidExtras):
                 if child_display.type != "flex":
                     raise Exception("Flex children must be flex")
 
-                child_margin_rect = child_box.dims.margin_rect()
-
-                if child_margin_rect.height or child_style.span.height != "auto":
-                    if child_display.position == "relative":
-                        if display.direction == "row":
-                            # We are growing the box to the right
-                            self.dims.content.width += child_margin_rect.width
-                        elif display.direction == "column":
-                            # The box is as wide as its widest child
-                            self.dims.content.width = max(self.dims.content.width, child_margin_rect.width)
-
-                if child_margin_rect.height or child_style.span.height != "auto":
+                if child_style.span.height != "auto":
                     if child_display.position == "relative":
                         if display.direction == "column":
                             # We are growing the box downward
-                            self.dims.content.height += child_margin_rect.height
+                            self.dims.content.height += child_box.dims.height()
                         elif display.direction == "row":
                             # The box is as tall as its tallest child
-                            self.dims.content.height = max(self.dims.content.height, child_margin_rect.height)
+                            self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
 
     def second_pass(self) -> None:
-        print("\n second pass")
-        pass
-
         # TODO: positions
 
         # TODO: align self
@@ -266,12 +241,11 @@ class LayoutBox(ForbidExtras):
                 for child, flex_portion in zip(
                     relative_children, partition_int(total=available_height, weights=weights)
                 ):
-                    print(flex_portion, child.dims.horizontal_edge_width())
                     child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
 
         # determine positions
 
-        # shifting content box set by parent by own margin, border, and padding
+        # shift nominal content box position set by parent by own margin, border, and padding
         self.dims.content.x += self.dims.margin.left + self.dims.border.left + self.dims.padding.left
         self.dims.content.y += self.dims.margin.top + self.dims.border.top + self.dims.padding.top
 
@@ -310,6 +284,7 @@ class LayoutBox(ForbidExtras):
         # content width/height of self, but full width/height of children
         for child in relative_children:
             if display.direction == "row":
+                print(display.align_items, child.dims)
                 if display.align_items == "center":
                     # TODO: these floordivs aren't great
                     child.dims.content.y = (
@@ -317,7 +292,7 @@ class LayoutBox(ForbidExtras):
                     )
                 elif display.align_items == "flex-end":
                     child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.height()
-                elif display.align_items == "stretch" and child.dims.content.height == "auto":
+                elif display.align_items == "stretch" and child.element.style.span.height == "auto":
                     child.dims.content.height = self.dims.content.height - child.dims.vertical_edge_width()
 
             elif display.direction == "column":
@@ -326,7 +301,7 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.x = self.dims.content.x + self.dims.content.width // 2 - child.dims.width() // 2
                 elif display.align_items == "flex-end":
                     child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.width()
-                elif display.align_items == "stretch" and child.dims.content.width == "auto":
+                elif display.align_items == "stretch" and child.element.style.span.width == "auto":
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
     def layout(self, parent_content: Rect) -> None:

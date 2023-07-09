@@ -1,5 +1,4 @@
 import shutil
-from pprint import pprint
 
 from structlog import get_logger
 
@@ -44,16 +43,16 @@ e = Div(
         ),
     ],
     style=Style(
-        display=Flex(direction="column"),
+        display=Flex(direction="column", align_items="stretch"),
         span=Span(width=w - 5, height=h - 5),
         border=Border(kind=BorderKind.Heavy),
     ),
 )
 t = build_layout_tree(e)
 t.flex()
-pprint(t.dict(exclude_defaults=True, include={"dims", "children"}))
+# pprint(t.dict(exclude_defaults=True, include={"dims", "children"}))
 p = paint_layout(t)
-pprint(t.dims.dict())
-for child in t.children:
-    pprint(child.dims.dict())
+# pprint(t.dims.dict())
+# for child in t.children:
+#     pprint(child.dims.dict())
 print(debug_paint(p, t.dims.margin_rect()))
