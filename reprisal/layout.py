@@ -163,7 +163,7 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
-        # missing height symmetry here
+        # grow to fit children
         if style.span.width == "auto":
             for child_box in self.children:
                 child_element = child_box.element
@@ -176,6 +176,35 @@ class LayoutBox(ForbidExtras):
                 child_margin_rect = child_box.dims.margin_rect()
 
                 if child_margin_rect.width or child_style.span.width != "auto":
+                    if child_display.position == "relative":
+                        if display.direction == "row":
+                            # We are growing the box to the right
+                            self.dims.content.width += child_margin_rect.width
+                        elif display.direction == "column":
+                            # The box is as wide as its widest child
+                            self.dims.content.width = max(self.dims.content.width, child_margin_rect.width)
+
+                if child_margin_rect.height or child_style.span.height != "auto":
+                    if child_display.position == "relative":
+                        if display.direction == "column":
+                            # We are growing the box downward
+                            self.dims.content.height += child_margin_rect.height
+                        elif display.direction == "row":
+                            # The box is as tall as its tallest child
+                            self.dims.content.height = max(self.dims.content.height, child_margin_rect.height)
+
+        if style.span.height == "auto":
+            for child_box in self.children:
+                child_element = child_box.element
+                child_style = child_element.style
+
+                child_display = child_style.display
+                if child_display.type != "flex":
+                    raise Exception("Flex children must be flex")
+
+                child_margin_rect = child_box.dims.margin_rect()
+
+                if child_margin_rect.height or child_style.span.height != "auto":
                     if child_display.position == "relative":
                         if display.direction == "row":
                             # We are growing the box to the right
@@ -242,18 +271,14 @@ class LayoutBox(ForbidExtras):
 
         # determine positions
 
-        print("shifting content box by margin, border, and padding")
-        print(f"{self.dims.content=}")
+        # shifting content box set by parent by own margin, border, and padding
         self.dims.content.x += self.dims.margin.left + self.dims.border.left + self.dims.padding.left
         self.dims.content.y += self.dims.margin.top + self.dims.border.top + self.dims.padding.top
-        print(f"{self.dims.content=}")
-        print("done")
 
         # these x and y persist between children and set the top left corner of their margin box
         # start in top left corner of our own context box
         x = self.dims.content.x
         y = self.dims.content.y
-        print(f"{x=} {y=}")
 
         if display.direction == "row":
             if display.justify_content == "center":
@@ -282,26 +307,27 @@ class LayoutBox(ForbidExtras):
                     y += child.dims.height()
 
         # alignment
+        # content width/height of self, but full width/height of children
         for child in relative_children:
             if display.direction == "row":
                 if display.align_items == "center":
+                    # TODO: these floordivs aren't great
                     child.dims.content.y = (
-                        self.dims.content.y + self.dims.content.height // 2 - child.dims.content.height // 2
+                        self.dims.content.y + self.dims.content.height // 2 - child.dims.height() // 2
                     )
                 elif display.align_items == "flex-end":
-                    child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.content.height
+                    child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.height()
                 elif display.align_items == "stretch" and child.dims.content.height == "auto":
-                    child.dims.content.height = self.dims.content.height
+                    child.dims.content.height = self.dims.content.height - child.dims.vertical_edge_width()
 
             elif display.direction == "column":
                 if display.align_items == "center":
-                    child.dims.content.x = (
-                        self.dims.content.x + self.dims.content.width // 2 - child.dims.content.width // 2
-                    )
+                    # TODO: these floordivs aren't great
+                    child.dims.content.x = self.dims.content.x + self.dims.content.width // 2 - child.dims.width() // 2
                 elif display.align_items == "flex-end":
-                    child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.content.width
+                    child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.width()
                 elif display.align_items == "stretch" and child.dims.content.width == "auto":
-                    child.dims.content.width = self.dims.content.width
+                    child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
     def layout(self, parent_content: Rect) -> None:
         match self.display.type:

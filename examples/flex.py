@@ -1,3 +1,4 @@
+import shutil
 from pprint import pprint
 
 from structlog import get_logger
@@ -10,28 +11,41 @@ from reprisal.styles.styles import Flex
 
 logger = get_logger()
 
+w, h = shutil.get_terminal_size()
+
 e = Div(
     children=[
-        Paragraph(
-            content="top",
-            style=Style(
-                display=Flex(weight=2),
-                span=Span(width=10, height=1),
-                border=Border(kind=BorderKind.Light),
-            ),
-        ),
-        Paragraph(
-            content="bottom",
-            style=Style(
-                display=Flex(),
-                span=Span(width=10, height=1),
-                border=Border(kind=BorderKind.Light),
-            ),
+        *(
+            Div(
+                children=[
+                    Paragraph(
+                        content=f"{align_items}",
+                        style=Style(
+                            display=Flex(weight=2),
+                            span=Span(width=10, height=1 if align_items != "stretch" else "auto"),
+                            border=Border(kind=BorderKind.Light),
+                        ),
+                    ),
+                    Paragraph(
+                        content=f"{align_items}",
+                        style=Style(
+                            display=Flex(weight=2),
+                            span=Span(width=10, height=1 if align_items != "stretch" else "auto"),
+                            border=Border(kind=BorderKind.Light),
+                        ),
+                    ),
+                ],
+                style=Style(
+                    display=Flex(direction="row", align_items=align_items),
+                    border=Border(kind=BorderKind.Heavy),
+                ),
+            )
+            for align_items in ["flex-start", "flex-end", "center", "stretch"]
         ),
     ],
     style=Style(
         display=Flex(direction="column"),
-        span=Span(width=30, height=10),
+        span=Span(width=w - 5, height=h - 5),
         border=Border(kind=BorderKind.Heavy),
     ),
 )
@@ -42,6 +56,4 @@ p = paint_layout(t)
 pprint(t.dims.dict())
 for child in t.children:
     pprint(child.dims.dict())
-print("-----")
 print(debug_paint(p, t.dims.margin_rect()))
-print("-----")
