@@ -18,9 +18,9 @@ e = Div(
             Div(
                 children=[
                     Paragraph(
-                        content=f"{align_items} weight=1",
+                        content=f"{align_items} weight=1 very long text",
                         style=Style(
-                            display=Flex(weight=1),
+                            display=Flex(weight=None),
                             span=Span(width="auto", height=1 if align_items != "stretch" else "auto"),
                             border=Border(kind=BorderKind.Light),
                         ),

@@ -302,9 +302,9 @@ class Flex(StyleFragment):
         "flex-start",
         "center",
         "flex-end",
-        "space-between",
-        "space-around",
-        "space-evenly",
+        # "space-between",
+        # "space-around",
+        # "space-evenly",
     ] = "flex-start"
     align_items: Literal[
         "flex-start",

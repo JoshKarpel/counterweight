@@ -163,6 +163,10 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
+        # text boxes with auto width get their width from their content (no wrapping)
+        if style.span.width == "auto" and self.element.type == "text":
+            self.dims.content.width = len(self.element.content)
+
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
             for child_box in self.children:
@@ -219,9 +223,10 @@ class LayoutBox(ForbidExtras):
         available_height = self.dims.content.height
 
         relative_children = [child for child in self.children if child.element.style.display.position == "relative"]
-
+        relative_children_with_weights = [
+            child for child in relative_children if child.element.style.display.weight is not None
+        ]
         # subtract off fixed-width/height children from what's available to flex
-        # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
         for child in relative_children:
             if child.element.style.display.weight is None:
                 if display.direction == "row":
@@ -230,16 +235,22 @@ class LayoutBox(ForbidExtras):
                     available_height -= child.dims.margin_rect().height
 
         # when does flex element width get set for space-* justify?
-        if relative_children and display.justify_content not in ("space-between", "space-around", "space-evenly"):
-            weights = [child.element.style.display.weight for child in relative_children]
+        # space-* justify assumes children have fixed widths! it distributes the leftover space
+        # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
+        if relative_children_with_weights and display.justify_content not in (
+            "space-between",
+            "space-around",
+            "space-evenly",
+        ):
+            weights = [child.element.style.display.weight for child in relative_children_with_weights]
             if display.direction == "row":
                 for child, flex_portion in zip(
-                    relative_children, partition_int(total=available_width, weights=weights)
+                    relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
                     child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
             elif display.direction == "column":
                 for child, flex_portion in zip(
-                    relative_children, partition_int(total=available_height, weights=weights)
+                    relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
                     child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
 
