@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypeVar, Union
 
 from pydantic import Field
 
 from reprisal._utils import merge
 from reprisal.types import FrozenForbidExtras
+
+if TYPE_CHECKING:
+    from pydantic.typing import AbstractSetIntStr, DictStrAny, MappingIntStrAny
 
 S = TypeVar("S", bound="StyleFragment")
 
@@ -26,8 +29,26 @@ class StyleFragment(FrozenForbidExtras):
     def __or__(self: S, other: S) -> S:
         return merge_style_fragments(self, other)
 
-    def dict(self, **kwargs) -> dict[str, object]:
-        d = super().dict(**kwargs)
+    def dict(
+        self,
+        *,
+        include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        by_alias: bool = False,
+        skip_defaults: Optional[bool] = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+    ) -> "DictStrAny":
+        d = super().dict(
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            skip_defaults=skip_defaults,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+        )
 
         # Always include the "type" field if present,
         # even if it was not set (important for style merging).
@@ -262,7 +283,6 @@ class Block(StyleFragment):
 
 class Inline(StyleFragment):
     type: Literal["inline"] = "inline"
-    justify: Literal["left", "right"] = Field(default="left")
 
 
 class Hidden(StyleFragment):

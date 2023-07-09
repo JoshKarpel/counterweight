@@ -1,15 +1,10 @@
 from reprisal.components import Div, Paragraph
-from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
+from reprisal.layout import Rect, build_layout_tree
 from reprisal.paint import debug_paint, paint_layout
 from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
 from reprisal.styles.styles import Hidden
 
-b = BoxDimensions(
-    content=Rect(x=0, y=0, width=30, height=0),
-    margin=Edge(),
-    border=Edge(),
-    padding=Edge(),
-)
+b = Rect(x=0, y=0, width=30, height=0)
 
 e = Div(
     children=[

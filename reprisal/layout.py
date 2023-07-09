@@ -7,7 +7,7 @@ from pydantic import Field
 from typing_extensions import assert_never
 
 from reprisal._utils import halve_integer
-from reprisal.components import AnyElement, Div, Element
+from reprisal.components import AnyElement, Component, Div, Element
 from reprisal.styles.styles import AnonymousBlock, Block, Inline
 from reprisal.types import ForbidExtras
 
@@ -271,8 +271,8 @@ class LayoutBox(ForbidExtras):
 
         dims.content.width = width  # type: ignore[assignment]
 
-        dims.margin.left = margin_left  # type: ignore[assignment]
-        dims.margin.right = margin_right  # type: ignore[assignment]
+        dims.margin.left = margin_left
+        dims.margin.right = margin_right
 
         dims.border.left = border_left
         dims.border.right = border_right
@@ -294,21 +294,7 @@ class LayoutBox(ForbidExtras):
         dims.padding.top = element_style.padding.top
         dims.padding.bottom = element_style.padding.bottom
 
-        match self.display.justify:
-            case "left":
-                dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
-            case "right":
-                # TODO: This is wrong, because you are supposed to adjust the whole line after the line is laid out
-                # TODO: move this up, do wrapping
-                # how does this even work when there are multiple inline elements on a line with different justify settings?
-                dims.content.x = (
-                    parent_content.right
-                    - dims.margin.right
-                    - dims.border.right
-                    - dims.padding.right
-                    - dims.content.width
-                    + 1  # TODO: Why is this needed?
-                )
+        dims.content.x = parent_content.x + dims.margin.left + dims.border.left + dims.padding.left
         dims.content.y = parent_content.y + dims.margin.top + dims.border.top + dims.padding.top
 
     def layout_inline_children(self, parent_content: Rect) -> None:
@@ -335,15 +321,15 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height = self.element.style.span.height
 
 
-def build_layout_tree(element: Element) -> LayoutBox:
+def build_layout_tree(element: AnyElement) -> LayoutBox:
     display = element.style.display
 
-    if display == "none":
-        raise Exception("Root element cannot have display='none'")
+    if display.type == "hidden":
+        raise Exception("Root element cannot have display='hidden'")
 
     children = []
     for child in element.children:
-        if not isinstance(child, Element):
+        if isinstance(child, Component):
             raise Exception("Layout tree must be built from concrete Elements, not Components")
 
         # Each block must only have children of one type: block or inline.
@@ -360,10 +346,9 @@ def build_layout_tree(element: Element) -> LayoutBox:
                     children.append(box)
             case "inline", "block":
                 raise NotImplementedError("Inline blocks cannot have block children yet")
-            case _, "none":
-                # Don't recurse into children with display="none".
+            case _, "hidden":
                 pass
-            case foo:
-                assert_never(foo)
+            case l, r:
+                raise NotImplementedError(f"Unsupported display type combination: {l} and {r}")
 
     return LayoutBox(element=element, display=display, children=children)

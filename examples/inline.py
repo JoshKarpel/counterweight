@@ -3,9 +3,9 @@ import asyncio
 from structlog import get_logger
 
 from reprisal.app import app
-from reprisal.components import Div, Paragraph, component
+from reprisal.components import AnyElement, Div, Paragraph, component
 from reprisal.styles import Border, BorderKind, Span, Style
-from reprisal.styles.styles import CellStyle, Inline, Text
+from reprisal.styles.styles import Inline
 from reprisal.styles.utilities import text_fuchsia_600, text_rose_500, text_teal_600
 
 logger = get_logger(__name__)
@@ -14,8 +14,8 @@ width = 6
 
 
 @component
-def text(*parts: str | tuple[str, CellStyle | Style]) -> Div:
-    children = []
+def text(*parts: str | tuple[str, Style]) -> Div:
+    children: list[AnyElement] = []
     for part in parts:
         match part:
             case str() as part:
@@ -25,17 +25,6 @@ def text(*parts: str | tuple[str, CellStyle | Style]) -> Div:
                         style=Style(
                             display=Inline(),
                             span=Span(height=1),
-                        ),
-                    )
-                )
-            case (str() as part, CellStyle() as style):
-                children.append(
-                    Paragraph(
-                        content=part,
-                        style=Style(
-                            display=Inline(),
-                            span=Span(height=1),
-                            text=Text(style=style),
                         ),
                     )
                 )

@@ -79,7 +79,7 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
 
 def paint_border(border: Border, rect: Rect) -> Paint:
     style = border.style.copy(deep=True)
-    left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value
+    left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value  # type: ignore[misc]
     chars = {}
 
     for y in rect.y_range():

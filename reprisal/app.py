@@ -13,7 +13,7 @@ from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import diff, drain_queue
-from reprisal.components import Component, Element
+from reprisal.components import AnyElement, Component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -209,7 +209,7 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
     return new_effects
 
 
-def build_concrete_element_tree(root: ShadowNode) -> Element:
+def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
     return root.element.copy(
         update={"children": [child.element if isinstance(child, ShadowNode) else child for child in root.children]}
     )
