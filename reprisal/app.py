@@ -13,11 +13,11 @@ from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import diff, drain_queue
-from reprisal.components import Component, Element
+from reprisal.components import AnyElement, Component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import BoxDimensions, Edge, Rect, build_layout_tree
+from reprisal.layout import Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     paint_to_instructions,
@@ -32,8 +32,8 @@ from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 logger = get_logger()
 
 
-def start_handling_resize_signal(queue: Queue[AnyEvent]) -> None:
-    signal(SIGWINCH, lambda _, __: queue.put_nowait(TerminalResized()))
+def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
+    signal(SIGWINCH, lambda _, __: put_event(TerminalResized()))
 
 
 def stop_handling_resize_signal() -> None:
@@ -50,19 +50,24 @@ async def app(
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
+    current_event_queue.set(event_queue)
+
+    loop = get_running_loop()
+
+    def put_event(event: AnyEvent) -> None:
+        loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
     original = start_input_control(stream=input_stream)
+
     try:
-        start_handling_resize_signal(queue=event_queue)
+        start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
         start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
+        key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
 
         previous_full_paint: Paint = {}
-
-        current_event_queue.set(event_queue)
 
         needs_render = True
         shadow = render_shadow_node_from_previous(root(), None)
@@ -72,14 +77,9 @@ async def app(
             while True:
                 if needs_render:
                     w, h = shutil.get_terminal_size()
-                    b = BoxDimensions(
-                        # height is always zero here because this is the starting height of the context box in the layout algorithm
-                        # screen boundary will need to be controlled by max height style and paint cutoff
-                        content=Rect(x=0, y=0, width=w, height=0),
-                        margin=Edge(),
-                        border=Edge(),
-                        padding=Edge(),
-                    )
+                    # height is always zero here because this is the starting height of the context box in the layout algorithm
+                    # screen boundary will need to be controlled by max height style and paint cutoff
+                    b = Rect(x=0, y=0, width=w, height=0)
 
                     start_render = perf_counter_ns()
                     shadow = render_shadow_node_from_previous(root(), shadow)
@@ -209,7 +209,7 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
     return new_effects
 
 
-def build_concrete_element_tree(root: ShadowNode) -> Element:
+def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
     return root.element.copy(
         update={"children": [child.element if isinstance(child, ShadowNode) else child for child in root.children]}
     )

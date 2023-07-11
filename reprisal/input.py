@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 import selectors
 import termios
-from asyncio import AbstractEventLoop
+from collections.abc import Callable
 from copy import deepcopy
-from queue import Queue
 from selectors import DefaultSelector
 from time import perf_counter
 from typing import TextIO
@@ -19,7 +18,7 @@ from reprisal.keys import vt_keys
 logger = get_logger()
 
 
-def read_keys(queue: Queue[AnyEvent], stream: TextIO, loop: AbstractEventLoop) -> None:
+def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
     """
     Based on https://github.com/Textualize/textual/blob/bb9cc6281aa717054c8133ce4a2eac5ad082c574/src/textual/drivers/linux_driver.py#L236
     """
@@ -40,14 +39,14 @@ def read_keys(queue: Queue[AnyEvent], stream: TextIO, loop: AbstractEventLoop) -
         if bytes[:4] == [27, 91, 77, 67]:
             x, y = bytes[4:]
             # there appear to be other states where the mouse might be up or down... hard to check on laptop
-            loop.call_soon_threadsafe(queue.put_nowait, MouseMoved(x=x - 33, y=y - 33))
+            put_event(MouseMoved(x=x - 33, y=y - 33))
             logger.debug("Parsed mount event", bytes=bytes)
         else:
             buffer = b.decode("utf-8")
             try:
                 keys = vt_keys.parse(buffer)
                 for key in keys:
-                    loop.call_soon_threadsafe(queue.put_nowait, KeyPressed(key=key))
+                    put_event(KeyPressed(key=key))
                 logger.debug(
                     "Parsed user input",
                     keys=keys,

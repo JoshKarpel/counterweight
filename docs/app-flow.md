@@ -28,7 +28,7 @@ flowchart TB
     end
 
     en -- Initial Render --> r
-    r -- Component Tree --> l
+    r -- Shadow Tree --> l
     l -- Layout Tree --> p
     p -- Paint --> dp
 

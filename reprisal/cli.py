@@ -54,10 +54,15 @@ async def _check_input(mouse: bool) -> None:
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
+    loop = get_running_loop()
+
+    def put_event(event: AnyEvent) -> None:
+        loop.call_soon_threadsafe(event_queue.put_nowait, event)
+
     input_stream = sys.stdin
     output_stream = sys.stdout
 
-    key_thread = Thread(target=read_keys, args=(event_queue, input_stream, get_running_loop()), daemon=True)
+    key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
     key_thread.start()
 
     original = start_input_control(stream=input_stream)

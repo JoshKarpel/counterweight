@@ -6,14 +6,14 @@ from itertools import zip_longest
 from pydantic import Field
 
 from reprisal._context_vars import current_hook_idx, current_hook_state
-from reprisal.components import Component, Element
+from reprisal.components import AnyElement, Component, Element
 from reprisal.hooks.impls import Hooks
 from reprisal.types import FrozenForbidExtras
 
 
 class ShadowNode(FrozenForbidExtras):
     component: Component
-    element: Element
+    element: AnyElement
     children: list[ShadowNode | Element] = Field(default_factory=list)
     hooks: Hooks
 
@@ -23,7 +23,7 @@ class ShadowNode(FrozenForbidExtras):
             if isinstance(child, ShadowNode):
                 yield from child.walk_shadow_tree()
 
-    def concrete_element_tree(self) -> Element:
+    def concrete_element_tree(self) -> AnyElement:
         return self.element.copy(
             update={
                 "children": [child.element if isinstance(child, ShadowNode) else child for child in self.children],

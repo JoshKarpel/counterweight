@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypeVar, Union
 
 from pydantic import Field
 
 from reprisal._utils import merge
 from reprisal.types import FrozenForbidExtras
+
+if TYPE_CHECKING:
+    from pydantic.typing import AbstractSetIntStr, DictStrAny, MappingIntStrAny
 
 S = TypeVar("S", bound="StyleFragment")
 
@@ -25,6 +28,34 @@ def merge_style_fragments(left: S, right: S) -> S:
 class StyleFragment(FrozenForbidExtras):
     def __or__(self: S, other: S) -> S:
         return merge_style_fragments(self, other)
+
+    def dict(
+        self,
+        *,
+        include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        by_alias: bool = False,
+        skip_defaults: Optional[bool] = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+    ) -> "DictStrAny":
+        d = super().dict(
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            skip_defaults=skip_defaults,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+        )
+
+        # Always include the "type" field if present,
+        # even if it was not set (important for style merging).
+        if "type" in self.__dict__:
+            d["type"] = self.__dict__["type"]
+
+        return d
 
 
 class Color(NamedTuple):
@@ -246,8 +277,24 @@ class Text(StyleFragment):
     # wrap, overflow, alignment, etc.
 
 
+class Block(StyleFragment):
+    type: Literal["block"] = "block"
+
+
+class Inline(StyleFragment):
+    type: Literal["inline"] = "inline"
+
+
+class Hidden(StyleFragment):
+    type: Literal["hidden"] = "hidden"
+
+
+class AnonymousBlock(StyleFragment):
+    type: Literal["anonymous-block"] = "anonymous-block"
+
+
 class Style(StyleFragment):
-    display: Literal["block"] = Field(default="block")
+    display: Block | Inline | Hidden = Field(default=Block())
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
     border: Border | None = Field(default=None)
