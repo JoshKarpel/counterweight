@@ -14,10 +14,12 @@ logger = get_logger()
 w, h = shutil.get_terminal_size()
 
 
-def content(justify_children: str, align_children: str) -> Paragraph:
+def content(justify_children: str, align_children: str, n: int) -> Paragraph:
     return Paragraph(
         content=dedent(
             f"""\
+            n={n}
+
             j={justify_children}
 
             a={align_children}
@@ -27,8 +29,14 @@ def content(justify_children: str, align_children: str) -> Paragraph:
             """
         ),
         style=Style(
-            display=Flex(weight=None),
-            span=Span(width=20, height="auto"),
+            # TODO: width=auto doesn't make sense if weight=None, combine?
+            display=Flex(
+                weight=None,
+            ),
+            span=Span(
+                width=20,
+                height="auto",
+            ),
             border=Border(kind=BorderKind.Light),
         ),
     )
@@ -36,11 +44,7 @@ def content(justify_children: str, align_children: str) -> Paragraph:
 
 children = [
     Div(
-        children=[
-            content(justify_children, align_children),
-            content(justify_children, align_children),
-            content(justify_children, align_children),
-        ],
+        children=[content(justify_children, align_children, n=n) for n in range(3)],
         style=Style(
             display=Flex(
                 direction="row",
@@ -71,11 +75,12 @@ root = Div(
     style=Style(
         display=Flex(direction="column", align_children="stretch"),
         span=Span(
-            width=w - 5,
-            height=10 * len(children),
+            width=w,
+            height=20 * len(children),
         ),
     ),
 )
+print(f"{len(children)=}")
 
 t = build_layout_tree(root)
 t.flex()
@@ -84,4 +89,7 @@ p = paint_layout(t)
 # pprint(t.dims.dict())
 # for child in t.children:
 #     pprint(child.dims.dict())
+print(t.dims)
+for child in t.children:
+    print(child.dims)
 print(debug_paint(p, t.dims.margin_rect()))

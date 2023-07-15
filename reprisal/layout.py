@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from itertools import zip_longest
 from typing import NamedTuple
 
 from more_itertools import take
@@ -229,11 +230,11 @@ class LayoutBox(ForbidExtras):
         num_relative_children = len(relative_children)
         # subtract off fixed-width/height children from what's available to flex
         for child in relative_children:
-            if child.element.style.display.weight is None:
+            if child.element.style.display.position == "relative" and child.element.style.display.weight is None:
                 if display.direction == "row":
-                    available_width -= child.dims.margin_rect().width
+                    available_width -= child.dims.width()
                 elif display.direction == "column":
-                    available_height -= child.dims.margin_rect().height
+                    available_height -= child.dims.height()
 
         # when does flex element width get set for space-* justify?
         # space-* justify assumes children have fixed widths! it distributes the leftover space
@@ -250,11 +251,13 @@ class LayoutBox(ForbidExtras):
                     relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
                     child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
+                available_width = 0
             elif display.direction == "column":
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
                     child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
+                available_height = 0
 
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
@@ -287,45 +290,62 @@ class LayoutBox(ForbidExtras):
             elif display.justify_children == "end":
                 y += available_height
 
-        # TODO: many floordivs below
-        # need to distribute the gaps with equal weight?
-        # TODO: some bad interaction with space-around and space-evenly when align_items="stretch"
         if display.justify_children == "space-between":
-            horizontal_gap = available_width // (num_relative_children - 1)
-            vertical_gap = available_height // (num_relative_children - 1)
-            for child in relative_children:
-                child.dims.content.x = x
-                child.dims.content.y = y
-                if display.direction == "row":
-                    x += child.dims.width() + horizontal_gap
-                elif display.direction == "column":
-                    y += child.dims.height() + vertical_gap
+            if display.direction == "row":
+                for child, gap in zip_longest(
+                    relative_children,
+                    partition_int(available_width, [1] * (num_relative_children - 1)),
+                    fillvalue=0,
+                ):
+                    child.dims.content.x = x
+                    child.dims.content.y = y
+                    x += child.dims.width() + gap or 0
+                    print(f"{child.dims.content.x=}")
+            elif display.direction == "column":
+                for child, gap in zip_longest(
+                    relative_children,
+                    partition_int(available_height, [1] * (num_relative_children - 1)),
+                    fillvalue=0,
+                ):
+                    child.dims.content.x = x
+                    child.dims.content.y = y
+                    y += child.dims.height() + gap
 
         elif display.justify_children == "space-around":
-            horizontal_gap = available_width // num_relative_children
-            vertical_gap = available_height // num_relative_children
-            for child in relative_children:
-                if display.direction == "row":
-                    child.dims.content.x = x + horizontal_gap // 2
+            if display.direction == "row":
+                for child, gap in zip(
+                    relative_children,
+                    partition_int(available_width, [1] * num_relative_children),
+                ):
+                    child.dims.content.x = x + halve_integer(gap)[0]
                     child.dims.content.y = y
-                    x += child.dims.width() + horizontal_gap
-                elif display.direction == "column":
+                    x += child.dims.width() + gap
+            elif display.direction == "column":
+                for child, gap in zip(
+                    relative_children,
+                    partition_int(available_height, [1] * num_relative_children),
+                ):
                     child.dims.content.x = x
-                    child.dims.content.y = y + vertical_gap // 2
-                    y += child.dims.height() + vertical_gap
+                    child.dims.content.y = y + halve_integer(gap)[0]
+                    y += child.dims.height() + gap
 
         elif display.justify_children == "space-evenly":
-            horizontal_gap = available_width // (num_relative_children + 1)
-            vertical_gap = available_height // (num_relative_children + 1)
-            for child in relative_children:
-                if display.direction == "row":
-                    child.dims.content.x = x + horizontal_gap
+            if display.direction == "row":
+                for child, gap in zip(
+                    relative_children,
+                    partition_int(available_width, [1] * (num_relative_children + 1)),
+                ):
+                    child.dims.content.x = x + gap
                     child.dims.content.y = y
-                    x += child.dims.width() + horizontal_gap
-                elif display.direction == "column":
+                    x += child.dims.width() + gap
+            elif display.direction == "column":
+                for child, gap in zip(
+                    relative_children,
+                    partition_int(available_height, [1] * (num_relative_children + 1)),
+                ):
                     child.dims.content.x = x
-                    child.dims.content.y = y + vertical_gap
-                    y += child.dims.height() + vertical_gap
+                    child.dims.content.y = y + gap
+                    y += child.dims.height() + gap
 
         else:
             for child in relative_children:
