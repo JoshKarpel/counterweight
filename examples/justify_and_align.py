@@ -1,4 +1,5 @@
 import shutil
+from textwrap import dedent
 
 from structlog import get_logger
 
@@ -13,149 +14,69 @@ logger = get_logger()
 w, h = shutil.get_terminal_size()
 
 
+def content(justify_children: str, align_children: str) -> Paragraph:
+    return Paragraph(
+        content=dedent(
+            f"""\
+            j={justify_children}
+
+            a={align_children}
+
+            This is long enough text that it should wrap around,
+            but not necessarily at the comma.
+            """
+        ),
+        style=Style(
+            display=Flex(weight=None),
+            span=Span(width=20, height="auto"),
+            border=Border(kind=BorderKind.Light),
+        ),
+    )
+
+
 children = [
-    # *(
-    #     Div(
-    #         children=[
-    #             Paragraph(
-    #                 content=f"{align_children=} weight=1",
-    #                 style=Style(
-    #                     display=Flex(weight=1),
-    #                     span=Span(width="auto", height=1 if align_children != "stretch" else "auto"),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #             Paragraph(
-    #                 content=f"{align_children=} weight=2",
-    #                 style=Style(
-    #                     display=Flex(weight=2),
-    #                     span=Span(width="auto", height=1 if align_children != "stretch" else "auto"),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #             Paragraph(
-    #                 content=f"{align_children=} weight=3",
-    #                 style=Style(
-    #                     display=Flex(weight=3),
-    #                     span=Span(width="auto", height=1 if align_children != "stretch" else "auto"),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #         ],
-    #         style=Style(
-    #             display=Flex(direction="row", align_children=align_children),
-    #             border=Border(kind=BorderKind.Heavy),
-    #         ),
-    #     )
-    #     for align_children in [
-    #         "start",
-    #         "center",
-    #         "end",
-    #         "stretch",
-    #     ]
-    # ),
-    # *(
-    #     Div(
-    #         children=[
-    #             Paragraph(
-    #                 content=f"{justify_children}",
-    #                 style=Style(
-    #                     display=Flex(weight=None),
-    #                     span=Span(width="auto", height=1),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #             Paragraph(
-    #                 content=f"{justify_children}",
-    #                 style=Style(
-    #                     display=Flex(weight=None),
-    #                     span=Span(width="auto", height=1),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #             Paragraph(
-    #                 content=f"{justify_children}",
-    #                 style=Style(
-    #                     display=Flex(weight=None),
-    #                     span=Span(width="auto", height=1),
-    #                     border=Border(kind=BorderKind.Light),
-    #                 ),
-    #             ),
-    #         ],
-    #         style=Style(
-    #             display=Flex(direction="row", justify_children=justify_children, align_children="center"),
-    #             border=Border(kind=BorderKind.Heavy),
-    #         ),
-    #     )
-    #     for justify_children in [
-    #         "start",
-    #         "center",
-    #         "end",
-    #         "space-between",
-    #         "space-around",
-    #         "space-evenly",
-    #     ]
-    # ),
-    *(
-        Div(
-            children=[
-                Paragraph(
-                    content=f"j={justify_children} a={align_children}",
-                    style=Style(
-                        display=Flex(weight=None),
-                        span=Span(width="auto", height="auto"),
-                        border=Border(kind=BorderKind.Light),
-                    ),
-                ),
-                Paragraph(
-                    content=f"j={justify_children} a={align_children}",
-                    style=Style(
-                        display=Flex(weight=None),
-                        span=Span(width="auto", height="auto"),
-                        border=Border(kind=BorderKind.Light),
-                    ),
-                ),
-                Paragraph(
-                    content=f"j={justify_children} a={align_children}",
-                    style=Style(
-                        display=Flex(weight=None),
-                        span=Span(width="auto", height="auto"),
-                        border=Border(kind=BorderKind.Light),
-                    ),
-                ),
-            ],
-            style=Style(
-                display=Flex(
-                    direction="row",
-                    justify_children=justify_children,
-                    align_children=align_children,
-                ),
-                border=Border(kind=BorderKind.Heavy),
+    Div(
+        children=[
+            content(justify_children, align_children),
+            content(justify_children, align_children),
+            content(justify_children, align_children),
+        ],
+        style=Style(
+            display=Flex(
+                direction="row",
+                justify_children=justify_children,
+                align_children=align_children,
             ),
-        )
-        for justify_children in [
-            "start",
-            "center",
-            "end",
-            "space-between",
-            "space-around",
-            "space-evenly",
-        ]
-        for align_children in [
-            "start",
-            "center",
-            "end",
-            "stretch",
-        ]
-    ),
+            border=Border(kind=BorderKind.Heavy),
+        ),
+    )
+    for justify_children in [
+        "start",
+        "center",
+        "end",
+        "space-between",
+        "space-around",
+        "space-evenly",
+    ]
+    for align_children in [
+        "start",
+        "center",
+        "end",
+        "stretch",
+    ]
 ]
+
 root = Div(
     children=children,
     style=Style(
         display=Flex(direction="column", align_children="stretch"),
-        span=Span(width=w - 5, height=10 * len(children)),
+        span=Span(
+            width=w - 5,
+            height=10 * len(children),
+        ),
     ),
 )
+
 t = build_layout_tree(root)
 t.flex()
 # pprint(t.dict(exclude_defaults=True, include={"dims", "children"}))

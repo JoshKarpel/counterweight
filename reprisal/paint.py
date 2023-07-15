@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 from structlog import get_logger
 
+from reprisal._utils import wrap_text
 from reprisal.components import AnyElement, Div, Paragraph
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
@@ -45,8 +46,14 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
 
 def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
     style = paragraph.style.text.style.copy(deep=True)
-    # TODO: wrap text here
-    return {Position(x, rect.y): CellPaint(char=c, style=style) for c, x in zip(paragraph.content, rect.x_range())}
+
+    paint = {}
+    lines = wrap_text(paragraph.content, width=rect.width)
+    for y, line in enumerate(lines[: rect.height]):
+        for x, char in enumerate(line[: rect.width]):
+            paint[Position(rect.x + x, rect.y + y)] = CellPaint(char=char, style=style)
+
+    return paint
 
 
 def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:

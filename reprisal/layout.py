@@ -162,10 +162,10 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
-        # text boxes with auto width get their width from their content (no wrapping)
-        # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
-        if style.span.width == "auto" and self.element.type == "text":
-            self.dims.content.width = len(self.element.content)
+        # # text boxes with auto width get their width from their content (no wrapping)
+        # # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
+        # if style.span.width == "auto" and self.element.type == "text":
+        #     self.dims.content.width = len(self.element.content)
 
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
@@ -259,7 +259,8 @@ class LayoutBox(ForbidExtras):
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
             if child.element.type == "text":
-                child.dims.content.height = len(wrap_text(child.element.content, child.dims.content.width))
+                h = len(wrap_text(child.element.content, child.dims.content.width))
+                child.dims.content.height = min(h, available_height - child.dims.vertical_edge_width())
 
         # determine positions
 
@@ -272,6 +273,7 @@ class LayoutBox(ForbidExtras):
         x = self.dims.content.x
         y = self.dims.content.y
 
+        # justification (main axis placement)
         if display.direction == "row":
             if display.justify_children == "center":
                 # TODO: floordivs
@@ -334,7 +336,7 @@ class LayoutBox(ForbidExtras):
                 elif display.direction == "column":
                     y += child.dims.height()
 
-        # alignment
+        # alignment (cross-axis placement)
         # content width/height of self, but full width/height of children
         for child in relative_children:
             if display.direction == "row":
