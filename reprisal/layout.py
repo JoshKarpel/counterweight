@@ -240,21 +240,17 @@ class LayoutBox(ForbidExtras):
         # space-* justify assumes children have fixed widths! it distributes the leftover space
         # but what if you DO put flex children in there? who sets their widths?
         # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
-        print(f"{available_width=}")
         if relative_children_with_weights and display.justify_children not in (
             "space-between",
             "space-around",
             "space-evenly",
         ):
             weights = [child.element.style.display.weight for child in relative_children_with_weights]
-            print(f"{weights=}")
             if display.direction == "row":
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
-                    print(f"{flex_portion=}")
                     child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
-                    print(f"{child.dims.content.width=}")
                 available_width = 0
             elif display.direction == "column":
                 for child, flex_portion in zip(
@@ -262,11 +258,18 @@ class LayoutBox(ForbidExtras):
                 ):
                     child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
                 available_height = 0
+        elif display.justify_children in ("space-between", "space-around", "space-evenly"):
+            for child in relative_children:
+                # TODO: if we don't do this, flex elements never get their width set if justify_children is space-*, but this seems wrong...
+                if child.element.type == "text" and child.element.style.span.width == "auto":
+                    child.dims.content.width = max(
+                        (len(line) for line in wrap_text(child.element.content, available_width)), default=0
+                    )
+                    available_width -= child.dims.content.width
 
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
             if child.element.type == "text":
-                print(f"wrapping {child.dims.content.width=}")
                 h = len(wrap_text(child.element.content, child.dims.content.width))
                 child.dims.content.height = min(h, available_height - child.dims.vertical_edge_width())
 

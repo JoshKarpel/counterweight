@@ -58,9 +58,9 @@ children = [
         "start",
         "center",
         "end",
-        # "space-between",
-        # "space-around",
-        # "space-evenly",
+        "space-between",
+        "space-around",
+        "space-evenly",
     ]
     for align_children in [
         "start",
