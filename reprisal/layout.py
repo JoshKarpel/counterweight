@@ -230,7 +230,7 @@ class LayoutBox(ForbidExtras):
         num_relative_children = len(relative_children)
         # subtract off fixed-width/height children from what's available to flex
         for child in relative_children:
-            if child.element.style.display.position == "relative" and child.element.style.display.weight is None:
+            if child.element.style.display.weight is None:
                 if display.direction == "row":
                     available_width -= child.dims.width()
                 elif display.direction == "column":
@@ -240,17 +240,21 @@ class LayoutBox(ForbidExtras):
         # space-* justify assumes children have fixed widths! it distributes the leftover space
         # but what if you DO put flex children in there? who sets their widths?
         # TODO: note that if a child element has a weight, a fixed width/height would be overriden here by the parent
+        print(f"{available_width=}")
         if relative_children_with_weights and display.justify_children not in (
             "space-between",
             "space-around",
             "space-evenly",
         ):
             weights = [child.element.style.display.weight for child in relative_children_with_weights]
+            print(f"{weights=}")
             if display.direction == "row":
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
+                    print(f"{flex_portion=}")
                     child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
+                    print(f"{child.dims.content.width=}")
                 available_width = 0
             elif display.direction == "column":
                 for child, flex_portion in zip(
@@ -262,6 +266,7 @@ class LayoutBox(ForbidExtras):
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
             if child.element.type == "text":
+                print(f"wrapping {child.dims.content.width=}")
                 h = len(wrap_text(child.element.content, child.dims.content.width))
                 child.dims.content.height = min(h, available_height - child.dims.vertical_edge_width())
 
@@ -279,13 +284,11 @@ class LayoutBox(ForbidExtras):
         # justification (main axis placement)
         if display.direction == "row":
             if display.justify_children == "center":
-                # TODO: floordivs
                 x += available_width // 2
             elif display.justify_children == "end":
                 x += available_width
         elif display.direction == "column":
             if display.justify_children == "center":
-                # TODO: floordivs
                 y += available_height // 2
             elif display.justify_children == "end":
                 y += available_height
@@ -300,7 +303,6 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.x = x
                     child.dims.content.y = y
                     x += child.dims.width() + gap or 0
-                    print(f"{child.dims.content.x=}")
             elif display.direction == "column":
                 for child, gap in zip_longest(
                     relative_children,
