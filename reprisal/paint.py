@@ -45,6 +45,7 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
 
 def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
     style = paragraph.style.text.style.copy(deep=True)
+    # TODO: wrap text here
     return {Position(x, rect.y): CellPaint(char=c, style=style) for c, x in zip(paragraph.content, rect.x_range())}
 
 

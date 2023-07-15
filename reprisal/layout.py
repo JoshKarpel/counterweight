@@ -7,7 +7,7 @@ from more_itertools import take
 from pydantic import Field
 from typing_extensions import assert_never
 
-from reprisal._utils import halve_integer, partition_int
+from reprisal._utils import halve_integer, partition_int, wrap_text
 from reprisal.components import AnyElement, Component, Element
 from reprisal.styles.styles import AnonymousBlock, Block, Flex, Inline
 from reprisal.types import ForbidExtras
@@ -163,6 +163,7 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height = style.span.height
 
         # text boxes with auto width get their width from their content (no wrapping)
+        # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
         if style.span.width == "auto" and self.element.type == "text":
             self.dims.content.width = len(self.element.content)
 
@@ -255,6 +256,11 @@ class LayoutBox(ForbidExtras):
                 ):
                     child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
 
+        # at this point we know how wide each child is, so we can do text wrapping and set heights
+        for child in relative_children:
+            if child.element.type == "text":
+                child.dims.content.height = len(wrap_text(child.element.content, child.dims.content.width))
+
         # determine positions
 
         # shift nominal content box position set by parent by own margin, border, and padding
@@ -297,22 +303,26 @@ class LayoutBox(ForbidExtras):
             horizontal_gap = available_width // num_relative_children
             vertical_gap = available_height // num_relative_children
             for child in relative_children:
-                child.dims.content.x = x + horizontal_gap // 2
-                child.dims.content.y = y + vertical_gap // 2
                 if display.direction == "row":
+                    child.dims.content.x = x + horizontal_gap // 2
+                    child.dims.content.y = y
                     x += child.dims.width() + horizontal_gap
                 elif display.direction == "column":
+                    child.dims.content.x = x
+                    child.dims.content.y = y + vertical_gap // 2
                     y += child.dims.height() + vertical_gap
 
         elif display.justify_children == "space-evenly":
             horizontal_gap = available_width // (num_relative_children + 1)
             vertical_gap = available_height // (num_relative_children + 1)
             for child in relative_children:
-                child.dims.content.x = x + horizontal_gap
-                child.dims.content.y = y + vertical_gap
                 if display.direction == "row":
+                    child.dims.content.x = x + horizontal_gap
+                    child.dims.content.y = y
                     x += child.dims.width() + horizontal_gap
                 elif display.direction == "column":
+                    child.dims.content.x = x
+                    child.dims.content.y = y + vertical_gap
                     y += child.dims.height() + vertical_gap
 
         else:
@@ -335,7 +345,6 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.y = self.dims.content.y + self.dims.content.height - child.dims.height()
                 elif display.align_children == "stretch" and child.element.style.span.height == "auto":
                     child.dims.content.height = self.dims.content.height - child.dims.vertical_edge_width()
-
             elif display.direction == "column":
                 if display.align_children == "center":
                     # TODO: these floordivs aren't great
