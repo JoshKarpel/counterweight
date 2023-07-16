@@ -5,10 +5,13 @@ from typing import NamedTuple
 
 from more_itertools import take
 from pydantic import Field
+from structlog import get_logger
 
 from reprisal._utils import halve_integer, partition_int, wrap_text
 from reprisal.components import AnyElement, Component, Element
 from reprisal.types import ForbidExtras
+
+logger = get_logger()
 
 
 class Position(NamedTuple):
@@ -167,8 +170,6 @@ class LayoutBox(ForbidExtras):
                 child_style = child_element.style
 
                 child_display = child_style.display
-                if child_display.type != "flex":
-                    raise Exception("Flex children must be flex")
 
                 if child_style.span.width != "auto":
                     if child_display.position == "relative":

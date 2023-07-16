@@ -4,7 +4,6 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
-from pprint import pformat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
@@ -14,7 +13,7 @@ from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import diff, drain_queue
-from reprisal.components import AnyElement, Component
+from reprisal.components import AnyElement, Component, Div, component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -29,6 +28,8 @@ from reprisal.output import (
 )
 from reprisal.paint import Paint, paint_layout
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
+from reprisal.styles import Span, Style
+from reprisal.styles.styles import Flex
 
 logger = get_logger()
 
@@ -47,6 +48,25 @@ async def app(
     input_stream: TextIO = sys.stdin,
 ) -> None:
     configure_logging()
+
+    w, h = shutil.get_terminal_size()
+
+    @component
+    def screen() -> Div:
+        return Div(
+            children=[root()],
+            style=Style(
+                display=Flex(
+                    direction="column",
+                    justify_children="start",
+                    align_children="stretch",
+                ),
+                span=Span(
+                    width=w,
+                    height=h,
+                ),
+            ),
+        )
 
     logger.info("Application starting...")
 
@@ -71,19 +91,21 @@ async def app(
         previous_full_paint: Paint = {}
 
         needs_render = True
-        shadow = render_shadow_node_from_previous(root(), None)
+        shadow = render_shadow_node_from_previous(screen(), None)
         active_effects: set[Task[None]] = set()
 
         async with TaskGroup() as tg:
             while True:
                 if needs_render:
                     w, h = shutil.get_terminal_size()
+                    logger.debug("Terminal size", width=w, height=h)
+
                     # height is always zero here because this is the starting height of the context box in the layout algorithm
                     # screen boundary will need to be controlled by max height style and paint cutoff
                     Rect(x=0, y=0, width=w, height=0)
 
                     start_render = perf_counter_ns()
-                    shadow = render_shadow_node_from_previous(root(), shadow)
+                    shadow = render_shadow_node_from_previous(screen(), shadow)
                     logger.debug(
                         "Rendered shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
@@ -103,7 +125,6 @@ async def app(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
                     )
-                    logger.debug("Layout tree", layout_tree=pformat(layout_tree.dict()))
 
                     start_paint = perf_counter_ns()
                     full_paint = paint_layout(layout_tree)
@@ -121,6 +142,7 @@ async def app(
                     )
 
                     start_instructions = perf_counter_ns()
+                    # TODO: not happy when borders change, need to figure out how to handle that
                     instructions = paint_to_instructions(paint=diffed_paint)
                     logger.debug(
                         "Generated instructions from paint",
@@ -158,9 +180,9 @@ async def app(
                             needs_render = True
                             previous_full_paint = {}
                         case KeyPressed():
-                            for component in layout_tree.walk_from_bottom():
-                                if component.on_key:
-                                    component.on_key(event)
+                            for c in layout_tree.walk_from_bottom():
+                                if c.on_key:
+                                    c.on_key(event)
                         case StateSet():
                             needs_render = True
                     logger.debug(
@@ -211,7 +233,18 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
     return new_effects
 
 
-def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    return root.element.copy(
-        update={"children": [child.element if isinstance(child, ShadowNode) else child for child in root.children]}
-    )
+def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
+    # TODO: components nested inside concrete children of components aren't getting converted to concrete elements
+    # return root.element.copy(
+    #     update={
+    #         "children": [
+    #             build_concrete_element_tree(child) if isinstance(child, ShadowNode) else child
+    #             for child in root.children
+    #         ]
+    #     }
+    # )
+
+    if isinstance(root, ShadowNode):
+        return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+    else:
+        return root.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})

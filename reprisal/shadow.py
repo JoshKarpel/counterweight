@@ -4,17 +4,20 @@ from collections.abc import Iterator
 from itertools import zip_longest
 
 from pydantic import Field
+from structlog import get_logger
 
 from reprisal._context_vars import current_hook_idx, current_hook_state
-from reprisal.components import AnyElement, Component, Element
+from reprisal.components import AnyElement, Component
 from reprisal.hooks.impls import Hooks
 from reprisal.types import FrozenForbidExtras
+
+logger = get_logger()
 
 
 class ShadowNode(FrozenForbidExtras):
     component: Component
     element: AnyElement
-    children: list[ShadowNode | Element] = Field(default_factory=list)
+    children: list[ShadowNode | AnyElement] = Field(default_factory=list)
     hooks: Hooks
 
     def walk(self) -> Iterator[ShadowNode]:
@@ -22,13 +25,6 @@ class ShadowNode(FrozenForbidExtras):
         for child in self.children:
             if isinstance(child, ShadowNode):
                 yield from child.walk()
-
-    def concrete_element_tree(self) -> AnyElement:
-        return self.element.copy(
-            update={
-                "children": [child.element if isinstance(child, ShadowNode) else child for child in self.children],
-            }
-        )
 
 
 def render_shadow_node_from_previous(component: Component, previous: ShadowNode | None) -> ShadowNode:
@@ -40,11 +36,12 @@ def render_shadow_node_from_previous(component: Component, previous: ShadowNode 
 
         element = component.func(*component.args, **component.kwargs)
 
-        children: list[ShadowNode | Element] = []
+        children: list[ShadowNode | AnyElement] = []
         for child in element.children:
             if isinstance(child, Component):
                 children.append(render_shadow_node_from_previous(child, None))
             else:
+                # TODO: this may not be right, you have to keep digging until you find all components called from this node's component
                 children.append(child)
 
         new = ShadowNode(

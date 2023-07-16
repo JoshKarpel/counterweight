@@ -91,7 +91,7 @@ def partition_int(total: int, weights: tuple[int]) -> list[int]:
 
 
 def wrap_text(text: str, width: int) -> list[str]:
-    if width == 0:
+    if width <= 0:
         return []
 
     wrapper = TextWrapper(width=width)
