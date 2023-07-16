@@ -80,7 +80,7 @@ async def app(
                     w, h = shutil.get_terminal_size()
                     # height is always zero here because this is the starting height of the context box in the layout algorithm
                     # screen boundary will need to be controlled by max height style and paint cutoff
-                    b = Rect(x=0, y=0, width=w, height=0)
+                    Rect(x=0, y=0, width=w, height=0)
 
                     start_render = perf_counter_ns()
                     shadow = render_shadow_node_from_previous(root(), shadow)
@@ -98,7 +98,7 @@ async def app(
 
                     start_layout = perf_counter_ns()
                     layout_tree = build_layout_tree(element_tree)
-                    layout_tree.flex(b)
+                    layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
@@ -158,7 +158,7 @@ async def app(
                             needs_render = True
                             previous_full_paint = {}
                         case KeyPressed():
-                            for component in layout_tree.walk_elements_from_bottom():
+                            for component in layout_tree.walk_from_bottom():
                                 if component.on_key:
                                     component.on_key(event)
                         case StateSet():

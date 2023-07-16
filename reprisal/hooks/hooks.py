@@ -8,7 +8,7 @@ from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
 T = TypeVar("T")
 
 
-def use_state(initial_value: T | Getter[T]) -> tuple[T, Setter[T]]:
+def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
     return current_hook_state.get().use_state(initial_value)
 
 

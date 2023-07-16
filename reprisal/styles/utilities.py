@@ -1,5 +1,5 @@
 from reprisal.styles import Margin, Style
-from reprisal.styles.styles import Border, CellStyle, Color, Padding, Text
+from reprisal.styles.styles import Border, CellStyle, Color, Flex, Padding, Text
 
 # Start generated Tailwind colors
 
@@ -1479,7 +1479,6 @@ padding_rose_950 = Style(padding=Padding(color=Color.from_hex("#4c0519")))
 
 # Stop generated Tailwind colors
 
-
-ml_auto = Style(margin=Margin(left="auto"))
-mr_auto = Style(margin=Margin(right="auto"))
-mx_auto = Style(margin=Margin(left="auto", right="auto"))
+justify_start = Style(display=Flex(justify_children="start"))
+justify_center = Style(display=Flex(justify_children="center"))
+justify_end = Style(display=Flex(justify_children="end"))

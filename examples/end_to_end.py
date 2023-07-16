@@ -9,7 +9,7 @@ from reprisal.components import Div, Paragraph, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
-from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
+from reprisal.styles import Border, BorderKind, Padding, Span, Style
 from reprisal.styles.utilities import (
     border_amber_700,
     border_bg_slate_700,
@@ -17,6 +17,9 @@ from reprisal.styles.utilities import (
     border_rose_500,
     border_sky_700,
     border_violet_500,
+    justify_center,
+    justify_end,
+    justify_start,
     padding_amber_400,
     text_bg_slate_300,
     text_indigo_500,
@@ -28,32 +31,26 @@ logger = get_logger()
 
 @component
 def toggle() -> Div:
-    border: BorderKind
-    set_border: Setter[BorderKind]
     border_cycle_ref = use_ref(cycle(BorderKind))
 
     def advance_border() -> BorderKind:
         return next(border_cycle_ref.current)
 
-    border, set_border = use_state(advance_border)  # type: ignore[arg-type]
+    border, set_border = use_state(advance_border)
 
-    margin_style: Style
-    set_margin_style: Setter[Style]
-    margin_cycle_ref = use_ref(cycle([mr_auto, mx_auto, ml_auto]))
+    justify_cycle_ref = use_ref(cycle([justify_start, justify_center, justify_end]))
 
-    def advance_margin() -> Style:
-        return next(margin_cycle_ref.current)
+    def advance_justify() -> Style:
+        return next(justify_cycle_ref.current)
 
-    margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
+    justify_style, set_margin_style = use_state(advance_justify)
 
-    border_color: Style
-    set_border_color: Setter[Style]
     border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
 
     def advance_border_color() -> Style:
         return next(border_color_ref.current)
 
-    border_color, set_border_color = use_state(advance_border_color)  # type: ignore[arg-type]
+    border_color, set_border_color = use_state(advance_border_color)
 
     toggled, set_toggled = use_state(False)
 
@@ -66,10 +63,10 @@ def toggle() -> Div:
             case Key.F2:
                 set_border_color(advance_border_color())
             case Key.F3:
-                set_margin_style(advance_margin())
+                set_margin_style(advance_justify())
 
     return Div(
-        children=[time(margin_style) if toggled else textpad(margin_style)],
+        children=[time(justify_style) if toggled else textpad(justify_style)],
         style=border_color | Style(border=Border(kind=border)),
         on_key=on_key,
     )

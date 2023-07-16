@@ -48,8 +48,8 @@ children = [
         style=Style(
             display=Flex(
                 direction="row",
-                justify_children=justify_children,
-                align_children=align_children,
+                justify_children=justify_children,  # type: ignore[arg-type]
+                align_children=align_children,  # type: ignore[arg-type]
             ),
             border=Border(kind=BorderKind.Heavy),
         ),
@@ -83,7 +83,7 @@ root = Div(
 print(f"{len(children)=}")
 
 t = build_layout_tree(root)
-t.flex()
+t.compute_layout()
 # pprint(t.dict(exclude_defaults=True, include={"dims", "children"}))
 p = paint_layout(t)
 # pprint(t.dims.dict())

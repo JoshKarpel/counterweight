@@ -254,8 +254,8 @@ class Border(StyleFragment):
 class Margin(StyleFragment):
     top: int = Field(default=0)
     bottom: int = Field(default=0)
-    left: int | Literal["auto"] = Field(default=0)
-    right: int | Literal["auto"] = Field(default=0)
+    left: int = Field(default=0)
+    right: int = Field(default=0)
     color: Color = Field(default=Color.from_name("black"))
 
 
@@ -315,7 +315,8 @@ class Flex(StyleFragment):
 
 
 class Style(StyleFragment):
-    display: Block | Inline | Flex | Hidden = Field(default=Block())
+    display: Flex = Field(default=Flex())
+    hidden: bool = False
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)

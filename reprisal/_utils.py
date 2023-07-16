@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Queue, QueueEmpty
+from functools import lru_cache
 from math import ceil, floor
 from textwrap import TextWrapper
 from typing import List, TypeVar
@@ -50,13 +51,15 @@ async def drain_queue(queue: Queue[T]) -> List[T]:
     return items
 
 
+@lru_cache(maxsize=2**10)
 def halve_integer(x: int) -> tuple[int, int]:
     """Halve an integer, accounting for odd integers by making the first "half" larger by one than the second "half"."""
     half = x / 2
     return ceil(half), floor(half)
 
 
-def partition_int(total: int, weights: list[int]) -> list[int]:
+@lru_cache(maxsize=2**12)
+def partition_int(total: int, weights: tuple[int]) -> list[int]:
     """Partition an integer into a list of integers, with each integer in the list corresponding to the weight at the same index in the weights list."""
     # https://stackoverflow.com/questions/62914824/c-sharp-split-integer-in-parts-given-part-weights-algorithm
 
@@ -69,7 +72,7 @@ def partition_int(total: int, weights: list[int]) -> list[int]:
         raise ValueError("Total weight must be positive")
 
     partition = []
-    accumulated_diff = 0
+    accumulated_diff = 0.0
     for w in weights:
         exact = total * (w / total_weight)
         rounded = round(exact)
