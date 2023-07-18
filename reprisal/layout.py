@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from typing import NamedTuple
 
 from more_itertools import take
-from pydantic import Field
+from pydantic import Field, NonNegativeInt
 from structlog import get_logger
 
 from reprisal._utils import halve_integer, partition_int, wrap_text
@@ -22,8 +22,8 @@ class Position(NamedTuple):
 class Rect(ForbidExtras):
     x: int = Field(default=0)
     y: int = Field(default=0)
-    width: int = Field(default=0)
-    height: int = Field(default=0)
+    width: NonNegativeInt = Field(default=0)
+    height: NonNegativeInt = Field(default=0)
 
     def expand_by(self, edge: Edge) -> Rect:
         return Rect(
@@ -239,13 +239,13 @@ class LayoutBox(ForbidExtras):
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
-                    child.dims.content.width = flex_portion - child.dims.horizontal_edge_width()
+                    child.dims.content.width = max(flex_portion - child.dims.horizontal_edge_width(), 0)
                 available_width = 0
             elif display.direction == "column":
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
-                    child.dims.content.height = flex_portion - child.dims.vertical_edge_width()
+                    child.dims.content.height = max(flex_portion - child.dims.vertical_edge_width(), 0)
                 available_height = 0
         elif display.justify_children in ("space-between", "space-around", "space-evenly"):
             for child in relative_children:
@@ -254,13 +254,13 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.width = max(
                         (len(line) for line in wrap_text(child.element.content, available_width)), default=0
                     )
-                    available_width -= child.dims.content.width
+                    available_width -= child.dims.width()
 
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
             if child.element.type == "text":
                 h = len(wrap_text(child.element.content, child.dims.content.width))
-                child.dims.content.height = min(h, available_height - child.dims.vertical_edge_width())
+                child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
 
         # determine positions
 

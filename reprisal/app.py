@@ -21,9 +21,7 @@ from reprisal.layout import Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     paint_to_instructions,
-    start_mouse_reporting,
     start_output_control,
-    stop_mouse_reporting,
     stop_output_control,
 )
 from reprisal.paint import Paint, paint_layout
@@ -83,7 +81,7 @@ async def app(
     try:
         start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
-        start_mouse_reporting(stream=output_stream)
+        # start_mouse_reporting(stream=output_stream)
 
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
@@ -202,7 +200,7 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        stop_mouse_reporting(stream=output_stream)
+        # stop_mouse_reporting(stream=output_stream)
         stop_output_control(stream=output_stream)
         stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()
@@ -234,17 +232,4 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 
 def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
-    # TODO: components nested inside concrete children of components aren't getting converted to concrete elements
-    # return root.element.copy(
-    #     update={
-    #         "children": [
-    #             build_concrete_element_tree(child) if isinstance(child, ShadowNode) else child
-    #             for child in root.children
-    #         ]
-    #     }
-    # )
-
-    if isinstance(root, ShadowNode):
-        return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
-    else:
-        return root.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+    return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})

@@ -9,8 +9,8 @@ from reprisal.components import Div, Paragraph, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
-from reprisal.styles import Border, BorderKind, Span, Style
-from reprisal.styles.styles import Flex
+from reprisal.styles import Border, BorderKind, Style
+from reprisal.styles.styles import Flex, Padding
 from reprisal.styles.utilities import (
     border_amber_700,
     border_bg_slate_700,
@@ -81,20 +81,17 @@ def toggle() -> Div:
                     Paragraph(
                         content="End-to-End Demo",
                         style=Style(
-                            span=Span(width="auto"),
-                            border=Border(kind=BorderKind.LightRounded),
+                            border=Border(kind=BorderKind.Double),
+                            padding=Padding(top=1, bottom=1, left=1, right=1),
                         ),
                     ),
                     time(justify_style) if toggled else textpad(justify_style),
                 ],
                 style=Style(
-                    # the parent grows this child all the way to the bottom when handling the column flex
-                    # because it is the only child of a full-height div
                     display=Flex(direction="row"),
                     border=Border(kind=BorderKind.Thick),
                 ),
             ),
-            #
         ],
         style=border_color
         | Style(
@@ -111,7 +108,7 @@ def toggle() -> Div:
 
 
 @component
-def time(style: Style) -> Div:
+def time(style: Style) -> Paragraph:
     now, set_now = use_state(datetime.now())
 
     async def tick() -> None:
@@ -121,30 +118,23 @@ def time(style: Style) -> Div:
 
     use_effect(tick, deps=())
 
-    content = f"{now}"
-
-    return Div(
-        children=[
-            Paragraph(
-                content=content,
-                style=style
-                | text_indigo_500
-                | text_bg_slate_300
-                | border_violet_500
-                | border_bg_slate_700
-                | padding_amber_400
-                | Style(
-                    span=Span(width="auto", height="auto"),
-                    border=Border(kind=BorderKind.LightRounded),
-                    # padding=Padding(top=1, bottom=1, left=1, right=1),
-                ),
-            )
-        ]
+    return Paragraph(
+        content=f"{now}",
+        style=style
+        | text_indigo_500
+        | text_bg_slate_300
+        | border_violet_500
+        | border_bg_slate_700
+        | padding_amber_400
+        | Style(
+            border=Border(kind=BorderKind.LightRounded),
+            padding=Padding(top=1, bottom=1, left=1, right=1),
+        ),
     )
 
 
 @component
-def textpad(style: Style) -> Div:
+def textpad(style: Style) -> Paragraph:
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
@@ -159,20 +149,15 @@ def textpad(style: Style) -> Div:
 
     content = "".join(buffer) or "..."
 
-    return Div(
-        children=[
-            Paragraph(
-                content=content,
-                style=style
-                | text_teal_600
-                | border_rose_500
-                | Style(
-                    span=Span(width="auto", height="auto"),
-                    border=Border(kind=BorderKind.LightRounded),
-                    # padding=Padding(top=1, bottom=1, left=1, right=1),
-                ),
-            )
-        ],
+    return Paragraph(
+        content=content,
+        style=style
+        | text_teal_600
+        | border_rose_500
+        | Style(
+            border=Border(kind=BorderKind.LightRounded),
+            padding=Padding(top=1, bottom=1, left=1, right=1),
+        ),
         on_key=on_key,
     )
 
