@@ -11,31 +11,6 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-def diff(a: dict[K, V], b: dict[K, V], default: V) -> dict[K, V]:
-    d = {}
-    for key in a.keys() | b.keys():
-        a_val = a.get(key, default)
-        if a_val != b.get(key):
-            d[key] = a_val
-    return d
-
-
-def overlay_and_diff(a: dict[K, V], b: dict[K, V], default: V) -> tuple[dict[K, V], dict[K, V]]:
-    overlay = {}
-    diff = {}
-
-    for key in a.keys() | b.keys():
-        a_val = a.get(key)
-        b_val = b.get(key)
-
-        if a_val != b_val:
-            diff[key] = a_val or default
-
-        overlay[key] = a_val or b_val
-
-    return overlay, diff
-
-
 def merge(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
     merged: dict[str, object] = {}
 

@@ -12,7 +12,7 @@ from typing import TextIO
 from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
-from reprisal._utils import drain_queue, overlay_and_diff
+from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
@@ -131,16 +131,16 @@ async def app(
                     )
 
                     start_paint = perf_counter_ns()
-                    full_paint = paint_layout(layout_tree)
+                    new_paint = paint_layout(layout_tree)
                     logger.debug(
-                        "Generated full paint",
+                        "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
                     )
 
                     start_diff = perf_counter_ns()
-                    current_paint, diffed_paint = overlay_and_diff(full_paint, current_paint, default=BLANK)
+                    current_paint, diffed_paint = diff_paint(new_paint, current_paint)
                     logger.debug(
-                        "Diffed full paint from previous full paint",
+                        "Diffed new paint from current paint",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
                         cells=len(diffed_paint),
                     )
@@ -148,7 +148,7 @@ async def app(
                     start_instructions = perf_counter_ns()
                     instructions = paint_to_instructions(paint=diffed_paint)
                     logger.debug(
-                        "Generated instructions from paint",
+                        "Generated instructions from paint diff",
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
@@ -160,8 +160,6 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_write:_}",
                         bytes=f"{len(instructions):_}",
                     )
-
-                    current_paint = full_paint
 
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
@@ -246,3 +244,17 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
     return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+
+
+def diff_paint(new_paint: Paint, current_paint: Paint) -> tuple[Paint, Paint]:
+    overlay = current_paint | new_paint
+    diff = {}
+
+    for pos, current_cell in current_paint.items():
+        new_cell = new_paint.get(pos, BLANK)
+
+        # actually this is the bad line
+        if new_cell != current_cell:
+            diff[pos] = new_cell
+
+    return overlay, diff
