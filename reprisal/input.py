@@ -6,7 +6,7 @@ import termios
 from collections.abc import Callable
 from copy import deepcopy
 from selectors import DefaultSelector
-from time import perf_counter
+from time import perf_counter_ns
 from typing import TextIO
 
 from parsy import ParseError
@@ -30,7 +30,7 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
         # We're just reading from one file,
         # so we can dispense with the ceremony of actually using the results of the select.
 
-        start_parsing = perf_counter()
+        start_parsing = perf_counter_ns()
         # Read only up to 6 bytes at a time to make checking for multiple mouse events easier
         # TODO: would be better to not do bytes[4:] below...
         b = os.read(stream.fileno(), 6)
@@ -53,7 +53,7 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
                     buffer=repr(buffer),
                     bytes=bytes,
                     len_buffer=len(buffer),
-                    elapsed_ms=(perf_counter() - start_parsing) * 1000,
+                    elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
                 )
             except (ParseError, KeyError) as e:
                 logger.error(
@@ -61,7 +61,7 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
                     error=str(e),
                     buffer=repr(buffer),
                     len_buffer=len(buffer),
-                    elapsed_ms=(perf_counter() - start_parsing) * 1000,
+                    elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
                 )
 
 
