@@ -93,7 +93,7 @@ async def app(
         key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
-        instructions = paint_to_instructions(paint=current_paint)
+        instructions = paint_to_instructions(paint=current_paint.items())
         output_stream.write(instructions)
         output_stream.flush()
 
@@ -146,7 +146,7 @@ async def app(
                     )
 
                     start_instructions = perf_counter_ns()
-                    instructions = paint_to_instructions(paint=diffed_paint)
+                    instructions = paint_to_instructions(diffed_paint)
                     logger.debug(
                         "Generated instructions from paint diff",
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
@@ -246,15 +246,16 @@ def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
     return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
 
 
-def diff_paint(new_paint: Paint, current_paint: Paint) -> tuple[Paint, Paint]:
+def diff_paint(new_paint: Paint, current_paint: Paint) -> tuple[Paint, list[tuple[Position, CellPaint]]]:
     overlay = current_paint | new_paint
-    diff = {}
+    diff = []
 
     for pos, current_cell in current_paint.items():
         new_cell = new_paint.get(pos, BLANK)
 
-        # actually this is the bad line
-        if new_cell != current_cell:
-            diff[pos] = new_cell
+        if new_cell is current_cell:
+            continue
+        elif hash(new_cell) != hash(current_cell):
+            diff.append((pos, new_cell))
 
     return overlay, diff

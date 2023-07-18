@@ -273,7 +273,7 @@ class Span(StyleFragment):
 
 
 class Text(StyleFragment):
-    style: CellStyle = Field(default_factory=CellStyle)
+    style: CellStyle = Field(default=CellStyle())
     # wrap, overflow, alignment, etc.
 
 

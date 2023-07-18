@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from functools import lru_cache
 from typing import TextIO
 
@@ -80,7 +81,7 @@ def sgr_from_cell_style(style: CellStyle) -> str:
     return "".join(parts)
 
 
-def paint_to_instructions(paint: dict[Position, CellPaint]) -> str:
+def paint_to_instructions(paint: Iterable[tuple[Position, CellPaint]]) -> str:
     return "".join(
-        f"{move_from_position(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items()
+        f"{move_from_position(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint
     )

@@ -45,7 +45,7 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
 
 
 def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
-    style = paragraph.style.text.style.copy(deep=True)
+    style = paragraph.style.text.style
 
     paint = {}
     lines = wrap_text(paragraph.content, width=rect.width)
