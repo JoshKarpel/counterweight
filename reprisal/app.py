@@ -12,22 +12,27 @@ from typing import TextIO
 from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
-from reprisal._utils import diff, drain_queue
+from reprisal._utils import drain_queue, overlay_and_diff
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import Rect, build_layout_tree
+from reprisal.layout import Position, Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     paint_to_instructions,
     start_output_control,
     stop_output_control,
 )
-from reprisal.paint import Paint, paint_layout
+from reprisal.paint import CellPaint, Paint, paint_layout
 from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
 from reprisal.styles import Span, Style
-from reprisal.styles.styles import Flex
+from reprisal.styles.styles import CellStyle, Color, Flex
+
+BLANK = CellPaint(
+    char=" ",
+    style=CellStyle(background=Color.from_name("black")),
+)
 
 logger = get_logger()
 
@@ -86,7 +91,10 @@ async def app(
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
 
-        previous_full_paint: Paint = {}
+        current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+        instructions = paint_to_instructions(paint=current_paint)
+        output_stream.write(instructions)
+        output_stream.flush()
 
         needs_render = True
         shadow = render_shadow_node_from_previous(screen(), None)
@@ -95,9 +103,6 @@ async def app(
         async with TaskGroup() as tg:
             while True:
                 if needs_render:
-                    w, h = shutil.get_terminal_size()
-                    logger.debug("Terminal size", width=w, height=h)
-
                     # height is always zero here because this is the starting height of the context box in the layout algorithm
                     # screen boundary will need to be controlled by max height style and paint cutoff
                     Rect(x=0, y=0, width=w, height=0)
@@ -132,7 +137,7 @@ async def app(
                     )
 
                     start_diff = perf_counter_ns()
-                    diffed_paint = diff(full_paint, previous_full_paint)
+                    current_paint, diffed_paint = overlay_and_diff(full_paint, current_paint, default=BLANK)
                     logger.debug(
                         "Diffed full paint from previous full paint",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
@@ -140,7 +145,6 @@ async def app(
                     )
 
                     start_instructions = perf_counter_ns()
-                    # TODO: not happy when borders change, need to figure out how to handle that
                     instructions = paint_to_instructions(paint=diffed_paint)
                     logger.debug(
                         "Generated instructions from paint",
@@ -156,7 +160,7 @@ async def app(
                         bytes=f"{len(instructions):_}",
                     )
 
-                    previous_full_paint = full_paint
+                    current_paint = full_paint
 
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
@@ -176,7 +180,9 @@ async def app(
                     match event:
                         case TerminalResized():
                             needs_render = True
-                            previous_full_paint = {}
+                            w, h = shutil.get_terminal_size()
+                            # TODO: painting on resize seems broken
+                            # what I need to do is make sure each position in the previous paint gets painted over
                         case KeyPressed():
                             for c in layout_tree.walk_from_bottom():
                                 if c.on_key:
