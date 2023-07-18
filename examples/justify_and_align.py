@@ -92,4 +92,5 @@ p = paint_layout(t)
 print(t.dims)
 for child in t.children:
     print(child.dims)
-print(debug_paint(p, t.dims.margin_rect()))
+_, _, margin_rect = t.dims.padding_border_margin_rects()
+print(debug_paint(p, margin_rect))

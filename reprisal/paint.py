@@ -29,9 +29,10 @@ def paint_layout(layout: LayoutBox) -> Paint:
 
 
 def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
-    m = paint_edge(element.style.margin, dims.margin, dims.margin_rect())
-    b = paint_border(element.style.border, dims.border_rect()) if element.style.border else {}
-    t = paint_edge(element.style.padding, dims.padding, dims.padding_rect())
+    padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
+    m = paint_edge(element.style.margin, dims.margin, margin_rect)
+    b = paint_border(element.style.border, border_rect) if element.style.border else {}
+    t = paint_edge(element.style.padding, dims.padding, padding_rect)
 
     box = m | b | t
 
@@ -49,18 +50,17 @@ def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
 
     paint = {}
     lines = wrap_text(paragraph.content, width=rect.width)
-    for y, line in enumerate(lines[: rect.height]):
-        for x, char in enumerate(line[: rect.width]):
-            paint[Position(rect.x + x, rect.y + y)] = CellPaint(char=char, style=style)
+    for y, line in enumerate(lines[: rect.height], start=rect.y):
+        for x, char in enumerate(line[: rect.width], start=rect.x):
+            paint[Position(x, y)] = CellPaint(char=char, style=style)
 
     return paint
 
 
 def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    style = CellStyle(background=mp.color)
+    cell_paint = CellPaint(char=char, style=CellStyle(background=mp.color))
 
     chars = {}
-    cell_paint = CellPaint(char=char, style=style)
 
     # top
     for y in range(rect.top, rect.top + edge.top):
@@ -86,26 +86,34 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
 
 
 def paint_border(border: Border, rect: Rect) -> Paint:
-    style = border.style.copy(deep=True)
+    style = border.style
     left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value  # type: ignore[misc]
     chars = {}
 
-    for y in rect.y_range():
-        chars[Position(rect.left, y)] = CellPaint(char=left, style=style)
+    left_paint = CellPaint(char=left, style=style)
+    for p in rect.left_edge():
+        chars[p] = left_paint
 
-    for y in rect.y_range():
-        chars[Position(rect.right, y)] = CellPaint(char=right, style=style)
+    right_paint = CellPaint(char=right, style=style)
+    for p in rect.right_edge():
+        chars[p] = right_paint
 
-    for x in rect.x_range():
-        chars[Position(x, rect.top)] = CellPaint(char=top, style=style)
+    top_paint = CellPaint(char=top, style=style)
+    for p in rect.top_edge():
+        chars[p] = top_paint
 
-    for x in rect.x_range():
-        chars[Position(x, rect.bottom)] = CellPaint(char=bottom, style=style)
+    bottom_paint = CellPaint(char=bottom, style=style)
+    for p in rect.bottom_edge():
+        chars[p] = bottom_paint
 
-    chars[Position(x=rect.left, y=rect.top)] = CellPaint(char=left_top, style=style)
-    chars[Position(x=rect.right, y=rect.top)] = CellPaint(char=right_top, style=style)
-    chars[Position(x=rect.left, y=rect.bottom)] = CellPaint(char=left_bottom, style=style)
-    chars[Position(x=rect.right, y=rect.bottom)] = CellPaint(char=right_bottom, style=style)
+    rect_left = rect.left
+    rect_top = rect.top
+    rect_right = rect.right
+    rect_bottom = rect.bottom
+    chars[Position(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
+    chars[Position(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
+    chars[Position(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
+    chars[Position(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
 
     return chars
 

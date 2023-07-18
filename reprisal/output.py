@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from functools import lru_cache
 from typing import TextIO
 
 from structlog import get_logger
@@ -54,31 +53,26 @@ def stop_mouse_reporting(stream: TextIO) -> None:
     stream.flush()
 
 
-@lru_cache(maxsize=2**20)
 def move_from_position(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
-@lru_cache(maxsize=2**20)
 def sgr_from_cell_style(style: CellStyle) -> str:
     fg_r, fg_g, fg_b = style.foreground
     bg_r, bg_g, bg_b = style.background
 
-    parts = [
-        f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m",  # fg
-        f"\x1b[48;2;{bg_r};{bg_g};{bg_b}m",  # bg
-    ]
+    sgr = f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m\x1b[48;2;{bg_r};{bg_g};{bg_b}m"
 
     if style.bold:
-        parts.append("\x1b[1m")
+        sgr += "\x1b[1m"
 
     if style.dim:
-        parts.append("\x1b[2m")
+        sgr += "\x1b[2m"
 
     if style.italic:
-        parts.append("\x1b[3m")
+        sgr += "\x1b[3m"
 
-    return "".join(parts)
+    return sgr
 
 
 def paint_to_instructions(paint: Iterable[tuple[Position, CellPaint]]) -> str:

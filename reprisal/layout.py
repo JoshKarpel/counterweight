@@ -55,6 +55,22 @@ class Rect(ForbidExtras):
     def bottom(self) -> int:
         return self.y + self.height - 1
 
+    def left_edge(self) -> list[Position]:
+        left = self.left
+        return [Position(left, y) for y in self.y_range()]
+
+    def right_edge(self) -> list[Position]:
+        right = self.right
+        return [Position(right, y) for y in self.y_range()]
+
+    def top_edge(self) -> list[Position]:
+        top = self.top
+        return [Position(x, top) for x in self.x_range()]
+
+    def bottom_edge(self) -> list[Position]:
+        bottom = self.bottom
+        return [Position(x, bottom) for x in self.x_range()]
+
     def __contains__(self, item: object) -> bool:
         if isinstance(item, Position):
             return item.x in self.x_range() and item.y in self.y_range()
@@ -83,6 +99,12 @@ class BoxDimensions(ForbidExtras):
 
     def margin_rect(self) -> Rect:
         return self.border_rect().expand_by(self.margin)
+
+    def padding_border_margin_rects(self) -> tuple[Rect, Rect, Rect]:
+        padding = self.content.expand_by(self.padding)
+        border = padding.expand_by(self.border)
+        margin = border.expand_by(self.margin)
+        return padding, border, margin
 
     def left_edge_width(self) -> int:
         return self.margin.left + self.border.left + self.padding.left
