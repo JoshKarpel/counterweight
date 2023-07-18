@@ -20,6 +20,7 @@ from reprisal.input import read_keys, start_input_control, stop_input_control
 from reprisal.layout import Position, Rect, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
+    CLEAR_SCREEN,
     paint_to_instructions,
     start_output_control,
     stop_output_control,
@@ -181,8 +182,14 @@ async def app(
                         case TerminalResized():
                             needs_render = True
                             w, h = shutil.get_terminal_size()
-                            # TODO: painting on resize seems broken
-                            # what I need to do is make sure each position in the previous paint gets painted over
+
+                            # start from scratch
+                            current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                            instructions = paint_to_instructions(paint=current_paint)
+                            output_stream.write(CLEAR_SCREEN)
+                            output_stream.write(instructions)
+                            # don't flush here, we don't necessarily need to flush until the next render
+                            # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
                             for c in layout_tree.walk_from_bottom():
                                 if c.on_key:

@@ -33,11 +33,11 @@ class Rect(ForbidExtras):
             height=self.height + edge.top + edge.bottom,
         )
 
-    def x_range(self) -> list[int]:
-        return list(range(self.x, self.x + self.width))
+    def x_range(self) -> range:
+        return range(self.x, self.x + self.width)
 
-    def y_range(self) -> list[int]:
-        return list(range(self.y, self.y + self.height))
+    def y_range(self) -> range:
+        return range(self.y, self.y + self.height)
 
     @property
     def left(self) -> int:
@@ -54,6 +54,12 @@ class Rect(ForbidExtras):
     @property
     def bottom(self) -> int:
         return self.y + self.height - 1
+
+    def __contains__(self, item: object) -> bool:
+        if isinstance(item, Position):
+            return item.x in self.x_range() and item.y in self.y_range()
+        else:
+            return False
 
 
 class Edge(ForbidExtras):
