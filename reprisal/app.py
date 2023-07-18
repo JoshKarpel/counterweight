@@ -17,7 +17,7 @@ from reprisal.components import AnyElement, Component, Div, component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import Position, Rect, build_layout_tree
+from reprisal.layout import Position, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     CLEAR_SCREEN,
@@ -104,10 +104,6 @@ async def app(
         async with TaskGroup() as tg:
             while True:
                 if needs_render:
-                    # height is always zero here because this is the starting height of the context box in the layout algorithm
-                    # screen boundary will need to be controlled by max height style and paint cutoff
-                    Rect(x=0, y=0, width=w, height=0)
-
                     start_render = perf_counter_ns()
                     shadow = render_shadow_node_from_previous(screen(), shadow)
                     logger.debug(
@@ -146,7 +142,7 @@ async def app(
                     )
 
                     start_instructions = perf_counter_ns()
-                    instructions = paint_to_instructions(diffed_paint)
+                    instructions = paint_to_instructions(current_paint.items())
                     logger.debug(
                         "Generated instructions from paint diff",
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
@@ -183,7 +179,7 @@ async def app(
 
                             # start from scratch
                             current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
-                            instructions = paint_to_instructions(paint=current_paint)
+                            instructions = paint_to_instructions(paint=current_paint.items())
                             output_stream.write(CLEAR_SCREEN)
                             output_stream.write(instructions)
                             # don't flush here, we don't necessarily need to flush until the next render
@@ -247,15 +243,17 @@ def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
 
 
 def diff_paint(new_paint: Paint, current_paint: Paint) -> tuple[Paint, list[tuple[Position, CellPaint]]]:
-    overlay = current_paint | new_paint
+    overlay = {}
     diff = []
 
     for pos, current_cell in current_paint.items():
         new_cell = new_paint.get(pos, BLANK)
 
-        if new_cell is current_cell:
-            continue
-        elif hash(new_cell) != hash(current_cell):
+        # This looks unnecessary, but each of these checks is faster than the next,
+        # but less precise, so we can short-circuit earlier on cheaper operations.
+        if new_cell is not current_cell and hash(new_cell) != hash(current_cell) and new_cell != current_cell:
             diff.append((pos, new_cell))
+
+        overlay[pos] = new_cell
 
     return overlay, diff

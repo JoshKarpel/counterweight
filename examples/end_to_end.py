@@ -13,17 +13,11 @@ from reprisal.styles import Border, BorderKind, Style
 from reprisal.styles.styles import Flex, Padding
 from reprisal.styles.utilities import (
     border_amber_700,
-    border_bg_slate_700,
     border_lime_700,
     border_rose_500,
     border_sky_700,
-    border_violet_500,
-    justify_center,
-    justify_end,
-    justify_start,
-    padding_amber_400,
-    text_bg_slate_300,
-    text_indigo_500,
+    border_teal_600,
+    text_rose_500,
     text_teal_600,
 )
 
@@ -38,13 +32,6 @@ def toggle() -> Div:
         return next(border_cycle_ref.current)
 
     border, set_border = use_state(advance_border)
-
-    justify_cycle_ref = use_ref(cycle([justify_start, justify_center, justify_end]))
-
-    def advance_justify() -> Style:
-        return next(justify_cycle_ref.current)
-
-    justify_style, set_margin_style = use_state(advance_justify)
 
     border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
 
@@ -63,8 +50,6 @@ def toggle() -> Div:
                 set_border(advance_border())
             case Key.F2:
                 set_border_color(advance_border_color())
-            case Key.F3:
-                set_margin_style(advance_justify())
 
     return Div(
         children=[
@@ -80,52 +65,47 @@ def toggle() -> Div:
                 children=[
                     Paragraph(
                         content="End-to-End Demo",
-                        style=Style(
-                            border=Border(kind=BorderKind.Double),
+                        style=border_color
+                        | Style(
+                            border=Border(kind=border),
                             padding=Padding(top=1, bottom=1, left=1, right=1),
                         ),
                     ),
-                    time(justify_style) if toggled else textpad(justify_style),
+                    time() if toggled else textpad(),
                 ],
                 style=Style(
                     display=Flex(direction="row"),
-                    border=Border(kind=BorderKind.Thick),
+                    border=Border(kind=BorderKind.LightRounded),
                 ),
             ),
         ],
-        style=border_color
-        | Style(
+        style=Style(
             display=Flex(
                 direction="column",
                 # TODO: without align_children="stretch", the children don't grow in width, even though they have text in them...
                 # maybe I'm applying auto width too late?
                 align_children="stretch",
             ),
-            border=Border(kind=border),
         ),
         on_key=on_key,
     )
 
 
 @component
-def time(style: Style) -> Paragraph:
+def time() -> Paragraph:
     now, set_now = use_state(datetime.now())
 
     async def tick() -> None:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.01)
             set_now(datetime.now())
 
     use_effect(tick, deps=())
 
     return Paragraph(
-        content=f"{now}",
-        style=style
-        | text_indigo_500
-        | text_bg_slate_300
-        | border_violet_500
-        | border_bg_slate_700
-        | padding_amber_400
+        content=f"{now:%Y-%m-%d %H:%M:%S}",
+        style=text_rose_500
+        | border_teal_600
         | Style(
             border=Border(kind=BorderKind.LightRounded),
             padding=Padding(top=1, bottom=1, left=1, right=1),
@@ -134,7 +114,7 @@ def time(style: Style) -> Paragraph:
 
 
 @component
-def textpad(style: Style) -> Paragraph:
+def textpad() -> Paragraph:
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
@@ -151,8 +131,7 @@ def textpad(style: Style) -> Paragraph:
 
     return Paragraph(
         content=content,
-        style=style
-        | text_teal_600
+        style=text_teal_600
         | border_rose_500
         | Style(
             border=Border(kind=BorderKind.LightRounded),
