@@ -93,7 +93,7 @@ async def app(
         key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
-        instructions = paint_to_instructions(paint=current_paint.items())
+        instructions = paint_to_instructions(paint=current_paint)
         output_stream.write(instructions)
         output_stream.flush()
 
@@ -134,15 +134,16 @@ async def app(
                     )
 
                     start_diff = perf_counter_ns()
-                    current_paint, diffed_paint = diff_paint(new_paint, current_paint)
+                    diff = diff_paint(new_paint, current_paint)
+                    current_paint |= diff
                     logger.debug(
                         "Diffed new paint from current paint",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
-                        cells=len(diffed_paint),
+                        cells=len(diff),
                     )
 
                     start_instructions = perf_counter_ns()
-                    instructions = paint_to_instructions(current_paint.items())
+                    instructions = paint_to_instructions(diff)
                     logger.debug(
                         "Generated instructions from paint diff",
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
@@ -179,7 +180,7 @@ async def app(
 
                             # start from scratch
                             current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
-                            instructions = paint_to_instructions(paint=current_paint.items())
+                            instructions = paint_to_instructions(paint=current_paint)
                             output_stream.write(CLEAR_SCREEN)
                             output_stream.write(instructions)
                             # don't flush here, we don't necessarily need to flush until the next render
@@ -242,18 +243,15 @@ def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
     return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
 
 
-def diff_paint(new_paint: Paint, current_paint: Paint) -> tuple[Paint, list[tuple[Position, CellPaint]]]:
-    overlay = {}
-    diff = []
+def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
+    diff = {}
 
     for pos, current_cell in current_paint.items():
         new_cell = new_paint.get(pos, BLANK)
 
-        # This looks unnecessary, but each of these checks is faster than the next,
+        # This looks duplicative, but each of these checks is faster than the next,
         # but less precise, so we can short-circuit earlier on cheaper operations.
-        if new_cell is not current_cell and hash(new_cell) != hash(current_cell) and new_cell != current_cell:
-            diff.append((pos, new_cell))
+        if new_cell is not current_cell and hash(new_cell) != hash(current_cell):
+            diff[pos] = new_cell
 
-        overlay[pos] = new_cell
-
-    return overlay, diff
+    return diff

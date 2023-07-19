@@ -1,10 +1,9 @@
-from collections.abc import Iterable
 from typing import TextIO
 
 from structlog import get_logger
 
 from reprisal.layout import Position
-from reprisal.paint import CellPaint
+from reprisal.paint import Paint
 from reprisal.styles.styles import CellStyle
 
 CURSOR_ON = "\x1b[?25h"
@@ -75,7 +74,7 @@ def sgr_from_cell_style(style: CellStyle) -> str:
     return sgr
 
 
-def paint_to_instructions(paint: Iterable[tuple[Position, CellPaint]]) -> str:
+def paint_to_instructions(paint: Paint) -> str:
     return "".join(
-        f"{move_from_position(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint
+        f"{move_from_position(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items()
     )
