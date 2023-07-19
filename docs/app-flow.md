@@ -10,7 +10,7 @@ flowchart TB
 
     subgraph Output
         ph[Paint History]
-        dp[Diff Paint]
+        dp[Overlay & Diff Paint]
         d[Apply Paint]
         t[Terminal Output]
     end
@@ -33,7 +33,7 @@ flowchart TB
     p -- Paint --> dp
 
     ph -- Previous Paint --> dp
-    dp -- Store Paint --> ph
+    dp -- Store Current Paint --> ph
     dp -- Diffed Paint --> d
 
     d -- VT Commands --> t
