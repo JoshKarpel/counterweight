@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
+from typing import Literal
+
 from pydantic import Field
 from structlog import get_logger
 
@@ -45,13 +48,23 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
             raise NotImplementedError(f"Painting {element} is not implemented")
 
 
+STR_JUSTIFIERS: Mapping[Literal["left", "right", "center"], Callable[[str, int], str]] = {
+    "left": str.ljust,
+    "right": str.rjust,
+    "center": str.center,
+}
+
+
 def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
     style = paragraph.style.text.style
+    justifier = STR_JUSTIFIERS[paragraph.style.text.justify]
 
     paint = {}
     lines = wrap_text(paragraph.content, width=rect.width)
+
     for y, line in enumerate(lines[: rect.height], start=rect.y):
-        for x, char in enumerate(line[: rect.width], start=rect.x):
+        justified_line = justifier(line, rect.width)
+        for x, char in enumerate(justified_line[: rect.width], start=rect.x):
             paint[Position(x, y)] = CellPaint(char=char, style=style)
 
     return paint

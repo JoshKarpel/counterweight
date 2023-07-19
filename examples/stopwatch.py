@@ -1,4 +1,5 @@
 import asyncio
+from textwrap import dedent
 from time import monotonic
 
 from structlog import get_logger
@@ -9,10 +10,12 @@ from reprisal.events import KeyPressed
 from reprisal.hooks import use_effect, use_state
 from reprisal.keys import Key
 from reprisal.styles import Border, BorderKind, Style
-from reprisal.styles.styles import Flex, Padding, Span
+from reprisal.styles.styles import Flex, Padding, Span, Text
 from reprisal.styles.utilities import (
     border_emerald_500,
     border_rose_500,
+    border_slate_400,
+    text_slate_200,
 )
 
 logger = get_logger()
@@ -73,6 +76,33 @@ def stopwatch() -> Div:
                             ),
                             border=Border(kind=BorderKind.Double),
                             padding=Padding(top=1, bottom=1, left=2, right=2),
+                        ),
+                    ),
+                ],
+            ),
+            Div(
+                style=Style(
+                    display=Flex(
+                        direction="row",
+                        align_children="center",
+                    ),
+                ),
+                children=[
+                    Paragraph(
+                        content=dedent(
+                            """\
+                            <space> to start/stop
+
+                            <backspace> to reset
+                            """
+                        ),
+                        style=border_slate_400
+                        | text_slate_200
+                        | Style(
+                            span=Span(width=30),
+                            border=Border(kind=BorderKind.LightRounded),
+                            padding=Padding(top=1, bottom=1, left=2, right=2),
+                            text=Text(justify="center"),
                         ),
                     ),
                 ],

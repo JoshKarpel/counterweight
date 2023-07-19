@@ -274,7 +274,7 @@ class Span(StyleFragment):
 
 class Text(StyleFragment):
     style: CellStyle = Field(default=CellStyle())
-    # wrap, overflow, alignment, etc.
+    justify: Literal["left", "center", "right"] = "left"
 
 
 class Block(StyleFragment):
