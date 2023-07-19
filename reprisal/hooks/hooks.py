@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TypeVar, overload
 
 from reprisal._context_vars import current_hook_state
 from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 T = TypeVar("T")
+
+
+@overload
+def use_state(initial_value: Getter[T]) -> tuple[T, Setter[T]]:
+    ...
+
+
+@overload
+def use_state(initial_value: T) -> tuple[T, Setter[T]]:
+    ...
 
 
 def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
