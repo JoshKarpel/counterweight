@@ -24,7 +24,7 @@ logger = get_logger()
 @component
 def stopwatch() -> Div:
     running, set_running = use_state(False)
-    elapsed_time, set_elapsed_time = use_state(0)
+    elapsed_time, set_elapsed_time = use_state(0.0)
 
     def on_key(event: KeyPressed) -> None:
         match event.key:

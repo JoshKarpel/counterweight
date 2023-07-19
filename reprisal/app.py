@@ -179,7 +179,7 @@ async def app(
                             w, h = shutil.get_terminal_size()
 
                             # start from scratch
-                            current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                            current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
                             instructions = paint_to_instructions(paint=current_paint)
                             output_stream.write(CLEAR_SCREEN)
                             output_stream.write(instructions)
@@ -239,7 +239,7 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
     return new_effects
 
 
-def build_concrete_element_tree(root: ShadowNode | AnyElement) -> AnyElement:
+def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
     return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
 
 

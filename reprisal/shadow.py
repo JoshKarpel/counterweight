@@ -28,7 +28,12 @@ class ShadowNode(FrozenForbidExtras):
 
 
 def render_shadow_node_from_previous(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
-    if previous is None or (isinstance(next, Component) and next.func != previous.component.func):
+    if previous is None or (
+        isinstance(next, Component)
+        and isinstance(previous, ShadowNode)
+        and previous.component is not None
+        and next.func != previous.component.func
+    ):
         # start from scratch
         reset_current_hook_idx = current_hook_idx.set(0)
 

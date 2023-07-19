@@ -40,7 +40,7 @@ T = TypeVar("T")
 class Hooks(ForbidExtras):
     data: list[UseState | UseRef | UseEffect] = Field(default_factory=list)
 
-    def use_state(self, initial_value: T | Getter[T]) -> tuple[T, Setter[T]]:
+    def use_state(self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseState):
@@ -53,7 +53,7 @@ class Hooks(ForbidExtras):
 
         def set_state(value: T | Callable[[T], T]) -> None:
             if callable(value):
-                value = value(hook.value)
+                value = value(hook.value)  # type: ignore[arg-type]
             hook.value = value
             current_event_queue.get().put_nowait(StateSet())
 
