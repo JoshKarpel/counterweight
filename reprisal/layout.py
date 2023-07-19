@@ -253,6 +253,8 @@ class LayoutBox(ForbidExtras):
                 elif display.direction == "column":
                     available_height -= child.dims.height()
 
+        logger.debug("available_width", t=self.element.type, available_width=available_width)
+
         # when does flex element width get set for space-* justify?
         # space-* justify assumes children have fixed widths! it distributes the leftover space
         # but what if you DO put flex children in there? who sets their widths?
@@ -288,6 +290,7 @@ class LayoutBox(ForbidExtras):
         for child in relative_children:
             if child.element.type == "text":
                 h = len(wrap_text(child.element.content, child.dims.content.width))
+                logger.debug("wrapped text", h=h, w=child.dims.content.width)
                 child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
 
         # determine positions
