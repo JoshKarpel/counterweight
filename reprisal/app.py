@@ -221,12 +221,12 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
     for node in shadow.walk():
         for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
-                if effect.deps != effect.new_deps:
+                if effect.deps != effect.new_deps or effect.new_deps is None:
                     effect.deps = effect.new_deps
                     t = task_group.create_task(effect.setup())
                     new_effects.add(t)
                     effect.task = t
-                    logger.debug("Created effect", task=t, effect=effect)
+                    logger.debug("Created effect", effect=effect)
                 else:
                     if effect.task is None:
                         raise Exception("Effect task should never be None at this point")

@@ -16,5 +16,5 @@ def use_ref(initial_value: T) -> Ref[T]:
     return current_hook_state.get().use_ref(initial_value)
 
 
-def use_effect(setup: Setup, deps: Deps = ()) -> None:
+def use_effect(setup: Setup, deps: Deps | None = None) -> None:
     return current_hook_state.get().use_effect(setup, deps)
