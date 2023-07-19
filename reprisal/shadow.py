@@ -27,7 +27,7 @@ class ShadowNode(FrozenForbidExtras):
                 yield from child.walk()
 
 
-def render_shadow_node_from_previous(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
+def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
     if previous is None or (
         isinstance(next, Component)
         and isinstance(previous, ShadowNode)
@@ -45,7 +45,7 @@ def render_shadow_node_from_previous(next: Component | AnyElement, previous: Sha
         else:
             element = next
 
-        children = [render_shadow_node_from_previous(child, None) for child in element.children]
+        children = [update_shadow(child, None) for child in element.children]
 
         new = ShadowNode(
             component=next if isinstance(next, Component) else None,
@@ -65,7 +65,7 @@ def render_shadow_node_from_previous(next: Component | AnyElement, previous: Sha
 
         children = []
         for new_child, previous_child in zip_longest(element.children, previous.children):
-            children.append(render_shadow_node_from_previous(new_child, previous_child))
+            children.append(update_shadow(new_child, previous_child))
 
         new = ShadowNode(
             component=next if isinstance(next, Component) else None,

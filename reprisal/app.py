@@ -26,7 +26,7 @@ from reprisal.output import (
     stop_output_control,
 )
 from reprisal.paint import CellPaint, Paint, paint_layout
-from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
+from reprisal.shadow import ShadowNode, update_shadow
 from reprisal.styles import Span, Style
 from reprisal.styles.styles import CellStyle, Color, Flex
 
@@ -98,23 +98,23 @@ async def app(
         output_stream.flush()
 
         needs_render = True
-        shadow = render_shadow_node_from_previous(screen(), None)
+        shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
         async with TaskGroup() as tg:
             while True:
                 if needs_render:
                     start_render = perf_counter_ns()
-                    shadow = render_shadow_node_from_previous(screen(), shadow)
+                    shadow = update_shadow(screen(), shadow)
                     logger.debug(
-                        "Rendered shadow tree",
+                        "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
                     )
 
                     start_concrete = perf_counter_ns()
                     element_tree = build_concrete_element_tree(shadow)
                     logger.debug(
-                        "Derived concrete element tree from shadow tree",
+                        "Extracted concrete element tree from shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_concrete:_}",
                     )
 
