@@ -7,7 +7,7 @@ from pydantic import Field
 from structlog import get_logger
 
 from reprisal._utils import wrap_text
-from reprisal.components import AnyElement, Div, Paragraph
+from reprisal.components import AnyElement, Div, Text
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
 from reprisal.styles import Border
 from reprisal.styles.styles import CellStyle, Margin, Padding
@@ -42,8 +42,8 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
     match element:
         case Div():
             return box
-        case Paragraph() as e:
-            return paint_paragraph(e, dims.content) | box
+        case Text() as e:
+            return paint_text(e, dims.content) | box
         case _:
             raise NotImplementedError(f"Painting {element} is not implemented")
 
@@ -55,9 +55,9 @@ STR_JUSTIFIERS: Mapping[Literal["left", "right", "center"], Callable[[str, int],
 }
 
 
-def paint_paragraph(paragraph: Paragraph, rect: Rect) -> Paint:
-    style = paragraph.style.text.style
-    justifier = STR_JUSTIFIERS[paragraph.style.text.justify]
+def paint_text(paragraph: Text, rect: Rect) -> Paint:
+    style = paragraph.style.typography.style
+    justifier = STR_JUSTIFIERS[paragraph.style.typography.justify]
 
     paint = {}
     lines = wrap_text(paragraph.content, width=rect.width)

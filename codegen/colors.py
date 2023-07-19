@@ -304,8 +304,8 @@ for color, shades in colors.items():
     for shade, hex in shades.items():
         generated_lines.extend(
             [
-                f'text_{color}_{shade} = Style(text=Text(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
-                f'text_bg_{color}_{shade} = Style(text=Text(style=CellStyle(background=Color.from_hex("{hex}"))))',
+                f'text_{color}_{shade} = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
+                f'text_bg_{color}_{shade} = Style(typography=Typography(style=CellStyle(background=Color.from_hex("{hex}"))))',
                 f'border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
                 f'border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background=Color.from_hex("{hex}"))))',
                 f'margin_{color}_{shade} = Style(margin=Margin(color=Color.from_hex("{hex}")))',

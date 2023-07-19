@@ -37,16 +37,16 @@ class Div(Element):
     type: Literal["div"] = "div"
 
 
-class Paragraph(Element):
+class Text(Element):
     type: Literal["text"] = "text"
     content: str
 
 
 AnyElement = Union[
     Div,
-    Paragraph,
+    Text,
 ]
 
 Component.update_forward_refs()
 Div.update_forward_refs()
-Paragraph.update_forward_refs()
+Text.update_forward_refs()

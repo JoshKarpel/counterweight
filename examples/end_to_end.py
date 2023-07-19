@@ -5,7 +5,7 @@ from itertools import cycle
 from structlog import get_logger
 
 from reprisal.app import app
-from reprisal.components import Div, Paragraph, component
+from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
@@ -63,7 +63,7 @@ def toggle() -> Div:
             # ),
             Div(
                 children=[
-                    Paragraph(
+                    Text(
                         content="End-to-End Demo",
                         style=border_color
                         | Style(
@@ -92,7 +92,7 @@ def toggle() -> Div:
 
 
 @component
-def time() -> Paragraph:
+def time() -> Text:
     now, set_now = use_state(datetime.now())
 
     async def tick() -> None:
@@ -102,7 +102,7 @@ def time() -> Paragraph:
 
     use_effect(tick, deps=())
 
-    return Paragraph(
+    return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
         style=text_rose_500
         | border_teal_600
@@ -114,7 +114,7 @@ def time() -> Paragraph:
 
 
 @component
-def textpad() -> Paragraph:
+def textpad() -> Text:
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
@@ -129,7 +129,7 @@ def textpad() -> Paragraph:
 
     content = "".join(buffer) or "..."
 
-    return Paragraph(
+    return Text(
         content=content,
         style=text_teal_600
         | border_rose_500

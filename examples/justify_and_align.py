@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from structlog import get_logger
 
-from reprisal.components import Div, Paragraph
+from reprisal.components import Div, Text
 from reprisal.layout import build_layout_tree
 from reprisal.paint import debug_paint, paint_layout
 from reprisal.styles import Border, BorderKind, Span, Style
@@ -14,8 +14,8 @@ logger = get_logger()
 w, h = shutil.get_terminal_size()
 
 
-def content(justify_children: str, align_children: str, n: int) -> Paragraph:
-    return Paragraph(
+def content(justify_children: str, align_children: str, n: int) -> Text:
+    return Text(
         content=dedent(
             f"""\
             n={n}

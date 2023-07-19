@@ -272,7 +272,7 @@ class Span(StyleFragment):
     height: int | Literal["auto"] = Field(default="auto")
 
 
-class Text(StyleFragment):
+class Typography(StyleFragment):
     style: CellStyle = Field(default=CellStyle())
     justify: Literal["left", "center", "right"] = "left"
 
@@ -321,4 +321,4 @@ class Style(StyleFragment):
     margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)
     padding: Padding = Field(default=Padding())
-    text: Text = Field(default=Text())
+    typography: Typography = Field(default=Typography())
