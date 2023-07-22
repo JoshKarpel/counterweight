@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Task
+from collections.abc import Callable
 from typing import Literal, TypeVar
 
 from pydantic import Field
@@ -39,7 +40,7 @@ T = TypeVar("T")
 class Hooks(ForbidExtras):
     data: list[UseState | UseRef | UseEffect] = Field(default_factory=list)
 
-    def use_state(self, initial_value: T | Getter[T]) -> tuple[T, Setter[T]]:
+    def use_state(self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseState):
@@ -50,7 +51,9 @@ class Hooks(ForbidExtras):
             hook = UseState(value=initial_value() if callable(initial_value) else initial_value)
             self.data.append(hook)
 
-        def set_state(value: T) -> None:
+        def set_state(value: T | Callable[[T], T]) -> None:
+            if callable(value):
+                value = value(hook.value)  # type: ignore[arg-type]
             hook.value = value
             current_event_queue.get().put_nowait(StateSet())
 
@@ -88,7 +91,8 @@ class Hooks(ForbidExtras):
             )
             self.data.append(hook)
 
-        hook.new_deps = deps
+        hook.setup = setup  # we must capture the new setup function to update its closure
+        hook.new_deps = deps  # ... but the decision about whether to actually rerun it will be made based on its deps
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 

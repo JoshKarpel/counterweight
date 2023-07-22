@@ -4,7 +4,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypeVar, Union
 
-from pydantic import Field
+from pydantic import Field, PositiveInt
 
 from reprisal._utils import merge
 from reprisal.types import FrozenForbidExtras
@@ -254,8 +254,8 @@ class Border(StyleFragment):
 class Margin(StyleFragment):
     top: int = Field(default=0)
     bottom: int = Field(default=0)
-    left: int | Literal["auto"] = Field(default=0)
-    right: int | Literal["auto"] = Field(default=0)
+    left: int = Field(default=0)
+    right: int = Field(default=0)
     color: Color = Field(default=Color.from_name("black"))
 
 
@@ -272,9 +272,9 @@ class Span(StyleFragment):
     height: int | Literal["auto"] = Field(default="auto")
 
 
-class Text(StyleFragment):
-    style: CellStyle = Field(default_factory=CellStyle)
-    # wrap, overflow, alignment, etc.
+class Typography(StyleFragment):
+    style: CellStyle = Field(default=CellStyle())
+    justify: Literal["left", "center", "right"] = "left"
 
 
 class Block(StyleFragment):
@@ -293,10 +293,32 @@ class AnonymousBlock(StyleFragment):
     type: Literal["anonymous-block"] = "anonymous-block"
 
 
+class Flex(StyleFragment):
+    type: Literal["flex"] = "flex"
+    direction: Literal["row", "column"] = "row"
+    position: Literal["relative"] = "relative"
+    weight: PositiveInt | None = 1
+    justify_children: Literal[
+        "start",
+        "center",
+        "end",
+        "space-between",
+        "space-around",
+        "space-evenly",
+    ] = "start"
+    align_children: Literal[
+        "start",
+        "center",
+        "end",
+        "stretch",
+    ] = "start"
+
+
 class Style(StyleFragment):
-    display: Block | Inline | Hidden = Field(default=Block())
+    display: Flex = Field(default=Flex())
+    hidden: bool = False
     span: Span = Field(default=Span())
-    margin: Margin = Field(default=Margin(top=0, bottom=0, left=0, right="auto"))
+    margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)
-    padding: Padding = Field(default=Padding(top=0, bottom=0, left=0, right=0))
-    text: Text = Field(default=Text())
+    padding: Padding = Field(default=Padding())
+    typography: Typography = Field(default=Typography())

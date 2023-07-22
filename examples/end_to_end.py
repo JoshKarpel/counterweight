@@ -5,21 +5,19 @@ from itertools import cycle
 from structlog import get_logger
 
 from reprisal.app import app
-from reprisal.components import Div, Paragraph, component
+from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import Setter, use_effect, use_ref, use_state
 from reprisal.keys import Key
-from reprisal.styles import Border, BorderKind, Padding, Span, Style, ml_auto, mr_auto, mx_auto
+from reprisal.styles import Border, BorderKind, Style
+from reprisal.styles.styles import Flex, Padding
 from reprisal.styles.utilities import (
     border_amber_700,
-    border_bg_slate_700,
     border_lime_700,
     border_rose_500,
     border_sky_700,
-    border_violet_500,
-    padding_amber_400,
-    text_bg_slate_300,
-    text_indigo_500,
+    border_teal_600,
+    text_rose_500,
     text_teal_600,
 )
 
@@ -28,32 +26,19 @@ logger = get_logger()
 
 @component
 def toggle() -> Div:
-    border: BorderKind
-    set_border: Setter[BorderKind]
     border_cycle_ref = use_ref(cycle(BorderKind))
 
     def advance_border() -> BorderKind:
         return next(border_cycle_ref.current)
 
-    border, set_border = use_state(advance_border)  # type: ignore[arg-type]
+    border, set_border = use_state(advance_border)
 
-    margin_style: Style
-    set_margin_style: Setter[Style]
-    margin_cycle_ref = use_ref(cycle([mr_auto, mx_auto, ml_auto]))
-
-    def advance_margin() -> Style:
-        return next(margin_cycle_ref.current)
-
-    margin_style, set_margin_style = use_state(advance_margin)  # type: ignore[arg-type]
-
-    border_color: Style
-    set_border_color: Setter[Style]
     border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
 
     def advance_border_color() -> Style:
         return next(border_color_ref.current)
 
-    border_color, set_border_color = use_state(advance_border_color)  # type: ignore[arg-type]
+    border_color, set_border_color = use_state(advance_border_color)
 
     toggled, set_toggled = use_state(False)
 
@@ -65,51 +50,71 @@ def toggle() -> Div:
                 set_border(advance_border())
             case Key.F2:
                 set_border_color(advance_border_color())
-            case Key.F3:
-                set_margin_style(advance_margin())
 
     return Div(
-        children=[time(margin_style) if toggled else textpad(margin_style)],
-        style=border_color | Style(border=Border(kind=border)),
+        children=[
+            # TODO: why does putting this here break the layout? it's above the outer div...
+            # Paragraph(
+            #     content="End-to-End Demo",
+            #     style=Style(
+            #         span=Span(width="auto"),
+            #         border=Border(kind=BorderKind.LightRounded),
+            #     ),
+            # ),
+            Div(
+                children=[
+                    Text(
+                        content="End-to-End Demo",
+                        style=border_color
+                        | Style(
+                            border=Border(kind=border),
+                            padding=Padding(top=1, bottom=1, left=1, right=1),
+                        ),
+                    ),
+                    time() if toggled else textpad(),
+                ],
+                style=Style(
+                    display=Flex(direction="row"),
+                    border=Border(kind=BorderKind.LightRounded),
+                ),
+            ),
+        ],
+        style=Style(
+            display=Flex(
+                direction="column",
+                # TODO: without align_children="stretch", the children don't grow in width, even though they have text in them...
+                # maybe I'm applying auto width too late?
+                align_children="stretch",
+            ),
+        ),
         on_key=on_key,
     )
 
 
 @component
-def time(margin_style: Style) -> Div:
+def time() -> Text:
     now, set_now = use_state(datetime.now())
 
     async def tick() -> None:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.01)
             set_now(datetime.now())
 
     use_effect(tick, deps=())
 
-    content = f"{now}"
-
-    return Div(
-        children=[
-            Paragraph(
-                content=content,
-                style=margin_style
-                | text_indigo_500
-                | text_bg_slate_300
-                | border_violet_500
-                | border_bg_slate_700
-                | padding_amber_400
-                | Style(
-                    span=Span(width=len(content), height=1),
-                    border=Border(kind=BorderKind.LightRounded),
-                    padding=Padding(top=1, bottom=1, left=1, right=1),
-                ),
-            )
-        ]
+    return Text(
+        content=f"{now:%Y-%m-%d %H:%M:%S}",
+        style=text_rose_500
+        | border_teal_600
+        | Style(
+            border=Border(kind=BorderKind.LightRounded),
+            padding=Padding(top=1, bottom=1, left=1, right=1),
+        ),
     )
 
 
 @component
-def textpad(margin_style: Style) -> Div:
+def textpad() -> Text:
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
@@ -122,22 +127,16 @@ def textpad(margin_style: Style) -> Div:
                 s = [*buffer, event.key]
                 set_buffer(s)
 
-    content = "".join(buffer)
+    content = "".join(buffer) or "..."
 
-    return Div(
-        children=[
-            Paragraph(
-                content=content,
-                style=margin_style
-                | text_teal_600
-                | border_rose_500
-                | Style(
-                    span=Span(width=len(content), height=1),
-                    border=Border(kind=BorderKind.LightRounded),
-                    padding=Padding(top=1, bottom=1, left=1, right=1),
-                ),
-            )
-        ],
+    return Text(
+        content=content,
+        style=text_teal_600
+        | border_rose_500
+        | Style(
+            border=Border(kind=BorderKind.LightRounded),
+            padding=Padding(top=1, bottom=1, left=1, right=1),
+        ),
         on_key=on_key,
     )
 

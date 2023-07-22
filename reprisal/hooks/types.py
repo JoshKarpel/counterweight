@@ -7,7 +7,7 @@ from pydantic.generics import GenericModel
 T = TypeVar("T")
 
 Getter = Callable[[], T]
-Setter = Callable[[T], None]
+Setter = Callable[[Callable[[T], T] | T], None]
 Setup = Callable[[], Coroutine[None, None, None]]
 Deps = tuple[object, ...] | None
 

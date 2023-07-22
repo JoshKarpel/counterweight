@@ -12,22 +12,28 @@ from typing import TextIO
 from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
-from reprisal._utils import diff, drain_queue
-from reprisal.components import AnyElement, Component
+from reprisal._utils import drain_queue
+from reprisal.components import AnyElement, Component, Div, component
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import Rect, build_layout_tree
+from reprisal.layout import Position, build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
+    CLEAR_SCREEN,
     paint_to_instructions,
-    start_mouse_reporting,
     start_output_control,
-    stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.paint import Paint, paint_layout
-from reprisal.shadow import ShadowNode, render_shadow_node_from_previous
+from reprisal.paint import CellPaint, Paint, paint_layout
+from reprisal.shadow import ShadowNode, update_shadow
+from reprisal.styles import Span, Style
+from reprisal.styles.styles import CellStyle, Color, Flex
+
+BLANK = CellPaint(
+    char=" ",
+    style=CellStyle(background=Color.from_name("black")),
+)
 
 logger = get_logger()
 
@@ -47,6 +53,25 @@ async def app(
 ) -> None:
     configure_logging()
 
+    w, h = shutil.get_terminal_size()
+
+    @component
+    def screen() -> Div:
+        return Div(
+            children=[root()],
+            style=Style(
+                display=Flex(
+                    direction="column",
+                    justify_children="start",
+                    align_children="stretch",
+                ),
+                span=Span(
+                    width=w,
+                    height=h,
+                ),
+            ),
+        )
+
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
@@ -62,66 +87,65 @@ async def app(
     try:
         start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
-        start_mouse_reporting(stream=output_stream)
+        # start_mouse_reporting(stream=output_stream)
 
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
 
-        previous_full_paint: Paint = {}
+        current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+        instructions = paint_to_instructions(paint=current_paint)
+        output_stream.write(instructions)
+        output_stream.flush()
 
         needs_render = True
-        shadow = render_shadow_node_from_previous(root(), None)
+        shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
         async with TaskGroup() as tg:
             while True:
                 if needs_render:
-                    w, h = shutil.get_terminal_size()
-                    # height is always zero here because this is the starting height of the context box in the layout algorithm
-                    # screen boundary will need to be controlled by max height style and paint cutoff
-                    b = Rect(x=0, y=0, width=w, height=0)
-
                     start_render = perf_counter_ns()
-                    shadow = render_shadow_node_from_previous(root(), shadow)
+                    shadow = update_shadow(screen(), shadow)
                     logger.debug(
-                        "Rendered shadow tree",
+                        "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
                     )
 
                     start_concrete = perf_counter_ns()
                     element_tree = build_concrete_element_tree(shadow)
                     logger.debug(
-                        "Derived concrete element tree from shadow tree",
+                        "Extracted concrete element tree from shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_concrete:_}",
                     )
 
                     start_layout = perf_counter_ns()
                     layout_tree = build_layout_tree(element_tree)
-                    layout_tree.layout(b)
+                    layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
                     )
 
                     start_paint = perf_counter_ns()
-                    full_paint = paint_layout(layout_tree)
+                    new_paint = paint_layout(layout_tree)
                     logger.debug(
-                        "Generated full paint",
+                        "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
                     )
 
                     start_diff = perf_counter_ns()
-                    diffed_paint = diff(full_paint, previous_full_paint)
+                    diff = diff_paint(new_paint, current_paint)
+                    current_paint |= diff
                     logger.debug(
-                        "Diffed full paint from previous full paint",
+                        "Diffed new paint from current paint",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
-                        cells=len(diffed_paint),
+                        cells=len(diff),
                     )
 
                     start_instructions = perf_counter_ns()
-                    instructions = paint_to_instructions(paint=diffed_paint)
+                    instructions = paint_to_instructions(diff)
                     logger.debug(
-                        "Generated instructions from paint",
+                        "Generated instructions from paint diff",
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
@@ -133,8 +157,6 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_write:_}",
                         bytes=f"{len(instructions):_}",
                     )
-
-                    previous_full_paint = full_paint
 
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
@@ -154,11 +176,19 @@ async def app(
                     match event:
                         case TerminalResized():
                             needs_render = True
-                            previous_full_paint = {}
+                            w, h = shutil.get_terminal_size()
+
+                            # start from scratch
+                            current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                            instructions = paint_to_instructions(paint=current_paint)
+                            output_stream.write(CLEAR_SCREEN)
+                            output_stream.write(instructions)
+                            # don't flush here, we don't necessarily need to flush until the next render
+                            # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
-                            for component in layout_tree.walk_from_bottom():
-                                if component.on_key:
-                                    component.on_key(event)
+                            for c in layout_tree.walk_from_bottom():
+                                if c.on_key:
+                                    c.on_key(event)
                         case StateSet():
                             needs_render = True
                     logger.debug(
@@ -178,7 +208,7 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        stop_mouse_reporting(stream=output_stream)
+        # stop_mouse_reporting(stream=output_stream)
         stop_output_control(stream=output_stream)
         stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()
@@ -188,15 +218,15 @@ async def app(
 
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
-    for node in shadow.walk_shadow_tree():
+    for node in shadow.walk():
         for effect in node.hooks.data:  # TODO: reaching pretty deep here
             if isinstance(effect, UseEffect):
-                if effect.deps != effect.new_deps:
+                if effect.deps != effect.new_deps or effect.new_deps is None:
                     effect.deps = effect.new_deps
                     t = task_group.create_task(effect.setup())
                     new_effects.add(t)
                     effect.task = t
-                    logger.debug("Created effect", task=t, effect=effect)
+                    logger.debug("Created effect", effect=effect)
                 else:
                     if effect.task is None:
                         raise Exception("Effect task should never be None at this point")
@@ -210,6 +240,18 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    return root.element.copy(
-        update={"children": [child.element if isinstance(child, ShadowNode) else child for child in root.children]}
-    )
+    return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+
+
+def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
+    diff = {}
+
+    for pos, current_cell in current_paint.items():
+        new_cell = new_paint.get(pos, BLANK)
+
+        # This looks duplicative, but each of these checks is faster than the next,
+        # but less precise, so we can short-circuit earlier on cheaper operations.
+        if new_cell is not current_cell and hash(new_cell) != hash(current_cell):
+            diff[pos] = new_cell
+
+    return diff

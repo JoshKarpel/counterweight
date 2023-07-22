@@ -3,7 +3,7 @@ from pprint import pprint
 import pytest
 
 from reprisal.styles import Border, Span, Style
-from reprisal.styles.styles import BorderKind, CellStyle, Color, Inline
+from reprisal.styles.styles import BorderKind, CellStyle, Color
 
 
 @pytest.mark.parametrize(
@@ -45,16 +45,6 @@ from reprisal.styles.styles import BorderKind, CellStyle, Color, Inline
             Style(border=Border(style=CellStyle(foreground=Color.from_name("green")))),
             Style(border=Border(kind=BorderKind.LightRounded)),
             Style(border=Border(kind=BorderKind.LightRounded, style=CellStyle(foreground=Color.from_name("green")))),
-        ),
-        (
-            Style(),
-            Style(display=Inline()),
-            Style(display=Inline()),
-        ),
-        (
-            Style(display=Inline()),
-            Style(),
-            Style(display=Inline()),
         ),
     ],
 )

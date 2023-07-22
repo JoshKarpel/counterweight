@@ -2,6 +2,7 @@
 
 alias t := test
 alias w := watch
+alias wt := watch-test
 
 test:
   mypy
@@ -9,3 +10,5 @@ test:
 
 watch CMD:
   watchfiles '{{CMD}}' reprisal/ tests/ docs/ examples/
+
+watch-test: (watch "just test")

@@ -4,51 +4,51 @@ from collections.abc import Iterator
 from itertools import zip_longest
 
 from pydantic import Field
+from structlog import get_logger
 
 from reprisal._context_vars import current_hook_idx, current_hook_state
-from reprisal.components import AnyElement, Component, Element
+from reprisal.components import AnyElement, Component
 from reprisal.hooks.impls import Hooks
 from reprisal.types import FrozenForbidExtras
 
+logger = get_logger()
+
 
 class ShadowNode(FrozenForbidExtras):
-    component: Component
+    component: Component | None
     element: AnyElement
-    children: list[ShadowNode | Element] = Field(default_factory=list)
+    children: list[ShadowNode] = Field(default_factory=list)
     hooks: Hooks
 
-    def walk_shadow_tree(self) -> Iterator[ShadowNode]:
+    def walk(self) -> Iterator[ShadowNode]:
         yield self
         for child in self.children:
             if isinstance(child, ShadowNode):
-                yield from child.walk_shadow_tree()
-
-    def concrete_element_tree(self) -> AnyElement:
-        return self.element.copy(
-            update={
-                "children": [child.element if isinstance(child, ShadowNode) else child for child in self.children],
-            }
-        )
+                yield from child.walk()
 
 
-def render_shadow_node_from_previous(component: Component, previous: ShadowNode | None) -> ShadowNode:
-    if previous is None or component.func != previous.component.func:
+def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
+    if previous is None or (
+        isinstance(next, Component)
+        and isinstance(previous, ShadowNode)
+        and previous.component is not None
+        and next.func != previous.component.func
+    ):
+        # start from scratch
         reset_current_hook_idx = current_hook_idx.set(0)
 
         hook_state = Hooks()
         reset_current_hook_state = current_hook_state.set(hook_state)
 
-        element = component.func(*component.args, **component.kwargs)
+        if isinstance(next, Component):
+            element = next.func(*next.args, **next.kwargs)
+        else:
+            element = next
 
-        children: list[ShadowNode | Element] = []
-        for child in element.children:
-            if isinstance(child, Component):
-                children.append(render_shadow_node_from_previous(child, None))
-            else:
-                children.append(child)
+        children = [update_shadow(child, None) for child in element.children]
 
         new = ShadowNode(
-            component=component,
+            component=next if isinstance(next, Component) else None,
             element=element,
             children=children,
             hooks=hook_state,
@@ -58,20 +58,17 @@ def render_shadow_node_from_previous(component: Component, previous: ShadowNode 
 
         reset_current_hook_state = current_hook_state.set(previous.hooks)
 
-        element = component.func(*component.args, **component.kwargs)
+        if isinstance(next, Component):
+            element = next.func(*next.args, **next.kwargs)
+        else:
+            element = next
 
         children = []
         for new_child, previous_child in zip_longest(element.children, previous.children):
-            if isinstance(new_child, Component):
-                if isinstance(previous_child, ShadowNode):
-                    children.append(render_shadow_node_from_previous(new_child, previous_child))
-                else:
-                    children.append(render_shadow_node_from_previous(new_child, None))
-            else:
-                children.append(new_child)
+            children.append(update_shadow(new_child, previous_child))
 
         new = ShadowNode(
-            component=component,
+            component=next if isinstance(next, Component) else None,
             element=element,
             children=children,
             hooks=previous.hooks,  # the hooks are mutable and carry through renders
