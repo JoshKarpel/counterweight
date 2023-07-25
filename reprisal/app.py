@@ -60,7 +60,7 @@ async def app(
         return Div(
             children=[root()],
             style=Style(
-                display=Flex(
+                layout=Flex(
                     direction="column",
                     justify_children="start",
                     align_children="stretch",

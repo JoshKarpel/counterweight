@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
+from typing import get_args, get_type_hints
+
+from reprisal.styles.styles import BorderKind, Flex
+
+
+def literal_vals(obj: object, field: str) -> tuple[str, ...]:
+    return get_args(get_type_hints(obj)[field])
+
+
+SIDES = ["top", "bottom", "left", "right"]
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
-colors = {
+COLORS = {
     "slate": {
         50: "#f8fafc",
         100: "#f1f5f9",
@@ -296,11 +306,13 @@ utils_path = Path(__file__).resolve().parent.parent / "reprisal" / "styles" / "u
 
 utils_text = utils_path.read_text().splitlines(keepends=False)
 
-start = utils_text.index("# Start generated Tailwind colors")
-stop = utils_text.index("# Stop generated Tailwind colors")
+start = utils_text.index("# Start generated")
+stop = utils_text.index("# Stop generated")
+
 
 generated_lines = [""]
-for color, shades in colors.items():
+
+for color, shades in COLORS.items():
     for shade, hex in shades.items():
         generated_lines.extend(
             [
@@ -314,6 +326,69 @@ for color, shades in colors.items():
         )
 
     generated_lines.append("")
+
+for d in literal_vals(Flex, "direction"):
+    generated_lines.append(f'{d[:3]} = Style(layout=Flex(direction="{d}"))')
+
+generated_lines.append("")
+
+for j in literal_vals(Flex, "justify_children"):
+    generated_lines.append(f'justify_{j.replace("-", "_")} = Style(layout=Flex(justify_children="{j}"))')
+
+generated_lines.append("")
+
+for a in literal_vals(Flex, "align_children"):
+    generated_lines.append(f'align_{a.replace("-", "_")} = Style(layout=Flex(align_children="{a}"))')
+
+generated_lines.append("")
+
+for b in BorderKind:
+    generated_lines.append(f"border_{b.name.lower()} = Style(border=Border(kind=BorderKind.{b.name}))")
+
+generated_lines.append("")
+
+N = list(range(9))
+
+for side in SIDES:
+    for n in N:
+        generated_lines.append(f"pad_{side}_{n} = Style(padding=Padding({side}={n}))")
+    generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"pad_x_{n} = Style(padding=Padding(left={n}, right={n}))")
+
+generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"pad_y_{n} = Style(padding=Padding(top={n}, bottom={n}))")
+
+generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"pad_{n} = Style(padding=Padding(top={n}, bottom={n}, left={n}, right={n}))")
+
+generated_lines.append("")
+
+
+for side in SIDES:
+    for n in N:
+        generated_lines.append(f"margin_{side}_{n} = Style(margin=Margin({side}={n}))")
+    generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"margin_x_{n} = Style(margin=Margin(left={n}, right={n}))")
+
+generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"margin_y_{n} = Style(margin=Margin(top={n}, bottom={n}))")
+
+generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"margin_{n} = Style(margin=Margin(top={n}, bottom={n}, left={n}, right={n}))")
+
+generated_lines.append("")
 
 utils_path.write_text(
     "\n".join(

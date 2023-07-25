@@ -275,6 +275,7 @@ class Span(StyleFragment):
 class Typography(StyleFragment):
     style: CellStyle = Field(default=CellStyle())
     justify: Literal["left", "center", "right"] = "left"
+    wrap: Literal["none"] = "none"
 
 
 class Block(StyleFragment):
@@ -315,7 +316,7 @@ class Flex(StyleFragment):
 
 
 class Style(StyleFragment):
-    display: Flex = Field(default=Flex())
+    layout: Flex = Field(default=Flex())
     hidden: bool = False
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin())

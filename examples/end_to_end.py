@@ -74,13 +74,13 @@ def toggle() -> Div:
                     time() if toggled else textpad(),
                 ],
                 style=Style(
-                    display=Flex(direction="row"),
+                    layout=Flex(direction="row"),
                     border=Border(kind=BorderKind.LightRounded),
                 ),
             ),
         ],
         style=Style(
-            display=Flex(
+            layout=Flex(
                 direction="column",
                 # TODO: without align_children="stretch", the children don't grow in width, even though they have text in them...
                 # maybe I'm applying auto width too late?

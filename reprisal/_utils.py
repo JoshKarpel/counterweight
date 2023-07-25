@@ -4,7 +4,7 @@ from asyncio import Queue, QueueEmpty
 from functools import lru_cache
 from math import ceil, floor
 from textwrap import TextWrapper
-from typing import List, TypeVar
+from typing import List, Literal, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -78,9 +78,12 @@ def partition_int(total: int, weights: tuple[int]) -> list[int]:
     return partition
 
 
-def wrap_text(text: str, width: int) -> list[str]:
+def wrap_text(text: str, wrap: Literal["none"], width: int) -> list[str]:
     if width <= 0:
         return []
+
+    if wrap == "none":
+        return text.splitlines()
 
     wrapper = TextWrapper(width=width)
 
