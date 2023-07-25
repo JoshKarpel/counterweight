@@ -91,10 +91,8 @@ def stopwatch(selected: bool) -> Text:
 
     use_effect(tick, deps=(running,))
 
-    content = f"{elapsed_time:.6f}"
-
     return Text(
-        content=content,
+        content=f"{elapsed_time:.6f}",
         style=(border_emerald_500 if running else border_rose_500)
         | (border_heavy if selected else border_double)
         | pad_x_2
