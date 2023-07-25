@@ -11,6 +11,7 @@ def literal_vals(obj: object, field: str) -> tuple[str, ...]:
 
 
 SIDES = ["top", "bottom", "left", "right"]
+N = list(range(9))
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -333,21 +334,29 @@ for d in literal_vals(Flex, "direction"):
 generated_lines.append("")
 
 for j in literal_vals(Flex, "justify_children"):
-    generated_lines.append(f'justify_{j.replace("-", "_")} = Style(layout=Flex(justify_children="{j}"))')
+    generated_lines.append(f'justify_children_{j.replace("-", "_")} = Style(layout=Flex(justify_children="{j}"))')
 
 generated_lines.append("")
 
 for a in literal_vals(Flex, "align_children"):
-    generated_lines.append(f'align_{a.replace("-", "_")} = Style(layout=Flex(align_children="{a}"))')
+    generated_lines.append(f'align_children_{a.replace("-", "_")} = Style(layout=Flex(align_children="{a}"))')
 
 generated_lines.append("")
 
+generated_lines.append("weight_none = Style(layout=Flex(weight=None))")
+for n in N:
+    if n <= 0:
+        continue
+    generated_lines.append(f"weight_{n} = Style(layout=Flex(weight={n}))")
+
+generated_lines.append("")
+
+generated_lines.append("border_none = Style(border=None)")
 for b in BorderKind:
     generated_lines.append(f"border_{b.name.lower()} = Style(border=Border(kind=BorderKind.{b.name}))")
 
 generated_lines.append("")
 
-N = list(range(9))
 
 for side in SIDES:
     for n in N:
@@ -368,7 +377,6 @@ for n in N:
     generated_lines.append(f"pad_{n} = Style(padding=Padding(top={n}, bottom={n}, left={n}, right={n}))")
 
 generated_lines.append("")
-
 
 for side in SIDES:
     for n in N:

@@ -10,18 +10,20 @@ T = TypeVar("T")
 K = TypeVar("K")
 V = TypeVar("V")
 
+UNSET = object()
+
 
 def merge(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
     merged: dict[str, object] = {}
 
     for key in a.keys() | b.keys():
-        a_val, b_val = a.get(key), b.get(key)
+        a_val, b_val = a.get(key, UNSET), b.get(key, UNSET)
 
         if isinstance(a_val, dict) and isinstance(b_val, dict):
             merged[key] = merge(a_val, b_val)
-        elif b_val is not None:
+        elif b_val is not UNSET:
             merged[key] = b_val
-        elif a_val is not None:
+        elif a_val is not UNSET:
             merged[key] = a_val
 
     return merged
@@ -78,7 +80,7 @@ def partition_int(total: int, weights: tuple[int]) -> list[int]:
     return partition
 
 
-def wrap_text(text: str, wrap: Literal["none"], width: int) -> list[str]:
+def wrap_text(text: str, wrap: Literal["none", "paragraphs"], width: int) -> list[str]:
     if width <= 0:
         return []
 

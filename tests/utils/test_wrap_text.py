@@ -29,4 +29,4 @@ baz""",
     ],
 )
 def test_examples(text: str, width: int, expected: list[str]) -> None:
-    assert wrap_text(text, width) == expected
+    assert wrap_text(text, wrap="paragraphs", width=width) == expected

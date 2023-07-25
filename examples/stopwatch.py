@@ -9,20 +9,7 @@ from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import use_effect, use_state
 from reprisal.keys import Key
-from reprisal.styles.utilities import (
-    align_center,
-    border_double,
-    border_emerald_500,
-    border_lightrounded,
-    border_rose_500,
-    border_slate_400,
-    col,
-    justify_center,
-    pad_x_2,
-    pad_y_1,
-    row,
-    text_slate_200,
-)
+from reprisal.styles.utilities import *
 
 logger = get_logger()
 
@@ -55,10 +42,19 @@ def stopwatch() -> Div:
     content = f"{elapsed_time:.6f}"
 
     return Div(
-        style=col | justify_center | align_center,
+        style=col | align_children_center,
         children=[
             Div(
-                style=row | justify_center | align_center,
+                style=row | weight_none,
+                children=[
+                    Text(
+                        content="Stopwatch Example",
+                        style=text_amber_600,
+                    )
+                ],
+            ),
+            Div(
+                style=row | align_children_center,
                 children=[
                     Text(
                         content=content,
@@ -67,7 +63,7 @@ def stopwatch() -> Div:
                 ],
             ),
             Div(
-                style=row | justify_center | align_center,
+                style=row | align_children_center,
                 children=[
                     Text(
                         content=dedent(
