@@ -246,15 +246,34 @@ class LayoutBox(ForbidExtras):
                             self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
 
     def second_pass(self) -> None:
+        style = self.element.style
+        layout = style.layout
+        parent = self.parent
+
         # TODO: positions
 
-        # TODO: align self
+        # handle align self
+        if layout.position == "relative" and parent:
+            if parent.element.style.layout.direction == "row":
+                match layout.align_self:
+                    case "center":
+                        self.dims.content.y += (parent.dims.content.height - self.dims.height()) // 2
+                    case "end":
+                        self.dims.content.y += parent.dims.content.height - self.dims.height()
+                    case "stretch":
+                        self.dims.content.height = parent.dims.content.height - self.dims.vertical_edge_width()
+            elif parent.element.style.layout.direction == "column":
+                match layout.align_self:
+                    case "center":
+                        self.dims.content.x += (parent.dims.content.width - self.dims.width()) // 2
+                    case "end":
+                        self.dims.content.x += parent.dims.content.width - self.dims.width()
+                    case "stretch":
+                        self.dims.content.width = parent.dims.content.width - self.dims.horizontal_edge_width()
 
         # calculate available width for children, minus how much they use,
         # then divide that between them based on the content justification
         # We are in the parent, justifying the children!
-        style = self.element.style
-        layout = style.layout
 
         available_width = self.dims.content.width
         available_height = self.dims.content.height
@@ -416,6 +435,10 @@ class LayoutBox(ForbidExtras):
         # alignment (cross-axis placement)
         # content width/height of self, but full width/height of children
         for child in relative_children:
+            # Skip children that will align themselves
+            if child.element.style.layout.align_self != "none":
+                continue
+
             if layout.direction == "row":
                 if layout.align_children == "center":
                     # TODO: these floordivs aren't great

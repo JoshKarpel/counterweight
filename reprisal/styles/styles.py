@@ -314,6 +314,7 @@ class Flex(StyleFragment):
         "end",
         "stretch",
     ] = "start"
+    align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
 
 
 class Style(StyleFragment):

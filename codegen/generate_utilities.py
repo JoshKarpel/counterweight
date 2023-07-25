@@ -343,6 +343,11 @@ for a in literal_vals(Flex, "align_children"):
 
 generated_lines.append("")
 
+for a in literal_vals(Flex, "align_self"):
+    generated_lines.append(f'align_self_{a.replace("-", "_")} = Style(layout=Flex(align_self="{a}"))')
+
+generated_lines.append("")
+
 generated_lines.append("weight_none = Style(layout=Flex(weight=None))")
 for n in N:
     if n <= 0:
