@@ -134,6 +134,7 @@ class BoxDimensions(ForbidExtras):
 class LayoutBox(ForbidExtras):
     element: AnyElement
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
+    parent: LayoutBox | None
     children: list[LayoutBox] = Field(default_factory=list)
 
     def walk_from_bottom(self) -> Iterator[AnyElement]:
@@ -433,16 +434,16 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
 
-def build_layout_tree(element: AnyElement) -> LayoutBox:
+def build_layout_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
     if element.style.hidden:
         raise Exception("Root element cannot have layout='hidden'")
 
-    children = []
+    box = LayoutBox(element=element, parent=parent)
     for child in element.children:
         if isinstance(child, Component):
             raise Exception("Layout tree must be built from concrete Elements, not Components")
 
         if not child.style.hidden == "hidden":
-            children.append(build_layout_tree(child))
+            box.children.append(build_layout_tree(element=child, parent=box))
 
-    return LayoutBox(element=element, children=children)
+    return box
