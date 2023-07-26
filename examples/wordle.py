@@ -1,7 +1,7 @@
 import asyncio
 import zlib
 from random import choice
-from string import ascii_letters
+from string import ascii_letters, ascii_uppercase
 from typing import Literal
 
 from more_itertools import padded
@@ -90,6 +90,7 @@ def root() -> Div:
                 style=col | align_self_stretch | align_children_center | gap_children_1,
                 children=guess_rows,
             ),
+            keyboard(submitted=submitted, solution=solution),
         ],
     )
 
@@ -134,6 +135,46 @@ def letter_box(letter: str, style: Style) -> Text:
     return Text(
         content=letter,
         style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
+    )
+
+
+@component
+def keyboard(submitted: list[str], solution: str) -> Div:
+    styles = {letter: border_gray_500 for letter in ascii_uppercase}
+
+    all_submitted_letters = "".join(submitted)
+    for letter in all_submitted_letters:
+        if letter in solution:
+            styles[letter] = border_yellow_300
+        else:
+            styles[letter] = border_red_700
+
+    for s in submitted:
+        for guess_letter, solution_letter in zip(s, solution):
+            if guess_letter == solution_letter:
+                styles[guess_letter] = border_green_600
+
+    return Div(
+        style=col | align_children_center,
+        children=[
+            Div(
+                style=row | weight_none | align_children_center | gap_children_1,
+                children=[
+                    letter_box(letter, style=styles[letter])
+                    for letter in ("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P")
+                ],
+            ),
+            Div(
+                style=row | weight_none | align_children_center | gap_children_1,
+                children=[
+                    letter_box(letter, style=styles[letter]) for letter in ("A", "S", "D", "F", "G", "H", "J", "K", "L")
+                ],
+            ),
+            Div(
+                style=row | weight_none | align_children_center | gap_children_1,
+                children=[letter_box(letter, style=styles[letter]) for letter in ("Z", "X", "C", "V", "B", "N", "M")],
+            ),
+        ],
     )
 
 
