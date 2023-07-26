@@ -87,7 +87,7 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=col | align_self_stretch | align_children_center | gap_children_1,
+                style=col | justify_children_center | align_self_stretch | align_children_center | gap_children_1,
                 children=guess_rows,
             ),
             keyboard(submitted=submitted, solution=solution),
@@ -155,7 +155,7 @@ def keyboard(submitted: list[str], solution: str) -> Div:
                 styles[guess_letter] = border_green_600
 
     return Div(
-        style=col | align_children_center,
+        style=col | justify_children_center | align_children_center,
         children=[
             Div(
                 style=row | weight_none | align_children_center | gap_children_1,
