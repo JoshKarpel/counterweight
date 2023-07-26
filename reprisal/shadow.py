@@ -65,6 +65,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
 
         children = []
         for new_child, previous_child in zip_longest(element.children, previous.children):
+            if new_child is None:
+                continue
             children.append(update_shadow(new_child, previous_child))
 
         new = ShadowNode(
