@@ -210,10 +210,13 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
-        num_gaps = min(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
 
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
+            if layout.direction == "row":
+                self.dims.content.width += num_gaps * layout.gap_children
+
             for child_box in self.children:
                 child_element = child_box.element
                 child_style = child_element.style
@@ -230,10 +233,10 @@ class LayoutBox(ForbidExtras):
                             # The box is as wide as its widest child
                             self.dims.content.width = max(self.dims.content.width, child_box.dims.width())
 
-                if layout.direction == "row":
-                    self.dims.content.width += num_gaps * layout.gap_children
-
         if style.span.height == "auto":
+            if layout.direction == "column":
+                self.dims.content.width += num_gaps * layout.gap_children
+
             for child_box in self.children:
                 child_element = child_box.element
                 child_style = child_element.style
@@ -249,9 +252,6 @@ class LayoutBox(ForbidExtras):
                         elif layout.direction == "row":
                             # The box is as tall as its tallest child
                             self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
-
-                if layout.direction == "column":
-                    self.dims.content.width += num_gaps * layout.gap_children
 
     def second_pass(self) -> None:
         style = self.element.style
@@ -291,7 +291,7 @@ class LayoutBox(ForbidExtras):
             child for child in relative_children if child.element.style.layout.weight is not None
         ]
         num_relative_children = len(relative_children)
-        num_gaps = min(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
 
         # subtract off fixed-width/height children from what's available to flex
         for child in relative_children:
