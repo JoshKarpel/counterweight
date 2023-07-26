@@ -1,4 +1,5 @@
 import asyncio
+from random import choice
 from string import ascii_letters
 from textwrap import dedent
 from typing import Literal
@@ -17,31 +18,40 @@ logger = get_logger()
 
 blank = " " * 5
 
+SOLUTIONS = [
+    "heart",
+    "opera",
+    "sugar",
+]
+
 
 @component
 def root() -> Div:
-    solution = "heart".upper()
+    solution, set_solution = use_state(choice(SOLUTIONS).upper())
 
     guess, set_guess = use_state("")
     submitted, set_submitted = use_state([])
 
+    state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < 5 else "loss"
+
     def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Delete:
+        match state, event.key:
+            case _, Key.Delete:
                 set_guess("")
                 set_submitted([])
-            case Key.Backspace:
+                set_solution(choice(SOLUTIONS).upper())
+            case "playing", Key.Backspace:
                 if len(guess) > 0:
                     set_guess(guess[:-1])
                 else:
                     pass  # TODO: bell
-            case Key.Enter:
-                if len(guess) == 5:
+            case "playing", Key.Enter:
+                if len(guess) == 5 and len(submitted) < 5:
                     set_guess("")
                     set_submitted(lambda s: [*s, guess])
                 else:
                     pass  # TODO: bell
-            case letter if letter in ascii_letters:
+            case "playing", letter if letter in ascii_letters:
                 if len(guess) < 5:
                     set_guess(lambda g: g + letter.upper())
                 else:
@@ -61,11 +71,27 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=col | align_self_stretch | align_children_stretch | gap_children_1,
+                style=col
+                | justify_children_center
+                | align_self_stretch
+                | align_children_stretch
+                | gap_children_1
+                | border_lightrounded,
                 children=[
                     *(guess_row(s, solution=solution, type="submitted") for s in submitted),
-                    guess_row(guess, solution=solution, type="current"),
+                    guess_row(guess, solution=solution, type="current")
+                    if state == "playing"
+                    else guess_row(blank, solution=solution, type="pending"),
                     *(guess_row(blank, solution=solution, type="pending") for _ in range(5 - len(submitted) - 1)),
+                ],
+            ),
+            Div(
+                style=row | weight_none | border_lightrounded,
+                children=[
+                    Text(
+                        content=f"{state}!",
+                        style=weight_none | text_slate_200 | border_lightrounded | pad_x_1 | pad_y_0,
+                    )
                 ],
             ),
             Div(

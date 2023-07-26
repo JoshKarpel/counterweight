@@ -20,6 +20,8 @@ UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
 
 CLEAR_SCREEN = "\x1b[2J"
 
+BELL = "\x07"
+
 logger = get_logger()
 
 
