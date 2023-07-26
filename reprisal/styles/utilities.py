@@ -1659,4 +1659,14 @@ margin_6 = Style(margin=Margin(top=6, bottom=6, left=6, right=6))
 margin_7 = Style(margin=Margin(top=7, bottom=7, left=7, right=7))
 margin_8 = Style(margin=Margin(top=8, bottom=8, left=8, right=8))
 
+gap_children_0 = Style(layout=Flex(gap_children=0))
+gap_children_1 = Style(layout=Flex(gap_children=1))
+gap_children_2 = Style(layout=Flex(gap_children=2))
+gap_children_3 = Style(layout=Flex(gap_children=3))
+gap_children_4 = Style(layout=Flex(gap_children=4))
+gap_children_5 = Style(layout=Flex(gap_children=5))
+gap_children_6 = Style(layout=Flex(gap_children=6))
+gap_children_7 = Style(layout=Flex(gap_children=7))
+gap_children_8 = Style(layout=Flex(gap_children=8))
+
 # Stop generated

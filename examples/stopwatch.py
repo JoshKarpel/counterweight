@@ -40,12 +40,12 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=row | align_children_center,
+                style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
                 children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
                 on_key=on_key,
             ),
             Div(
-                style=row | align_children_center,
+                style=row | weight_none | align_children_end,
                 children=[
                     Text(
                         content=dedent(
@@ -93,7 +93,11 @@ def stopwatch(selected: bool) -> Text:
 
     return Text(
         content=f"{elapsed_time:.6f}",
-        style=(border_emerald_500 if running else border_rose_500)
+        style=(
+            (border_emerald_600 if selected else border_emerald_300)
+            if running
+            else (border_rose_500 if selected else border_rose_400)
+        )
         | (border_heavy if selected else border_double)
         | pad_x_2
         | pad_y_1,

@@ -403,6 +403,12 @@ for n in N:
 
 generated_lines.append("")
 
+for n in N:
+    generated_lines.append(f"gap_children_{n} = Style(layout=Flex(gap_children={n}))")
+
+generated_lines.append("")
+
+
 utils_path.write_text(
     "\n".join(
         [

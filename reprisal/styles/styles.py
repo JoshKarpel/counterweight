@@ -4,7 +4,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypeVar, Union
 
-from pydantic import Field, PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveInt
 
 from reprisal._utils import merge
 from reprisal.types import FrozenForbidExtras
@@ -300,6 +300,7 @@ class Flex(StyleFragment):
     direction: Literal["row", "column"] = "row"
     position: Literal["relative"] = "relative"
     weight: PositiveInt | None = 1
+    align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
     justify_children: Literal[
         "start",
         "center",
@@ -314,7 +315,7 @@ class Flex(StyleFragment):
         "end",
         "stretch",
     ] = "start"
-    align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
+    gap_children: NonNegativeInt = 0
 
 
 class Style(StyleFragment):
