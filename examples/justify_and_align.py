@@ -30,7 +30,7 @@ def content(justify_children: str, align_children: str, n: int) -> Text:
         ),
         style=Style(
             # TODO: width=auto doesn't make sense if weight=None, combine?
-            display=Flex(
+            layout=Flex(
                 weight=None,
             ),
             span=Span(
@@ -46,7 +46,7 @@ children = [
     Div(
         children=[content(justify_children, align_children, n=n) for n in range(3)],
         style=Style(
-            display=Flex(
+            layout=Flex(
                 direction="row",
                 justify_children=justify_children,  # type: ignore[arg-type]
                 align_children=align_children,  # type: ignore[arg-type]
@@ -73,7 +73,7 @@ children = [
 root = Div(
     children=children,
     style=Style(
-        display=Flex(direction="column", align_children="stretch"),
+        layout=Flex(direction="column", align_children="stretch"),
         span=Span(
             width=w,
             height=20 * len(children),

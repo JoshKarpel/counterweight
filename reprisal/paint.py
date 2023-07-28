@@ -60,7 +60,11 @@ def paint_text(paragraph: Text, rect: Rect) -> Paint:
     justifier = STR_JUSTIFIERS[paragraph.style.typography.justify]
 
     paint = {}
-    lines = wrap_text(paragraph.content, width=rect.width)
+    lines = wrap_text(
+        paragraph.content,
+        wrap=paragraph.style.typography.wrap,
+        width=rect.width,
+    )
 
     for y, line in enumerate(lines[: rect.height], start=rect.y):
         justified_line = justifier(line, rect.width)

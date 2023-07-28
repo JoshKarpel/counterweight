@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 S = TypeVar("S", bound="StyleFragment")
 
 
+# TODO can probably be more efficient using id as the key, just can't use lru_cache
 @lru_cache(maxsize=2**16)
 def merge_style_fragments(left: S, right: S) -> S:
     return type(left).parse_obj(
@@ -275,6 +276,7 @@ class Span(StyleFragment):
 class Typography(StyleFragment):
     style: CellStyle = Field(default=CellStyle())
     justify: Literal["left", "center", "right"] = "left"
+    wrap: Literal["none", "paragraphs"] = "none"
 
 
 class Block(StyleFragment):
@@ -315,7 +317,7 @@ class Flex(StyleFragment):
 
 
 class Style(StyleFragment):
-    display: Flex = Field(default=Flex())
+    layout: Flex = Field(default=Flex())
     hidden: bool = False
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin())

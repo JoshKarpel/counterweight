@@ -8,6 +8,7 @@ from pydantic import Field
 
 from reprisal.events import KeyPressed
 from reprisal.styles import Style
+from reprisal.styles.styles import Flex
 from reprisal.types import FrozenForbidExtras
 
 P = ParamSpec("P")
@@ -27,19 +28,22 @@ class Component(FrozenForbidExtras):
     kwargs: dict[str, object]
 
 
-class Element(FrozenForbidExtras):
+class Div(FrozenForbidExtras):
+    type: Literal["div"] = "div"
+    style: Style = Field(default=Style())
     children: Sequence[Component | AnyElement] = Field(default_factory=list)
     on_key: Callable[[KeyPressed], None] | None = None
-    style: Style = Field(default=Style())
 
 
-class Div(Element):
-    type: Literal["div"] = "div"
-
-
-class Text(Element):
+class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
     content: str
+    style: Style = Field(default=Style(layout=Flex(weight=None)))
+    on_key: Callable[[KeyPressed], None] | None = None
+
+    @property
+    def children(self) -> Sequence[Component | AnyElement]:
+        return ()
 
 
 AnyElement = Union[

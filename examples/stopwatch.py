@@ -9,24 +9,69 @@ from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import use_effect, use_state
 from reprisal.keys import Key
-from reprisal.styles import Border, BorderKind, Style
-from reprisal.styles.styles import Flex, Padding, Span, Typography
-from reprisal.styles.utilities import (
-    border_emerald_500,
-    border_rose_500,
-    border_slate_400,
-    text_slate_200,
-)
+from reprisal.styles.utilities import *
 
 logger = get_logger()
 
 
 @component
-def stopwatch() -> Div:
+def root() -> Div:
+    num_stopwatches = 3
+
+    selected_stopwatch, set_selected_stopwatch = use_state(0)
+
+    def on_key(event: KeyPressed) -> None:
+        match event.key:
+            case Key.Tab:
+                set_selected_stopwatch(lambda s: (s + 1) % num_stopwatches)
+            case Key.BackTab:
+                set_selected_stopwatch(lambda s: (s - 1) % num_stopwatches)
+
+    return Div(
+        style=col | align_children_center,
+        children=[
+            Div(
+                style=row | weight_none,
+                children=[
+                    Text(
+                        content="Stopwatch Example",
+                        style=text_amber_600,
+                    )
+                ],
+            ),
+            Div(
+                style=row | align_children_center,
+                children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
+                on_key=on_key,
+            ),
+            Div(
+                style=row | align_children_center,
+                children=[
+                    Text(
+                        content=dedent(
+                            """\
+                            - <tab>/<shift+tab> to select next/previous stopwatch
+                            - <space> to start/stop selected stopwatch
+                            - <backspace> to reset selected stopwatch
+                            """
+                        ),
+                        style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x_2 | pad_y_1,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@component
+def stopwatch(selected: bool) -> Text:
     running, set_running = use_state(False)
     elapsed_time, set_elapsed_time = use_state(0.0)
 
     def on_key(event: KeyPressed) -> None:
+        if not selected:
+            return
+
         match event.key:
             case Key.Space:
                 set_running(not running)
@@ -46,74 +91,14 @@ def stopwatch() -> Div:
 
     use_effect(tick, deps=(running,))
 
-    border_color = border_emerald_500 if running else border_rose_500
-
-    content = f"{elapsed_time:.6f}"
-
-    return Div(
-        style=Style(
-            display=Flex(
-                direction="column",
-                align_children="center",
-            ),
-        ),
-        children=[
-            Div(
-                style=Style(
-                    display=Flex(
-                        direction="row",
-                        align_children="center",
-                    ),
-                ),
-                children=[
-                    Text(
-                        content=content,
-                        style=border_color
-                        | Style(
-                            span=Span(
-                                # TODO: width should get set automatically for this element, but its not
-                                # the problem is that the available width in this block is zero because when the column div
-                                # lays out, it decides the width of the row div is zero because its stretch,
-                                # and the row div doesn't know how its supposed to be yet
-                                # does align self solve this problem? you set parent to stretch, then center the text box?
-                                width=len(content)
-                            ),
-                            border=Border(kind=BorderKind.Double),
-                            padding=Padding(top=1, bottom=1, left=2, right=2),
-                        ),
-                    ),
-                ],
-            ),
-            Div(
-                style=Style(
-                    display=Flex(
-                        direction="row",
-                        align_children="center",
-                    ),
-                ),
-                children=[
-                    Text(
-                        content=dedent(
-                            """\
-                            <space> to start/stop
-
-                            <backspace> to reset
-                            """
-                        ),
-                        style=border_slate_400
-                        | text_slate_200
-                        | Style(
-                            span=Span(width=30),
-                            border=Border(kind=BorderKind.LightRounded),
-                            padding=Padding(top=1, bottom=1, left=2, right=2),
-                            typography=Typography(justify="center"),
-                        ),
-                    ),
-                ],
-            ),
-        ],
+    return Text(
+        content=f"{elapsed_time:.6f}",
+        style=(border_emerald_500 if running else border_rose_500)
+        | (border_heavy if selected else border_double)
+        | pad_x_2
+        | pad_y_1,
         on_key=on_key,
     )
 
 
-asyncio.run(app(stopwatch))
+asyncio.run(app(root))
