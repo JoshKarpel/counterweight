@@ -1492,6 +1492,12 @@ align_children_center = Style(layout=Flex(align_children="center"))
 align_children_end = Style(layout=Flex(align_children="end"))
 align_children_stretch = Style(layout=Flex(align_children="stretch"))
 
+align_self_none = Style(layout=Flex(align_self="none"))
+align_self_start = Style(layout=Flex(align_self="start"))
+align_self_center = Style(layout=Flex(align_self="center"))
+align_self_end = Style(layout=Flex(align_self="end"))
+align_self_stretch = Style(layout=Flex(align_self="stretch"))
+
 weight_none = Style(layout=Flex(weight=None))
 weight_1 = Style(layout=Flex(weight=1))
 weight_2 = Style(layout=Flex(weight=2))

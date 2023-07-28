@@ -134,6 +134,7 @@ class BoxDimensions(ForbidExtras):
 class LayoutBox(ForbidExtras):
     element: AnyElement
     dims: BoxDimensions = Field(default_factory=BoxDimensions)
+    parent: LayoutBox | None
     children: list[LayoutBox] = Field(default_factory=list)
 
     def walk_from_bottom(self) -> Iterator[AnyElement]:
@@ -245,15 +246,34 @@ class LayoutBox(ForbidExtras):
                             self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
 
     def second_pass(self) -> None:
+        style = self.element.style
+        layout = style.layout
+        parent = self.parent
+
         # TODO: positions
 
-        # TODO: align self
+        # handle align self
+        if layout.position == "relative" and parent:
+            if parent.element.style.layout.direction == "row":
+                match layout.align_self:
+                    case "center":
+                        self.dims.content.y += (parent.dims.content.height - self.dims.height()) // 2
+                    case "end":
+                        self.dims.content.y += parent.dims.content.height - self.dims.height()
+                    case "stretch":
+                        self.dims.content.height = parent.dims.content.height - self.dims.vertical_edge_width()
+            elif parent.element.style.layout.direction == "column":
+                match layout.align_self:
+                    case "center":
+                        self.dims.content.x += (parent.dims.content.width - self.dims.width()) // 2
+                    case "end":
+                        self.dims.content.x += parent.dims.content.width - self.dims.width()
+                    case "stretch":
+                        self.dims.content.width = parent.dims.content.width - self.dims.horizontal_edge_width()
 
         # calculate available width for children, minus how much they use,
         # then divide that between them based on the content justification
         # We are in the parent, justifying the children!
-        style = self.element.style
-        layout = style.layout
 
         available_width = self.dims.content.width
         available_height = self.dims.content.height
@@ -415,6 +435,10 @@ class LayoutBox(ForbidExtras):
         # alignment (cross-axis placement)
         # content width/height of self, but full width/height of children
         for child in relative_children:
+            # Skip children that will align themselves
+            if child.element.style.layout.align_self != "none":
+                continue
+
             if layout.direction == "row":
                 if layout.align_children == "center":
                     # TODO: these floordivs aren't great
@@ -433,16 +457,16 @@ class LayoutBox(ForbidExtras):
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
 
-def build_layout_tree(element: AnyElement) -> LayoutBox:
+def build_layout_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
     if element.style.hidden:
         raise Exception("Root element cannot have layout='hidden'")
 
-    children = []
+    box = LayoutBox(element=element, parent=parent)
     for child in element.children:
         if isinstance(child, Component):
             raise Exception("Layout tree must be built from concrete Elements, not Components")
 
         if not child.style.hidden == "hidden":
-            children.append(build_layout_tree(child))
+            box.children.append(build_layout_tree(element=child, parent=box))
 
-    return LayoutBox(element=element, children=children)
+    return box
