@@ -313,6 +313,12 @@ stop = utils_text.index("# Stop generated")
 
 generated_lines = [""]
 
+
+generated_lines.append(
+    'text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))'
+)
+generated_lines.append("")
+
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
         generated_lines.extend(

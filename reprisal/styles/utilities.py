@@ -3,6 +3,8 @@ from reprisal.styles.styles import Border, BorderKind, CellStyle, Color, Flex, P
 
 # Start generated
 
+text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))
+
 text_slate_50 = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#f8fafc"))))
 text_bg_slate_50 = Style(typography=Typography(style=CellStyle(background=Color.from_hex("#f8fafc"))))
 border_slate_50 = Style(border=Border(style=CellStyle(foreground=Color.from_hex("#f8fafc"))))

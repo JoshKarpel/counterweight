@@ -73,22 +73,37 @@ def root() -> Div:
         guess_rows.append(guess_row(guess, solution=solution, type="current"))
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
+    message = ""
+    message_style = text_white | pad_y_1 | pad_x_2 | border_light
+
+    if state == "playing":
+        if len(guess) == 5 and guess not in GUESSABLE_WORDS:
+            message = "Not in word list"
+            message_style |= text_red_700
+        else:
+            message = f"Guess {len(submitted) + 1} of {MAX_SUBMITS}"
+    elif state == "win":
+        message = f"You won! The word was {solution}"
+        message_style |= text_green_600 | border_green_600 | border_double
+    elif state == "loss":
+        message = f"You lost! The word was {solution}"
+        message_style |= text_red_700 | border_red_700 | border_double
+
     return Div(
         style=col | align_children_stretch,
         on_key=on_key,
         children=[
             Div(
                 style=row | align_self_center | weight_none,
-                children=[
-                    Text(
-                        content="Wordle",
-                        style=text_amber_600,
-                    )
-                ],
+                children=[Text(content="Wordle", style=text_amber_600)],
             ),
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap_children_1,
                 children=guess_rows,
+            ),
+            Div(
+                style=row | align_self_center | weight_none | pad_y_1,
+                children=[Text(content=message, style=message_style)],
             ),
             keyboard(submitted=submitted, solution=solution),
         ],
@@ -138,42 +153,37 @@ def letter_box(letter: str, style: Style) -> Text:
     )
 
 
+KEYBOARD = (
+    ("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"),
+    ("A", "S", "D", "F", "G", "H", "J", "K", "L"),
+    ("Z", "X", "C", "V", "B", "N", "M"),
+)
+
+
 @component
 def keyboard(submitted: list[str], solution: str) -> Div:
-    styles = {letter: border_gray_500 for letter in ascii_uppercase}
+    kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
     for letter in all_submitted_letters:
         if letter in solution:
-            styles[letter] = border_yellow_300
+            kb_letter_styles[letter] = border_yellow_300
         else:
-            styles[letter] = border_red_700
+            kb_letter_styles[letter] = border_red_700
 
     for s in submitted:
         for guess_letter, solution_letter in zip(s, solution):
             if guess_letter == solution_letter:
-                styles[guess_letter] = border_green_600
+                kb_letter_styles[guess_letter] = border_green_600
 
     return Div(
-        style=col | justify_children_center | align_children_center,
+        style=col | weight_none | justify_children_center | align_children_center,
         children=[
             Div(
                 style=row | weight_none | align_children_center | gap_children_1,
-                children=[
-                    letter_box(letter, style=styles[letter])
-                    for letter in ("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P")
-                ],
-            ),
-            Div(
-                style=row | weight_none | align_children_center | gap_children_1,
-                children=[
-                    letter_box(letter, style=styles[letter]) for letter in ("A", "S", "D", "F", "G", "H", "J", "K", "L")
-                ],
-            ),
-            Div(
-                style=row | weight_none | align_children_center | gap_children_1,
-                children=[letter_box(letter, style=styles[letter]) for letter in ("Z", "X", "C", "V", "B", "N", "M")],
-            ),
+                children=[letter_box(kb_letter, style=kb_letter_styles[kb_letter]) for kb_letter in kb_row],
+            )
+            for kb_row in KEYBOARD
         ],
     )
 
