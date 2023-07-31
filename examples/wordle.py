@@ -138,6 +138,8 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                     set_guess(lambda g: g + letter.upper())
                 else:
                     return Control.Bell
+            case "win" | "loss", letter if letter in ascii_letters:
+                return Control.Bell
 
         return None
 

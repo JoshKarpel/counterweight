@@ -28,57 +28,72 @@ class ShadowNode(FrozenForbidExtras):
 
 
 def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
-    if previous is not None and (
-        (  # if the keys are not None, and they match, then we can reuse the previous component
-            previous.component is not None
-            and isinstance(next, Component)
-            and next.key is not None
-            and previous.component.key is not None
-            and next.key == previous.component.key
-        )  # we can also reuse the previous component if there are no changes except possibly in props
-        or (previous.component is not None and isinstance(next, Component) and next.func == previous.component.func)
-    ):
-        reset_current_hook_idx = current_hook_idx.set(0)
+    match next, previous:
+        case Component(func=next_func, args=next_args, kwargs=next_kwargs, key=next_key) as next_component, ShadowNode(
+            component=previous_component, children=previous_children, hooks=previous_hooks
+        ) if (
+            previous_component is not None
+            and next_func == previous_component.func
+            and next_key == previous_component.key
+        ):
+            reset_current_hook_idx = current_hook_idx.set(0)
+            reset_current_hook_state = current_hook_state.set(previous_hooks)
 
-        reset_current_hook_state = current_hook_state.set(previous.hooks)
+            element = next_component.func(*next_args, **next_kwargs)
 
-        # we already know next is a Component here
-        element = next.func(*next.args, **next.kwargs)
+            children = []
+            for new_child, previous_child in zip_longest(element.children, previous_children):
+                if new_child is None:
+                    continue
+                children.append(update_shadow(new_child, previous_child))
 
-        children = []
-        for new_child, previous_child in zip_longest(element.children, previous.children):
-            if new_child is None:
-                continue
-            children.append(update_shadow(new_child, previous_child))
+            new = ShadowNode(
+                component=next_component,
+                element=element,
+                children=children,
+                hooks=previous_hooks,  # the hooks are mutable and carry through renders
+            )
 
-        new = ShadowNode(
-            component=next if isinstance(next, Component) else None,
-            element=element,
-            children=children,
-            hooks=previous.hooks,  # the hooks are mutable and carry through renders
-        )
-    else:
-        # start from scratch
-        reset_current_hook_idx = current_hook_idx.set(0)
+            current_hook_idx.reset(reset_current_hook_idx)
+            current_hook_state.reset(reset_current_hook_state)
+        case Component(func=next_func, args=next_args, kwargs=next_kwargs) as next_component, _:
+            reset_current_hook_idx = current_hook_idx.set(0)
 
-        hook_state = Hooks()
-        reset_current_hook_state = current_hook_state.set(hook_state)
+            hook_state = Hooks()
+            reset_current_hook_state = current_hook_state.set(hook_state)
 
-        if isinstance(next, Component):
-            element = next.func(*next.args, **next.kwargs)
-        else:
-            element = next
+            element = next_func(*next_args, **next_kwargs)
 
-        children = [update_shadow(child, None) for child in element.children]
+            children = [update_shadow(child, None) for child in element.children]
 
-        new = ShadowNode(
-            component=next if isinstance(next, Component) else None,
-            element=element,
-            children=children,
-            hooks=hook_state,
-        )
+            new = ShadowNode(
+                component=next_component,
+                element=element,
+                children=children,
+                hooks=hook_state,
+            )
 
-    current_hook_idx.reset(reset_current_hook_idx)
-    current_hook_state.reset(reset_current_hook_state)
+            current_hook_idx.reset(reset_current_hook_idx)
+            current_hook_state.reset(reset_current_hook_state)
+        case element, ShadowNode(children=previous_children, hooks=previous_hooks):
+            children = []
+            for new_child, previous_child in zip_longest(element.children, previous_children):
+                if new_child is None:
+                    continue
+                children.append(update_shadow(new_child, previous_child))
+
+            new = ShadowNode(
+                component=None,
+                element=element,
+                children=children,
+                hooks=previous_hooks,  # the hooks are mutable and carry through renders
+            )
+        case element, None:
+            new = ShadowNode(
+                component=None,
+                element=element,
+                children=[update_shadow(child, None) for child in element.children],
+                hooks=Hooks(),
+            )
 
     return new
