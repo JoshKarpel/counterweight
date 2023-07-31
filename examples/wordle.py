@@ -9,7 +9,7 @@ from typing import Literal
 from more_itertools import padded
 from structlog import get_logger
 
-from reprisal.app import app
+from reprisal.app import QUIT, app
 from reprisal.components import Div, Text, component
 from reprisal.events import KeyPressed
 from reprisal.hooks import use_state
@@ -81,6 +81,8 @@ def root() -> Div:
                     logger.debug("Starting play", solution=s)
                     set_solution(s)
                     set_playing(True)
+                case "q":
+                    return QUIT
 
         return Div(
             style=col | align_children_stretch | gap_children_4,
@@ -91,6 +93,7 @@ def root() -> Div:
                     children=[
                         Text(content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})", style=button_style),
                         Text(content="[F2] Play Random", style=button_style),
+                        Text(content="[q] Quit", style=button_style),
                     ],
                 ),
             ],

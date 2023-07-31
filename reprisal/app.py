@@ -37,6 +37,8 @@ BLANK = CellPaint(
 
 logger = get_logger()
 
+QUIT = object()
+
 
 def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
     signal(SIGWINCH, lambda _, __: put_event(TerminalResized()))
@@ -101,8 +103,13 @@ async def app(
         shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
+        should_exit = False
+
         async with TaskGroup() as tg:
             while True:
+                if should_exit:
+                    break
+
                 if needs_render:
                     start_render = perf_counter_ns()
                     shadow = update_shadow(screen(), shadow)
@@ -188,7 +195,10 @@ async def app(
                         case KeyPressed():
                             for c in layout_tree.walk_from_bottom():
                                 if c.on_key:
-                                    c.on_key(event)
+                                    r = c.on_key(event)
+                                    if r == QUIT:
+                                        logger.info("Got QUIT return value from event")
+                                        should_exit = True
                         case StateSet():
                             needs_render = True
                     logger.debug(
