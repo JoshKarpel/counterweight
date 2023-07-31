@@ -1671,4 +1671,8 @@ gap_children_6 = Style(layout=Flex(gap_children=6))
 gap_children_7 = Style(layout=Flex(gap_children=7))
 gap_children_8 = Style(layout=Flex(gap_children=8))
 
+text_justify_left = Style(typography=Typography(justify="left"))
+text_justify_center = Style(typography=Typography(justify="center"))
+text_justify_right = Style(typography=Typography(justify="right"))
+
 # Stop generated
