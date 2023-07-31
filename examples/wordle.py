@@ -47,7 +47,7 @@ def today_solution() -> str:
 def root() -> Div:
     playing, set_playing = use_state(False)
 
-    def stop_playing():
+    def stop_playing() -> None:
         return set_playing(False)
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
@@ -62,7 +62,7 @@ def root() -> Div:
             style=col | align_children_stretch,
             children=[
                 header,
-                play(solution=solution, stop_playing=stop_playing),
+                play(solution=solution, stop_playing=stop_playing, key=solution),
             ],
         )
     else:
@@ -72,10 +72,14 @@ def root() -> Div:
         def on_key(event: KeyPressed):
             match event.key:
                 case Key.F1:
-                    set_solution(today_solution())
+                    s = today_solution()
+                    logger.debug("Starting play", solution=s)
+                    set_solution(s)
                     set_playing(True)
                 case Key.F2:
-                    set_solution(choice(SOLUTION_WORDS))
+                    s = choice(SOLUTION_WORDS)
+                    logger.debug("Starting play", solution=s)
+                    set_solution(s)
                     set_playing(True)
 
         return Div(

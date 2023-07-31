@@ -16,8 +16,17 @@ P = ParamSpec("P")
 
 def component(func: Callable[P, AnyElement]) -> Callable[P, Component]:
     @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> Component:
-        return Component(func=func, args=args, kwargs=kwargs)
+    def wrapper(
+        *args: P.args,
+        key: str | None = None,
+        **kwargs: P.kwargs,
+    ) -> Component:
+        return Component(
+            func=func,
+            args=args,
+            kwargs=kwargs,
+            key=key,
+        )
 
     return wrapper
 
@@ -26,6 +35,7 @@ class Component(FrozenForbidExtras):
     func: Callable[..., AnyElement]
     args: tuple[object, ...]
     kwargs: dict[str, object]
+    key: str | None
 
 
 class Div(FrozenForbidExtras):

@@ -376,7 +376,6 @@ class LayoutBox(ForbidExtras):
 
         # TODO: available width can be negative here, but that doesn't make sense
         # seems to happen when this element isn't stretch but it has fixed-width children
-        logger.debug("available_width", w=available_width)
 
         # justification (main axis placement)
         # TODO: need to subtract total_gap here, even though it was handled above?
