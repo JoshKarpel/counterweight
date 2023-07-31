@@ -32,12 +32,7 @@ def root() -> Div:
         children=[
             Div(
                 style=row | weight_none,
-                children=[
-                    Text(
-                        content="Stopwatch Example",
-                        style=text_amber_600,
-                    )
-                ],
+                children=[Text(content="Stopwatch", style=text_amber_600)],
             ),
             Div(
                 style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
