@@ -9,10 +9,11 @@ from typing import Literal
 from more_itertools import padded
 from structlog import get_logger
 
-from reprisal.app import QUIT, app
+from reprisal.app import app
 from reprisal.components import Div, Text, component
+from reprisal.control import Control
 from reprisal.events import KeyPressed
-from reprisal.hooks import use_state
+from reprisal.hooks import Setter, use_state
 from reprisal.keys import Key
 from reprisal.styles.utilities import *
 
@@ -62,12 +63,15 @@ def root() -> Div:
             style=col | align_children_stretch,
             children=[
                 header,
-                play(solution=solution, stop_playing=stop_playing, key=solution),
+                play(
+                    solution=solution,
+                    stop_playing=stop_playing,
+                ).with_key(solution),
             ],
         )
     else:
 
-        def on_key(event: KeyPressed) -> None:
+        def on_key(event: KeyPressed) -> Control | None:
             match event.key:
                 case Key.F1:
                     s = today_solution()
@@ -80,7 +84,9 @@ def root() -> Div:
                     set_solution(s)
                     set_playing(True)
                 case "q":
-                    return QUIT
+                    return Control.Quit
+
+            return None
 
         # TODO: Having to put weight_none on every text is annoying
         button_style = weight_none | pad_1 | border_mcgugan
@@ -105,11 +111,14 @@ def root() -> Div:
 @component
 def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     guess, set_guess = use_state("")
+
+    submitted: list[str]
+    set_submitted: Setter[list[str]]
     submitted, set_submitted = use_state([])
 
     state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
 
-    def on_key(event: KeyPressed) -> None:
+    def on_key(event: KeyPressed) -> Control | None:
         match state, event.key:
             case _, Key.Escape:
                 stop_playing()
@@ -117,18 +126,20 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 if len(guess) > 0:
                     set_guess(guess[:-1])
                 else:
-                    pass  # TODO: bell
+                    return Control.Bell
             case "playing", Key.Enter:
                 if guess in GUESSABLE_WORDS:
                     set_guess("")
                     set_submitted(lambda s: [*s, guess])
                 else:
-                    pass  # TODO: bell
+                    return Control.Bell
             case "playing", letter if letter in ascii_letters:
                 if len(guess) < 5:
                     set_guess(lambda g: g + letter.upper())
                 else:
-                    pass  # TODO: bell
+                    return Control.Bell
+
+        return None
 
     guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
     if state == "playing":

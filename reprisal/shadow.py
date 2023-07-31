@@ -42,10 +42,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
 
         reset_current_hook_state = current_hook_state.set(previous.hooks)
 
-        if isinstance(next, Component):
-            element = next.func(*next.args, **next.kwargs)
-        else:
-            element = next
+        # we already know next is a Component here
+        element = next.func(*next.args, **next.kwargs)
 
         children = []
         for new_child, previous_child in zip_longest(element.children, previous.children):

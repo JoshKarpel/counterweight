@@ -14,6 +14,7 @@ from structlog import get_logger
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
+from reprisal.control import Control
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -36,8 +37,6 @@ BLANK = CellPaint(
 )
 
 logger = get_logger()
-
-QUIT = object()
 
 
 def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
@@ -103,12 +102,18 @@ async def app(
         shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
-        should_exit = False
+        should_quit = False
+        should_bell = False
 
         async with TaskGroup() as tg:
             while True:
-                if should_exit:
+                if should_quit:
                     break
+
+                if should_bell:
+                    output_stream.write("\a")
+                    output_stream.flush()
+                    should_bell = False
 
                 if needs_render:
                     start_render = perf_counter_ns()
@@ -196,9 +201,11 @@ async def app(
                             for c in layout_tree.walk_from_bottom():
                                 if c.on_key:
                                     r = c.on_key(event)
-                                    if r == QUIT:
-                                        logger.info("Got QUIT return value from event")
-                                        should_exit = True
+                                    match r:
+                                        case Control.Quit:
+                                            should_quit = True
+                                        case Control.Bell:
+                                            should_bell = True
                         case StateSet():
                             needs_render = True
                     logger.debug(
