@@ -241,6 +241,7 @@ class BorderKind(Enum):
     Heavy = "┃┃━━┏┓┗┛"
     Double = "║║══╔╗╚╝"
     Thick = "▌▐▀▄▛▜▙▟"
+    McGugan = "▏▕▁▔▁▁▔▔"  # https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/
     LightShade = "░░░░░░░░"
     MediumShade = "▒▒▒▒▒▒▒▒"
     HeavyShade = "▓▓▓▓▓▓▓▓"

@@ -66,10 +66,8 @@ def root() -> Div:
             ],
         )
     else:
-        # TODO: Having to put weight_none on every text is annoying
-        button_style = weight_none | pad_y_1 | pad_x_2 | border_lightrounded
 
-        def on_key(event: KeyPressed):
+        def on_key(event: KeyPressed) -> None:
             match event.key:
                 case Key.F1:
                     s = today_solution()
@@ -83,6 +81,9 @@ def root() -> Div:
                     set_playing(True)
                 case "q":
                     return QUIT
+
+        # TODO: Having to put weight_none on every text is annoying
+        button_style = weight_none | pad_1 | border_mcgugan
 
         return Div(
             style=col | align_children_stretch | gap_children_4,
