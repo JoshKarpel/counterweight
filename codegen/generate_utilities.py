@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import get_args, get_type_hints
 
-from reprisal.styles.styles import BorderKind, Flex
+from reprisal.styles.styles import BorderKind, Flex, Typography
 
 
 def literal_vals(obj: object, field: str) -> tuple[str, ...]:
@@ -313,6 +313,11 @@ stop = utils_text.index("# Stop generated")
 
 generated_lines = [""]
 
+generated_lines.append(
+    'text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))'
+)
+generated_lines.append("")
+
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
         generated_lines.extend(
@@ -400,6 +405,16 @@ generated_lines.append("")
 
 for n in N:
     generated_lines.append(f"margin_{n} = Style(margin=Margin(top={n}, bottom={n}, left={n}, right={n}))")
+
+generated_lines.append("")
+
+for n in N:
+    generated_lines.append(f"gap_children_{n} = Style(layout=Flex(gap_children={n}))")
+
+generated_lines.append("")
+
+for j in literal_vals(Typography, "justify"):
+    generated_lines.append(f'text_justify_{j} = Style(typography=Typography(justify="{j}"))')
 
 generated_lines.append("")
 

@@ -166,7 +166,6 @@ class LayoutBox(ForbidExtras):
         layout = style.layout
 
         # transfer margin/border/padding to dimensions
-        # TODO handle "auto" here -> 0, or maybe get rid of auto margins/padding?
         self.dims.margin.top = style.margin.top
         self.dims.margin.bottom = style.margin.bottom
         self.dims.margin.left = style.margin.left
@@ -181,6 +180,7 @@ class LayoutBox(ForbidExtras):
         self.dims.padding.bottom = style.padding.bottom
         self.dims.padding.left = style.padding.left
         self.dims.padding.right = style.padding.right
+
         # # text boxes with auto width get their width from their content (no wrapping)
         # # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
         if self.element.type == "text" and self.element.style.typography.wrap == "none":
@@ -210,16 +210,22 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
+        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
+            if layout.direction == "row":
+                self.dims.content.width += num_gaps * layout.gap_children
+
             for child_box in self.children:
                 child_element = child_box.element
                 child_style = child_element.style
                 child_layout = child_style.layout
 
-                if child_style.span.width != "auto" or (
-                    child_element.type == "text" and child_style.typography.wrap == "none"
-                ):
+                # if child_style.span.width != "auto" or (
+                #     child_element.type == "text" and child_style.typography.wrap == "none"
+                # ):
+                if child_box.dims.content.width != 0:  # i.e., it has been set
                     if child_layout.position == "relative":
                         if layout.direction == "row":
                             # We are growing the box to the right
@@ -229,14 +235,18 @@ class LayoutBox(ForbidExtras):
                             self.dims.content.width = max(self.dims.content.width, child_box.dims.width())
 
         if style.span.height == "auto":
+            if layout.direction == "column":
+                self.dims.content.width += num_gaps * layout.gap_children
+
             for child_box in self.children:
                 child_element = child_box.element
                 child_style = child_element.style
                 child_layout = child_style.layout
 
-                if child_style.span.height != "auto" or (
-                    child_element.type == "text" and child_style.typography.wrap == "none"
-                ):
+                # if child_style.span.height != "auto" or (
+                #     child_element.type == "text" and child_style.typography.wrap == "none"
+                # ):
+                if child_box.dims.content.height != 0:  # i.e., it has been set
                     if child_layout.position == "relative":
                         if layout.direction == "column":
                             # We are growing the box downward
@@ -283,6 +293,9 @@ class LayoutBox(ForbidExtras):
             child for child in relative_children if child.element.style.layout.weight is not None
         ]
         num_relative_children = len(relative_children)
+        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+        total_gap = num_gaps * layout.gap_children
+
         # subtract off fixed-width/height children from what's available to flex
         for child in relative_children:
             if child.element.style.layout.weight is None:
@@ -302,17 +315,25 @@ class LayoutBox(ForbidExtras):
         ):
             weights: tuple[int] = tuple(child.element.style.layout.weight for child in relative_children_with_weights)  # type: ignore[assignment]
             if layout.direction == "row":
+                available_width -= total_gap
+
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_width, weights=weights)
                 ):
                     child.dims.content.width = max(flex_portion - child.dims.horizontal_edge_width(), 0)
+
                 available_width = 0
+
             elif layout.direction == "column":
+                available_height -= total_gap
+
                 for child, flex_portion in zip(
                     relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
                     child.dims.content.height = max(flex_portion - child.dims.vertical_edge_width(), 0)
+
                 available_height = 0
+
         elif layout.justify_children in ("space-between", "space-around", "space-evenly"):
             for child in relative_children:
                 # TODO: if we don't do this, flex elements never get their width set if justify_children is space-*, but this seems wrong...
@@ -355,19 +376,19 @@ class LayoutBox(ForbidExtras):
 
         # TODO: available width can be negative here, but that doesn't make sense
         # seems to happen when this element isn't stretch but it has fixed-width children
-        logger.debug("available_width", w=available_width)
 
         # justification (main axis placement)
+        # TODO: need to subtract total_gap here, even though it was handled above?
         if layout.direction == "row":
             if layout.justify_children == "center":
-                x += available_width // 2
+                x += (available_width - total_gap) // 2
             elif layout.justify_children == "end":
-                x += available_width
+                x += available_width - total_gap
         elif layout.direction == "column":
             if layout.justify_children == "center":
-                y += available_height // 2
+                y += (available_height - total_gap) // 2
             elif layout.justify_children == "end":
-                y += available_height
+                y += available_height - total_gap
 
         if layout.justify_children == "space-between":
             if layout.direction == "row":
@@ -428,9 +449,9 @@ class LayoutBox(ForbidExtras):
                 child.dims.content.x = x
                 child.dims.content.y = y
                 if layout.direction == "row":
-                    x += child.dims.width()
+                    x += child.dims.width() + layout.gap_children
                 elif layout.direction == "column":
-                    y += child.dims.height()
+                    y += child.dims.height() + layout.gap_children
 
         # alignment (cross-axis placement)
         # content width/height of self, but full width/height of children

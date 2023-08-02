@@ -3,6 +3,8 @@ from reprisal.styles.styles import Border, BorderKind, CellStyle, Color, Flex, P
 
 # Start generated
 
+text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))
+
 text_slate_50 = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#f8fafc"))))
 text_bg_slate_50 = Style(typography=Typography(style=CellStyle(background=Color.from_hex("#f8fafc"))))
 border_slate_50 = Style(border=Border(style=CellStyle(foreground=Color.from_hex("#f8fafc"))))
@@ -1514,6 +1516,7 @@ border_lightrounded = Style(border=Border(kind=BorderKind.LightRounded))
 border_heavy = Style(border=Border(kind=BorderKind.Heavy))
 border_double = Style(border=Border(kind=BorderKind.Double))
 border_thick = Style(border=Border(kind=BorderKind.Thick))
+border_mcgugan = Style(border=Border(kind=BorderKind.McGugan))
 border_lightshade = Style(border=Border(kind=BorderKind.LightShade))
 border_mediumshade = Style(border=Border(kind=BorderKind.MediumShade))
 border_heavyshade = Style(border=Border(kind=BorderKind.HeavyShade))
@@ -1658,5 +1661,19 @@ margin_5 = Style(margin=Margin(top=5, bottom=5, left=5, right=5))
 margin_6 = Style(margin=Margin(top=6, bottom=6, left=6, right=6))
 margin_7 = Style(margin=Margin(top=7, bottom=7, left=7, right=7))
 margin_8 = Style(margin=Margin(top=8, bottom=8, left=8, right=8))
+
+gap_children_0 = Style(layout=Flex(gap_children=0))
+gap_children_1 = Style(layout=Flex(gap_children=1))
+gap_children_2 = Style(layout=Flex(gap_children=2))
+gap_children_3 = Style(layout=Flex(gap_children=3))
+gap_children_4 = Style(layout=Flex(gap_children=4))
+gap_children_5 = Style(layout=Flex(gap_children=5))
+gap_children_6 = Style(layout=Flex(gap_children=6))
+gap_children_7 = Style(layout=Flex(gap_children=7))
+gap_children_8 = Style(layout=Flex(gap_children=8))
+
+text_justify_left = Style(typography=Typography(justify="left"))
+text_justify_center = Style(typography=Typography(justify="center"))
+text_justify_right = Style(typography=Typography(justify="right"))
 
 # Stop generated

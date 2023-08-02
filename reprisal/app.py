@@ -14,6 +14,7 @@ from structlog import get_logger
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
+from reprisal.control import Control
 from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -101,8 +102,19 @@ async def app(
         shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
+        should_quit = False
+        should_bell = False
+
         async with TaskGroup() as tg:
             while True:
+                if should_quit:
+                    break
+
+                if should_bell:
+                    output_stream.write("\a")
+                    output_stream.flush()
+                    should_bell = False
+
                 if needs_render:
                     start_render = perf_counter_ns()
                     shadow = update_shadow(screen(), shadow)
@@ -188,7 +200,12 @@ async def app(
                         case KeyPressed():
                             for c in layout_tree.walk_from_bottom():
                                 if c.on_key:
-                                    c.on_key(event)
+                                    r = c.on_key(event)
+                                    match r:
+                                        case Control.Quit:
+                                            should_quit = True
+                                        case Control.Bell:
+                                            should_bell = True
                         case StateSet():
                             needs_render = True
                     logger.debug(
