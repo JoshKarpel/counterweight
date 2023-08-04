@@ -28,31 +28,26 @@ def root() -> Div:
                 set_selected_stopwatch(lambda s: (s - 1) % num_stopwatches)
 
     return Div(
-        style=col | align_children_center,
+        style=col | justify_children_space_between | align_children_center,
         children=[
-            Div(
-                style=row | weight_none,
-                children=[Text(content="Stopwatch", style=text_amber_600)],
+            Text(
+                style=text_amber_600,
+                content="Stopwatch",
             ),
             Div(
                 style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
-                children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
                 on_key=on_key,
+                children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
             ),
-            Div(
-                style=row | weight_none | align_children_end,
-                children=[
-                    Text(
-                        content=dedent(
-                            """\
-                            - <tab>/<shift+tab> to select next/previous stopwatch
-                            - <space> to start/stop selected stopwatch
-                            - <backspace> to reset selected stopwatch
-                            """
-                        ),
-                        style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x_2 | pad_y_1,
-                    ),
-                ],
+            Text(
+                style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x_2 | pad_y_1,
+                content=dedent(
+                    """\
+                    - <tab>/<shift+tab> to select next/previous stopwatch
+                    - <space> to start/stop selected stopwatch
+                    - <backspace> to reset selected stopwatch
+                    """
+                ),
             ),
         ],
     )

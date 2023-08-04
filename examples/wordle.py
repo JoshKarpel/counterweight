@@ -53,14 +53,11 @@ def root() -> Div:
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
-    header = Div(
-        style=row | align_self_center | weight_none,
-        children=[Text(content="Wordle", style=text_amber_600)],
-    )
+    header = Text(content="Wordle", style=text_amber_600 | weight_none)
 
     if playing:
         return Div(
-            style=col | align_children_stretch,
+            style=col | align_children_center,
             children=[
                 header,
                 play(
@@ -92,11 +89,11 @@ def root() -> Div:
         button_style = weight_none | pad_1 | border_mcgugan
 
         return Div(
-            style=col | align_children_stretch | gap_children_4,
+            style=col | align_children_center,
             children=[
                 header,
                 Div(
-                    style=col | align_children_center | gap_children_2,
+                    style=col | align_children_center | gap_children_2 | margin_top_4,
                     children=[
                         Text(content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})", style=button_style),
                         Text(content="[F2] Play Random", style=button_style),

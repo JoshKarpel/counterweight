@@ -336,24 +336,12 @@ class LayoutBox(ForbidExtras):
 
         elif layout.justify_children in ("space-between", "space-around", "space-evenly"):
             for child in relative_children:
-                # TODO: if we don't do this, flex elements never get their width set if justify_children is space-*, but this seems wrong...
-                if child.element.type == "text" and child.element.style.span.width == "auto":
-                    child.dims.content.width = max(
-                        (
-                            len(line)
-                            for line in wrap_text(
-                                text=child.element.content,
-                                wrap=child.element.style.typography.wrap,
-                                width=available_width,
-                            )
-                        ),
-                        default=0,
-                    )
-                    available_width -= child.dims.width()
+                available_width -= child.dims.width()
+                available_height -= child.dims.height()
 
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
-            if child.element.type == "text":
+            if child.element.type == "text" and child.element.style.typography.wrap != "none":
                 h = len(
                     wrap_text(
                         text=child.element.content,
