@@ -95,9 +95,21 @@ def root() -> Div:
                 Div(
                     style=col | align_children_center | gap_children_2 | margin_top_4,
                     children=[
-                        Text(content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})", style=button_style),
-                        Text(content="[F2] Play Random", style=button_style),
-                        Text(content="[q] Quit", style=button_style),
+                        Text(
+                            content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
+                            style=button_style,
+                            on_hover=text_indigo_500 | border_indigo_500,
+                        ),
+                        Text(
+                            content="[F2] Play Random",
+                            style=button_style,
+                            on_hover=text_emerald_500 | border_emerald_500,
+                        ),
+                        Text(
+                            content="[q] Quit",
+                            style=button_style,
+                            on_hover=text_red_500 | border_red_500,
+                        ),
                     ],
                 ),
             ],

@@ -108,6 +108,8 @@ async def app(
         should_quit = False
         should_bell = False
 
+        mouse_position = Position(x=-1, y=-1)
+
         async with TaskGroup() as tg:
             while True:
                 if should_quit:
@@ -139,6 +141,19 @@ async def app(
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
+                    )
+
+                    start_hover = perf_counter_ns()
+                    # TODO: apply hover effects based on mouse position
+                    for c in layout_tree.walk_from_bottom():
+                        _, border_rect, _ = c.dims.padding_border_margin_rects()
+                        if mouse_position in border_rect:
+                            # TODO: hover changing layout doesn't really make sense here...
+                            c.element = c.element.copy(update={"style": c.element.style | c.element.on_hover})
+
+                    logger.debug(
+                        "Applied hover styles",
+                        elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
                     )
 
                     start_paint = perf_counter_ns()
@@ -201,7 +216,7 @@ async def app(
                             # don't flush here, we don't necessarily need to flush until the next render
                             # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
-                            for c in layout_tree.walk_from_bottom():
+                            for c in layout_tree.walk_elements_from_bottom():
                                 if c.on_key:
                                     r = c.on_key(event)
                                     match r:
@@ -209,8 +224,9 @@ async def app(
                                             should_quit = True
                                         case Control.Bell:
                                             should_bell = True
-                        case MouseMoved():
+                        case MouseMoved(position=p):
                             needs_render = True
+                            mouse_position = p
                         case StateSet():
                             needs_render = True
                     logger.debug(

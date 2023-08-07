@@ -86,15 +86,6 @@ class BoxDimensions(ForbidExtras):
     border: Edge = Field(default_factory=Edge)
     padding: Edge = Field(default_factory=Edge)
 
-    def padding_rect(self) -> Rect:
-        return self.content.expand_by(self.padding)
-
-    def border_rect(self) -> Rect:
-        return self.padding_rect().expand_by(self.border)
-
-    def margin_rect(self) -> Rect:
-        return self.border_rect().expand_by(self.margin)
-
     def padding_border_margin_rects(self) -> tuple[Rect, Rect, Rect]:
         padding = self.content.expand_by(self.padding)
         border = padding.expand_by(self.border)
@@ -132,10 +123,13 @@ class LayoutBox(ForbidExtras):
     parent: LayoutBox | None
     children: list[LayoutBox] = Field(default_factory=list)
 
-    def walk_from_bottom(self) -> Iterator[AnyElement]:
+    def walk_from_bottom(self) -> Iterator[LayoutBox]:
         for child in self.children:
             yield from child.walk_from_bottom()
-        yield self.element
+        yield self
+
+    def walk_elements_from_bottom(self) -> Iterator[AnyElement]:
+        yield from (node.element for node in self.walk_from_bottom())
 
     def walk_levels(self) -> Iterator[LayoutBox]:
         yield self
