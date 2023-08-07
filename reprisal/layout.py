@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import NamedTuple
 
 from more_itertools import take
 from pydantic import Field, NonNegativeInt
@@ -9,14 +8,10 @@ from structlog import get_logger
 
 from reprisal._utils import halve_integer, partition_int, wrap_text
 from reprisal.components import AnyElement, Component
+from reprisal.geometry import Position
 from reprisal.types import ForbidExtras
 
 logger = get_logger()
-
-
-class Position(NamedTuple):
-    x: int
-    y: int
 
 
 class Rect(ForbidExtras):

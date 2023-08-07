@@ -15,15 +15,18 @@ from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.control import Control
-from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
+from reprisal.events import AnyEvent, KeyPressed, MouseMoved, StateSet, TerminalResized
+from reprisal.geometry import Position
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import Position, build_layout_tree
+from reprisal.layout import build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
+    start_mouse_reporting,
     start_output_control,
+    stop_mouse_reporting,
     stop_output_control,
 )
 from reprisal.paint import CellPaint, Paint, paint_layout
@@ -88,7 +91,7 @@ async def app(
     try:
         start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
-        # start_mouse_reporting(stream=output_stream)
+        start_mouse_reporting(stream=output_stream)
 
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
@@ -206,6 +209,8 @@ async def app(
                                             should_quit = True
                                         case Control.Bell:
                                             should_bell = True
+                        case MouseMoved():
+                            needs_render = True
                         case StateSet():
                             needs_render = True
                     logger.debug(
@@ -225,7 +230,7 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        # stop_mouse_reporting(stream=output_stream)
+        stop_mouse_reporting(stream=output_stream)
         stop_output_control(stream=output_stream)
         stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()

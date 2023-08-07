@@ -1,3 +1,4 @@
+from reprisal.geometry import Position
 from reprisal.types import FrozenForbidExtras
 
 
@@ -10,8 +11,7 @@ class KeyPressed(FrozenForbidExtras):
 
 
 class MouseMoved(FrozenForbidExtras):
-    x: int
-    y: int
+    position: Position
 
 
 class StateSet(FrozenForbidExtras):

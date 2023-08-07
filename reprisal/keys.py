@@ -4,7 +4,9 @@ from collections.abc import Generator, Mapping
 from enum import Enum
 from string import printable
 
-from parsy import Parser, char_from, decimal_digit, generate, string
+from parsy import Parser, any_char, char_from, decimal_digit, generate, string
+
+from reprisal.geometry import Position
 
 
 class Key(str, Enum):
@@ -192,7 +194,7 @@ class Key(str, Enum):
         return str(self)
 
 
-KeyGenerator = Generator[Parser, str, str]
+InputGeneratorResult = Generator[Parser, str, str | Key | Position]
 
 SINGLE_CHAR_TRANSFORMS: Mapping[str, Key] = {
     "\x1b": Key.Escape,
@@ -230,15 +232,17 @@ CHARS = "".join((*printable, *SINGLE_CHAR_TRANSFORMS.keys()))
 
 
 @generate
-def single_char() -> KeyGenerator:
+def single_char() -> InputGeneratorResult:
     c = yield char_from(CHARS)
 
     return SINGLE_CHAR_TRANSFORMS.get(c, c)
 
 
 @generate
-def escape_sequence() -> KeyGenerator:
-    keys = yield string("\x1b") >> (f1to4 | (string("[") >> (shift_tab | two_params | zero_or_one_params)))
+def escape_sequence() -> InputGeneratorResult:
+    keys = yield string("\x1b") >> (
+        f1to4 | (string("[") >> (mouse_position | shift_tab | two_params | zero_or_one_params))
+    )
 
     return keys
 
@@ -252,7 +256,7 @@ F1TO4 = {
 
 
 @generate
-def f1to4() -> KeyGenerator:
+def f1to4() -> InputGeneratorResult:
     yield string("O")
     final = yield char_from("PQRS")
 
@@ -260,10 +264,26 @@ def f1to4() -> KeyGenerator:
 
 
 @generate
-def shift_tab() -> KeyGenerator:
+def shift_tab() -> InputGeneratorResult:
     yield string("Z")
 
     return Key.BackTab
+
+
+# TODO: clicks are being parsed as multiple keys right now
+
+
+@generate
+def mouse_position() -> InputGeneratorResult:
+    yield string("MC")
+
+    x_char = yield any_char
+    y_char = yield any_char
+
+    x = ord(x_char) - 33
+    y = ord(y_char) - 33
+
+    return Position(x, y)
 
 
 CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
@@ -318,7 +338,7 @@ FINAL_CHARS = "".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
 
 
 @generate
-def two_params() -> KeyGenerator:
+def two_params() -> InputGeneratorResult:
     p1 = yield decimal_digit.many().concat()
     yield string(";")
     p2 = yield decimal_digit.many().concat()
@@ -328,7 +348,7 @@ def two_params() -> KeyGenerator:
 
 
 @generate
-def zero_or_one_params() -> KeyGenerator:
+def zero_or_one_params() -> InputGeneratorResult:
     # zero params => ""
     p1 = yield decimal_digit.many().concat()
 
@@ -338,6 +358,6 @@ def zero_or_one_params() -> KeyGenerator:
 
 
 @generate
-def vt_keys() -> KeyGenerator:
+def vt_inputs() -> InputGeneratorResult:
     commands = yield (escape_sequence | single_char).many()
     return commands

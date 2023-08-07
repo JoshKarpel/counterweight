@@ -2,7 +2,7 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.layout import Position
+from reprisal.geometry import Position
 from reprisal.paint import Paint
 from reprisal.styles.styles import CellStyle
 
