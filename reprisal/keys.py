@@ -5,8 +5,12 @@ from enum import Enum
 from string import printable
 
 from parsy import Parser, any_char, char_from, decimal_digit, generate, string
+from structlog import get_logger
 
+from reprisal.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
 from reprisal.geometry import Position
+
+logger = get_logger()
 
 
 class Key(str, Enum):
@@ -194,7 +198,7 @@ class Key(str, Enum):
         return str(self)
 
 
-InputGeneratorResult = Generator[Parser, str, str | Key | Position]
+InputGeneratorResult = Generator[Parser, str, AnyEvent]
 
 SINGLE_CHAR_TRANSFORMS: Mapping[str, Key] = {
     "\x1b": Key.Escape,
@@ -235,13 +239,13 @@ CHARS = "".join((*printable, *SINGLE_CHAR_TRANSFORMS.keys()))
 def single_char() -> InputGeneratorResult:
     c = yield char_from(CHARS)
 
-    return SINGLE_CHAR_TRANSFORMS.get(c, c)
+    return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c, c))
 
 
 @generate
 def escape_sequence() -> InputGeneratorResult:
     keys = yield string("\x1b") >> (
-        f1to4 | (string("[") >> (mouse_position | shift_tab | two_params | zero_or_one_params))
+        f1to4 | (string("[") >> (mouse_position | mouse_button | shift_tab | two_params | zero_or_one_params))
     )
 
     return keys
@@ -260,21 +264,19 @@ def f1to4() -> InputGeneratorResult:
     yield string("O")
     final = yield char_from("PQRS")
 
-    return F1TO4[final]
+    return KeyPressed(key=F1TO4[final])
 
 
 @generate
 def shift_tab() -> InputGeneratorResult:
     yield string("Z")
 
-    return Key.BackTab
-
-
-# TODO: clicks are being parsed as multiple keys right now
+    return KeyPressed(key=Key.BackTab)
 
 
 @generate
 def mouse_position() -> InputGeneratorResult:
+    # https://www.xfree86.org/current/ctlseqs.html
     yield string("MC")
 
     x_char = yield any_char
@@ -283,7 +285,34 @@ def mouse_position() -> InputGeneratorResult:
     x = ord(x_char) - 33
     y = ord(y_char) - 33
 
-    return Position(x, y)
+    return MouseMoved(position=Position(x=x, y=y))
+
+
+@generate
+def mouse_button() -> InputGeneratorResult:
+    # https://www.xfree86.org/current/ctlseqs.html
+    yield string("M")
+
+    buttons_char = yield any_char
+
+    buttons = ord(buttons_char) - 32
+
+    x_char = yield any_char
+    y_char = yield any_char
+
+    x = ord(x_char) - 33
+    y = ord(y_char) - 33
+    p = Position(x=x, y=y)
+
+    # TODO: handle upper bits of buttons
+    if buttons & 3 == 3:
+        return MouseUp(position=p)
+    elif buttons & 2 == 2:
+        return MouseDown(position=p, button=3)
+    elif buttons & 1 == 1:
+        return MouseDown(position=p, button=2)
+    else:  # low bits are 00, so this is mouse down with button 1
+        return MouseDown(position=p, button=1)
 
 
 CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
@@ -344,7 +373,7 @@ def two_params() -> InputGeneratorResult:
     p2 = yield decimal_digit.many().concat()
     e = yield char_from(FINAL_CHARS)
 
-    return CSI_LOOKUP[(p1, p2, e)]
+    return KeyPressed(key=CSI_LOOKUP[(p1, p2, e)])
 
 
 @generate
@@ -354,7 +383,7 @@ def zero_or_one_params() -> InputGeneratorResult:
 
     e = yield char_from(FINAL_CHARS)
 
-    return CSI_LOOKUP[(p1, e)]
+    return KeyPressed(key=CSI_LOOKUP[(p1, e)])
 
 
 @generate

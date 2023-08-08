@@ -12,8 +12,7 @@ from typing import TextIO
 from parsy import ParseError
 from structlog import get_logger
 
-from reprisal.events import AnyEvent, KeyPressed, MouseMoved
-from reprisal.geometry import Position
+from reprisal.events import AnyEvent
 from reprisal.keys import vt_inputs
 
 logger = get_logger()
@@ -39,14 +38,11 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
             inputs = vt_inputs.parse(buffer)
 
             for i in inputs:
-                if isinstance(i, str):
-                    put_event(KeyPressed(key=i))
-                elif isinstance(i, Position):
-                    put_event(MouseMoved(position=i))
+                put_event(i)
 
             logger.debug(
                 "Parsed user input",
-                keys=inputs,
+                inputs=inputs,
                 buffer=repr(buffer),
                 bytes=bytes,
                 len_buffer=len(buffer),
