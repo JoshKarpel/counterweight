@@ -12,9 +12,6 @@ CURSOR_OFF = "\x1b[?25l"
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
-# SET_VT200_MOUSE = "\x1b[?1000h"
-# UNSET_VT200_MOUSE = "\x1b[?1000l"
-
 # https://www.xfree86.org/current/ctlseqs.html
 SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
 UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
@@ -42,14 +39,12 @@ def stop_output_control(stream: TextIO) -> None:
 
 
 def start_mouse_reporting(stream: TextIO) -> None:
-    # stream.write(SET_VT200_MOUSE)
     stream.write(SET_ANY_EVENT_MOUSE)
 
     stream.flush()
 
 
 def stop_mouse_reporting(stream: TextIO) -> None:
-    # stream.write(UNSET_VT200_MOUSE)
     stream.write(UNSET_ANY_EVENT_MOUSE)
 
     stream.flush()

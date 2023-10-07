@@ -144,13 +144,11 @@ async def app(
                     )
 
                     start_hover = perf_counter_ns()
-                    # TODO: apply hover effects based on mouse position
-                    for c in layout_tree.walk_from_bottom():
-                        _, border_rect, _ = c.dims.padding_border_margin_rects()
+                    for b in layout_tree.walk_from_bottom():
+                        _, border_rect, _ = b.dims.padding_border_margin_rects()
                         if mouse_position in border_rect:
                             # TODO: hover changing layout doesn't really make sense here...
-                            c.element = c.element.copy(update={"style": c.element.style | c.element.on_hover})
-
+                            b.element = b.element.copy(update={"style": b.element.style | b.element.on_hover})
                     logger.debug(
                         "Applied hover styles",
                         elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
@@ -216,9 +214,9 @@ async def app(
                             # don't flush here, we don't necessarily need to flush until the next render
                             # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
-                            for c in layout_tree.walk_elements_from_bottom():
-                                if c.on_key:
-                                    r = c.on_key(event)
+                            for e in layout_tree.walk_elements_from_bottom():
+                                if e.on_key:
+                                    r = e.on_key(event)
                                     match r:
                                         case Control.Quit:
                                             should_quit = True
