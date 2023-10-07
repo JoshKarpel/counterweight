@@ -198,8 +198,6 @@ class Key(str, Enum):
         return str(self)
 
 
-InputGeneratorResult = Generator[Parser, str, AnyEvent]
-
 SINGLE_CHAR_TRANSFORMS: Mapping[str, Key] = {
     "\x1b": Key.Escape,
     "\t": Key.Tab,
@@ -236,14 +234,14 @@ CHARS = "".join((*printable, *SINGLE_CHAR_TRANSFORMS.keys()))
 
 
 @generate
-def single_char() -> InputGeneratorResult:
+def single_char() -> Generator[Parser, str, AnyEvent]:
     c = yield char_from(CHARS)
 
     return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c, c))
 
 
 @generate
-def escape_sequence() -> InputGeneratorResult:
+def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
     keys = yield string("\x1b") >> (
         f1to4 | (string("[") >> (mouse_position | mouse_button | shift_tab | two_params | zero_or_one_params))
     )
@@ -260,7 +258,7 @@ F1TO4 = {
 
 
 @generate
-def f1to4() -> InputGeneratorResult:
+def f1to4() -> Generator[Parser, str, AnyEvent]:
     yield string("O")
     final = yield char_from("PQRS")
 
@@ -268,14 +266,14 @@ def f1to4() -> InputGeneratorResult:
 
 
 @generate
-def shift_tab() -> InputGeneratorResult:
+def shift_tab() -> Generator[Parser, str, AnyEvent]:
     yield string("Z")
 
     return KeyPressed(key=Key.BackTab)
 
 
 @generate
-def mouse_position() -> InputGeneratorResult:
+def mouse_position() -> Generator[Parser, str, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
     yield string("MC")
 
@@ -289,7 +287,7 @@ def mouse_position() -> InputGeneratorResult:
 
 
 @generate
-def mouse_button() -> InputGeneratorResult:
+def mouse_button() -> Generator[Parser, str, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
     yield string("M")
 
@@ -367,7 +365,7 @@ FINAL_CHARS = "".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
 
 
 @generate
-def two_params() -> InputGeneratorResult:
+def two_params() -> Generator[Parser, str, AnyEvent]:
     p1 = yield decimal_digit.many().concat()
     yield string(";")
     p2 = yield decimal_digit.many().concat()
@@ -377,7 +375,7 @@ def two_params() -> InputGeneratorResult:
 
 
 @generate
-def zero_or_one_params() -> InputGeneratorResult:
+def zero_or_one_params() -> Generator[Parser, str, AnyEvent]:
     # zero params => ""
     p1 = yield decimal_digit.many().concat()
 
@@ -387,6 +385,6 @@ def zero_or_one_params() -> InputGeneratorResult:
 
 
 @generate
-def vt_inputs() -> InputGeneratorResult:
+def vt_inputs() -> Generator[Parser, list[AnyEvent], list[AnyEvent]]:
     commands = yield (escape_sequence | single_char).many()
     return commands
