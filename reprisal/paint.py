@@ -8,7 +8,8 @@ from structlog import get_logger
 
 from reprisal._utils import wrap_text
 from reprisal.components import AnyElement, Div, Text
-from reprisal.layout import BoxDimensions, Edge, LayoutBox, Position, Rect
+from reprisal.geometry import Position
+from reprisal.layout import BoxDimensions, Edge, LayoutBox, Rect
 from reprisal.styles import Border
 from reprisal.styles.styles import CellStyle, Margin, Padding
 from reprisal.types import FrozenForbidExtras

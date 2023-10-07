@@ -2,7 +2,7 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.layout import Position
+from reprisal.geometry import Position
 from reprisal.paint import Paint
 from reprisal.styles.styles import CellStyle
 
@@ -12,9 +12,7 @@ CURSOR_OFF = "\x1b[?25l"
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
-UNSET_VT200_MOUSE = "\x1b[?1000l"
-SET_VT200_MOUSE = "\x1b[?1000h"
-
+# https://www.xfree86.org/current/ctlseqs.html
 SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
 UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
 
@@ -41,14 +39,12 @@ def stop_output_control(stream: TextIO) -> None:
 
 
 def start_mouse_reporting(stream: TextIO) -> None:
-    stream.write(SET_VT200_MOUSE)
     stream.write(SET_ANY_EVENT_MOUSE)
 
     stream.flush()
 
 
 def stop_mouse_reporting(stream: TextIO) -> None:
-    stream.write(UNSET_VT200_MOUSE)
     stream.write(UNSET_ANY_EVENT_MOUSE)
 
     stream.flush()
