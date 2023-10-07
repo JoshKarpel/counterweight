@@ -15,15 +15,18 @@ from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.control import Control
-from reprisal.events import AnyEvent, KeyPressed, StateSet, TerminalResized
+from reprisal.events import AnyEvent, KeyPressed, MouseMoved, StateSet, TerminalResized
+from reprisal.geometry import Position
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import Position, build_layout_tree
+from reprisal.layout import build_layout_tree
 from reprisal.logging import configure_logging
 from reprisal.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
+    start_mouse_reporting,
     start_output_control,
+    stop_mouse_reporting,
     stop_output_control,
 )
 from reprisal.paint import CellPaint, Paint, paint_layout
@@ -88,7 +91,7 @@ async def app(
     try:
         start_handling_resize_signal(put_event=put_event)
         start_output_control(stream=output_stream)
-        # start_mouse_reporting(stream=output_stream)
+        start_mouse_reporting(stream=output_stream)
 
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
@@ -104,6 +107,8 @@ async def app(
 
         should_quit = False
         should_bell = False
+
+        mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             while True:
@@ -136,6 +141,17 @@ async def app(
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
+                    )
+
+                    start_hover = perf_counter_ns()
+                    for b in layout_tree.walk_from_bottom():
+                        _, border_rect, _ = b.dims.padding_border_margin_rects()
+                        if mouse_position in border_rect:
+                            # TODO: hover changing layout doesn't really make sense here...
+                            b.element = b.element.copy(update={"style": b.element.style | b.element.on_hover})
+                    logger.debug(
+                        "Applied hover styles",
+                        elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
                     )
 
                     start_paint = perf_counter_ns()
@@ -198,14 +214,17 @@ async def app(
                             # don't flush here, we don't necessarily need to flush until the next render
                             # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
-                            for c in layout_tree.walk_from_bottom():
-                                if c.on_key:
-                                    r = c.on_key(event)
+                            for e in layout_tree.walk_elements_from_bottom():
+                                if e.on_key:
+                                    r = e.on_key(event)
                                     match r:
                                         case Control.Quit:
                                             should_quit = True
                                         case Control.Bell:
                                             should_bell = True
+                        case MouseMoved(position=p):
+                            needs_render = True
+                            mouse_position = p
                         case StateSet():
                             needs_render = True
                     logger.debug(
@@ -225,7 +244,7 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        # stop_mouse_reporting(stream=output_stream)
+        stop_mouse_reporting(stream=output_stream)
         stop_output_control(stream=output_stream)
         stop_input_control(stream=input_stream, original=original)
         stop_handling_resize_signal()

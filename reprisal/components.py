@@ -9,7 +9,6 @@ from pydantic import Field
 from reprisal.control import Control
 from reprisal.events import KeyPressed
 from reprisal.styles import Style
-from reprisal.styles.styles import Flex
 from reprisal.types import FrozenForbidExtras
 
 P = ParamSpec("P")
@@ -39,13 +38,15 @@ class Div(FrozenForbidExtras):
     type: Literal["div"] = "div"
     style: Style = Field(default=Style())
     children: Sequence[Component | AnyElement] = Field(default_factory=list)
+    on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
 
 
 class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
     content: str
-    style: Style = Field(default=Style(layout=Flex(weight=None)))
+    style: Style = Field(default=Style())
+    on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
 
     @property

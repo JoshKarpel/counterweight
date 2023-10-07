@@ -12,8 +12,8 @@ from typing import TextIO
 from parsy import ParseError
 from structlog import get_logger
 
-from reprisal.events import AnyEvent, KeyPressed, MouseMoved
-from reprisal.keys import vt_keys
+from reprisal.events import AnyEvent
+from reprisal.keys import vt_inputs
 
 logger = get_logger()
 
@@ -31,38 +31,31 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
         # so we can dispense with the ceremony of actually using the results of the select.
 
         start_parsing = perf_counter_ns()
-        # Read only up to 6 bytes at a time to make checking for multiple mouse events easier
-        # TODO: would be better to not do bytes[4:] below...
-        b = os.read(stream.fileno(), 6)
+        b = os.read(stream.fileno(), 1_000)
         bytes = list(b)
+        buffer = b.decode("utf-8")
+        try:
+            inputs = vt_inputs.parse(buffer)
 
-        if bytes[:4] == [27, 91, 77, 67]:
-            x, y = bytes[4:]
-            # there appear to be other states where the mouse might be up or down... hard to check on laptop
-            put_event(MouseMoved(x=x - 33, y=y - 33))
-            logger.debug("Parsed mount event", bytes=bytes)
-        else:
-            buffer = b.decode("utf-8")
-            try:
-                keys = vt_keys.parse(buffer)
-                for key in keys:
-                    put_event(KeyPressed(key=key))
-                logger.debug(
-                    "Parsed user input",
-                    keys=keys,
-                    buffer=repr(buffer),
-                    bytes=bytes,
-                    len_buffer=len(buffer),
-                    elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
-                )
-            except (ParseError, KeyError) as e:
-                logger.error(
-                    "Failed to parse input",
-                    error=str(e),
-                    buffer=repr(buffer),
-                    len_buffer=len(buffer),
-                    elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
-                )
+            for i in inputs:
+                put_event(i)
+
+            logger.debug(
+                "Parsed user input",
+                inputs=inputs,
+                buffer=repr(buffer),
+                bytes=bytes,
+                len_buffer=len(buffer),
+                elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
+            )
+        except (ParseError, KeyError) as e:
+            logger.error(
+                "Failed to parse input",
+                error=str(e),
+                buffer=repr(buffer),
+                len_buffer=len(buffer),
+                elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
+            )
 
 
 LFLAG = 3
