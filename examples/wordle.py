@@ -68,18 +68,24 @@ def root() -> Div:
         )
     else:
 
+        def play_today() -> None:
+            s = today_solution()
+            logger.debug("Starting play", solution=s)
+            set_solution(s)
+            set_playing(True)
+
+        def play_random() -> None:
+            s = choice(SOLUTION_WORDS)
+            logger.debug("Starting play", solution=s)
+            set_solution(s)
+            set_playing(True)
+
         def on_key(event: KeyPressed) -> Control | None:
             match event.key:
                 case Key.F1:
-                    s = today_solution()
-                    logger.debug("Starting play", solution=s)
-                    set_solution(s)
-                    set_playing(True)
+                    play_today()
                 case Key.F2:
-                    s = choice(SOLUTION_WORDS)
-                    logger.debug("Starting play", solution=s)
-                    set_solution(s)
-                    set_playing(True)
+                    play_random()
                 case "q":
                     return Control.Quit
 
@@ -99,16 +105,19 @@ def root() -> Div:
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             style=button_style,
                             on_hover=text_indigo_500 | border_indigo_500,
+                            on_mouse_up=lambda e: play_today(),
                         ),
                         Text(
                             content="[F2] Play Random",
                             style=button_style,
                             on_hover=text_emerald_500 | border_emerald_500,
+                            on_mouse_up=lambda e: play_random(),
                         ),
                         Text(
                             content="[q] Quit",
                             style=button_style,
                             on_hover=text_red_500 | border_red_500,
+                            on_mouse_up=lambda e: Control.Quit,
                         ),
                     ],
                 ),

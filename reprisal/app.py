@@ -15,7 +15,7 @@ from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.control import Control
-from reprisal.events import AnyEvent, KeyPressed, MouseMoved, StateSet, TerminalResized
+from reprisal.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from reprisal.geometry import Position
 from reprisal.hooks.impls import UseEffect
 from reprisal.input import read_keys, start_input_control, stop_input_control
@@ -202,6 +202,8 @@ async def app(
                 for event in events:
                     start_handle_event = perf_counter_ns()
                     match event:
+                        case StateSet():
+                            needs_render = True
                         case TerminalResized():
                             needs_render = True
                             w, h = shutil.get_terminal_size()
@@ -225,8 +227,28 @@ async def app(
                         case MouseMoved(position=p):
                             needs_render = True
                             mouse_position = p
-                        case StateSet():
-                            needs_render = True
+                        case MouseDown():
+                            for b in layout_tree.walk_from_bottom():
+                                _, border_rect, _ = b.dims.padding_border_margin_rects()
+                                if mouse_position in border_rect:
+                                    if b.element.on_mouse_down:
+                                        r = b.element.on_mouse_down(event)
+                                        match r:
+                                            case Control.Quit:
+                                                should_quit = True
+                                            case Control.Bell:
+                                                should_bell = True
+                        case MouseUp():
+                            for b in layout_tree.walk_from_bottom():
+                                _, border_rect, _ = b.dims.padding_border_margin_rects()
+                                if mouse_position in border_rect:
+                                    if b.element.on_mouse_up:
+                                        r = b.element.on_mouse_up(event)
+                                        match r:
+                                            case Control.Quit:
+                                                should_quit = True
+                                            case Control.Bell:
+                                                should_bell = True
                     logger.debug(
                         "Handled event",
                         event_obj=event,
