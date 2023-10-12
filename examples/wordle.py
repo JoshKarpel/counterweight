@@ -238,7 +238,7 @@ KEYBOARD = (
 
 
 @component
-def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], None]) -> Div:
+def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], Control | None]) -> Div:
     kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
@@ -259,7 +259,12 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
             Div(
                 style=row | weight_none | align_children_center | gap_children_1,
                 children=[
-                    letter_box(kb_letter, style=kb_letter_styles[kb_letter], on_key=on_key) for kb_letter in kb_row
+                    letter_box(
+                        kb_letter,
+                        style=kb_letter_styles[kb_letter],
+                        on_key=on_key,
+                    )
+                    for kb_letter in kb_row
                 ],
             )
             for kb_row in KEYBOARD
@@ -268,11 +273,11 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
 
 
 @component
-def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], Control | None] | None = None) -> Text:
     return Text(
         content=letter,
         style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
-        on_mouse_up=(lambda e: on_key(KeyPressed(key=letter))) if on_key else None,
+        on_mouse_up=lambda e: on_key(KeyPressed(key=letter)) if on_key else None,
         on_hover=border_double,
     )
 
