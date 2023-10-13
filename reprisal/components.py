@@ -7,7 +7,7 @@ from typing import Callable, Literal, ParamSpec, Union
 from pydantic import Field
 
 from reprisal.control import Control
-from reprisal.events import KeyPressed
+from reprisal.events import KeyPressed, MouseDown, MouseUp
 from reprisal.styles import Style
 from reprisal.types import FrozenForbidExtras
 
@@ -40,6 +40,8 @@ class Div(FrozenForbidExtras):
     children: Sequence[Component | AnyElement] = Field(default_factory=list)
     on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
+    on_mouse_down: Callable[[MouseDown], Control | None] | None = None
+    on_mouse_up: Callable[[MouseUp], Control | None] | None = None
 
 
 class Text(FrozenForbidExtras):
@@ -48,6 +50,8 @@ class Text(FrozenForbidExtras):
     style: Style = Field(default=Style())
     on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
+    on_mouse_down: Callable[[MouseDown], Control | None] | None = None
+    on_mouse_up: Callable[[MouseUp], Control | None] | None = None
 
     @property
     def children(self) -> Sequence[Component | AnyElement]:

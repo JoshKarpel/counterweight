@@ -68,18 +68,24 @@ def root() -> Div:
         )
     else:
 
+        def play_today() -> None:
+            s = today_solution()
+            logger.debug("Starting play", solution=s)
+            set_solution(s)
+            set_playing(True)
+
+        def play_random() -> None:
+            s = choice(SOLUTION_WORDS)
+            logger.debug("Starting play", solution=s)
+            set_solution(s)
+            set_playing(True)
+
         def on_key(event: KeyPressed) -> Control | None:
             match event.key:
                 case Key.F1:
-                    s = today_solution()
-                    logger.debug("Starting play", solution=s)
-                    set_solution(s)
-                    set_playing(True)
+                    play_today()
                 case Key.F2:
-                    s = choice(SOLUTION_WORDS)
-                    logger.debug("Starting play", solution=s)
-                    set_solution(s)
-                    set_playing(True)
+                    play_random()
                 case "q":
                     return Control.Quit
 
@@ -99,16 +105,19 @@ def root() -> Div:
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             style=button_style,
                             on_hover=text_indigo_500 | border_indigo_500,
+                            on_mouse_up=lambda e: play_today(),
                         ),
                         Text(
                             content="[F2] Play Random",
                             style=button_style,
                             on_hover=text_emerald_500 | border_emerald_500,
+                            on_mouse_up=lambda e: play_random(),
                         ),
                         Text(
                             content="[q] Quit",
                             style=button_style,
                             on_hover=text_red_500 | border_red_500,
+                            on_mouse_up=lambda e: Control.Quit,
                         ),
                     ],
                 ),
@@ -186,7 +195,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 style=row | align_self_center | weight_none | pad_y_1,
                 children=[Text(content=message, style=message_style)],
             ),
-            keyboard(submitted=submitted, solution=solution),
+            keyboard(submitted=submitted, solution=solution, on_key=on_key),
         ],
     )
 
@@ -213,24 +222,11 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
         elif type == "current":
             style |= border_gray_300 if guess_letter != " " else border_gray_500
 
-        children.append(
-            letter_box(
-                guess_letter,
-                style=style,
-            )
-        )
+        children.append(letter_box(letter=guess_letter, style=style))
 
     return Div(
         style=row | weight_none | align_children_center | gap_children_1,
         children=children,
-    )
-
-
-@component
-def letter_box(letter: str, style: Style) -> Text:
-    return Text(
-        content=letter,
-        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
     )
 
 
@@ -242,7 +238,7 @@ KEYBOARD = (
 
 
 @component
-def keyboard(submitted: list[str], solution: str) -> Div:
+def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], Control | None]) -> Div:
     kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
@@ -262,10 +258,27 @@ def keyboard(submitted: list[str], solution: str) -> Div:
         children=[
             Div(
                 style=row | weight_none | align_children_center | gap_children_1,
-                children=[letter_box(kb_letter, style=kb_letter_styles[kb_letter]) for kb_letter in kb_row],
+                children=[
+                    letter_box(
+                        kb_letter,
+                        style=kb_letter_styles[kb_letter],
+                        on_key=on_key,
+                    )
+                    for kb_letter in kb_row
+                ],
             )
             for kb_row in KEYBOARD
         ],
+    )
+
+
+@component
+def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], Control | None] | None = None) -> Text:
+    return Text(
+        content=letter,
+        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
+        on_mouse_up=lambda e: on_key(KeyPressed(key=letter)) if on_key else None,
+        on_hover=border_double,
     )
 
 
