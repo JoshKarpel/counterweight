@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, Coroutine, Generic, TypeVar
 
-from pydantic.generics import GenericModel
+from pydantic import BaseModel
 
 T = TypeVar("T")
 
@@ -12,5 +12,5 @@ Setup = Callable[[], Coroutine[None, None, None]]
 Deps = tuple[object, ...] | None
 
 
-class Ref(GenericModel, Generic[T]):
+class Ref(BaseModel, Generic[T]):
     current: T
