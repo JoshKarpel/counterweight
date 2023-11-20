@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from functools import wraps
 from typing import Callable, Literal, ParamSpec, Union
 
 from pydantic import Field
 
+from reprisal.cell_paint import CellPaint
 from reprisal.control import Control
 from reprisal.events import KeyPressed, MouseDown, MouseUp
 from reprisal.styles import Style
+from reprisal.styles.styles import CellStyle
 from reprisal.types import FrozenForbidExtras
 
 P = ParamSpec("P")
@@ -31,7 +33,7 @@ class Component(FrozenForbidExtras):
     key: Key = None
 
     def with_key(self, key: Key) -> Component:
-        return self.copy(update={"key": key})
+        return self.model_copy(update={"key": key})
 
 
 class Div(FrozenForbidExtras):
@@ -44,9 +46,26 @@ class Div(FrozenForbidExtras):
     on_mouse_up: Callable[[MouseUp], Control | None] | None = None
 
 
+class Chunk(FrozenForbidExtras):
+    content: str
+    style: CellStyle = Field(default_factory=CellStyle)
+
+    @property
+    def cells(self) -> list[CellPaint]:
+        return [CellPaint(char=char, style=self.style) for char in self.content]
+
+    @classmethod
+    def space(cls) -> Chunk:
+        return Chunk(content=" ")
+
+    @classmethod
+    def newline(cls) -> Chunk:
+        return Chunk(content="\n")
+
+
 class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
-    content: str
+    content: str | list[Chunk]
     style: Style = Field(default=Style())
     on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
@@ -57,12 +76,28 @@ class Text(FrozenForbidExtras):
     def children(self) -> Sequence[Component | AnyElement]:
         return ()
 
+    @property
+    def chunks(self) -> Iterator[Chunk]:
+        if isinstance(self.content, str):
+            yield Chunk(content=self.content)
+        else:
+            yield from self.content
+
+    @property
+    def cells(self) -> Iterator[CellPaint]:
+        for chunk in self.chunks:
+            yield from chunk.cells
+
+    @property
+    def unstyled_text(self) -> str:
+        return "".join(chunk.content for chunk in self.chunks)
+
 
 AnyElement = Union[
     Div,
     Text,
 ]
 
-Component.update_forward_refs()
-Div.update_forward_refs()
-Text.update_forward_refs()
+Component.model_rebuild()
+Div.model_rebuild()
+Text.model_rebuild()

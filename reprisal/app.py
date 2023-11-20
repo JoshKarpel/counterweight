@@ -13,6 +13,7 @@ from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue
 from reprisal._utils import drain_queue
+from reprisal.cell_paint import CellPaint
 from reprisal.components import AnyElement, Component, Div, component
 from reprisal.control import Control
 from reprisal.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
@@ -29,7 +30,7 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.paint import CellPaint, Paint, paint_layout
+from reprisal.paint import Paint, paint_layout
 from reprisal.shadow import ShadowNode, update_shadow
 from reprisal.styles import Span, Style
 from reprisal.styles.styles import CellStyle, Color, Flex

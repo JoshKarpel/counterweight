@@ -3,8 +3,7 @@ from __future__ import annotations
 from asyncio import Queue, QueueEmpty
 from functools import lru_cache
 from math import ceil, floor
-from textwrap import TextWrapper
-from typing import List, Literal, TypeVar
+from typing import List, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -78,22 +77,3 @@ def partition_int(total: int, weights: tuple[int]) -> list[int]:
         partition.append(rounded)
 
     return partition
-
-
-def wrap_text(text: str, wrap: Literal["none", "paragraphs"], width: int) -> list[str]:
-    if width <= 0:
-        return []
-
-    if wrap == "none":
-        return text.splitlines()
-
-    wrapper = TextWrapper(width=width)
-
-    paragraphs = text.split("\n\n")  # double newline = paragraph break
-
-    lines = []
-    for paragraph in paragraphs:
-        lines.extend(wrapper.wrap(paragraph))
-        lines.append("")  # empty line between paragraphs
-
-    return lines[:-1]  # remove last empty line
