@@ -1,4 +1,7 @@
 import asyncio
+import random
+from asyncio import sleep
+from itertools import product
 
 from more_itertools import grouper
 from structlog import get_logger
@@ -6,6 +9,8 @@ from structlog import get_logger
 from reprisal.app import app
 from reprisal.cell_paint import CellPaint
 from reprisal.components import Chunk, Div, Text, component
+from reprisal.hooks import use_effect, use_state
+from reprisal.styles.styles import COLORS_BY_NAME
 from reprisal.styles.utilities import *
 
 logger = get_logger()
@@ -20,7 +25,6 @@ def canvas(
     c = []
     for y_top, y_bot in grouper(range(height), 2):
         for x in range(width):
-            logger.debug((y_top, y_bot, x))
             c.append(
                 CellPaint(
                     char="▀",
@@ -34,19 +38,38 @@ def canvas(
     return c[:-1]  # strip off last newline
 
 
+def clamp(min_: int, val: int, max_: int) -> int:
+    return max(min_, min(val, max_))
+
+
+moves = [(x, y) for x, y in product((-1, 0, 1), repeat=2) if (x, y) != (0, 0)]
+
+
 @component
 def root() -> Div:
-    c = canvas(
-        width=10,
-        height=10,
-        cells={
-            (0, 0): text_cyan_700.typography.style.foreground,
-            (5, 5): text_blue_300.typography.style.foreground,
-            (9, 9): text_pink_300.typography.style.foreground,
-            (0, 9): text_amber_600.typography.style.foreground,
-            (9, 0): text_lime_500.typography.style.foreground,
-        },
-    )
+    w, h = 30, 30
+    n = 10
+    colors, set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
+    movers, set_movers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
+
+    def update_movers(m: list[tuple[int, int]]) -> list[tuple[int, int]]:
+        new = []
+        for x, y in m:
+            dx, dy = random.choice(moves)
+            new.append(
+                (
+                    clamp(0, x + dx, w - 1),
+                    clamp(0, y + dy, h - 1),
+                )
+            )
+        return new
+
+    async def tick() -> None:
+        while True:
+            await sleep(0.25)
+            set_movers(update_movers)
+
+    use_effect(tick, deps=())
 
     return Div(
         style=col | align_children_center | justify_children_space_around,
@@ -71,7 +94,13 @@ def root() -> Div:
                 style=border_heavy | border_slate_400 | pad_x_2 | pad_y_1 | text_justify_center,
             ),
             Text(
-                content=c,
+                content=(
+                    canvas(
+                        width=w,
+                        height=h,
+                        cells=dict(zip(movers, colors)),
+                    )
+                ),
                 style=border_heavy | border_slate_400,
             ),
         ],
