@@ -12,6 +12,10 @@ class CellPaint(FrozenForbidExtras):
     char: str = Field(default=..., min_length=1, max_length=1)
     style: CellStyle = Field(default_factory=CellStyle)
 
+    @property
+    def cells(self) -> list[CellPaint]:
+        return [self]
+
 
 def wrap_cells(
     cells: Iterator[CellPaint],

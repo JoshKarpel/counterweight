@@ -69,8 +69,6 @@ def paint_text(text: Text, rect: Rect) -> Paint:
         for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
             paint[Position(x, y)] = CellPaint(char=cell.char, style=style | cell.style)
 
-    logger.debug("paint_text", text=text, rect=rect, paint=paint, lines=lines)
-
     return paint
 
 

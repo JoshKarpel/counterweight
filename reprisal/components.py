@@ -65,7 +65,7 @@ class Chunk(FrozenForbidExtras):
 
 class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
-    content: str | list[Chunk]
+    content: str | Sequence[Chunk | CellPaint]
     style: Style = Field(default=Style())
     on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
@@ -77,20 +77,12 @@ class Text(FrozenForbidExtras):
         return ()
 
     @property
-    def chunks(self) -> Iterator[Chunk]:
-        if isinstance(self.content, str):
-            yield Chunk(content=self.content)
-        else:
-            yield from self.content
-
-    @property
     def cells(self) -> Iterator[CellPaint]:
-        for chunk in self.chunks:
-            yield from chunk.cells
-
-    @property
-    def unstyled_text(self) -> str:
-        return "".join(chunk.content for chunk in self.chunks)
+        if isinstance(self.content, str):
+            yield from (CellPaint(char=char, style=self.style.typography.style) for char in self.content)
+        else:
+            for c in self.content:
+                yield from c.cells
 
 
 AnyElement = Union[
