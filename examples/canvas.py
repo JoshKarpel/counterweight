@@ -15,13 +15,14 @@ from reprisal.styles.utilities import *
 
 logger = get_logger()
 
+black = Color.from_name("black")
+
 
 def canvas(
     width: int,
     height: int,
     cells: dict[tuple[int, int], Color],
 ) -> list[CellPaint]:
-    black = Color.from_name("black")
     c = []
     for y_top, y_bot in grouper(range(height), 2):
         for x in range(width):
@@ -66,7 +67,7 @@ def root() -> Div:
 
     async def tick() -> None:
         while True:
-            await sleep(0.0)
+            await sleep(0.5)
             set_movers(update_movers)
 
     use_effect(tick, deps=())
