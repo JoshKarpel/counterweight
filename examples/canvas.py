@@ -43,15 +43,68 @@ def clamp(min_: int, val: int, max_: int) -> int:
     return max(min_, min(val, max_))
 
 
-moves = [(x, y) for x, y in product((-1, 0, 1), repeat=2) if (x, y) != (0, 0)]
+@component
+def root() -> Div:
+    return Div(
+        style=col | align_children_center | justify_children_space_evenly,
+        children=[
+            header(),
+            Div(
+                style=col | align_children_center | justify_children_center,
+                children=[
+                    Div(
+                        style=row | align_children_center | justify_children_space_evenly,
+                        children=[
+                            random_walkers(),
+                            random_walkers(),
+                        ],
+                    ),
+                    Div(
+                        style=row | align_children_center | justify_children_space_evenly,
+                        children=[
+                            random_walkers(),
+                            random_walkers(),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
 
 
 @component
-def root() -> Div:
-    w, h = 50, 50
-    n = 50
+def header() -> Text:
+    return Text(
+        content=[
+            Chunk(
+                content="Canvas",
+                style=text_amber_600.typography.style,
+            ),
+            Chunk.space(),
+            Chunk(
+                content="Demo",
+                style=text_cyan_600.typography.style,
+            ),
+            Chunk.newline(),
+            Chunk(
+                content="App",
+                style=text_pink_300.typography.style,
+            ),
+        ],
+        style=text_justify_center,
+    )
+
+
+moves = [(x, y) for x, y in product((-1, 0, 1), repeat=2) if (x, y) != (0, 0)]
+
+w, h = 30, 30
+n = 30
+
+
+@component
+def random_walkers() -> Text:
     colors, set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
-    movers, set_movers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
+    walkers, set_walkers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
 
     def update_movers(m: list[tuple[int, int]]) -> list[tuple[int, int]]:
         new = []
@@ -68,43 +121,19 @@ def root() -> Div:
     async def tick() -> None:
         while True:
             await sleep(0.5)
-            set_movers(update_movers)
+            set_walkers(update_movers)
 
     use_effect(tick, deps=())
 
-    return Div(
-        style=col | align_children_center | justify_children_space_around,
-        children=[
-            Text(
-                content=[
-                    Chunk(
-                        content="Canvas",
-                        style=text_amber_600.typography.style,
-                    ),
-                    Chunk.space(),
-                    Chunk(
-                        content="Demo",
-                        style=text_cyan_600.typography.style,
-                    ),
-                    Chunk.newline(),
-                    Chunk(
-                        content="App",
-                        style=text_pink_300.typography.style,
-                    ),
-                ],
-                style=border_heavy | border_slate_400 | pad_x_2 | pad_y_1 | text_justify_center,
-            ),
-            Text(
-                content=(
-                    canvas(
-                        width=w,
-                        height=h,
-                        cells=dict(zip(movers, colors)),
-                    )
-                ),
-                style=border_heavy | border_slate_400,
-            ),
-        ],
+    return Text(
+        content=(
+            canvas(
+                width=w,
+                height=h,
+                cells=dict(zip(walkers, colors)),
+            )
+        ),
+        style=border_heavy | border_slate_400,
     )
 
 
