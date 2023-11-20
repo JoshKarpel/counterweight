@@ -47,8 +47,8 @@ moves = [(x, y) for x, y in product((-1, 0, 1), repeat=2) if (x, y) != (0, 0)]
 
 @component
 def root() -> Div:
-    w, h = 30, 30
-    n = 10
+    w, h = 50, 50
+    n = 50
     colors, set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
     movers, set_movers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
 
@@ -66,7 +66,7 @@ def root() -> Div:
 
     async def tick() -> None:
         while True:
-            await sleep(0.25)
+            await sleep(0.0)
             set_movers(update_movers)
 
     use_effect(tick, deps=())
