@@ -161,10 +161,10 @@ class LayoutBox(ForbidExtras):
         self.dims.margin.left = style.margin.left
         self.dims.margin.right = style.margin.right
 
-        self.dims.border.top = 1 if style.border else 0
-        self.dims.border.bottom = 1 if style.border else 0
-        self.dims.border.left = 1 if style.border else 0
-        self.dims.border.right = 1 if style.border else 0
+        self.dims.border.top = 1 if style.border and "top" in style.border.edges else 0
+        self.dims.border.bottom = 1 if style.border and "bottom" in style.border.edges else 0
+        self.dims.border.left = 1 if style.border and "left" in style.border.edges else 0
+        self.dims.border.right = 1 if style.border and "right" in style.border.edges else 0
 
         self.dims.padding.top = style.padding.top
         self.dims.padding.bottom = style.padding.bottom

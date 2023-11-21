@@ -38,14 +38,21 @@ def root() -> Div:
 
     logger.debug("Rendering", border_kind=border_kind, border_edges=border_edges)
 
-    text = Text(
-        content=f"Border Edge Selection Demo\n{border_kind}\n{border_edges}",
-        style=Style(border=Border(kind=border_kind, edges=border_edges)) | text_justify_center,
-    )
-
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
-        children=[text],
+        children=[
+            Div(
+                style=border_heavy,
+                children=[
+                    Text(
+                        content=f"Border Edge Selection Demo\n{border_kind}\n{border_edges}",
+                        style=Style(border=Border(kind=border_kind, edges=border_edges))
+                        | text_justify_center
+                        | text_bg_amber_800,
+                    )
+                ],
+            )
+        ],
         on_key=on_key,
     )
 
