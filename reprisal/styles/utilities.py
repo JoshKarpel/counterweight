@@ -1,5 +1,5 @@
 from reprisal.styles import Margin, Style
-from reprisal.styles.styles import Border, BorderKind, CellStyle, Color, Flex, Padding, Typography
+from reprisal.styles.styles import Border, BorderEdge, BorderKind, CellStyle, Color, Flex, Padding, Typography
 
 # Start generated
 
@@ -1764,20 +1764,20 @@ border_mediumshade = Style(border=Border(kind=BorderKind.MediumShade))
 border_heavyshade = Style(border=Border(kind=BorderKind.HeavyShade))
 border_star = Style(border=Border(kind=BorderKind.Star))
 
-border_top = Style(border=Border(edges=frozenset(("top",))))
-border_right = Style(border=Border(edges=frozenset(("right",))))
-border_bottom = Style(border=Border(edges=frozenset(("bottom",))))
-border_left = Style(border=Border(edges=frozenset(("left",))))
-border_top_right = Style(border=Border(edges=frozenset(("top", "right"))))
-border_top_bottom = Style(border=Border(edges=frozenset(("top", "bottom"))))
-border_top_left = Style(border=Border(edges=frozenset(("top", "left"))))
-border_right_bottom = Style(border=Border(edges=frozenset(("right", "bottom"))))
-border_right_left = Style(border=Border(edges=frozenset(("right", "left"))))
-border_bottom_left = Style(border=Border(edges=frozenset(("bottom", "left"))))
-border_top_right_bottom = Style(border=Border(edges=frozenset(("top", "right", "bottom"))))
-border_top_right_left = Style(border=Border(edges=frozenset(("top", "right", "left"))))
-border_top_bottom_left = Style(border=Border(edges=frozenset(("top", "bottom", "left"))))
-border_right_bottom_left = Style(border=Border(edges=frozenset(("right", "bottom", "left"))))
+border_top = Style(border=Border(edges=frozenset((BorderEdge.Top,))))
+border_bottom = Style(border=Border(edges=frozenset((BorderEdge.Bottom,))))
+border_left = Style(border=Border(edges=frozenset((BorderEdge.Left,))))
+border_right = Style(border=Border(edges=frozenset((BorderEdge.Right,))))
+border_top_bottom = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom))))
+border_top_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left))))
+border_top_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Right))))
+border_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left))))
+border_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Right))))
+border_left_right = Style(border=Border(edges=frozenset((BorderEdge.Left, BorderEdge.Right))))
+border_top_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left))))
+border_top_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Right))))
+border_top_left_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left, BorderEdge.Right))))
+border_bottom_left_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right))))
 
 pad_top_0 = Style(padding=Padding(top=0))
 pad_top_1 = Style(padding=Padding(top=1))

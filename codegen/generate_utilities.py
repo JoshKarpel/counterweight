@@ -5,7 +5,7 @@ from typing import get_args, get_type_hints
 
 from more_itertools import flatten
 
-from reprisal.styles.styles import BorderKind, Flex, Typography
+from reprisal.styles.styles import BorderEdge, BorderKind, Flex, Typography
 
 
 def literal_vals(obj: object, field: str) -> tuple[str, ...]:
@@ -370,8 +370,13 @@ for b in BorderKind:
 
 generated_lines.append("")
 
-for e in flatten(combinations(("top", "right", "bottom", "left"), r) for r in range(1, 4)):
-    generated_lines.append(f"border_{'_'.join(e)} = Style(border=Border(edges=frozenset({e})))".replace("'", '"'))
+for edges in flatten(combinations(BorderEdge, r) for r in range(1, 4)):
+    z = ", ".join(f"BorderEdge.{e.name}" for e in edges) + ("," if len(edges) == 1 else "")
+    generated_lines.append(
+        f"border_{'_'.join(e.name.lower() for e in edges)} = Style(border=Border(edges=frozenset(({z}))))".replace(
+            "'", '"'
+        )
+    )
 
 generated_lines.append("")
 
