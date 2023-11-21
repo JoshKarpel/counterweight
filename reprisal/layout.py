@@ -6,7 +6,8 @@ from more_itertools import take
 from pydantic import Field, NonNegativeInt
 from structlog import get_logger
 
-from reprisal._utils import halve_integer, partition_int, wrap_text
+from reprisal._utils import halve_integer, partition_int
+from reprisal.cell_paint import wrap_cells
 from reprisal.components import AnyElement, Component
 from reprisal.geometry import Position
 from reprisal.types import ForbidExtras
@@ -177,8 +178,8 @@ class LayoutBox(ForbidExtras):
                 self.dims.content.width = max(
                     (
                         len(line)
-                        for line in wrap_text(
-                            text=self.element.content,
+                        for line in wrap_cells(
+                            cells=self.element.cells,
                             wrap=style.typography.wrap,
                             width=100_000,  # any large number
                         )
@@ -187,8 +188,8 @@ class LayoutBox(ForbidExtras):
                 )
             if style.span.height == "auto":
                 self.dims.content.height = len(
-                    wrap_text(
-                        text=self.element.content,
+                    wrap_cells(
+                        cells=self.element.cells,
                         wrap=style.typography.wrap,
                         width=100_000,  # any large number
                     )
@@ -332,8 +333,8 @@ class LayoutBox(ForbidExtras):
         for child in relative_children:
             if child.element.type == "text" and child.element.style.typography.wrap != "none":
                 h = len(
-                    wrap_text(
-                        text=child.element.content,
+                    wrap_cells(
+                        cells=child.element.cells,
                         wrap=child.element.style.typography.wrap,
                         width=child.dims.content.width,
                     )

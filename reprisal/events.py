@@ -1,31 +1,38 @@
+from time import monotonic_ns
 from typing import Union
+
+from pydantic import Field
 
 from reprisal.geometry import Position
 from reprisal.types import FrozenForbidExtras
 
 
-class TerminalResized(FrozenForbidExtras):
+class Timestamped(FrozenForbidExtras):
+    timestamp_ns: int = Field(default_factory=monotonic_ns)
+
+
+class TerminalResized(Timestamped):
     pass
 
 
-class KeyPressed(FrozenForbidExtras):
+class KeyPressed(Timestamped):
     key: str
 
 
-class MouseMoved(FrozenForbidExtras):
+class MouseMoved(Timestamped):
     position: Position
 
 
-class MouseDown(FrozenForbidExtras):
+class MouseDown(Timestamped):
     position: Position
     button: int
 
 
-class MouseUp(FrozenForbidExtras):
+class MouseUp(Timestamped):
     position: Position
 
 
-class StateSet(FrozenForbidExtras):
+class StateSet(Timestamped):
     pass
 
 

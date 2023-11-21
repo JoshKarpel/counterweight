@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
 from typing import Literal
 
-from pydantic import Field
 from structlog import get_logger
 
-from reprisal._utils import wrap_text
+from reprisal._utils import halve_integer
+from reprisal.cell_paint import CellPaint, wrap_cells
 from reprisal.components import AnyElement, Div, Text
 from reprisal.geometry import Position
 from reprisal.layout import BoxDimensions, Edge, LayoutBox, Rect
 from reprisal.styles import Border
 from reprisal.styles.styles import CellStyle, Margin, Padding
-from reprisal.types import FrozenForbidExtras
 
 logger = get_logger()
-
-
-class CellPaint(FrozenForbidExtras):
-    char: str
-    style: CellStyle = Field(default_factory=CellStyle)
-
 
 Paint = dict[Position, CellPaint]
 
@@ -49,28 +41,33 @@ def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
             raise NotImplementedError(f"Painting {element} is not implemented")
 
 
-STR_JUSTIFIERS: Mapping[Literal["left", "right", "center"], Callable[[str, int], str]] = {
-    "left": str.ljust,
-    "right": str.rjust,
-    "center": str.center,
-}
+def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:
+    space = width - len(line)
+    if space <= 0:
+        return line
+    elif justify == "left":
+        return line + [CellPaint(char=" ")] * space
+    elif justify == "right":
+        return [CellPaint(char=" ")] * space + line
+    elif justify == "center":
+        left, right = halve_integer(space)
+        return [CellPaint(char=" ")] * left + line + [CellPaint(char=" ")] * right
 
 
-def paint_text(paragraph: Text, rect: Rect) -> Paint:
-    style = paragraph.style.typography.style
-    justifier = STR_JUSTIFIERS[paragraph.style.typography.justify]
+def paint_text(text: Text, rect: Rect) -> Paint:
+    style = text.style.typography.style
 
     paint = {}
-    lines = wrap_text(
-        paragraph.content,
-        wrap=paragraph.style.typography.wrap,
+    lines = wrap_cells(
+        cells=text.cells,
+        wrap=text.style.typography.wrap,
         width=rect.width,
     )
 
     for y, line in enumerate(lines[: rect.height], start=rect.y):
-        justified_line = justifier(line, rect.width)
-        for x, char in enumerate(justified_line[: rect.width], start=rect.x):
-            paint[Position(x, y)] = CellPaint(char=char, style=style)
+        justified_line = justify_line(line, rect.width, text.style.typography.justify)
+        for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
+            paint[Position(x, y)] = CellPaint(char=cell.char, style=style | cell.style)
 
     return paint
 
