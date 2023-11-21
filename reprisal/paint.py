@@ -105,30 +105,42 @@ def paint_border(border: Border, rect: Rect) -> Paint:
     left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value  # type: ignore[misc]
     chars = {}
 
-    left_paint = CellPaint(char=left, style=style)
-    for p in rect.left_edge():
-        chars[p] = left_paint
-
-    right_paint = CellPaint(char=right, style=style)
-    for p in rect.right_edge():
-        chars[p] = right_paint
-
-    top_paint = CellPaint(char=top, style=style)
-    for p in rect.top_edge():
-        chars[p] = top_paint
-
-    bottom_paint = CellPaint(char=bottom, style=style)
-    for p in rect.bottom_edge():
-        chars[p] = bottom_paint
-
     rect_left = rect.left
     rect_top = rect.top
     rect_right = rect.right
     rect_bottom = rect.bottom
-    chars[Position(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
-    chars[Position(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
-    chars[Position(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
-    chars[Position(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
+
+    if "left" in border.edges:
+        left_paint = CellPaint(char=left, style=style)
+        for p in rect.left_edge():
+            chars[p] = left_paint
+
+    if "right" in border.edges:
+        right_paint = CellPaint(char=right, style=style)
+        for p in rect.right_edge():
+            chars[p] = right_paint
+
+    if "top" in border.edges:
+        top_paint = CellPaint(char=top, style=style)
+        for p in rect.top_edge():
+            chars[p] = top_paint
+
+    if "bottom" in border.edges:
+        bottom_paint = CellPaint(char=bottom, style=style)
+        for p in rect.bottom_edge():
+            chars[p] = bottom_paint
+
+    if "top" in border.edges:
+        if "left" in border.edges:
+            chars[Position(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
+        if "right" in border.edges:
+            chars[Position(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
+
+    if "bottom" in border.edges:
+        if "left" in border.edges:
+            chars[Position(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
+        if "right" in border.edges:
+            chars[Position(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
 
     return chars
 
