@@ -230,9 +230,17 @@ class BorderKind(Enum):
     Star = "********"
 
 
+class BorderEdge(Enum):
+    Top = "top"
+    Bottom = "bottom"
+    Left = "left"
+    Right = "right"
+
+
 class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
     style: CellStyle = Field(default_factory=CellStyle)
+    edges: frozenset[BorderEdge] = frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})
 
 
 class Margin(StyleFragment):

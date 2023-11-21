@@ -10,6 +10,7 @@ from reprisal._utils import halve_integer, partition_int
 from reprisal.cell_paint import wrap_cells
 from reprisal.components import AnyElement, Component
 from reprisal.geometry import Position
+from reprisal.styles.styles import BorderEdge
 from reprisal.types import ForbidExtras
 
 logger = get_logger()
@@ -161,10 +162,10 @@ class LayoutBox(ForbidExtras):
         self.dims.margin.left = style.margin.left
         self.dims.margin.right = style.margin.right
 
-        self.dims.border.top = 1 if style.border else 0
-        self.dims.border.bottom = 1 if style.border else 0
-        self.dims.border.left = 1 if style.border else 0
-        self.dims.border.right = 1 if style.border else 0
+        self.dims.border.top = 1 if style.border and BorderEdge.Top in style.border.edges else 0
+        self.dims.border.bottom = 1 if style.border and BorderEdge.Bottom in style.border.edges else 0
+        self.dims.border.left = 1 if style.border and BorderEdge.Left in style.border.edges else 0
+        self.dims.border.right = 1 if style.border and BorderEdge.Right in style.border.edges else 0
 
         self.dims.padding.top = style.padding.top
         self.dims.padding.bottom = style.padding.bottom

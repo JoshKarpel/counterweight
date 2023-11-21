@@ -69,7 +69,7 @@ class Hooks(ForbidExtras):
                     f"Expected a {UseRef.__name__} hook, but got a {type(hook).__name__} hook instead."
                 )
         except IndexError:
-            hook = UseRef(ref=Ref(current=initial_value))
+            hook = UseRef(ref=Ref[object](current=initial_value))
             self.data.append(hook)
 
         current_hook_idx.set(current_hook_idx.get() + 1)
