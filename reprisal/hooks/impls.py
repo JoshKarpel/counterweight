@@ -5,15 +5,12 @@ from collections.abc import Callable
 from typing import Literal, TypeVar
 
 from pydantic import Field
-from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue, current_hook_idx
 from reprisal.errors import InconsistentHookExecution
 from reprisal.events import StateSet
 from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
 from reprisal.types import ForbidExtras
-
-logger = get_logger()
 
 
 class UseState(ForbidExtras):
@@ -23,7 +20,7 @@ class UseState(ForbidExtras):
 
 class UseRef(ForbidExtras):
     type: Literal["ref"] = "ref"
-    ref: Ref
+    ref: Ref[object]
 
 
 class UseEffect(ForbidExtras):
@@ -72,7 +69,7 @@ class Hooks(ForbidExtras):
                     f"Expected a {UseRef.__name__} hook, but got a {type(hook).__name__} hook instead."
                 )
         except IndexError:
-            hook = UseRef(ref=Ref(current=initial_value))
+            hook = UseRef(ref=Ref[object](current=initial_value))
             self.data.append(hook)
 
         current_hook_idx.set(current_hook_idx.get() + 1)

@@ -16,14 +16,12 @@ logger = get_logger()
 @component
 def root() -> Div:
     border_kind_cycle_ref = use_ref(cycle(BorderKind))
-    border_edge_cycle_ref = use_ref(
-        cycle(flatten(combinations(("top", "right", "bottom", "left"), r) for r in range(1, 5)))
-    )
+    border_edge_cycle_ref = use_ref(cycle(flatten(combinations(BorderEdge, r) for r in range(1, 5))))
 
     def advance_border() -> BorderKind:
         return next(border_kind_cycle_ref.current)
 
-    def advance_edges() -> set[str]:
+    def advance_edges() -> frozenset[BorderEdge]:
         return frozenset(next(border_edge_cycle_ref.current))
 
     border_kind, set_border_kind = use_state(advance_border)
@@ -45,7 +43,7 @@ def root() -> Div:
                 style=border_heavy,
                 children=[
                     Text(
-                        content=f"Border Edge Selection Demo\n{border_kind}\n{border_edges}",
+                        content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(be.name for be in border_edges)}",
                         style=Style(border=Border(kind=border_kind, edges=border_edges))
                         | text_justify_center
                         | text_bg_amber_800,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Coroutine, TypeVar
+from typing import Callable, Coroutine, Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -12,5 +12,5 @@ Setup = Callable[[], Coroutine[None, None, None]]
 Deps = tuple[object, ...] | None
 
 
-class Ref(BaseModel):
-    current: object
+class Ref(BaseModel, Generic[T]):
+    current: T
