@@ -233,6 +233,7 @@ class BorderKind(Enum):
 class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
     style: CellStyle = Field(default_factory=CellStyle)
+    edges: frozenset[Literal["top", "bottom", "left", "right"]] = frozenset({"top", "bottom", "left", "right"})
 
 
 class Margin(StyleFragment):

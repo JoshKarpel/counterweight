@@ -5,12 +5,15 @@ from collections.abc import Callable
 from typing import Literal, TypeVar
 
 from pydantic import Field
+from structlog import get_logger
 
 from reprisal._context_vars import current_event_queue, current_hook_idx
 from reprisal.errors import InconsistentHookExecution
 from reprisal.events import StateSet
 from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
 from reprisal.types import ForbidExtras
+
+logger = get_logger()
 
 
 class UseState(ForbidExtras):
@@ -20,7 +23,7 @@ class UseState(ForbidExtras):
 
 class UseRef(ForbidExtras):
     type: Literal["ref"] = "ref"
-    ref: Ref[object]
+    ref: Ref
 
 
 class UseEffect(ForbidExtras):
