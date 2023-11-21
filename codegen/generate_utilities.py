@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-
+from itertools import combinations
 from pathlib import Path
 from typing import get_args, get_type_hints
+
+from more_itertools import flatten
 
 from reprisal.styles.styles import BorderKind, Flex, Typography
 
@@ -368,6 +370,10 @@ for b in BorderKind:
 
 generated_lines.append("")
 
+for e in flatten(combinations(("top", "right", "bottom", "left"), r) for r in range(1, 4)):
+    generated_lines.append(f"border_{'_'.join(e)} = Style(border=Border(edges=frozenset({e})))".replace("'", '"'))
+
+generated_lines.append("")
 
 for side in SIDES:
     for n in N:
