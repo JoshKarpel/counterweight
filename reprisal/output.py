@@ -69,6 +69,12 @@ def sgr_from_cell_style(style: CellStyle) -> str:
     if style.italic:
         sgr += "\x1b[3m"
 
+    if style.underline:
+        sgr += "\x1b[4m"
+
+    if style.strikethrough:
+        sgr += "\x1b[9m"
+
     return sgr
 
 
