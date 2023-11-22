@@ -214,6 +214,8 @@ class CellStyle(StyleFragment):
     bold: bool = False
     dim: bool = False
     italic: bool = False
+    underline: bool = False
+    strikethrough: bool = False
 
 
 # https://www.compart.com/en/unicode/block/U+2500
