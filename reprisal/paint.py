@@ -103,6 +103,7 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
 def paint_border(border: Border, rect: Rect) -> Paint:
     style = border.style
     left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value  # type: ignore[misc]
+    contract = border.contract
     chars = {}
 
     rect_left = rect.left
@@ -117,22 +118,22 @@ def paint_border(border: Border, rect: Rect) -> Paint:
 
     if draw_left:
         left_paint = CellPaint(char=left, style=style)
-        for p in rect.left_edge():
+        for p in rect.left_edge()[slice(0 if draw_top else contract, None if draw_bottom else -contract)]:
             chars[p] = left_paint
 
     if draw_right:
         right_paint = CellPaint(char=right, style=style)
-        for p in rect.right_edge():
+        for p in rect.right_edge()[slice(0 if draw_top else contract, None if draw_bottom else -contract)]:
             chars[p] = right_paint
 
     if draw_top:
         top_paint = CellPaint(char=top, style=style)
-        for p in rect.top_edge():
+        for p in rect.top_edge()[slice(0 if draw_left else contract, None if draw_right else -contract)]:
             chars[p] = top_paint
 
     if draw_bottom:
         bottom_paint = CellPaint(char=bottom, style=style)
-        for p in rect.bottom_edge():
+        for p in rect.bottom_edge()[slice(0 if draw_left else contract, None if draw_right else -contract)]:
             chars[p] = bottom_paint
 
     if draw_top:

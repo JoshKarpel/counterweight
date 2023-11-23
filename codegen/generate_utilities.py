@@ -380,6 +380,11 @@ for edges in flatten(combinations(BorderEdge, r) for r in range(1, 4)):
 
 generated_lines.append("")
 
+for n in N:
+    generated_lines.append(f"border_contract_{n} = Style(border=Border(contract={n}))")
+
+generated_lines.append("")
+
 for side in SIDES:
     for n in N:
         generated_lines.append(f"pad_{side}_{n} = Style(padding=Padding({side}={n}))")

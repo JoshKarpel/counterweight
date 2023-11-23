@@ -222,6 +222,7 @@ class CellStyle(StyleFragment):
 class BorderKind(Enum):
     Light = "││──┌┐└┘"
     LightRounded = "││──╭╮╰╯"
+    LightAngled = "▏▕▔▁/╲╲/"
     Heavy = "┃┃━━┏┓┗┛"
     Double = "║║══╔╗╚╝"
     Thick = "▌▐▀▄▛▜▙▟"
