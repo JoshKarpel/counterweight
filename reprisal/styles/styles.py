@@ -243,6 +243,7 @@ class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
     style: CellStyle = Field(default_factory=CellStyle)
     edges: frozenset[BorderEdge] = frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})
+    contract: int = Field(default=0)
 
 
 class Margin(StyleFragment):
