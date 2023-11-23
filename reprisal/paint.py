@@ -117,9 +117,9 @@ def paint_border(border: Border, rect: Rect) -> Paint:
     draw_bottom = BorderEdge.Bottom in border.edges
 
     if contract:
-        contract_top = contract if not draw_top else 0
+        contract_top = contract if not draw_top else None
         contract_bottom = -contract if not draw_bottom else None
-        contract_left = contract if not draw_left else 0
+        contract_left = contract if not draw_left else None
         contract_right = -contract if not draw_right else None
     else:
         contract_top = contract_bottom = contract_left = contract_right = None
