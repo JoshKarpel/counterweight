@@ -227,7 +227,7 @@ class LayoutBox(ForbidExtras):
 
         if style.span.height == "auto":
             if layout.direction == "column":
-                self.dims.content.width += num_gaps * layout.gap_children
+                self.dims.content.height += num_gaps * layout.gap_children
 
             for child_box in self.children:
                 child_element = child_box.element

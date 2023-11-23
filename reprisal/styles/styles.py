@@ -27,8 +27,8 @@ def merge_style_fragments(left: S, right: S) -> S:
 
 
 class StyleFragment(FrozenForbidExtras):
-    def __or__(self: S, other: S) -> S:
-        return merge_style_fragments(self, other)
+    def __or__(self: S, other: S | None) -> S:
+        return merge_style_fragments(self, other) if other is not None else self
 
     def mergeable_dump(self) -> dict[str, object]:
         d = super().model_dump(exclude_unset=True)

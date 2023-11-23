@@ -1934,3 +1934,7 @@ text_justify_center = Style(typography=Typography(justify="center"))
 text_justify_right = Style(typography=Typography(justify="right"))
 
 # Stop generated
+
+
+def toggle(b: bool) -> bool:
+    return not b
