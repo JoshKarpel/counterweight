@@ -116,24 +116,35 @@ def paint_border(border: Border, rect: Rect) -> Paint:
     draw_top = BorderEdge.Top in border.edges
     draw_bottom = BorderEdge.Bottom in border.edges
 
+    if contract:
+        contract_top = contract if not draw_top else 0
+        contract_bottom = -contract if not draw_bottom else None
+        contract_left = contract if not draw_left else 0
+        contract_right = -contract if not draw_right else None
+    else:
+        contract_top = contract_bottom = contract_left = contract_right = None
+
+    v_slice = slice(contract_top, contract_bottom)
+    h_slice = slice(contract_left, contract_right)
+
     if draw_left:
         left_paint = CellPaint(char=left, style=style)
-        for p in rect.left_edge()[slice(0 if draw_top else contract, None if draw_bottom else -contract)]:
+        for p in rect.left_edge()[v_slice]:
             chars[p] = left_paint
 
     if draw_right:
         right_paint = CellPaint(char=right, style=style)
-        for p in rect.right_edge()[slice(0 if draw_top else contract, None if draw_bottom else -contract)]:
+        for p in rect.right_edge()[v_slice]:
             chars[p] = right_paint
 
     if draw_top:
         top_paint = CellPaint(char=top, style=style)
-        for p in rect.top_edge()[slice(0 if draw_left else contract, None if draw_right else -contract)]:
+        for p in rect.top_edge()[h_slice]:
             chars[p] = top_paint
 
     if draw_bottom:
         bottom_paint = CellPaint(char=bottom, style=style)
-        for p in rect.bottom_edge()[slice(0 if draw_left else contract, None if draw_right else -contract)]:
+        for p in rect.bottom_edge()[h_slice]:
             chars[p] = bottom_paint
 
     if draw_top:
