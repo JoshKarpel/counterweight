@@ -202,7 +202,6 @@ class LayoutBox(ForbidExtras):
             self.dims.content.height = style.span.height
 
         num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
-        logger.debug("gaps", num_gaps=num_gaps)
 
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
