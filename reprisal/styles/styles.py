@@ -60,6 +60,13 @@ class Color(NamedTuple):
             int(hex[4:6], 16),
         )
 
+    def blend(self, other: Color, alpha: float) -> Color:
+        return Color(
+            red=int(self.red * (1 - alpha) + other.red * alpha),
+            green=int(self.green * (1 - alpha) + other.green * alpha),
+            blue=int(self.blue * (1 - alpha) + other.blue * alpha),
+        )
+
 
 COLORS_BY_NAME = {
     name: Color.from_hex(hex)
