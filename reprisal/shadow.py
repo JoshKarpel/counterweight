@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from itertools import zip_longest
+from itertools import count, zip_longest
 
 from pydantic import Field
 from structlog import get_logger
@@ -13,8 +13,12 @@ from reprisal.types import FrozenForbidExtras
 
 logger = get_logger()
 
+next_id = count(0)
+
 
 class ShadowNode(FrozenForbidExtras):
+    id: int = Field(default_factory=lambda: next(next_id))
+    generation: int = 0
     component: Component | None
     element: AnyElement
     children: list[ShadowNode] = Field(default_factory=list)
@@ -29,8 +33,17 @@ class ShadowNode(FrozenForbidExtras):
 
 def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
     match next, previous:
-        case Component(func=next_func, args=next_args, kwargs=next_kwargs, key=next_key) as next_component, ShadowNode(
-            component=previous_component, children=previous_children, hooks=previous_hooks
+        case Component(
+            func=next_func,
+            args=next_args,
+            kwargs=next_kwargs,
+            key=next_key,
+        ) as next_component, ShadowNode(
+            id=id,
+            generation=generation,
+            component=previous_component,
+            children=previous_children,
+            hooks=previous_hooks,
         ) if (
             previous_component is not None
             and next_func == previous_component.func
@@ -48,14 +61,23 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children.append(update_shadow(new_child, previous_child))
 
             new = ShadowNode(
+                id=id,
                 component=next_component,
                 element=element,
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                generation=generation + 1,
             )
 
             current_hook_idx.reset(reset_current_hook_idx)
             current_hook_state.reset(reset_current_hook_state)
+
+            logger.debug(
+                "Updated shadow node",
+                type="component",
+                id=id,
+                generation=new.generation,
+            )
         case Component(func=next_func, args=next_args, kwargs=next_kwargs) as next_component, _:
             reset_current_hook_idx = current_hook_idx.set(0)
 
@@ -75,7 +97,10 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
 
             current_hook_idx.reset(reset_current_hook_idx)
             current_hook_state.reset(reset_current_hook_state)
-        case element, ShadowNode(children=previous_children, hooks=previous_hooks):
+        case element, ShadowNode(
+            children=previous_children,
+            hooks=previous_hooks,
+        ):
             children = []
             for new_child, previous_child in zip_longest(element.children, previous_children):
                 if new_child is None:
@@ -95,5 +120,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children=[update_shadow(child, None) for child in element.children],
                 hooks=Hooks(),
             )
+        case _:
+            raise Exception("Unreachable!")
 
     return new
