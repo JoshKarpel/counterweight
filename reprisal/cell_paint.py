@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Iterator, Literal
 
 from pydantic import Field
@@ -13,12 +14,12 @@ class CellPaint(FrozenForbidExtras):
     style: CellStyle = Field(default_factory=CellStyle)
 
     @property
-    def cells(self) -> list[CellPaint]:
-        return [self]
+    def cells(self) -> Iterator[CellPaint]:
+        yield self
 
 
 def wrap_cells(
-    cells: Iterator[CellPaint],
+    cells: Iterable[CellPaint],
     wrap: Literal["none", "paragraphs"],
     width: int,
 ) -> list[list[CellPaint]]:

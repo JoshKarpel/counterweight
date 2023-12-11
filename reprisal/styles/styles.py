@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from enum import Enum
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
 
+from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 
 from reprisal._utils import merge
@@ -15,8 +16,9 @@ if TYPE_CHECKING:
 S = TypeVar("S", bound="StyleFragment")
 
 
-# TODO can probably be more efficient using id as the key, just can't use lru_cache
-@lru_cache(maxsize=2**16)
+MERGE_CACHE = LRUCache(maxsize=2**16)
+
+
 def merge_style_fragments(left: S, right: S) -> S:
     return type(left).parse_obj(
         merge(
@@ -28,7 +30,19 @@ def merge_style_fragments(left: S, right: S) -> S:
 
 class StyleFragment(FrozenForbidExtras):
     def __or__(self: S, other: S | None) -> S:
-        return merge_style_fragments(self, other) if other is not None else self
+        if other is None:
+            return self
+
+        key = (
+            self._cached_hash,
+            other._cached_hash,
+        )
+        try:
+            return MERGE_CACHE[key]
+        except KeyError:
+            merged = merge_style_fragments(self, other)
+            MERGE_CACHE[key] = merged
+            return merged
 
     def mergeable_dump(self) -> dict[str, object]:
         d = super().model_dump(exclude_unset=True)
@@ -39,6 +53,11 @@ class StyleFragment(FrozenForbidExtras):
             d["type"] = self.__dict__["type"]
 
         return d
+
+    @cached_property
+    def _cached_hash(self) -> int:
+        """This is safe because all style fragments are immutable."""
+        return hash(self)
 
 
 class Color(NamedTuple):

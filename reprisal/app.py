@@ -149,7 +149,7 @@ async def app(
                         _, border_rect, _ = b.dims.padding_border_margin_rects()
                         if mouse_position in border_rect:
                             # TODO: hover changing layout doesn't really make sense here...
-                            b.element = b.element.copy(update={"style": b.element.style | b.element.on_hover})
+                            b.element = b.element.model_copy(update={"style": b.element.style | b.element.on_hover})
                     logger.debug(
                         "Applied hover styles",
                         elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
@@ -168,7 +168,7 @@ async def app(
                     logger.debug(
                         "Diffed new paint from current paint",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
-                        cells=len(diff),
+                        diff_cells=len(diff),
                     )
 
                     start_instructions = perf_counter_ns()
@@ -196,6 +196,8 @@ async def app(
                     )
 
                     needs_render = False
+
+                    logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
 
                 events = await drain_queue(event_queue)
 

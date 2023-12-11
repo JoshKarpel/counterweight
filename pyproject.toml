@@ -40,6 +40,7 @@ pydantic = ">=2"
 structlog = ">=23.1"
 parsy = ">=2.1"
 more-itertools = "^9.1.0"
+cachetools = "^5.3.2"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"

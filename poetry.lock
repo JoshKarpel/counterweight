@@ -67,6 +67,17 @@ setuptools = {version = "*", markers = "python_version >= \"3.12\""}
 dev = ["freezegun (>=1.0,<2.0)", "pytest (>=6.0)", "pytest-cov"]
 
 [[package]]
+name = "cachetools"
+version = "5.3.2"
+description = "Extensible memoizing collections and decorators"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "cachetools-5.3.2-py3-none-any.whl", hash = "sha256:861f35a13a451f94e301ce2bec7cac63e881232ccce7ed67fab9b5df4d3beaa1"},
+    {file = "cachetools-5.3.2.tar.gz", hash = "sha256:086ee420196f7b2ab9ca2db2520aca326318b68fe5ba8bc4d49cca91add450f2"},
+]
+
+[[package]]
 name = "certifi"
 version = "2023.11.17"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -1609,4 +1620,4 @@ anyio = ">=3.0.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4"
-content-hash = "57079887fb9b61af5f46a75b4592b292923d4a1526f25083de806ff7f5275869"
+content-hash = "e74902b4b975af18dfc1f99cebde0788870e3c8ad7f8672379aee42bee19db48"
