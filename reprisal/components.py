@@ -51,8 +51,8 @@ class Chunk(FrozenForbidExtras):
     style: CellStyle = Field(default_factory=CellStyle)
 
     @property
-    def cells(self) -> list[CellPaint]:
-        return [CellPaint(char=char, style=self.style) for char in self.content]
+    def cells(self) -> Iterator[CellPaint]:
+        yield from (CellPaint(char=char, style=self.style) for char in self.content)
 
     @classmethod
     def space(cls) -> Chunk:
@@ -67,7 +67,7 @@ class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
     content: str | Sequence[Chunk | CellPaint]
     style: Style = Field(default=Style())
-    on_hover: Style = Field(default=Style())
+    on_hover: Style | None = Field(default=None)
     on_key: Callable[[KeyPressed], Control | None] | None = None
     on_mouse_down: Callable[[MouseDown], Control | None] | None = None
     on_mouse_up: Callable[[MouseUp], Control | None] | None = None

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, assert_never
 
 from structlog import get_logger
 
@@ -52,6 +52,8 @@ def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "ri
     elif justify == "center":
         left, right = halve_integer(space)
         return [CellPaint(char=" ")] * left + line + [CellPaint(char=" ")] * right
+    else:
+        assert_never(justify)
 
 
 def paint_text(text: Text, rect: Rect) -> Paint:
@@ -67,7 +69,9 @@ def paint_text(text: Text, rect: Rect) -> Paint:
     for y, line in enumerate(lines[: rect.height], start=rect.y):
         justified_line = justify_line(line, rect.width, text.style.typography.justify)
         for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
-            paint[Position(x, y)] = CellPaint(char=cell.char, style=style | cell.style)
+            pos = Position(x, y)
+            s = style | cell.style
+            paint[pos] = CellPaint(char=cell.char, style=s)
 
     return paint
 
