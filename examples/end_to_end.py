@@ -4,14 +4,14 @@ from itertools import cycle
 
 from structlog import get_logger
 
-from reprisal.app import app
-from reprisal.components import Div, Text, component
-from reprisal.events import KeyPressed
-from reprisal.hooks import Setter, use_effect, use_ref, use_state
-from reprisal.keys import Key
-from reprisal.styles import Border, BorderKind, Style
-from reprisal.styles.styles import Flex, Padding
-from reprisal.styles.utilities import (
+from counterweight.app import app
+from counterweight.components import Div, Text, component
+from counterweight.events import KeyPressed
+from counterweight.hooks import Setter, use_effect, use_ref, use_state
+from counterweight.keys import Key
+from counterweight.styles import Border, BorderKind, Style
+from counterweight.styles.styles import Flex, Padding
+from counterweight.styles.utilities import (
     border_amber_700,
     border_lime_700,
     border_rose_500,

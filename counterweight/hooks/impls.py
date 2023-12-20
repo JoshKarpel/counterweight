@@ -6,11 +6,11 @@ from typing import Literal, TypeVar
 
 from pydantic import Field
 
-from reprisal._context_vars import current_event_queue, current_hook_idx
-from reprisal.errors import InconsistentHookExecution
-from reprisal.events import StateSet
-from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
-from reprisal.types import ForbidExtras
+from counterweight._context_vars import current_event_queue, current_hook_idx
+from counterweight.errors import InconsistentHookExecution
+from counterweight.events import StateSet
+from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.types import ForbidExtras
 
 
 class UseState(ForbidExtras):

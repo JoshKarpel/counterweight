@@ -9,13 +9,13 @@ from typing import Literal
 from more_itertools import padded
 from structlog import get_logger
 
-from reprisal.app import app
-from reprisal.components import Div, Text, component
-from reprisal.control import Control
-from reprisal.events import KeyPressed
-from reprisal.hooks import Setter, use_state
-from reprisal.keys import Key
-from reprisal.styles.utilities import *
+from counterweight.app import app
+from counterweight.components import Div, Text, component
+from counterweight.control import Control
+from counterweight.events import KeyPressed
+from counterweight.hooks import Setter, use_state
+from counterweight.keys import Key
+from counterweight.styles.utilities import *
 
 logger = get_logger()
 

@@ -6,12 +6,12 @@ from itertools import product
 from more_itertools import grouper
 from structlog import get_logger
 
-from reprisal.app import app
-from reprisal.cell_paint import CellPaint
-from reprisal.components import Chunk, Div, Text, component
-from reprisal.hooks import use_effect, use_state
-from reprisal.styles.styles import COLORS_BY_NAME
-from reprisal.styles.utilities import *
+from counterweight.app import app
+from counterweight.cell_paint import CellPaint
+from counterweight.components import Chunk, Div, Text, component
+from counterweight.hooks import use_effect, use_state
+from counterweight.styles.styles import COLORS_BY_NAME
+from counterweight.styles.utilities import *
 
 logger = get_logger()
 

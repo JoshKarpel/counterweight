@@ -4,11 +4,11 @@ from itertools import combinations, cycle
 from more_itertools import flatten
 from structlog import get_logger
 
-from reprisal.app import app
-from reprisal.components import Div, Text, component
-from reprisal.events import KeyPressed
-from reprisal.hooks import use_ref, use_state
-from reprisal.styles.utilities import *
+from counterweight.app import app
+from counterweight.components import Div, Text, component
+from counterweight.events import KeyPressed
+from counterweight.hooks import use_ref, use_state
+from counterweight.styles.utilities import *
 
 logger = get_logger()
 

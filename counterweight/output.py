@@ -2,9 +2,9 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal.geometry import Position
-from reprisal.paint import Paint
-from reprisal.styles.styles import CellStyle
+from counterweight.geometry import Position
+from counterweight.paint import Paint
+from counterweight.styles.styles import CellStyle
 
 CURSOR_ON = "\x1b[?25h"
 CURSOR_OFF = "\x1b[?25l"

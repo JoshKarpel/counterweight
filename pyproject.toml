@@ -3,12 +3,12 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "reprisal"
+name = "counterweight"
 version = "0.0.1"
 description = ""
 readme="README.md"
-homepage="https://github.com/JoshKarpel/reprisal"
-repository="https://github.com/JoshKarpel/reprisal"
+homepage="https://github.com/JoshKarpel/counterweight"
+repository="https://github.com/JoshKarpel/counterweight"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -59,7 +59,7 @@ line-profiler = ">=4.1"
 types-cachetools = ">=5.3"
 
 [tool.poetry.scripts]
-reprisal = 'reprisal.cli:cli'
+counterweight = 'counterweight.cli:cli'
 
 [tool.black]
 line-length = 120
@@ -67,7 +67,7 @@ include = "\\.pyi?$"
 
 [tool.pytest.ini_options]
 addopts = ["--strict-markers"]
-testpaths = ["tests", "reprisal", "docs"]
+testpaths = ["tests", "counterweight", "docs"]
 
 markers = ["slow"]
 

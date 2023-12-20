@@ -6,10 +6,10 @@ from itertools import count, zip_longest
 from pydantic import Field
 from structlog import get_logger
 
-from reprisal._context_vars import current_hook_idx, current_hook_state
-from reprisal.components import AnyElement, Component
-from reprisal.hooks.impls import Hooks
-from reprisal.types import FrozenForbidExtras
+from counterweight._context_vars import current_hook_idx, current_hook_state
+from counterweight.components import AnyElement, Component
+from counterweight.hooks.impls import Hooks
+from counterweight.types import FrozenForbidExtras
 
 logger = get_logger()
 

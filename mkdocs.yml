@@ -1,13 +1,13 @@
-site_name: Reprisal
+site_name: Counterweight
 
-repo_url: https://github.com/JoshKarpel/reprisal
+repo_url: https://github.com/JoshKarpel/counterweight
 edit_uri: edit/main/docs/
 
 extra_css:
   - assets/style.css
 
 watch:
-  - reprisal/
+  - counterweight/
 
 theme:
   name: material
@@ -78,8 +78,8 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/JoshKarpel/reprisal
-      name: Reprisal on GitHub
+      link: https://github.com/JoshKarpel/counterweight
+      name: Counterweight on GitHub
 
 nav:
   - Introduction: index.md
