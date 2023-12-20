@@ -3,11 +3,11 @@ from textwrap import dedent
 
 from structlog import get_logger
 
-from reprisal.components import Div, Text
-from reprisal.layout import build_layout_tree
-from reprisal.paint import debug_paint, paint_layout
-from reprisal.styles import Border, BorderKind, Span, Style
-from reprisal.styles.styles import Flex
+from counterweight.components import Div, Text
+from counterweight.layout import build_layout_tree
+from counterweight.paint import debug_paint, paint_layout
+from counterweight.styles import Border, BorderKind, Span, Style
+from counterweight.styles.styles import Flex
 
 logger = get_logger()
 

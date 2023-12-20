@@ -11,18 +11,18 @@ from typing import TextIO
 
 from structlog import get_logger
 
-from reprisal._context_vars import current_event_queue
-from reprisal._utils import drain_queue
-from reprisal.cell_paint import CellPaint
-from reprisal.components import AnyElement, Component, Div, component
-from reprisal.control import Control
-from reprisal.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
-from reprisal.geometry import Position
-from reprisal.hooks.impls import UseEffect
-from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.layout import build_layout_tree
-from reprisal.logging import configure_logging
-from reprisal.output import (
+from counterweight._context_vars import current_event_queue
+from counterweight._utils import drain_queue
+from counterweight.cell_paint import CellPaint
+from counterweight.components import AnyElement, Component, Div, component
+from counterweight.control import Control
+from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
+from counterweight.geometry import Position
+from counterweight.hooks.impls import UseEffect
+from counterweight.input import read_keys, start_input_control, stop_input_control
+from counterweight.layout import build_layout_tree
+from counterweight.logging import configure_logging
+from counterweight.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
     start_mouse_reporting,
@@ -30,10 +30,10 @@ from reprisal.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from reprisal.paint import Paint, paint_layout
-from reprisal.shadow import ShadowNode, update_shadow
-from reprisal.styles import Span, Style
-from reprisal.styles.styles import CellStyle, Color, Flex
+from counterweight.paint import Paint, paint_layout
+from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.styles import Span, Style
+from counterweight.styles.styles import CellStyle, Color, Flex
 
 BLANK = CellPaint(
     char=" ",

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TypeVar, overload
 
-from reprisal._context_vars import current_hook_state
-from reprisal.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight._context_vars import current_hook_state
+from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 T = TypeVar("T")
 

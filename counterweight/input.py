@@ -12,8 +12,8 @@ from typing import TextIO
 from parsy import ParseError
 from structlog import get_logger
 
-from reprisal.events import AnyEvent
-from reprisal.keys import vt_inputs
+from counterweight.events import AnyEvent
+from counterweight.keys import vt_inputs
 
 logger = get_logger()
 

@@ -1,5 +1,5 @@
-from reprisal.styles import Margin, Style
-from reprisal.styles.styles import Border, BorderEdge, BorderKind, CellStyle, Color, Flex, Padding, Typography
+from counterweight.styles import Margin, Style
+from counterweight.styles.styles import Border, BorderEdge, BorderKind, CellStyle, Color, Flex, Padding, Typography
 
 # Start generated
 

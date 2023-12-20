@@ -3,8 +3,8 @@ import sys
 
 from typer.testing import CliRunner
 
-from reprisal.cli import cli
-from reprisal.constants import PACKAGE_NAME
+from counterweight.cli import cli
+from counterweight.constants import PACKAGE_NAME
 
 
 def test_help(runner: CliRunner) -> None:

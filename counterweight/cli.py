@@ -8,12 +8,12 @@ from threading import Thread
 from click import echo
 from typer import Option, Typer
 
-from reprisal._context_vars import current_event_queue
-from reprisal.constants import PACKAGE_NAME, __version__
-from reprisal.events import AnyEvent
-from reprisal.input import read_keys, start_input_control, stop_input_control
-from reprisal.logging import tail_devlog
-from reprisal.output import start_mouse_reporting, stop_mouse_reporting
+from counterweight._context_vars import current_event_queue
+from counterweight.constants import PACKAGE_NAME, __version__
+from counterweight.events import AnyEvent
+from counterweight.input import read_keys, start_input_control, stop_input_control
+from counterweight.logging import tail_devlog
+from counterweight.output import start_mouse_reporting, stop_mouse_reporting
 
 cli = Typer(
     name=PACKAGE_NAME,

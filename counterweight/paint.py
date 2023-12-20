@@ -4,13 +4,13 @@ from typing import Literal, assert_never
 
 from structlog import get_logger
 
-from reprisal._utils import halve_integer
-from reprisal.cell_paint import CellPaint, wrap_cells
-from reprisal.components import AnyElement, Div, Text
-from reprisal.geometry import Position
-from reprisal.layout import BoxDimensions, Edge, LayoutBox, Rect
-from reprisal.styles import Border
-from reprisal.styles.styles import BorderEdge, CellStyle, Margin, Padding
+from counterweight._utils import halve_integer
+from counterweight.cell_paint import CellPaint, wrap_cells
+from counterweight.components import AnyElement, Div, Text
+from counterweight.geometry import Position
+from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
+from counterweight.styles import Border
+from counterweight.styles.styles import BorderEdge, CellStyle, Margin, Padding
 
 logger = get_logger()
 

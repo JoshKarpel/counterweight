@@ -3,8 +3,8 @@ from typing import Union
 
 from pydantic import Field
 
-from reprisal.geometry import Position
-from reprisal.types import FrozenForbidExtras
+from counterweight.geometry import Position
+from counterweight.types import FrozenForbidExtras
 
 
 class Timestamped(FrozenForbidExtras):

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 
-from reprisal._utils import merge
-from reprisal.types import FrozenForbidExtras
+from counterweight._utils import merge
+from counterweight.types import FrozenForbidExtras
 
 if TYPE_CHECKING:
     pass

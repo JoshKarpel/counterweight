@@ -5,7 +5,7 @@ from typing import get_args, get_type_hints
 
 from more_itertools import flatten
 
-from reprisal.styles.styles import BorderEdge, BorderKind, Flex, Typography
+from counterweight.styles.styles import BorderEdge, BorderKind, Flex, Typography
 
 
 def literal_vals(obj: object, field: str) -> tuple[str, ...]:
@@ -305,7 +305,7 @@ COLORS = {
     },
 }
 
-utils_path = Path(__file__).resolve().parent.parent / "reprisal" / "styles" / "utilities.py"
+utils_path = Path(__file__).resolve().parent.parent / "counterweight" / "styles" / "utilities.py"
 
 utils_text = utils_path.read_text().splitlines(keepends=False)
 

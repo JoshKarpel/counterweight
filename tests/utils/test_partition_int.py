@@ -2,7 +2,7 @@ import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import integers, lists
 
-from reprisal._utils import partition_int
+from counterweight._utils import partition_int
 
 
 @pytest.mark.parametrize(

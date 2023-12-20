@@ -3,7 +3,7 @@
 branch = True
 
 source =
-    reprisal/
+    counterweight/
     tests/
 
 [report]

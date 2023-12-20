@@ -7,7 +7,7 @@ from time import sleep
 import structlog
 from structlog import WriteLoggerFactory
 
-from reprisal.constants import PACKAGE_NAME
+from counterweight.constants import PACKAGE_NAME
 
 DEVLOG_FILE = Path(gettempdir()) / f"{PACKAGE_NAME}.log"
 

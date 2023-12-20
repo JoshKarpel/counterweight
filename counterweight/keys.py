@@ -7,8 +7,8 @@ from string import printable
 from parsy import Parser, any_char, char_from, decimal_digit, generate, string
 from structlog import get_logger
 
-from reprisal.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
-from reprisal.geometry import Position
+from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
+from counterweight.geometry import Position
 
 logger = get_logger()
 

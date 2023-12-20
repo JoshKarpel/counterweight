@@ -5,8 +5,8 @@ from typing import Iterator, Literal
 
 from pydantic import Field
 
-from reprisal.styles.styles import CellStyle
-from reprisal.types import FrozenForbidExtras
+from counterweight.styles.styles import CellStyle
+from counterweight.types import FrozenForbidExtras
 
 
 class CellPaint(FrozenForbidExtras):

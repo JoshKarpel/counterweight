@@ -2,8 +2,8 @@ from pprint import pprint
 
 import pytest
 
-from reprisal.styles import Border, Span, Style
-from reprisal.styles.styles import BorderKind, CellStyle, Color, Flex
+from counterweight.styles import Border, Span, Style
+from counterweight.styles.styles import BorderKind, CellStyle, Color, Flex
 
 
 @pytest.mark.parametrize(

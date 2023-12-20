@@ -9,6 +9,6 @@ test:
   pytest -vv --failed-first --cov --durations=10
 
 watch CMD:
-  watchfiles '{{CMD}}' reprisal/ tests/ docs/ examples/
+  watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
 
 watch-test: (watch "just test")

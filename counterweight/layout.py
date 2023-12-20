@@ -6,12 +6,12 @@ from more_itertools import take
 from pydantic import Field, NonNegativeInt
 from structlog import get_logger
 
-from reprisal._utils import halve_integer, partition_int
-from reprisal.cell_paint import wrap_cells
-from reprisal.components import AnyElement, Component
-from reprisal.geometry import Position
-from reprisal.styles.styles import BorderEdge
-from reprisal.types import ForbidExtras
+from counterweight._utils import halve_integer, partition_int
+from counterweight.cell_paint import wrap_cells
+from counterweight.components import AnyElement, Component
+from counterweight.geometry import Position
+from counterweight.styles.styles import BorderEdge
+from counterweight.types import ForbidExtras
 
 logger = get_logger()
 

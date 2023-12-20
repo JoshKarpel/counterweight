@@ -6,12 +6,12 @@ from typing import Callable, Literal, ParamSpec, Union
 
 from pydantic import Field
 
-from reprisal.cell_paint import CellPaint
-from reprisal.control import Control
-from reprisal.events import KeyPressed, MouseDown, MouseUp
-from reprisal.styles import Style
-from reprisal.styles.styles import CellStyle
-from reprisal.types import FrozenForbidExtras
+from counterweight.cell_paint import CellPaint
+from counterweight.control import Control
+from counterweight.events import KeyPressed, MouseDown, MouseUp
+from counterweight.styles import Style
+from counterweight.styles.styles import CellStyle
+from counterweight.types import FrozenForbidExtras
 
 P = ParamSpec("P")
 
