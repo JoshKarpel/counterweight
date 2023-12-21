@@ -244,19 +244,283 @@ class CellStyle(StyleFragment):
     strikethrough: bool = False
 
 
+class BorderParts(NamedTuple):
+    left: str
+    right: str
+    top: str
+    bottom: str
+    left_top: str
+    right_top: str
+    left_bottom: str
+    right_bottom: str
+
+
 # https://www.compart.com/en/unicode/block/U+2500
 class BorderKind(Enum):
-    Light = "││──┌┐└┘"
-    LightRounded = "││──╭╮╰╯"
-    LightAngled = "▏▕▔▁/╲╲/"
-    Heavy = "┃┃━━┏┓┗┛"
-    Double = "║║══╔╗╚╝"
-    Thick = "▌▐▀▄▛▜▙▟"
-    McGugan = "▏▕▁▔▁▁▔▔"  # https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/
-    LightShade = "░░░░░░░░"
-    MediumShade = "▒▒▒▒▒▒▒▒"
-    HeavyShade = "▓▓▓▓▓▓▓▓"
-    Star = "********"
+    Light = BorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="┌",
+        right_top="┐",
+        left_bottom="└",
+        right_bottom="┘",
+    )
+    LightRounded = BorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="╭",
+        right_top="╮",
+        left_bottom="╰",
+        right_bottom="╯",
+    )
+    LightAngled = BorderParts(
+        left="▏",
+        right="▕",
+        top="▔",
+        bottom="▁",
+        left_top="/",
+        right_top="╲",
+        left_bottom="╲",
+        right_bottom="/",
+    )
+    Heavy = BorderParts(
+        left="┃",
+        right="┃",
+        top="━",
+        bottom="━",
+        left_top="┏",
+        right_top="┓",
+        left_bottom="┗",
+        right_bottom="┛",
+    )
+    Double = BorderParts(
+        left="║",
+        right="║",
+        top="═",
+        bottom="═",
+        left_top="╔",
+        right_top="╗",
+        left_bottom="╚",
+        right_bottom="╝",
+    )
+    Thick = BorderParts(
+        left="▌",
+        right="▐",
+        top="▀",
+        bottom="▄",
+        left_top="▛",
+        right_top="▜",
+        left_bottom="▙",
+        right_bottom="▟",
+    )
+    McGugan = BorderParts(  # https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/
+        left="▕",
+        right="▏",
+        top="▁",
+        bottom="▔",
+        left_top=" ",
+        right_top=" ",
+        left_bottom=" ",
+        right_bottom=" ",
+    )
+    LightShade = BorderParts(
+        left="░",
+        right="░",
+        top="░",
+        bottom="░",
+        left_top="░",
+        right_top="░",
+        left_bottom="░",
+        right_bottom="░",
+    )
+    MediumShade = BorderParts(
+        left="▒",
+        right="▒",
+        top="▒",
+        bottom="▒",
+        left_top="▒",
+        right_top="▒",
+        left_bottom="▒",
+        right_bottom="▒",
+    )
+    HeavyShade = BorderParts(
+        left="▓",
+        right="▓",
+        top="▓",
+        bottom="▓",
+        left_top="▓",
+        right_top="▓",
+        left_bottom="▓",
+        right_bottom="▓",
+    )
+    Star = BorderParts(
+        left="*",
+        right="*",
+        top="*",
+        bottom="*",
+        left_top="*",
+        right_top="*",
+        left_bottom="*",
+        right_bottom="*",
+    )
+
+
+class TableBorderParts(NamedTuple):
+    left: str
+    right: str
+    top: str
+    bottom: str
+    left_top: str
+    right_top: str
+    left_bottom: str
+    right_bottom: str
+    vertical_right: str
+    vertical_left: str
+    horizontal_top: str
+    horizontal_bottom: str
+    horizontal_vertical: str
+
+
+class TableBorderKind(Enum):
+    Light = TableBorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="┌",
+        right_top="┐",
+        left_bottom="└",
+        right_bottom="┘",
+        vertical_right="├",
+        vertical_left="┤",
+        horizontal_top="┬",
+        horizontal_bottom="┴",
+        horizontal_vertical="┼",
+    )
+    LightRounded = TableBorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="╭",
+        right_top="╮",
+        left_bottom="╰",
+        right_bottom="╯",
+        vertical_right="├",
+        vertical_left="┤",
+        horizontal_top="┬",
+        horizontal_bottom="┴",
+        horizontal_vertical="┼",
+    )
+    LightAngled = TableBorderParts(
+        left="▏",
+        right="▕",
+        top="▔",
+        bottom="▁",
+        left_top="/",
+        right_top="╲",
+        left_bottom="╲",
+        right_bottom="/",
+        vertical_right="├",
+        vertical_left="┤",
+        horizontal_top="┬",
+        horizontal_bottom="┴",
+        horizontal_vertical="┼",
+    )
+    Heavy = TableBorderParts(
+        left="┃",
+        right="┃",
+        top="━",
+        bottom="━",
+        left_top="┏",
+        right_top="┓",
+        left_bottom="┗",
+        right_bottom="┛",
+        vertical_right="┣",
+        vertical_left="┫",
+        horizontal_top="┳",
+        horizontal_bottom="┻",
+        horizontal_vertical="╋",
+    )
+    Double = TableBorderParts(
+        left="║",
+        right="║",
+        top="═",
+        bottom="═",
+        left_top="╔",
+        right_top="╗",
+        left_bottom="╚",
+        right_bottom="╝",
+        vertical_right="╠",
+        vertical_left="╣",
+        horizontal_top="╦",
+        horizontal_bottom="╩",
+        horizontal_vertical="╬",
+    )
+    LightShade = TableBorderParts(
+        left="░",
+        right="░",
+        top="░",
+        bottom="░",
+        left_top="░",
+        right_top="░",
+        left_bottom="░",
+        right_bottom="░",
+        vertical_right="░",
+        vertical_left="░",
+        horizontal_top="░",
+        horizontal_bottom="░",
+        horizontal_vertical="░",
+    )
+    MediumShade = TableBorderParts(
+        left="▒",
+        right="▒",
+        top="▒",
+        bottom="▒",
+        left_top="▒",
+        right_top="▒",
+        left_bottom="▒",
+        right_bottom="▒",
+        vertical_right="▒",
+        vertical_left="▒",
+        horizontal_top="▒",
+        horizontal_bottom="▒",
+        horizontal_vertical="▒",
+    )
+    HeavyShade = TableBorderParts(
+        left="▓",
+        right="▓",
+        top="▓",
+        bottom="▓",
+        left_top="▓",
+        right_top="▓",
+        left_bottom="▓",
+        right_bottom="▓",
+        vertical_right="▓",
+        vertical_left="▓",
+        horizontal_top="▓",
+        horizontal_bottom="▓",
+        horizontal_vertical="▓",
+    )
+    Star = TableBorderParts(
+        left="*",
+        right="*",
+        top="*",
+        bottom="*",
+        left_top="*",
+        right_top="*",
+        left_bottom="*",
+        right_bottom="*",
+        vertical_right="*",
+        vertical_left="*",
+        horizontal_top="*",
+        horizontal_bottom="*",
+        horizontal_vertical="*",
+    )
 
 
 class BorderEdge(Enum):
@@ -298,22 +562,6 @@ class Typography(StyleFragment):
     style: CellStyle = Field(default=CellStyle())
     justify: Literal["left", "center", "right"] = "left"
     wrap: Literal["none", "paragraphs"] = "none"
-
-
-class Block(StyleFragment):
-    type: Literal["block"] = "block"
-
-
-class Inline(StyleFragment):
-    type: Literal["inline"] = "inline"
-
-
-class Hidden(StyleFragment):
-    type: Literal["hidden"] = "hidden"
-
-
-class AnonymousBlock(StyleFragment):
-    type: Literal["anonymous-block"] = "anonymous-block"
 
 
 class Flex(StyleFragment):

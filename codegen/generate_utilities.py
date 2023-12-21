@@ -315,8 +315,11 @@ stop = utils_text.index("# Stop generated")
 
 generated_lines = [""]
 
-generated_lines.append(
-    'text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))'
+generated_lines.extend(
+    (
+        'text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))',
+        'text_black = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#000000"))))',
+    )
 )
 generated_lines.append("")
 

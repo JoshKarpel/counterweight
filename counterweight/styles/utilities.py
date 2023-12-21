@@ -4,6 +4,7 @@ from counterweight.styles.styles import Border, BorderEdge, BorderKind, CellStyl
 # Start generated
 
 text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))
+text_black = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#000000"))))
 
 slate_50 = Color.from_hex("#f8fafc")
 text_slate_50 = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#f8fafc"))))
