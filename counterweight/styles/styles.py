@@ -564,22 +564,6 @@ class Typography(StyleFragment):
     wrap: Literal["none", "paragraphs"] = "none"
 
 
-class Block(StyleFragment):
-    type: Literal["block"] = "block"
-
-
-class Inline(StyleFragment):
-    type: Literal["inline"] = "inline"
-
-
-class Hidden(StyleFragment):
-    type: Literal["hidden"] = "hidden"
-
-
-class AnonymousBlock(StyleFragment):
-    type: Literal["anonymous-block"] = "anonymous-block"
-
-
 class Flex(StyleFragment):
     type: Literal["flex"] = "flex"
     direction: Literal["row", "column"] = "row"

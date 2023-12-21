@@ -172,8 +172,8 @@ class LayoutBox(ForbidExtras):
         self.dims.padding.left = style.padding.left
         self.dims.padding.right = style.padding.right
 
-        # # text boxes with auto width get their width from their content (no wrapping)
-        # # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
+        # text boxes with auto width get their width from their content (no wrapping)
+        # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
         if self.element.type == "text" and self.element.style.typography.wrap == "none":
             if style.span.width == "auto":
                 self.dims.content.width = max(
