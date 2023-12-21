@@ -106,7 +106,17 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
 
 def paint_border(border: Border, rect: Rect) -> Paint:
     style = border.style
-    left, right, top, bottom, left_top, right_top, left_bottom, right_bottom = border.kind.value  # type: ignore[misc]
+
+    bv = border.kind.value
+    left = bv.left
+    right = bv.right
+    top = bv.top
+    bottom = bv.bottom
+    left_top = bv.left_top
+    right_top = bv.right_top
+    left_bottom = bv.left_bottom
+    right_bottom = bv.right_bottom
+
     contract = border.contract
     chars = {}
 

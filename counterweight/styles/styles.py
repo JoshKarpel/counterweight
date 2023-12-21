@@ -244,19 +244,129 @@ class CellStyle(StyleFragment):
     strikethrough: bool = False
 
 
+class BorderParts(NamedTuple):
+    left: str
+    right: str
+    top: str
+    bottom: str
+    left_top: str
+    right_top: str
+    left_bottom: str
+    right_bottom: str
+
+
 # https://www.compart.com/en/unicode/block/U+2500
 class BorderKind(Enum):
-    Light = "││──┌┐└┘"
-    LightRounded = "││──╭╮╰╯"
-    LightAngled = "▏▕▔▁/╲╲/"
-    Heavy = "┃┃━━┏┓┗┛"
-    Double = "║║══╔╗╚╝"
-    Thick = "▌▐▀▄▛▜▙▟"
-    McGugan = "▏▕▁▔▁▁▔▔"  # https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/
-    LightShade = "░░░░░░░░"
-    MediumShade = "▒▒▒▒▒▒▒▒"
-    HeavyShade = "▓▓▓▓▓▓▓▓"
-    Star = "********"
+    Light = BorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="┌",
+        right_top="┐",
+        left_bottom="└",
+        right_bottom="┘",
+    )
+    LightRounded = BorderParts(
+        left="│",
+        right="│",
+        top="─",
+        bottom="─",
+        left_top="╭",
+        right_top="╮",
+        left_bottom="╰",
+        right_bottom="╯",
+    )
+    LightAngled = BorderParts(
+        left="▏",
+        right="▕",
+        top="▔",
+        bottom="▁",
+        left_top="/",
+        right_top="╲",
+        left_bottom="╲",
+        right_bottom="/",
+    )
+    Heavy = BorderParts(
+        left="┃",
+        right="┃",
+        top="━",
+        bottom="━",
+        left_top="┏",
+        right_top="┓",
+        left_bottom="┗",
+        right_bottom="┛",
+    )
+    Double = BorderParts(
+        left="║",
+        right="║",
+        top="═",
+        bottom="═",
+        left_top="╔",
+        right_top="╗",
+        left_bottom="╚",
+        right_bottom="╝",
+    )
+    Thick = BorderParts(
+        left="▌",
+        right="▐",
+        top="▀",
+        bottom="▄",
+        left_top="▛",
+        right_top="▜",
+        left_bottom="▙",
+        right_bottom="▟",
+    )
+    McGugan = BorderParts(  # https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/
+        left="▕",
+        right="▏",
+        top="▁",
+        bottom="▔",
+        left_top=" ",
+        right_top=" ",
+        left_bottom=" ",
+        right_bottom=" ",
+    )
+    LightShade = BorderParts(
+        left="░",
+        right="░",
+        top="░",
+        bottom="░",
+        left_top="░",
+        right_top="░",
+        left_bottom="░",
+        right_bottom="░",
+    )
+    MediumShade = BorderParts(
+        left="▒",
+        right="▒",
+        top="▒",
+        bottom="▒",
+        left_top="▒",
+        right_top="▒",
+        left_bottom="▒",
+        right_bottom="▒",
+    )
+    HeavyShade = BorderParts(
+        left="▓",
+        right="▓",
+        top="▓",
+        bottom="▓",
+        left_top="▓",
+        right_top="▓",
+        left_bottom="▓",
+        right_bottom="▓",
+    )
+    Star = BorderParts(
+        left="*",
+        right="*",
+        top="*",
+        bottom="*",
+        left_top="*",
+        right_top="*",
+        left_bottom="*",
+        right_bottom="*",
+    )
 
 
 class BorderEdge(Enum):

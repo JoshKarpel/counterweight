@@ -16,7 +16,7 @@ logger = get_logger()
 @component
 def root() -> Div:
     border_kind_cycle_ref = use_ref(cycle(BorderKind))
-    border_edge_cycle_ref = use_ref(cycle(flatten(combinations(BorderEdge, r) for r in range(1, 5))))
+    border_edge_cycle_ref = use_ref(cycle(reversed(list(flatten(combinations(BorderEdge, r) for r in range(1, 5))))))
 
     def advance_border() -> BorderKind:
         return next(border_kind_cycle_ref.current)
