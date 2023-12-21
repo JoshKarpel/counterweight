@@ -20,7 +20,7 @@ MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
 
 def merge_style_fragments(left: S, right: S) -> S:
-    return type(left).parse_obj(
+    return type(left).model_validate(
         merge(
             left.mergeable_dump(),
             right.mergeable_dump(),

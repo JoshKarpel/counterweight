@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Extra
+from typing import ClassVar
+
+from pydantic import BaseModel, ConfigDict
 
 
 class ForbidExtras(BaseModel):
-    class Config:
-        extra = Extra.forbid
+    model_config: ClassVar[ConfigDict] = {
+        "extra": "forbid",
+    }
 
 
 class FrozenForbidExtras(ForbidExtras):
-    class Config:
-        frozen = True
+    model_config: ClassVar[ConfigDict] = {
+        "frozen": True,
+    }
