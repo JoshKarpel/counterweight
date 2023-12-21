@@ -1,5 +1,6 @@
 site_name: Counterweight
 
+site_url: https://www.counterweight.dev
 repo_url: https://github.com/JoshKarpel/counterweight
 edit_uri: edit/main/docs/
 
