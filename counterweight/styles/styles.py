@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 S = TypeVar("S", bound="StyleFragment")
 
 
-MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
+STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
 
 def merge_style_fragments(left: S, right: S) -> S:
-    return type(left).parse_obj(
+    return type(left).model_validate(
         merge(
             left.mergeable_dump(),
             right.mergeable_dump(),
@@ -38,10 +38,10 @@ class StyleFragment(FrozenForbidExtras):
             other._cached_hash,
         )
         try:
-            return MERGE_CACHE[key]  # type: ignore[return-value]
+            return STYLE_MERGE_CACHE[key]  # type: ignore[return-value]
         except KeyError:
             merged = merge_style_fragments(self, other)
-            MERGE_CACHE[key] = merged
+            STYLE_MERGE_CACHE[key] = merged
             return merged
 
     def mergeable_dump(self) -> dict[str, object]:

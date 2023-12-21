@@ -1,5 +1,3 @@
-from pprint import pprint
-
 import pytest
 
 from counterweight.styles import Border, Span, Style
@@ -79,8 +77,4 @@ from counterweight.styles.styles import BorderKind, CellStyle, Color, Flex
     ],
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:
-    print("Left:")
-    pprint(left.dict(exclude_unset=True))
-    print("\nRight:")
-    pprint(right.dict(exclude_unset=True))
-    assert (left | right).dict() == expected.dict()
+    assert (left | right).model_dump() == expected.model_dump()

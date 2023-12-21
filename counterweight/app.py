@@ -301,7 +301,7 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    return root.element.copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+    return root.element.model_copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
 
 
 def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:

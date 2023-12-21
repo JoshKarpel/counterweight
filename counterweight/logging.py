@@ -42,7 +42,7 @@ def tail_devlog() -> None:
                     print(line, end="")
                 else:
                     if f.tell() > DEVLOG_FILE.stat().st_size:
-                        # the file is shorter than our current position, so it was trunacted
+                        # the file is shorter than our current position, so it was truncated
                         print(" DevLog Rotated ".center(w, "━"))
                         break
                     else:
