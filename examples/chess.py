@@ -83,7 +83,7 @@ def board() -> Div:
 
     b = text_bg_amber_600
     w = text_bg_amber_900
-    rows = []
+    rows: list[list[Text]] = []
     for r in range(8):
         rows.append([])
         for c in range(8):
