@@ -18,12 +18,15 @@ def root() -> Div:
         children=[
             Div(
                 style=col | style,
-                children=[box("A1"), box("A2")],
+                children=[box("A1", b=None), box("A2", b=border_bottom_left_right)],
             ),
             Div(
                 style=col | style,
                 children=[
-                    Div(style=row | style, children=[box("B1"), box("B2")]),
+                    Div(
+                        style=row | style,
+                        children=[box("B1", b=border_top_bottom_right), box("B2", b=border_top_bottom_right)],
+                    ),
                     Div(style=row | style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
                     Div(style=row | style, children=[box("D1"), box("D2"), box("D3")]),
                 ],
@@ -33,9 +36,10 @@ def root() -> Div:
 
 
 @component
-def box(s: str) -> Div:
+def box(s: str, b: Style | None = border_bottom_right) -> Div:
+    # TODO: having to specify the border edges here is annoying, but it does mean that you don't need to express anything about the joins in the style tree...
     return Div(
-        style=style | border_light,
+        style=style | border_light | b,
         children=[Text(style=text_justify_center, content=s)],
     )
 

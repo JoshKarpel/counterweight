@@ -30,7 +30,7 @@ from counterweight.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from counterweight.paint import Paint, paint_layout
+from counterweight.paint import Paint, join_borders, paint_layout
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
 from counterweight.styles.styles import CellStyle, Color, Flex
@@ -156,7 +156,7 @@ async def app(
                     )
 
                     start_paint = perf_counter_ns()
-                    new_paint = paint_layout(layout_tree)
+                    new_paint = join_borders(paint_layout(layout_tree))
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",

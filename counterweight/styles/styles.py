@@ -370,10 +370,8 @@ class BorderKind(Enum):
 
 
 class TableBorderParts(NamedTuple):
-    left: str
-    right: str
-    top: str
-    bottom: str
+    vertical: str
+    horizontal: str
     left_top: str
     right_top: str
     left_bottom: str
@@ -387,85 +385,73 @@ class TableBorderParts(NamedTuple):
 
 class TableBorderKind(Enum):
     Light = TableBorderParts(
-        left="│",
-        right="│",
-        top="─",
-        bottom="─",
+        vertical="│",
+        horizontal="─",
         left_top="┌",
         right_top="┐",
         left_bottom="└",
         right_bottom="┘",
         vertical_right="├",
         vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
+        horizontal_top="┴",
+        horizontal_bottom="┬",
         horizontal_vertical="┼",
     )
     LightRounded = TableBorderParts(
-        left="│",
-        right="│",
-        top="─",
-        bottom="─",
+        vertical="│",
+        horizontal="─",
         left_top="╭",
         right_top="╮",
         left_bottom="╰",
         right_bottom="╯",
         vertical_right="├",
         vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
+        horizontal_top="┴",
+        horizontal_bottom="┬",
         horizontal_vertical="┼",
     )
     LightAngled = TableBorderParts(
-        left="▏",
-        right="▕",
-        top="▔",
-        bottom="▁",
+        vertical="▏",
+        horizontal="▔",
         left_top="/",
         right_top="╲",
         left_bottom="╲",
         right_bottom="/",
         vertical_right="├",
         vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
+        horizontal_top="┴",
+        horizontal_bottom="┬",
         horizontal_vertical="┼",
     )
     Heavy = TableBorderParts(
-        left="┃",
-        right="┃",
-        top="━",
-        bottom="━",
+        vertical="┃",
+        horizontal="━",
         left_top="┏",
         right_top="┓",
         left_bottom="┗",
         right_bottom="┛",
         vertical_right="┣",
         vertical_left="┫",
-        horizontal_top="┳",
-        horizontal_bottom="┻",
+        horizontal_top="┻",
+        horizontal_bottom="┳",
         horizontal_vertical="╋",
     )
     Double = TableBorderParts(
-        left="║",
-        right="║",
-        top="═",
-        bottom="═",
+        vertical="║",
+        horizontal="═",
         left_top="╔",
         right_top="╗",
         left_bottom="╚",
         right_bottom="╝",
         vertical_right="╠",
         vertical_left="╣",
-        horizontal_top="╦",
-        horizontal_bottom="╩",
+        horizontal_top="╩",
+        horizontal_bottom="╦",
         horizontal_vertical="╬",
     )
     LightShade = TableBorderParts(
-        left="░",
-        right="░",
-        top="░",
-        bottom="░",
+        vertical="░",
+        horizontal="░",
         left_top="░",
         right_top="░",
         left_bottom="░",
@@ -477,10 +463,8 @@ class TableBorderKind(Enum):
         horizontal_vertical="░",
     )
     MediumShade = TableBorderParts(
-        left="▒",
-        right="▒",
-        top="▒",
-        bottom="▒",
+        vertical="▒",
+        horizontal="▒",
         left_top="▒",
         right_top="▒",
         left_bottom="▒",
@@ -492,10 +476,8 @@ class TableBorderKind(Enum):
         horizontal_vertical="▒",
     )
     HeavyShade = TableBorderParts(
-        left="▓",
-        right="▓",
-        top="▓",
-        bottom="▓",
+        vertical="▓",
+        horizontal="▓",
         left_top="▓",
         right_top="▓",
         left_bottom="▓",
@@ -507,10 +489,8 @@ class TableBorderKind(Enum):
         horizontal_vertical="▓",
     )
     Star = TableBorderParts(
-        left="*",
-        right="*",
-        top="*",
-        bottom="*",
+        vertical="*",
+        horizontal="*",
         left_top="*",
         right_top="*",
         left_bottom="*",
