@@ -1,5 +1,6 @@
 import asyncio
 from itertools import combinations, product
+from random import randint
 
 from more_itertools import flatten
 from structlog import get_logger
@@ -30,6 +31,8 @@ def root() -> Div:
                 set_border_edge_idx(lambda i: clamp(0, i + 1, len(E) - 1))
             case Key.Left:
                 set_border_edge_idx(lambda i: clamp(0, i - 1, len(E) - 1))
+            case "r":
+                set_border_edge_idx(randint(0, len(E) - 1))
             case Key.Space:
                 return Control.BorderJoinToggle
 

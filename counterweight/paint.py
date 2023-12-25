@@ -34,8 +34,24 @@ def get_replacement_char(
     above: str | None,
     below: str | None,
 ) -> str | None:
+    # we already know center must be SOME joined border part at this point
+
     v = joined_border_parts
-    # match left in v.connects_right, right in v.connects_left, above in v.connects_bottom, below in v.connects_top:
+
+    # TODO: this version is very compact but doesn't support either filling in gaps or cutting off bad runs, but that might be desirable...
+    return v.select(
+        top=center in v.connects_top or above in v.connects_bottom,
+        bottom=center in v.connects_bottom or below in v.connects_top,
+        left=center in v.connects_left or left in v.connects_right,
+        right=center in v.connects_right or right in v.connects_left,
+    )
+
+    # left_connects_right = left in v.connects_right
+    # right_connects_left = right in v.connects_left
+    # above_connects_bottom = above in v.connects_bottom
+    # below_connects_top = below in v.connects_top
+    #
+    # match left_connects_right, right_connects_left, above_connects_bottom, below_connects_top:
     #     case True, True, True, True:
     #         return v.horizontal_vertical
     #     case True, True, True, False:
@@ -48,62 +64,62 @@ def get_replacement_char(
     #         return v.vertical_right
     #     case _:
     #         pass
-
-    match center, left, right, above, below:
-        # we already know center must be SOME joined border part at this point
-        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-            return v.horizontal_vertical
-        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a not in v.connects_bottom and b in v.connects_top:
-            return v.horizontal_bottom
-        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b not in v.connects_top:
-            return v.horizontal_top
-        case _, l, r, a, b if l not in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-            return v.vertical_right
-        case _, l, r, a, b if l in v.connects_right and r not in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-            return v.vertical_left
-        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r in v.connects_left:
-            return v.horizontal_vertical
-        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l not in v.connects_right and r in v.connects_left:
-            return v.vertical_right
-        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r not in v.connects_left:
-            return v.vertical_left
-        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b in v.connects_top:
-            return v.horizontal_vertical
-        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a not in v.connects_bottom and b in v.connects_top:
-            return v.horizontal_bottom
-        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b not in v.connects_top:
-            return v.horizontal_top
-        # case _, _, v.horizontal, v.vertical, v.vertical:
-        #     return v.vertical_right
-        # case _, v.horizontal, _, v.vertical, v.vertical:
-        #     return v.vertical_left
-        # case _, v.horizontal, v.horizontal, _, v.vertical:
-        #     return v.horizontal_bottom
-        # case _, v.horizontal, v.horizontal, v.vertical, _:
-        #     return v.horizontal_top
-        # case v.right_bottom, _, v.horizontal, _, v.vertical:
-        #     return v.horizontal_vertical
-        # case v.right_bottom, _, _, _, v.vertical:
-        #     return v.vertical_left
-        # case v.right_bottom, _, v.horizontal, _, _:
-        #     return v.horizontal_top
-        # case v.vertical, _, v.horizontal, _, v.vertical:
-        #     return v.vertical_right
-        # case v.vertical, _, v.horizontal, _, None:
-        #     return v.left_bottom
-        # case v.horizontal, _, v.horizontal, _, v.vertical:
-        #     return v.horizontal_bottom
-        # case v.horizontal, _, None, _, v.vertical:
-        #     return v.right_top
-        # case v.vertical, _, v.horizontal, _, _:
-        #     return v.vertical_right
-        # case v.left_bottom, _, _, _, v.vertical:
-        #     return v.vertical_right
-        # case v.right_top, _, v.horizontal, _, _:
-        #     return v.horizontal_bottom
-        # TODO: there should be a more structured way to do this...
-        case _:
-            return None
+    #
+    # match center, left, right, above, below:
+    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+    #     #     return v.horizontal_vertical
+    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a not in v.connects_bottom and b in v.connects_top:
+    #     #     return v.horizontal_bottom
+    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b not in v.connects_top:
+    #     #     return v.horizontal_top
+    #     # case _, l, r, a, b if l not in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+    #     #     return v.vertical_right
+    #     # case _, l, r, a, b if l in v.connects_right and r not in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+    #     #     return v.vertical_left
+    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r in v.connects_left:
+    #         return v.horizontal_vertical
+    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l not in v.connects_right and r in v.connects_left:
+    #         return v.vertical_right
+    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r not in v.connects_left:
+    #         return v.vertical_left
+    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b in v.connects_top:
+    #         return v.horizontal_vertical
+    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a not in v.connects_bottom and b in v.connects_top:
+    #         return v.horizontal_bottom
+    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b not in v.connects_top:
+    #         return v.horizontal_top
+    #     # TODO: is there a way to keep the trick?
+    #     # case _, _, v.horizontal, v.vertical, v.vertical:
+    #     #     return v.vertical_right
+    #     # case _, v.horizontal, _, v.vertical, v.vertical:
+    #     #     return v.vertical_left
+    #     # case _, v.horizontal, v.horizontal, _, v.vertical:
+    #     #     return v.horizontal_bottom
+    #     # case _, v.horizontal, v.horizontal, v.vertical, _:
+    #     #     return v.horizontal_top
+    #     # case v.right_bottom, _, v.horizontal, _, v.vertical:
+    #     #     return v.horizontal_vertical
+    #     # case v.right_bottom, _, _, _, v.vertical:
+    #     #     return v.vertical_left
+    #     # case v.right_bottom, _, v.horizontal, _, _:
+    #     #     return v.horizontal_top
+    #     # case v.vertical, _, v.horizontal, _, v.vertical:
+    #     #     return v.vertical_right
+    #     # case v.vertical, _, v.horizontal, _, None:
+    #     #     return v.left_bottom
+    #     # case v.horizontal, _, v.horizontal, _, v.vertical:
+    #     #     return v.horizontal_bottom
+    #     # case v.horizontal, _, None, _, v.vertical:
+    #     #     return v.right_top
+    #     # case v.vertical, _, v.horizontal, _, _:
+    #     #     return v.vertical_right
+    #     # case v.left_bottom, _, _, _, v.vertical:
+    #     #     return v.vertical_right
+    #     # case v.right_top, _, v.horizontal, _, _:
+    #     #     return v.horizontal_bottom
+    #     # TODO: there should be a more structured way to do this...
+    #     case _:
+    #         return None
 
 
 def join_borders(paint: Paint) -> Paint:

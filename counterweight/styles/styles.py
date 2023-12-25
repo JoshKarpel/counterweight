@@ -382,6 +382,34 @@ class JoinedBorderParts(NamedTuple):
     horizontal_bottom: str
     horizontal_vertical: str
 
+    def select(self, top: bool, bottom: bool, left: bool, right: bool) -> str | None:
+        # TODO: this should be a lookup table
+        match top, bottom, left, right:
+            case True, True, True, True:
+                return self.horizontal_vertical
+            case True, True, True, False:
+                return self.vertical_left
+            case True, True, False, True:
+                return self.vertical_right
+            case True, False, True, True:
+                return self.horizontal_top
+            case False, True, True, True:
+                return self.horizontal_bottom
+            case True, True, False, False:
+                return self.vertical
+            case False, False, True, True:
+                return self.horizontal
+            case True, False, True, False:
+                return self.right_bottom
+            case True, False, False, True:
+                return self.left_bottom
+            case False, True, True, False:
+                return self.right_top
+            case False, True, False, True:
+                return self.left_top
+            case _:
+                return None
+
     @property
     def connects_right(self) -> frozenset[str]:
         return frozenset(
