@@ -10,7 +10,7 @@ from counterweight.components import AnyElement, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, Margin, Padding, TableBorderKind
+from counterweight.styles.styles import BorderEdge, CellStyle, JoinedBorderKind, Margin, Padding
 
 logger = get_logger()
 
@@ -27,37 +27,42 @@ def paint_layout(layout: LayoutBox) -> Paint:
 def join_borders(paint: Paint) -> Paint:
     overlay: Paint = {}
     for p, cell_paint in paint.items():
-        v = TableBorderKind.Light.value
-        char = cell_paint.char
-        below = paint.get(Position(p.x, p.y + 1))
-        paint.get(Position(p.x, p.y - 1))
-        right = paint.get(Position(p.x + 1, p.y))
-        paint.get(Position(p.x - 1, p.y))
+        for tbk in JoinedBorderKind:
+            v = tbk.value
 
-        match char, right.char if right else None, below.char if below else None:
-            case v.right_bottom, v.horizontal, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_vertical})
-            case v.right_bottom, _, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.vertical_left})
-            case v.right_bottom, v.horizontal, _:
-                overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_top})
-            case v.vertical, v.horizontal, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-            case v.vertical, v.horizontal, None:
-                overlay[p] = cell_paint.model_copy(update={"char": v.left_bottom})
-            case v.horizontal, v.horizontal, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
-            case v.horizontal, _, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.right_top})
-            case v.vertical, v.horizontal, _:
-                overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-            case v.left_bottom, _, v.vertical:
-                overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-            case v.right_top, v.horizontal, _:
-                overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
-            # TODO: there are a lot more cases here, and probably involving above/left too
-            case _:
-                pass
+            char = cell_paint.char
+            if char not in v:  # all cases below require char to be a joined border part
+                continue
+
+            right = paint.get(Position(p.x + 1, p.y))
+            below = paint.get(Position(p.x, p.y + 1))
+
+            # TODO: cell styles must match too (i.e., colors)
+
+            match char, right.char if right else None, below.char if below else None:
+                case v.right_bottom, v.horizontal, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_vertical})
+                case v.right_bottom, _, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_left})
+                case v.right_bottom, v.horizontal, _:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_top})
+                case v.vertical, v.horizontal, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
+                case v.vertical, v.horizontal, None:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.left_bottom})
+                case v.horizontal, v.horizontal, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
+                case v.horizontal, _, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.right_top})
+                case v.vertical, v.horizontal, _:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
+                case v.left_bottom, _, v.vertical:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
+                case v.right_top, v.horizontal, _:
+                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
+                # TODO: there are a lot more cases here, and probably involving above/left too
+                case _:
+                    pass
 
     return paint | overlay
 

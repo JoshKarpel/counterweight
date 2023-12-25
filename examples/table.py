@@ -11,12 +11,13 @@ logger = get_logger()
 
 # TODO: what happens if you tweak these (removing align_self_stretch definitely breaks it)
 style = align_self_stretch | justify_children_center | align_children_center
+bs = border_double
 
 
 @component
 def root() -> Div:
     return Div(
-        style=row | style | border_top_left,
+        style=row | style | border_top_left | bs,
         children=[
             Div(
                 style=col | style,
@@ -37,7 +38,7 @@ def root() -> Div:
 @component
 def box(s: str) -> Div:
     return Div(
-        style=style | border_light | border_bottom_right,
+        style=style | border_bottom_right | bs,
         children=[Text(style=text_justify_center, content=s)],
     )
 
