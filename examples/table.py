@@ -8,28 +8,35 @@ from counterweight.styles.utilities import *
 
 logger = get_logger()
 
-ROWS = (
-    ("foo", "bar", "baz"),
-    ("foo", "bar", "baz"),
-    ("foo", "bar", "baz"),
-)
+style = align_self_stretch | justify_children_center | align_children_center
 
 
 @component
 def root() -> Div:
     return Div(
-        style=row | align_self_stretch | align_children_center,
-        children=[table()],
+        style=row | style,
+        children=[
+            Div(
+                style=col | style,
+                children=[box("A1"), box("A2")],
+            ),
+            Div(
+                style=col | style,
+                children=[
+                    Div(style=row | style, children=[box("B1"), box("B2")]),
+                    Div(style=row | style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
+                    Div(style=row | style, children=[box("D1"), box("D2"), box("D3")]),
+                ],
+            ),
+        ],
     )
 
 
 @component
-def table() -> Div:
-    rows = [Div(children=[Text(content=entry) for entry in row]) for row in ROWS]
-
+def box(s: str) -> Div:
     return Div(
-        style=col | justify_children_center | align_children_center,
-        children=rows,
+        style=style | border_light,
+        children=[Text(style=text_justify_center, content=s)],
     )
 
 
