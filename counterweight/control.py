@@ -6,3 +6,4 @@ from enum import Enum
 class Control(Enum):
     Quit = "quit"
     Bell = "bell"
+    Screenshot = "screenshot"

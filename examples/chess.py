@@ -6,7 +6,10 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import Div, Text, component
+from counterweight.control import Control
+from counterweight.events import KeyPressed
 from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -36,9 +39,14 @@ class PieceCharacter(Enum):
 
 @component
 def root() -> Div:
+    def on_key(event: KeyPressed) -> Control | None:
+        if event.key == Key.Enter:
+            return Control.Screenshot
+
     return Div(
         style=row | align_self_stretch | align_children_center,
         children=[board()],
+        on_key=on_key,
     )
 
 

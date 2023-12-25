@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal, assert_never
+from xml.etree.ElementTree import Element
 
 from structlog import get_logger
 
@@ -186,3 +187,9 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
         lines.append(line)
 
     return "\n".join("".join(line) for line in lines)
+
+
+def svg(paint: Paint) -> Element:
+    et = Element("svg")
+
+    return et
