@@ -8,6 +8,8 @@ from counterweight.styles.utilities import *
 
 logger = get_logger()
 
+
+# TODO: what happens if you tweak these (removing align_self_stretch definitely breaks it)
 style = align_self_stretch | justify_children_center | align_children_center
 
 
