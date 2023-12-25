@@ -109,6 +109,8 @@ async def app(
         should_quit = False
         should_bell = False
 
+        do_border_join = True
+
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
@@ -162,12 +164,13 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
                     )
 
-                    start_border_join = perf_counter_ns()
-                    new_paint = join_borders(new_paint)
-                    logger.debug(
-                        "Joined borders in new paint",
-                        elapsed_ns=f"{perf_counter_ns() - start_border_join:_}",
-                    )
+                    if do_border_join:
+                        start_border_join = perf_counter_ns()
+                        new_paint = join_borders(new_paint)
+                        logger.debug(
+                            "Joined borders in new paint",
+                            elapsed_ns=f"{perf_counter_ns() - start_border_join:_}",
+                        )
 
                     start_diff = perf_counter_ns()
                     diff = diff_paint(new_paint, current_paint)
@@ -234,6 +237,9 @@ async def app(
                                             should_quit = True
                                         case Control.Bell:
                                             should_bell = True
+                                        case Control.BorderJoinToggle:
+                                            do_border_join = not do_border_join
+                                            needs_render = True
                         case MouseMoved(position=p):
                             needs_render = True
                             mouse_position = p

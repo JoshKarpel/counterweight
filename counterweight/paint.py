@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Literal, assert_never
 
 from structlog import get_logger
@@ -10,7 +11,7 @@ from counterweight.components import AnyElement, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, JoinedBorderKind, Margin, Padding
+from counterweight.styles.styles import BorderEdge, CellStyle, JoinedBorderKind, JoinedBorderParts, Margin, Padding
 
 logger = get_logger()
 
@@ -24,6 +25,87 @@ def paint_layout(layout: LayoutBox) -> Paint:
     return painted
 
 
+@lru_cache(maxsize=2**12)
+def get_replacement_char(
+    joined_border_parts: JoinedBorderParts,
+    center: str,
+    left: str | None,
+    right: str | None,
+    above: str | None,
+    below: str | None,
+) -> str | None:
+    v = joined_border_parts
+    # match left in v.connects_right, right in v.connects_left, above in v.connects_bottom, below in v.connects_top:
+    #     case True, True, True, True:
+    #         return v.horizontal_vertical
+    #     case True, True, True, False:
+    #         return v.horizontal_top
+    #     case True, True, False, True:
+    #         return v.horizontal_bottom
+    #     case True, False, True, True:
+    #         return v.vertical_left
+    #     case False, True, True, True:
+    #         return v.vertical_right
+    #     case _:
+    #         pass
+
+    match center, left, right, above, below:
+        # we already know center must be SOME joined border part at this point
+        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+            return v.horizontal_vertical
+        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a not in v.connects_bottom and b in v.connects_top:
+            return v.horizontal_bottom
+        case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b not in v.connects_top:
+            return v.horizontal_top
+        case _, l, r, a, b if l not in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+            return v.vertical_right
+        case _, l, r, a, b if l in v.connects_right and r not in v.connects_left and a in v.connects_bottom and b in v.connects_top:
+            return v.vertical_left
+        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r in v.connects_left:
+            return v.horizontal_vertical
+        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l not in v.connects_right and r in v.connects_left:
+            return v.vertical_right
+        case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r not in v.connects_left:
+            return v.vertical_left
+        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b in v.connects_top:
+            return v.horizontal_vertical
+        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a not in v.connects_bottom and b in v.connects_top:
+            return v.horizontal_bottom
+        case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b not in v.connects_top:
+            return v.horizontal_top
+        # case _, _, v.horizontal, v.vertical, v.vertical:
+        #     return v.vertical_right
+        # case _, v.horizontal, _, v.vertical, v.vertical:
+        #     return v.vertical_left
+        # case _, v.horizontal, v.horizontal, _, v.vertical:
+        #     return v.horizontal_bottom
+        # case _, v.horizontal, v.horizontal, v.vertical, _:
+        #     return v.horizontal_top
+        # case v.right_bottom, _, v.horizontal, _, v.vertical:
+        #     return v.horizontal_vertical
+        # case v.right_bottom, _, _, _, v.vertical:
+        #     return v.vertical_left
+        # case v.right_bottom, _, v.horizontal, _, _:
+        #     return v.horizontal_top
+        # case v.vertical, _, v.horizontal, _, v.vertical:
+        #     return v.vertical_right
+        # case v.vertical, _, v.horizontal, _, None:
+        #     return v.left_bottom
+        # case v.horizontal, _, v.horizontal, _, v.vertical:
+        #     return v.horizontal_bottom
+        # case v.horizontal, _, None, _, v.vertical:
+        #     return v.right_top
+        # case v.vertical, _, v.horizontal, _, _:
+        #     return v.vertical_right
+        # case v.left_bottom, _, _, _, v.vertical:
+        #     return v.vertical_right
+        # case v.right_top, _, v.horizontal, _, _:
+        #     return v.horizontal_bottom
+        # TODO: there should be a more structured way to do this...
+        case _:
+            return None
+
+
 def join_borders(paint: Paint) -> Paint:
     overlay: Paint = {}
     for p, cell_paint in paint.items():
@@ -31,38 +113,25 @@ def join_borders(paint: Paint) -> Paint:
             v = tbk.value
 
             char = cell_paint.char
-            if char not in v:  # all cases below require char to be a joined border part
+            if char not in v:  # the center character must be a joined border part
                 continue
 
+            left = paint.get(Position(p.x - 1, p.y))
             right = paint.get(Position(p.x + 1, p.y))
+            above = paint.get(Position(p.x, p.y - 1))
             below = paint.get(Position(p.x, p.y + 1))
 
             # TODO: cell styles must match too (i.e., colors)
 
-            match char, right.char if right else None, below.char if below else None:
-                case v.right_bottom, v.horizontal, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_vertical})
-                case v.right_bottom, _, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_left})
-                case v.right_bottom, v.horizontal, _:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_top})
-                case v.vertical, v.horizontal, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-                case v.vertical, v.horizontal, None:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.left_bottom})
-                case v.horizontal, v.horizontal, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
-                case v.horizontal, _, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.right_top})
-                case v.vertical, v.horizontal, _:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-                case v.left_bottom, _, v.vertical:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
-                case v.right_top, v.horizontal, _:
-                    overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
-                # TODO: there are a lot more cases here, and probably involving above/left too
-                case _:
-                    pass
+            if replaced_char := get_replacement_char(
+                v,
+                center=char,
+                left=left.char if left else None,
+                right=right.char if right else None,
+                above=above.char if above else None,
+                below=below.char if below else None,
+            ):
+                overlay[p] = cell_paint.model_copy(update={"char": replaced_char})
 
     return paint | overlay
 

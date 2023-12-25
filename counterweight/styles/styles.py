@@ -382,6 +382,62 @@ class JoinedBorderParts(NamedTuple):
     horizontal_bottom: str
     horizontal_vertical: str
 
+    @property
+    def connects_right(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.horizontal,
+                self.left_top,
+                self.left_bottom,
+                self.horizontal_top,
+                self.horizontal_bottom,
+                self.vertical_right,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_left(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.horizontal,
+                self.right_top,
+                self.right_top,
+                self.horizontal_top,
+                self.horizontal_bottom,
+                self.vertical_left,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_top(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.vertical,
+                self.left_bottom,
+                self.right_bottom,
+                self.vertical_right,
+                self.vertical_left,
+                self.horizontal_top,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_bottom(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.vertical,
+                self.left_top,
+                self.right_top,
+                self.vertical_right,
+                self.vertical_left,
+                self.horizontal_bottom,
+                self.horizontal_vertical,
+            }
+        )
+
 
 class JoinedBorderKind(Enum):
     Light = JoinedBorderParts(

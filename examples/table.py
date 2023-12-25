@@ -4,6 +4,9 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import Div, Text, component
+from counterweight.control import Control
+from counterweight.events import KeyPressed
+from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -16,8 +19,14 @@ bs = border_double
 
 @component
 def root() -> Div:
+    def on_key(event: KeyPressed) -> Control | None:
+        match event.key:
+            case Key.Space:
+                return Control.BorderJoinToggle
+
     return Div(
         style=row | style | border_top_left | bs,
+        on_key=on_key,
         children=[
             Div(
                 style=col | style,
