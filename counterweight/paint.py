@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, indent
 
 from structlog import get_logger
 
@@ -190,6 +190,35 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
 
 
 def svg(paint: Paint) -> Element:
-    et = Element("svg")
+    w, h = max(paint.keys())
+    root = Element(
+        "svg",
+        {
+            "xmlns": "http://www.w3.org/2000/svg",
+            "width": f"{round(w/2, 1)}em",
+            "height": f"{h}em",
+        },
+    )
 
-    return et
+    for pos, cell in paint.items():
+        e = Element(
+            "text",
+            {
+                "font-family": "monospace",
+            },
+        )
+        ts = Element(
+            "tspan",
+            {
+                "x": f"{round(pos.x/2, 1)}em",
+                "y": f"{pos.y}em",
+                "fill": cell.style.foreground.hex,
+            },
+        )
+        ts.text = cell.char
+        e.append(ts)
+        root.append(e)
+
+    indent(root)
+
+    return root
