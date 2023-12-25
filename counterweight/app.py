@@ -156,7 +156,8 @@ async def app(
                     )
 
                     start_paint = perf_counter_ns()
-                    new_paint = join_borders(paint_layout(layout_tree))
+                    new_paint = paint_layout(layout_tree)
+                    new_paint = join_borders(new_paint)
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",

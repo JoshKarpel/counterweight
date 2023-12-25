@@ -14,19 +14,16 @@ style = align_self_stretch | justify_children_center | align_children_center
 @component
 def root() -> Div:
     return Div(
-        style=row | style,
+        style=row | style | border_top_left,
         children=[
             Div(
                 style=col | style,
-                children=[box("A1", b=None), box("A2", b=border_bottom_left_right)],
+                children=[box("A1"), box("A2")],
             ),
             Div(
                 style=col | style,
                 children=[
-                    Div(
-                        style=row | style,
-                        children=[box("B1", b=border_top_bottom_right), box("B2", b=border_top_bottom_right)],
-                    ),
+                    Div(style=row | style, children=[box("B1"), box("B2")]),
                     Div(style=row | style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
                     Div(style=row | style, children=[box("D1"), box("D2"), box("D3")]),
                 ],
@@ -36,10 +33,9 @@ def root() -> Div:
 
 
 @component
-def box(s: str, b: Style | None = border_bottom_right) -> Div:
-    # TODO: having to specify the border edges here is annoying, but it does mean that you don't need to express anything about the joins in the style tree...
+def box(s: str) -> Div:
     return Div(
-        style=style | border_light | b,
+        style=style | border_light | border_bottom_right,
         children=[Text(style=text_justify_center, content=s)],
     )
 

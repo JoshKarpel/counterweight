@@ -41,8 +41,14 @@ def join_borders(paint: Paint) -> Paint:
                 overlay[p] = cell_paint.model_copy(update={"char": v.vertical_left})
             case v.right_bottom, v.horizontal, _:
                 overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_top})
-            case v.horizontal, _, v.vertical:
+            case v.vertical, v.horizontal, v.vertical:
+                overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
+            case v.vertical, v.horizontal, None:
+                overlay[p] = cell_paint.model_copy(update={"char": v.left_bottom})
+            case v.horizontal, v.horizontal, v.vertical:
                 overlay[p] = cell_paint.model_copy(update={"char": v.horizontal_bottom})
+            case v.horizontal, _, v.vertical:
+                overlay[p] = cell_paint.model_copy(update={"char": v.right_top})
             case v.vertical, v.horizontal, _:
                 overlay[p] = cell_paint.model_copy(update={"char": v.vertical_right})
             case v.left_bottom, _, v.vertical:
