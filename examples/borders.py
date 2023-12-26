@@ -4,7 +4,7 @@ from itertools import combinations, cycle
 from more_itertools import flatten
 from structlog import get_logger
 
-from counterweight.app import run_app
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
@@ -56,4 +56,4 @@ def root() -> Div:
     )
 
 
-asyncio.run(run_app(root))
+asyncio.run(app(root))

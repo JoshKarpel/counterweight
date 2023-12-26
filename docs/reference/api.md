@@ -2,7 +2,7 @@
 
 ## Application
 
-::: counterweight.app.run_app
+::: counterweight.app.app
 
 ## Components
 

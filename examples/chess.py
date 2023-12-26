@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from structlog import get_logger
 
-from counterweight.app import run_app
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.control import Control
 from counterweight.elements import Div, Text
@@ -128,4 +128,4 @@ def board() -> Div:
     )
 
 
-asyncio.run(run_app(root))
+asyncio.run(app(root))

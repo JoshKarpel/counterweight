@@ -6,7 +6,7 @@ from itertools import product
 from more_itertools import grouper
 from structlog import get_logger
 
-from counterweight.app import run_app
+from counterweight.app import app
 from counterweight.cell_paint import CellPaint
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
@@ -139,4 +139,4 @@ def random_walkers() -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_app(root))
+    asyncio.run(app(root))
