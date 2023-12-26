@@ -36,6 +36,10 @@ class StateSet(_Event):
     pass
 
 
+class Dummy(_Event):
+    pass
+
+
 AnyEvent = Union[
     TerminalResized,
     KeyPressed,
@@ -43,4 +47,5 @@ AnyEvent = Union[
     MouseDown,
     MouseUp,
     StateSet,
+    Dummy,
 ]

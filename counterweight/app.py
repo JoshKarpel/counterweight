@@ -4,12 +4,12 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
+from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
 from typing import Iterable, TextIO
 
-from more_itertools import pad_none
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
@@ -19,7 +19,16 @@ from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing, _Control
 from counterweight.elements import AnyElement, Div
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
+from counterweight.events import (
+    AnyEvent,
+    Dummy,
+    KeyPressed,
+    MouseDown,
+    MouseMoved,
+    MouseUp,
+    StateSet,
+    TerminalResized,
+)
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
@@ -87,12 +96,16 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
+    # Force a second render cycle after the initial render, helps with autopilot semantics.
+    await event_queue.put(Dummy())
+
     loop = get_running_loop()
 
     def put_event(event: AnyEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
-    original = start_input_control(stream=input_stream)
+    if not headless:
+        original = start_input_control(stream=input_stream)
 
     try:
         if not headless:
@@ -145,11 +158,15 @@ async def app(
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            for ap in pad_none(autopilot):
-                if isinstance(ap, _Control):
-                    handle_control(ap)
-                elif ap is not None:  # i.e., an event
-                    await event_queue.put(ap)
+            # None for initial render, then the autopilot, then nones forever
+            for ap in chain((None,), autopilot, repeat(None)):
+                if ap is not None:
+                    logger.debug("Handling autopilot command", command=ap)
+                    if isinstance(ap, _Control):
+                        handle_control(ap)
+                        await event_queue.put(Dummy())
+                    else:  # i.e., an event
+                        await event_queue.put(ap)
 
                 if should_quit:
                     break
