@@ -56,7 +56,8 @@ plugins:
             unwrap_annotated: true
             members_order: source
           import:
-            - https://docs.python.org/3/objects.inv
+            - url: https://docs.python.org/3/objects.inv
+              domains: [std, py]
 
 markdown_extensions:
   - admonition

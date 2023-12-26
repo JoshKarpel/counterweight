@@ -40,7 +40,7 @@ class Screenshot(_Control):
     Take a "screenshot" of the rendered UI,
     using the given `handler` callback function.
     The screenshot is passed to the `handler` as an
-    [`ElementTree`](xml.etree.ElementTree.ElementTree)
+    [`ElementTree`][xml.etree.ElementTree.ElementTree]
     containing an SVG representation of the UI.
 
     The screenshot is taken at the beginning of the next render cycle,
