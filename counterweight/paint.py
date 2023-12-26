@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from functools import lru_cache
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, SubElement, indent
 
@@ -14,7 +13,6 @@ from counterweight.geometry import Position
 from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
 from counterweight.styles import Border
 from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
-from counterweight.styles.styles import BorderEdge, CellStyle, JoinedBorderKind, JoinedBorderParts, Margin, Padding
 
 logger = get_logger()
 
@@ -26,133 +24,6 @@ def paint_layout(layout: LayoutBox) -> Paint:
     for child in layout.children:
         painted |= paint_layout(child)  # no Z-level support! need something like a chainmap
     return painted
-
-
-@lru_cache(maxsize=2**12)
-def get_replacement_char(
-    joined_border_parts: JoinedBorderParts,
-    center: str,
-    left: str | None,
-    right: str | None,
-    above: str | None,
-    below: str | None,
-) -> str | None:
-    # we already know center must be SOME joined border part at this point
-
-    v = joined_border_parts
-
-    # TODO: this version is very compact but doesn't support either filling in gaps or cutting off bad runs, but that might be desirable...
-    return v.select(
-        top=center in v.connects_top or above in v.connects_bottom,
-        bottom=center in v.connects_bottom or below in v.connects_top,
-        left=center in v.connects_left or left in v.connects_right,
-        right=center in v.connects_right or right in v.connects_left,
-    )
-
-    # left_connects_right = left in v.connects_right
-    # right_connects_left = right in v.connects_left
-    # above_connects_bottom = above in v.connects_bottom
-    # below_connects_top = below in v.connects_top
-    #
-    # match left_connects_right, right_connects_left, above_connects_bottom, below_connects_top:
-    #     case True, True, True, True:
-    #         return v.horizontal_vertical
-    #     case True, True, True, False:
-    #         return v.horizontal_top
-    #     case True, True, False, True:
-    #         return v.horizontal_bottom
-    #     case True, False, True, True:
-    #         return v.vertical_left
-    #     case False, True, True, True:
-    #         return v.vertical_right
-    #     case _:
-    #         pass
-    #
-    # match center, left, right, above, below:
-    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-    #     #     return v.horizontal_vertical
-    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a not in v.connects_bottom and b in v.connects_top:
-    #     #     return v.horizontal_bottom
-    #     # case _, l, r, a, b if l in v.connects_right and r in v.connects_left and a in v.connects_bottom and b not in v.connects_top:
-    #     #     return v.horizontal_top
-    #     # case _, l, r, a, b if l not in v.connects_right and r in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-    #     #     return v.vertical_right
-    #     # case _, l, r, a, b if l in v.connects_right and r not in v.connects_left and a in v.connects_bottom and b in v.connects_top:
-    #     #     return v.vertical_left
-    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r in v.connects_left:
-    #         return v.horizontal_vertical
-    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l not in v.connects_right and r in v.connects_left:
-    #         return v.vertical_right
-    #     case c, l, r, _, _ if c in v.connects_bottom and c in v.connects_top and l in v.connects_right and r not in v.connects_left:
-    #         return v.vertical_left
-    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b in v.connects_top:
-    #         return v.horizontal_vertical
-    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a not in v.connects_bottom and b in v.connects_top:
-    #         return v.horizontal_bottom
-    #     case c, _, _, a, b if c in v.connects_left and c in v.connects_right and a in v.connects_bottom and b not in v.connects_top:
-    #         return v.horizontal_top
-    #     # TODO: is there a way to keep the trick?
-    #     # case _, _, v.horizontal, v.vertical, v.vertical:
-    #     #     return v.vertical_right
-    #     # case _, v.horizontal, _, v.vertical, v.vertical:
-    #     #     return v.vertical_left
-    #     # case _, v.horizontal, v.horizontal, _, v.vertical:
-    #     #     return v.horizontal_bottom
-    #     # case _, v.horizontal, v.horizontal, v.vertical, _:
-    #     #     return v.horizontal_top
-    #     # case v.right_bottom, _, v.horizontal, _, v.vertical:
-    #     #     return v.horizontal_vertical
-    #     # case v.right_bottom, _, _, _, v.vertical:
-    #     #     return v.vertical_left
-    #     # case v.right_bottom, _, v.horizontal, _, _:
-    #     #     return v.horizontal_top
-    #     # case v.vertical, _, v.horizontal, _, v.vertical:
-    #     #     return v.vertical_right
-    #     # case v.vertical, _, v.horizontal, _, None:
-    #     #     return v.left_bottom
-    #     # case v.horizontal, _, v.horizontal, _, v.vertical:
-    #     #     return v.horizontal_bottom
-    #     # case v.horizontal, _, None, _, v.vertical:
-    #     #     return v.right_top
-    #     # case v.vertical, _, v.horizontal, _, _:
-    #     #     return v.vertical_right
-    #     # case v.left_bottom, _, _, _, v.vertical:
-    #     #     return v.vertical_right
-    #     # case v.right_top, _, v.horizontal, _, _:
-    #     #     return v.horizontal_bottom
-    #     # TODO: there should be a more structured way to do this...
-    #     case _:
-    #         return None
-
-
-def join_borders(paint: Paint) -> Paint:
-    overlay: Paint = {}
-    for p, cell_paint in paint.items():
-        for tbk in JoinedBorderKind:
-            v = tbk.value
-
-            char = cell_paint.char
-            if char not in v:  # the center character must be a joined border part
-                continue
-
-            left = paint.get(Position(p.x - 1, p.y))
-            right = paint.get(Position(p.x + 1, p.y))
-            above = paint.get(Position(p.x, p.y - 1))
-            below = paint.get(Position(p.x, p.y + 1))
-
-            # TODO: cell styles must match too (i.e., colors)
-
-            if replaced_char := get_replacement_char(
-                v,
-                center=char,
-                left=left.char if left else None,
-                right=right.char if right else None,
-                above=above.char if above else None,
-                below=below.char if below else None,
-            ):
-                overlay[p] = cell_paint.model_copy(update={"char": replaced_char})
-
-    return paint | overlay
 
 
 def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:

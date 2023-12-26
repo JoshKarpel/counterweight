@@ -36,21 +36,23 @@ def root() -> Div:
             case Key.Space:
                 return Control.BorderJoinToggle
 
+        return None
+
     return Div(
         style=col | align_children_center | justify_children_center,
         children=[
             Div(
                 style=align_children_end,
                 children=[
-                    box(e=top_left),
-                    box(e=top_right),
+                    box(e=frozenset(top_left)),
+                    box(e=frozenset(top_right)),
                 ],
             ),
             Div(
                 style=align_children_start,
                 children=[
-                    box(e=bottom_left),
-                    box(e=bottom_right),
+                    box(e=frozenset(bottom_left)),
+                    box(e=frozenset(bottom_right)),
                 ],
             ),
         ],

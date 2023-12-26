@@ -15,6 +15,7 @@ from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
 from counterweight._utils import drain_queue
+from counterweight.border_healing import join_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import AnyElement, Component, Div, component
 from counterweight.control import Control
@@ -32,7 +33,7 @@ from counterweight.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from counterweight.paint import Paint, join_borders, paint_layout, svg
+from counterweight.paint import Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
 from counterweight.styles.styles import CellStyle, Color, Flex

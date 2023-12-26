@@ -23,6 +23,8 @@ def root() -> Div:
         match event.key:
             case Key.Space:
                 return Control.BorderJoinToggle
+            case _:
+                return None
 
     return Div(
         style=row | style | border_top_left | bs,
