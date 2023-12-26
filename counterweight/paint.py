@@ -208,7 +208,7 @@ def svg(paint: Paint) -> ElementTree:
         {
             "xmlns": "http://www.w3.org/2000/svg",
             "width": f"{w * x_mul:{fmt}}{unit}",
-            "height": f"{w * y_mul:{fmt}}{unit}",
+            "height": f"{h * y_mul:{fmt}}{unit}",
         },
     )
 
