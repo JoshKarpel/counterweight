@@ -1,4 +1,16 @@
-# Data Flow
+# Under the Hood
+
+This section is for those who want to know more about how Counterweight's internals work.
+
+## Inspirations
+
+Counterweight is inspired by a variety of existing frameworks and libraries:
+
+- [React](https://react.dev/) - state and side effect management via hooks, component tree, declarative UI
+- [Tailwind CSS](https://tailwindcss.com/) - utility styles on top of a granular CSS-like framework
+- [Textual](https://textual.textualize.io/) - rendering to the terminal, CSS-like styles
+
+## Data Flow
 
 ```mermaid
 flowchart TB
@@ -49,5 +61,4 @@ flowchart TB
     l -- Mounted Components --> efm
     efm --> eff
     eff -- Set State --> r
-
 ```

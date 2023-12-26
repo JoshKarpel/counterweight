@@ -95,14 +95,14 @@ nav:
       - components/index.md
       - components/div.md
       - components/text.md
-  - Styles:
-      - styles/index.md
-      - styles/utilities.md
   - Hooks:
       - hooks/index.md
       - hooks/use_state.md
       - hooks/use_effect.md
       - hooks/use_ref.md
+  - Styles:
+      - styles/index.md
+      - styles/utilities.md
   - api-reference.md
   - Under the Hood:
-      - under-the-hood/data-flow.md
+      - under-the-hood/index.md
