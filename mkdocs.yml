@@ -46,8 +46,14 @@ plugins:
             heading_level: 3
             docstring_section_style: spacy
             merge_init_into_class: true
-            show_if_no_docstring: false
+            show_if_no_docstring: true
             show_source: false
+            show_bases: false
+            show_symbol_type_heading: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            separate_signature: true
+            unwrap_annotated: true
             members_order: source
           import:
             - https://docs.python.org/3/objects.inv
@@ -83,6 +89,20 @@ extra:
       name: Counterweight on GitHub
 
 nav:
-  - Introduction: index.md
-  - app-flow.md
+  - index.md
   - changelog.md
+  - Components:
+      - components/index.md
+      - components/div.md
+      - components/text.md
+  - Styles:
+      - styles/index.md
+      - styles/utilities.md
+  - Hooks:
+      - hooks/index.md
+      - hooks/use_state.md
+      - hooks/use_effect.md
+      - hooks/use_ref.md
+  - api-reference.md
+  - Under the Hood:
+      - under-the-hood/data-flow.md

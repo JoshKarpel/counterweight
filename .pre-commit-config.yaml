@@ -53,3 +53,10 @@ repos:
     rev: 23.3.0
     hooks:
       - id: black
+
+  - repo: https://github.com/adamchainz/blacken-docs
+    rev: 1.16.0
+    hooks:
+      - id: blacken-docs
+        additional_dependencies:
+        - black==23.3.0

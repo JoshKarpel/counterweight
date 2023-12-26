@@ -1,4 +1,4 @@
-# App Flow
+# Data Flow
 
 ```mermaid
 flowchart TB
