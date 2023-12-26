@@ -8,7 +8,12 @@ from xml.etree.ElementTree import ElementTree
 
 
 @dataclass(frozen=True)
-class Quit:
+class _Control:
+    pass
+
+
+@dataclass(frozen=True)
+class Quit(_Control):
     """
     Cause the application to quit.
 
@@ -19,7 +24,7 @@ class Quit:
 
 
 @dataclass(frozen=True)
-class Bell:
+class Bell(_Control):
     """
     Cause the terminal to emit a bell sound.
 
@@ -30,7 +35,7 @@ class Bell:
 
 
 @dataclass(frozen=True)
-class Screenshot:
+class Screenshot(_Control):
     """
     Take a "screenshot" of the rendered UI,
     using the given `handler` callback function.
@@ -61,7 +66,7 @@ class Screenshot:
 
 
 @dataclass(frozen=True)
-class ToggleBorderHealing:
+class ToggleBorderHealing(_Control):
     """
     Toggle whether border healing occurs.
     """

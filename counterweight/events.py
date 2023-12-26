@@ -7,32 +7,32 @@ from counterweight.geometry import Position
 from counterweight.types import FrozenForbidExtras
 
 
-class _Timestamped(FrozenForbidExtras):
+class _Event(FrozenForbidExtras):
     timestamp_ns: int = Field(default_factory=monotonic_ns)
 
 
-class TerminalResized(_Timestamped):
+class TerminalResized(_Event):
     pass
 
 
-class KeyPressed(_Timestamped):
+class KeyPressed(_Event):
     key: str
 
 
-class MouseMoved(_Timestamped):
+class MouseMoved(_Event):
     position: Position
 
 
-class MouseDown(_Timestamped):
+class MouseDown(_Event):
     position: Position
     button: int
 
 
-class MouseUp(_Timestamped):
+class MouseUp(_Event):
     position: Position
 
 
-class StateSet(_Timestamped):
+class StateSet(_Event):
     pass
 
 

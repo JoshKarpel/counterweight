@@ -7,8 +7,9 @@ from collections.abc import Callable
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
-from typing import TextIO
+from typing import Iterable, TextIO
 
+from more_itertools import pad_none
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
@@ -16,7 +17,7 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing
+from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing, _Control
 from counterweight.elements import AnyElement, Div
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from counterweight.geometry import Position
@@ -57,6 +58,8 @@ async def app(
     root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
+    autopilot: Iterable[AnyEvent | AnyControl] = (),
+    headless: bool = False,
 ) -> None:
     configure_logging()
 
@@ -92,17 +95,20 @@ async def app(
     original = start_input_control(stream=input_stream)
 
     try:
-        start_handling_resize_signal(put_event=put_event)
-        start_output_control(stream=output_stream)
-        start_mouse_reporting(stream=output_stream)
+        if not headless:
+            start_handling_resize_signal(put_event=put_event)
+            start_output_control(stream=output_stream)
+            start_mouse_reporting(stream=output_stream)
 
         key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
         key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)
-        output_stream.write(instructions)
-        output_stream.flush()
+
+        if not headless:
+            output_stream.write(instructions)
+            output_stream.flush()
 
         needs_render = True
         shadow = update_shadow(screen(), None)
@@ -139,13 +145,19 @@ async def app(
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            while True:
+            for ap in pad_none(autopilot):
+                if isinstance(ap, _Control):
+                    handle_control(ap)
+                elif ap is not None:  # i.e., an event
+                    await event_queue.put(ap)
+
                 if should_quit:
                     break
 
                 if should_bell:
-                    output_stream.write("\a")
-                    output_stream.flush()
+                    if not headless:
+                        output_stream.write("\a")
+                        output_stream.flush()
                     should_bell = False
 
                 if should_screenshot:
@@ -217,14 +229,15 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
-                    start_write = perf_counter_ns()
-                    output_stream.write(instructions)
-                    output_stream.flush()
-                    logger.debug(
-                        "Wrote and flushed instructions to output stream",
-                        elapsed_ns=f"{perf_counter_ns() - start_write:_}",
-                        bytes=f"{len(instructions):_}",
-                    )
+                    if not headless:
+                        start_write = perf_counter_ns()
+                        output_stream.write(instructions)
+                        output_stream.flush()
+                        logger.debug(
+                            "Wrote and flushed instructions to output stream",
+                            elapsed_ns=f"{perf_counter_ns() - start_write:_}",
+                            bytes=f"{len(instructions):_}",
+                        )
 
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
@@ -294,10 +307,11 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        stop_mouse_reporting(stream=output_stream)
-        stop_output_control(stream=output_stream)
-        stop_input_control(stream=input_stream, original=original)
-        stop_handling_resize_signal()
+        if not headless:
+            stop_mouse_reporting(stream=output_stream)
+            stop_output_control(stream=output_stream)
+            stop_input_control(stream=input_stream, original=original)
+            stop_handling_resize_signal()
 
         logger.info("Application stopped")
 
