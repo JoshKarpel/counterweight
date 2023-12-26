@@ -8,7 +8,8 @@ from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
 from counterweight.cell_paint import wrap_cells
-from counterweight.components import AnyElement, Component
+from counterweight.components import Component
+from counterweight.elements import AnyElement
 from counterweight.geometry import Position
 from counterweight.styles.styles import BorderEdge
 from counterweight.types import ForbidExtras

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Coroutine, Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -9,7 +8,7 @@ T = TypeVar("T")
 
 Getter = Callable[[], T]
 Setter = Callable[[Callable[[T], T] | T], None]
-Setup = Callable[[], Awaitable[None]]
+Setup = Callable[[], Coroutine[None, None, None]]
 Deps = tuple[object, ...] | None
 
 

@@ -91,10 +91,10 @@ extra:
 nav:
   - index.md
   - changelog.md
-  - Components:
-      - components/index.md
-      - components/div.md
-      - components/text.md
+  - Elements:
+      - elements/index.md
+      - elements/div.md
+      - elements/text.md
   - Hooks:
       - hooks/index.md
       - hooks/use_state.md

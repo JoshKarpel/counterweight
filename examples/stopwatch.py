@@ -5,7 +5,8 @@ from time import monotonic
 from structlog import get_logger
 
 from counterweight.app import app
-from counterweight.components import Div, Text, component
+from counterweight.components import component
+from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key

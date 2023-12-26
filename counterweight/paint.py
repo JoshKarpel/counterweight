@@ -8,7 +8,7 @@ from structlog import get_logger
 
 from counterweight._utils import halve_integer
 from counterweight.cell_paint import CellPaint, wrap_cells
-from counterweight.components import AnyElement, Div, Text
+from counterweight.elements import AnyElement, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
 from counterweight.styles import Border

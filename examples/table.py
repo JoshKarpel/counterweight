@@ -3,8 +3,9 @@ import asyncio
 from structlog import get_logger
 
 from counterweight.app import app
-from counterweight.components import Div, Text, component
+from counterweight.components import component
 from counterweight.control import Control
+from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.keys import Key
 from counterweight.styles.utilities import *

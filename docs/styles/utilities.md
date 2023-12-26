@@ -35,7 +35,8 @@ We can also use the expression `border_heavy | border_rose_200 | border_top_bott
 
 ```python
 from counterweight.styles.utilities import *
-from counterweight.components import component, Text
+from counterweight.components import component
+from counterweight.elements import Text
 
 
 @component
