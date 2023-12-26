@@ -201,11 +201,6 @@ async def app(
 
                     logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
 
-                # TODO: debugging
-                s = svg(current_paint)
-                with Path("screenshot.svg").open("w") as f:
-                    f.write(tostring(s, encoding="unicode"))
-
                 events = await drain_queue(event_queue)
 
                 start_event_handling = perf_counter_ns()

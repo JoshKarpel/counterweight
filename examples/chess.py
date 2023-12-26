@@ -42,6 +42,8 @@ def root() -> Div:
     def on_key(event: KeyPressed) -> Control | None:
         if event.key == Key.Enter:
             return Control.Screenshot
+        else:
+            return None
 
     return Div(
         style=row | align_self_stretch | align_children_center,
