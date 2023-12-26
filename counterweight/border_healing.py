@@ -29,7 +29,7 @@ def get_replacement_char(
     )
 
 
-def join_borders(paint: Paint) -> Paint:
+def heal_borders(paint: Paint) -> Paint:
     overlay: Paint = {}
     for p, cell_paint in paint.items():
         for tbk in JoinedBorderKind:

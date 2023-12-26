@@ -22,7 +22,7 @@ def root() -> Div:
     def on_key(event: KeyPressed) -> Control | None:
         match event.key:
             case Key.Space:
-                return Control.BorderJoinToggle
+                return Control.ToggleBorderHealing
             case _:
                 return None
 

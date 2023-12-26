@@ -34,7 +34,7 @@ def root() -> Div:
             case "r":
                 set_border_edge_idx(randint(0, len(E) - 1))
             case Key.Space:
-                return Control.BorderJoinToggle
+                return Control.ToggleBorderHealing
 
         return None
 
