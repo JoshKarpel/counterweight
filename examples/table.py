@@ -27,19 +27,43 @@ def root() -> Div:
                 return None
 
     return Div(
-        style=row | style | border_top_left | bs,
+        style=row | style,
         on_key=on_key,
         children=[
             Div(
                 style=col | style,
-                children=[box("A1"), box("A2")],
+                children=[
+                    box("A1", edge_style=None),
+                    box("A2", edge_style=border_bottom_left_right),
+                ],
             ),
             Div(
                 style=col | style,
                 children=[
-                    Div(style=row | style, children=[box("B1"), box("B2")]),
-                    Div(style=row | style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
-                    Div(style=row | style, children=[box("D1"), box("D2"), box("D3")]),
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("B1", edge_style=border_top_bottom_right),
+                            box("B2", edge_style=border_top_bottom_right),
+                        ],
+                    ),
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("C1"),
+                            box("C2"),
+                            box("C3"),
+                            box("C4"),
+                        ],
+                    ),
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("D1"),
+                            box("D2"),
+                            box("D3"),
+                        ],
+                    ),
                 ],
             ),
         ],
@@ -47,9 +71,9 @@ def root() -> Div:
 
 
 @component
-def box(s: str) -> Div:
+def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
     return Div(
-        style=style | border_bottom_right | bs,
+        style=style | bs | edge_style,
         children=[Text(style=text_justify_center, content=s)],
     )
 
