@@ -18,7 +18,7 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.control import Control
+from counterweight.control import Bell, Quit, Screenshot, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from counterweight.geometry import Position
@@ -237,15 +237,15 @@ async def app(
                                 if e.on_key:
                                     r = e.on_key(event)
                                     match r:
-                                        case Control.Quit:
+                                        case Quit():
                                             should_quit = True
-                                        case Control.Bell:
+                                        case Bell():
                                             should_bell = True
-                                        case Control.Screenshot:
+                                        case Screenshot():
                                             s = svg(current_paint)
                                             with Path("screenshot.svg").open("w") as f:
                                                 f.write(tostring(s, encoding="unicode"))
-                                        case Control.ToggleBorderHealing:
+                                        case ToggleBorderHealing():
                                             do_heal_borders = not do_heal_borders
                                             needs_render = True
                         case MouseMoved(position=p):
@@ -258,14 +258,17 @@ async def app(
                                     if b.element.on_mouse_down:
                                         r = b.element.on_mouse_down(event)
                                         match r:
-                                            case Control.Quit:
+                                            case Quit():
                                                 should_quit = True
-                                            case Control.Bell:
+                                            case Bell():
                                                 should_bell = True
-                                            case Control.Screenshot:
+                                            case Screenshot():
                                                 s = svg(current_paint)
                                                 with Path("screenshot.svg").open("w") as f:
                                                     f.write(tostring(s, encoding="unicode"))
+                                            case ToggleBorderHealing():
+                                                do_heal_borders = not do_heal_borders
+                                                needs_render = True
                         case MouseUp():
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
@@ -273,14 +276,17 @@ async def app(
                                     if b.element.on_mouse_up:
                                         r = b.element.on_mouse_up(event)
                                         match r:
-                                            case Control.Quit:
+                                            case Quit():
                                                 should_quit = True
-                                            case Control.Bell:
+                                            case Bell():
                                                 should_bell = True
-                                            case Control.Screenshot:
+                                            case Screenshot():
                                                 s = svg(current_paint)
                                                 with Path("screenshot.svg").open("w") as f:
                                                     f.write(tostring(s, encoding="unicode"))
+                                            case ToggleBorderHealing():
+                                                do_heal_borders = not do_heal_borders
+                                                needs_render = True
                     logger.debug(
                         "Handled event",
                         event_obj=event,

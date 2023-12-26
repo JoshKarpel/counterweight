@@ -1,10 +1,28 @@
 from __future__ import annotations
 
-from enum import Enum
+from typing import Union
+
+from counterweight.types import FrozenForbidExtras
 
 
-class Control(Enum):
-    Quit = "quit"
-    Bell = "bell"
-    Screenshot = "screenshot"
-    ToggleBorderHealing = "toggle-border-healing"
+class _Control(FrozenForbidExtras):
+    pass
+
+
+class Quit(_Control):
+    pass
+
+
+class Bell(_Control):
+    pass
+
+
+class Screenshot(_Control):
+    pass
+
+
+class ToggleBorderHealing(_Control):
+    pass
+
+
+AnyControl = Union[Quit, Bell, Screenshot, ToggleBorderHealing]
