@@ -114,8 +114,8 @@ async def app(
             start_output_control(stream=output_stream)
             start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
-        key_thread.start()
+            key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
+            key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)

@@ -135,4 +135,4 @@ dmypy.json
 /.ruff_cache/
 
 *.svg
-!/docs/assets/**/*.svg
+!/docs/**/*.svg
