@@ -200,7 +200,7 @@ def svg(paint: Paint) -> ElementTree:
     x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
     y_mul = 1
 
-    fmt = "0.6f"
+    fmt = "0.3f"
     unit = "em"
 
     root = Element(
@@ -278,6 +278,6 @@ def svg(paint: Paint) -> ElementTree:
         )
         ts.text = cell.char
 
-    indent(root)
+    indent(root, space=" ")
 
     return ElementTree(element=root)
