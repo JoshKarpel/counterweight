@@ -4,12 +4,10 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
-from pathlib import Path
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
 from typing import TextIO
-from xml.etree.ElementTree import tostring
 
 from structlog import get_logger
 
@@ -18,7 +16,7 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.control import Bell, Quit, Screenshot, ToggleBorderHealing
+from counterweight.control import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from counterweight.geometry import Position
@@ -114,6 +112,27 @@ async def app(
         should_bell = False
 
         do_heal_borders = True
+
+        def handle_control(control: AnyControl | None) -> None:
+            nonlocal needs_render
+
+            nonlocal should_quit
+            nonlocal should_bell
+
+            nonlocal do_heal_borders
+
+            match control:
+                case None:
+                    pass
+                case Quit():
+                    should_quit = True
+                case Bell():
+                    should_bell = True
+                case Screenshot(handler=handler):
+                    handler(svg(current_paint))
+                case ToggleBorderHealing():
+                    do_heal_borders = not do_heal_borders
+                    needs_render = True
 
         mouse_position = Position(x=-1, y=-1)
 
@@ -235,19 +254,7 @@ async def app(
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
-                                    r = e.on_key(event)
-                                    match r:
-                                        case Quit():
-                                            should_quit = True
-                                        case Bell():
-                                            should_bell = True
-                                        case Screenshot():
-                                            s = svg(current_paint)
-                                            with Path("screenshot.svg").open("w") as f:
-                                                f.write(tostring(s, encoding="unicode"))
-                                        case ToggleBorderHealing():
-                                            do_heal_borders = not do_heal_borders
-                                            needs_render = True
+                                    handle_control(e.on_key(event))
                         case MouseMoved(position=p):
                             needs_render = True
                             mouse_position = p
@@ -256,37 +263,14 @@ async def app(
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_down:
-                                        r = b.element.on_mouse_down(event)
-                                        match r:
-                                            case Quit():
-                                                should_quit = True
-                                            case Bell():
-                                                should_bell = True
-                                            case Screenshot():
-                                                s = svg(current_paint)
-                                                with Path("screenshot.svg").open("w") as f:
-                                                    f.write(tostring(s, encoding="unicode"))
-                                            case ToggleBorderHealing():
-                                                do_heal_borders = not do_heal_borders
-                                                needs_render = True
+                                        handle_control(b.element.on_mouse_down(event))
                         case MouseUp():
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_up:
-                                        r = b.element.on_mouse_up(event)
-                                        match r:
-                                            case Quit():
-                                                should_quit = True
-                                            case Bell():
-                                                should_bell = True
-                                            case Screenshot():
-                                                s = svg(current_paint)
-                                                with Path("screenshot.svg").open("w") as f:
-                                                    f.write(tostring(s, encoding="unicode"))
-                                            case ToggleBorderHealing():
-                                                do_heal_borders = not do_heal_borders
-                                                needs_render = True
+                                        handle_control(b.element.on_mouse_up(event))
+
                     logger.debug(
                         "Handled event",
                         event_obj=event,

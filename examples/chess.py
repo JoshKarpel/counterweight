@@ -1,5 +1,6 @@
 import asyncio
 from enum import Enum, StrEnum
+from pathlib import Path
 from typing import NamedTuple
 
 from structlog import get_logger
@@ -42,7 +43,7 @@ class PieceCharacter(Enum):
 def root() -> Div:
     def on_key(event: KeyPressed) -> AnyControl | None:
         if event.key == Key.Enter:
-            return Screenshot()
+            return Screenshot.to_file(Path("chess.svg"))
         else:
             return None
 
