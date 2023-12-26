@@ -47,6 +47,8 @@ jobs:
         run: poetry run mkdocs build --clean --strict --verbose
       - name: Upload coverage
         uses: codecov/codecov-action@v3.1.4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           env_vars: PLATFORM,PYTHON_VERSION
           fail_ci_if_error: false
