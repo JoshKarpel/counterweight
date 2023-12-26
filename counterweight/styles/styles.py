@@ -79,6 +79,10 @@ class Color(NamedTuple):
             int(hex[4:6], 16),
         )
 
+    @property
+    def hex(self) -> str:
+        return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
+
     def blend(self, other: Color, alpha: float) -> Color:
         return Color(
             red=int(self.red * (1 - alpha) + other.red * alpha),

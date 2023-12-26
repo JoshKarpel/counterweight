@@ -4,10 +4,12 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
+from pathlib import Path
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
 from typing import TextIO
+from xml.etree.ElementTree import tostring
 
 from structlog import get_logger
 
@@ -30,7 +32,7 @@ from counterweight.output import (
     stop_mouse_reporting,
     stop_output_control,
 )
-from counterweight.paint import Paint, join_borders, paint_layout
+from counterweight.paint import Paint, join_borders, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
 from counterweight.styles.styles import CellStyle, Color, Flex
@@ -237,6 +239,10 @@ async def app(
                                             should_quit = True
                                         case Control.Bell:
                                             should_bell = True
+                                        case Control.Screenshot:
+                                            s = svg(current_paint)
+                                            with Path("screenshot.svg").open("w") as f:
+                                                f.write(tostring(s, encoding="unicode"))
                                         case Control.BorderJoinToggle:
                                             do_border_join = not do_border_join
                                             needs_render = True
@@ -254,6 +260,10 @@ async def app(
                                                 should_quit = True
                                             case Control.Bell:
                                                 should_bell = True
+                                            case Control.Screenshot:
+                                                s = svg(current_paint)
+                                                with Path("screenshot.svg").open("w") as f:
+                                                    f.write(tostring(s, encoding="unicode"))
                         case MouseUp():
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
@@ -265,6 +275,10 @@ async def app(
                                                 should_quit = True
                                             case Control.Bell:
                                                 should_bell = True
+                                            case Control.Screenshot:
+                                                s = svg(current_paint)
+                                                with Path("screenshot.svg").open("w") as f:
+                                                    f.write(tostring(s, encoding="unicode"))
                     logger.debug(
                         "Handled event",
                         event_obj=event,

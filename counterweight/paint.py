@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from textwrap import dedent
 from functools import lru_cache
 from typing import Literal, assert_never
+from xml.etree.ElementTree import Element, SubElement, indent
 
 from structlog import get_logger
 
@@ -11,6 +13,7 @@ from counterweight.components import AnyElement, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
 from counterweight.styles import Border
+from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
 from counterweight.styles.styles import BorderEdge, CellStyle, JoinedBorderKind, JoinedBorderParts, Margin, Padding
 
 logger = get_logger()
@@ -314,3 +317,96 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
         lines.append(line)
 
     return "\n".join("".join(line) for line in lines)
+
+
+def svg(paint: Paint) -> Element:
+    w, h = max(paint.keys())
+
+    # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
+    w += 1
+    h += 1
+
+    x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
+    y_mul = 1
+
+    fmt = "0.6f"
+    unit = "em"
+
+    root = Element(
+        "svg",
+        {
+            "xmlns": "http://www.w3.org/2000/svg",
+            "width": f"{w * x_mul:{fmt}}{unit}",
+            "height": f"{w * y_mul:{fmt}}{unit}",
+        },
+    )
+
+    style = SubElement(
+        root,
+        "style",
+        {},
+    )
+    style.text = dedent(
+        """\
+        svg {
+          dominant-baseline: hanging;
+          font-size: 1rem;
+        }
+        """
+    )
+
+    background_root = SubElement(
+        root,
+        "g",
+        {},
+    )
+    SubElement(  # default background color is black, so do a single black rectangle to cover the whole background as an optimization
+        background_root,
+        "rect",
+        {
+            "x": f"{0 * x_mul:{fmt}}{unit}",
+            "y": f"{0 * y_mul:{fmt}}{unit}",
+            "width": f"{w * x_mul:{fmt}}{unit}",
+            "height": f"{h * y_mul:{fmt}}{unit}",
+            "fill": Color.from_name("black").hex,
+        },
+    )
+
+    text_root = SubElement(
+        root,
+        "text",
+        {
+            "font-family": "monospace",
+        },
+    )
+
+    # Sort by y, then x, so that the SVG is written top to bottom, left to right
+    for pos, cell in sorted(paint.items(), key=lambda pos_cell: (pos_cell[0].y, pos_cell[0].x)):
+        # black is the default background color, so don't write it (optimization)
+        if cell.style.background != Color.from_name("black"):
+            SubElement(
+                background_root,
+                "rect",
+                {
+                    "x": f"{pos.x * x_mul:{fmt}}{unit}",
+                    "y": f"{pos.y * y_mul:{fmt}}{unit}",
+                    "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
+                    "height": f"{1 * y_mul:{fmt}}{unit}",
+                    "fill": cell.style.background.hex,
+                },
+            )
+
+        ts = SubElement(
+            text_root,
+            "tspan",
+            {
+                "x": f"{pos.x * x_mul:{fmt}}{unit}",
+                "y": f"{pos.y * y_mul:{fmt}}{unit}",
+                "fill": cell.style.foreground.hex,  # text color
+            },
+        )
+        ts.text = cell.char
+
+    indent(root)
+
+    return root
