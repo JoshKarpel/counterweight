@@ -86,6 +86,7 @@ if __name__ == "__main__":
         app(
             root,
             headless=True,
+            dimensions=(80, 24),
             autopilot=[
                 Screenshot.to_file(Path("healing-on.svg")),
                 KeyPressed(key=Key.Space),
@@ -94,3 +95,4 @@ if __name__ == "__main__":
             ],
         )
     )
+    print("done)")

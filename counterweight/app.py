@@ -67,12 +67,13 @@ async def app(
     root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
-    autopilot: Iterable[AnyEvent | AnyControl] = (),
     headless: bool = False,
+    dimensions: tuple[int, int] | None = None,
+    autopilot: Iterable[AnyEvent | AnyControl] = (),
 ) -> None:
     configure_logging()
 
-    w, h = shutil.get_terminal_size()
+    w, h = dimensions or shutil.get_terminal_size()
 
     @component
     def screen() -> Div:
@@ -160,14 +161,6 @@ async def app(
         async with TaskGroup() as tg:
             # None for initial render, then the autopilot, then nones forever
             for ap in chain((None,), autopilot, repeat(None)):
-                if ap is not None:
-                    logger.debug("Handling autopilot command", command=ap)
-                    if isinstance(ap, _Control):
-                        handle_control(ap)
-                        await event_queue.put(Dummy())
-                    else:  # i.e., an event
-                        await event_queue.put(ap)
-
                 if should_quit:
                     break
 
@@ -267,6 +260,14 @@ async def app(
                     needs_render = False
 
                     logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
+
+                if ap is not None:
+                    if isinstance(ap, _Control):
+                        handle_control(ap)
+                        await event_queue.put(Dummy())
+                    else:  # i.e., an event
+                        await event_queue.put(ap)
+                    logger.debug("Handled autopilot command", command=ap)
 
                 events = await drain_queue(event_queue)
 
