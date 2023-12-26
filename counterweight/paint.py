@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, SubElement, indent
 
@@ -191,8 +192,14 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
 
 def svg(paint: Paint) -> Element:
     w, h = max(paint.keys())
+
+    # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
+    w += 1
+    h += 1
+
     x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
     y_mul = 1
+
     fmt = "0.6f"
     unit = "em"
 
@@ -201,9 +208,22 @@ def svg(paint: Paint) -> Element:
         {
             "xmlns": "http://www.w3.org/2000/svg",
             "width": f"{w * x_mul:{fmt}}{unit}",
-            "height": f"{h * y_mul:{fmt}}{unit}",
-            "viewBox": f"{0 * x_mul:{fmt}}{unit} {0 * y_mul:{fmt}}{unit} {w * x_mul:{fmt}}{unit} {h * y_mul:{fmt}}{unit}",
+            "height": f"{w * y_mul:{fmt}}{unit}",
         },
+    )
+
+    style = SubElement(
+        root,
+        "style",
+        {},
+    )
+    style.text = dedent(
+        """\
+        svg {
+          dominant-baseline: hanging;
+          font-size: 1rem;
+        }
+        """
     )
 
     background_root = SubElement(
