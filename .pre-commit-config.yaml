@@ -16,7 +16,6 @@ repos:
       - id: forbid-new-submodules
       - id: mixed-line-ending
       - id: trailing-whitespace
-        exclude_types: [svg]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -40,7 +39,7 @@ repos:
         name: generate utilities
         language: system
         entry: codegen/generate_utilities.py
-        always_run: true
+        types: [python]
         pass_filenames: false
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
@@ -62,4 +61,5 @@ repos:
         - black==23.3.0
 
 ci:
-  skip: generate-utilities
+  skip:
+    - generate-utilities
