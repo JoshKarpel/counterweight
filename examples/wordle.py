@@ -9,7 +9,7 @@ from typing import Literal
 from more_itertools import padded
 from structlog import get_logger
 
-from counterweight.app import app
+from counterweight.app import run_app
 from counterweight.components import component
 from counterweight.control import Control
 from counterweight.elements import Div, Text
@@ -283,4 +283,4 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], Control
     )
 
 
-asyncio.run(app(root))
+asyncio.run(run_app(root))

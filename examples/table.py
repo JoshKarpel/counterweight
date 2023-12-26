@@ -2,7 +2,7 @@ import asyncio
 
 from structlog import get_logger
 
-from counterweight.app import app
+from counterweight.app import run_app
 from counterweight.components import component
 from counterweight.control import Control
 from counterweight.elements import Div, Text
@@ -79,4 +79,4 @@ def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
     )
 
 
-asyncio.run(app(root))
+asyncio.run(run_app(root))

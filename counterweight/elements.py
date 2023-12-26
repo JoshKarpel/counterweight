@@ -5,7 +5,6 @@ from typing import Callable, Iterator, Literal, Sequence, Union
 from pydantic import Field
 
 from counterweight.cell_paint import CellPaint
-from counterweight.components import Component
 from counterweight.control import Control
 from counterweight.events import KeyPressed, MouseDown, MouseUp
 from counterweight.styles import CellStyle, Style
@@ -15,7 +14,7 @@ from counterweight.types import FrozenForbidExtras
 class Div(FrozenForbidExtras):
     type: Literal["div"] = "div"
     style: Style = Field(default=Style())
-    children: Sequence[Component | AnyElement] = Field(default_factory=list)
+    children: Sequence[Component | AnyElement] = Field(default=())
     on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], Control | None] | None = None
     on_mouse_down: Callable[[MouseDown], Control | None] | None = None
@@ -65,6 +64,8 @@ AnyElement = Union[
     Div,
     Text,
 ]
+
+from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 
 Div.model_rebuild()
 Text.model_rebuild()

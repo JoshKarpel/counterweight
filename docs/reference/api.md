@@ -1,15 +1,18 @@
-# API Reference
+# API
 
 ## Application
 
-::: counterweight.app.app
+::: counterweight.app.run_app
 
-## Components & Elements
+## Components
 
-::: counterweight.components.AnyElement
 ::: counterweight.components.component
-::: counterweight.components.Div
-::: counterweight.components.Text
+
+## Elements
+
+::: counterweight.elements.AnyElement
+::: counterweight.elements.Div
+::: counterweight.elements.Text
 
 ## Hooks
 

@@ -55,7 +55,7 @@ def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
 
 
-async def app(
+async def run_app(
     root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,

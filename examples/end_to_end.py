@@ -4,7 +4,7 @@ from itertools import cycle
 
 from structlog import get_logger
 
-from counterweight.app import app
+from counterweight.app import run_app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
@@ -142,4 +142,4 @@ def textpad() -> Text:
     )
 
 
-asyncio.run(app(toggle))
+asyncio.run(run_app(toggle))
