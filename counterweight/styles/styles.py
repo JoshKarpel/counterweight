@@ -387,7 +387,7 @@ class JoinedBorderParts(NamedTuple):
     horizontal_vertical: str
 
     def select(self, top: bool, bottom: bool, left: bool, right: bool) -> str | None:
-        # TODO: this should be a lookup table
+        # This could be a lookup table... not sure if that would be better
         match top, bottom, left, right:
             case True, True, True, True:
                 return self.horizontal_vertical

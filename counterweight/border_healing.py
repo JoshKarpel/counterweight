@@ -9,23 +9,18 @@ from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
 
 @lru_cache(maxsize=2**12)
 def get_replacement_char(
-    joined_border_parts: JoinedBorderParts,
+    parts: JoinedBorderParts,
     center: str,
     left: str | None,
     right: str | None,
     above: str | None,
     below: str | None,
 ) -> str | None:
-    # we already know center must be SOME joined border part at this point
-
-    v = joined_border_parts
-
-    # TODO: this version is very compact but doesn't support either filling in gaps or cutting off bad runs, but that might be desirable...
-    return v.select(
-        top=center in v.connects_top or above in v.connects_bottom,
-        bottom=center in v.connects_bottom or below in v.connects_top,
-        left=center in v.connects_left or left in v.connects_right,
-        right=center in v.connects_right or right in v.connects_left,
+    return parts.select(
+        top=center in parts.connects_top or above in parts.connects_bottom,
+        bottom=center in parts.connects_bottom or below in parts.connects_top,
+        left=center in parts.connects_left or left in parts.connects_right,
+        right=center in parts.connects_right or right in parts.connects_left,
     )
 
 
