@@ -7,7 +7,7 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import AnyControl, Screenshot
+from counterweight.controls import AnyControl, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_state

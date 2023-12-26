@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from textwrap import dedent
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element, SubElement, indent
+from xml.etree.ElementTree import Element, ElementTree, SubElement, indent
 
 from structlog import get_logger
 
@@ -190,7 +190,7 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
     return "\n".join("".join(line) for line in lines)
 
 
-def svg(paint: Paint) -> Element:
+def svg(paint: Paint) -> ElementTree:
     w, h = max(paint.keys())
 
     # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
@@ -280,4 +280,4 @@ def svg(paint: Paint) -> Element:
 
     indent(root)
 
-    return root
+    return ElementTree(element=root)

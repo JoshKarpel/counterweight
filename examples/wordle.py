@@ -11,7 +11,7 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import AnyControl, Bell, Quit
+from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_state

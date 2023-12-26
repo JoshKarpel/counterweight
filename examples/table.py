@@ -4,7 +4,7 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import AnyControl, ToggleBorderHealing
+from counterweight.controls import AnyControl, ToggleBorderHealing
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.keys import Key

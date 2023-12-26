@@ -5,7 +5,7 @@ from typing import Callable, Iterator, Literal, Sequence, Union
 from pydantic import Field
 
 from counterweight.cell_paint import CellPaint
-from counterweight.control import AnyControl
+from counterweight.controls import AnyControl
 from counterweight.events import KeyPressed, MouseDown, MouseUp
 from counterweight.styles import CellStyle, Style
 from counterweight.types import FrozenForbidExtras

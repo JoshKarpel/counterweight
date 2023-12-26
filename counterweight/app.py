@@ -16,7 +16,7 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.control import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing
+from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from counterweight.geometry import Position
@@ -110,6 +110,7 @@ async def app(
 
         should_quit = False
         should_bell = False
+        should_screenshot: Screenshot | None = None
 
         do_heal_borders = True
 
@@ -118,6 +119,7 @@ async def app(
 
             nonlocal should_quit
             nonlocal should_bell
+            nonlocal should_screenshot
 
             nonlocal do_heal_borders
 
@@ -128,8 +130,8 @@ async def app(
                     should_quit = True
                 case Bell():
                     should_bell = True
-                case Screenshot(handler=handler):
-                    handler(svg(current_paint))
+                case Screenshot():
+                    should_screenshot = control
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     needs_render = True
@@ -145,6 +147,10 @@ async def app(
                     output_stream.write("\a")
                     output_stream.flush()
                     should_bell = False
+
+                if should_screenshot:
+                    should_screenshot.handler(svg(current_paint))
+                    should_screenshot = None
 
                 if needs_render:
                     start_render = perf_counter_ns()

@@ -38,3 +38,10 @@
 ::: counterweight.styles.Typography
 ::: counterweight.styles.Color
 ::: counterweight.styles.CellStyle
+
+## Controls
+
+::: counterweight.controls.Quit
+::: counterweight.controls.Bell
+::: counterweight.controls.Screenshot
+::: counterweight.controls.ToggleBorderHealing
