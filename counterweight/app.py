@@ -15,6 +15,7 @@ from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
 from counterweight._utils import drain_queue
+from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import AnyElement, Component, Div, component
 from counterweight.control import Control
@@ -111,6 +112,8 @@ async def app(
         should_quit = False
         should_bell = False
 
+        do_heal_borders = True
+
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
@@ -163,6 +166,14 @@ async def app(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
                     )
+
+                    if do_heal_borders:
+                        start_border_join = perf_counter_ns()
+                        new_paint = heal_borders(new_paint)
+                        logger.debug(
+                            "Healed borders in new paint",
+                            elapsed_ns=f"{perf_counter_ns() - start_border_join:_}",
+                        )
 
                     start_diff = perf_counter_ns()
                     diff = diff_paint(new_paint, current_paint)
@@ -233,6 +244,9 @@ async def app(
                                             s = svg(current_paint)
                                             with Path("screenshot.svg").open("w") as f:
                                                 f.write(tostring(s, encoding="unicode"))
+                                        case Control.ToggleBorderHealing:
+                                            do_heal_borders = not do_heal_borders
+                                            needs_render = True
                         case MouseMoved(position=p):
                             needs_render = True
                             mouse_position = p

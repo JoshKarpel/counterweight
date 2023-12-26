@@ -4,32 +4,77 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import Div, Text, component
+from counterweight.control import Control
+from counterweight.events import KeyPressed
+from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
 logger = get_logger()
 
-ROWS = (
-    ("foo", "bar", "baz"),
-    ("foo", "bar", "baz"),
-    ("foo", "bar", "baz"),
-)
+
+# TODO: what happens if you tweak these (removing align_self_stretch definitely breaks it)
+style = align_self_stretch | justify_children_center | align_children_center
+bs = border_double
 
 
 @component
 def root() -> Div:
+    def on_key(event: KeyPressed) -> Control | None:
+        match event.key:
+            case Key.Space:
+                return Control.ToggleBorderHealing
+            case _:
+                return None
+
     return Div(
-        style=row | align_self_stretch | align_children_center,
-        children=[table()],
+        style=row | style,
+        on_key=on_key,
+        children=[
+            Div(
+                style=col | style,
+                children=[
+                    box("A1", edge_style=None),
+                    box("A2", edge_style=border_bottom_left_right),
+                ],
+            ),
+            Div(
+                style=col | style,
+                children=[
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("B1", edge_style=border_top_bottom_right),
+                            box("B2", edge_style=border_top_bottom_right),
+                        ],
+                    ),
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("C1"),
+                            box("C2"),
+                            box("C3"),
+                            box("C4"),
+                        ],
+                    ),
+                    Div(
+                        style=row | style,
+                        children=[
+                            box("D1"),
+                            box("D2"),
+                            box("D3"),
+                        ],
+                    ),
+                ],
+            ),
+        ],
     )
 
 
 @component
-def table() -> Div:
-    rows = [Div(children=[Text(content=entry) for entry in row]) for row in ROWS]
-
+def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
     return Div(
-        style=col | justify_children_center | align_children_center,
-        children=rows,
+        style=style | bs | edge_style,
+        children=[Text(style=text_justify_center, content=s)],
     )
 
 

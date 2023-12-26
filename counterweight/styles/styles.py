@@ -373,11 +373,9 @@ class BorderKind(Enum):
     )
 
 
-class TableBorderParts(NamedTuple):
-    left: str
-    right: str
-    top: str
-    bottom: str
+class JoinedBorderParts(NamedTuple):
+    vertical: str
+    horizontal: str
     left_top: str
     right_top: str
     left_bottom: str
@@ -388,142 +386,143 @@ class TableBorderParts(NamedTuple):
     horizontal_bottom: str
     horizontal_vertical: str
 
+    def select(self, top: bool, bottom: bool, left: bool, right: bool) -> str | None:
+        # This could be a lookup table... not sure if that would be better
+        match top, bottom, left, right:
+            case True, True, True, True:
+                return self.horizontal_vertical
+            case True, True, True, False:
+                return self.vertical_left
+            case True, True, False, True:
+                return self.vertical_right
+            case True, False, True, True:
+                return self.horizontal_top
+            case False, True, True, True:
+                return self.horizontal_bottom
+            case True, True, False, False:
+                return self.vertical
+            case False, False, True, True:
+                return self.horizontal
+            case True, False, True, False:
+                return self.right_bottom
+            case True, False, False, True:
+                return self.left_bottom
+            case False, True, True, False:
+                return self.right_top
+            case False, True, False, True:
+                return self.left_top
+            case _:
+                return None
 
-class TableBorderKind(Enum):
-    Light = TableBorderParts(
-        left="│",
-        right="│",
-        top="─",
-        bottom="─",
+    @property
+    def connects_right(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.horizontal,
+                self.left_top,
+                self.left_bottom,
+                self.horizontal_top,
+                self.horizontal_bottom,
+                self.vertical_right,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_left(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.horizontal,
+                self.right_top,
+                self.right_top,
+                self.horizontal_top,
+                self.horizontal_bottom,
+                self.vertical_left,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_top(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.vertical,
+                self.left_bottom,
+                self.right_bottom,
+                self.vertical_right,
+                self.vertical_left,
+                self.horizontal_top,
+                self.horizontal_vertical,
+            }
+        )
+
+    @property
+    def connects_bottom(self) -> frozenset[str]:
+        return frozenset(
+            {
+                self.vertical,
+                self.left_top,
+                self.right_top,
+                self.vertical_right,
+                self.vertical_left,
+                self.horizontal_bottom,
+                self.horizontal_vertical,
+            }
+        )
+
+
+class JoinedBorderKind(Enum):
+    Light = JoinedBorderParts(
+        vertical="│",
+        horizontal="─",
         left_top="┌",
         right_top="┐",
         left_bottom="└",
         right_bottom="┘",
         vertical_right="├",
         vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
+        horizontal_top="┴",
+        horizontal_bottom="┬",
         horizontal_vertical="┼",
     )
-    LightRounded = TableBorderParts(
-        left="│",
-        right="│",
-        top="─",
-        bottom="─",
+    LightRounded = JoinedBorderParts(
+        vertical="│",
+        horizontal="─",
         left_top="╭",
         right_top="╮",
         left_bottom="╰",
         right_bottom="╯",
         vertical_right="├",
         vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
+        horizontal_top="┴",
+        horizontal_bottom="┬",
         horizontal_vertical="┼",
     )
-    LightAngled = TableBorderParts(
-        left="▏",
-        right="▕",
-        top="▔",
-        bottom="▁",
-        left_top="/",
-        right_top="╲",
-        left_bottom="╲",
-        right_bottom="/",
-        vertical_right="├",
-        vertical_left="┤",
-        horizontal_top="┬",
-        horizontal_bottom="┴",
-        horizontal_vertical="┼",
-    )
-    Heavy = TableBorderParts(
-        left="┃",
-        right="┃",
-        top="━",
-        bottom="━",
+    Heavy = JoinedBorderParts(
+        vertical="┃",
+        horizontal="━",
         left_top="┏",
         right_top="┓",
         left_bottom="┗",
         right_bottom="┛",
         vertical_right="┣",
         vertical_left="┫",
-        horizontal_top="┳",
-        horizontal_bottom="┻",
+        horizontal_top="┻",
+        horizontal_bottom="┳",
         horizontal_vertical="╋",
     )
-    Double = TableBorderParts(
-        left="║",
-        right="║",
-        top="═",
-        bottom="═",
+    Double = JoinedBorderParts(
+        vertical="║",
+        horizontal="═",
         left_top="╔",
         right_top="╗",
         left_bottom="╚",
         right_bottom="╝",
         vertical_right="╠",
         vertical_left="╣",
-        horizontal_top="╦",
-        horizontal_bottom="╩",
+        horizontal_top="╩",
+        horizontal_bottom="╦",
         horizontal_vertical="╬",
-    )
-    LightShade = TableBorderParts(
-        left="░",
-        right="░",
-        top="░",
-        bottom="░",
-        left_top="░",
-        right_top="░",
-        left_bottom="░",
-        right_bottom="░",
-        vertical_right="░",
-        vertical_left="░",
-        horizontal_top="░",
-        horizontal_bottom="░",
-        horizontal_vertical="░",
-    )
-    MediumShade = TableBorderParts(
-        left="▒",
-        right="▒",
-        top="▒",
-        bottom="▒",
-        left_top="▒",
-        right_top="▒",
-        left_bottom="▒",
-        right_bottom="▒",
-        vertical_right="▒",
-        vertical_left="▒",
-        horizontal_top="▒",
-        horizontal_bottom="▒",
-        horizontal_vertical="▒",
-    )
-    HeavyShade = TableBorderParts(
-        left="▓",
-        right="▓",
-        top="▓",
-        bottom="▓",
-        left_top="▓",
-        right_top="▓",
-        left_bottom="▓",
-        right_bottom="▓",
-        vertical_right="▓",
-        vertical_left="▓",
-        horizontal_top="▓",
-        horizontal_bottom="▓",
-        horizontal_vertical="▓",
-    )
-    Star = TableBorderParts(
-        left="*",
-        right="*",
-        top="*",
-        bottom="*",
-        left_top="*",
-        right_top="*",
-        left_bottom="*",
-        right_bottom="*",
-        vertical_right="*",
-        vertical_left="*",
-        horizontal_top="*",
-        horizontal_bottom="*",
-        horizontal_vertical="*",
     )
 
 
