@@ -1,6 +1,8 @@
 # Changelog
 
-## `Next`
+## `0.0.2`
+
+Released `2023-12-26`
 
 ### Added
 
