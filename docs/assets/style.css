@@ -17,6 +17,10 @@ article > .doc + .doc {
   margin-top: 1rem;
 }
 
+.doc-object-name {
+  font-family: monospace;
+}
+
 h3.doc {
   margin: -0.6rem;
   padding: 0.6rem;

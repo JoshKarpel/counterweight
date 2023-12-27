@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from structlog import get_logger
 
-from counterweight.components import Div, Text
+from counterweight.elements import Div, Text
 from counterweight.layout import build_layout_tree
 from counterweight.paint import debug_paint, paint_layout
 from counterweight.styles import Border, BorderKind, Span, Style

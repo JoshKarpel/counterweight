@@ -11,6 +11,11 @@
   should "join up", but don't because they belong to different elements, they will now be joined up
   [#66](https://github.com/JoshKarpel/counterweight/pull/66).
 
+### Changed
+
+- Various namespaces moved around to make more sense (especially in documentation)
+  and separate concerns better as part of [#68](https://github.com/JoshKarpel/counterweight/pull/68).
+
 ## `0.0.1`
 
 Released `2023-12-19`

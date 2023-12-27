@@ -17,8 +17,9 @@ from counterweight._context_vars import current_event_queue
 from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
-from counterweight.components import AnyElement, Component, Div, component
+from counterweight.components import Component, component
 from counterweight.control import Control
+from counterweight.elements import AnyElement, Div
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect

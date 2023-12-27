@@ -3,6 +3,7 @@
 alias t := test
 alias w := watch
 alias wt := watch-test
+alias d := docs
 
 test:
   mypy
@@ -12,3 +13,6 @@ watch CMD:
   watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
 
 watch-test: (watch "just test")
+
+docs:
+  mkdocs serve

@@ -7,7 +7,8 @@ from pydantic import Field
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_idx, current_hook_state
-from counterweight.components import AnyElement, Component
+from counterweight.components import Component
+from counterweight.elements import AnyElement
 from counterweight.hooks.impls import Hooks
 from counterweight.types import FrozenForbidExtras
 

@@ -8,7 +8,8 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.cell_paint import CellPaint
-from counterweight.components import Chunk, Div, Text, component
+from counterweight.components import component
+from counterweight.elements import Chunk, Div, Text
 from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
