@@ -175,8 +175,7 @@ async def app(
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            # None for initial render, then the autopilot, then nones forever
-            for ap in chain((None,), autopilot, repeat(None)):
+            for ap in chain(autopilot, repeat(None)):
                 if should_quit:
                     break
 
@@ -280,7 +279,7 @@ async def app(
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)
-                        await event_queue.put(Dummy())
+                        await event_queue.put(Dummy())  # Force a render cycle when the autopilot emits a control
                     else:  # i.e., an event
                         await event_queue.put(ap)
                     logger.debug("Handled autopilot command", command=ap)
