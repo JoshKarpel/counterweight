@@ -71,6 +71,21 @@ async def app(
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AnyEvent | AnyControl] = (),
 ) -> None:
+    """
+    Parameters:
+        root: The root [component][counterweight.components.component] of the application.
+        output_stream: The stream to which the application will write its output.
+        input_stream: The stream from which the application will read its input.
+        headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
+            This is primarily useful when combined with the `autopilot` parameter.
+        dimensions: The dimensions of the terminal window, in characters.
+            If `None`, the dimensions of the terminal window will be used.
+            Note that if the terminal is resized, the application will still be notified and will update its dimensions accordingly.
+        autopilot: An iterable of events and controls to be processed by the application.
+            This is primarily useful for testing or generating screenshots programmatically.
+            Note that the autopilot will not be processed until after the initial render cycle,
+            and that using the autopilot does not automatically cause the application to quit!
+    """
     configure_logging()
 
     w, h = dimensions or shutil.get_terminal_size()

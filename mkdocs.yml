@@ -102,6 +102,9 @@ nav:
     - hooks/use_state.md
     - hooks/use_effect.md
     - hooks/use_ref.md
+  - Input Handling:
+    - input-handling/index.md
+    - input-handling/controls.md
   - Styles:
     - styles/index.md
     - styles/utilities.md
