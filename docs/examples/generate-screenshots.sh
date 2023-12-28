@@ -4,4 +4,4 @@ set -euxo pipefail
 
 THIS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-echo ${THIS_DIR}/*.py | xargs --verbose --max-args 1 --max-procs 4 python
+echo ${THIS_DIR}/*.py | xargs -n 1 -P 8 python
