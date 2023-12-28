@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement, indent
@@ -198,7 +199,7 @@ def svg(paint: Paint) -> ElementTree:
     h += 1
 
     x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
-    y_mul = 1
+    y_mul = 1.13  # seems to make border connect up just right
 
     fmt = "0.2f"
     unit = "em"
@@ -247,43 +248,51 @@ def svg(paint: Paint) -> ElementTree:
         root,
         "text",
         {
-            "x": f"{0 * x_mul:{fmt}}{unit}",
-            "y": f"{0 * y_mul:{fmt}}{unit}",
             "fill": Color.from_name("white").hex,
             "font-family": "monospace",
         },
     )
 
+    rows = defaultdict(list)
+    for pos, cell in sorted(paint.items()):
+        rows[pos.y].append((pos.x, cell))
+
     # Sort by y, then x, so that the SVG is written top to bottom, left to right
-    for pos, cell in sorted(paint.items(), key=lambda pos_cell: (pos_cell[0].y, pos_cell[0].x)):
-        # black is the default background color, so don't write it (optimization)
-        if cell.style.background != Color.from_name("black"):
-            SubElement(
-                background_root,
-                "rect",
-                {
-                    "x": f"{pos.x * x_mul:{fmt}}{unit}",
-                    "y": f"{pos.y * y_mul:{fmt}}{unit}",
-                    "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
-                    "height": f"{1 * y_mul:{fmt}}{unit}",
-                    "fill": cell.style.background.hex,
-                },
-            )
-
-        if cell.char == " ":  # optimization: don't write spaces
-            continue
-
-        ts = SubElement(
+    for y, cells in sorted(rows.items()):
+        row_root = SubElement(
             text_root,
             "tspan",
             {
-                "x": f"{pos.x * x_mul:{fmt}}{unit}",
-                "y": f"{pos.y * y_mul:{fmt}}{unit}",
+                "y": f"{y * y_mul:{fmt}}{unit}",
             },
         )
-        if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
-            ts.attrib["fill"] = cell.style.foreground.hex
-        ts.text = cell.char
+        for x, cell in cells:
+            # black is the default background color, so don't write it (optimization)
+            if cell.style.background != Color.from_name("black"):
+                SubElement(
+                    background_root,
+                    "rect",
+                    {
+                        "x": f"{x * x_mul:{fmt}}{unit}",
+                        "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
+                        "height": f"{1 * y_mul:{fmt}}{unit}",
+                        "fill": cell.style.background.hex,
+                    },
+                )
+
+            if cell.char == " ":  # optimization: don't write spaces
+                continue
+
+            ts = SubElement(
+                row_root,
+                "tspan",
+                {
+                    "x": f"{x * x_mul:{fmt}}{unit}",
+                },
+            )
+            if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
+                ts.attrib["fill"] = cell.style.foreground.hex
+            ts.text = cell.char
 
     indent(root, space=" ")
 
