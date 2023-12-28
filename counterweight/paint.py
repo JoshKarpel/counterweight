@@ -69,12 +69,24 @@ def paint_text(text: Text, rect: Rect) -> Paint:
         width=rect.width,
     )
 
+    previous_cell_style = None
+
     for y, line in enumerate(lines[: rect.height], start=rect.y):
         justified_line = justify_line(line, rect.width, text.style.typography.justify)
         for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
             pos = Position(x, y)
-            s = style | cell.style
-            paint[pos] = CellPaint(char=cell.char, style=s)
+            cell_style = cell.style
+
+            # Optimization: reuse the same merged style object if the cell style is the same object.
+            # This helps when painting a lot of text with the same style.
+            if cell_style is not previous_cell_style:
+                merged_style = style | cell_style
+                previous_cell_style = cell_style
+
+            paint[pos] = CellPaint(
+                char=cell.char,
+                style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
+            )
 
     return paint
 
