@@ -285,11 +285,15 @@ async def app(
                         await event_queue.put(ap)
                     logger.debug("Handled autopilot command", command=ap)
 
-                # Goal: process all pending events, and any events created by those events,
+                # Goal: wait for an event, then process all pending events, and any events created by those events,
                 # until there are no more events immediately available in the queue.
                 # This makes sure that (for example) if you use autopilot to press a key which causes a state change,
                 # the state change will be processed before the next render cycle.
+                # Note that there are some tricky async semantics here. Right now, event handlers are sync,
+                # so there's no way for an effect to add events to the queue once we get past the `await drain_queue()` below,
+                # since we don't await again until we hit this point again in the next render cycle.
 
+                num_events_handled = 0
                 events = deque(await drain_queue(event_queue))
 
                 start_event_handling = perf_counter_ns()
@@ -338,6 +342,8 @@ async def app(
                         except QueueEmpty:
                             break
 
+                    num_events_handled += 1
+
                     logger.debug(
                         "Handled event",
                         event_obj=event,
@@ -346,7 +352,7 @@ async def app(
 
                 logger.debug(
                     "Handled events",
-                    num_events=len(events),
+                    num_events=num_events_handled,
                     elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
                 )
 
