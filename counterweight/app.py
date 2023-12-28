@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import shutil
 import sys
-from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from collections import deque
 from collections.abc import Callable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
@@ -284,11 +285,19 @@ async def app(
                         await event_queue.put(ap)
                     logger.debug("Handled autopilot command", command=ap)
 
-                events = await drain_queue(event_queue)
+                # Goal: process all pending events, and any events created by those events,
+                # until there are no more events immediately available in the queue.
+                # This makes sure that (for example) if you use autopilot to press a key which causes a state change,
+                # the state change will be processed before the next render cycle.
+
+                events = deque(await drain_queue(event_queue))
 
                 start_event_handling = perf_counter_ns()
-                for event in events:
+                while events:
                     start_handle_event = perf_counter_ns()
+
+                    event = events.popleft()
+
                     match event:
                         case StateSet():
                             needs_render = True
@@ -322,6 +331,12 @@ async def app(
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_up:
                                         handle_control(b.element.on_mouse_up(event))
+
+                    while True:
+                        try:
+                            events.append(event_queue.get_nowait())
+                        except QueueEmpty:
+                            break
 
                     logger.debug(
                         "Handled event",
