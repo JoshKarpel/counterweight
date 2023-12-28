@@ -12,6 +12,7 @@
 ## Elements
 
 ::: counterweight.elements.AnyElement
+
 ::: counterweight.elements.Div
 ::: counterweight.elements.Text
 
@@ -31,6 +32,7 @@
 ## Events
 
 ::: counterweight.events.AnyEvent
+
 ::: counterweight.events.KeyPressed
 ::: counterweight.events.MouseMoved
 ::: counterweight.events.MouseDown
@@ -39,6 +41,7 @@
 ## Controls
 
 ::: counterweight.controls.AnyControl
+
 ::: counterweight.controls.Quit
 ::: counterweight.controls.Bell
 ::: counterweight.controls.Screenshot

@@ -7,6 +7,8 @@ such as gracefully quitting the application or playing the
 
 ## API
 
+::: counterweight.controls.AnyControl
+
 ::: counterweight.controls.Quit
 ::: counterweight.controls.Bell
 ::: counterweight.controls.Screenshot
