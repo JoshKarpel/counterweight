@@ -200,7 +200,7 @@ def svg(paint: Paint) -> ElementTree:
     x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
     y_mul = 1
 
-    fmt = "0.3f"
+    fmt = "0.2f"
     unit = "em"
 
     root = Element(
@@ -247,6 +247,9 @@ def svg(paint: Paint) -> ElementTree:
         root,
         "text",
         {
+            "x": f"{0 * x_mul:{fmt}}{unit}",
+            "y": f"{0 * y_mul:{fmt}}{unit}",
+            "fill": Color.from_name("white").hex,
             "font-family": "monospace",
         },
     )
@@ -267,15 +270,19 @@ def svg(paint: Paint) -> ElementTree:
                 },
             )
 
+        if cell.char == " ":  # optimization: don't write spaces
+            continue
+
         ts = SubElement(
             text_root,
             "tspan",
             {
                 "x": f"{pos.x * x_mul:{fmt}}{unit}",
                 "y": f"{pos.y * y_mul:{fmt}}{unit}",
-                "fill": cell.style.foreground.hex,  # text color
             },
         )
+        if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
+            ts.attrib["fill"] = cell.style.foreground.hex
         ts.text = cell.char
 
     indent(root, space=" ")
