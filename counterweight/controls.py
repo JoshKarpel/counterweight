@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
 from xml.etree.ElementTree import ElementTree
+from xml.etree.ElementTree import indent as indent_svg
 
 
 @dataclass(frozen=True)
@@ -52,13 +53,20 @@ class Screenshot(_Control):
     handler: Callable[[ElementTree], None]
 
     @classmethod
-    def to_file(cls, path: Path) -> Screenshot:
+    def to_file(cls, path: Path, indent: int | None = None) -> Screenshot:
         """
         A convenience method for producing a `Screenshot`
         that writes the resulting SVG to the given `path`.
+
+        Parameters:
+            path: The path to write the SVG to.
+            indent: The number of spaces to indent the SVG by (for readability).
+                If `None`, the SVG will not be indented.
         """
 
         def handler(et: ElementTree) -> None:
+            if indent:
+                indent_svg(et, space=" " * indent)
             with path.open("w") as f:
                 et.write(f, encoding="unicode")
 

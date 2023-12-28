@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from textwrap import dedent
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element, ElementTree, SubElement, indent
+from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from structlog import get_logger
 
@@ -293,7 +293,5 @@ def svg(paint: Paint) -> ElementTree:
             if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
                 ts.attrib["fill"] = cell.style.foreground.hex
             ts.text = cell.char
-
-    indent(root, space=" ")
 
     return ElementTree(element=root)
