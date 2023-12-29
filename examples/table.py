@@ -1,11 +1,10 @@
 import asyncio
-from pathlib import Path
 
 from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, Screenshot, ToggleBorderHealing
+from counterweight.controls import AnyControl, ToggleBorderHealing
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.keys import Key
@@ -81,18 +80,4 @@ def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
 
 
 if __name__ == "__main__":
-    # asyncio.run(app(root))
-    asyncio.run(
-        app(
-            root,
-            headless=True,
-            dimensions=(80, 24),
-            autopilot=[
-                Screenshot.to_file(Path("healing-on.svg")),
-                KeyPressed(key=Key.Space),
-                Screenshot.to_file(Path("healing-off.svg")),
-                Quit(),
-            ],
-        )
-    )
-    print("done)")
+    asyncio.run(app(root))
