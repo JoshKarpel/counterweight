@@ -3,6 +3,7 @@
 alias t := test
 alias w := watch
 alias wt := watch-test
+alias ds := docs-screenshots
 alias d := docs
 
 test:
@@ -13,6 +14,9 @@ watch CMD:
   watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
 
 watch-test: (watch "just test")
+
+docs-screenshots:
+  docs/examples/generate-screenshots.sh
 
 docs:
   mkdocs serve

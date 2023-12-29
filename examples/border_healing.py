@@ -7,7 +7,7 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import Control
+from counterweight.controls import AnyControl, ToggleBorderHealing
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_state
@@ -26,7 +26,7 @@ def root() -> Div:
 
     (top_left, top_right, bottom_left, bottom_right) = E[border_edge_idx]
 
-    def on_key(event: KeyPressed) -> Control | None:
+    def on_key(event: KeyPressed) -> AnyControl | None:
         match event.key:
             case Key.Right:
                 set_border_edge_idx(lambda i: clamp(0, i + 1, len(E) - 1))
@@ -35,7 +35,7 @@ def root() -> Div:
             case "r":
                 set_border_edge_idx(randint(0, len(E) - 1))
             case Key.Space:
-                return Control.ToggleBorderHealing
+                return ToggleBorderHealing()
 
         return None
 

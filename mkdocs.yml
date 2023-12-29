@@ -56,7 +56,8 @@ plugins:
             unwrap_annotated: true
             members_order: source
           import:
-            - https://docs.python.org/3/objects.inv
+            - url: https://docs.python.org/3/objects.inv
+              domains: [std, py]
 
 markdown_extensions:
   - admonition
@@ -65,7 +66,7 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
-      base_path: ['docs']
+      base_path: ['docs/examples/']
       check_paths: true
   - pymdownx.superfences
   - pymdownx.tabbed:
@@ -101,9 +102,14 @@ nav:
     - hooks/use_state.md
     - hooks/use_effect.md
     - hooks/use_ref.md
+  - Input Handling:
+    - input-handling/index.md
+    - input-handling/controls.md
   - Styles:
     - styles/index.md
     - styles/utilities.md
+  - Cookbook:
+    - cookbook/border-healing.md
   - Reference:
     - reference/api.md
     - reference/changelog.md

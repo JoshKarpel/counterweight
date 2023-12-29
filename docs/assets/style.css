@@ -68,3 +68,10 @@ a.autorefs-external::after {
 a.autorefs-external:hover::after {
   background-color: var(--md-accent-fg-color);
 }
+
+/* Styles for SVG screenshots */
+
+.md-typeset img {
+  width: 100%;
+  height: 100%;
+}

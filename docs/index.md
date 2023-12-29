@@ -4,9 +4,11 @@ Counterweight is an experimental text user interface (TUI) framework for Python,
 inspired by [React](https://react.dev/) and [Tailwind CSS](https://tailwindcss.com/).
 
 A TUI application built with Counterweight is a tree of declarative
-[**components**](elements/index.md),
+[**components**](components/index.md),
 each of which represents some piece of the UI by bundling together
-a visual **element** along with its **state** and how that state should change due to **events** like user input.
+a visual [**element**](elements/index.md) along with its
+[**state**](hooks/use_state.md) and how that state should change due to
+[**events**](input-handling/events.md) like user input.
 
 As an application author,
 you define the components and their relationships as a tree of Python functions.

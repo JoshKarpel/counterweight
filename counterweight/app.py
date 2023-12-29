@@ -4,12 +4,11 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
 from collections.abc import Callable
-from pathlib import Path
+from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Thread
 from time import perf_counter_ns
-from typing import TextIO
-from xml.etree.ElementTree import tostring
+from typing import Iterable, TextIO
 
 from structlog import get_logger
 
@@ -18,9 +17,18 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.control import Control
+from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing, _Control
 from counterweight.elements import AnyElement, Div
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, StateSet, TerminalResized
+from counterweight.events import (
+    AnyEvent,
+    Dummy,
+    KeyPressed,
+    MouseDown,
+    MouseMoved,
+    MouseUp,
+    StateSet,
+    TerminalResized,
+)
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
@@ -59,10 +67,28 @@ async def app(
     root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
+    headless: bool = False,
+    dimensions: tuple[int, int] | None = None,
+    autopilot: Iterable[AnyEvent | AnyControl] = (),
 ) -> None:
+    """
+    Parameters:
+        root: The root [component][counterweight.components.component] of the application.
+        output_stream: The stream to which the application will write its output.
+        input_stream: The stream from which the application will read its input.
+        headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
+            This is primarily useful when combined with the `autopilot` parameter.
+        dimensions: The dimensions of the terminal window, in characters.
+            If `None`, the dimensions of the terminal window will be used.
+            Note that if the terminal is resized, the application will still be notified and will update its dimensions accordingly.
+        autopilot: An iterable of events and controls to be processed by the application.
+            This is primarily useful for testing or generating screenshots programmatically.
+            Note that the autopilot will not be processed until after the initial render cycle,
+            and that using the autopilot does not automatically cause the application to quit!
+    """
     configure_logging()
 
-    w, h = shutil.get_terminal_size()
+    w, h = dimensions or shutil.get_terminal_size()
 
     @component
     def screen() -> Div:
@@ -86,25 +112,32 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
+    # Force a second render cycle after the initial render, helps with autopilot semantics.
+    await event_queue.put(Dummy())
+
     loop = get_running_loop()
 
     def put_event(event: AnyEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
-    original = start_input_control(stream=input_stream)
+    if not headless:
+        original = start_input_control(stream=input_stream)
 
     try:
-        start_handling_resize_signal(put_event=put_event)
-        start_output_control(stream=output_stream)
-        start_mouse_reporting(stream=output_stream)
+        if not headless:
+            start_handling_resize_signal(put_event=put_event)
+            start_output_control(stream=output_stream)
+            start_mouse_reporting(stream=output_stream)
 
-        key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
-        key_thread.start()
+            key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
+            key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)
-        output_stream.write(instructions)
-        output_stream.flush()
+
+        if not headless:
+            output_stream.write(instructions)
+            output_stream.flush()
 
         needs_render = True
         shadow = update_shadow(screen(), None)
@@ -112,20 +145,49 @@ async def app(
 
         should_quit = False
         should_bell = False
+        should_screenshot: Screenshot | None = None
 
         do_heal_borders = True
+
+        def handle_control(control: AnyControl | None) -> None:
+            nonlocal needs_render
+
+            nonlocal should_quit
+            nonlocal should_bell
+            nonlocal should_screenshot
+
+            nonlocal do_heal_borders
+
+            match control:
+                case None:
+                    pass
+                case Quit():
+                    should_quit = True
+                case Bell():
+                    should_bell = True
+                case Screenshot():
+                    should_screenshot = control
+                case ToggleBorderHealing():
+                    do_heal_borders = not do_heal_borders
+                    needs_render = True
 
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            while True:
+            # None for initial render, then the autopilot, then nones forever
+            for ap in chain((None,), autopilot, repeat(None)):
                 if should_quit:
                     break
 
                 if should_bell:
-                    output_stream.write("\a")
-                    output_stream.flush()
+                    if not headless:
+                        output_stream.write("\a")
+                        output_stream.flush()
                     should_bell = False
+
+                if should_screenshot:
+                    should_screenshot.handler(svg(current_paint))
+                    should_screenshot = None
 
                 if needs_render:
                     start_render = perf_counter_ns()
@@ -192,14 +254,15 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
-                    start_write = perf_counter_ns()
-                    output_stream.write(instructions)
-                    output_stream.flush()
-                    logger.debug(
-                        "Wrote and flushed instructions to output stream",
-                        elapsed_ns=f"{perf_counter_ns() - start_write:_}",
-                        bytes=f"{len(instructions):_}",
-                    )
+                    if not headless:
+                        start_write = perf_counter_ns()
+                        output_stream.write(instructions)
+                        output_stream.flush()
+                        logger.debug(
+                            "Wrote and flushed instructions to output stream",
+                            elapsed_ns=f"{perf_counter_ns() - start_write:_}",
+                            bytes=f"{len(instructions):_}",
+                        )
 
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
@@ -212,6 +275,14 @@ async def app(
                     needs_render = False
 
                     logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
+
+                if ap is not None:
+                    if isinstance(ap, _Control):
+                        handle_control(ap)
+                        await event_queue.put(Dummy())
+                    else:  # i.e., an event
+                        await event_queue.put(ap)
+                    logger.debug("Handled autopilot command", command=ap)
 
                 events = await drain_queue(event_queue)
 
@@ -235,19 +306,7 @@ async def app(
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
-                                    r = e.on_key(event)
-                                    match r:
-                                        case Control.Quit:
-                                            should_quit = True
-                                        case Control.Bell:
-                                            should_bell = True
-                                        case Control.Screenshot:
-                                            s = svg(current_paint)
-                                            with Path("screenshot.svg").open("w") as f:
-                                                f.write(tostring(s, encoding="unicode"))
-                                        case Control.ToggleBorderHealing:
-                                            do_heal_borders = not do_heal_borders
-                                            needs_render = True
+                                    handle_control(e.on_key(event))
                         case MouseMoved(position=p):
                             needs_render = True
                             mouse_position = p
@@ -256,31 +315,14 @@ async def app(
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_down:
-                                        r = b.element.on_mouse_down(event)
-                                        match r:
-                                            case Control.Quit:
-                                                should_quit = True
-                                            case Control.Bell:
-                                                should_bell = True
-                                            case Control.Screenshot:
-                                                s = svg(current_paint)
-                                                with Path("screenshot.svg").open("w") as f:
-                                                    f.write(tostring(s, encoding="unicode"))
+                                        handle_control(b.element.on_mouse_down(event))
                         case MouseUp():
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_up:
-                                        r = b.element.on_mouse_up(event)
-                                        match r:
-                                            case Control.Quit:
-                                                should_quit = True
-                                            case Control.Bell:
-                                                should_bell = True
-                                            case Control.Screenshot:
-                                                s = svg(current_paint)
-                                                with Path("screenshot.svg").open("w") as f:
-                                                    f.write(tostring(s, encoding="unicode"))
+                                        handle_control(b.element.on_mouse_up(event))
+
                     logger.debug(
                         "Handled event",
                         event_obj=event,
@@ -298,10 +340,11 @@ async def app(
     finally:
         logger.info("Application stopping...")
 
-        stop_mouse_reporting(stream=output_stream)
-        stop_output_control(stream=output_stream)
-        stop_input_control(stream=input_stream, original=original)
-        stop_handling_resize_signal()
+        if not headless:
+            stop_mouse_reporting(stream=output_stream)
+            stop_output_control(stream=output_stream)
+            stop_input_control(stream=input_stream, original=original)
+            stop_handling_resize_signal()
 
         logger.info("Application stopped")
 

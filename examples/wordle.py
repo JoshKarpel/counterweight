@@ -11,7 +11,7 @@ from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import Control
+from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_state
@@ -81,14 +81,14 @@ def root() -> Div:
             set_solution(s)
             set_playing(True)
 
-        def on_key(event: KeyPressed) -> Control | None:
+        def on_key(event: KeyPressed) -> AnyControl | None:
             match event.key:
                 case Key.F1:
                     play_today()
                 case Key.F2:
                     play_random()
                 case "q":
-                    return Control.Quit
+                    return Quit()
 
             return None
 
@@ -118,7 +118,7 @@ def root() -> Div:
                             content="[q] Quit",
                             style=button_style,
                             on_hover=text_red_500 | border_red_500,
-                            on_mouse_up=lambda e: Control.Quit,
+                            on_mouse_up=lambda e: Quit(),
                         ),
                     ],
                 ),
@@ -137,7 +137,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
 
-    def on_key(event: KeyPressed) -> Control | None:
+    def on_key(event: KeyPressed) -> AnyControl | None:
         match state, event.key:
             case _, Key.Escape:
                 stop_playing()
@@ -145,20 +145,20 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 if len(guess) > 0:
                     set_guess(guess[:-1])
                 else:
-                    return Control.Bell
+                    return Bell()
             case "playing", Key.Enter:
                 if guess in GUESSABLE_WORDS:
                     set_guess("")
                     set_submitted(lambda s: [*s, guess])
                 else:
-                    return Control.Bell
+                    return Bell()
             case "playing", letter if letter in ascii_letters:
                 if len(guess) < 5:
                     set_guess(lambda g: g + letter.upper())
                 else:
-                    return Control.Bell
+                    return Bell()
             case "win" | "loss", letter if letter in ascii_letters:
-                return Control.Bell
+                return Bell()
 
         return None
 
@@ -239,7 +239,7 @@ KEYBOARD = (
 
 
 @component
-def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], Control | None]) -> Div:
+def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None]) -> Div:
     kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
@@ -274,7 +274,7 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
 
 
 @component
-def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], Control | None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyControl | None] | None = None) -> Text:
     return Text(
         content=letter,
         style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,

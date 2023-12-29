@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from textwrap import dedent
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element, SubElement, indent
+from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from structlog import get_logger
 
@@ -190,7 +191,7 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
     return "\n".join("".join(line) for line in lines)
 
 
-def svg(paint: Paint) -> Element:
+def svg(paint: Paint) -> ElementTree:
     w, h = max(paint.keys())
 
     # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
@@ -198,9 +199,9 @@ def svg(paint: Paint) -> Element:
     h += 1
 
     x_mul = 0.55  # x coordinates get cut roughly in half because monospace cells are twice as tall as they are wide
-    y_mul = 1
+    y_mul = 1.13  # seems to make border connect up just right
 
-    fmt = "0.6f"
+    fmt = "0.2f"
     unit = "em"
 
     root = Element(
@@ -208,7 +209,7 @@ def svg(paint: Paint) -> Element:
         {
             "xmlns": "http://www.w3.org/2000/svg",
             "width": f"{w * x_mul:{fmt}}{unit}",
-            "height": f"{w * y_mul:{fmt}}{unit}",
+            "height": f"{h * y_mul:{fmt}}{unit}",
         },
     )
 
@@ -247,37 +248,50 @@ def svg(paint: Paint) -> Element:
         root,
         "text",
         {
+            "fill": Color.from_name("white").hex,
             "font-family": "monospace",
         },
     )
 
-    # Sort by y, then x, so that the SVG is written top to bottom, left to right
-    for pos, cell in sorted(paint.items(), key=lambda pos_cell: (pos_cell[0].y, pos_cell[0].x)):
-        # black is the default background color, so don't write it (optimization)
-        if cell.style.background != Color.from_name("black"):
-            SubElement(
-                background_root,
-                "rect",
-                {
-                    "x": f"{pos.x * x_mul:{fmt}}{unit}",
-                    "y": f"{pos.y * y_mul:{fmt}}{unit}",
-                    "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
-                    "height": f"{1 * y_mul:{fmt}}{unit}",
-                    "fill": cell.style.background.hex,
-                },
-            )
+    rows = defaultdict(list)
+    for pos, cell in sorted(paint.items()):
+        rows[pos.y].append((pos.x, cell))
 
-        ts = SubElement(
+    # Sort by y, then x, so that the SVG is written top to bottom, left to right
+    for y, cells in sorted(rows.items()):
+        row_root = SubElement(
             text_root,
             "tspan",
             {
-                "x": f"{pos.x * x_mul:{fmt}}{unit}",
-                "y": f"{pos.y * y_mul:{fmt}}{unit}",
-                "fill": cell.style.foreground.hex,  # text color
+                "y": f"{y * y_mul:{fmt}}{unit}",
             },
         )
-        ts.text = cell.char
+        for x, cell in cells:
+            # black is the default background color, so don't write it (optimization)
+            if cell.style.background != Color.from_name("black"):
+                SubElement(
+                    background_root,
+                    "rect",
+                    {
+                        "x": f"{x * x_mul:{fmt}}{unit}",
+                        "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
+                        "height": f"{1 * y_mul:{fmt}}{unit}",
+                        "fill": cell.style.background.hex,
+                    },
+                )
 
-    indent(root)
+            if cell.char == " ":  # optimization: don't write spaces
+                continue
 
-    return root
+            ts = SubElement(
+                row_root,
+                "tspan",
+                {
+                    "x": f"{x * x_mul:{fmt}}{unit}",
+                },
+            )
+            if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
+                ts.attrib["fill"] = cell.style.foreground.hex
+            ts.text = cell.char
+
+    return ElementTree(element=root)

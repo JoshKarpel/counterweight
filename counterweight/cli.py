@@ -5,7 +5,6 @@ from asyncio import Queue, get_running_loop, run
 from textwrap import dedent
 from threading import Thread
 
-from click import echo
 from typer import Option, Typer
 
 from counterweight._context_vars import current_event_queue
@@ -31,7 +30,7 @@ def version() -> None:
     """
     Display version information.
     """
-    echo(__version__)
+    print(__version__)
 
 
 @cli.command()

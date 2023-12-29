@@ -7,10 +7,12 @@
 ## Components
 
 ::: counterweight.components.component
+::: counterweight.components.Component
 
 ## Elements
 
 ::: counterweight.elements.AnyElement
+
 ::: counterweight.elements.Div
 ::: counterweight.elements.Text
 
@@ -26,6 +28,24 @@
 
 ::: counterweight.hooks.Ref
 ::: counterweight.hooks.use_ref
+
+## Events
+
+::: counterweight.events.AnyEvent
+
+::: counterweight.events.KeyPressed
+::: counterweight.events.MouseMoved
+::: counterweight.events.MouseDown
+::: counterweight.events.MouseUp
+
+## Controls
+
+::: counterweight.controls.AnyControl
+
+::: counterweight.controls.Quit
+::: counterweight.controls.Bell
+::: counterweight.controls.Screenshot
+::: counterweight.controls.ToggleBorderHealing
 
 ## Styles
 

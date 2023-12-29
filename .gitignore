@@ -133,3 +133,6 @@ dmypy.json
 
 *.py.lprof
 /.ruff_cache/
+
+*.svg
+!/docs/**/*.svg

@@ -1,8 +1,4 @@
-import asyncio
-from pathlib import Path
-
-from structlog import get_logger
-
+# --8<-- [start:example]
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Quit, Screenshot, ToggleBorderHealing
@@ -11,12 +7,8 @@ from counterweight.events import KeyPressed
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-logger = get_logger()
-
-
-# TODO: what happens if you tweak these (removing align_self_stretch definitely breaks it)
-style = align_self_stretch | justify_children_center | align_children_center
-bs = border_double
+common_style = align_self_stretch | justify_children_center | align_children_center
+border_kind = border_double
 
 
 @component
@@ -29,28 +21,28 @@ def root() -> Div:
                 return None
 
     return Div(
-        style=row | style,
+        style=row | common_style,
         on_key=on_key,
         children=[
             Div(
-                style=col | style,
+                style=col | common_style,
                 children=[
                     box("A1", edge_style=None),
                     box("A2", edge_style=border_bottom_left_right),
                 ],
             ),
             Div(
-                style=col | style,
+                style=col | common_style,
                 children=[
                     Div(
-                        style=row | style,
+                        style=row | common_style,
                         children=[
                             box("B1", edge_style=border_top_bottom_right),
                             box("B2", edge_style=border_top_bottom_right),
                         ],
                     ),
                     Div(
-                        style=row | style,
+                        style=row | common_style,
                         children=[
                             box("C1"),
                             box("C2"),
@@ -59,7 +51,7 @@ def root() -> Div:
                         ],
                     ),
                     Div(
-                        style=row | style,
+                        style=row | common_style,
                         children=[
                             box("D1"),
                             box("D2"),
@@ -75,24 +67,34 @@ def root() -> Div:
 @component
 def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
     return Div(
-        style=style | bs | edge_style,
-        children=[Text(style=text_justify_center, content=s)],
+        style=common_style | border_kind | edge_style,
+        children=[
+            Text(
+                style=text_justify_center | (text_cyan_500 if edge_style == border_bottom_right else text_amber_500),
+                content=s,
+            )
+        ],
     )
 
 
+# --8<-- [end:example]
+
 if __name__ == "__main__":
-    # asyncio.run(app(root))
+    import asyncio
+    from pathlib import Path
+
+    THIS_DIR = Path(__file__).parent
+
     asyncio.run(
         app(
             root,
             headless=True,
-            dimensions=(80, 24),
+            dimensions=(60, 20),
             autopilot=[
-                Screenshot.to_file(Path("healing-on.svg")),
+                Screenshot.to_file(THIS_DIR / "border-healing-on.svg", indent=1),
                 KeyPressed(key=Key.Space),
-                Screenshot.to_file(Path("healing-off.svg")),
+                Screenshot.to_file(THIS_DIR / "border-healing-off.svg", indent=1),
                 Quit(),
             ],
         )
     )
-    print("done)")

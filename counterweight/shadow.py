@@ -73,12 +73,12 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             current_hook_idx.reset(reset_current_hook_idx)
             current_hook_state.reset(reset_current_hook_state)
 
-            logger.debug(
-                "Updated shadow node",
-                type="component",
-                id=id,
-                generation=new.generation,
-            )
+            # logger.debug(
+            #     "Updated shadow node",
+            #     type="component",
+            #     id=id,
+            #     generation=new.generation,
+            # )
         case Component(func=next_func, args=next_args, kwargs=next_kwargs) as next_component, _:
             reset_current_hook_idx = current_hook_idx.set(0)
 

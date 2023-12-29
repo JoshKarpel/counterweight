@@ -1,12 +1,13 @@
 import asyncio
 from enum import Enum, StrEnum
+from pathlib import Path
 from typing import NamedTuple
 
 from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.control import Control
+from counterweight.controls import AnyControl, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_state
@@ -40,9 +41,9 @@ class PieceCharacter(Enum):
 
 @component
 def root() -> Div:
-    def on_key(event: KeyPressed) -> Control | None:
+    def on_key(event: KeyPressed) -> AnyControl | None:
         if event.key == Key.Enter:
-            return Control.Screenshot
+            return Screenshot.to_file(Path("chess.svg"))
         else:
             return None
 
