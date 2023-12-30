@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import shutil
 import sys
-from asyncio import CancelledError, Queue, Task, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from collections import deque
 from collections.abc import Callable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
@@ -174,8 +175,7 @@ async def app(
         mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            # None for initial render, then the autopilot, then nones forever
-            for ap in chain((None,), autopilot, repeat(None)):
+            for ap in chain(autopilot, repeat(None)):
                 if should_quit:
                     break
 
@@ -279,16 +279,28 @@ async def app(
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)
-                        await event_queue.put(Dummy())
+                        await event_queue.put(Dummy())  # Force a render cycle when the autopilot emits a control
                     else:  # i.e., an event
                         await event_queue.put(ap)
                     logger.debug("Handled autopilot command", command=ap)
 
-                events = await drain_queue(event_queue)
+                # Goal: wait for an event, then process all pending events, and any events created by those events,
+                # until there are no more events immediately available in the queue.
+                # This makes sure that (for example) if you use autopilot to press a key which causes a state change,
+                # the state change will be processed before the next render cycle.
+                # Note that there are some tricky async semantics here. Right now, event handlers are sync,
+                # so there's no way for an effect to add events to the queue once we get past the `await drain_queue()` below,
+                # since we don't await again until we hit this point again in the next render cycle.
+
+                num_events_handled = 0
+                events = deque(await drain_queue(event_queue))
 
                 start_event_handling = perf_counter_ns()
-                for event in events:
+                while events:
                     start_handle_event = perf_counter_ns()
+
+                    event = events.popleft()
+
                     match event:
                         case StateSet():
                             needs_render = True
@@ -323,6 +335,14 @@ async def app(
                                     if b.element.on_mouse_up:
                                         handle_control(b.element.on_mouse_up(event))
 
+                    while True:
+                        try:
+                            events.append(event_queue.get_nowait())
+                        except QueueEmpty:
+                            break
+
+                    num_events_handled += 1
+
                     logger.debug(
                         "Handled event",
                         event_obj=event,
@@ -331,7 +351,7 @@ async def app(
 
                 logger.debug(
                     "Handled events",
-                    num_events=len(events),
+                    num_events=num_events_handled,
                     elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
                 )
 
