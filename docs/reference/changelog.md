@@ -7,6 +7,8 @@
 - [#71](https://github.com/JoshKarpel/counterweight/pull/71)
   Controls are now a union over different `@dataclass`es (instead of an `Enum`) to allow for more flexibility.
   The `Screenshot` control now takes a callback function which will be called with the SVG screenshot as an XML tree.
+- [#81](https://github.com/JoshKarpel/counterweight/pull/81)
+  Minimum Python version is raised to `3.11.2` due to a bug in CPython `3.11.1` (https://github.com/python/cpython/issues/100098)
 
 ## `0.0.2`
 

@@ -38,7 +38,7 @@ include = ["py.typed"]
 "Bug Tracker" = "https://github.com/JoshKarpel/counterweight/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.11.2,<4"
 typer = ">=0.9"
 pydantic = ">=2"
 structlog = ">=23.1"
