@@ -60,6 +60,7 @@ class Screenshot(_Control):
 
         Parameters:
             path: The path to write the SVG to.
+                Parent directories will be created if they do not exist.
             indent: The number of spaces to indent the SVG by (for readability).
                 If `None`, the SVG will not be indented.
         """
@@ -67,6 +68,9 @@ class Screenshot(_Control):
         def handler(et: ElementTree) -> None:
             if indent:
                 indent_svg(et, space=" " * indent)
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+
             with path.open("w") as f:
                 et.write(f, encoding="unicode")
 

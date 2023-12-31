@@ -6,8 +6,8 @@ from counterweight._utils import partition_int
 
 
 @pytest.mark.parametrize(
-    ["total", "weights", "expected"],
-    [
+    ("total", "weights", "expected"),
+    (
         (0, (1,), [0]),
         (0, (1, 1), [0, 0]),
         (1, (1,), [1]),
@@ -29,19 +29,19 @@ from counterweight._utils import partition_int
         (201, (50, 100, 50), [50, 101, 50]),
         (201, (50, 50, 100), [50, 50, 101]),
         (201, (100, 50, 50), [100, 51, 50]),
-    ],
+    ),
 )
 def test_examples(total: int, weights: tuple[int], expected: list[int]) -> None:
     assert partition_int(total, weights) == expected
 
 
 @pytest.mark.parametrize(
-    "total, weights, exc",
-    [
+    ("total", "weights", "exc"),
+    (
         (5, (-1,), ValueError),
         (5, (-1, 1), ValueError),
         (5, (0,), ValueError),
-    ],
+    ),
 )
 def test_errors(total: int, weights: tuple[int], exc: type[Exception]) -> None:
     with pytest.raises(exc):

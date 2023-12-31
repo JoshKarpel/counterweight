@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 
-from counterweight._utils import merge
 from counterweight.types import FrozenForbidExtras
 
 if TYPE_CHECKING:
@@ -19,9 +18,28 @@ S = TypeVar("S", bound="StyleFragment")
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
 
+UNSET = object()
+
+
+def recursive_merge_dicts(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
+    merged: dict[str, object] = {}
+
+    for key in a.keys() | b.keys():
+        a_val, b_val = a.get(key, UNSET), b.get(key, UNSET)
+
+        if isinstance(a_val, dict) and isinstance(b_val, dict):
+            merged[key] = recursive_merge_dicts(a_val, b_val)
+        elif b_val is not UNSET:
+            merged[key] = b_val
+        elif a_val is not UNSET:
+            merged[key] = a_val
+
+    return merged
+
+
 def merge_style_fragments(left: S, right: S) -> S:
     return type(left).model_validate(
-        merge(
+        recursive_merge_dicts(
             left.mergeable_dump(),
             right.mergeable_dump(),
         )
