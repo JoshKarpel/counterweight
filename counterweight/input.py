@@ -9,7 +9,6 @@ from selectors import DefaultSelector
 from time import perf_counter_ns
 from typing import TextIO
 
-from parsy import ParseError
 from structlog import get_logger
 
 from counterweight.events import AnyEvent
@@ -48,7 +47,7 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
                 len_buffer=len(buffer),
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
-        except (ParseError, KeyError) as e:
+        except Exception as e:
             logger.error(
                 "Failed to parse input",
                 error=str(e),

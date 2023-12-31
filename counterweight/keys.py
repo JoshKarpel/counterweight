@@ -243,7 +243,7 @@ def single_char() -> Generator[Parser, str, AnyEvent]:
 @generate
 def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
     keys = yield string("\x1b") >> (
-        f1to4 | (string("[") >> (mouse_position | mouse_button | shift_tab | two_params | zero_or_one_params))
+        f1to4 | (string("[") >> (mouse_position | mouse_button | two_params | zero_or_one_params))
     )
 
     return keys
@@ -263,13 +263,6 @@ def f1to4() -> Generator[Parser, str, AnyEvent]:
     final = yield char_from("PQRS")
 
     return KeyPressed(key=F1TO4[final])
-
-
-@generate
-def shift_tab() -> Generator[Parser, str, AnyEvent]:
-    yield string("Z")
-
-    return KeyPressed(key=Key.BackTab)
 
 
 @generate
@@ -319,6 +312,7 @@ CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
     ("", "C"): Key.Right,
     ("", "D"): Key.Left,
     ("", "F"): Key.End,
+    ("", "Z"): Key.BackTab,
     ("2", "~"): Key.Insert,
     ("3", "~"): Key.Delete,
     ("11", "~"): Key.F1,
@@ -337,6 +331,7 @@ CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
     ("24", "~"): Key.F12,
     ("25", "~"): Key.F13,
     ("26", "~"): Key.F14,
+    # skip 27
     ("28", "~"): Key.F15,
     ("29", "~"): Key.F16,
     # skip 30
