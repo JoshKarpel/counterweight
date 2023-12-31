@@ -20,9 +20,6 @@ class Key(str, Enum):
 
     Escape = "escape"  # Also Control-[
     ShiftEscape = "shift+escape"
-    Return = "return"
-
-    ControlAt = "ctrl+@"  # Also Control-Space.
 
     ControlA = "ctrl+a"
     ControlB = "ctrl+b"
@@ -51,43 +48,13 @@ class Key(str, Enum):
     ControlY = "ctrl+y"
     ControlZ = "ctrl+z"
 
-    Control1 = "ctrl+1"
-    Control2 = "ctrl+2"
-    Control3 = "ctrl+3"
-    Control4 = "ctrl+4"
-    Control5 = "ctrl+5"
-    Control6 = "ctrl+6"
-    Control7 = "ctrl+7"
-    Control8 = "ctrl+8"
-    Control9 = "ctrl+9"
-    Control0 = "ctrl+0"
-
-    ControlShift1 = "ctrl+shift+1"
-    ControlShift2 = "ctrl+shift+2"
-    ControlShift3 = "ctrl+shift+3"
-    ControlShift4 = "ctrl+shift+4"
-    ControlShift5 = "ctrl+shift+5"
-    ControlShift6 = "ctrl+shift+6"
-    ControlShift7 = "ctrl+shift+7"
-    ControlShift8 = "ctrl+shift+8"
-    ControlShift9 = "ctrl+shift+9"
-    ControlShift0 = "ctrl+shift+0"
-
-    ControlBackslash = "ctrl+backslash"
-    ControlSquareClose = "ctrl+right_square_bracket"
-    ControlCircumflex = "ctrl+circumflex_accent"
-    ControlUnderscore = "ctrl+underscore"
-
     Left = "left"
     Right = "right"
     Up = "up"
     Down = "down"
-    Home = "home"
     End = "end"
     Insert = "insert"
     Delete = "delete"
-    PageUp = "pageup"
-    PageDown = "pagedown"
 
     ControlLeft = "ctrl+left"
     ControlRight = "ctrl+right"
@@ -176,19 +143,7 @@ class Key(str, Enum):
     ControlF23 = "ctrl+f23"
     ControlF24 = "ctrl+f24"
 
-    # Matches any key.
-    Any = "<any>"
-
-    # Special.
-    ScrollUp = "<scroll-up>"
-    ScrollDown = "<scroll-down>"
-
-    # For internal use: key which is ignored.
-    # (The key binding for this key should not do anything.)
-    Ignore = "<ignore>"
-
-    # Some 'Key' aliases (for backward-compatibility).
-    ControlSpace = "ctrl-at"
+    ControlSpace = "ctrl-space"
     Tab = "tab"
     Space = "space"
     Enter = "enter"
@@ -231,7 +186,6 @@ SINGLE_CHAR_TRANSFORMS: Mapping[bytes, Key] = {
 }
 
 single_transformable_char = char_from(b"".join((printable.encode("utf-8"), *SINGLE_CHAR_TRANSFORMS.keys())))
-
 decimal_digits = char_from(b"0123456789").many().map(b"".join)
 
 
@@ -304,12 +258,14 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
 
 
 CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
+    # 0 params
     (b"", b"A"): Key.Up,
     (b"", b"B"): Key.Down,
     (b"", b"C"): Key.Right,
     (b"", b"D"): Key.Left,
     (b"", b"F"): Key.End,
     (b"", b"Z"): Key.BackTab,
+    # 1 param
     (b"2", b"~"): Key.Insert,
     (b"3", b"~"): Key.Delete,
     (b"11", b"~"): Key.F1,
@@ -336,6 +292,7 @@ CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
     (b"32", b"~"): Key.F18,
     (b"33", b"~"): Key.F19,
     (b"34", b"~"): Key.F20,
+    # 2 params
     (b"1", b"2", b"A"): Key.ShiftUp,
     (b"1", b"2", b"B"): Key.ShiftDown,
     (b"1", b"2", b"C"): Key.ShiftRight,
@@ -353,9 +310,7 @@ CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
     (b"3", b"6", b"~"): Key.ControlShiftInsert,
 }
 
-FINAL_CHARS = b"".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
-final_char = char_from(FINAL_CHARS)
-
+final_csi_char = char_from(b"".join(sorted(set(key[-1] for key in CSI_LOOKUP))))
 semicolon = match_item(b";")
 
 
@@ -364,16 +319,15 @@ def two_params() -> Generator[Parser, bytes, AnyEvent]:
     p1 = yield decimal_digits
     yield semicolon
     p2 = yield decimal_digits
-    e = yield final_char
+    e = yield final_csi_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, p2, e)])
 
 
 @generate
 def zero_or_one_params() -> Generator[Parser, bytes, AnyEvent]:
-    # zero params => ""
-    p1 = yield decimal_digits
-    e = yield final_char
+    p1 = yield decimal_digits  # zero params => b""
+    e = yield final_csi_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, e)])
 

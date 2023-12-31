@@ -7,6 +7,7 @@
 - [#83](https://github.com/JoshKarpel/counterweight/pull/83)
   Fixed virtual terminal escape code parsing for mouse tracking when the moues coordinates are large (>94 or so).
   Mouse tracking should now work for any terminal size.
+  Various `Key` members that aren't currently parseable have been removed to avoid confusion.
 
 ## `0.0.3`
 
