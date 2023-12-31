@@ -108,6 +108,11 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[<1;1;1m", [MouseUp(position=Position(x=0, y=0), button=2)]),
         (b"\x1b[<2;1;1M", [MouseDown(position=Position(x=0, y=0), button=3)]),
         (b"\x1b[<2;1;1m", [MouseUp(position=Position(x=0, y=0), button=3)]),
+        # It seems like some systems will use an M even in the mouse up state for motion...
+        (b"\x1b[<35;2;1M", [MouseMoved(position=Position(x=1, y=0), button=None)]),
+        (b"\x1b[<32;2;1M", [MouseMoved(position=Position(x=1, y=0), button=1)]),
+        (b"\x1b[<33;2;1M", [MouseMoved(position=Position(x=1, y=0), button=2)]),
+        (b"\x1b[<34;2;1M", [MouseMoved(position=Position(x=1, y=0), button=3)]),
     ],
 )
 def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:
