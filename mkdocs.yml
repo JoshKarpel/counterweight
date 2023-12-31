@@ -104,6 +104,7 @@ nav:
     - hooks/use_ref.md
   - Input Handling:
     - input-handling/index.md
+    - input-handling/events.md
     - input-handling/controls.md
   - Styles:
     - styles/index.md
