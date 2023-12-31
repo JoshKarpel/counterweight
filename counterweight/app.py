@@ -233,7 +233,8 @@ async def app(
                         stop_input_control(stream=input_stream, original=original)
                         stop_handling_resize_signal()
 
-                        # Coordinate with the key thread to tell it to pause, and to actually wait for it to pause.
+                        # Coordinate with the key thread to tell it to pause,
+                        # and to actually wait for it to pause.
                         allow_key_thread.clear()
                         waiting_key_thread.wait()
 
