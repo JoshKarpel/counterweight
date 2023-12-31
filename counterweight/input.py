@@ -75,7 +75,7 @@ CC = 6
 TCGetAttr = list[int | list[int | bytes]]
 
 
-def start_input_control(stream: TextIO) -> TCGetAttr:
+def start_input_control(stream: TextIO) -> TCGetAttr:  # pragma: untestable
     original = termios.tcgetattr(stream)
 
     modified = deepcopy(original)
@@ -89,5 +89,5 @@ def start_input_control(stream: TextIO) -> TCGetAttr:
     return original
 
 
-def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
+def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:  # pragma: untestable
     termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)

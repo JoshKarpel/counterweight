@@ -17,9 +17,9 @@ from counterweight.output import start_mouse_tracking, stop_mouse_tracking
 cli = Typer(
     name=PACKAGE_NAME,
     no_args_is_help=True,
-    rich_markup_mode="rich",
     help=dedent(
         """\
+        CLI tools for Counterweight.
         """
     ),
 )
@@ -69,7 +69,7 @@ async def _check_input(mouse: bool) -> None:
         start_mouse_tracking(stream=output_stream)
     try:
         while True:
-            print("Waiting for input...")
+            print("Waiting for input (press ctrl+c to exit)...")
             key = await event_queue.get()
             print(f"Event: {key!r}")
     except KeyboardInterrupt:

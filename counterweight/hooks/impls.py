@@ -7,7 +7,6 @@ from typing import Literal, TypeVar
 from pydantic import Field
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
-from counterweight.errors import InconsistentHookExecution
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 from counterweight.types import ForbidExtras
@@ -35,6 +34,10 @@ class UseEffect(ForbidExtras):
 
 
 T = TypeVar("T")
+
+
+class InconsistentHookExecution(Exception):
+    pass
 
 
 class Hooks(ForbidExtras):
