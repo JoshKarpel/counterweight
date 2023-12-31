@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping
 from enum import Enum
 from string import printable
 
-from parsy import Parser, any_char, char_from, generate, match_item
+from parsy import Parser, char_from, generate, match_item
 from structlog import get_logger
 
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
@@ -242,13 +242,13 @@ def single_char() -> Generator[Parser, bytes, AnyEvent]:
     return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c) or c.decode("utf-8"))
 
 
-ESC = match_item(b"\x1b")
-BRACKET = match_item(b"[")
+esc = match_item(b"\x1b")
+left_bracket = match_item(b"[")
 
 
 @generate
 def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
-    keys = yield ESC >> (f1to4 | (BRACKET >> (mouse_position | mouse_button | two_params | zero_or_one_params)))
+    keys = yield esc >> (f1to4 | (left_bracket >> (mouse | two_params | zero_or_one_params)))
 
     return keys
 
@@ -270,51 +270,49 @@ def f1to4() -> Generator[Parser, bytes, AnyEvent]:
     return KeyPressed(key=F1TO4[final])
 
 
-MC = match_item(b"M") << match_item(b"C")
+left_angle = match_item(b"<")
+mM = char_from(b"mM")
 
 
 @generate
-def mouse_position() -> Generator[Parser, bytes, AnyEvent]:
+def mouse() -> Generator[Parser, bytes, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
-    yield MC
+    # https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf
+    yield left_angle
 
-    x_char = yield any_char
-    y_char = yield any_char
+    buttons_ = yield decimal_digits
+    yield semicolon
+    x_ = yield decimal_digits
+    yield semicolon
+    y_ = yield decimal_digits
+    m = yield mM
 
-    x = ord(x_char) - 33
-    y = ord(y_char) - 33
+    buttons = int(buttons_) % 32
+    x = int(x_) - 1
+    y = int(y_) - 1
 
-    return MouseMoved(position=Position(x=x, y=y))
+    pos = Position(x=x, y=y)
 
-
-M = match_item(b"M")
-
-
-@generate
-def mouse_button() -> Generator[Parser, str, AnyEvent]:
-    # https://www.xfree86.org/current/ctlseqs.html
-    yield M
-
-    buttons_char = yield any_char
-
-    buttons = ord(buttons_char) - 32
-
-    x_char = yield any_char
-    y_char = yield any_char
-
-    x = ord(x_char) - 33
-    y = ord(y_char) - 33
-    p = Position(x=x, y=y)
-
-    # TODO: handle upper bits of buttons
-    if buttons & 3 == 3:
-        return MouseUp(position=p)
-    elif buttons & 2 == 2:
-        return MouseDown(position=p, button=3)
-    elif buttons & 1 == 1:
-        return MouseDown(position=p, button=2)
-    else:  # low bits are 00, so this is mouse down with button 1
-        return MouseDown(position=p, button=1)
+    match (buttons & 0b10) == 0b10, (buttons & 0b01) == 0b01, m:
+        case False, False, b"m":
+            return MouseUp(position=pos, button=1)
+        case False, True, b"m":
+            return MouseUp(position=pos, button=2)
+        case True, False, b"m":
+            return MouseUp(position=pos, button=3)
+        case True, True, b"m":
+            # low bits are 11 (mouse release)
+            # and last char is m (mouse up),
+            # so this is just the mouse moving with no buttons pressed
+            return MouseMoved(position=pos)
+        case False, False, b"M":
+            return MouseDown(position=pos, button=1)
+        case False, True, b"M":
+            return MouseDown(position=pos, button=2)
+        case True, False, b"M":
+            return MouseDown(position=pos, button=3)
+        case _:  # pragma: unreachable
+            raise Exception("unreachable")
 
 
 CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {

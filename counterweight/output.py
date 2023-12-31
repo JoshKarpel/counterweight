@@ -15,10 +15,10 @@ CURSOR_OFF = "\x1b[?25l"
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
-# Wasn't able to get 1006 (sgr mouse) working in WSL,
-# so using 1003 (any event mouse) instead, which doesn't work past row/col 94 = 127 - 33
-SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
-UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
+# 1003 = any event
+# 1006 = sgr format
+SET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003h\x1b[?1006h"
+UNSET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003l\x1b[?1006l"
 
 CLEAR_SCREEN = "\x1b[2J"
 
@@ -43,13 +43,13 @@ def stop_output_control(stream: TextIO) -> None:
 
 
 def start_mouse_tracking(stream: TextIO) -> None:
-    stream.write(SET_ANY_EVENT_MOUSE)
+    stream.write(SET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 
 
 def stop_mouse_tracking(stream: TextIO) -> None:
-    stream.write(UNSET_ANY_EVENT_MOUSE)
+    stream.write(UNSET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 

@@ -33,6 +33,7 @@ class MouseDown(_Event):
 @dataclass(frozen=True)
 class MouseUp(_Event):
     position: Position
+    button: int
 
 
 @dataclass(frozen=True)
