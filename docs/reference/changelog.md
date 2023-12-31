@@ -2,7 +2,9 @@
 
 ## Next
 
-### Fixed
+### `0.0.4`
+
+Released `2023-12-31`
 
 - [#83](https://github.com/JoshKarpel/counterweight/pull/83)
   Fixed virtual terminal escape code parsing for mouse tracking when the moues coordinates are large (>94 or so).
@@ -11,7 +13,7 @@
 
 ## `0.0.3`
 
-Release `2023-12-30`
+Released `2023-12-30`
 
 ### Changed
 
