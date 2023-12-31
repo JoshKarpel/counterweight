@@ -12,4 +12,5 @@ such as gracefully quitting the application or playing the
 ::: counterweight.controls.Quit
 ::: counterweight.controls.Bell
 ::: counterweight.controls.Screenshot
+::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
