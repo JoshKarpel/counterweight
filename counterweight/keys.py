@@ -230,21 +230,25 @@ SINGLE_CHAR_TRANSFORMS: Mapping[bytes, Key] = {
     b"\x7f": Key.Backspace,
 }
 
-CHARS = b"".join((printable.encode("utf-8"), *SINGLE_CHAR_TRANSFORMS.keys()))
+single_transformable_char = char_from(b"".join((printable.encode("utf-8"), *SINGLE_CHAR_TRANSFORMS.keys())))
+
+decimal_digits = char_from(b"0123456789").many().map(b"".join)
 
 
 @generate
 def single_char() -> Generator[Parser, bytes, AnyEvent]:
-    c = yield char_from(CHARS)
+    c = yield single_transformable_char
 
     return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c) or c.decode("utf-8"))
 
 
+ESC = match_item(b"\x1b")
+BRACKET = match_item(b"[")
+
+
 @generate
 def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
-    keys = yield match_item(b"\x1b") >> (
-        f1to4 | (match_item(b"[") >> (mouse_position | mouse_button | two_params | zero_or_one_params))
-    )
+    keys = yield ESC >> (f1to4 | (BRACKET >> (mouse_position | mouse_button | two_params | zero_or_one_params)))
 
     return keys
 
@@ -256,19 +260,23 @@ F1TO4 = {
     b"S": Key.F4,
 }
 
+O_PQRS = match_item(b"O") >> char_from(b"PQRS")
+
 
 @generate
 def f1to4() -> Generator[Parser, bytes, AnyEvent]:
-    yield match_item(b"O")
-    final = yield char_from(b"PQRS")
+    final = yield O_PQRS
 
     return KeyPressed(key=F1TO4[final])
+
+
+MC = match_item(b"M") << match_item(b"C")
 
 
 @generate
 def mouse_position() -> Generator[Parser, bytes, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
-    yield match_item(b"M") << match_item(b"C")
+    yield MC
 
     x_char = yield any_char
     y_char = yield any_char
@@ -279,10 +287,13 @@ def mouse_position() -> Generator[Parser, bytes, AnyEvent]:
     return MouseMoved(position=Position(x=x, y=y))
 
 
+M = match_item(b"M")
+
+
 @generate
 def mouse_button() -> Generator[Parser, str, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
-    yield match_item(b"M")
+    yield M
 
     buttons_char = yield any_char
 
@@ -357,27 +368,26 @@ CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
 }
 
 FINAL_CHARS = b"".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
+final_char = char_from(FINAL_CHARS)
+
+semicolon = match_item(b";")
 
 
 @generate
 def two_params() -> Generator[Parser, bytes, AnyEvent]:
-    p1 = yield decimal_digit.many().map(b"".join)
-    yield match_item(b";")
-    p2 = yield decimal_digit.many().map(b"".join)
-    e = yield char_from(FINAL_CHARS)
+    p1 = yield decimal_digits
+    yield semicolon
+    p2 = yield decimal_digits
+    e = yield final_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, p2, e)])
-
-
-decimal_digit = char_from(b"0123456789")
 
 
 @generate
 def zero_or_one_params() -> Generator[Parser, bytes, AnyEvent]:
     # zero params => ""
-    p1 = yield decimal_digit.many().map(b"".join)
-
-    e = yield char_from(FINAL_CHARS)
+    p1 = yield decimal_digits
+    e = yield final_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, e)])
 

@@ -78,3 +78,7 @@ async def _check_input(mouse: bool) -> None:
         stop_input_control(stream=input_stream, original=original)
         if mouse:
             stop_mouse_tracking(stream=output_stream)
+
+
+if __name__ == "__main__":
+    cli()
