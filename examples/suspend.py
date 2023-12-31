@@ -36,6 +36,7 @@ def open_editor(file: Path) -> None:
         stdin=sys.stdin,
         stdout=sys.stdout,
         stderr=sys.stderr,
+        check=False,
     )
 
 
