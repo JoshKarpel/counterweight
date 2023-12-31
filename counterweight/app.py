@@ -113,9 +113,6 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    # Force a second render cycle after the initial render, helps with autopilot semantics.
-    await event_queue.put(Dummy())
-
     loop = get_running_loop()
 
     def put_event(event: AnyEvent) -> None:
