@@ -60,6 +60,9 @@ def partition_int(total: int, weights: tuple[int]) -> list[int]:
 
     total_weight = sum(weights)
 
+    if not total_weight > 0:
+        raise ValueError("Total weight must be positive")
+
     partition = []
     accumulated_diff = 0.0
     for w in weights:

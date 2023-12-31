@@ -6,6 +6,7 @@ import termios
 from collections.abc import Callable
 from copy import deepcopy
 from selectors import DefaultSelector
+from threading import Event
 from time import perf_counter_ns
 from typing import TextIO
 
@@ -17,7 +18,12 @@ from counterweight.keys import vt_inputs
 logger = get_logger()
 
 
-def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
+def read_keys(
+    stream: TextIO,
+    put_event: Callable[[AnyEvent], None],
+    allow: Event,
+    waiting: Event,
+) -> None:
     """
     Based on https://github.com/Textualize/textual/blob/bb9cc6281aa717054c8133ce4a2eac5ad082c574/src/textual/drivers/linux_driver.py#L236
     """
@@ -25,12 +31,23 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
     selector.register(stream, selectors.EVENT_READ)
 
     while True:
-        selector.select()
+        if not allow.is_set():
+            waiting.set()
+            allow.wait()
+            waiting.clear()
+
         # We're just reading from one file,
-        # so we can dispense with the ceremony of actually using the results of the select.
+        # so we can dispense with the ceremony of actually using the results of the select,
+        # other than knowing that it did return something.
+        if not selector.select(timeout=1 / 60):
+            continue
 
         start_parsing = perf_counter_ns()
-        bytes = os.read(stream.fileno(), 1_000)
+        bytes = os.read(stream.fileno(), 2**10)
+
+        if not bytes:
+            continue
+
         try:
             inputs = vt_inputs.parse(bytes)
 
