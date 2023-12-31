@@ -71,7 +71,7 @@ line-length = 120
 include = "\\.pyi?$"
 
 [tool.pytest.ini_options]
-addopts = ["--strict-markers"]
+addopts = ["--strict-markers", "-Werror"]
 testpaths = ["tests", "counterweight", "docs"]
 
 markers = ["slow"]

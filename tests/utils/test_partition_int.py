@@ -48,6 +48,7 @@ def test_errors(total: int, weights: tuple[int], exc: type[Exception]) -> None:
         partition_int(total, weights)
 
 
+@pytest.mark.slow
 @given(
     total=integers(
         min_value=0,
