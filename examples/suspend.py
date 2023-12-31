@@ -63,6 +63,8 @@ def picker() -> Div:
                 set_selected_file_idx(0)
                 set_glob(new_glob)
 
+        return None
+
     return Div(
         style=col | align_self_stretch | justify_children_center | border_lightrounded,
         on_key=on_key,

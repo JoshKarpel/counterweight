@@ -210,10 +210,10 @@ async def app(
                             handler=should_screenshot.handler,
                             elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
                         )
-                    except Exception as e:
+                    except Exception as ex:
                         logger.error(
                             "Error in screenshot handler",
-                            error=repr(e),
+                            error=repr(ex),
                             handler=should_screenshot.handler,
                             elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
                         )
@@ -240,11 +240,11 @@ async def app(
 
                     try:
                         should_suspend.handler()
-                    except Exception as e:
+                    except Exception as ex:
                         logger.error(
                             "Error in suspend handler",
                             handler=should_suspend.handler,
-                            error=repr(e),
+                            error=repr(ex),
                         )
 
                     if not headless:
@@ -444,8 +444,8 @@ async def app(
                     elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
                 )
 
-    except (KeyboardInterrupt, CancelledError) as e:
-        logger.debug(f"Caught {e!r}")
+    except (KeyboardInterrupt, CancelledError) as ex:
+        logger.debug(f"Caught {ex!r}")
     finally:
         logger.info("Application stopping...")
 
