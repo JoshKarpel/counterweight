@@ -22,6 +22,7 @@ class KeyPressed(_Event):
 @dataclass(frozen=True)
 class MouseMoved(_Event):
     position: Position
+    button: int | None
 
 
 @dataclass(frozen=True)

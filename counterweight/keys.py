@@ -287,32 +287,20 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
     y_ = yield decimal_digits
     m = yield mM
 
-    buttons = int(buttons_) % 32
+    button_info = int(buttons_)
     x = int(x_) - 1
     y = int(y_) - 1
 
     pos = Position(x=x, y=y)
+    moving = button_info & 32
+    button = (button_info & 0b11) + 1
 
-    match (buttons & 0b10) == 0b10, (buttons & 0b01) == 0b01, m:
-        case False, False, b"m":
-            return MouseUp(position=pos, button=1)
-        case False, True, b"m":
-            return MouseUp(position=pos, button=2)
-        case True, False, b"m":
-            return MouseUp(position=pos, button=3)
-        case True, True, b"m":
-            # low bits are 11 (mouse release)
-            # and last char is m (mouse up),
-            # so this is just the mouse moving with no buttons pressed
-            return MouseMoved(position=pos)
-        case False, False, b"M":
-            return MouseDown(position=pos, button=1)
-        case False, True, b"M":
-            return MouseDown(position=pos, button=2)
-        case True, False, b"M":
-            return MouseDown(position=pos, button=3)
-        case _:  # pragma: unreachable
-            raise Exception("unreachable")
+    if moving:
+        return MouseMoved(position=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
+    elif m == b"m":
+        return MouseUp(position=pos, button=button)
+    else:  # m == b"M"
+        return MouseDown(position=pos, button=button)
 
 
 CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
