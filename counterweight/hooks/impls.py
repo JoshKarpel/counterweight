@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from asyncio import Task
 from collections.abc import Callable
-from typing import Literal, TypeVar
+from typing import ClassVar, Literal, TypeVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
@@ -29,8 +29,9 @@ class UseEffect(ForbidExtras):
     new_deps: Deps
     task: Task[None] | None = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = {
+        "arbitrary_types_allowed": True,
+    }
 
 
 T = TypeVar("T")
