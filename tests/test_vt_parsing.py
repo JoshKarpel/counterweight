@@ -98,6 +98,8 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[MC!\x7f", [MouseMoved(position=Position(x=0, y=94))]),
         (b"\x1b[MC\x7f\x7f", [MouseMoved(position=Position(x=94, y=94))]),
         (b"\x1b[M !!", [MouseDown(position=Position(x=0, y=0), button=1)]),
+        # TODO: Missing case for middle-click down
+        (b'\x1b[M"!!', [MouseDown(position=Position(x=0, y=0), button=3)]),
         (b"\x1b[M#!!", [MouseUp(position=Position(x=0, y=0))]),
     ],
 )
