@@ -24,9 +24,6 @@ def read_keys(
     allow: Event,
     waiting: Event,
 ) -> None:
-    """
-    Based on https://github.com/Textualize/textual/blob/bb9cc6281aa717054c8133ce4a2eac5ad082c574/src/textual/drivers/linux_driver.py#L236
-    """
     selector = DefaultSelector()
     selector.register(stream, selectors.EVENT_READ)
 
