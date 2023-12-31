@@ -30,11 +30,9 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
         # so we can dispense with the ceremony of actually using the results of the select.
 
         start_parsing = perf_counter_ns()
-        b = os.read(stream.fileno(), 1_000)
-        bytes = list(b)
-        buffer = b.decode("utf-8")
+        bytes = os.read(stream.fileno(), 1_000)
         try:
-            inputs = vt_inputs.parse(buffer)
+            inputs = vt_inputs.parse(bytes)
 
             for i in inputs:
                 put_event(i)
@@ -42,17 +40,16 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
             logger.debug(
                 "Parsed user input",
                 inputs=inputs,
-                buffer=repr(buffer),
                 bytes=bytes,
-                len_buffer=len(buffer),
+                ords=list(bytes),
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
         except Exception as e:
             logger.error(
                 "Failed to parse input",
-                error=str(e),
-                buffer=repr(buffer),
-                len_buffer=len(buffer),
+                error=repr(e),
+                bytes=bytes,
+                ords=list(bytes),
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
 

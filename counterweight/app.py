@@ -38,9 +38,9 @@ from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
-    start_mouse_reporting,
+    start_mouse_tracking,
     start_output_control,
-    stop_mouse_reporting,
+    stop_mouse_tracking,
     stop_output_control,
 )
 from counterweight.paint import Paint, paint_layout, svg
@@ -128,7 +128,7 @@ async def app(
         if not headless:
             start_handling_resize_signal(put_event=put_event)
             start_output_control(stream=output_stream)
-            start_mouse_reporting(stream=output_stream)
+            start_mouse_tracking(stream=output_stream)
 
             key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
             key_thread.start()
@@ -361,7 +361,7 @@ async def app(
         logger.info("Application stopping...")
 
         if not headless:
-            stop_mouse_reporting(stream=output_stream)
+            stop_mouse_tracking(stream=output_stream)
             stop_output_control(stream=output_stream)
             stop_input_control(stream=input_stream, original=original)
             stop_handling_resize_signal()

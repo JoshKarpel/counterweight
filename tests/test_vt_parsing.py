@@ -1,6 +1,7 @@
 import pytest
 
-from counterweight.events import AnyEvent, KeyPressed
+from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
+from counterweight.geometry import Position
 from counterweight.keys import Key, vt_inputs
 
 
@@ -88,6 +89,16 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[3;3~", [KeyPressed(key=Key.AltDelete)]),
         (b"\x1b[3;5~", [KeyPressed(key=Key.ControlDelete)]),
         (b"\x1b[3;6~", [KeyPressed(key=Key.ControlShiftInsert)]),
+        # Mouse events
+        (b"\x1b[MC!!", [MouseMoved(position=Position(x=0, y=0))]),
+        (b'\x1b[MC"!', [MouseMoved(position=Position(x=1, y=0))]),
+        (b'\x1b[MC!"', [MouseMoved(position=Position(x=0, y=1))]),
+        (b'\x1b[MC""', [MouseMoved(position=Position(x=1, y=1))]),
+        (b"\x1b[MC\x7f!", [MouseMoved(position=Position(x=94, y=0))]),
+        (b"\x1b[MC!\x7f", [MouseMoved(position=Position(x=0, y=94))]),
+        (b"\x1b[MC\x7f\x7f", [MouseMoved(position=Position(x=94, y=94))]),
+        (b"\x1b[M !!", [MouseDown(position=Position(x=0, y=0), button=1)]),
+        (b"\x1b[M#!!", [MouseUp(position=Position(x=0, y=0))]),
     ],
 )
 def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:

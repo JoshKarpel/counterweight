@@ -268,7 +268,7 @@ def f1to4() -> Generator[Parser, bytes, AnyEvent]:
 @generate
 def mouse_position() -> Generator[Parser, bytes, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
-    yield match_item(b"M") | match_item(b"C")
+    yield match_item(b"M") << match_item(b"C")
 
     x_char = yield any_char
     y_char = yield any_char

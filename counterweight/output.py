@@ -6,13 +6,17 @@ from counterweight.geometry import Position
 from counterweight.paint import Paint
 from counterweight.styles.styles import CellStyle
 
+# https://www.xfree86.org/current/ctlseqs.html
+# https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf
+
 CURSOR_ON = "\x1b[?25h"
 CURSOR_OFF = "\x1b[?25l"
 
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
-# https://www.xfree86.org/current/ctlseqs.html
+# Wasn't able to get 1006 (sgr mouse) working in WSL,
+# so using 1003 (any event mouse) instead, which doesn't work past row/col 94 = 127 - 33
 SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
 UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
 
@@ -38,13 +42,13 @@ def stop_output_control(stream: TextIO) -> None:
     stream.flush()
 
 
-def start_mouse_reporting(stream: TextIO) -> None:
+def start_mouse_tracking(stream: TextIO) -> None:
     stream.write(SET_ANY_EVENT_MOUSE)
 
     stream.flush()
 
 
-def stop_mouse_reporting(stream: TextIO) -> None:
+def stop_mouse_tracking(stream: TextIO) -> None:
     stream.write(UNSET_ANY_EVENT_MOUSE)
 
     stream.flush()
