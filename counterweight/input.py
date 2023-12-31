@@ -41,7 +41,6 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
                 "Parsed user input",
                 inputs=inputs,
                 bytes=bytes,
-                ords=list(bytes),
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
         except Exception as e:
@@ -49,7 +48,6 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
                 "Failed to parse input",
                 error=repr(e),
                 bytes=bytes,
-                ords=list(bytes),
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
 
