@@ -1,14 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from functools import wraps
 from typing import Callable, ParamSpec
 
 from counterweight.elements import AnyElement
-from counterweight.types import FrozenForbidExtras
 
 P = ParamSpec("P")
-
-Key = str | int | None
 
 
 def component(func: Callable[P, AnyElement]) -> Callable[P, Component]:
@@ -23,7 +21,8 @@ def component(func: Callable[P, AnyElement]) -> Callable[P, Component]:
     return wrapper
 
 
-class Component(FrozenForbidExtras):
+@dataclass(frozen=True, slots=True)
+class Component:
     """
     The result of calling a component function.
     These should not be instantiated directly;
@@ -34,10 +33,7 @@ class Component(FrozenForbidExtras):
     func: Callable[..., AnyElement]
     args: tuple[object, ...]
     kwargs: dict[str, object]
-    key: Key = None
+    key: str | int | None = None
 
-    def with_key(self, key: Key) -> Component:
-        return self.model_copy(update={"key": key})
-
-
-Component.model_rebuild()
+    def with_key(self, key: str | int | None) -> Component:
+        return replace(self, key=key)

@@ -1,29 +1,29 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from itertools import count, zip_longest
 
-from pydantic import Field
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_idx, current_hook_state
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.hooks.impls import Hooks
-from counterweight.types import FrozenForbidExtras
 
 logger = get_logger()
 
 next_id = count(0)
 
 
-class ShadowNode(FrozenForbidExtras):
-    id: int = Field(default_factory=lambda: next(next_id))
-    generation: int = 0
+@dataclass(slots=True)
+class ShadowNode:
     component: Component | None
     element: AnyElement
-    children: list[ShadowNode] = Field(default_factory=list)
     hooks: Hooks
+    children: list[ShadowNode] = field(default_factory=list)
+    id: int = field(default_factory=lambda: next(next_id))
+    generation: int = 0
 
     def walk(self) -> Iterator[ShadowNode]:
         yield self

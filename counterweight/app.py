@@ -264,8 +264,7 @@ async def app(
                     current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
                     instructions = paint_to_instructions(paint=current_paint)
                     if not headless:
-                        output_stream.write(CLEAR_SCREEN)
-                        output_stream.write(instructions)
+                        output_stream.write(CLEAR_SCREEN + instructions)
                         # don't flush here, we don't necessarily need to flush until the next render
                         # probably we can even store this until the next render happens and output it then
 
@@ -400,8 +399,7 @@ async def app(
                             current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
                             instructions = paint_to_instructions(paint=current_paint)
                             if not headless:
-                                output_stream.write(CLEAR_SCREEN)
-                                output_stream.write(instructions)
+                                output_stream.write(CLEAR_SCREEN + instructions)
                                 # don't flush here, we don't necessarily need to flush until the next render
                                 # probably we can even store this until the next render happens and output it then
                         case KeyPressed():

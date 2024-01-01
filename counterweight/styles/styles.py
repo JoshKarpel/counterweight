@@ -672,7 +672,6 @@ class Flex(StyleFragment):
 
 class Style(StyleFragment):
     layout: Flex = Field(default=Flex())
-    hidden: bool = False
     span: Span = Field(default=Span())
     margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)

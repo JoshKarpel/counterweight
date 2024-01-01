@@ -1,27 +1,26 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 
 from more_itertools import take
-from pydantic import Field
 from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
 from counterweight.cell_paint import wrap_cells
-from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.geometry import Edge, Rect
 from counterweight.styles.styles import BorderEdge
-from counterweight.types import ForbidExtras
 
 logger = get_logger()
 
 
-class LayoutBoxDimensions(ForbidExtras):
-    content: Rect = Field(default_factory=Rect)
-    margin: Edge = Field(default_factory=Edge)
-    border: Edge = Field(default_factory=Edge)
-    padding: Edge = Field(default_factory=Edge)
+@dataclass(frozen=True, slots=True)
+class LayoutBoxDimensions:
+    content: Rect = field(default_factory=Rect)
+    margin: Edge = field(default_factory=Edge)
+    border: Edge = field(default_factory=Edge)
+    padding: Edge = field(default_factory=Edge)
 
     def padding_border_margin_rects(self) -> tuple[Rect, Rect, Rect]:
         padding = self.content.expand_by(self.padding)
@@ -54,11 +53,12 @@ class LayoutBoxDimensions(ForbidExtras):
         return self.content.height + self.vertical_edge_width()
 
 
-class LayoutBox(ForbidExtras):
+@dataclass(frozen=True, slots=True)
+class LayoutBox:
     element: AnyElement
-    dims: LayoutBoxDimensions = Field(default_factory=LayoutBoxDimensions)
     parent: LayoutBox | None
-    children: list[LayoutBox] = Field(default_factory=list)
+    children: list[LayoutBox] = field(default_factory=list)
+    dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
 
     def walk_from_bottom(self) -> Iterator[LayoutBox]:
         for child in self.children:
@@ -423,15 +423,9 @@ class LayoutBox(ForbidExtras):
 
 
 def build_layout_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
-    if element.style.hidden:
-        raise Exception("Root element cannot have layout='hidden'")
-
     box = LayoutBox(element=element, parent=parent)
-    for child in element.children:
-        if isinstance(child, Component):
-            raise Exception("Layout tree must be built from concrete Elements, not Components")
 
-        if not child.style.hidden == "hidden":
-            box.children.append(build_layout_tree(element=child, parent=box))
+    for child in element.children:
+        box.children.append(build_layout_tree(element=child, parent=box))
 
     return box
