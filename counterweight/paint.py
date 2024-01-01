@@ -10,8 +10,8 @@ from structlog import get_logger
 from counterweight._utils import halve_integer
 from counterweight.cell_paint import CellPaint, wrap_cells
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.geometry import Position
-from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
+from counterweight.geometry import Edge, Position, Rect
+from counterweight.layout import LayoutBox, LayoutBoxDimensions
 from counterweight.styles import Border
 from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
 
@@ -27,7 +27,7 @@ def paint_layout(layout: LayoutBox) -> Paint:
     return painted
 
 
-def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> Paint:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
     m = paint_edge(element.style.margin, dims.margin, margin_rect)
     b = paint_border(element.style.border, border_rect) if element.style.border else {}
@@ -242,7 +242,9 @@ def svg(paint: Paint) -> ElementTree:
     background_root = SubElement(
         root,
         "g",
-        {},
+        {
+            "shape-rendering": "crispEdges",
+        },
     )
     SubElement(  # default background color is black, so do a single black rectangle to cover the whole background as an optimization
         background_root,
@@ -271,7 +273,7 @@ def svg(paint: Paint) -> ElementTree:
 
     # Sort by y, then x, so that the SVG is written top to bottom, left to right
     for y, cells in sorted(rows.items()):
-        row_root = SubElement(
+        row_tspan_root = SubElement(
             text_root,
             "tspan",
             {
@@ -286,7 +288,8 @@ def svg(paint: Paint) -> ElementTree:
                     "rect",
                     {
                         "x": f"{x * x_mul:{fmt}}{unit}",
-                        "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
+                        "y": f"{y * y_mul:{fmt}}{unit}",
+                        "width": f"{1 * x_mul:{fmt}}{unit}",
                         "height": f"{1 * y_mul:{fmt}}{unit}",
                         "fill": cell.style.background.hex,
                     },
@@ -296,7 +299,7 @@ def svg(paint: Paint) -> ElementTree:
                 continue
 
             ts = SubElement(
-                row_root,
+                row_tspan_root,
                 "tspan",
                 {
                     "x": f"{x * x_mul:{fmt}}{unit}",

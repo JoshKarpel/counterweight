@@ -3,87 +3,21 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 from more_itertools import take
-from pydantic import Field, NonNegativeInt
+from pydantic import Field
 from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
 from counterweight.cell_paint import wrap_cells
 from counterweight.components import Component
 from counterweight.elements import AnyElement
-from counterweight.geometry import Position
-from counterweight.styles.styles import BorderEdge
+from counterweight.geometry import Edge, Rect
+from counterweight.styles.styles import Absolute, BorderEdge
 from counterweight.types import ForbidExtras
 
 logger = get_logger()
 
 
-class Rect(ForbidExtras):
-    x: int = Field(default=0)
-    y: int = Field(default=0)
-    width: NonNegativeInt = Field(default=0)
-    height: NonNegativeInt = Field(default=0)
-
-    def expand_by(self, edge: Edge) -> Rect:
-        return Rect(
-            x=self.x - edge.left,
-            y=self.y - edge.top,
-            width=self.width + edge.left + edge.right,
-            height=self.height + edge.top + edge.bottom,
-        )
-
-    def x_range(self) -> range:
-        return range(self.x, self.x + self.width)
-
-    def y_range(self) -> range:
-        return range(self.y, self.y + self.height)
-
-    @property
-    def left(self) -> int:
-        return self.x
-
-    @property
-    def right(self) -> int:
-        return self.x + self.width - 1
-
-    @property
-    def top(self) -> int:
-        return self.y
-
-    @property
-    def bottom(self) -> int:
-        return self.y + self.height - 1
-
-    def left_edge(self) -> list[Position]:
-        left = self.left
-        return [Position(left, y) for y in self.y_range()]
-
-    def right_edge(self) -> list[Position]:
-        right = self.right
-        return [Position(right, y) for y in self.y_range()]
-
-    def top_edge(self) -> list[Position]:
-        top = self.top
-        return [Position(x, top) for x in self.x_range()]
-
-    def bottom_edge(self) -> list[Position]:
-        bottom = self.bottom
-        return [Position(x, bottom) for x in self.x_range()]
-
-    def __contains__(self, item: object) -> bool:
-        if isinstance(item, Position):
-            return item.x in self.x_range() and item.y in self.y_range()
-        else:
-            return False
-
-
-class Edge(ForbidExtras):
-    left: int = Field(default=0)
-    right: int = Field(default=0)
-    top: int = Field(default=0)
-    bottom: int = Field(default=0)
-
-
-class BoxDimensions(ForbidExtras):
+class LayoutBoxDimensions(ForbidExtras):
     content: Rect = Field(default_factory=Rect)
     margin: Edge = Field(default_factory=Edge)
     border: Edge = Field(default_factory=Edge)
@@ -122,7 +56,7 @@ class BoxDimensions(ForbidExtras):
 
 class LayoutBox(ForbidExtras):
     element: AnyElement
-    dims: BoxDimensions = Field(default_factory=BoxDimensions)
+    dims: LayoutBoxDimensions = Field(default_factory=LayoutBoxDimensions)
     parent: LayoutBox | None
     children: list[LayoutBox] = Field(default_factory=list)
 
@@ -252,8 +186,6 @@ class LayoutBox(ForbidExtras):
         layout = style.layout
         parent = self.parent
 
-        # TODO: positions
-
         # handle align self
         if layout.position == "relative" and parent:
             if parent.element.style.layout.direction == "row":
@@ -344,6 +276,11 @@ class LayoutBox(ForbidExtras):
                 child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
 
         # determine positions
+
+        # For absolute position, override anything that the parent tried to set for us
+        if isinstance(layout.position, Absolute):
+            self.dims.content.x = layout.position.x
+            self.dims.content.y = layout.position.y
 
         # shift nominal content box position set by parent by own margin, border, and padding
         self.dims.content.x += self.dims.margin.left + self.dims.border.left + self.dims.padding.left

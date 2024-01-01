@@ -108,6 +108,7 @@ nav:
     - input-handling/controls.md
   - Styles:
     - styles/index.md
+    - styles/layout.md
     - styles/utilities.md
   - Cookbook:
     - cookbook/border-healing.md

@@ -1,5 +1,15 @@
 from counterweight.styles import Margin, Style
-from counterweight.styles.styles import Border, BorderEdge, BorderKind, CellStyle, Color, Flex, Padding, Typography
+from counterweight.styles.styles import (
+    Absolute,
+    Border,
+    BorderEdge,
+    BorderKind,
+    CellStyle,
+    Color,
+    Flex,
+    Padding,
+    Typography,
+)
 
 # Start generated
 
@@ -1946,3 +1956,7 @@ text_justify_center = Style(typography=Typography(justify="center"))
 text_justify_right = Style(typography=Typography(justify="right"))
 
 # Stop generated
+
+
+def absolute(x: int = 0, y: int = 0) -> Style:
+    return Style(layout=Flex(position=Absolute(x=x, y=y)))
