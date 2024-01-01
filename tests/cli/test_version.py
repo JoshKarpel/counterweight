@@ -15,6 +15,6 @@ def test_version(runner: CliRunner) -> None:
 
 
 def test_version_via_main() -> None:
-    result = subprocess.run([sys.executable, "-m", PACKAGE_NAME, "version"])
+    result = subprocess.run([sys.executable, "-m", PACKAGE_NAME, "version"], check=False)
 
     assert result.returncode == 0
