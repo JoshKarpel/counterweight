@@ -59,8 +59,8 @@ def root() -> Div:
                         content="inset_bottom_right",
                     ),
                     Text(
-                        style=inset_bottom_right | absolute(x=0, y=-4),
-                        content="inset_bottom_right | absolute(x=-10, y=-4)",
+                        style=inset_bottom_right | absolute(y=-4),
+                        content="inset_bottom_right | absolute(y=-4)",
                     ),
                 ],
             )
