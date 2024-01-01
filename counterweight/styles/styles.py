@@ -625,7 +625,10 @@ class Inset(StyleFragment):
 class Absolute(StyleFragment):
     """
     Absolute positioning is relative to the parent element's content box,
-    but the element does not occupy space.
+    but the element does not occupy space in the layout.
+
+    The `inset` property determines which corner of the
+    parent element's content box this element is positioned relative to.
     """
 
     type: Literal["absolute"] = "absolute"

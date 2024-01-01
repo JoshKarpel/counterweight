@@ -20,7 +20,7 @@ def root() -> Div:
                     ),
                     Text(
                         style=inset_top_center | absolute(x=0, y=-1),
-                        content=" Center-Right Title ",
+                        content=" Top-Center Title ",
                     ),
                     Text(
                         style=inset_top_right | absolute(x=-1, y=-1),
