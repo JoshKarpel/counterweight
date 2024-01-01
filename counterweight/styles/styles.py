@@ -609,13 +609,34 @@ class Typography(StyleFragment):
 
 
 class Relative(StyleFragment):
+    """
+    Relative positioning is relative to the parent element's content box.
+    Elements occupy space and are laid out next to their siblings according
+    to the parent's layout direction.
+    """
+
     type: Literal["relative"] = "relative"
     x: int = 0
     y: int = 0
 
 
 class Absolute(StyleFragment):
+    """
+    Absolute positioning is relative to the parent element's content box,
+    but the element does not occupy space.
+    """
+
     type: Literal["absolute"] = "absolute"
+    x: int = 0
+    y: int = 0
+
+
+class Fixed(StyleFragment):
+    """
+    Fixed positioning is relative to the screen's top-left corner `(0, 0)`.
+    """
+
+    type: Literal["fixed"] = "fixed"
     x: int = 0
     y: int = 0
 
@@ -623,7 +644,7 @@ class Absolute(StyleFragment):
 class Flex(StyleFragment):
     type: Literal["flex"] = "flex"
     direction: Literal["row", "column"] = "row"
-    position: Relative | Absolute = Field(default=Relative(), discriminator="type")
+    position: Relative | Absolute | Fixed = Field(default=Relative(), discriminator="type")
     weight: PositiveInt | None = 1
     align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
     justify_children: Literal[

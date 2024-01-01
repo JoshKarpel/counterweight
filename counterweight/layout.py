@@ -285,8 +285,12 @@ class LayoutBox(ForbidExtras):
             # For relative position, shift anything the parent set for us by the given offsets
             self.dims.content.x += layout.position.x
             self.dims.content.y += layout.position.y
-        elif layout.position.type == "absolute":
-            # For absolute position, override anything that the parent tried to set for us
+        elif layout.position.type == "absolute" and parent:
+            # For absolute position, start from the parent's content box's top-left corner, then shift by the offsets
+            self.dims.content.x = parent.dims.content.x + layout.position.x
+            self.dims.content.y = parent.dims.content.y + layout.position.y
+        elif layout.position.type == "fixed":
+            # For fixed position, override anything that the parent tried to set for us
             self.dims.content.x = layout.position.x
             self.dims.content.y = layout.position.y
 

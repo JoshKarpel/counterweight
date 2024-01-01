@@ -17,3 +17,12 @@
 ```
 
 ![Absolute Positioning](../_examples/absolute-positioning.svg)
+
+
+### Fixed Positioning
+
+```python
+--8<-- "fixed_positioning.py:example"
+```
+
+![Fixed Positioning](../_examples/fixed-positioning.svg)
