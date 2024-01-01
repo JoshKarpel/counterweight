@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import NamedTuple
 
 
 class Position(NamedTuple):
     x: int
     y: int
+
+    @classmethod
+    @lru_cache(maxsize=2**14)
+    def flyweight(cls, x: int, y: int) -> Position:
+        return cls(x, y)
 
 
 @dataclass(slots=True)
@@ -46,21 +52,21 @@ class Rect:
     def bottom(self) -> int:
         return self.y + self.height - 1
 
-    def left_edge(self) -> list[Position]:
+    def left_edge(self) -> tuple[Position, ...]:
         left = self.left
-        return [Position(left, y) for y in self.y_range()]
+        return tuple(Position.flyweight(left, y) for y in self.y_range())
 
-    def right_edge(self) -> list[Position]:
+    def right_edge(self) -> tuple[Position, ...]:
         right = self.right
-        return [Position(right, y) for y in self.y_range()]
+        return tuple(Position.flyweight(right, y) for y in self.y_range())
 
-    def top_edge(self) -> list[Position]:
+    def top_edge(self) -> tuple[Position, ...]:
         top = self.top
-        return [Position(x, top) for x in self.x_range()]
+        return tuple(Position.flyweight(x, top) for x in self.x_range())
 
-    def bottom_edge(self) -> list[Position]:
+    def bottom_edge(self) -> tuple[Position, ...]:
         bottom = self.bottom
-        return [Position(x, bottom) for x in self.x_range()]
+        return tuple(Position.flyweight(x, bottom) for x in self.x_range())
 
     def __contains__(self, item: object) -> bool:
         if isinstance(item, Position):

@@ -75,7 +75,6 @@ def paint_text(text: Text, rect: Rect) -> Paint:
     for y, line in enumerate(lines[: rect.height], start=rect.y):
         justified_line = justify_line(line, rect.width, text.style.typography.justify)
         for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
-            pos = Position(x, y)
             cell_style = cell.style
 
             # Optimization: reuse the same merged style object if the cell style is the same object.
@@ -84,7 +83,7 @@ def paint_text(text: Text, rect: Rect) -> Paint:
                 merged_style = style | cell_style
                 previous_cell_style = cell_style
 
-            paint[pos] = CellPaint(
+            paint[Position.flyweight(x, y)] = CellPaint(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
             )
@@ -100,22 +99,22 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
     # top
     for y in range(rect.top, rect.top + edge.top):
         for x in rect.x_range():
-            chars[Position(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = cell_paint
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
         for x in rect.x_range():
-            chars[Position(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = cell_paint
 
     # left
     for x in range(rect.left, rect.left + edge.left):
         for y in rect.y_range():
-            chars[Position(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = cell_paint
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
         for y in rect.y_range():
-            chars[Position(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = cell_paint
 
     return chars
 
@@ -172,22 +171,20 @@ def paint_border(border: Border, rect: Rect) -> Paint:
         for p in rect.top_edge()[h_slice]:
             chars[p] = top_paint
 
+        if draw_left:
+            chars[Position.flyweight(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
+        if draw_right:
+            chars[Position.flyweight(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
+
     if draw_bottom:
         bottom_paint = CellPaint(char=bottom, style=style)
         for p in rect.bottom_edge()[h_slice]:
             chars[p] = bottom_paint
 
-    if draw_top:
         if draw_left:
-            chars[Position(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
+            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
         if draw_right:
-            chars[Position(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
-
-    if draw_bottom:
-        if draw_left:
-            chars[Position(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
-        if draw_right:
-            chars[Position(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
+            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
 
     return chars
 
@@ -197,7 +194,7 @@ def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
     for y in rect.y_range():
         line = []
         for x in rect.x_range():
-            line.append(paint.get(Position(x, y), CellPaint(char=" ")).char)
+            line.append(paint.get(Position.flyweight(x, y), CellPaint(char=" ")).char)
 
         lines.append(line)
 

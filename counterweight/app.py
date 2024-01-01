@@ -144,7 +144,7 @@ async def app(
             )
             key_thread.start()
 
-        current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+        current_paint: Paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)
 
         if not headless:
@@ -188,7 +188,7 @@ async def app(
                     do_heal_borders = not do_heal_borders
                     needs_render = True
 
-        mouse_position = Position(x=-1, y=-1)
+        mouse_position = Position.flyweight(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -261,7 +261,7 @@ async def app(
                     w, h = shutil.get_terminal_size()
 
                     # start from scratch
-                    current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                    current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
                     instructions = paint_to_instructions(paint=current_paint)
                     if not headless:
                         output_stream.write(CLEAR_SCREEN + instructions)
@@ -396,7 +396,7 @@ async def app(
                             w, h = shutil.get_terminal_size()
 
                             # start from scratch
-                            current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                            current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
                             instructions = paint_to_instructions(paint=current_paint)
                             if not headless:
                                 output_stream.write(CLEAR_SCREEN + instructions)
