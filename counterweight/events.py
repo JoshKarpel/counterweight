@@ -1,41 +1,48 @@
-from time import monotonic_ns
+from dataclasses import dataclass
 from typing import Union
 
-from pydantic import Field
-
 from counterweight.geometry import Position
-from counterweight.types import FrozenForbidExtras
 
 
-class _Event(FrozenForbidExtras):
-    timestamp_ns: int = Field(default_factory=monotonic_ns)
+@dataclass(frozen=True)
+class _Event:
+    pass
 
 
+@dataclass(frozen=True)
 class TerminalResized(_Event):
     pass
 
 
+@dataclass(frozen=True)
 class KeyPressed(_Event):
     key: str
 
 
+@dataclass(frozen=True)
 class MouseMoved(_Event):
     position: Position
+    button: int | None
 
 
+@dataclass(frozen=True)
 class MouseDown(_Event):
     position: Position
     button: int
 
 
+@dataclass(frozen=True)
 class MouseUp(_Event):
     position: Position
+    button: int
 
 
+@dataclass(frozen=True)
 class StateSet(_Event):
     pass
 
 
+@dataclass(frozen=True)
 class Dummy(_Event):
     pass
 

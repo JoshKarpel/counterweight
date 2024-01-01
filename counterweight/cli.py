@@ -12,7 +12,7 @@ from counterweight.constants import PACKAGE_NAME, __version__
 from counterweight.events import AnyEvent
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.logging import tail_devlog
-from counterweight.output import start_mouse_reporting, stop_mouse_reporting
+from counterweight.output import start_mouse_tracking, stop_mouse_tracking
 
 cli = Typer(
     name=PACKAGE_NAME,
@@ -66,7 +66,7 @@ async def _check_input(mouse: bool) -> None:
 
     original = start_input_control(stream=input_stream)
     if mouse:
-        start_mouse_reporting(stream=output_stream)
+        start_mouse_tracking(stream=output_stream)
     try:
         while True:
             print("Waiting for input...")
@@ -77,4 +77,8 @@ async def _check_input(mouse: bool) -> None:
     finally:
         stop_input_control(stream=input_stream, original=original)
         if mouse:
-            stop_mouse_reporting(stream=output_stream)
+            stop_mouse_tracking(stream=output_stream)
+
+
+if __name__ == "__main__":
+    cli()

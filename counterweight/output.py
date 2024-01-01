@@ -6,15 +6,19 @@ from counterweight.geometry import Position
 from counterweight.paint import Paint
 from counterweight.styles.styles import CellStyle
 
+# https://www.xfree86.org/current/ctlseqs.html
+# https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf
+
 CURSOR_ON = "\x1b[?25h"
 CURSOR_OFF = "\x1b[?25l"
 
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
-# https://www.xfree86.org/current/ctlseqs.html
-SET_ANY_EVENT_MOUSE = "\x1b[?1003h"
-UNSET_ANY_EVENT_MOUSE = "\x1b[?1003l"
+# 1003 = any event
+# 1006 = sgr format
+SET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003h\x1b[?1006h"
+UNSET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003l\x1b[?1006l"
 
 CLEAR_SCREEN = "\x1b[2J"
 
@@ -38,14 +42,14 @@ def stop_output_control(stream: TextIO) -> None:
     stream.flush()
 
 
-def start_mouse_reporting(stream: TextIO) -> None:
-    stream.write(SET_ANY_EVENT_MOUSE)
+def start_mouse_tracking(stream: TextIO) -> None:
+    stream.write(SET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 
 
-def stop_mouse_reporting(stream: TextIO) -> None:
-    stream.write(UNSET_ANY_EVENT_MOUSE)
+def stop_mouse_tracking(stream: TextIO) -> None:
+    stream.write(UNSET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 

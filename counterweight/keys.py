@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping
 from enum import Enum
 from string import printable
 
-from parsy import Parser, any_char, char_from, decimal_digit, generate, string
+from parsy import Parser, char_from, generate, match_item
 from structlog import get_logger
 
 from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
@@ -20,9 +20,6 @@ class Key(str, Enum):
 
     Escape = "escape"  # Also Control-[
     ShiftEscape = "shift+escape"
-    Return = "return"
-
-    ControlAt = "ctrl+@"  # Also Control-Space.
 
     ControlA = "ctrl+a"
     ControlB = "ctrl+b"
@@ -51,43 +48,13 @@ class Key(str, Enum):
     ControlY = "ctrl+y"
     ControlZ = "ctrl+z"
 
-    Control1 = "ctrl+1"
-    Control2 = "ctrl+2"
-    Control3 = "ctrl+3"
-    Control4 = "ctrl+4"
-    Control5 = "ctrl+5"
-    Control6 = "ctrl+6"
-    Control7 = "ctrl+7"
-    Control8 = "ctrl+8"
-    Control9 = "ctrl+9"
-    Control0 = "ctrl+0"
-
-    ControlShift1 = "ctrl+shift+1"
-    ControlShift2 = "ctrl+shift+2"
-    ControlShift3 = "ctrl+shift+3"
-    ControlShift4 = "ctrl+shift+4"
-    ControlShift5 = "ctrl+shift+5"
-    ControlShift6 = "ctrl+shift+6"
-    ControlShift7 = "ctrl+shift+7"
-    ControlShift8 = "ctrl+shift+8"
-    ControlShift9 = "ctrl+shift+9"
-    ControlShift0 = "ctrl+shift+0"
-
-    ControlBackslash = "ctrl+backslash"
-    ControlSquareClose = "ctrl+right_square_bracket"
-    ControlCircumflex = "ctrl+circumflex_accent"
-    ControlUnderscore = "ctrl+underscore"
-
     Left = "left"
     Right = "right"
     Up = "up"
     Down = "down"
-    Home = "home"
     End = "end"
     Insert = "insert"
     Delete = "delete"
-    PageUp = "pageup"
-    PageDown = "pagedown"
 
     ControlLeft = "ctrl+left"
     ControlRight = "ctrl+right"
@@ -176,19 +143,7 @@ class Key(str, Enum):
     ControlF23 = "ctrl+f23"
     ControlF24 = "ctrl+f24"
 
-    # Matches any key.
-    Any = "<any>"
-
-    # Special.
-    ScrollUp = "<scroll-up>"
-    ScrollDown = "<scroll-down>"
-
-    # For internal use: key which is ignored.
-    # (The key binding for this key should not do anything.)
-    Ignore = "<ignore>"
-
-    # Some 'Key' aliases (for backward-compatibility).
-    ControlSpace = "ctrl-at"
+    ControlSpace = "ctrl-space"
     Tab = "tab"
     Space = "space"
     Enter = "enter"
@@ -198,188 +153,181 @@ class Key(str, Enum):
         return str(self)
 
 
-SINGLE_CHAR_TRANSFORMS: Mapping[str, Key] = {
-    "\x1b": Key.Escape,
-    "\t": Key.Tab,
-    "\n": Key.Enter,
-    " ": Key.Space,
-    "\x00": Key.ControlSpace,
-    "\x01": Key.ControlA,
-    "\x02": Key.ControlB,
-    "\x03": Key.ControlC,
-    "\x04": Key.ControlD,
-    "\x05": Key.ControlE,
-    "\x06": Key.ControlF,
-    "\x07": Key.ControlG,
-    "\x08": Key.Backspace,
-    "\x0B": Key.ControlK,
-    "\x0C": Key.ControlL,
-    "\x0E": Key.ControlN,
-    "\x0F": Key.ControlO,
-    "\x10": Key.ControlP,
-    "\x11": Key.ControlQ,
-    "\x12": Key.ControlR,
-    "\x13": Key.ControlS,
-    "\x14": Key.ControlT,
-    "\x15": Key.ControlU,
-    "\x16": Key.ControlV,
-    "\x17": Key.ControlW,
-    "\x18": Key.ControlX,
-    "\x19": Key.ControlY,
-    "\x1A": Key.ControlZ,
-    "\x7f": Key.Backspace,
+SINGLE_CHAR_TRANSFORMS: Mapping[bytes, Key] = {
+    b"\x1b": Key.Escape,
+    b"\t": Key.Tab,
+    b"\n": Key.Enter,
+    b" ": Key.Space,
+    b"\x00": Key.ControlSpace,
+    b"\x01": Key.ControlA,
+    b"\x02": Key.ControlB,
+    b"\x03": Key.ControlC,
+    b"\x04": Key.ControlD,
+    b"\x05": Key.ControlE,
+    b"\x06": Key.ControlF,
+    b"\x07": Key.ControlG,
+    b"\x08": Key.Backspace,
+    b"\x0B": Key.ControlK,
+    b"\x0C": Key.ControlL,
+    b"\x0E": Key.ControlN,
+    b"\x0F": Key.ControlO,
+    b"\x10": Key.ControlP,
+    b"\x11": Key.ControlQ,
+    b"\x12": Key.ControlR,
+    b"\x13": Key.ControlS,
+    b"\x14": Key.ControlT,
+    b"\x15": Key.ControlU,
+    b"\x16": Key.ControlV,
+    b"\x17": Key.ControlW,
+    b"\x18": Key.ControlX,
+    b"\x19": Key.ControlY,
+    b"\x1A": Key.ControlZ,
+    b"\x7f": Key.Backspace,
 }
 
-CHARS = "".join((*printable, *SINGLE_CHAR_TRANSFORMS.keys()))
+single_transformable_char = char_from(b"".join((printable.encode("utf-8"), *SINGLE_CHAR_TRANSFORMS.keys())))
+decimal_digits = char_from(b"0123456789").many().map(b"".join)
 
 
 @generate
-def single_char() -> Generator[Parser, str, AnyEvent]:
-    c = yield char_from(CHARS)
+def single_char() -> Generator[Parser, bytes, AnyEvent]:
+    c = yield single_transformable_char
 
-    return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c, c))
+    return KeyPressed(key=SINGLE_CHAR_TRANSFORMS.get(c) or c.decode("utf-8"))
+
+
+esc = match_item(b"\x1b")
+left_bracket = match_item(b"[")
 
 
 @generate
 def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
-    keys = yield string("\x1b") >> (
-        f1to4 | (string("[") >> (mouse_position | mouse_button | shift_tab | two_params | zero_or_one_params))
-    )
+    keys = yield esc >> (f1to4 | (left_bracket >> (mouse | two_params | zero_or_one_params)))
 
     return keys
 
 
 F1TO4 = {
-    "P": Key.F1,
-    "Q": Key.F2,
-    "R": Key.F3,
-    "S": Key.F4,
+    b"P": Key.F1,
+    b"Q": Key.F2,
+    b"R": Key.F3,
+    b"S": Key.F4,
 }
+
+O_PQRS = match_item(b"O") >> char_from(b"PQRS")
 
 
 @generate
-def f1to4() -> Generator[Parser, str, AnyEvent]:
-    yield string("O")
-    final = yield char_from("PQRS")
+def f1to4() -> Generator[Parser, bytes, AnyEvent]:
+    final = yield O_PQRS
 
     return KeyPressed(key=F1TO4[final])
 
 
-@generate
-def shift_tab() -> Generator[Parser, str, AnyEvent]:
-    yield string("Z")
-
-    return KeyPressed(key=Key.BackTab)
+left_angle = match_item(b"<")
+mM = char_from(b"mM")
 
 
 @generate
-def mouse_position() -> Generator[Parser, str, AnyEvent]:
+def mouse() -> Generator[Parser, bytes, AnyEvent]:
     # https://www.xfree86.org/current/ctlseqs.html
-    yield string("MC")
+    # https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf
+    yield left_angle
 
-    x_char = yield any_char
-    y_char = yield any_char
+    buttons_ = yield decimal_digits
+    yield semicolon
+    x_ = yield decimal_digits
+    yield semicolon
+    y_ = yield decimal_digits
+    m = yield mM
 
-    x = ord(x_char) - 33
-    y = ord(y_char) - 33
+    button_info = int(buttons_)
+    x = int(x_) - 1
+    y = int(y_) - 1
 
-    return MouseMoved(position=Position(x=x, y=y))
+    pos = Position(x=x, y=y)
+    moving = button_info & 32
+    button = (button_info & 0b11) + 1
 
-
-@generate
-def mouse_button() -> Generator[Parser, str, AnyEvent]:
-    # https://www.xfree86.org/current/ctlseqs.html
-    yield string("M")
-
-    buttons_char = yield any_char
-
-    buttons = ord(buttons_char) - 32
-
-    x_char = yield any_char
-    y_char = yield any_char
-
-    x = ord(x_char) - 33
-    y = ord(y_char) - 33
-    p = Position(x=x, y=y)
-
-    # TODO: handle upper bits of buttons
-    if buttons & 3 == 3:
-        return MouseUp(position=p)
-    elif buttons & 2 == 2:
-        return MouseDown(position=p, button=3)
-    elif buttons & 1 == 1:
-        return MouseDown(position=p, button=2)
-    else:  # low bits are 00, so this is mouse down with button 1
-        return MouseDown(position=p, button=1)
+    if moving:
+        return MouseMoved(position=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
+    elif m == b"m":
+        return MouseUp(position=pos, button=button)
+    else:  # m == b"M"
+        return MouseDown(position=pos, button=button)
 
 
-CSI_LOOKUP: Mapping[tuple[str, ...], str] = {
-    ("", "A"): Key.Up,
-    ("", "B"): Key.Down,
-    ("", "C"): Key.Right,
-    ("", "D"): Key.Left,
-    ("", "F"): Key.End,
-    ("2", "~"): Key.Insert,
-    ("3", "~"): Key.Delete,
-    ("11", "~"): Key.F1,
-    ("12", "~"): Key.F2,
-    ("13", "~"): Key.F3,
-    ("14", "~"): Key.F4,
-    ("15", "~"): Key.F5,
+CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
+    # 0 params
+    (b"", b"A"): Key.Up,
+    (b"", b"B"): Key.Down,
+    (b"", b"C"): Key.Right,
+    (b"", b"D"): Key.Left,
+    (b"", b"F"): Key.End,
+    (b"", b"Z"): Key.BackTab,
+    # 1 param
+    (b"2", b"~"): Key.Insert,
+    (b"3", b"~"): Key.Delete,
+    (b"11", b"~"): Key.F1,
+    (b"12", b"~"): Key.F2,
+    (b"13", b"~"): Key.F3,
+    (b"14", b"~"): Key.F4,
+    (b"15", b"~"): Key.F5,
     # skip 16
-    ("17", "~"): Key.F6,
-    ("18", "~"): Key.F7,
-    ("19", "~"): Key.F8,
-    ("20", "~"): Key.F9,
-    ("21", "~"): Key.F10,
+    (b"17", b"~"): Key.F6,
+    (b"18", b"~"): Key.F7,
+    (b"19", b"~"): Key.F8,
+    (b"20", b"~"): Key.F9,
+    (b"21", b"~"): Key.F10,
     # skip 22
-    ("23", "~"): Key.F11,
-    ("24", "~"): Key.F12,
-    ("25", "~"): Key.F13,
-    ("26", "~"): Key.F14,
-    ("28", "~"): Key.F15,
-    ("29", "~"): Key.F16,
+    (b"23", b"~"): Key.F11,
+    (b"24", b"~"): Key.F12,
+    (b"25", b"~"): Key.F13,
+    (b"26", b"~"): Key.F14,
+    # skip 27
+    (b"28", b"~"): Key.F15,
+    (b"29", b"~"): Key.F16,
     # skip 30
-    ("31", "~"): Key.F17,
-    ("32", "~"): Key.F18,
-    ("33", "~"): Key.F19,
-    ("34", "~"): Key.F20,
-    ("1", "2", "A"): Key.ShiftUp,
-    ("1", "2", "B"): Key.ShiftDown,
-    ("1", "2", "C"): Key.ShiftRight,
-    ("1", "2", "D"): Key.ShiftLeft,
-    ("1", "5", "A"): Key.ControlUp,
-    ("1", "5", "B"): Key.ControlDown,
-    ("1", "5", "C"): Key.ControlRight,
-    ("1", "5", "D"): Key.ControlLeft,
-    ("1", "6", "A"): Key.ControlShiftUp,
-    ("1", "6", "B"): Key.ControlShiftDown,
-    ("1", "6", "C"): Key.ControlShiftRight,
-    ("1", "6", "D"): Key.ControlShiftLeft,
-    ("3", "3", "~"): Key.AltDelete,
-    ("3", "5", "~"): Key.ControlDelete,
-    ("3", "6", "~"): Key.ControlShiftInsert,
+    (b"31", b"~"): Key.F17,
+    (b"32", b"~"): Key.F18,
+    (b"33", b"~"): Key.F19,
+    (b"34", b"~"): Key.F20,
+    # 2 params
+    (b"1", b"2", b"A"): Key.ShiftUp,
+    (b"1", b"2", b"B"): Key.ShiftDown,
+    (b"1", b"2", b"C"): Key.ShiftRight,
+    (b"1", b"2", b"D"): Key.ShiftLeft,
+    (b"1", b"5", b"A"): Key.ControlUp,
+    (b"1", b"5", b"B"): Key.ControlDown,
+    (b"1", b"5", b"C"): Key.ControlRight,
+    (b"1", b"5", b"D"): Key.ControlLeft,
+    (b"1", b"6", b"A"): Key.ControlShiftUp,
+    (b"1", b"6", b"B"): Key.ControlShiftDown,
+    (b"1", b"6", b"C"): Key.ControlShiftRight,
+    (b"1", b"6", b"D"): Key.ControlShiftLeft,
+    (b"3", b"3", b"~"): Key.AltDelete,
+    (b"3", b"5", b"~"): Key.ControlDelete,
+    (b"3", b"6", b"~"): Key.ControlShiftInsert,
 }
 
-FINAL_CHARS = "".join(sorted(set(key[-1] for key in CSI_LOOKUP)))
+final_csi_char = char_from(b"".join(sorted(set(key[-1] for key in CSI_LOOKUP))))
+semicolon = match_item(b";")
 
 
 @generate
-def two_params() -> Generator[Parser, str, AnyEvent]:
-    p1 = yield decimal_digit.many().concat()
-    yield string(";")
-    p2 = yield decimal_digit.many().concat()
-    e = yield char_from(FINAL_CHARS)
+def two_params() -> Generator[Parser, bytes, AnyEvent]:
+    p1 = yield decimal_digits
+    yield semicolon
+    p2 = yield decimal_digits
+    e = yield final_csi_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, p2, e)])
 
 
 @generate
-def zero_or_one_params() -> Generator[Parser, str, AnyEvent]:
-    # zero params => ""
-    p1 = yield decimal_digit.many().concat()
-
-    e = yield char_from(FINAL_CHARS)
+def zero_or_one_params() -> Generator[Parser, bytes, AnyEvent]:
+    p1 = yield decimal_digits  # zero params => b""
+    e = yield final_csi_char
 
     return KeyPressed(key=CSI_LOOKUP[(p1, e)])
 

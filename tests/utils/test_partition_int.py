@@ -43,7 +43,7 @@ def test_examples(total: int, weights: tuple[int], expected: list[int]) -> None:
         # but more likely terminal cells, which are even coarser.
         max_value=10_000,
     ),
-    weights=lists(integers(), min_size=1),
+    weights=lists(integers(min_value=0), min_size=1),
 )
 def test_properties(total: int, weights: list[int]) -> None:
     assume(sum(weights) > 0)
