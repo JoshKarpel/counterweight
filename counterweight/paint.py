@@ -281,21 +281,24 @@ def svg(paint: Paint) -> ElementTree:
             },
         )
 
-        for group in map(tuple, groupby(cells, key=lambda cell: cell.style.background.hex)):
+        for bg_color, x_cells_group in groupby(cells, key=lambda x_cell: x_cell[1].style.background.hex):
             # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
+            x_cells = tuple(x_cells_group)
+            first_x, first_cell = x_cells[0]
+
             SubElement(
                 background_root,
                 "rect",
                 {
-                    "x": f"{group[0] * x_mul:{fmt}}{unit}",
+                    "x": f"{first_x * x_mul:{fmt}}{unit}",
                     "y": f"{y * y_mul:{fmt}}{unit}",
-                    "width": f"{len(group) * x_mul:{fmt}}{unit}",
+                    "width": f"{len(x_cells) * x_mul:{fmt}}{unit}",
                     "height": f"{1 * y_mul:{fmt}}{unit}",
-                    "fill": group[0].style.background.hex,
+                    "fill": bg_color,
                 },
             )
 
-            for x, cell in group:
+            for x, cell in x_cells:
                 if cell.char == " ":  # optimization: don't write spaces
                     continue
 

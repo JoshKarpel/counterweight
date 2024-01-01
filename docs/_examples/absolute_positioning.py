@@ -5,7 +5,7 @@ from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
 
-extra_style = border_heavy | border_bg_blue_800 | pad_1 | padding_amber_500 | margin_1 | margin_red_600
+extra_style = border_heavy | pad_1 | margin_1 | margin_red_600
 
 
 @component
