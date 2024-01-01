@@ -9,7 +9,10 @@
   Counterweight will stop controlling the terminal while the callback runs, and will resume when the callback returns.
   This can be used to run a subprocess that also wants control of the terminal (e.g., a text editor).
 - [#88](https://github.com/JoshKarpel/counterweight/pull/88)
-  Implemented absolute positioning, which allows precisely positioning elements on the screen.
+  Implemented fixed positioning, which allows precisely positioning elements on the screen.
+- [#90](https://github.com/JoshKarpel/counterweight/pull/90)
+  Implemented absolute positioning, which allows for positioning elements relative to their parent
+  without being part of the layout flow of their siblings.
 
 ## `0.0.4`
 
