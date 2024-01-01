@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import groupby
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -280,46 +281,35 @@ def svg(paint: Paint) -> ElementTree:
             },
         )
 
-        # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
-        current_bg_color = Color.from_name("black").hex
-        current_bg_start = 0
-        current_bg_width = 0
-        bg_spans = []
-
-        for x, cell in cells:
-            # black is the default background color, so don't write it (optimization)
-            if cell.style.background.hex == current_bg_color:
-                current_bg_width += 1
-            else:
-                if current_bg_color != Color.from_name("black").hex:
-                    bg_spans.append((current_bg_start, current_bg_width, current_bg_color))
-                current_bg_start, current_bg_width, current_bg_color = x, 1, cell.style.background.hex
-
-            if cell.char == " ":  # optimization: don't write spaces
-                continue
-
-            ts = SubElement(
-                row_tspan_root,
-                "tspan",
-                {
-                    "x": f"{x * x_mul:{fmt}}{unit}",
-                },
-            )
-            if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
-                ts.attrib["fill"] = cell.style.foreground.hex
-            ts.text = cell.char
-
-        for bg_start, bg_width, bg_color in bg_spans:
+        for group in map(tuple, groupby(cells, key=lambda cell: cell.style.background.hex)):
+            # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
             SubElement(
                 background_root,
                 "rect",
                 {
-                    "x": f"{bg_start * x_mul:{fmt}}{unit}",
+                    "x": f"{group[0] * x_mul:{fmt}}{unit}",
                     "y": f"{y * y_mul:{fmt}}{unit}",
-                    "width": f"{bg_width * x_mul:{fmt}}{unit}",
+                    "width": f"{len(group) * x_mul:{fmt}}{unit}",
                     "height": f"{1 * y_mul:{fmt}}{unit}",
-                    "fill": bg_color,
+                    "fill": group[0].style.background.hex,
                 },
             )
+
+            for x, cell in group:
+                if cell.char == " ":  # optimization: don't write spaces
+                    continue
+
+                ts = SubElement(
+                    row_tspan_root,
+                    "tspan",
+                    {
+                        "x": f"{x * x_mul:{fmt}}{unit}",
+                    },
+                )
+                if cell.style.foreground != Color.from_name(
+                    "white"
+                ):  # optimization: don't write white, it's the default
+                    ts.attrib["fill"] = cell.style.foreground.hex
+                ts.text = cell.char
 
     return ElementTree(element=root)
