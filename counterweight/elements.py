@@ -40,7 +40,7 @@ class Chunk(FrozenForbidExtras):
 
 class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
-    content: str | Sequence[Chunk | CellPaint]
+    content: str | Sequence[Chunk]
     style: Style = Field(default=Style())
     on_hover: Style | None = Field(default=None)
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None

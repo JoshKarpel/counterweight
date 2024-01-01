@@ -491,7 +491,7 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
 
         # This looks duplicative, but each of these checks is faster than the next,
         # but less precise, so we can short-circuit earlier on cheaper operations.
-        if new_cell is not current_cell and hash(new_cell) != hash(current_cell):
+        if new_cell is not current_cell and new_cell != current_cell:
             diff[pos] = new_cell
 
     return diff

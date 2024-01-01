@@ -1,21 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Iterator, Literal
-
-from pydantic import Field
+from dataclasses import dataclass, field
+from typing import Literal
 
 from counterweight.styles.styles import CellStyle
-from counterweight.types import FrozenForbidExtras
 
 
-class CellPaint(FrozenForbidExtras):
-    char: str = Field(default=..., min_length=1, max_length=1)
-    style: CellStyle = Field(default=CellStyle())
-
-    @property
-    def cells(self) -> Iterator[CellPaint]:
-        yield self
+@dataclass(frozen=True, slots=True)
+class CellPaint:
+    char: str
+    style: CellStyle = field(default=CellStyle())
 
 
 def wrap_cells(
