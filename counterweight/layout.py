@@ -281,14 +281,11 @@ class LayoutBox(ForbidExtras):
 
         # determine positions
 
-        logger.debug("absolute position", l=layout.position, x=layout.position.x, y=layout.position.y)
         if layout.position.type == "relative":
             # For relative position, shift anything the parent set for us by the given offsets
-            pass
-            # self.dims.content.x += layout.position.x
-            # self.dims.content.y += layout.position.y
+            self.dims.content.x += layout.position.x
+            self.dims.content.y += layout.position.y
         elif layout.position.type == "absolute":
-            logger.debug("absolute position", x=layout.position.x, y=layout.position.y)
             # For absolute position, override anything that the parent tried to set for us
             self.dims.content.x = layout.position.x
             self.dims.content.y = layout.position.y
