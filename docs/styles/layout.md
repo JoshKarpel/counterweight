@@ -22,6 +22,12 @@
 
 ![Absolute Positioning](../_examples/absolute-positioning.svg)
 
+```python
+--8<-- "absolute_positioning_insets.py:example"
+```
+
+![Absolute Positioning Insets](../_examples/absolute-positioning-insets.svg)
+
 
 ### Fixed Positioning
 
