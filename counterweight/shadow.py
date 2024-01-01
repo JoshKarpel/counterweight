@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from itertools import count, zip_longest
+from itertools import zip_longest
 
 from structlog import get_logger
 
@@ -13,8 +13,6 @@ from counterweight.hooks.impls import Hooks
 
 logger = get_logger()
 
-next_id = count(0)
-
 
 @dataclass(slots=True)
 class ShadowNode:
@@ -22,8 +20,6 @@ class ShadowNode:
     element: AnyElement
     hooks: Hooks
     children: list[ShadowNode] = field(default_factory=list)
-    id: int = field(default_factory=lambda: next(next_id))
-    generation: int = 0
 
     def walk(self) -> Iterator[ShadowNode]:
         yield self
@@ -40,8 +36,6 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             kwargs=next_kwargs,
             key=next_key,
         ) as next_component, ShadowNode(
-            id=id,
-            generation=generation,
             component=previous_component,
             children=previous_children,
             hooks=previous_hooks,
@@ -62,12 +56,10 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children.append(update_shadow(new_child, previous_child))
 
             new = ShadowNode(
-                id=id,
                 component=next_component,
                 element=element,
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
-                generation=generation + 1,
             )
 
             current_hook_idx.reset(reset_current_hook_idx)
