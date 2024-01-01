@@ -10,4 +10,4 @@
 --8<-- "absolute_positioning.py:example"
 ```
 
-![Absolute Positioning](../examples/absolute-positioning.svg)
+![Absolute Positioning](../_examples/absolute-positioning.svg)
