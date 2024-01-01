@@ -37,22 +37,6 @@ def recursive_merge_dicts(a: dict[str, object], b: dict[str, object]) -> dict[st
     return merged
 
 
-def recursive_diff_dicts(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
-    diff: dict[str, object] = {}
-
-    for key in a.keys() | b.keys():
-        a_val, b_val = a.get(key, UNSET), b.get(key, UNSET)
-
-        if isinstance(a_val, dict) and isinstance(b_val, dict):
-            r = recursive_diff_dicts(a_val, b_val)
-            if r:
-                diff[key] = r
-        elif a_val != b_val:
-            diff[key] = a_val
-
-    return diff
-
-
 def merge_style_fragments(left: S, right: S) -> S:
     return type(left).model_validate(
         recursive_merge_dicts(
