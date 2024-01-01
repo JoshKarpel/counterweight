@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import cached_property, lru_cache
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
+from typing import Literal, NamedTuple, TypeVar
 
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 
 from counterweight.types import FrozenForbidExtras
-
-if TYPE_CHECKING:
-    pass
 
 S = TypeVar("S", bound="StyleFragment")
 
@@ -672,6 +669,3 @@ class Style(StyleFragment):
     border: Border | None = Field(default=None)
     padding: Padding = Field(default=Padding())
     typography: Typography = Field(default=Typography())
-
-
-DEFAULT_STYLE_DUMP = Style().model_dump()

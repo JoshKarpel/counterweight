@@ -1,5 +1,4 @@
-from counterweight.styles import Margin, Style
-from counterweight.styles.styles import (
+from counterweight.styles import (
     Absolute,
     Border,
     BorderEdge,
@@ -8,8 +7,10 @@ from counterweight.styles.styles import (
     Color,
     Fixed,
     Flex,
+    Margin,
     Padding,
     Relative,
+    Style,
     Typography,
 )
 
