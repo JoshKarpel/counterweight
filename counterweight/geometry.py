@@ -1,10 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import NamedTuple
-
-from pydantic import Field, NonNegativeInt
-
-from counterweight.types import ForbidExtras
 
 
 class Position(NamedTuple):
@@ -12,11 +9,12 @@ class Position(NamedTuple):
     y: int
 
 
-class Rect(ForbidExtras):
-    x: int = Field(default=0)
-    y: int = Field(default=0)
-    width: NonNegativeInt = Field(default=0)
-    height: NonNegativeInt = Field(default=0)
+@dataclass(slots=True)
+class Rect:
+    x: int = field(default=0)
+    y: int = field(default=0)
+    width: int = field(default=0)
+    height: int = field(default=0)
 
     def expand_by(self, edge: Edge) -> Rect:
         return Rect(
@@ -71,8 +69,9 @@ class Rect(ForbidExtras):
             return False
 
 
-class Edge(ForbidExtras):
-    left: int = Field(default=0)
-    right: int = Field(default=0)
-    top: int = Field(default=0)
-    bottom: int = Field(default=0)
+@dataclass(slots=True)
+class Edge:
+    left: int = field(default=0)
+    right: int = field(default=0)
+    top: int = field(default=0)
+    bottom: int = field(default=0)

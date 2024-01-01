@@ -17,7 +17,7 @@ from examples.canvas import clamp
 
 logger = get_logger()
 
-E = list(product(reversed(list(flatten(combinations(BorderEdge, r) for r in range(1, 5)))), repeat=4))
+E = list(product(reversed(list(flatten(combinations(BorderEdges, r) for r in range(1, 5)))), repeat=4))
 
 
 @component
@@ -62,7 +62,7 @@ def root() -> Div:
 
 
 @component
-def box(e: frozenset[BorderEdge]) -> Text:
+def box(e: frozenset[BorderEdges]) -> Text:
     return Text(
         content=f"Border Join Demo\n{', '.join(be.name for be in e)}",
         style=Style(border=Border(edges=e)) | text_justify_center | text_bg_amber_800,

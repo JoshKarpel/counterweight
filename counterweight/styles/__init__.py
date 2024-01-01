@@ -1,7 +1,7 @@
 from counterweight.styles.styles import (
     Absolute,
     Border,
-    BorderEdge,
+    BorderEdges,
     BorderKind,
     CellStyle,
     Color,
@@ -19,7 +19,7 @@ from counterweight.styles.styles import (
 __all__ = [
     "Absolute",
     "Border",
-    "BorderEdge",
+    "BorderEdges",
     "BorderKind",
     "CellStyle",
     "Color",

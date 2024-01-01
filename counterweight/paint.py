@@ -14,7 +14,7 @@ from counterweight.elements import AnyElement, Div, Text
 from counterweight.geometry import Edge, Position, Rect
 from counterweight.layout import LayoutBox, LayoutBoxDimensions
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
+from counterweight.styles.styles import BorderEdges, CellStyle, Color, Margin, Padding
 
 logger = get_logger()
 
@@ -141,10 +141,10 @@ def paint_border(border: Border, rect: Rect) -> Paint:
     rect_right = rect.right
     rect_bottom = rect.bottom
 
-    draw_left = BorderEdge.Left in border.edges
-    draw_right = BorderEdge.Right in border.edges
-    draw_top = BorderEdge.Top in border.edges
-    draw_bottom = BorderEdge.Bottom in border.edges
+    draw_left = BorderEdges.Left in border.edges
+    draw_right = BorderEdges.Right in border.edges
+    draw_top = BorderEdges.Top in border.edges
+    draw_bottom = BorderEdges.Bottom in border.edges
 
     if contract:
         contract_top = contract if not draw_top else None

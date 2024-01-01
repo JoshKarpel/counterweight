@@ -1,7 +1,7 @@
 from counterweight.styles import (
     Absolute,
     Border,
-    BorderEdge,
+    BorderEdges,
     BorderKind,
     CellStyle,
     Color,
@@ -1790,20 +1790,20 @@ border_mediumshade = Style(border=Border(kind=BorderKind.MediumShade))
 border_heavyshade = Style(border=Border(kind=BorderKind.HeavyShade))
 border_star = Style(border=Border(kind=BorderKind.Star))
 
-border_top = Style(border=Border(edges=frozenset((BorderEdge.Top,))))
-border_bottom = Style(border=Border(edges=frozenset((BorderEdge.Bottom,))))
-border_left = Style(border=Border(edges=frozenset((BorderEdge.Left,))))
-border_right = Style(border=Border(edges=frozenset((BorderEdge.Right,))))
-border_top_bottom = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom))))
-border_top_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left))))
-border_top_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Right))))
-border_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left))))
-border_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Right))))
-border_left_right = Style(border=Border(edges=frozenset((BorderEdge.Left, BorderEdge.Right))))
-border_top_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left))))
-border_top_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Right))))
-border_top_left_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left, BorderEdge.Right))))
-border_bottom_left_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right))))
+border_top = Style(border=Border(edges=BorderEdges.Top))
+border_bottom = Style(border=Border(edges=BorderEdges.Bottom))
+border_left = Style(border=Border(edges=BorderEdges.Left))
+border_right = Style(border=Border(edges=BorderEdges.Right))
+border_top_bottom = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Bottom))
+border_top_left = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Left))
+border_top_right = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Right))
+border_bottom_left = Style(border=Border(edges=BorderEdges.Bottom | BorderEdges.Left))
+border_bottom_right = Style(border=Border(edges=BorderEdges.Bottom | BorderEdges.Right))
+border_left_right = Style(border=Border(edges=BorderEdges.Left | BorderEdges.Right))
+border_top_bottom_left = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Bottom | BorderEdges.Left))
+border_top_bottom_right = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Bottom | BorderEdges.Right))
+border_top_left_right = Style(border=Border(edges=BorderEdges.Top | BorderEdges.Left | BorderEdges.Right))
+border_bottom_left_right = Style(border=Border(edges=BorderEdges.Bottom | BorderEdges.Left | BorderEdges.Right))
 
 border_contract_0 = Style(border=Border(contract=0))
 border_contract_1 = Style(border=Border(contract=1))

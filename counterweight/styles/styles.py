@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, Flag, auto
 from functools import cached_property, lru_cache
 from typing import Literal, NamedTuple, TypeVar
 
@@ -564,17 +564,17 @@ class JoinedBorderKind(Enum):
         return f"JoinedBorderKind.{self.name}"
 
 
-class BorderEdge(Enum):
-    Top = "top"
-    Bottom = "bottom"
-    Left = "left"
-    Right = "right"
+class BorderEdges(Flag):
+    Top = auto()
+    Bottom = auto()
+    Left = auto()
+    Right = auto()
 
 
 class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
     style: CellStyle = Field(default=CellStyle())
-    edges: frozenset[BorderEdge] = frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})
+    edges: BorderEdges = Field(default=BorderEdges.Top | BorderEdges.Bottom | BorderEdges.Left | BorderEdges.Right)
     contract: int = Field(default=0)
 
 
