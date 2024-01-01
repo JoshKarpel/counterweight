@@ -8,6 +8,7 @@ from counterweight.styles.styles import (
     Color,
     Flex,
     Padding,
+    Relative,
     Typography,
 )
 
@@ -1956,6 +1957,10 @@ text_justify_center = Style(typography=Typography(justify="center"))
 text_justify_right = Style(typography=Typography(justify="right"))
 
 # Stop generated
+
+
+def relative(x: int = 0, y: int = 0) -> Style:
+    return Style(layout=Flex(position=Relative(x=x, y=y)))
 
 
 def absolute(x: int = 0, y: int = 0) -> Style:

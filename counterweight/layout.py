@@ -11,7 +11,7 @@ from counterweight.cell_paint import wrap_cells
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.geometry import Edge, Rect
-from counterweight.styles.styles import Absolute, BorderEdge
+from counterweight.styles.styles import BorderEdge
 from counterweight.types import ForbidExtras
 
 logger = get_logger()
@@ -97,10 +97,10 @@ class LayoutBox(ForbidExtras):
         self.dims.margin.left = style.margin.left
         self.dims.margin.right = style.margin.right
 
-        self.dims.border.top = 1 if style.border and BorderEdge.Top in style.border.edges else 0
-        self.dims.border.bottom = 1 if style.border and BorderEdge.Bottom in style.border.edges else 0
-        self.dims.border.left = 1 if style.border and BorderEdge.Left in style.border.edges else 0
-        self.dims.border.right = 1 if style.border and BorderEdge.Right in style.border.edges else 0
+        self.dims.border.top = 1 if style.border is not None and BorderEdge.Top in style.border.edges else 0
+        self.dims.border.bottom = 1 if style.border is not None and BorderEdge.Bottom in style.border.edges else 0
+        self.dims.border.left = 1 if style.border is not None and BorderEdge.Left in style.border.edges else 0
+        self.dims.border.right = 1 if style.border is not None and BorderEdge.Right in style.border.edges else 0
 
         self.dims.padding.top = style.padding.top
         self.dims.padding.bottom = style.padding.bottom
@@ -136,7 +136,9 @@ class LayoutBox(ForbidExtras):
         if style.span.height != "auto":  # i.e., if it's a fixed height
             self.dims.content.height = style.span.height
 
-        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+        num_gaps = max(
+            sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
+        )
 
         # grow to fit children with fixed sizes
         if style.span.width == "auto":
@@ -152,7 +154,7 @@ class LayoutBox(ForbidExtras):
                 #     child_element.type == "text" and child_style.typography.wrap == "none"
                 # ):
                 if child_box.dims.content.width != 0:  # i.e., it has been set
-                    if child_layout.position == "relative":
+                    if child_layout.position.type == "relative":
                         if layout.direction == "row":
                             # We are growing the box to the right
                             self.dims.content.width += child_box.dims.width()
@@ -173,7 +175,7 @@ class LayoutBox(ForbidExtras):
                 #     child_element.type == "text" and child_style.typography.wrap == "none"
                 # ):
                 if child_box.dims.content.height != 0:  # i.e., it has been set
-                    if child_layout.position == "relative":
+                    if child_layout.position.type == "relative":
                         if layout.direction == "column":
                             # We are growing the box downward
                             self.dims.content.height += child_box.dims.height()
@@ -187,7 +189,7 @@ class LayoutBox(ForbidExtras):
         parent = self.parent
 
         # handle align self
-        if layout.position == "relative" and parent:
+        if layout.position.type == "relative" and parent:
             if parent.element.style.layout.direction == "row":
                 match layout.align_self:
                     case "center":
@@ -212,12 +214,14 @@ class LayoutBox(ForbidExtras):
         available_width = self.dims.content.width
         available_height = self.dims.content.height
 
-        relative_children = [child for child in self.children if child.element.style.layout.position == "relative"]
+        relative_children = [child for child in self.children if child.element.style.layout.position.type == "relative"]
         relative_children_with_weights = [
             child for child in relative_children if child.element.style.layout.weight is not None
         ]
         num_relative_children = len(relative_children)
-        num_gaps = max(sum(1 for child in self.children if child.element.style.layout.position == "relative") - 1, 0)
+        num_gaps = max(
+            sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
+        )
         total_gap = num_gaps * layout.gap_children
 
         # subtract off fixed-width/height children from what's available to flex
@@ -277,8 +281,15 @@ class LayoutBox(ForbidExtras):
 
         # determine positions
 
-        # For absolute position, override anything that the parent tried to set for us
-        if isinstance(layout.position, Absolute):
+        logger.debug("absolute position", l=layout.position, x=layout.position.x, y=layout.position.y)
+        if layout.position.type == "relative":
+            # For relative position, shift anything the parent set for us by the given offsets
+            pass
+            # self.dims.content.x += layout.position.x
+            # self.dims.content.y += layout.position.y
+        elif layout.position.type == "absolute":
+            logger.debug("absolute position", x=layout.position.x, y=layout.position.y)
+            # For absolute position, override anything that the parent tried to set for us
             self.dims.content.x = layout.position.x
             self.dims.content.y = layout.position.y
 

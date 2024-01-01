@@ -37,6 +37,22 @@ def recursive_merge_dicts(a: dict[str, object], b: dict[str, object]) -> dict[st
     return merged
 
 
+def recursive_diff_dicts(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
+    diff: dict[str, object] = {}
+
+    for key in a.keys() | b.keys():
+        a_val, b_val = a.get(key, UNSET), b.get(key, UNSET)
+
+        if isinstance(a_val, dict) and isinstance(b_val, dict):
+            r = recursive_diff_dicts(a_val, b_val)
+            if r:
+                diff[key] = r
+        elif a_val != b_val:
+            diff[key] = a_val
+
+    return diff
+
+
 def merge_style_fragments(left: S, right: S) -> S:
     return type(left).model_validate(
         recursive_merge_dicts(
@@ -62,20 +78,37 @@ class StyleFragment(FrozenForbidExtras):
             STYLE_MERGE_CACHE[key] = merged
             return merged
 
-    def mergeable_dump(self) -> dict[str, object]:
-        d = super().model_dump(exclude_unset=True)
-
-        # Always include the "type" field if present,
-        # even if it was not set (important for style merging).
-        if "type" in self.__dict__:
-            d["type"] = self.__dict__["type"]
-
-        return d
-
     @cached_property
     def _cached_hash(self) -> int:
         """This is safe because all style fragments are immutable."""
         return hash(self)
+
+    def mergeable_dump(self) -> dict[str, object]:
+        diff: dict[str, object] = {}
+
+        for field_name, value in self:
+            field = self.model_fields[field_name]
+            field_default = field.default
+
+            if field_name not in self.model_fields_set:
+                continue
+
+            if isinstance(value, StyleFragment):
+                if isinstance(field_default, StyleFragment):
+                    # Value and default are both fragments
+                    sub_diff = value.mergeable_dump()
+                    if isinstance(field.discriminator, str):
+                        sub_diff[field.discriminator] = getattr(value, field.discriminator)
+                    if sub_diff:
+                        diff[field_name] = sub_diff
+                else:
+                    # Value is a fragment, default is a primitive
+                    diff[field_name] = value.mergeable_dump()
+            else:
+                # Not a fragment, so it's a primitive
+                diff[field_name] = value
+
+        return diff
 
 
 class Color(NamedTuple):
@@ -390,6 +423,9 @@ class BorderKind(Enum):
         right_bottom="*",
     )
 
+    def __repr__(self) -> str:
+        return f"BorderKind.{self.name}"
+
 
 class JoinedBorderParts(NamedTuple):
     vertical: str
@@ -543,6 +579,9 @@ class JoinedBorderKind(Enum):
         horizontal_vertical="╬",
     )
 
+    def __repr__(self) -> str:
+        return f"JoinedBorderKind.{self.name}"
+
 
 class BorderEdge(Enum):
     Top = "top"
@@ -553,7 +592,7 @@ class BorderEdge(Enum):
 
 class Border(StyleFragment):
     kind: BorderKind = Field(default=BorderKind.Light)
-    style: CellStyle = Field(default_factory=CellStyle)
+    style: CellStyle = Field(default=CellStyle())
     edges: frozenset[BorderEdge] = frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})
     contract: int = Field(default=0)
 
@@ -585,7 +624,14 @@ class Typography(StyleFragment):
     wrap: Literal["none", "paragraphs"] = "none"
 
 
+class Relative(StyleFragment):
+    type: Literal["relative"] = "relative"
+    x: int = 0
+    y: int = 0
+
+
 class Absolute(StyleFragment):
+    type: Literal["absolute"] = "absolute"
     x: int = 0
     y: int = 0
 
@@ -593,7 +639,7 @@ class Absolute(StyleFragment):
 class Flex(StyleFragment):
     type: Literal["flex"] = "flex"
     direction: Literal["row", "column"] = "row"
-    position: Literal["relative"] | Absolute = "relative"
+    position: Relative | Absolute = Field(default=Relative(), discriminator="type")
     weight: PositiveInt | None = 1
     align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
     justify_children: Literal[
@@ -621,3 +667,6 @@ class Style(StyleFragment):
     border: Border | None = Field(default=None)
     padding: Padding = Field(default=Padding())
     typography: Typography = Field(default=Typography())
+
+
+DEFAULT_STYLE_DUMP = Style().model_dump()

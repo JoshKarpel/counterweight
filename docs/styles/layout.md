@@ -4,6 +4,12 @@
 
 ### Relative Positioning
 
+```python
+--8<-- "relative_positioning.py:example"
+```
+
+![Relative Positioning](../_examples/relative-positioning.svg)
+
 ### Absolute Positioning
 
 ```python
