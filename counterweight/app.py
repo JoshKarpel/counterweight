@@ -7,7 +7,7 @@ from collections import deque
 from collections.abc import Callable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
-from threading import Thread
+from threading import Event, Thread
 from time import perf_counter_ns
 from typing import Iterable, TextIO
 
@@ -18,7 +18,7 @@ from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
 from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, ToggleBorderHealing, _Control
+from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
 from counterweight.elements import AnyElement, Div
 from counterweight.events import (
     AnyEvent,
@@ -113,9 +113,6 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    # Force a second render cycle after the initial render, helps with autopilot semantics.
-    await event_queue.put(Dummy())
-
     loop = get_running_loop()
 
     def put_event(event: AnyEvent) -> None:
@@ -124,13 +121,27 @@ async def app(
     if not headless:
         original = start_input_control(stream=input_stream)
 
+    allow_key_thread = Event()
+    allow_key_thread.set()
+
+    waiting_key_thread = Event()
+
     try:
         if not headless:
             start_handling_resize_signal(put_event=put_event)
             start_output_control(stream=output_stream)
             start_mouse_tracking(stream=output_stream)
 
-            key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
+            key_thread = Thread(
+                target=read_keys,
+                args=(
+                    input_stream,
+                    put_event,
+                    allow_key_thread,
+                    waiting_key_thread,
+                ),
+                daemon=True,
+            )
             key_thread.start()
 
         current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
@@ -147,6 +158,7 @@ async def app(
         should_quit = False
         should_bell = False
         should_screenshot: Screenshot | None = None
+        should_suspend: Suspend | None = None
 
         do_heal_borders = True
 
@@ -156,6 +168,7 @@ async def app(
             nonlocal should_quit
             nonlocal should_bell
             nonlocal should_screenshot
+            nonlocal should_suspend
 
             nonlocal do_heal_borders
 
@@ -168,6 +181,9 @@ async def app(
                     should_bell = True
                 case Screenshot():
                     should_screenshot = control
+                case Suspend():
+                    should_suspend = control
+                    needs_render = True
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     needs_render = True
@@ -186,8 +202,80 @@ async def app(
                     should_bell = False
 
                 if should_screenshot:
-                    should_screenshot.handler(svg(current_paint))
+                    try:
+                        start_screenshot = perf_counter_ns()
+                        should_screenshot.handler(svg(current_paint))
+                        logger.debug(
+                            "Took screenshot",
+                            handler=should_screenshot.handler,
+                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                        )
+                    except Exception as ex:
+                        logger.error(
+                            "Error in screenshot handler",
+                            error=repr(ex),
+                            handler=should_screenshot.handler,
+                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                        )
+
                     should_screenshot = None
+
+                if should_suspend:
+                    start_suspend = perf_counter_ns()
+                    logger.debug(
+                        "Suspending application",
+                        handler=should_suspend.handler,
+                    )
+
+                    if not headless:
+                        stop_mouse_tracking(stream=output_stream)
+                        stop_output_control(stream=output_stream)
+                        stop_input_control(stream=input_stream, original=original)
+                        stop_handling_resize_signal()
+
+                        # Coordinate with the key thread to tell it to pause,
+                        # and to actually wait for it to pause.
+                        allow_key_thread.clear()
+                        waiting_key_thread.wait()
+
+                    try:
+                        should_suspend.handler()
+                    except Exception as ex:
+                        logger.error(
+                            "Error in suspend handler",
+                            handler=should_suspend.handler,
+                            error=repr(ex),
+                        )
+
+                    if not headless:
+                        original = start_input_control(stream=input_stream)
+                        start_handling_resize_signal(put_event=put_event)
+                        start_output_control(stream=output_stream)
+                        start_mouse_tracking(stream=output_stream)
+
+                        allow_key_thread.set()
+
+                    # TODO: below is the same as a terminal resize, should probably refactor
+                    # note: we may have missed resize events while suspended, so we definitely want to get term size here
+
+                    w, h = shutil.get_terminal_size()
+
+                    # start from scratch
+                    current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                    instructions = paint_to_instructions(paint=current_paint)
+                    if not headless:
+                        output_stream.write(CLEAR_SCREEN)
+                        output_stream.write(instructions)
+                        # don't flush here, we don't necessarily need to flush until the next render
+                        # probably we can even store this until the next render happens and output it then
+
+                    logger.debug(
+                        "Resuming application",
+                        handler=should_suspend.handler,
+                        elapsed_ns=f"{perf_counter_ns() - start_suspend:_}",
+                    )
+
+                    should_suspend = None
 
                 if needs_render:
                     start_render = perf_counter_ns()
@@ -311,10 +399,11 @@ async def app(
                             # start from scratch
                             current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
                             instructions = paint_to_instructions(paint=current_paint)
-                            output_stream.write(CLEAR_SCREEN)
-                            output_stream.write(instructions)
-                            # don't flush here, we don't necessarily need to flush until the next render
-                            # probably we can even store this until the next render happens and output it then
+                            if not headless:
+                                output_stream.write(CLEAR_SCREEN)
+                                output_stream.write(instructions)
+                                # don't flush here, we don't necessarily need to flush until the next render
+                                # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
@@ -355,8 +444,8 @@ async def app(
                     elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
                 )
 
-    except (KeyboardInterrupt, CancelledError) as e:
-        logger.debug(f"Caught {e!r}")
+    except (KeyboardInterrupt, CancelledError) as ex:
+        logger.debug(f"Caught {ex!r}")
     finally:
         logger.info("Application stopping...")
 

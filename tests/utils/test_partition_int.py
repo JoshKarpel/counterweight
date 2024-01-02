@@ -35,6 +35,19 @@ def test_examples(total: int, weights: tuple[int], expected: list[int]) -> None:
     assert partition_int(total, weights) == expected
 
 
+@pytest.mark.parametrize(
+    "total, weights, exc",
+    [
+        (5, (-1,), ValueError),
+        (5, (-1, 1), ValueError),
+        (5, (0,), ValueError),
+    ],
+)
+def test_errors(total: int, weights: tuple[int], exc: type[Exception]) -> None:
+    with pytest.raises(exc):
+        partition_int(total, weights)
+
+
 @given(
     total=integers(
         min_value=0,

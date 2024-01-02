@@ -74,6 +74,19 @@ class Screenshot(_Control):
 
 
 @dataclass(frozen=True)
+class Suspend(_Control):
+    """
+    Suspend the application while the handler function is running.
+
+    The application will be suspended (and then resumed) at the beginning of the next render cycle,
+    so all other events that are due to be processed in the current cycle
+    will be processed before the application is suspended.
+    """
+
+    handler: Callable[[], None]
+
+
+@dataclass(frozen=True)
 class ToggleBorderHealing(_Control):
     """
     Toggle whether border healing occurs.
@@ -84,5 +97,6 @@ AnyControl = Union[
     Quit,
     Bell,
     Screenshot,
+    Suspend,
     ToggleBorderHealing,
 ]

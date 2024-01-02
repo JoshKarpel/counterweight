@@ -2,6 +2,13 @@
 
 ## Next
 
+### Added
+
+- [#86](https://github.com/JoshKarpel/counterweight/pull/86)
+  Added a `Suspend` control which suspends the Counterweight application while a user-supplied callback function runs.
+  Counterweight will stop controlling the terminal while the callback runs, and will resume when the callback returns.
+  This can be used to run a subprocess that also wants control of the terminal (e.g., a text editor).
+
 ## `0.0.4`
 
 Released `2023-12-31`
