@@ -27,7 +27,7 @@ BELL = "\x07"
 logger = get_logger()
 
 
-def start_output_control(stream: TextIO) -> None:
+def start_output_control(stream: TextIO) -> None:  # pragma: untestable
     stream.write(ALT_SCREEN_ON)
     stream.write(CURSOR_OFF)
     stream.write(CLEAR_SCREEN)
@@ -35,26 +35,26 @@ def start_output_control(stream: TextIO) -> None:
     stream.flush()
 
 
-def stop_output_control(stream: TextIO) -> None:
+def stop_output_control(stream: TextIO) -> None:  # pragma: untestable
     stream.write(ALT_SCREEN_OFF)
     stream.write(CURSOR_ON)
 
     stream.flush()
 
 
-def start_mouse_tracking(stream: TextIO) -> None:
+def start_mouse_tracking(stream: TextIO) -> None:  # pragma: untestable
     stream.write(SET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 
 
-def stop_mouse_tracking(stream: TextIO) -> None:
+def stop_mouse_tracking(stream: TextIO) -> None:  # pragma: untestable
     stream.write(UNSET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 
 
-def move_from_position(position: Position) -> str:
+def move_to(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
@@ -83,6 +83,4 @@ def sgr_from_cell_style(style: CellStyle) -> str:
 
 
 def paint_to_instructions(paint: Paint) -> str:
-    return "".join(
-        f"{move_from_position(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items()
-    )
+    return "".join(f"{move_to(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items())

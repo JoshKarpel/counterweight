@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from asyncio import Task
 from collections.abc import Callable
-from typing import Literal, TypeVar
+from typing import ClassVar, Literal, TypeVar
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
-from counterweight.errors import InconsistentHookExecution
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 from counterweight.types import ForbidExtras
@@ -30,11 +29,16 @@ class UseEffect(ForbidExtras):
     new_deps: Deps
     task: Task[None] | None = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = {
+        "arbitrary_types_allowed": True,
+    }
 
 
 T = TypeVar("T")
+
+
+class InconsistentHookExecution(Exception):
+    pass
 
 
 class Hooks(ForbidExtras):

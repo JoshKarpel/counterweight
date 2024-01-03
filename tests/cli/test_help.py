@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+import pytest
 from typer.testing import CliRunner
 
 from counterweight.cli import cli
@@ -13,6 +14,7 @@ def test_help(runner: CliRunner) -> None:
     assert result.exit_code == 0
 
 
+@pytest.mark.slow
 def test_help_via_main() -> None:
     result = subprocess.run((sys.executable, "-m", PACKAGE_NAME, "--help"), check=False)
 

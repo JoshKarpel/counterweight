@@ -30,3 +30,4 @@ exclude_lines =
     pragma: unreachable
     pragma: debugging
     pragma: never runs
+    pragma: untestable

@@ -11,7 +11,7 @@ from counterweight.types import FrozenForbidExtras
 
 class CellPaint(FrozenForbidExtras):
     char: str = Field(default=..., min_length=1, max_length=1)
-    style: CellStyle = Field(default_factory=CellStyle)
+    style: CellStyle = Field(default=CellStyle())
 
     @property
     def cells(self) -> Iterator[CellPaint]:

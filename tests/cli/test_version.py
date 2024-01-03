@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+import pytest
 from typer.testing import CliRunner
 
 from counterweight.cli import cli
@@ -14,6 +15,7 @@ def test_version(runner: CliRunner) -> None:
     assert __version__ in result.stdout
 
 
+@pytest.mark.slow
 def test_version_via_main() -> None:
     result = subprocess.run((sys.executable, "-m", PACKAGE_NAME, "version"), check=False, capture_output=True)
 

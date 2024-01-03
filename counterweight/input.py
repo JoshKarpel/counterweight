@@ -24,9 +24,6 @@ def read_keys(
     allow: Event,
     waiting: Event,
 ) -> None:
-    """
-    Based on https://github.com/Textualize/textual/blob/bb9cc6281aa717054c8133ce4a2eac5ad082c574/src/textual/drivers/linux_driver.py#L236
-    """
     selector = DefaultSelector()
     selector.register(stream, selectors.EVENT_READ)
 
@@ -75,7 +72,7 @@ CC = 6
 TCGetAttr = list[int | list[int | bytes]]
 
 
-def start_input_control(stream: TextIO) -> TCGetAttr:
+def start_input_control(stream: TextIO) -> TCGetAttr:  # pragma: untestable
     original = termios.tcgetattr(stream)
 
     modified = deepcopy(original)
@@ -89,5 +86,5 @@ def start_input_control(stream: TextIO) -> TCGetAttr:
     return original
 
 
-def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
+def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:  # pragma: untestable
     termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)
