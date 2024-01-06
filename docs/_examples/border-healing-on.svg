@@ -4,7 +4,7 @@
   font-size: 1rem;
 }
 </style>
- <g>
+ <g shape-rendering="crispEdges">
   <rect x="0.00em" y="0.00em" width="33.00em" height="22.60em" fill="#000000" />
  </g>
  <text fill="#ffffff" font-family="monospace">

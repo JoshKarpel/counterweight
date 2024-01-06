@@ -585,10 +585,15 @@ class Typography(StyleFragment):
     wrap: Literal["none", "paragraphs"] = "none"
 
 
+class Absolute(StyleFragment):
+    x: int = 0
+    y: int = 0
+
+
 class Flex(StyleFragment):
     type: Literal["flex"] = "flex"
     direction: Literal["row", "column"] = "row"
-    position: Literal["relative"] = "relative"
+    position: Literal["relative"] | Absolute = "relative"
     weight: PositiveInt | None = 1
     align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
     justify_children: Literal[

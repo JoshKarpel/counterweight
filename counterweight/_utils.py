@@ -30,7 +30,7 @@ def halve_integer(x: int) -> tuple[int, int]:
 
 
 @lru_cache(maxsize=2**12)
-def partition_int(total: int, weights: tuple[int]) -> list[int]:
+def partition_int(total: int, weights: tuple[int, ...]) -> list[int]:
     """Partition an integer into a list of integers, with each integer in the list corresponding to the weight at the same index in the weights list."""
     # https://stackoverflow.com/questions/62914824/c-sharp-split-integer-in-parts-given-part-weights-algorithm
 

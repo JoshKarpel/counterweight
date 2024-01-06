@@ -5,14 +5,14 @@ repo_url: https://github.com/JoshKarpel/counterweight
 edit_uri: edit/main/docs/
 
 extra_css:
-  - assets/style.css
+  - _assets/style.css
 
 watch:
   - counterweight/
 
 theme:
   name: material
-  favicon: assets/favicon.png
+  favicon: _assets/favicon.png
   icon:
     logo: fontawesome/solid/terminal
   palette:
@@ -66,7 +66,7 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
-      base_path: ['docs/examples/']
+      base_path: ['docs/_examples/']
       check_paths: true
   - pymdownx.superfences
   - pymdownx.tabbed:
@@ -108,6 +108,7 @@ nav:
     - input-handling/controls.md
   - Styles:
     - styles/index.md
+    - styles/layout.md
     - styles/utilities.md
   - Cookbook:
     - cookbook/border-healing.md

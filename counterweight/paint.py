@@ -10,8 +10,8 @@ from structlog import get_logger
 from counterweight._utils import halve_integer
 from counterweight.cell_paint import CellPaint, wrap_cells
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.geometry import Position
-from counterweight.layout import BoxDimensions, Edge, LayoutBox, Rect
+from counterweight.geometry import Edge, Position, Rect
+from counterweight.layout import LayoutBox, LayoutBoxDimensions
 from counterweight.styles import Border
 from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
 
@@ -27,7 +27,7 @@ def paint_layout(layout: LayoutBox) -> Paint:
     return painted
 
 
-def paint_element(element: AnyElement, dims: BoxDimensions) -> Paint:
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> Paint:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
     m = paint_edge(element.style.margin, dims.margin, margin_rect)
     b = paint_border(element.style.border, border_rect) if element.style.border else {}
@@ -242,7 +242,9 @@ def svg(paint: Paint) -> ElementTree:
     background_root = SubElement(
         root,
         "g",
-        {},
+        {
+            "shape-rendering": "crispEdges",
+        },
     )
     SubElement(  # default background color is black, so do a single black rectangle to cover the whole background as an optimization
         background_root,
@@ -269,34 +271,35 @@ def svg(paint: Paint) -> ElementTree:
     for pos, cell in sorted(paint.items()):
         rows[pos.y].append((pos.x, cell))
 
-    # Sort by y, then x, so that the SVG is written top to bottom, left to right
     for y, cells in sorted(rows.items()):
-        row_root = SubElement(
+        row_tspan_root = SubElement(
             text_root,
             "tspan",
             {
                 "y": f"{y * y_mul:{fmt}}{unit}",
             },
         )
+
+        # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
+        current_bg_color = Color.from_name("black").hex
+        current_bg_start = 0
+        current_bg_width = 0
+        bg_spans = []
+
         for x, cell in cells:
             # black is the default background color, so don't write it (optimization)
-            if cell.style.background != Color.from_name("black"):
-                SubElement(
-                    background_root,
-                    "rect",
-                    {
-                        "x": f"{x * x_mul:{fmt}}{unit}",
-                        "width": f"{1.05 * x_mul:{fmt}}{unit}",  # go over the edge a bit on the right to cover gaps
-                        "height": f"{1 * y_mul:{fmt}}{unit}",
-                        "fill": cell.style.background.hex,
-                    },
-                )
+            if cell.style.background.hex == current_bg_color:
+                current_bg_width += 1
+            else:
+                if current_bg_color != Color.from_name("black").hex:
+                    bg_spans.append((current_bg_start, current_bg_width, current_bg_color))
+                current_bg_start, current_bg_width, current_bg_color = x, 1, cell.style.background.hex
 
             if cell.char == " ":  # optimization: don't write spaces
                 continue
 
             ts = SubElement(
-                row_root,
+                row_tspan_root,
                 "tspan",
                 {
                     "x": f"{x * x_mul:{fmt}}{unit}",
@@ -305,5 +308,18 @@ def svg(paint: Paint) -> ElementTree:
             if cell.style.foreground != Color.from_name("white"):  # optimization: don't write white, it's the default
                 ts.attrib["fill"] = cell.style.foreground.hex
             ts.text = cell.char
+
+        for bg_start, bg_width, bg_color in bg_spans:
+            SubElement(
+                background_root,
+                "rect",
+                {
+                    "x": f"{bg_start * x_mul:{fmt}}{unit}",
+                    "y": f"{y * y_mul:{fmt}}{unit}",
+                    "width": f"{bg_width * x_mul:{fmt}}{unit}",
+                    "height": f"{1 * y_mul:{fmt}}{unit}",
+                    "fill": bg_color,
+                },
+            )
 
     return ElementTree(element=root)

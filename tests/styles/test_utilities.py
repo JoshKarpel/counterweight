@@ -1,2 +1,5 @@
-def test_can_import_utilities() -> None:
-    import counterweight.styles.utilities  # noqa: F401
+from counterweight.styles.utilities import *
+
+
+def test_absolute() -> None:
+    assert absolute(x=3, y=5) == Style(layout=Flex(position=Absolute(x=3, y=5)))
