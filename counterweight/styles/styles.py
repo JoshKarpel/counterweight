@@ -617,15 +617,24 @@ class Relative(StyleFragment):
     y: int = 0
 
 
+class Inset(StyleFragment):
+    vertical: Literal["top", "center", "bottom"] = "top"
+    horizontal: Literal["left", "center", "right"] = "left"
+
+
 class Absolute(StyleFragment):
     """
     Absolute positioning is relative to the parent element's content box,
-    but the element does not occupy space.
+    but the element does not occupy space in the layout.
+
+    The `inset` property determines which corner of the
+    parent element's content box this element is positioned relative to.
     """
 
     type: Literal["absolute"] = "absolute"
     x: int = 0
     y: int = 0
+    inset: Inset = Field(default=Inset())
 
 
 class Fixed(StyleFragment):

@@ -2,6 +2,12 @@
 
 ## Next
 
+### Added
+
+- [#92](https://github.com/JoshKarpel/counterweight/pull/92)
+  Added an `inset` attribute to [`Absolute`] that allows for choosing which corner
+  of the parent's context box to use as the origin for the absolute positioning.
+
 ## `0.0.5`
 
 Released `2024-01-06`

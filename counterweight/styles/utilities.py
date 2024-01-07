@@ -7,6 +7,7 @@ from counterweight.styles import (
     Color,
     Fixed,
     Flex,
+    Inset,
     Margin,
     Padding,
     Relative,
@@ -1737,6 +1738,16 @@ padding_rose_950 = Style(padding=Padding(color=Color.from_hex("#4c0519")))
 
 row = Style(layout=Flex(direction="row"))
 col = Style(layout=Flex(direction="column"))
+
+inset_top_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="left"))))
+inset_top_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="center"))))
+inset_top_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="right"))))
+inset_center_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="left"))))
+inset_center_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="center"))))
+inset_center_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="right"))))
+inset_bottom_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="left"))))
+inset_bottom_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="center"))))
+inset_bottom_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="right"))))
 
 justify_children_start = Style(layout=Flex(justify_children="start"))
 justify_children_center = Style(layout=Flex(justify_children="center"))

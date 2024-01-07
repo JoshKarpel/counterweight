@@ -111,6 +111,7 @@ nav:
     - styles/layout.md
     - styles/utilities.md
   - Cookbook:
+    - cookbook/border-titles.md
     - cookbook/border-healing.md
   - Reference:
     - reference/api.md

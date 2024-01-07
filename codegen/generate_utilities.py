@@ -344,6 +344,14 @@ for d in literal_vals(Flex, "direction"):
 
 generated_lines.append("")
 
+for v in ("top", "center", "bottom"):
+    for h in ("left", "center", "right"):
+        generated_lines.append(
+            f'inset_{v}_{h} = Style(layout=Flex(position=Absolute(inset=Inset(vertical="{v}", horizontal="{h}"))))'
+        )
+
+generated_lines.append("")
+
 for j in literal_vals(Flex, "justify_children"):
     generated_lines.append(f'justify_children_{j.replace("-", "_")} = Style(layout=Flex(justify_children="{j}"))')
 

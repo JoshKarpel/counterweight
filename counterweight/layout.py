@@ -286,9 +286,24 @@ class LayoutBox(ForbidExtras):
             self.dims.content.x += layout.position.x
             self.dims.content.y += layout.position.y
         elif layout.position.type == "absolute" and parent:
-            # For absolute position, start from the parent's content box's top-left corner, then shift by the offsets
-            self.dims.content.x = parent.dims.content.x + layout.position.x
-            self.dims.content.y = parent.dims.content.y + layout.position.y
+            # For absolute position, start from the inset position on the parent's context box, then shift by the offset
+
+            if layout.position.inset.horizontal == "left":
+                self.dims.content.x = parent.dims.content.x
+            elif layout.position.inset.horizontal == "center":
+                self.dims.content.x = parent.dims.content.x + ((parent.dims.content.width - self.dims.width()) // 2)
+            elif layout.position.inset.horizontal == "right":
+                self.dims.content.x = parent.dims.content.x + parent.dims.content.width - self.dims.width()
+
+            if layout.position.inset.vertical == "top":
+                self.dims.content.y = parent.dims.content.y
+            elif layout.position.inset.vertical == "center":
+                self.dims.content.y = parent.dims.content.y + ((parent.dims.content.height - self.dims.height()) // 2)
+            elif layout.position.inset.vertical == "bottom":
+                self.dims.content.y = parent.dims.content.y + parent.dims.content.height - self.dims.height()
+
+            self.dims.content.x += layout.position.x
+            self.dims.content.y += layout.position.y
         elif layout.position.type == "fixed":
             # For fixed position, override anything that the parent tried to set for us
             self.dims.content.x = layout.position.x
