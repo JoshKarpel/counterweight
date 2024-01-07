@@ -5,7 +5,7 @@
 ### Added
 
 - [#92](https://github.com/JoshKarpel/counterweight/pull/92)
-  Added an `inset` attribute to [`Absolute`] that allows for choosing which corner
+  Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that allows for choosing which corner
   of the parent's context box to use as the origin for the absolute positioning.
 
 ## `0.0.5`
@@ -44,7 +44,7 @@ Released `2023-12-30`
   Controls are now a union over different `@dataclass`es (instead of an `Enum`) to allow for more flexibility.
   The `Screenshot` control now takes a callback function which will be called with the SVG screenshot as an XML tree.
 - [#81](https://github.com/JoshKarpel/counterweight/pull/81)
-  Minimum Python version has been raised to `3.11.2` due to a bug in CPython `3.11.1` (https://github.com/python/cpython/issues/100098)
+  The minimum Python version has been raised to `3.11.2` due to a [bug in CPython `3.11.1`](https://github.com/python/cpython/issues/100098)
 
 ## `0.0.2`
 
