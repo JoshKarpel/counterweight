@@ -5,25 +5,54 @@ from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
 
-extra_style = border_heavy | border_bg_blue_800 | pad_1 | padding_amber_500 | margin_1 | margin_red_600
+extra_style = border_light | pad_1 | margin_1
 
 
 @component
 def root() -> Div:
     return Div(
-        style=row,
+        style=col | justify_children_space_around,
         children=[
-            Text(
-                style=absolute(x=x, y=y) | extra_style,
-                content=f"absolute(x={x}, y={y})",
-            )
-            for x, y in (
-                (0, 0),
-                (10, 10),
-                (30, 20),
-                (15, 25),
-                (33, 3),
-            )
+            Div(
+                style=border_heavy,
+                children=[
+                    Text(
+                        style=text_green_600,
+                        content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    )
+                ]
+                + [
+                    Text(
+                        style=absolute(x=x, y=y) | extra_style | margin_red_600,
+                        content=f"absolute(x={x}, y={y})",
+                    )
+                    for x, y in (
+                        (0, 0),
+                        (10, -7),
+                        (33, 3),
+                    )
+                ],
+            ),
+            Div(
+                style=border_heavy,
+                children=[
+                    Text(
+                        style=text_cyan_600,
+                        content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    )
+                ]
+                + [
+                    Text(
+                        style=absolute(x=x, y=y) | extra_style | margin_amber_600,
+                        content=f"absolute(x={x}, y={y})",
+                    )
+                    for x, y in (
+                        (0, 0),
+                        (10, -7),
+                        (33, 3),
+                    )
+                ],
+            ),
         ],
     )
 

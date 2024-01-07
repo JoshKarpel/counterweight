@@ -50,7 +50,6 @@
 ## Styles
 
 ::: counterweight.styles.Style
-::: counterweight.styles.Flex
 ::: counterweight.styles.Span
 ::: counterweight.styles.Margin
 ::: counterweight.styles.Border
@@ -58,3 +57,11 @@
 ::: counterweight.styles.Typography
 ::: counterweight.styles.Color
 ::: counterweight.styles.CellStyle
+
+### Layout
+
+::: counterweight.styles.Flex
+
+::: counterweight.styles.Relative
+::: counterweight.styles.Absolute
+::: counterweight.styles.Fixed

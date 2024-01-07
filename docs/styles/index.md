@@ -12,3 +12,7 @@
 ::: counterweight.styles.Typography
 ::: counterweight.styles.Color
 ::: counterweight.styles.CellStyle
+
+::: counterweight.styles.Relative
+::: counterweight.styles.Absolute
+::: counterweight.styles.Fixed

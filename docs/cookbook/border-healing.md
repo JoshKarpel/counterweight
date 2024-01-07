@@ -1,7 +1,7 @@
 # Border Healing
 
 When border elements for certain border types are adjacent to each other and appear as if they
-should "join up", but don't because they belong to different elements, they be joined up.
+should "join up", but don't because they belong to different elements, they will be joined up.
 
 ```python
 --8<-- "border_healing.py:example"
