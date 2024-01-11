@@ -111,7 +111,7 @@ class Color(NamedTuple):
             int(hex[4:6], 16),
         )
 
-    @cached_property
+    @property
     def hex(self) -> str:
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
