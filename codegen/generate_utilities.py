@@ -5,7 +5,7 @@ from typing import get_args, get_type_hints
 
 from more_itertools import flatten
 
-from counterweight.styles.styles import BorderEdges, BorderKind, Flex, Typography
+from counterweight.styles.styles import BorderEdge, BorderKind, Flex, Typography
 
 
 def literal_vals(obj: object, field: str) -> tuple[str, ...]:
@@ -381,12 +381,13 @@ for b in BorderKind:
 
 generated_lines.append("")
 
-for edges in flatten(combinations(BorderEdges, r) for r in range(1, 4)):
-    z = " | ".join(f"BorderEdges.{e.name}" for e in edges)
+for edges in flatten(combinations(BorderEdge, r) for r in range(1, 4)):
+    z = ", ".join(f"BorderEdge.{e.name}" for e in edges) + ("," if len(edges) == 1 else "")
     generated_lines.append(
-        f"border_{'_'.join(e.name.lower() for e in edges)} = Style(border=Border(edges={z}))".replace("'", '"')
+        f"border_{'_'.join(e.name.lower() for e in edges)} = Style(border=Border(edges=frozenset(({z}))))".replace(
+            "'", '"'
+        )
     )
-
 generated_lines.append("")
 
 for n in N:

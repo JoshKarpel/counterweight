@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Iterator, Literal, Sequence, Union
+from functools import cached_property
+from typing import Callable, Literal, Sequence, Union
 
 from pydantic import Field
 
@@ -25,17 +26,21 @@ class Chunk(FrozenForbidExtras):
     content: str
     style: CellStyle = Field(default_factory=CellStyle)
 
-    @property
-    def cells(self) -> Iterator[CellPaint]:
-        yield from (CellPaint(char=char, style=self.style) for char in self.content)
+    @cached_property
+    def cells(self) -> tuple[CellPaint, ...]:
+        return tuple(CellPaint(char=char, style=self.style) for char in self.content)
 
     @classmethod
     def space(cls) -> Chunk:
-        return Chunk(content=" ")
+        return SPACE
 
     @classmethod
     def newline(cls) -> Chunk:
-        return Chunk(content="\n")
+        return NEWLINE
+
+
+SPACE = Chunk(content=" ")
+NEWLINE = Chunk(content="\n")
 
 
 class Text(FrozenForbidExtras):
@@ -51,13 +56,12 @@ class Text(FrozenForbidExtras):
     def children(self) -> Sequence[Component | AnyElement]:
         return ()
 
-    @property
-    def cells(self) -> Iterator[CellPaint]:
+    @cached_property
+    def cells(self) -> tuple[CellPaint, ...]:
         if isinstance(self.content, str):
-            yield from (CellPaint(char=char, style=self.style.typography.style) for char in self.content)
+            return tuple(CellPaint(char=char, style=self.style.typography.style) for char in self.content)
         else:
-            for c in self.content:
-                yield from c.cells
+            return sum((chunk.cells for chunk in self.content), ())
 
 
 AnyElement = Union[

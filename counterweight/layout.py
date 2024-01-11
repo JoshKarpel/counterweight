@@ -8,9 +8,10 @@ from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
 from counterweight.cell_paint import wrap_cells
+from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.geometry import Edge, Rect
-from counterweight.styles.styles import BorderEdges
+from counterweight.styles.styles import BorderEdge
 
 logger = get_logger()
 
@@ -100,10 +101,10 @@ class LayoutBox:
         self.dims.margin.right = style.margin.right
 
         if style.border:
-            self.dims.border.top = 1 if BorderEdges.Top in style.border.edges else 0
-            self.dims.border.bottom = 1 if BorderEdges.Bottom in style.border.edges else 0
-            self.dims.border.left = 1 if BorderEdges.Left in style.border.edges else 0
-            self.dims.border.right = 1 if BorderEdges.Right in style.border.edges else 0
+            self.dims.border.top = 1 if BorderEdge.Top in style.border.edges else 0
+            self.dims.border.bottom = 1 if BorderEdge.Bottom in style.border.edges else 0
+            self.dims.border.left = 1 if BorderEdge.Left in style.border.edges else 0
+            self.dims.border.right = 1 if BorderEdge.Right in style.border.edges else 0
 
         self.dims.padding.top = style.padding.top
         self.dims.padding.bottom = style.padding.bottom
@@ -204,15 +205,15 @@ class LayoutBox:
 
         relative_children = []
         relative_children_with_weights = []
-        weights = []
+        weights_ = []
         for child in self.children:
             child_layout = child.element.style.layout
             if child_layout.position.type == "relative":
                 relative_children.append(child)
                 if child_layout.weight is not None:
                     relative_children_with_weights.append(child)
-                    weights.append(child_layout.weight)
-        weights = tuple(weights)
+                    weights_.append(child_layout.weight)
+        weights = tuple(weights_)
         num_relative_children = len(relative_children)
         num_gaps = max(num_relative_children - 1, 0)
         total_gap = num_gaps * layout.gap_children
@@ -418,9 +419,16 @@ class LayoutBox:
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
 
-def build_layout_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
+def build_layout_tree_from_concrete_element_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
     box = LayoutBox(element=element, parent=parent)
 
-    box.children.extend(build_layout_tree(element=child, parent=box) for child in element.children)
+    box.children.extend(
+        build_layout_tree_from_concrete_element_tree(
+            element=child,
+            parent=box,
+        )
+        for child in element.children
+        if not isinstance(child, Component)
+    )
 
     return box

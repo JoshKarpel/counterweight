@@ -33,7 +33,7 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import build_layout_tree
+from counterweight.layout import build_layout_tree_from_concrete_element_tree
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -292,7 +292,7 @@ async def app(
                     )
 
                     start_layout = perf_counter_ns()
-                    layout_tree = build_layout_tree(element_tree)
+                    layout_tree = build_layout_tree_from_concrete_element_tree(element_tree)
                     layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",

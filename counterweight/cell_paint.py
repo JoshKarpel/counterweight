@@ -7,7 +7,7 @@ from typing import Literal
 from counterweight.styles.styles import CellStyle
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class CellPaint:
     char: str
     style: CellStyle = field(default=CellStyle())

@@ -39,15 +39,10 @@ def test_texts_have_no_children() -> None:
             Style(),
             (CellPaint(char="f"), CellPaint(char="o"), CellPaint(char="o")),
         ),
-        (
-            (CellPaint(char="f"), CellPaint(char="o"), CellPaint(char="o")),
-            Style(),
-            (CellPaint(char="f"), CellPaint(char="o"), CellPaint(char="o")),
-        ),
     ),
 )
 def test_text_cells(
-    content: str | Sequence[Chunk | CellPaint],
+    content: str | Sequence[Chunk],
     style: Style,
     expected: tuple[CellPaint],
 ) -> None:
