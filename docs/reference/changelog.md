@@ -8,6 +8,11 @@
   Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that allows for choosing which corner
   of the parent's context box to use as the origin for the absolute positioning.
 
+### Removed
+
+- [#96](https://github.com/JoshKarpel/counterweight/pull/96)
+  `Chunk`s can no longer be created with `CellPaint`s directly.
+
 ## `0.0.5`
 
 Released `2024-01-06`
