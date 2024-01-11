@@ -102,7 +102,7 @@ class Color(NamedTuple):
         return COLORS_BY_NAME[name]
 
     @classmethod
-    @lru_cache(maxsize=2**10)
+    @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
         hex = hex.lstrip("#")
         return cls(
@@ -111,7 +111,7 @@ class Color(NamedTuple):
             int(hex[4:6], 16),
         )
 
-    @property
+    @cached_property
     def hex(self) -> str:
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
