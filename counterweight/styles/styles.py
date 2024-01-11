@@ -652,6 +652,7 @@ class Flex(StyleFragment):
     direction: Literal["row", "column"] = "row"
     position: Relative | Absolute | Fixed = Field(default=Relative(), discriminator="type")
     weight: PositiveInt | None = 1
+    z: int = 0
     align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
     justify_children: Literal[
         "start",
