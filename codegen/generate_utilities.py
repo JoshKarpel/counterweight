@@ -328,12 +328,12 @@ for color, shades in COLORS.items():
         generated_lines.extend(
             [
                 f'{color}_{shade} = Color.from_hex("{hex}")',
-                f'text_{color}_{shade} = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
-                f'text_bg_{color}_{shade} = Style(typography=Typography(style=CellStyle(background=Color.from_hex("{hex}"))))',
-                f'border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground=Color.from_hex("{hex}"))))',
-                f'border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background=Color.from_hex("{hex}"))))',
-                f'margin_{color}_{shade} = Style(margin=Margin(color=Color.from_hex("{hex}")))',
-                f'padding_{color}_{shade} = Style(padding=Padding(color=Color.from_hex("{hex}")))',
+                f"text_{color}_{shade} = Style(typography=Typography(style=CellStyle(foreground={color}_{shade})))",
+                f"text_bg_{color}_{shade} = Style(typography=Typography(style=CellStyle(background={color}_{shade})))",
+                f"border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground={color}_{shade})))",
+                f"border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background={color}_{shade})))",
+                f"margin_{color}_{shade} = Style(margin=Margin(color={color}_{shade}))",
+                f"padding_{color}_{shade} = Style(padding=Padding(color={color}_{shade}))",
             ]
         )
 

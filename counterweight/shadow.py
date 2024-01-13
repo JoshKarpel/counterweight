@@ -1,29 +1,25 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from itertools import count, zip_longest
+from dataclasses import dataclass, field
+from itertools import zip_longest
 
-from pydantic import Field
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_idx, current_hook_state
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.hooks.impls import Hooks
-from counterweight.types import FrozenForbidExtras
 
 logger = get_logger()
 
-next_id = count(0)
 
-
-class ShadowNode(FrozenForbidExtras):
-    id: int = Field(default_factory=lambda: next(next_id))
-    generation: int = 0
+@dataclass(slots=True)
+class ShadowNode:
     component: Component | None
     element: AnyElement
-    children: list[ShadowNode] = Field(default_factory=list)
     hooks: Hooks
+    children: list[ShadowNode] = field(default_factory=list)
 
     def walk(self) -> Iterator[ShadowNode]:
         yield self
@@ -40,8 +36,6 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             kwargs=next_kwargs,
             key=next_key,
         ) as next_component, ShadowNode(
-            id=id,
-            generation=generation,
             component=previous_component,
             children=previous_children,
             hooks=previous_hooks,
@@ -62,12 +56,10 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children.append(update_shadow(new_child, previous_child))
 
             new = ShadowNode(
-                id=id,
                 component=next_component,
                 element=element,
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
-                generation=generation + 1,
             )
 
             current_hook_idx.reset(reset_current_hook_idx)

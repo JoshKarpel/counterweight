@@ -33,7 +33,7 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import build_layout_tree
+from counterweight.layout import build_layout_tree_from_concrete_element_tree
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -144,7 +144,7 @@ async def app(
             )
             key_thread.start()
 
-        current_paint: Paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+        current_paint: Paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)
 
         if not headless:
@@ -188,7 +188,7 @@ async def app(
                     do_heal_borders = not do_heal_borders
                     needs_render = True
 
-        mouse_position = Position(x=-1, y=-1)
+        mouse_position = Position.flyweight(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -261,11 +261,10 @@ async def app(
                     w, h = shutil.get_terminal_size()
 
                     # start from scratch
-                    current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                    current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
                     instructions = paint_to_instructions(paint=current_paint)
                     if not headless:
-                        output_stream.write(CLEAR_SCREEN)
-                        output_stream.write(instructions)
+                        output_stream.write(CLEAR_SCREEN + instructions)
                         # don't flush here, we don't necessarily need to flush until the next render
                         # probably we can even store this until the next render happens and output it then
 
@@ -293,7 +292,7 @@ async def app(
                     )
 
                     start_layout = perf_counter_ns()
-                    layout_tree = build_layout_tree(element_tree)
+                    layout_tree = build_layout_tree_from_concrete_element_tree(element_tree)
                     layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",
@@ -397,11 +396,10 @@ async def app(
                             w, h = shutil.get_terminal_size()
 
                             # start from scratch
-                            current_paint = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+                            current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
                             instructions = paint_to_instructions(paint=current_paint)
                             if not headless:
-                                output_stream.write(CLEAR_SCREEN)
-                                output_stream.write(instructions)
+                                output_stream.write(CLEAR_SCREEN + instructions)
                                 # don't flush here, we don't necessarily need to flush until the next render
                                 # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
@@ -493,7 +491,7 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
 
         # This looks duplicative, but each of these checks is faster than the next,
         # but less precise, so we can short-circuit earlier on cheaper operations.
-        if new_cell is not current_cell and hash(new_cell) != hash(current_cell):
+        if new_cell is not current_cell and new_cell != current_cell:
             diff[pos] = new_cell
 
     return diff

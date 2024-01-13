@@ -245,7 +245,7 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
     x = int(x_) - 1
     y = int(y_) - 1
 
-    pos = Position(x=x, y=y)
+    pos = Position.flyweight(x=x, y=y)
     moving = button_info & 32
     button = (button_info & 0b11) + 1
 

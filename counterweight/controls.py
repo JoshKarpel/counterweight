@@ -8,12 +8,12 @@ from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import indent as indent_svg
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Control:
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Quit(_Control):
     """
     Cause the application to quit.
@@ -24,7 +24,7 @@ class Quit(_Control):
     """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Bell(_Control):
     """
     Cause the terminal to emit a bell sound.
@@ -35,7 +35,7 @@ class Bell(_Control):
     """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Screenshot(_Control):
     """
     Take a "screenshot" of the rendered UI,
@@ -77,7 +77,7 @@ class Screenshot(_Control):
         return cls(handler=handler)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Suspend(_Control):
     """
     Suspend the application while the handler function is running.
@@ -90,7 +90,7 @@ class Suspend(_Control):
     handler: Callable[[], None]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ToggleBorderHealing(_Control):
     """
     Toggle whether border healing occurs.
