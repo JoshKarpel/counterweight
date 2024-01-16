@@ -37,6 +37,7 @@ Paint = dict[Position, P]
 
 
 def paint_layout(layout: LayoutBox) -> Paint:
+    # TODO: ordering is messed up here
     return reduce(
         or_,
         map(
