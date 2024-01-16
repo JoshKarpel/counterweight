@@ -65,7 +65,7 @@ class Hooks(ForbidExtras):
 
         return hook.value, set_state  # type: ignore[return-value]
 
-    def use_ref(self, initial_value: T) -> Ref[T]:
+    def use_ref(self, initial_value: Getter[T] | T) -> Ref[T]:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseRef):
@@ -73,7 +73,7 @@ class Hooks(ForbidExtras):
                     f"Expected a {UseRef.__name__} hook, but got a {type(hook).__name__} hook instead."
                 )
         except IndexError:
-            hook = UseRef(ref=Ref[object](current=initial_value))
+            hook = UseRef(ref=Ref[object](current=initial_value() if callable(initial_value) else initial_value))
             self.data.append(hook)
 
         current_hook_idx.set(current_hook_idx.get() + 1)
