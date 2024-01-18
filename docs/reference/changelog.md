@@ -11,7 +11,7 @@
 ### Changed
 
 - [#101](https://github.com/JoshKarpel/counterweight/pull/101)
-  The `initial_value` of [`use_effect`][counterweight.hooks.use_effect] may now be a `Callable[[], T]` instead of just a `T`.
+  The `initial_value` of [`use_ref`][counterweight.hooks.use_ref] may now be a `Callable[[], T]` instead of just a `T`.
 
 ### Removed
 
