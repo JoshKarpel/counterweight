@@ -57,6 +57,6 @@ def heal_borders(paint: Paint) -> Paint:
                 above=above.char if above else None,
                 below=below.char if below else None,
             ):
-                overlay[pos] = P(char=replaced_char, style=p.style, element=p.element)
+                overlay[pos] = P(char=replaced_char, style=p.style, z=p.z)
 
     return overlay

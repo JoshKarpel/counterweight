@@ -12,10 +12,9 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 from structlog import get_logger
 
 from counterweight._utils import halve_integer
-from counterweight.cell_paint import CellPaint, wrap_cells
-from counterweight.elements import AnyElement, Div, Text
+from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
-from counterweight.layout import LayoutBox, LayoutBoxDimensions
+from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
 from counterweight.styles import Border
 from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
 
@@ -26,11 +25,14 @@ logger = get_logger()
 class P:
     char: str
     style: CellStyle
-    element: AnyElement | None
+    z: int
 
-    @property
-    def z(self) -> int:
-        return self.element.style.layout.z if self.element else -1_000
+
+BLANK = P(
+    char=" ",
+    style=CellStyle(background=Color.from_name("black")),
+    z=-1_000,
+)
 
 
 Paint = dict[Position, P]
@@ -63,7 +65,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
         case Div() as e:
             return box, e.style.layout.z
         case Text() as e:
-            return paint_text(e, dims.content) | box, e.style.layout.z
+            return box | paint_text(e, dims.content), e.style.layout.z
         case _:
             raise NotImplementedError(f"Painting {element} is not implemented")
 
@@ -109,14 +111,14 @@ def paint_text(text: Text, rect: Rect) -> Paint:
             paint[Position.flyweight(x, y)] = P(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
-                element=text,
+                z=text.style.layout.z,
             )
 
     return paint
 
 
 def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    cell_paint = P(char=char, style=CellStyle(background=mp.color), element=element)
+    cell_paint = P(char=char, style=CellStyle(background=mp.color), z=element.style.layout.z)
 
     chars = {}
 
@@ -181,34 +183,40 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
     h_slice = slice(contract_left, contract_right)
 
     if draw_left:
-        left_paint = P(char=left, style=style, element=element)
+        left_paint = P(char=left, style=style, z=element.style.layout.z)
         for p in rect.left_edge()[v_slice]:
             chars[p] = left_paint
 
     if draw_right:
-        right_paint = P(char=right, style=style, element=element)
+        right_paint = P(char=right, style=style, z=element.style.layout.z)
         for p in rect.right_edge()[v_slice]:
             chars[p] = right_paint
 
     if draw_top:
-        top_paint = P(char=top, style=style, element=element)
+        top_paint = P(char=top, style=style, z=element.style.layout.z)
         for p in rect.top_edge()[h_slice]:
             chars[p] = top_paint
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, element=element)
+            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, z=element.style.layout.z)
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(char=right_top, style=style, element=element)
+            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
+                char=right_top, style=style, z=element.style.layout.z
+            )
 
     if draw_bottom:
-        bottom_paint = P(char=bottom, style=style, element=element)
+        bottom_paint = P(char=bottom, style=style, z=element.style.layout.z)
         for p in rect.bottom_edge()[h_slice]:
             chars[p] = bottom_paint
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(char=left_bottom, style=style, element=element)
+            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
+                char=left_bottom, style=style, z=element.style.layout.z
+            )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(char=right_bottom, style=style, element=element)
+            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
+                char=right_bottom, style=style, z=element.style.layout.z
+            )
 
     return chars
 

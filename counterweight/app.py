@@ -42,16 +42,10 @@ from counterweight.output import (
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import P, Paint, paint_layout, svg
+from counterweight.paint import BLANK, Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
-from counterweight.styles.styles import CellStyle, Color, Flex
-
-BLANK = P(
-    char=" ",
-    style=CellStyle(background=Color.from_name("black")),
-    element=None,
-)
+from counterweight.styles.styles import Flex
 
 logger = get_logger()
 
