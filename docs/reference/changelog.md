@@ -8,6 +8,11 @@
   Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that allows for choosing which corner
   of the parent's context box to use as the origin for the absolute positioning.
 
+### Changed
+
+- [#101](https://github.com/JoshKarpel/counterweight/pull/101)
+  The `initial_value` of [`use_ref`][counterweight.hooks.use_ref] may now be a `Callable[[], T]` instead of just a `T`.
+
 ### Removed
 
 - [#96](https://github.com/JoshKarpel/counterweight/pull/96)

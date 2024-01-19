@@ -34,10 +34,11 @@ def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
     return current_hook_state.get().use_state(initial_value)
 
 
-def use_ref(initial_value: T) -> Ref[T]:
+def use_ref(initial_value: Getter[T] | T) -> Ref[T]:
     """
     Parameters:
         initial_value: the initial value of the ref.
+            It can either be the initial value itself, or a zero-argument function that returns the initial value.
 
     Returns:
         A [`Ref`][counterweight.hooks.Ref] that holds a reference to the given value.
