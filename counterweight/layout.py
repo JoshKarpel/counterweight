@@ -63,6 +63,11 @@ class LayoutBox:
     children: list[LayoutBox] = field(default_factory=list)
     dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
 
+    def walk_from_top(self) -> Iterator[LayoutBox]:
+        yield self
+        for child in self.children:
+            yield from child.walk_from_top()
+
     def walk_from_bottom(self) -> Iterator[LayoutBox]:
         for child in self.children:
             yield from child.walk_from_bottom()

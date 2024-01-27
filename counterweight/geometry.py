@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from functools import lru_cache
+from itertools import product
 from typing import NamedTuple
 
 
@@ -35,6 +37,9 @@ class Rect:
 
     def y_range(self) -> range:
         return range(self.y, self.y + self.height)
+
+    def xy_range(self) -> Iterator[tuple[int, int]]:
+        return product(self.x_range(), self.y_range())
 
     @property
     def left(self) -> int:

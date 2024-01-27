@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import reduce
-from itertools import groupby
+from functools import lru_cache, reduce
+from itertools import groupby, product
 from operator import itemgetter, or_
 from textwrap import dedent
 from typing import Literal, assert_never
@@ -27,25 +27,29 @@ class P:
     style: CellStyle
     z: int
 
+    @classmethod
+    @lru_cache(maxsize=2**10)
+    def blank(cls, z: int) -> P:
+        return cls(
+            char=" ",
+            style=CellStyle(background=Color.from_name("black")),
+            z=z,
+        )
 
-BLANK = P(
-    char=" ",
-    style=CellStyle(background=Color.from_name("black")),
-    z=-1_000,
-)
+
+BLANK = P.blank(z=-1_000)
 
 
 Paint = dict[Position, P]
 
 
 def paint_layout(layout: LayoutBox) -> Paint:
-    # TODO: ordering is messed up here
     return reduce(
         or_,
         map(
             itemgetter(0),
             sorted(
-                (paint_element(l.element, l.dims) for l in layout.walk_from_bottom()),
+                (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
                 key=lambda pz: pz[1],
             ),
         ),
@@ -53,13 +57,23 @@ def paint_layout(layout: LayoutBox) -> Paint:
     )
 
 
+@lru_cache(maxsize=2**10)
+def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
+    return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
+
+
 def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
+
+    # Drawing the background explicitly makes sure that when elements overlaps,
+    # the element with lower z is actually hidden and doesn't show through.
+    bg = paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z)
+
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
     b = paint_border(element, element.style.border, border_rect) if element.style.border else {}
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
 
-    box = m | b | t
+    box = bg | m | b | t
 
     match element:
         case Div() as e:
@@ -326,9 +340,9 @@ def svg(paint: Paint) -> ElementTree:
                         "x": f"{x * x_mul:{fmt}}{unit}",
                     },
                 )
-                if cell.style.foreground != Color.from_name(
-                    "white"
-                ):  # optimization: don't write white, it's the default
+
+                # optimization: don't write white, it's the default
+                if cell.style.foreground != Color.from_name("white"):
                     ts.attrib["fill"] = cell.style.foreground.hex
                 ts.text = cell.char
 
