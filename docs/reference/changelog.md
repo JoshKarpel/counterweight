@@ -2,6 +2,11 @@
 
 ## Next
 
+### Changed
+
+- [#105](https://github.com/JoshKarpel/counterweight/pull/105)
+  `Screenshot` and `Suspend` handlers can now be `async` functions.
+
 ## `0.0.6`
 
 Released `2024-01-28`
