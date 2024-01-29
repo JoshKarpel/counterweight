@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from asyncio import Queue, QueueEmpty
 from functools import lru_cache
+from inspect import isawaitable
 from math import ceil, floor
-from typing import List, TypeVar
+from typing import Awaitable, List, TypeVar, cast
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -62,3 +63,13 @@ def partition_int(total: int, weights: tuple[int, ...]) -> list[int]:
         partition.append(rounded)
 
     return partition
+
+
+R = TypeVar("R")
+
+
+async def maybe_await(val: Awaitable[R] | R) -> R:
+    if isawaitable(val):
+        return await val
+    else:
+        return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast

@@ -4,18 +4,17 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
 from collections import deque
-from collections.abc import Awaitable, Callable
-from inspect import isawaitable
+from collections.abc import Callable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
-from typing import Iterable, TextIO, TypeVar, cast
+from typing import Iterable, TextIO
 
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
-from counterweight._utils import drain_queue
+from counterweight._utils import drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -490,13 +489,3 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
             diff[pos] = new_cell
 
     return diff
-
-
-R = TypeVar("R")
-
-
-async def maybe_await(val: Awaitable[R] | R) -> R:
-    if isawaitable(val):
-        return await val
-    else:
-        return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast

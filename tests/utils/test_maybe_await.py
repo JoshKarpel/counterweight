@@ -1,4 +1,4 @@
-from counterweight.app import maybe_await
+from counterweight._utils import maybe_await
 
 
 def foo() -> str:
