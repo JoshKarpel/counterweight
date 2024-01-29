@@ -5,8 +5,10 @@
 ### Added
 
 - [#92](https://github.com/JoshKarpel/counterweight/pull/92)
-  Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that allows for choosing which corner
+  Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that chooses which corner
   of the parent's context box to use as the origin for the absolute positioning.
+- [#98](https://github.com/JoshKarpel/counterweight/pull/98)
+  Added a `z` attribute to [`Flex`][counterweight.styles.Flex] that controls the stacking order of elements.
 
 ### Removed
 
