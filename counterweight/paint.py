@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache, reduce
 from itertools import groupby, product
@@ -37,15 +38,18 @@ class P:
         )
 
 
-BLANK = P.blank(z=-1_000)
+BLANK = P.blank(z=-1_000_000)
 
 
 Paint = dict[Position, P]
 
 
+def combine_paints(paints: Iterable[Paint]) -> Paint:
+    return reduce(or_, paints, {})
+
+
 def paint_layout(layout: LayoutBox) -> Paint:
-    return reduce(
-        or_,
+    return combine_paints(
         map(
             itemgetter(0),
             sorted(
@@ -53,7 +57,6 @@ def paint_layout(layout: LayoutBox) -> Paint:
                 key=lambda pz: pz[1],
             ),
         ),
-        {},
     )
 
 
@@ -65,23 +68,28 @@ def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
 def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
-    # Drawing the background explicitly makes sure that when elements overlaps,
-    # the element with lower z is actually hidden and doesn't show through.
-    bg = paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z)
-
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
     b = paint_border(element, element.style.border, border_rect) if element.style.border else {}
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
 
-    box = bg | m | b | t
+    box = m | b | t
 
     match element:
-        case Div() as e:
-            return box, e.style.layout.z
+        case Div():
+            paint = box
         case Text() as e:
-            return box | paint_text(e, dims.content), e.style.layout.z
+            paint = box | paint_text(e, dims.content)
         case _:
             raise NotImplementedError(f"Painting {element} is not implemented")
+
+    # Drawing the background explicitly makes sure that when elements overlaps,
+    # the element with lower z is actually hidden and doesn't show through.
+    # However, we only want to do this for elements that actually have anything in their paint,
+    # so that "anonymous" grouping elements don't hide things behind them.
+    return (
+        (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
+        element.style.layout.z,
+    )
 
 
 def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:
