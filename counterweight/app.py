@@ -10,7 +10,7 @@ from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
-from typing import Iterable, TextIO, TypeVar
+from typing import Iterable, TextIO, TypeVar, cast
 
 from structlog import get_logger
 
@@ -495,8 +495,8 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
 R = TypeVar("R")
 
 
-async def maybe_await(val: R | Awaitable[R]) -> R:
+async def maybe_await(val: Awaitable[R] | R) -> R:
     if isawaitable(val):
         return await val
     else:
-        return val
+        return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast
