@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Iterable, Literal
 
 from more_itertools import take
 from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
-from counterweight.cell_paint import wrap_cells
 from counterweight.components import Component
-from counterweight.elements import AnyElement
+from counterweight.elements import AnyElement, CellPaint
 from counterweight.geometry import Edge, Rect
 from counterweight.styles.styles import BorderEdge
 
@@ -62,6 +62,11 @@ class LayoutBox:
     parent: LayoutBox | None
     children: list[LayoutBox] = field(default_factory=list)
     dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
+
+    def walk_from_top(self) -> Iterator[LayoutBox]:
+        yield self
+        for child in self.children:
+            yield from child.walk_from_top()
 
     def walk_from_bottom(self) -> Iterator[LayoutBox]:
         for child in self.children:
@@ -432,3 +437,37 @@ def build_layout_tree_from_concrete_element_tree(element: AnyElement, parent: La
     )
 
     return box
+
+
+def wrap_cells(
+    cells: Iterable[CellPaint],
+    wrap: Literal["none", "paragraphs"],
+    width: int,
+) -> list[list[CellPaint]]:
+    if width <= 0:
+        return []
+
+    if wrap == "none":
+        lines: list[list[CellPaint]] = []
+        current_line: list[CellPaint] = []
+        for cell in cells:
+            if cell.char == "\n":
+                lines.append(current_line)
+                current_line = []
+            else:
+                current_line.append(cell)
+        lines.append(current_line)
+        return lines
+
+    raise NotImplementedError("non-none wrapping not yet implemented")
+
+    # wrapper = TextWrapper(width=width)
+    #
+    # paragraphs = text.split("\n\n")  # double newline = paragraph break
+    #
+    # lines = []
+    # for paragraph in paragraphs:
+    #     lines.extend(wrapper.wrap(paragraph))
+    #     lines.append("")  # empty line between paragraphs
+    #
+    # return lines[:-1]  # remove last empty line

@@ -1982,3 +1982,7 @@ def absolute(x: int = 0, y: int = 0) -> Style:
 
 def fixed(x: int = 0, y: int = 0) -> Style:
     return Style(layout=Flex(position=Fixed(x=x, y=y)))
+
+
+def z(z: int = 0) -> Style:
+    return Style(layout=Flex(z=z))

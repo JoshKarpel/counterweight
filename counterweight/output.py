@@ -1,4 +1,6 @@
-from typing import TextIO
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TextIO
 
 from structlog import get_logger
 
@@ -6,6 +8,8 @@ from counterweight.geometry import Position
 from counterweight.paint import Paint
 from counterweight.styles.styles import CellStyle
 
+if TYPE_CHECKING:
+    pass
 # https://www.xfree86.org/current/ctlseqs.html
 # https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf
 

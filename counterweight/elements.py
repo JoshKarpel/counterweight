@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Callable, Literal, Sequence, Union
 
 from pydantic import Field
 
-from counterweight.cell_paint import CellPaint
 from counterweight.controls import AnyControl
 from counterweight.events import KeyPressed, MouseDown, MouseUp
 from counterweight.styles import CellStyle, Style
@@ -73,3 +73,9 @@ from counterweight.components import Component  # noqa: E402, deferred to avoid 
 
 Div.model_rebuild()
 Text.model_rebuild()
+
+
+@dataclass(slots=True)
+class CellPaint:
+    char: str
+    style: CellStyle = field(default=CellStyle())

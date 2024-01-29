@@ -16,7 +16,6 @@ from structlog import get_logger
 from counterweight._context_vars import current_event_queue
 from counterweight._utils import drain_queue
 from counterweight.border_healing import heal_borders
-from counterweight.cell_paint import CellPaint
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
 from counterweight.elements import AnyElement, Div
@@ -43,15 +42,10 @@ from counterweight.output import (
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import Paint, paint_layout, svg
+from counterweight.paint import BLANK, Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
-from counterweight.styles.styles import CellStyle, Color, Flex
-
-BLANK = CellPaint(
-    char=" ",
-    style=CellStyle(background=Color.from_name("black")),
-)
+from counterweight.styles.styles import Flex
 
 logger = get_logger()
 

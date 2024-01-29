@@ -2,8 +2,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from counterweight.cell_paint import CellPaint
-from counterweight.elements import Chunk, Text
+from counterweight.elements import CellPaint, Chunk, Text
 from counterweight.styles import Style
 
 

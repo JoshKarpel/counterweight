@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from itertools import groupby
+from collections.abc import Iterable
+from dataclasses import dataclass
+from functools import lru_cache, reduce
+from itertools import groupby, product
+from operator import itemgetter, or_
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -9,40 +13,83 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 from structlog import get_logger
 
 from counterweight._utils import halve_integer
-from counterweight.cell_paint import CellPaint, wrap_cells
-from counterweight.elements import AnyElement, Div, Text
+from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
-from counterweight.layout import LayoutBox, LayoutBoxDimensions
+from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
 from counterweight.styles import Border
 from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
 
 logger = get_logger()
 
-Paint = dict[Position, CellPaint]
+
+@dataclass(slots=True)
+class P:
+    char: str
+    style: CellStyle
+    z: int
+
+    @classmethod
+    @lru_cache(maxsize=2**10)
+    def blank(cls, z: int) -> P:
+        return cls(
+            char=" ",
+            style=CellStyle(background=Color.from_name("black")),
+            z=z,
+        )
+
+
+BLANK = P.blank(z=-1_000_000)
+
+
+Paint = dict[Position, P]
+
+
+def combine_paints(paints: Iterable[Paint]) -> Paint:
+    return reduce(or_, paints, {})
 
 
 def paint_layout(layout: LayoutBox) -> Paint:
-    painted = paint_element(layout.element, layout.dims)
-    for child in layout.children:
-        painted |= paint_layout(child)  # no Z-level support! need something like a chainmap
-    return painted
+    return combine_paints(
+        map(
+            itemgetter(0),
+            sorted(
+                (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
+                key=lambda pz: pz[1],
+            ),
+        ),
+    )
 
 
-def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> Paint:
+@lru_cache(maxsize=2**10)
+def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
+    return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
+
+
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
-    m = paint_edge(element.style.margin, dims.margin, margin_rect)
-    b = paint_border(element.style.border, border_rect) if element.style.border else {}
-    t = paint_edge(element.style.padding, dims.padding, padding_rect)
+
+    m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
+    b = paint_border(element, element.style.border, border_rect) if element.style.border else {}
+    t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
 
     box = m | b | t
 
     match element:
         case Div():
-            return box
+            paint = box
         case Text() as e:
-            return paint_text(e, dims.content) | box
+            paint = box | paint_text(e, dims.content)
         case _:
             raise NotImplementedError(f"Painting {element} is not implemented")
+
+    # Drawing the background explicitly makes sure that when elements overlaps,
+    # the element with lower z is actually hidden and doesn't show through.
+    # However, we only want to do this for elements that actually have anything in their paint,
+    # so that "anonymous" grouping elements don't hide things behind them.
+    return (
+        (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
+        element.style.layout.z,
+    )
 
 
 def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:
@@ -83,16 +130,17 @@ def paint_text(text: Text, rect: Rect) -> Paint:
                 merged_style = style | cell_style
                 previous_cell_style = cell_style
 
-            paint[Position.flyweight(x, y)] = CellPaint(
+            paint[Position.flyweight(x, y)] = P(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
+                z=text.style.layout.z,
             )
 
     return paint
 
 
-def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    cell_paint = CellPaint(char=char, style=CellStyle(background=mp.color))
+def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
+    cell_paint = P(char=char, style=CellStyle(background=mp.color), z=element.style.layout.z)
 
     chars = {}
 
@@ -119,7 +167,7 @@ def paint_edge(mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") ->
     return chars
 
 
-def paint_border(border: Border, rect: Rect) -> Paint:
+def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
     style = border.style
 
     bv = border.kind.value
@@ -157,48 +205,42 @@ def paint_border(border: Border, rect: Rect) -> Paint:
     h_slice = slice(contract_left, contract_right)
 
     if draw_left:
-        left_paint = CellPaint(char=left, style=style)
+        left_paint = P(char=left, style=style, z=element.style.layout.z)
         for p in rect.left_edge()[v_slice]:
             chars[p] = left_paint
 
     if draw_right:
-        right_paint = CellPaint(char=right, style=style)
+        right_paint = P(char=right, style=style, z=element.style.layout.z)
         for p in rect.right_edge()[v_slice]:
             chars[p] = right_paint
 
     if draw_top:
-        top_paint = CellPaint(char=top, style=style)
+        top_paint = P(char=top, style=style, z=element.style.layout.z)
         for p in rect.top_edge()[h_slice]:
             chars[p] = top_paint
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = CellPaint(char=left_top, style=style)
+            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, z=element.style.layout.z)
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_top)] = CellPaint(char=right_top, style=style)
+            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
+                char=right_top, style=style, z=element.style.layout.z
+            )
 
     if draw_bottom:
-        bottom_paint = CellPaint(char=bottom, style=style)
+        bottom_paint = P(char=bottom, style=style, z=element.style.layout.z)
         for p in rect.bottom_edge()[h_slice]:
             chars[p] = bottom_paint
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = CellPaint(char=left_bottom, style=style)
+            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
+                char=left_bottom, style=style, z=element.style.layout.z
+            )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = CellPaint(char=right_bottom, style=style)
+            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
+                char=right_bottom, style=style, z=element.style.layout.z
+            )
 
     return chars
-
-
-def debug_paint(paint: dict[Position, CellPaint], rect: Rect) -> str:
-    lines = []
-    for y in rect.y_range():
-        line = []
-        for x in rect.x_range():
-            line.append(paint.get(Position.flyweight(x, y), CellPaint(char=" ")).char)
-
-        lines.append(line)
-
-    return "\n".join("".join(line) for line in lines)
 
 
 def svg(paint: Paint) -> ElementTree:
@@ -306,9 +348,9 @@ def svg(paint: Paint) -> ElementTree:
                         "x": f"{x * x_mul:{fmt}}{unit}",
                     },
                 )
-                if cell.style.foreground != Color.from_name(
-                    "white"
-                ):  # optimization: don't write white, it's the default
+
+                # optimization: don't write white, it's the default
+                if cell.style.foreground != Color.from_name("white"):
                     ts.attrib["fill"] = cell.style.foreground.hex
                 ts.text = cell.char
 

@@ -22,6 +22,15 @@
 
 ![Absolute Positioning](../_examples/absolute-positioning.svg)
 
+#### Controlling Overlapping with `z`
+
+```python
+--8<-- "z.py:example"
+```
+
+![Z Layers](../_examples/z.svg)
+
+
 ```python
 --8<-- "absolute_positioning_insets.py:example"
 ```
