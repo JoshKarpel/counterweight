@@ -4,12 +4,13 @@ import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from inspect import isawaitable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
-from typing import Iterable, TextIO
+from typing import Iterable, TextIO, TypeVar
 
 from structlog import get_logger
 
@@ -198,7 +199,7 @@ async def app(
                 if should_screenshot:
                     try:
                         start_screenshot = perf_counter_ns()
-                        should_screenshot.handler(svg(current_paint))
+                        await maybe_await(should_screenshot.handler(svg(current_paint)))
                         logger.debug(
                             "Took screenshot",
                             handler=should_screenshot.handler,
@@ -233,7 +234,7 @@ async def app(
                         waiting_key_thread.wait()
 
                     try:
-                        should_suspend.handler()
+                        await maybe_await(should_suspend.handler())
                     except Exception as ex:
                         logger.error(
                             "Error in suspend handler",
@@ -489,3 +490,13 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
             diff[pos] = new_cell
 
     return diff
+
+
+R = TypeVar("R")
+
+
+async def maybe_await(val: R | Awaitable[R]) -> R:
+    if isawaitable(val):
+        return await val
+    else:
+        return val
