@@ -9,13 +9,11 @@ T = TypeVar("T")
 
 
 @overload
-def use_state(initial_value: Getter[T]) -> tuple[T, Setter[T]]:
-    ...
+def use_state(initial_value: Getter[T]) -> tuple[T, Setter[T]]: ...
 
 
 @overload
-def use_state(initial_value: T) -> tuple[T, Setter[T]]:
-    ...
+def use_state(initial_value: T) -> tuple[T, Setter[T]]: ...
 
 
 def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
