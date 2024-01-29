@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "counterweight"
-version = "0.0.5"
+version = "0.0.6"
 description = "An experimental TUI framework for Python, inspired by React and Tailwind"
 readme="README.md"
 homepage="https://github.com/JoshKarpel/counterweight"

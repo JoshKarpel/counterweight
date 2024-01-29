@@ -10,6 +10,11 @@
 - [#98](https://github.com/JoshKarpel/counterweight/pull/98)
   Added a `z` attribute to [`Flex`][counterweight.styles.Flex] that controls the stacking order of elements.
 
+### Changed
+
+- [#101](https://github.com/JoshKarpel/counterweight/pull/101)
+  The `initial_value` of [`use_ref`][counterweight.hooks.use_ref] may now be a `Callable[[], T]` instead of just a `T`.
+
 ### Removed
 
 - [#96](https://github.com/JoshKarpel/counterweight/pull/96)
