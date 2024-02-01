@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
@@ -50,7 +50,7 @@ class Screenshot(_Control):
     (but the screenshot will still be of the UI from *before* the next render occurs!).
     """
 
-    handler: Callable[[ElementTree], None]
+    handler: Callable[[ElementTree], Awaitable[None] | None]
 
     @classmethod
     def to_file(cls, path: Path, indent: int | None = None) -> Screenshot:
@@ -87,7 +87,7 @@ class Suspend(_Control):
     will be processed before the application is suspended.
     """
 
-    handler: Callable[[], None]
+    handler: Callable[[], Awaitable[None] | None]
 
 
 @dataclass(frozen=True, slots=True)

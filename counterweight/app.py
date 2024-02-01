@@ -14,7 +14,7 @@ from typing import Iterable, TextIO
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue
-from counterweight._utils import drain_queue
+from counterweight._utils import drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -198,7 +198,7 @@ async def app(
                 if should_screenshot:
                     try:
                         start_screenshot = perf_counter_ns()
-                        should_screenshot.handler(svg(current_paint))
+                        await maybe_await(should_screenshot.handler(svg(current_paint)))
                         logger.debug(
                             "Took screenshot",
                             handler=should_screenshot.handler,
@@ -233,7 +233,7 @@ async def app(
                         waiting_key_thread.wait()
 
                     try:
-                        should_suspend.handler()
+                        await maybe_await(should_suspend.handler())
                     except Exception as ex:
                         logger.error(
                             "Error in suspend handler",
