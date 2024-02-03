@@ -2,6 +2,10 @@
 
 ## Next
 
+## `0.0.7`
+
+Released `2024-02-02`
+
 ### Changed
 
 - [#105](https://github.com/JoshKarpel/counterweight/pull/105)
