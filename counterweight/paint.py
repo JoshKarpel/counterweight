@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import lru_cache, reduce
+from functools import lru_cache
 from itertools import groupby, product
-from operator import itemgetter, or_
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -44,20 +42,17 @@ BLANK = P.blank(z=-1_000_000)
 Paint = dict[Position, P]
 
 
-def combine_paints(paints: Iterable[Paint]) -> Paint:
-    return reduce(or_, paints, {})
+def paint_layout(layout: LayoutBox) -> tuple[Paint, set[Position]]:
+    combined_paint = {}
+    border_healing_hints = set()
+    for paint, hints, _z in sorted(
+        (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
+        key=lambda pz: pz[-1],
+    ):
+        combined_paint |= paint
+        border_healing_hints |= hints
 
-
-def paint_layout(layout: LayoutBox) -> Paint:
-    return combine_paints(
-        map(
-            itemgetter(0),
-            sorted(
-                (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
-                key=lambda pz: pz[1],
-            ),
-        ),
-    )
+    return combined_paint, border_healing_hints
 
 
 @lru_cache(maxsize=2**10)
@@ -65,7 +60,7 @@ def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
     return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
 
 
-def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, int]:
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, set[Position], int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
@@ -88,6 +83,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # so that "anonymous" grouping elements don't hide things behind them.
     return (
         (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
+        set(b.keys()),
         element.style.layout.z,
     )
 

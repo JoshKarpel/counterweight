@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
 
 from counterweight.geometry import Position
@@ -37,12 +38,12 @@ def dither(position: Position) -> tuple[Position, Position, Position, Position]:
 JOINED_BORDER_KINDS = tuple(k.value for k in JoinedBorderKind)
 
 
-def heal_borders(paint: Paint) -> Paint:
+def heal_borders(paint: Paint, hints: Iterable[Position]) -> Paint:
     overlay: Paint = {}
-    for pos, p in paint.items():
-        char = p.char
+    for pos in hints:
+        p = paint[pos]
         for kind in JOINED_BORDER_KINDS:
-            if char not in kind:  # the center character must be a joined border part
+            if p.char not in kind:  # the center character must be a joined border part
                 continue
 
             left, right, above, below = map(paint.get, dither(pos))
@@ -51,7 +52,7 @@ def heal_borders(paint: Paint) -> Paint:
 
             if replaced_char := get_replacement_char(
                 kind,
-                center=char,
+                center=p.char,
                 left=left.char if left else None,
                 right=right.char if right else None,
                 above=above.char if above else None,
