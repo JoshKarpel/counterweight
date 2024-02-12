@@ -58,8 +58,10 @@ class Hooks(ForbidExtras):
         def set_state(value: T | Callable[[T], T]) -> None:
             if callable(value):
                 value = value(hook.value)  # type: ignore[arg-type]
-            hook.value = value
-            current_event_queue.get().put_nowait(StateSet())
+
+            if hook.value != value:  # Do nothing if the state is the same
+                hook.value = value
+                current_event_queue.get().put_nowait(StateSet())
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
