@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
 
+from more_itertools import flatten
+
 from counterweight.geometry import Position
 from counterweight.paint import P, Paint
 from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
@@ -36,28 +38,31 @@ def dither(position: Position) -> tuple[Position, Position, Position, Position]:
 
 
 JOINED_BORDER_KINDS = tuple(k.value for k in JoinedBorderKind)
+ALL_JOINED_BORDER_CHARS = set(flatten(JOINED_BORDER_KINDS))
 
 
 def heal_borders(paint: Paint, hints: Iterable[Position]) -> Paint:
     overlay: Paint = {}
-    for pos in hints:
-        p = paint[pos]
+    for center_position in hints:
+        center = paint[center_position]
+        left, right, above, below = map(paint.get, dither(center_position))
+
+        if center.char not in ALL_JOINED_BORDER_CHARS:  # the center character must be a joined border part
+            continue
+
         for kind in JOINED_BORDER_KINDS:
-            if p.char not in kind:  # the center character must be a joined border part
-                continue
-
-            left, right, above, below = map(paint.get, dither(pos))
-
             # TODO: cell styles and z-levels must match too (i.e., colors)
 
+            # TODO: Should hints include original border type to avoid iterating, and to not overwrite here multiple times?
             if replaced_char := get_replacement_char(
                 kind,
-                center=p.char,
+                center=center.char,
                 left=left.char if left else None,
                 right=right.char if right else None,
                 above=above.char if above else None,
                 below=below.char if below else None,
             ):
-                overlay[pos] = P(char=replaced_char, style=p.style, z=p.z)
+                overlay[center_position] = P(char=replaced_char, style=center.style, z=center.z)
+                break
 
     return overlay
