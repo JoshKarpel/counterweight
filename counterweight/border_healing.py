@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from more_itertools import flatten
 from structlog import get_logger
 
 from counterweight.geometry import Position
 from counterweight.paint import BorderHealingHints, P, Paint
-from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
+from counterweight.styles.styles import JoinedBorderParts
 
 logger = get_logger()
 
@@ -37,10 +36,6 @@ def dither(position: Position) -> tuple[Position, Position, Position, Position]:
         Position.flyweight(position.x, position.y - 1),  # above
         Position.flyweight(position.x, position.y + 1),  # below
     )
-
-
-JOINED_BORDER_KINDS = tuple(k.value for k in JoinedBorderKind)
-ALL_JOINED_BORDER_CHARS = set(flatten(JOINED_BORDER_KINDS))
 
 
 def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:

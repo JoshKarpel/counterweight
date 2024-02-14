@@ -101,6 +101,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 120
 
+[tool.ruff.lint]
 select = [
     "I",   # https://beta.ruff.rs/docs/rules/#isort-i
     "F",   # https://beta.ruff.rs/docs/rules/#pyflakes-f
@@ -115,7 +116,6 @@ select = [
     "PGH", # https://beta.ruff.rs/docs/rules/#pygrep-hooks-pgh
     "RUF", # https://beta.ruff.rs/docs/rules/#ruff-specific-rules-ruf
 ]
-
 ignore = [
     "E501",  # line length exceeds limit
     "E741",  # ambiguous variable name

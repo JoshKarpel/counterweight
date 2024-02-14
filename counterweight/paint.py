@@ -44,8 +44,8 @@ BorderHealingHints = dict[Position, JoinedBorderKind]
 
 
 def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
-    combined_paint = {}
-    border_healing_hints = {}
+    combined_paint: Paint = {}
+    border_healing_hints: BorderHealingHints = {}
     for paint, hints, _z in sorted(
         (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
         key=lambda pz: pz[-1],
