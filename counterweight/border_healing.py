@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from more_itertools import flatten
 from structlog import get_logger
 
 from counterweight.geometry import Position
 from counterweight.paint import BorderHealingHints, P, Paint
-from counterweight.styles.styles import JoinedBorderParts
+from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
 
 logger = get_logger()
 
@@ -38,22 +39,31 @@ def dither(position: Position) -> tuple[Position, Position, Position, Position]:
     )
 
 
+ALL_JOINED_BORDER_KIND_CHARS = set(flatten(k.value for k in JoinedBorderKind))
+
+
 def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
     overlay: Paint = {}
     for center_position, kind in hints.items():
         center = paint[center_position]
+
+        if center.char not in ALL_JOINED_BORDER_KIND_CHARS:
+            # Even if we got a hint, that cell may have been overwritten by another
+            # element (e.g., putting a title over a border using absolute positioning).
+            continue
+
         left, right, above, below = map(paint.get, dither(center_position))
 
         # TODO: cell styles and z-levels must match too (i.e., colors)
-
-        if replaced_char := get_replacement_char(
+        replaced_char = get_replacement_char(
             kind.value,
             center=center.char,
             left=left.char if left else None,
             right=right.char if right else None,
             above=above.char if above else None,
             below=below.char if below else None,
-        ):
+        )
+        if replaced_char != center.char:
             overlay[center_position] = P(char=replaced_char, style=center.style, z=center.z)
 
     return overlay
