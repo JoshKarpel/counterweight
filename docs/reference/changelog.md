@@ -7,6 +7,8 @@
 - [#110](https://github.com/JoshKarpel/counterweight/pull/110)
   Calling a `use_state` setter with a `value` equal to the current value of the state
   no longer emits a `SetState` event, to avoid triggering unnecessary render cycles.
+- [#111](https://github.com/JoshKarpel/counterweight/pull/111)
+  Border healing is now more efficient, especially when there are many non-border characters in the UI.
 
 ## `0.0.7`
 
