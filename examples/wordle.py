@@ -93,7 +93,7 @@ def root() -> Div:
             return None
 
         # TODO: Having to put weight_none on every text is annoying
-        button_style = weight_none | pad_1 | border_mcgugan
+        button_style = weight_none | pad_x_1 | border_lightrounded
 
         return Div(
             style=col | align_children_center,

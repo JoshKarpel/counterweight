@@ -15,7 +15,7 @@ from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
 from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
+from counterweight.styles.styles import BorderEdge, CellStyle, Color, JoinedBorderKind, Margin, Padding
 
 logger = get_logger()
 
@@ -40,11 +40,12 @@ BLANK = P.blank(z=-1_000_000)
 
 
 Paint = dict[Position, P]
+BorderHealingHints = dict[Position, JoinedBorderKind]
 
 
-def paint_layout(layout: LayoutBox) -> tuple[Paint, set[Position]]:
+def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
     combined_paint = {}
-    border_healing_hints = set()
+    border_healing_hints = {}
     for paint, hints, _z in sorted(
         (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
         key=lambda pz: pz[-1],
@@ -60,7 +61,7 @@ def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
     return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
 
 
-def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, set[Position], int]:
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
@@ -81,9 +82,19 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # the element with lower z is actually hidden and doesn't show through.
     # However, we only want to do this for elements that actually have anything in their paint,
     # so that "anonymous" grouping elements don't hide things behind them.
+
+    if element.style.border:
+        try:
+            jk = JoinedBorderKind[element.style.border.kind.name]
+            bhh = {k: jk for k in b.keys()}
+        except KeyError:
+            bhh = {}
+    else:
+        bhh = {}
+
     return (
         (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
-        set(b.keys()),
+        bhh,
         element.style.layout.z,
     )
 
