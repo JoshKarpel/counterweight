@@ -15,7 +15,15 @@ from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
 from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, Color, JoinedBorderKind, Margin, Padding
+from counterweight.styles.styles import (
+    BorderEdge,
+    CellStyle,
+    Color,
+    JoinedBorderKind,
+    JoinedBorderParts,
+    Margin,
+    Padding,
+)
 
 logger = get_logger()
 
@@ -40,7 +48,7 @@ BLANK = P.blank(z=-1_000_000)
 
 
 Paint = dict[Position, P]
-BorderHealingHints = dict[Position, JoinedBorderKind]
+BorderHealingHints = dict[Position, JoinedBorderParts]
 
 
 def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
@@ -65,7 +73,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
-    b = paint_border(element, element.style.border, border_rect) if element.style.border else {}
+    b, bhh = paint_border(element, element.style.border, border_rect) if element.style.border else ({}, {})
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
 
     box = m | b | t
@@ -82,15 +90,6 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # the element with lower z is actually hidden and doesn't show through.
     # However, we only want to do this for elements that actually have anything in their paint,
     # so that "anonymous" grouping elements don't hide things behind them.
-
-    if element.style.border:
-        try:
-            jk = JoinedBorderKind[element.style.border.kind.name]
-            bhh = {k: jk for k in b.keys()}
-        except KeyError:
-            bhh = {}
-    else:
-        bhh = {}
 
     return (
         (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
@@ -174,10 +173,11 @@ def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect
     return chars
 
 
-def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
+def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:
     style = border.style
 
-    bv = border.kind.value
+    bk = border.kind
+    bv = bk.value
     left = bv.left
     right = bv.right
     top = bv.top
@@ -247,7 +247,14 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
                 char=right_bottom, style=style, z=element.style.layout.z
             )
 
-    return chars
+    try:
+        jbv = JoinedBorderKind[bk.name].value
+        bhh = {k: jbv for k in chars.keys()}
+    except KeyError:
+        # The border is not joinable
+        bhh = {}
+
+    return chars, bhh
 
 
 def svg(paint: Paint) -> ElementTree:

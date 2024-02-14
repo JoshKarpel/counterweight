@@ -44,7 +44,7 @@ ALL_JOINED_BORDER_KIND_CHARS = set(flatten(k.value for k in JoinedBorderKind))
 
 def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
     overlay: Paint = {}
-    for center_position, kind in hints.items():
+    for center_position, parts in hints.items():
         center = paint[center_position]
 
         if center.char not in ALL_JOINED_BORDER_KIND_CHARS:
@@ -56,7 +56,7 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
 
         # TODO: cell styles and z-levels must match too (i.e., colors)
         replaced_char = get_replacement_char(
-            kind.value,
+            parts=parts,
             center=center.char,
             left=left.char if left else None,
             right=right.char if right else None,
