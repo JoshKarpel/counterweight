@@ -59,7 +59,7 @@ class Hooks(ForbidExtras):
             if callable(value):
                 value = value(hook.value)  # type: ignore[arg-type]
 
-            if hook.value != value:  # Do nothing if the state is the same
+            if hook.value != value:  # avoid unnecessary updates
                 hook.value = value
                 current_event_queue.get().put_nowait(StateSet())
 
