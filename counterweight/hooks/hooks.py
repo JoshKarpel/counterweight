@@ -28,6 +28,8 @@ def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         A function that can be called to update the value of the state (e.g., in an event handler).
             It can either be called with the new value of the state,
             or a function that takes the current value of the state and returns the new value of the state.
+            If the value is not equal to the current of the state,
+            Counterweight will trigger a render cycle.
     """
     return current_hook_state.get().use_state(initial_value)
 
