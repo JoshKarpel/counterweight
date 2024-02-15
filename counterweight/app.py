@@ -23,10 +23,10 @@ from counterweight.events import (
     AnyEvent,
     Dummy,
     KeyPressed,
-    MouseDown,
-    MouseEvent,
-    MouseMoved,
-    MouseUp,
+    MouseDownRaw,
+    MouseMovedRaw,
+    MouseUpRaw,
+    RawMouseEvent,
     StateSet,
     TerminalResized,
 )
@@ -108,7 +108,7 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    mouse_event_queue: TeeQueue[MouseEvent] = TeeQueue()
+    mouse_event_queue: TeeQueue[RawMouseEvent] = TeeQueue()
     current_mouse_event_queue.set(mouse_event_queue)
 
     loop = get_running_loop()
@@ -390,23 +390,15 @@ async def app(
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
                                     handle_control(e.on_key(event))
-                        case MouseMoved(position=p):
+                        case MouseMovedRaw(position=p) | MouseDownRaw(position=p) | MouseUpRaw(position=p):
                             mouse_event_queue.put_nowait(event)
                             mouse_position = p
-                        case MouseDown():
-                            mouse_event_queue.put_nowait(event)
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
-                                    if b.element.on_mouse_down:
-                                        handle_control(b.element.on_mouse_down(event))
-                        case MouseUp():
-                            mouse_event_queue.put_nowait(event)
-                            for b in layout_tree.walk_from_bottom():
-                                _, border_rect, _ = b.dims.padding_border_margin_rects()
-                                if mouse_position in border_rect:
-                                    if b.element.on_mouse_up:
-                                        handle_control(b.element.on_mouse_up(event))
+                                    if b.element.on_mouse:
+                                        # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
+                                        handle_control(b.element.on_mouse(event.relative_to(b.dims.content.top_left())))
 
                     await mouse_event_queue.join()
 

@@ -6,7 +6,7 @@ from typing import TypeVar, overload
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_state, current_mouse_event_queue
-from counterweight.events import MouseMoved
+from counterweight.events import MouseMovedRaw
 from counterweight.geometry import Position
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
@@ -75,6 +75,8 @@ class UseMouse:
     hovered: bool
 
 
+# TODO: is this even needed? hovered is convenient though...
+# it seems like you do sometimes want to treat the mouse like an event, and sometimes like a state!
 def use_mouse() -> UseMouse:
     (absolute, motion), set_absolute_motion_button = use_state((Position.flyweight(-1, -1), Position.flyweight(0, 0)))
 
@@ -82,7 +84,7 @@ def use_mouse() -> UseMouse:
         mouse_event_queue = current_mouse_event_queue.get().tee()
         while True:
             match await mouse_event_queue.get():
-                case MouseMoved(position=p):
+                case MouseMovedRaw(position=p):
                     set_absolute_motion_button(lambda abs_mot: (p, p - abs_mot[0]))
 
             mouse_event_queue.task_done()

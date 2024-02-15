@@ -7,7 +7,7 @@ from string import printable
 from parsy import Parser, char_from, generate, match_item
 from structlog import get_logger
 
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
+from counterweight.events import AnyEvent, KeyPressed, MouseDownRaw, MouseMovedRaw, MouseUpRaw
 from counterweight.geometry import Position
 
 logger = get_logger()
@@ -250,11 +250,11 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
     button = (button_info & 0b11) + 1
 
     if moving:
-        return MouseMoved(position=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
+        return MouseMovedRaw(position=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
     elif m == b"m":
-        return MouseUp(position=pos, button=button)
+        return MouseUpRaw(position=pos, button=button)
     else:  # m == b"M"
-        return MouseDown(position=pos, button=button)
+        return MouseDownRaw(position=pos, button=button)
 
 
 CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {

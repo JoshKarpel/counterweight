@@ -6,6 +6,8 @@ from functools import lru_cache
 from itertools import product
 from typing import NamedTuple
 
+from counterweight._utils import unordered_range
+
 
 class Position(NamedTuple):
     x: int
@@ -21,6 +23,15 @@ class Position(NamedTuple):
 
     def __sub__(self, other: Position) -> Position:
         return Position.flyweight(x=self.x - other.x, y=self.y - other.y)
+
+    def fill_to(self, other: Position) -> Iterator[Position]:
+        return (
+            Position.flyweight(x=x, y=y)
+            for x, y in product(
+                unordered_range(self.x, other.x),
+                unordered_range(self.y, other.y),
+            )
+        )
 
 
 @dataclass(slots=True)
@@ -78,6 +89,9 @@ class Rect:
     def bottom_edge(self) -> tuple[Position, ...]:
         bottom = self.bottom
         return tuple(Position.flyweight(x, bottom) for x in self.x_range())
+
+    def top_left(self) -> Position:
+        return Position.flyweight(x=self.left, y=self.top)
 
     def __contains__(self, item: object) -> bool:
         if isinstance(item, Position):

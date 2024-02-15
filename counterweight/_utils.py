@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Queue, QueueEmpty, create_task, gather
-from collections.abc import MutableSet
+from collections.abc import Iterator, MutableSet
 from dataclasses import dataclass, field
 from functools import lru_cache
 from inspect import isawaitable
@@ -95,3 +95,14 @@ class TeeQueue(Generic[T]):
 
     async def join(self) -> None:
         await gather(*(create_task(c.join()) for c in self.consumers))
+
+
+def unordered_range(a: int, b: int) -> Iterator[int]:
+    """
+    Iterate from a to b (inclusive), regardless of the order of a and b.
+
+    https://stackoverflow.com/a/38036694
+    """
+    step = -1 if b < a else 1
+    for x in range(a, b + step, step):
+        yield x

@@ -5,6 +5,7 @@ from structlog import get_logger
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
+from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
 from counterweight.hooks.hooks import use_mouse, use_state
 from counterweight.styles.utilities import *
@@ -47,6 +48,7 @@ def root() -> Div:
                     diff_box(),
                     tracking_box(),
                     last_clicked_box(),
+                    last_dragged_box(),
                 ],
             ),
         ],
@@ -72,8 +74,8 @@ def tracking_box() -> Text:
     return Text(
         style=canvas_style | (hover_style if mouse.hovered else None),
         content=canvas(
-            30,
-            15,
+            20,
+            10,
             {
                 mouse.relative: Color.from_name("red"),
             },
@@ -102,16 +104,44 @@ def last_clicked_box() -> Text:
     mouse = use_mouse()
     clicked, set_clicked = use_state(Position.flyweight(0, 0))
 
-    # TODO feels like you need a weird mix of event handling and hooks here... that is not good
+    def on_mouse(event: MouseEvent) -> None:
+        match event:
+            case MouseUp(relative=r):
+                set_clicked(r)
+
     return Text(
+        on_mouse=on_mouse,
         style=canvas_style | (hover_style if mouse.hovered else None),
         content=canvas(
+            20,
             10,
-            5,
             {
                 clicked: Color.from_name("green"),
             },
         ),
+    )
+
+
+@component
+def last_dragged_box() -> Text:
+    mouse = use_mouse()
+    start, set_start = use_state(None)
+    end, set_end = use_state(None)
+
+    def on_mouse(event: MouseEvent) -> None:
+        match event:
+            case MouseDown(relative=r):
+                set_start(r)
+                set_end(None)
+            case MouseUp(relative=r):
+                set_end(r)
+            case MouseMoved(relative=r, button=b) if b is not None:
+                set_end(r)
+
+    return Text(
+        on_mouse=on_mouse,
+        style=canvas_style | (hover_style if mouse.hovered else None),
+        content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
     )
 
 
