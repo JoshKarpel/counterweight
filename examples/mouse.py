@@ -46,7 +46,6 @@ def root() -> Div:
             Div(
                 style=row | gap_children_1,
                 children=[
-                    diff_box(),
                     tracking_box(),
                     last_clicked_box(),
                     last_dragged_box(),
@@ -80,32 +79,11 @@ def tracking_box() -> Text:
     rects = use_rects()
 
     return Text(
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
+        style=canvas_style | (hover_style if mouse in rects.border else None),
         content=canvas(
             20,
             10,
-            (
-                {mouse.absolute - rects.content.top_left(): Color.from_name("red")}
-                if mouse.absolute in rects.content
-                else {}
-            ),
-        ),
-    )
-
-
-@component
-def diff_box() -> Text:
-    mouse = use_mouse()
-    rects = use_rects()
-
-    return Text(
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
-        content=canvas(
-            3,
-            3,
-            {
-                mouse.motion + Position.flyweight(x=1, y=1): Color.from_name("purple"),
-            },
+            ({mouse - rects.content.top_left(): Color.from_name("red")} if mouse in rects.content else {}),
         ),
     )
 
@@ -119,12 +97,12 @@ def last_clicked_box() -> Text:
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseUp(relative=r):
-                set_clicked(r)
+            case MouseUp(absolute=p):
+                set_clicked(p - rects.content.top_left())
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
+        style=canvas_style | (hover_style if mouse in rects.border else None),
         content=canvas(
             20,
             10,
@@ -145,17 +123,17 @@ def last_dragged_box() -> Text:
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseDown(relative=r):
-                set_start(r)
+            case MouseDown(absolute=a):
+                set_start(a - rects.content.top_left())
                 set_end(None)
-            case MouseUp(relative=r):
-                set_end(r)
-            case MouseMoved(relative=r, button=b) if b is not None:
-                set_end(r)
+            case MouseUp(absolute=a):
+                set_end(a - rects.content.top_left())
+            case MouseMoved(absolute=a, button=b) if b is not None:
+                set_end(a - rects.content.top_left())
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
+        style=canvas_style | (hover_style if mouse in rects.border else None),
         content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
     )
 
@@ -165,27 +143,28 @@ def drag_text_box() -> Div:
     mouse = use_mouse()
     rects = use_rects()
 
-    # TODO: if you don't slow down, your mouse can easily outrun the render speed?
+    parent_content_top_left = rects.content.top_left()
 
     return Div(
-        style=canvas_style
-        | (hover_style if mouse.absolute in rects.border else None)
-        | Style(span=Span(width=20, height=10)),
+        style=canvas_style | (hover_style if mouse in rects.border else None) | Style(span=Span(width=20, height=10)),
         children=[
-            draggable_text("Drag me!", inset_top_left),
-            draggable_text("No, me!", inset_bottom_right),
+            draggable_text("Drag me!", inset_top_left, parent_content_top_left),
+            draggable_text("No, me!", inset_bottom_right, parent_content_top_left),
         ],
     )
 
 
 @component
-def draggable_text(content: str, start: Style) -> Text:
+def draggable_text(content: str, start: Style, parent_content_top_left: Position) -> Text:
     position, set_position = use_state(Position.flyweight(0, 0))
 
+    # TODO: if you don't slow down, your mouse can easily outrun the render speed?
+    # TODO: this makes the "top left corner" draggable, it always snaps to that, so we do still want something more like a diff here
+    # TODO: also this doesn't work with the "starting inset" technique below
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseMoved(motion=m, button=b) if b is not None:
-                set_position(lambda r: r + m)
+            case MouseMoved(absolute=a, button=b) if b is not None:
+                set_position(a - parent_content_top_left)
 
     return Text(
         on_mouse=on_mouse,

@@ -93,21 +93,12 @@ def use_rects() -> UseRects:
     )
 
 
-@dataclass(frozen=True, slots=True)
-class UseMouse:
-    absolute: Position
-    motion: Position
-
-
-_INITIAL_USE_MOUSE_STATE = (Position.flyweight(-1, -1), Position.flyweight(0, 0))
-
-
-def use_mouse() -> UseMouse:
-    (absolute, motion), set_absolute_motion_button = use_state(_INITIAL_USE_MOUSE_STATE)
+def use_mouse() -> Position:
+    absolute, set_absolute_motion_button = use_state(Position.flyweight(-1, -1))
 
     async def setup() -> None:
-        def cb(absolute: Position, motion: Position) -> None:  # this def is a strong binding for cb
-            set_absolute_motion_button((absolute, motion))
+        def cb(absolute: Position) -> None:  # this def is a strong binding for cb
+            set_absolute_motion_button(absolute)
 
         current_use_mouse_listeners.get().add(cb)
 
@@ -115,7 +106,4 @@ def use_mouse() -> UseMouse:
 
     use_effect(setup=setup, deps=())
 
-    return UseMouse(
-        absolute=absolute,
-        motion=motion,
-    )
+    return absolute

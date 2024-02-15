@@ -1,6 +1,6 @@
 import pytest
 
-from counterweight.events import AnyEvent, KeyPressed, MouseDownRaw, MouseMovedRaw, MouseUpRaw
+from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
 from counterweight.geometry import Position
 from counterweight.keys import Key, vt_inputs
 
@@ -90,29 +90,29 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[3;5~", [KeyPressed(key=Key.ControlDelete)]),
         (b"\x1b[3;6~", [KeyPressed(key=Key.ControlShiftInsert)]),
         # Mouse events
-        (b"\x1b[<35;1;1m", [MouseMovedRaw(position=Position(x=0, y=0), button=None)]),
-        (b"\x1b[<35;2;1m", [MouseMovedRaw(position=Position(x=1, y=0), button=None)]),
-        (b"\x1b[<32;2;1m", [MouseMovedRaw(position=Position(x=1, y=0), button=1)]),
-        (b"\x1b[<33;2;1m", [MouseMovedRaw(position=Position(x=1, y=0), button=2)]),
-        (b"\x1b[<34;2;1m", [MouseMovedRaw(position=Position(x=1, y=0), button=3)]),
-        (b"\x1b[<35;1;2m", [MouseMovedRaw(position=Position(x=0, y=1), button=None)]),
-        (b"\x1b[<35;2;2m", [MouseMovedRaw(position=Position(x=1, y=1), button=None)]),
-        (b"\x1b[<35;95;1m", [MouseMovedRaw(position=Position(x=94, y=0), button=None)]),
-        (b"\x1b[<35;1;95m", [MouseMovedRaw(position=Position(x=0, y=94), button=None)]),
-        (b"\x1b[<35;95;95m", [MouseMovedRaw(position=Position(x=94, y=94), button=None)]),
-        (b"\x1b[<35;500;500m", [MouseMovedRaw(position=Position(x=499, y=499), button=None)]),
-        (b"\x1b[<35;1000;1000m", [MouseMovedRaw(position=Position(x=999, y=999), button=None)]),
-        (b"\x1b[<0;1;1M", [MouseDownRaw(position=Position(x=0, y=0), button=1)]),
-        (b"\x1b[<0;1;1m", [MouseUpRaw(position=Position(x=0, y=0), button=1)]),
-        (b"\x1b[<1;1;1M", [MouseDownRaw(position=Position(x=0, y=0), button=2)]),
-        (b"\x1b[<1;1;1m", [MouseUpRaw(position=Position(x=0, y=0), button=2)]),
-        (b"\x1b[<2;1;1M", [MouseDownRaw(position=Position(x=0, y=0), button=3)]),
-        (b"\x1b[<2;1;1m", [MouseUpRaw(position=Position(x=0, y=0), button=3)]),
+        (b"\x1b[<35;1;1m", [MouseMoved(absolute=Position(x=0, y=0), button=None)]),
+        (b"\x1b[<35;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=None)]),
+        (b"\x1b[<32;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=1)]),
+        (b"\x1b[<33;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=2)]),
+        (b"\x1b[<34;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=3)]),
+        (b"\x1b[<35;1;2m", [MouseMoved(absolute=Position(x=0, y=1), button=None)]),
+        (b"\x1b[<35;2;2m", [MouseMoved(absolute=Position(x=1, y=1), button=None)]),
+        (b"\x1b[<35;95;1m", [MouseMoved(absolute=Position(x=94, y=0), button=None)]),
+        (b"\x1b[<35;1;95m", [MouseMoved(absolute=Position(x=0, y=94), button=None)]),
+        (b"\x1b[<35;95;95m", [MouseMoved(absolute=Position(x=94, y=94), button=None)]),
+        (b"\x1b[<35;500;500m", [MouseMoved(absolute=Position(x=499, y=499), button=None)]),
+        (b"\x1b[<35;1000;1000m", [MouseMoved(absolute=Position(x=999, y=999), button=None)]),
+        (b"\x1b[<0;1;1M", [MouseDown(absolute=Position(x=0, y=0), button=1)]),
+        (b"\x1b[<0;1;1m", [MouseUp(absolute=Position(x=0, y=0), button=1)]),
+        (b"\x1b[<1;1;1M", [MouseDown(absolute=Position(x=0, y=0), button=2)]),
+        (b"\x1b[<1;1;1m", [MouseUp(absolute=Position(x=0, y=0), button=2)]),
+        (b"\x1b[<2;1;1M", [MouseDown(absolute=Position(x=0, y=0), button=3)]),
+        (b"\x1b[<2;1;1m", [MouseUp(absolute=Position(x=0, y=0), button=3)]),
         # It seems like some systems will use an M even in the mouse up state for motion...
-        (b"\x1b[<35;2;1M", [MouseMovedRaw(position=Position(x=1, y=0), button=None)]),
-        (b"\x1b[<32;2;1M", [MouseMovedRaw(position=Position(x=1, y=0), button=1)]),
-        (b"\x1b[<33;2;1M", [MouseMovedRaw(position=Position(x=1, y=0), button=2)]),
-        (b"\x1b[<34;2;1M", [MouseMovedRaw(position=Position(x=1, y=0), button=3)]),
+        (b"\x1b[<35;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=None)]),
+        (b"\x1b[<32;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=1)]),
+        (b"\x1b[<33;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=2)]),
+        (b"\x1b[<34;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=3)]),
     ],
 )
 def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:

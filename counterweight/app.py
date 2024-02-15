@@ -24,9 +24,9 @@ from counterweight.events import (
     AnyEvent,
     Dummy,
     KeyPressed,
-    MouseDownRaw,
-    MouseMovedRaw,
-    MouseUpRaw,
+    MouseDown,
+    MouseMoved,
+    MouseUp,
     StateSet,
     TerminalResized,
 )
@@ -108,7 +108,7 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    use_mouse_listeners: WeakSet[Callable[[Position, Position], None]] = WeakSet()
+    use_mouse_listeners: WeakSet[Callable[[Position], None]] = WeakSet()
     current_use_mouse_listeners.set(use_mouse_listeners)
 
     loop = get_running_loop()
@@ -187,7 +187,6 @@ async def app(
                     needs_render = True
 
         mouse_position = Position.flyweight(x=-1, y=-1)
-        mouse_motion = Position.flyweight(x=0, y=0)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -391,28 +390,20 @@ async def app(
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
                                     handle_control(e.on_key(event))
-                        case MouseMovedRaw(position=p) | MouseDownRaw(position=p) | MouseUpRaw(position=p):
-                            # mouse_event_queue.put_nowait(event)
-
-                            mouse_motion = p - mouse_position
+                        case MouseMoved(absolute=a) | MouseDown(absolute=a) | MouseUp(absolute=a):
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if (
-                                    mouse_position in border_rect or p in border_rect
+                                    mouse_position in border_rect or a in border_rect
                                 ):  # lets you get mouse events if the *previous* position was in the border rect as well
                                     if b.element.on_mouse:
                                         # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
-                                        handle_control(
-                                            b.element.on_mouse(
-                                                event.augment(
-                                                    relative_to=b.dims.content.top_left(), motion=mouse_motion
-                                                )
-                                            )
-                                        )
-                            mouse_position = p
-                            for listener in use_mouse_listeners:
-                                listener(mouse_position, mouse_motion)
+                                        handle_control(b.element.on_mouse(event))
 
+                            for listener in use_mouse_listeners:
+                                listener(a)
+
+                            mouse_position = a
                     # await mouse_event_queue.join()
 
                     while True:
