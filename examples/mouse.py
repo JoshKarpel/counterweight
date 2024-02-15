@@ -7,7 +7,7 @@ from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
-from counterweight.hooks.hooks import use_mouse, use_state
+from counterweight.hooks.hooks import use_mouse, use_rects, use_state
 from counterweight.styles import Span
 from counterweight.styles.utilities import *
 
@@ -77,15 +77,18 @@ hover_style = border_amber_600
 @component
 def tracking_box() -> Text:
     mouse = use_mouse()
+    rects = use_rects()
 
     return Text(
-        style=canvas_style | (hover_style if mouse.hovered else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(
             20,
             10,
-            {
-                mouse.relative: Color.from_name("red"),
-            },
+            (
+                {mouse.absolute - rects.content.top_left(): Color.from_name("red")}
+                if mouse.absolute in rects.content
+                else {}
+            ),
         ),
     )
 
@@ -93,9 +96,10 @@ def tracking_box() -> Text:
 @component
 def diff_box() -> Text:
     mouse = use_mouse()
+    rects = use_rects()
 
     return Text(
-        style=canvas_style | (hover_style if mouse.hovered else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(
             3,
             3,
@@ -109,6 +113,8 @@ def diff_box() -> Text:
 @component
 def last_clicked_box() -> Text:
     mouse = use_mouse()
+    rects = use_rects()
+
     clicked, set_clicked = use_state(Position.flyweight(0, 0))
 
     def on_mouse(event: MouseEvent) -> None:
@@ -118,7 +124,7 @@ def last_clicked_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.hovered else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(
             20,
             10,
@@ -132,6 +138,8 @@ def last_clicked_box() -> Text:
 @component
 def last_dragged_box() -> Text:
     mouse = use_mouse()
+    rects = use_rects()
+
     start, set_start = use_state(None)
     end, set_end = use_state(None)
 
@@ -147,7 +155,7 @@ def last_dragged_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.hovered else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
     )
 
@@ -155,11 +163,14 @@ def last_dragged_box() -> Text:
 @component
 def drag_text_box() -> Div:
     mouse = use_mouse()
+    rects = use_rects()
 
     # TODO: if you don't slow down, your mouse can easily outrun the render speed?
 
     return Div(
-        style=canvas_style | (hover_style if mouse.hovered else None) | Style(span=Span(width=20, height=10)),
+        style=canvas_style
+        | (hover_style if mouse.absolute in rects.border else None)
+        | Style(span=Span(width=20, height=10)),
         children=[
             draggable_text("Drag me!", inset_top_left),
             draggable_text("No, me!", inset_bottom_right),

@@ -10,11 +10,12 @@ from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
 from typing import Iterable, TextIO
+from weakref import WeakSet
 
 from structlog import get_logger
 
-from counterweight._context_vars import current_event_queue, current_mouse_event_queue
-from counterweight._utils import TeeQueue, drain_queue, maybe_await
+from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
+from counterweight._utils import drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -26,7 +27,6 @@ from counterweight.events import (
     MouseDownRaw,
     MouseMovedRaw,
     MouseUpRaw,
-    RawMouseEvent,
     StateSet,
     TerminalResized,
 )
@@ -108,8 +108,8 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    mouse_event_queue: TeeQueue[RawMouseEvent] = TeeQueue()
-    current_mouse_event_queue.set(mouse_event_queue)
+    use_mouse_listeners: WeakSet[Callable[[Position, Position], None]] = WeakSet()
+    current_use_mouse_listeners.set(use_mouse_listeners)
 
     loop = get_running_loop()
 
@@ -187,7 +187,7 @@ async def app(
                     needs_render = True
 
         mouse_position = Position.flyweight(x=-1, y=-1)
-        motion = Position.flyweight(x=0, y=0)
+        mouse_motion = Position.flyweight(x=0, y=0)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -392,8 +392,9 @@ async def app(
                                 if e.on_key:
                                     handle_control(e.on_key(event))
                         case MouseMovedRaw(position=p) | MouseDownRaw(position=p) | MouseUpRaw(position=p):
-                            mouse_event_queue.put_nowait(event)
-                            motion = p - mouse_position
+                            # mouse_event_queue.put_nowait(event)
+
+                            mouse_motion = p - mouse_position
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if (
@@ -403,12 +404,16 @@ async def app(
                                         # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
                                         handle_control(
                                             b.element.on_mouse(
-                                                event.augment(relative_to=b.dims.content.top_left(), motion=motion)
+                                                event.augment(
+                                                    relative_to=b.dims.content.top_left(), motion=mouse_motion
+                                                )
                                             )
                                         )
                             mouse_position = p
+                            for listener in use_mouse_listeners:
+                                listener(mouse_position, mouse_motion)
 
-                    await mouse_event_queue.join()
+                    # await mouse_event_queue.join()
 
                     while True:
                         try:

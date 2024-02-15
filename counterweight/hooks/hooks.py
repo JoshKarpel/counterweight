@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from asyncio import get_event_loop
 from dataclasses import dataclass
 from typing import TypeVar, overload
 
 from structlog import get_logger
 
-from counterweight._context_vars import current_hook_state, current_mouse_event_queue
-from counterweight.events import MouseMovedRaw
-from counterweight.geometry import Position
+from counterweight._context_vars import current_hook_state, current_use_mouse_listeners
+from counterweight.geometry import Position, Rect
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.layout import LayoutBoxDimensions
 
 logger = get_logger()
 
@@ -67,40 +68,54 @@ def use_effect(setup: Setup, deps: Deps | None = None) -> None:
     return current_hook_state.get().use_effect(setup, deps)
 
 
+def use_dims() -> LayoutBoxDimensions:
+    return current_hook_state.get().dims
+
+
+@dataclass(frozen=True, slots=True)
+class UseRects:
+    content: Rect
+    padding: Rect
+    border: Rect
+    margin: Rect
+
+
+def use_rects() -> UseRects:
+    dims = use_dims()
+
+    p, b, m = dims.padding_border_margin_rects()
+
+    return UseRects(
+        content=dims.content,
+        padding=p,
+        border=b,
+        margin=m,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class UseMouse:
     absolute: Position
-    relative: Position | None
     motion: Position
-    hovered: bool  # TODO: can this be more flexible? use_dims? let the user decide about hover state?
 
 
-# TODO: is this even needed? hovered is convenient though...
-# it seems like you do sometimes want to treat the mouse like an event, and sometimes like a state!
+_INITIAL_USE_MOUSE_STATE = (Position.flyweight(-1, -1), Position.flyweight(0, 0))
+
+
 def use_mouse() -> UseMouse:
-    (absolute, motion), set_absolute_motion_button = use_state((Position.flyweight(-1, -1), Position.flyweight(0, 0)))
+    (absolute, motion), set_absolute_motion_button = use_state(_INITIAL_USE_MOUSE_STATE)
 
     async def setup() -> None:
-        mouse_event_queue = current_mouse_event_queue.get().tee()
-        while True:
-            match await mouse_event_queue.get():
-                case MouseMovedRaw(position=p):
-                    set_absolute_motion_button(lambda abs_mot: (p, p - abs_mot[0]))
+        def cb(absolute: Position, motion: Position) -> None:  # this def is a strong binding for cb
+            set_absolute_motion_button((absolute, motion))
 
-            mouse_event_queue.task_done()
+        current_use_mouse_listeners.get().add(cb)
+
+        await get_event_loop().create_future()  # TODO: does this correctly wait forever until cancelled?
 
     use_effect(setup=setup, deps=())
 
-    dims = current_hook_state.get().dims
-
-    content_rect = dims.content
-    padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
-
-    relative = absolute - Position.flyweight(x=content_rect.x, y=content_rect.y) if absolute in content_rect else None
-
     return UseMouse(
         absolute=absolute,
-        relative=relative,
         motion=motion,
-        hovered=absolute in border_rect,
     )

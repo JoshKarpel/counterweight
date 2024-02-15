@@ -3,37 +3,30 @@ from __future__ import annotations
 from asyncio import Task
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal, TypeVar
-
-from pydantic import ConfigDict
+from typing import TypeVar
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 from counterweight.layout import LayoutBoxDimensions
-from counterweight.types import ForbidExtras
 
 
-class UseState(ForbidExtras):
-    type: Literal["state"] = "state"
+@dataclass(slots=True)
+class UseState:
     value: object
 
 
-class UseRef(ForbidExtras):
-    type: Literal["ref"] = "ref"
+@dataclass(slots=True)
+class UseRef:
     ref: Ref[object]
 
 
-class UseEffect(ForbidExtras):
-    type: Literal["effect"] = "effect"
+@dataclass(slots=True)
+class UseEffect:
     setup: Setup
     deps: Deps
     new_deps: Deps
     task: Task[None] | None = None
-
-    model_config: ClassVar[ConfigDict] = {
-        "arbitrary_types_allowed": True,
-    }
 
 
 T = TypeVar("T")
