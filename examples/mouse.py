@@ -8,6 +8,7 @@ from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
 from counterweight.hooks.hooks import use_mouse, use_state
+from counterweight.styles import Span
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -49,6 +50,12 @@ def root() -> Div:
                     tracking_box(),
                     last_clicked_box(),
                     last_dragged_box(),
+                ],
+            ),
+            Div(
+                style=row | gap_children_1,
+                children=[
+                    drag_text_box(),
                 ],
             ),
         ],
@@ -142,6 +149,37 @@ def last_dragged_box() -> Text:
         on_mouse=on_mouse,
         style=canvas_style | (hover_style if mouse.hovered else None),
         content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
+    )
+
+
+@component
+def drag_text_box() -> Div:
+    mouse = use_mouse()
+
+    return Div(
+        style=canvas_style | (hover_style if mouse.hovered else None) | Style(span=Span(width=20, height=10)),
+        children=[
+            draggable_text("Drag me!", inset_top_left),
+            draggable_text("No, me!", inset_bottom_right),
+        ],
+    )
+
+
+@component
+def draggable_text(content: str, start: Style) -> Text:
+    position, set_position = use_state(Position.flyweight(0, 0))
+
+    # TODO: this doesn't work so good, can't drag up or down, and dragging at the edge of left or right feels terrible
+    # maybe still send the event on mouse move if its leaving or entering, maybe only when dragging?
+    def on_mouse(event: MouseEvent) -> None:
+        match event:
+            case MouseMoved(motion=m, button=b) if b is not None:
+                set_position(lambda r: r + m)
+
+    return Text(
+        on_mouse=on_mouse,
+        style=start | absolute(x=position.x, y=position.y),
+        content=content,
     )
 
 

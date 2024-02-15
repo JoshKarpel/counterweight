@@ -26,17 +26,19 @@ class MouseMovedRaw(_Event):
     position: Position
     button: int | None
 
-    def relative_to(self, position: Position) -> MouseMoved:
+    def augment(self, relative_to: Position, motion: Position) -> MouseMoved:
         return MouseMoved(
             position=self.position,
             button=self.button,
-            relative=self.position - position,
+            relative=self.position - relative_to,
+            motion=motion,
         )
 
 
 @dataclass(frozen=True, slots=True)
 class MouseMoved(MouseMovedRaw):
     relative: Position
+    motion: Position
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,17 +46,19 @@ class MouseDownRaw(_Event):
     position: Position
     button: int
 
-    def relative_to(self, position: Position) -> MouseDown:
+    def augment(self, relative_to: Position, motion: Position) -> MouseDown:
         return MouseDown(
             position=self.position,
             button=self.button,
-            relative=self.position - position,
+            relative=self.position - relative_to,
+            motion=motion,
         )
 
 
 @dataclass(frozen=True, slots=True)
 class MouseDown(MouseDownRaw):
     relative: Position
+    motion: Position
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,17 +66,19 @@ class MouseUpRaw(_Event):
     position: Position
     button: int
 
-    def relative_to(self, position: Position) -> MouseUp:
+    def augment(self, relative_to: Position, motion: Position) -> MouseUp:
         return MouseUp(
             position=self.position,
             button=self.button,
-            relative=self.position - position,
+            relative=self.position - relative_to,
+            motion=motion,
         )
 
 
 @dataclass(frozen=True, slots=True)
 class MouseUp(MouseUpRaw):
     relative: Position
+    motion: Position
 
 
 @dataclass(frozen=True, slots=True)

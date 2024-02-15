@@ -187,6 +187,7 @@ async def app(
                     needs_render = True
 
         mouse_position = Position.flyweight(x=-1, y=-1)
+        motion = Position.flyweight(x=0, y=0)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -392,13 +393,17 @@ async def app(
                                     handle_control(e.on_key(event))
                         case MouseMovedRaw(position=p) | MouseDownRaw(position=p) | MouseUpRaw(position=p):
                             mouse_event_queue.put_nowait(event)
-                            mouse_position = p
+                            mouse_position, motion = p, p - mouse_position
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse:
                                         # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
-                                        handle_control(b.element.on_mouse(event.relative_to(b.dims.content.top_left())))
+                                        handle_control(
+                                            b.element.on_mouse(
+                                                event.augment(relative_to=b.dims.content.top_left(), motion=motion)
+                                            )
+                                        )
 
                     await mouse_event_queue.join()
 
