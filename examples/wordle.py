@@ -283,4 +283,5 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
     )
 
 
-asyncio.run(app(root))
+if __name__ == "__main__":
+    asyncio.run(app(root))

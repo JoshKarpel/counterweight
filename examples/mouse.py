@@ -183,4 +183,5 @@ def draggable_text(content: str, start: Style) -> Text:
     )
 
 
-asyncio.run(app(root))
+if __name__ == "__main__":
+    asyncio.run(app(root))
