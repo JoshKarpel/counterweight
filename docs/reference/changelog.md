@@ -2,6 +2,8 @@
 
 ## Next
 
+## `0.0.8`
+
 ## Changed
 
 - [#110](https://github.com/JoshKarpel/counterweight/pull/110)
@@ -9,6 +11,19 @@
   no longer emits a `SetState` event, to avoid triggering unnecessary render cycles.
 - [#111](https://github.com/JoshKarpel/counterweight/pull/111)
   Border healing is now more efficient, especially when there are many non-border characters in the UI.
+- [#112](https://github.com/JoshKarpel/counterweight/pull/112)
+  Major, backwards-incompatible changes to how Counterweight handles mouse interactions.
+  The `on_mouse_down` and `on_mouse_up` event handlers have been removed;
+  use the new `on_mouse` event handler instead, which receives all mouse events
+  ([`MouseMoved`][counterweight.events.MouseMoved],
+  [`MouseDown`][counterweight.events.MouseDown], and
+  [`MouseUp`][counterweight.events.MouseUp]).
+  The `on_hover` style attribute on elements has been removed;
+  use the new [`use_mouse`](../hooks/use_mouse.md) and [`use_rects`](../hooks/use_rects.md) hooks instead,
+  and calculate the desired hover state in your component.
+  The goal of these changes is to provide more flexibility and control over mouse interactions
+  to application authors while minimizing the work that Counterweight needs to do while rendering,
+  at the cost of more complex application code for simple cases like detecting hover state.
 
 ## `0.0.7`
 

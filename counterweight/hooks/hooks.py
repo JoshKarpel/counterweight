@@ -81,6 +81,15 @@ class UseRects:
 
 
 def use_rects() -> UseRects:
+    """
+    Returns:
+        The rectangular areas of the
+            content, padding, border, and margin of
+            the calling component's top-level element
+            *on the previous render cycle*.
+            In the initial render, the returned rectangles will all be positioned
+            at the top-left corner of the screen with `0` width and height.
+    """
     dims = use_dims()
 
     p, b, m = dims.padding_border_margin_rects()
@@ -94,6 +103,10 @@ def use_rects() -> UseRects:
 
 
 def use_mouse() -> Position:
+    """
+    Returns:
+        The absolute position of the mouse on the screen (i.e., the top-left corner of the screen is `Position(x=0, y=0)`).
+    """
     absolute, set_absolute_motion_button = use_state(Position.flyweight(-1, -1))
 
     async def setup() -> None:
