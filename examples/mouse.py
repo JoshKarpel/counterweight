@@ -6,7 +6,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.geometry import Position
-from counterweight.hooks.hooks import use_mouse
+from counterweight.hooks.hooks import use_mouse, use_state
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -37,24 +37,81 @@ def canvas(
 
 @component
 def root() -> Div:
-    pos = use_mouse()
-
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
         children=[
+            header(),
             Div(
-                style=border_heavy,
+                style=row | gap_children_1,
                 children=[
-                    Text(
-                        content=canvas(
-                            50,
-                            25,
-                            {pos: Color.from_name("cyan")},
-                        )
-                    ),
+                    diff_box(),
+                    tracking_box(),
+                    last_clicked_box(),
                 ],
-            )
+            ),
         ],
+    )
+
+
+@component
+def header() -> Text:
+    return Text(
+        content="Mouse Tracking Demo",
+        style=text_justify_center | text_amber_600,
+    )
+
+
+canvas_style = border_heavy | weight_none
+hover_style = border_amber_600
+
+
+@component
+def tracking_box() -> Text:
+    mouse = use_mouse()
+
+    return Text(
+        style=canvas_style | (hover_style if mouse.hovered else None),
+        content=canvas(
+            30,
+            15,
+            {
+                mouse.relative: Color.from_name("red"),
+            },
+        ),
+    )
+
+
+@component
+def diff_box() -> Text:
+    mouse = use_mouse()
+
+    return Text(
+        style=canvas_style | (hover_style if mouse.hovered else None),
+        content=canvas(
+            3,
+            3,
+            {
+                mouse.motion + Position.flyweight(x=1, y=1): Color.from_name("purple"),
+            },
+        ),
+    )
+
+
+@component
+def last_clicked_box() -> Text:
+    mouse = use_mouse()
+    clicked, set_clicked = use_state(Position.flyweight(0, 0))
+
+    # TODO feels like you need a weird mix of event handling and hooks here... that is not good
+    return Text(
+        style=canvas_style | (hover_style if mouse.hovered else None),
+        content=canvas(
+            10,
+            5,
+            {
+                clicked: Color.from_name("green"),
+            },
+        ),
     )
 
 

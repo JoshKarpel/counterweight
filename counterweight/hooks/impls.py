@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from asyncio import Task
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import ClassVar, Literal, TypeVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.layout import LayoutBoxDimensions
 from counterweight.types import ForbidExtras
 
 
@@ -41,8 +43,10 @@ class InconsistentHookExecution(Exception):
     pass
 
 
-class Hooks(ForbidExtras):
-    data: list[UseState | UseRef | UseEffect] = Field(default_factory=list)
+@dataclass(slots=True)
+class Hooks:
+    data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
+    dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
 
     def use_state(self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:

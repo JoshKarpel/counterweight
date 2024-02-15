@@ -33,7 +33,7 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import build_layout_tree_from_concrete_element_tree
+from counterweight.layout import LayoutBox
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -282,30 +282,12 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
                     )
 
-                    start_concrete = perf_counter_ns()
-                    element_tree = build_concrete_element_tree(shadow)
-                    logger.debug(
-                        "Extracted concrete element tree from shadow tree",
-                        elapsed_ns=f"{perf_counter_ns() - start_concrete:_}",
-                    )
-
                     start_layout = perf_counter_ns()
-                    layout_tree = build_layout_tree_from_concrete_element_tree(element_tree)
+                    layout_tree = build_layout_tree_from_shadow(shadow)
                     layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
-                    )
-
-                    start_hover = perf_counter_ns()
-                    for b in layout_tree.walk_from_bottom():
-                        _, border_rect, _ = b.dims.padding_border_margin_rects()
-                        if mouse_position in border_rect:
-                            # TODO: hover changing layout doesn't really make sense here...
-                            b.element = b.element.model_copy(update={"style": b.element.style | b.element.on_hover})
-                    logger.debug(
-                        "Applied hover styles",
-                        elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
                     )
 
                     start_paint = perf_counter_ns()
@@ -410,7 +392,6 @@ async def app(
                                     handle_control(e.on_key(event))
                         case MouseMoved(position=p):
                             mouse_event_queue.put_nowait(event)
-                            needs_render = True
                             mouse_position = p
                         case MouseDown():
                             mouse_event_queue.put_nowait(event)
@@ -502,3 +483,11 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
             diff[pos] = new_cell
 
     return diff
+
+
+def build_layout_tree_from_shadow(node: ShadowNode, parent: LayoutBox | None = None) -> LayoutBox:
+    box = LayoutBox(element=node.element, parent=parent, hooks=node.hooks)
+
+    box.children.extend(build_layout_tree_from_shadow(node=child_node, parent=box) for child_node in node.children)
+
+    return box

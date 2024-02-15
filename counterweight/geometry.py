@@ -16,6 +16,12 @@ class Position(NamedTuple):
     def flyweight(cls, x: int, y: int) -> Position:
         return cls(x, y)
 
+    def __add__(self, other: Position) -> Position:
+        return Position.flyweight(x=self.x + other.x, y=self.y + other.y)
+
+    def __sub__(self, other: Position) -> Position:
+        return Position.flyweight(x=self.x - other.x, y=self.y - other.y)
+
 
 @dataclass(slots=True)
 class Rect:

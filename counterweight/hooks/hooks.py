@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TypeVar, overload
+
+from structlog import get_logger
 
 from counterweight._context_vars import current_hook_state, current_mouse_event_queue
 from counterweight.events import MouseMoved
 from counterweight.geometry import Position
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+
+logger = get_logger()
 
 T = TypeVar("T")
 
@@ -62,18 +67,38 @@ def use_effect(setup: Setup, deps: Deps | None = None) -> None:
     return current_hook_state.get().use_effect(setup, deps)
 
 
-def use_mouse() -> Position:
-    pos, set_pos = use_state(Position.flyweight(0, 0))
+@dataclass(frozen=True, slots=True)
+class UseMouse:
+    absolute: Position
+    relative: Position | None
+    motion: Position
+    hovered: bool
+
+
+def use_mouse() -> UseMouse:
+    (absolute, motion), set_absolute_motion_button = use_state((Position.flyweight(-1, -1), Position.flyweight(0, 0)))
 
     async def setup() -> None:
         mouse_event_queue = current_mouse_event_queue.get().tee()
         while True:
             match await mouse_event_queue.get():
                 case MouseMoved(position=p):
-                    set_pos(p)
+                    set_absolute_motion_button(lambda abs_mot: (p, p - abs_mot[0]))
 
             mouse_event_queue.task_done()
 
     use_effect(setup=setup, deps=())
 
-    return pos
+    dims = current_hook_state.get().dims
+
+    content_rect = dims.content
+    padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
+
+    relative = absolute - Position.flyweight(x=content_rect.x, y=content_rect.y) if absolute in content_rect else None
+
+    return UseMouse(
+        absolute=absolute,
+        relative=relative,
+        motion=motion,
+        hovered=absolute in border_rect,
+    )

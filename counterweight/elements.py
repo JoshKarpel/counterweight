@@ -47,7 +47,6 @@ class Text(FrozenForbidExtras):
     type: Literal["text"] = "text"
     content: str | Sequence[Chunk]
     style: Style = Field(default=Style())
-    on_hover: Style | None = Field(default=None)
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse_down: Callable[[MouseDown], AnyControl | None] | None = None
     on_mouse_up: Callable[[MouseUp], AnyControl | None] | None = None
