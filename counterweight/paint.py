@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import lru_cache, reduce
+from functools import lru_cache
 from itertools import groupby, product
-from operator import itemgetter, or_
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -17,7 +15,15 @@ from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
 from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
 from counterweight.styles import Border
-from counterweight.styles.styles import BorderEdge, CellStyle, Color, Margin, Padding
+from counterweight.styles.styles import (
+    BorderEdge,
+    CellStyle,
+    Color,
+    JoinedBorderKind,
+    JoinedBorderParts,
+    Margin,
+    Padding,
+)
 
 logger = get_logger()
 
@@ -42,22 +48,20 @@ BLANK = P.blank(z=-1_000_000)
 
 
 Paint = dict[Position, P]
+BorderHealingHints = dict[Position, JoinedBorderParts]
 
 
-def combine_paints(paints: Iterable[Paint]) -> Paint:
-    return reduce(or_, paints, {})
+def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
+    combined_paint: Paint = {}
+    border_healing_hints: BorderHealingHints = {}
+    for paint, hints, _z in sorted(
+        (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
+        key=lambda pz: pz[-1],
+    ):
+        combined_paint |= paint
+        border_healing_hints |= hints
 
-
-def paint_layout(layout: LayoutBox) -> Paint:
-    return combine_paints(
-        map(
-            itemgetter(0),
-            sorted(
-                (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
-                key=lambda pz: pz[1],
-            ),
-        ),
-    )
+    return combined_paint, border_healing_hints
 
 
 @lru_cache(maxsize=2**10)
@@ -65,11 +69,11 @@ def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
     return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
 
 
-def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, int]:
+def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
-    b = paint_border(element, element.style.border, border_rect) if element.style.border else {}
+    b, bhh = paint_border(element, element.style.border, border_rect) if element.style.border else ({}, {})
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
 
     box = m | b | t
@@ -86,8 +90,10 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # the element with lower z is actually hidden and doesn't show through.
     # However, we only want to do this for elements that actually have anything in their paint,
     # so that "anonymous" grouping elements don't hide things behind them.
+
     return (
         (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
+        bhh,
         element.style.layout.z,
     )
 
@@ -167,10 +173,11 @@ def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect
     return chars
 
 
-def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
+def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:
     style = border.style
 
-    bv = border.kind.value
+    bk = border.kind
+    bv = bk.value
     left = bv.left
     right = bv.right
     top = bv.top
@@ -240,7 +247,14 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> Paint:
                 char=right_bottom, style=style, z=element.style.layout.z
             )
 
-    return chars
+    try:
+        jbv = JoinedBorderKind[bk.name].value
+        bhh = {k: jbv for k in chars.keys()}
+    except KeyError:
+        # The border is not joinable
+        bhh = {}
+
+    return chars, bhh
 
 
 def svg(paint: Paint) -> ElementTree:

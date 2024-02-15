@@ -305,18 +305,21 @@ async def app(
                     )
 
                     start_paint = perf_counter_ns()
-                    new_paint = paint_layout(layout_tree)
+                    new_paint, border_healing_hints = paint_layout(layout_tree)
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
                     )
 
                     if do_heal_borders:
-                        start_border_join = perf_counter_ns()
-                        new_paint |= heal_borders(new_paint)
+                        start_border_heal = perf_counter_ns()
+                        healing_diff = heal_borders(new_paint, border_healing_hints)
+                        new_paint |= healing_diff
                         logger.debug(
                             "Healed borders in new paint",
-                            elapsed_ns=f"{perf_counter_ns() - start_border_join:_}",
+                            elapsed_ns=f"{perf_counter_ns() - start_border_heal:_}",
+                            hint_cells=len(border_healing_hints),
+                            diff_cells=len(healing_diff),
                         )
 
                     start_diff = perf_counter_ns()
