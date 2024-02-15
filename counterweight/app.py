@@ -393,10 +393,12 @@ async def app(
                                     handle_control(e.on_key(event))
                         case MouseMovedRaw(position=p) | MouseDownRaw(position=p) | MouseUpRaw(position=p):
                             mouse_event_queue.put_nowait(event)
-                            mouse_position, motion = p, p - mouse_position
+                            motion = p - mouse_position
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
-                                if mouse_position in border_rect:
+                                if (
+                                    mouse_position in border_rect or p in border_rect
+                                ):  # lets you get mouse events if the *previous* position was in the border rect as well
                                     if b.element.on_mouse:
                                         # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
                                         handle_control(
@@ -404,6 +406,7 @@ async def app(
                                                 event.augment(relative_to=b.dims.content.top_left(), motion=motion)
                                             )
                                         )
+                            mouse_position = p
 
                     await mouse_event_queue.join()
 

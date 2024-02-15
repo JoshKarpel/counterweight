@@ -72,7 +72,7 @@ class UseMouse:
     absolute: Position
     relative: Position | None
     motion: Position
-    hovered: bool
+    hovered: bool  # TODO: can this be more flexible? use_dims? let the user decide about hover state?
 
 
 # TODO: is this even needed? hovered is convenient though...
