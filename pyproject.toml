@@ -116,6 +116,7 @@ select = [
     "PGH", # https://beta.ruff.rs/docs/rules/#pygrep-hooks-pgh
     "RUF", # https://beta.ruff.rs/docs/rules/#ruff-specific-rules-ruf
 ]
+
 ignore = [
     "E501",  # line length exceeds limit
     "E741",  # ambiguous variable name
