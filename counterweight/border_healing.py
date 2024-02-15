@@ -21,12 +21,17 @@ def get_replacement_char(
     above: str | None,
     below: str | None,
 ) -> str | None:
-    return parts.select(
-        top=center in parts.connects_top or above in parts.connects_bottom,
-        bottom=center in parts.connects_bottom or below in parts.connects_top,
-        left=center in parts.connects_left or left in parts.connects_right,
-        right=center in parts.connects_right or right in parts.connects_left,
-    )
+    if (
+        c := parts.select(
+            top=center in parts.connects_top or above in parts.connects_bottom,
+            bottom=center in parts.connects_bottom or below in parts.connects_top,
+            left=center in parts.connects_left or left in parts.connects_right,
+            right=center in parts.connects_right or right in parts.connects_left,
+        )
+    ) != center:
+        return c
+    else:
+        return None
 
 
 @lru_cache(maxsize=2**12)
@@ -55,15 +60,15 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
         left, right, above, below = map(paint.get, dither(center_position))
 
         # TODO: cell styles and z-levels must match too (i.e., colors)
-        replaced_char = get_replacement_char(
+
+        if replaced_char := get_replacement_char(
             parts=parts,
             center=center.char,
             left=left.char if left else None,
             right=right.char if right else None,
             above=above.char if above else None,
             below=below.char if below else None,
-        )
-        if replaced_char != center.char:
+        ):
             overlay[center_position] = P(char=replaced_char, style=center.style, z=center.z)
 
     return overlay
