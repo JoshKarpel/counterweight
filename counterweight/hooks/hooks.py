@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TypeVar, overload
 
-from counterweight._context_vars import current_hook_state
+from counterweight._context_vars import current_hook_state, current_mouse_event_queue
+from counterweight.events import MouseMoved
+from counterweight.geometry import Position
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 T = TypeVar("T")
@@ -58,3 +60,20 @@ def use_effect(setup: Setup, deps: Deps | None = None) -> None:
             If `None`, the `setup` function will be run on every render.
     """
     return current_hook_state.get().use_effect(setup, deps)
+
+
+def use_mouse() -> Position:
+    pos, set_pos = use_state(Position.flyweight(0, 0))
+
+    async def setup() -> None:
+        mouse_event_queue = current_mouse_event_queue.get().tee()
+        while True:
+            match await mouse_event_queue.get():
+                case MouseMoved(position=p):
+                    set_pos(p)
+
+            mouse_event_queue.task_done()
+
+    use_effect(setup=setup, deps=())
+
+    return pos

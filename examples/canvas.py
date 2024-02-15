@@ -128,12 +128,10 @@ def random_walkers() -> Text:
     use_effect(tick, deps=())
 
     return Text(
-        content=(
-            canvas(
-                width=w,
-                height=h,
-                cells=dict(zip(walkers, colors)),
-            )
+        content=canvas(
+            width=w,
+            height=h,
+            cells=dict(zip(walkers, colors)),
         ),
         style=border_heavy | border_slate_400,
     )

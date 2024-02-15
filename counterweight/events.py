@@ -47,12 +47,18 @@ class Dummy(_Event):
     pass
 
 
-AnyEvent = Union[
-    TerminalResized,
-    KeyPressed,
+MouseEvent = Union[
     MouseMoved,
     MouseDown,
     MouseUp,
+]
+
+AnyEvent = Union[
+    TerminalResized,
+    KeyPressed,
     StateSet,
+    MouseMoved,
+    MouseDown,
+    MouseUp,
     Dummy,
 ]

@@ -13,8 +13,8 @@ from typing import Iterable, TextIO
 
 from structlog import get_logger
 
-from counterweight._context_vars import current_event_queue
-from counterweight._utils import drain_queue, maybe_await
+from counterweight._context_vars import current_event_queue, current_mouse_event_queue
+from counterweight._utils import TeeQueue, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -24,6 +24,7 @@ from counterweight.events import (
     Dummy,
     KeyPressed,
     MouseDown,
+    MouseEvent,
     MouseMoved,
     MouseUp,
     StateSet,
@@ -106,6 +107,9 @@ async def app(
 
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
+
+    mouse_event_queue: TeeQueue[MouseEvent] = TeeQueue()
+    current_mouse_event_queue.set(mouse_event_queue)
 
     loop = get_running_loop()
 
@@ -375,6 +379,7 @@ async def app(
                 # Note that there are some tricky async semantics here. Right now, event handlers are sync,
                 # so there's no way for an effect to add events to the queue once we get past the `await drain_queue()` below,
                 # since we don't await again until we hit this point again in the next render cycle.
+                # TODO: this isn't true anymore, there are awaits below
 
                 num_events_handled = 0
                 events = deque(await drain_queue(event_queue))
@@ -404,20 +409,25 @@ async def app(
                                 if e.on_key:
                                     handle_control(e.on_key(event))
                         case MouseMoved(position=p):
+                            mouse_event_queue.put_nowait(event)
                             needs_render = True
                             mouse_position = p
                         case MouseDown():
+                            mouse_event_queue.put_nowait(event)
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_down:
                                         handle_control(b.element.on_mouse_down(event))
                         case MouseUp():
+                            mouse_event_queue.put_nowait(event)
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
                                 if mouse_position in border_rect:
                                     if b.element.on_mouse_up:
                                         handle_control(b.element.on_mouse_up(event))
+
+                    await mouse_event_queue.join()
 
                     while True:
                         try:

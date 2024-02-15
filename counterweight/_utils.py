@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from asyncio import Queue, QueueEmpty
+from asyncio import Queue, QueueEmpty, create_task, gather
+from collections.abc import MutableSet
+from dataclasses import dataclass, field
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
-from typing import Awaitable, List, TypeVar, cast
+from typing import Awaitable, Generic, List, TypeVar, cast
+from weakref import WeakSet
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -13,10 +16,12 @@ V = TypeVar("V")
 
 async def drain_queue(queue: Queue[T]) -> List[T]:
     items = [await queue.get()]
+    queue.task_done()
 
     while True:
         try:
             items.append(queue.get_nowait())
+            queue.task_done()
         except QueueEmpty:
             break
 
@@ -73,3 +78,20 @@ async def maybe_await(val: Awaitable[R] | R) -> R:
         return await val
     else:
         return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast
+
+
+@dataclass(frozen=True)
+class TeeQueue(Generic[T]):
+    consumers: MutableSet[Queue[T]] = field(default_factory=WeakSet)
+
+    def tee(self) -> Queue[T]:
+        q = Queue()
+        self.consumers.add(q)
+        return q
+
+    def put_nowait(self, item: T) -> None:
+        for c in self.consumers:
+            c.put_nowait(item)
+
+    async def join(self) -> None:
+        await gather(*(create_task(c.join()) for c in self.consumers))
