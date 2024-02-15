@@ -156,6 +156,8 @@ def last_dragged_box() -> Text:
 def drag_text_box() -> Div:
     mouse = use_mouse()
 
+    # TODO: if you don't slow down, your mouse can easily outrun the render speed?
+
     return Div(
         style=canvas_style | (hover_style if mouse.hovered else None) | Style(span=Span(width=20, height=10)),
         children=[
@@ -169,8 +171,6 @@ def drag_text_box() -> Div:
 def draggable_text(content: str, start: Style) -> Text:
     position, set_position = use_state(Position.flyweight(0, 0))
 
-    # TODO: this doesn't work so good, can't drag up or down, and dragging at the edge of left or right feels terrible
-    # maybe still send the event on mouse move if its leaving or entering, maybe only when dragging?
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseMoved(motion=m, button=b) if b is not None:
