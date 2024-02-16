@@ -93,14 +93,18 @@ async def app(
 
     def handle_screen_size_change() -> tuple[Style, Paint]:
         w, h = dimensions or shutil.get_terminal_size()
+
         ss = Style(
             layout=SCREEN_LAYOUT,
             span=Span(width=w, height=h),
         )
-        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
-        return ss, cp
 
-    screen_style, current_paint = handle_screen_size_change()
+        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+
+        if not headless:
+            output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
+
+        return ss, cp
 
     @component
     def screen() -> Div:
@@ -145,11 +149,7 @@ async def app(
             )
             key_thread.start()
 
-        instructions = paint_to_instructions(paint=current_paint)
-
-        if not headless:
-            output_stream.write(instructions)
-            output_stream.flush()
+        screen_style, current_paint = handle_screen_size_change()
 
         needs_render = True
         shadow = update_shadow(screen(), None)
@@ -255,16 +255,7 @@ async def app(
 
                         allow_key_thread.set()
 
-                    # TODO: below is the same as a terminal resize, should probably refactor
-                    # note: we may have missed resize events while suspended, so we definitely want to get term size here
-
-                    # start from scratch
                     screen_style, current_paint = handle_screen_size_change()
-                    instructions = paint_to_instructions(paint=current_paint)
-                    if not headless:
-                        output_stream.write(CLEAR_SCREEN + instructions)
-                        # don't flush here, we don't necessarily need to flush until the next render
-                        # probably we can even store this until the next render happens and output it then
 
                     logger.debug(
                         "Resuming application",
@@ -378,13 +369,7 @@ async def app(
                         case TerminalResized():
                             needs_render = True
 
-                            # start from scratch
                             screen_style, current_paint = handle_screen_size_change()
-                            instructions = paint_to_instructions(paint=current_paint)
-                            if not headless:
-                                output_stream.write(CLEAR_SCREEN + instructions)
-                                # don't flush here, we don't necessarily need to flush until the next render
-                                # probably we can even store this until the next render happens and output it then
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
