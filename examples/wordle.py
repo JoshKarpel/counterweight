@@ -103,17 +103,17 @@ def root() -> Div:
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             hover_style=text_indigo_500 | border_indigo_500,
-                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) else None,
+                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[F2] Play Random",
                             hover_style=text_emerald_500 | border_emerald_500,
-                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) else None,
+                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[q] Quit",
                             hover_style=text_red_500 | border_red_500,
-                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) else None,
+                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                     ],
                 ),
@@ -291,7 +291,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
     hovered = use_hovered()
 
     def on_mouse(event: MouseEvent) -> None:
-        if on_key and isinstance(event, MouseUp):
+        if on_key and isinstance(event, MouseUp) and event.button == 1:
             on_key(KeyPressed(key=letter))
 
     return Text(

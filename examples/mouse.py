@@ -99,7 +99,7 @@ def last_clicked_box() -> Text:
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseUp(absolute=p):
+            case MouseUp(absolute=p, button=1):
                 set_clicked(p - rects.content.top_left())
 
     return Text(
@@ -125,12 +125,12 @@ def last_dragged_box() -> Text:
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseDown(absolute=a):
+            case MouseDown(absolute=a, button=1):
                 set_start(a - rects.content.top_left())
                 set_end(a - rects.content.top_left())
-            case MouseUp(absolute=a):
+            case MouseUp(absolute=a, button=1):
                 set_end(a - rects.content.top_left())
-            case MouseMoved(absolute=a, button=b) if b is not None:
+            case MouseMoved(absolute=a, button=1):
                 set_end(a - rects.content.top_left())
 
     return Text(
@@ -165,7 +165,7 @@ def draggable_text(content: str, start: Style) -> Text:
     # TODO: if you don't slow down, your mouse can easily outrun the render speed?
     def on_mouse(event: MouseEvent) -> None:
         match event:
-            case MouseMoved(absolute=a, button=b) if b is not None:
+            case MouseMoved(absolute=a, button=1):
                 set_offset(lambda o: o + (a - mouse.absolute))
 
     return Text(
