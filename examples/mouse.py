@@ -147,34 +147,31 @@ def drag_text_box() -> Div:
     mouse = use_mouse()
     rects = use_rects()
 
-    parent_content_top_left = rects.content.top_left()
-
     return Div(
         style=canvas_style
         | (hover_style if mouse.absolute in rects.border else None)
         | Style(span=Span(width=20, height=10)),
         children=[
-            draggable_text("Drag me!", inset_top_left, parent_content_top_left),
-            draggable_text("No, me!", inset_bottom_right, parent_content_top_left),
+            draggable_text("Drag me!", inset_top_left),
+            draggable_text("No, me!", inset_bottom_right),
         ],
     )
 
 
 @component
-def draggable_text(content: str, start: Style, parent_content_top_left: Position) -> Text:
-    position, set_position = use_state(Position.flyweight(0, 0))
+def draggable_text(content: str, start: Style) -> Text:
+    mouse = use_mouse()
+    offset, set_offset = use_state(Position.flyweight(0, 0))
 
     # TODO: if you don't slow down, your mouse can easily outrun the render speed?
-    # TODO: this makes the "top left corner" draggable, it always snaps to that, so we do still want something more like a diff here
-    # TODO: also this doesn't work with the "starting inset" technique below
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseMoved(absolute=a, button=b) if b is not None:
-                set_position(a - parent_content_top_left)
+                set_offset(lambda o: o + (a - mouse.absolute))
 
     return Text(
         on_mouse=on_mouse,
-        style=start | absolute(x=position.x, y=position.y),
+        style=start | absolute(x=offset.x, y=offset.y),
         content=content,
     )
 

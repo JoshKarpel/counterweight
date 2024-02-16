@@ -119,6 +119,10 @@ def use_mouse() -> Mouse:
     Returns:
         The current state of the mouse.
     """
+    # Why bother making this a state hook when we could instead store the mouse state directly in a context var?
+    # Triggering a state change is a way to signal to the render loop that a component cares about the mouse state
+    # without needing to invent a new mechanism dedicated to mouse events,
+    # and thus makes them work a lot more like key events.
     mouse, set_mouse = use_state(_INITIAL_MOUSE)
 
     async def setup() -> None:
