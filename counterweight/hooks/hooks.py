@@ -126,12 +126,14 @@ def use_mouse() -> Mouse:
     mouse, set_mouse = use_state(_INITIAL_MOUSE)
 
     async def setup() -> None:
-        def cb(mouse: Mouse) -> None:  # this def is a strong binding for cb
-            set_mouse(mouse)
+        use_mouse_listeners = current_use_mouse_listeners.get()
 
-        current_use_mouse_listeners.get().add(cb)
+        use_mouse_listeners.add(set_mouse)
 
-        await get_event_loop().create_future()  # TODO: does this correctly wait forever until cancelled? - NO!
+        try:
+            await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
+        finally:
+            use_mouse_listeners.remove(set_mouse)
 
     use_effect(setup=setup, deps=())
 
