@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from asyncio import Queue, QueueEmpty
+from asyncio import Queue, QueueEmpty, get_event_loop
 from collections.abc import Iterator
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
-from typing import Awaitable, List, TypeVar, cast
+from typing import Awaitable, List, NoReturn, TypeVar, cast
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -76,6 +76,10 @@ async def maybe_await(val: Awaitable[R] | R) -> R:
         return await val
     else:
         return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast
+
+
+async def forever() -> NoReturn:
+    await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
 
 
 # TODO: test unordered_range

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from asyncio import get_event_loop
 from dataclasses import dataclass
 from typing import TypeVar, overload
 
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_state, current_use_mouse_listeners
+from counterweight._utils import forever
 from counterweight.geometry import Position, Rect
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 from counterweight.layout import LayoutBoxDimensions
@@ -131,7 +131,7 @@ def use_mouse() -> Mouse:
         use_mouse_listeners.add(set_mouse)
 
         try:
-            await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
+            await forever()
         finally:
             use_mouse_listeners.remove(set_mouse)
 
