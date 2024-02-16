@@ -78,6 +78,7 @@ async def maybe_await(val: Awaitable[R] | R) -> R:
         return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast
 
 
+# TODO: test unordered_range
 def unordered_range(a: int, b: int) -> Iterator[int]:
     """
     Iterate from a to b (inclusive), regardless of the order of a and b.
