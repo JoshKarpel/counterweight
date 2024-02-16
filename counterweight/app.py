@@ -49,6 +49,12 @@ from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
 from counterweight.styles.styles import Flex
 
+SCREEN_LAYOUT = Flex(
+    direction="column",
+    justify_children="start",
+    align_children="stretch",
+)
+
 logger = get_logger()
 
 
@@ -85,24 +91,20 @@ async def app(
     """
     configure_logging()
 
-    w, h = dimensions or shutil.get_terminal_size()
+    def handle_screen_size_change() -> tuple[Style, Paint]:
+        w, h = dimensions or shutil.get_terminal_size()
+        ss = Style(
+            layout=SCREEN_LAYOUT,
+            span=Span(width=w, height=h),
+        )
+        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+        return ss, cp
+
+    screen_style, current_paint = handle_screen_size_change()
 
     @component
     def screen() -> Div:
-        return Div(
-            children=[root()],
-            style=Style(
-                layout=Flex(
-                    direction="column",
-                    justify_children="start",
-                    align_children="stretch",
-                ),
-                span=Span(
-                    width=w,
-                    height=h,
-                ),
-            ),
-        )
+        return Div(children=(root(),), style=screen_style)
 
     logger.info("Application starting...")
 
@@ -143,7 +145,6 @@ async def app(
             )
             key_thread.start()
 
-        current_paint: Paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
         instructions = paint_to_instructions(paint=current_paint)
 
         if not headless:
@@ -257,10 +258,8 @@ async def app(
                     # TODO: below is the same as a terminal resize, should probably refactor
                     # note: we may have missed resize events while suspended, so we definitely want to get term size here
 
-                    w, h = shutil.get_terminal_size()
-
                     # start from scratch
-                    current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+                    screen_style, current_paint = handle_screen_size_change()
                     instructions = paint_to_instructions(paint=current_paint)
                     if not headless:
                         output_stream.write(CLEAR_SCREEN + instructions)
@@ -378,10 +377,9 @@ async def app(
                             needs_render = True
                         case TerminalResized():
                             needs_render = True
-                            w, h = shutil.get_terminal_size()
 
                             # start from scratch
-                            current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+                            screen_style, current_paint = handle_screen_size_change()
                             instructions = paint_to_instructions(paint=current_paint)
                             if not headless:
                                 output_stream.write(CLEAR_SCREEN + instructions)
