@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Literal, Union
 
 from counterweight.geometry import Position
 
@@ -24,19 +24,28 @@ class KeyPressed(_Event):
 @dataclass(frozen=True, slots=True)
 class MouseMoved(_Event):
     absolute: Position
-    button: int | None
+    """The absolute position on the screen that the mouse moved to."""
+
+    button: Literal[1, 2, 3] | None
+    """The button that was held during the motion, or `None` if no button was pressed."""
 
 
 @dataclass(frozen=True, slots=True)
 class MouseDown(_Event):
     absolute: Position
-    button: int
+    """The absolute position on the screen that the mouse moved to."""
+
+    button: Literal[1, 2, 3]
+    """The mouse button that was pressed during the motion."""
 
 
 @dataclass(frozen=True, slots=True)
 class MouseUp(_Event):
     absolute: Position
-    button: int
+    """The absolute position on the screen that the mouse moved to."""
+
+    button: Literal[1, 2, 3]
+    """The mouse button that was released during the motion."""
 
 
 @dataclass(frozen=True, slots=True)

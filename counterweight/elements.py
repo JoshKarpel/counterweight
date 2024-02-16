@@ -16,7 +16,6 @@ class Div(FrozenForbidExtras):
     type: Literal["div"] = "div"
     style: Style = Field(default=Style())
     children: Sequence[Component | AnyElement] = Field(default=())
-    on_hover: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
 

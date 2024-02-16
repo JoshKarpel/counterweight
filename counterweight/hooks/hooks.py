@@ -73,14 +73,14 @@ def use_dims() -> LayoutBoxDimensions:
 
 
 @dataclass(frozen=True, slots=True)
-class UseRects:
+class Rects:
     content: Rect
     padding: Rect
     border: Rect
     margin: Rect
 
 
-def use_rects() -> UseRects:
+def use_rects() -> Rects:
     """
     Returns:
         The rectangular areas of the
@@ -94,7 +94,7 @@ def use_rects() -> UseRects:
 
     p, b, m = dims.padding_border_margin_rects()
 
-    return UseRects(
+    return Rects(
         content=dims.content,
         padding=p,
         border=b,
@@ -102,10 +102,16 @@ def use_rects() -> UseRects:
     )
 
 
-def use_mouse() -> Position:
+@dataclass(frozen=True, slots=True)
+class Mouse:
+    absolute: Position
+    """The absolute position of the mouse on the screen (i.e., the top-left corner of the screen is `Position(x=0, y=0)`)."""
+
+
+def use_mouse() -> Mouse:
     """
     Returns:
-        The absolute position of the mouse on the screen (i.e., the top-left corner of the screen is `Position(x=0, y=0)`).
+        The current state of the mouse.
     """
     absolute, set_absolute_motion_button = use_state(Position.flyweight(-1, -1))
 
@@ -119,4 +125,6 @@ def use_mouse() -> Position:
 
     use_effect(setup=setup, deps=())
 
-    return absolute
+    return Mouse(
+        absolute=absolute,
+    )

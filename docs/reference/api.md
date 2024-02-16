@@ -29,11 +29,20 @@
 ::: counterweight.hooks.Ref
 ::: counterweight.hooks.use_ref
 
+::: counterweight.hooks.Mouse
+::: counterweight.hooks.use_mouse
+
+::: counterweight.hooks.Rects
+::: counterweight.hooks.use_rects
+
+
 ## Events
 
-::: counterweight.events.AnyEvent
 
 ::: counterweight.events.KeyPressed
+
+::: counterweight.events.MouseEvent
+
 ::: counterweight.events.MouseMoved
 ::: counterweight.events.MouseDown
 ::: counterweight.events.MouseUp
@@ -63,5 +72,8 @@
 ::: counterweight.styles.Flex
 
 ::: counterweight.styles.Relative
+
 ::: counterweight.styles.Absolute
+::: counterweight.styles.Inset
+
 ::: counterweight.styles.Fixed

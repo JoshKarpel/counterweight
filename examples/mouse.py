@@ -69,8 +69,8 @@ def header() -> Text:
     )
 
 
-canvas_style = border_heavy | weight_none
-hover_style = border_amber_600
+canvas_style = border_light | weight_none
+hover_style = border_heavy | border_amber_600
 
 
 @component
@@ -79,11 +79,15 @@ def tracking_box() -> Text:
     rects = use_rects()
 
     return Text(
-        style=canvas_style | (hover_style if mouse in rects.border else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(
             20,
             10,
-            ({mouse - rects.content.top_left(): Color.from_name("red")} if mouse in rects.content else {}),
+            (
+                {mouse.absolute - rects.content.top_left(): Color.from_name("red")}
+                if mouse.absolute in rects.content
+                else {}
+            ),
         ),
     )
 
@@ -102,7 +106,7 @@ def last_clicked_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse in rects.border else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(
             20,
             10,
@@ -133,7 +137,7 @@ def last_dragged_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse in rects.border else None),
+        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
         content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
     )
 
@@ -146,7 +150,9 @@ def drag_text_box() -> Div:
     parent_content_top_left = rects.content.top_left()
 
     return Div(
-        style=canvas_style | (hover_style if mouse in rects.border else None) | Style(span=Span(width=20, height=10)),
+        style=canvas_style
+        | (hover_style if mouse.absolute in rects.border else None)
+        | Style(span=Span(width=20, height=10)),
         children=[
             draggable_text("Drag me!", inset_top_left, parent_content_top_left),
             draggable_text("No, me!", inset_bottom_right, parent_content_top_left),

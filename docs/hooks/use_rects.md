@@ -2,5 +2,5 @@
 
 ## API
 
-::: counterweight.hooks.UseRects
+::: counterweight.hooks.Rects
 ::: counterweight.hooks.use_rects
