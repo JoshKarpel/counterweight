@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio import Queue, QueueEmpty, get_event_loop
+from asyncio import CancelledError, Queue, QueueEmpty, Task, current_task, get_event_loop
 from collections.abc import Iterator
 from functools import lru_cache
 from inspect import isawaitable
@@ -80,6 +80,22 @@ async def maybe_await(val: Awaitable[R] | R) -> R:
 
 async def forever() -> NoReturn:
     await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
+
+
+async def cancel(task: Task) -> None:
+    # Based on https://discuss.python.org/t/asyncio-cancel-a-cancellation-utility-as-a-coroutine-this-time-with-feeling/26304/2
+    task.cancel()
+    try:
+        await task
+    except CancelledError:
+        if current_task().cancelling() == 0:
+            # The CancelledError is from the task we cancelled, so this is the normal flow
+            return
+        else:
+            # cancel() is itself being cancelled, propagate the CancelledError
+            raise
+    else:
+        raise RuntimeError("Cancelled task did not end with an exception")
 
 
 # TODO: test unordered_range

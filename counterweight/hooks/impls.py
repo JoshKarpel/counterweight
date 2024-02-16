@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Task
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import TypeVar
 
@@ -40,6 +40,10 @@ class InconsistentHookExecution(Exception):
 class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
     dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
+
+    @property
+    def effects(self) -> Iterator[UseEffect]:
+        return (hook for hook in self.data if isinstance(hook, UseEffect))
 
     def use_state(self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:

@@ -15,7 +15,7 @@ from weakref import WeakSet
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
-from counterweight._utils import drain_queue, maybe_await
+from counterweight._utils import cancel, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -32,7 +32,6 @@ from counterweight.events import (
 )
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
-from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.layout import LayoutBox
 from counterweight.logging import configure_logging
@@ -328,9 +327,9 @@ async def app(
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
                     logger.debug(
-                        "Handled effects",
+                        "Reconciled effects",
                         elapsed_ns=f"{perf_counter_ns() - start_effects:_}",
-                        num_effects=len(active_effects),
+                        num_active_effects=len(active_effects),
                     )
 
                     should_render = False
@@ -352,14 +351,13 @@ async def app(
                 # Note that there are some tricky async semantics here. Right now, event handlers are sync,
                 # so there's no way for an effect to add events to the queue once we get past the `await drain_queue()` below,
                 # since we don't await again until we hit this point again in the next render cycle.
-                # TODO: this isn't true anymore, there are awaits below
 
                 num_events_handled = 0
                 events = deque(await drain_queue(event_queue))
 
                 start_event_handling = perf_counter_ns()
                 while events:
-                    start_handle_event = perf_counter_ns()
+                    # start_handle_event = perf_counter_ns()
 
                     event = events.popleft()
 
@@ -376,11 +374,10 @@ async def app(
                         case MouseMoved(absolute=a) | MouseDown(absolute=a) | MouseUp(absolute=a):
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
-                                if (
-                                    mouse_position in border_rect or a in border_rect
-                                ):  # lets you get mouse events if the *previous* position was in the border rect as well
+
+                                # Send mouse events if the current *or previous* position is in the border rect
+                                if mouse_position in border_rect or a in border_rect:
                                     if b.element.on_mouse:
-                                        # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
                                         handle_control(b.element.on_mouse(event))
 
                             mouse = Mouse(absolute=a, motion=a - mouse_position)
@@ -397,11 +394,11 @@ async def app(
 
                     num_events_handled += 1
 
-                    logger.debug(
-                        "Handled event",
-                        event_obj=event,
-                        elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
-                    )
+                    # logger.debug(
+                    #     "Handled event",
+                    #     event_obj=event,
+                    #     elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
+                    # )
 
                 logger.debug(
                     "Handled events",
@@ -426,22 +423,19 @@ async def app(
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
     for node in shadow.walk():
-        for effect in node.hooks.data:  # TODO: reaching pretty deep here
-            if isinstance(effect, UseEffect):
-                if effect.deps != effect.new_deps or effect.new_deps is None:
-                    effect.deps = effect.new_deps
-                    t = task_group.create_task(effect.setup())
-                    new_effects.add(t)
-                    effect.task = t
-                    logger.debug("Created effect", effect=effect)
-                else:
-                    if effect.task is None:
-                        raise Exception("Effect task should never be None at this point")
-                    new_effects.add(effect.task)
+        for effect in node.hooks.effects:
+            if effect.deps != effect.new_deps or effect.new_deps is None:
+                effect.deps = effect.new_deps
+                t = task_group.create_task(effect.setup())
+                new_effects.add(t)
+                effect.task = t
+            else:
+                if effect.task is None:
+                    raise Exception("Effect task should never be None at this point")
+                new_effects.add(effect.task)
 
     for task in active_effects - new_effects:
-        task.cancel()
-        logger.debug("Cancelled effect task", task=task)
+        await cancel(task)
 
     return new_effects
 
@@ -465,7 +459,7 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
 
 
 def build_layout_tree_from_shadow(node: ShadowNode, parent: LayoutBox | None = None) -> LayoutBox:
-    box = LayoutBox(element=node.element, parent=parent, hooks=node.hooks)
+    box = LayoutBox(element=node.element, parent=parent, shadow=node)
 
     box.children.extend(build_layout_tree_from_shadow(node=child_node, parent=box) for child_node in node.children)
 
