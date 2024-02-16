@@ -1,5 +1,7 @@
 import asyncio
+from functools import lru_cache
 
+from more_itertools import intersperse
 from structlog import get_logger
 
 from counterweight.app import app
@@ -17,24 +19,23 @@ logger = get_logger()
 BLACK = Color.from_name("black")
 
 
+@lru_cache(maxsize=2**10)
+def canvas_chunk(color: Color) -> Chunk:
+    return Chunk(content="█", style=CellStyle(foreground=color))
+
+
 def canvas(
     width: int,
     height: int,
     cells: dict[Position, Color],
 ) -> list[Chunk]:
-    c: list[Chunk] = []
-    for y in range(height):
-        c.extend(
-            Chunk(
-                content="█",
-                style=CellStyle(
-                    foreground=cells.get(Position.flyweight(x, y), BLACK),
-                ),
-            )
-            for x in range(width)
+    return list(
+        intersperse(
+            Chunk.newline(),
+            (canvas_chunk(cells.get(Position.flyweight(x, y), BLACK)) for y in range(height) for x in range(width)),
+            n=width,
         )
-        c.append(Chunk.newline())
-    return c[:-1]  # strip off last newline
+    )
 
 
 @component
