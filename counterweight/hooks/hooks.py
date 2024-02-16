@@ -131,7 +131,7 @@ def use_mouse() -> Mouse:
 
         current_use_mouse_listeners.get().add(cb)
 
-        await get_event_loop().create_future()  # TODO: does this correctly wait forever until cancelled?
+        await get_event_loop().create_future()  # TODO: does this correctly wait forever until cancelled? - NO!
 
     use_effect(setup=setup, deps=())
 

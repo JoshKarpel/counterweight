@@ -150,7 +150,7 @@ async def app(
 
         screen_style, current_paint = handle_screen_size_change()
 
-        needs_render = True
+        should_render = True
         shadow = update_shadow(screen(), None)
         active_effects: set[Task[None]] = set()
 
@@ -162,7 +162,7 @@ async def app(
         do_heal_borders = True
 
         def handle_control(control: AnyControl | None) -> None:
-            nonlocal needs_render
+            nonlocal should_render
 
             nonlocal should_quit
             nonlocal should_bell
@@ -182,17 +182,18 @@ async def app(
                     should_screenshot = control
                 case Suspend():
                     should_suspend = control
-                    needs_render = True
+                    should_render = True
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
-                    needs_render = True
+                    should_render = True
 
         mouse_position = Position.flyweight(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
                 if should_quit:
-                    break
+                    logger.info("Quitting application...")
+                    raise KeyboardInterrupt
 
                 if should_bell:
                     if not headless:
@@ -264,7 +265,7 @@ async def app(
 
                     should_suspend = None
 
-                if needs_render:
+                if should_render:
                     start_render = perf_counter_ns()
                     shadow = update_shadow(screen(), shadow)
                     logger.debug(
@@ -332,7 +333,7 @@ async def app(
                         num_effects=len(active_effects),
                     )
 
-                    needs_render = False
+                    should_render = False
 
                     logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
 
@@ -364,10 +365,9 @@ async def app(
 
                     match event:
                         case StateSet():
-                            needs_render = True
+                            should_render = True
                         case TerminalResized():
-                            needs_render = True
-
+                            should_render = True
                             screen_style, current_paint = handle_screen_size_change()
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
@@ -388,7 +388,6 @@ async def app(
                                 listener(mouse)
 
                             mouse_position = a
-                    # await mouse_event_queue.join()
 
                     while True:
                         try:

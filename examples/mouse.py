@@ -85,11 +85,7 @@ def tracking_box() -> Text:
         content=canvas(
             20,
             10,
-            (
-                {mouse.absolute - rects.content.top_left(): Color.from_name("red")}
-                if mouse.absolute in rects.content
-                else {}
-            ),
+            ({mouse.absolute - rects.content.top_left(): Color.from_name("red")} if hovered.content else {}),
         ),
     )
 
@@ -150,13 +146,10 @@ def last_dragged_box() -> Text:
 
 @component
 def drag_text_box() -> Div:
-    mouse = use_mouse()
-    rects = use_rects()
+    hovered = use_hovered()
 
     return Div(
-        style=canvas_style
-        | (hover_style if mouse.absolute in rects.border else None)
-        | Style(span=Span(width=20, height=10)),
+        style=canvas_style | (hover_style if hovered.border else None) | Style(span=Span(width=20, height=10)),
         children=[
             draggable_text("Drag me!", inset_top_left),
             draggable_text("No, me!", inset_bottom_right),

@@ -93,9 +93,6 @@ def root() -> Div:
 
             return None
 
-        # TODO: Having to put weight_none on every text is annoying
-        button_style = weight_none | pad_x_1 | border_lightrounded
-
         return Div(
             style=col | align_children_center,
             children=[
@@ -103,22 +100,19 @@ def root() -> Div:
                 Div(
                     style=col | align_children_center | gap_children_2 | margin_top_4,
                     children=[
-                        Text(
+                        menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
-                            style=button_style,
-                            on_hover=text_indigo_500 | border_indigo_500,
+                            hover_style=text_indigo_500 | border_indigo_500,
                             on_mouse=lambda e: play_today() if isinstance(e, MouseUp) else None,
                         ),
-                        Text(
+                        menu_button(
                             content="[F2] Play Random",
-                            style=button_style,
-                            on_hover=text_emerald_500 | border_emerald_500,
+                            hover_style=text_emerald_500 | border_emerald_500,
                             on_mouse=lambda e: play_random() if isinstance(e, MouseUp) else None,
                         ),
-                        Text(
+                        menu_button(
                             content="[q] Quit",
-                            style=button_style,
-                            on_hover=text_red_500 | border_red_500,
+                            hover_style=text_red_500 | border_red_500,
                             on_mouse=lambda e: Quit() if isinstance(e, MouseUp) else None,
                         ),
                     ],
@@ -126,6 +120,24 @@ def root() -> Div:
             ],
             on_key=on_key,
         )
+
+
+button_style = weight_none | pad_x_1 | border_lightrounded
+
+
+@component
+def menu_button(
+    content: str,
+    on_mouse: Callable[[MouseEvent], AnyControl | None],
+    hover_style: Style,
+) -> Text:
+    hovered = use_hovered()
+
+    return Text(
+        content=content,
+        style=button_style | (hover_style if hovered.border else None),
+        on_mouse=on_mouse,
+    )
 
 
 @component
