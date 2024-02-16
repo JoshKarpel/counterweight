@@ -138,6 +138,9 @@ def use_mouse() -> Mouse:
     return mouse
 
 
+# TODO: document use_hovered
+
+
 @dataclass(frozen=True, slots=True)
 class Hovered:
     content: bool
