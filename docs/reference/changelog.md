@@ -19,8 +19,11 @@
   [`MouseDown`][counterweight.events.MouseDown], and
   [`MouseUp`][counterweight.events.MouseUp]).
   The `on_hover` style attribute on elements has been removed;
-  use the new [`use_mouse`](../hooks/use_mouse.md), [`use_rects`](../hooks/use_rects.md), and [`use_hovered`](../hooks/use_hovered.md) hooks instead,
-  and calculate the desired style in your component.
+  use the new
+  [`use_mouse`](../hooks/use_mouse.md),
+  [`use_rects`](../hooks/use_rects.md),
+  and [`use_hovered`](../hooks/use_hovered.md)
+  hooks instead, and calculate the desired style in your component.
   The goal of these changes is to provide more flexibility and control over mouse interactions
   to application authors while minimizing the work that Counterweight needs to do while rendering,
   at the cost of more complex application code for simple cases like detecting hover state.

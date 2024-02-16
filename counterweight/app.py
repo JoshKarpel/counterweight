@@ -371,20 +371,26 @@ async def app(
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
                                     handle_control(e.on_key(event))
-                        case MouseMoved(absolute=a) | MouseDown(absolute=a) | MouseUp(absolute=a):
+                        case MouseMoved() | MouseDown() | MouseUp() as m:
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
 
                                 # Send mouse events if the current *or previous* position is in the border rect
-                                if mouse_position in border_rect or a in border_rect:
+                                if mouse_position in border_rect or m.absolute in border_rect:
                                     if b.element.on_mouse:
                                         handle_control(b.element.on_mouse(event))
 
-                            mouse = Mouse(absolute=a, motion=a - mouse_position)
+                            mouse = Mouse(
+                                absolute=m.absolute,
+                                motion=m.absolute - mouse_position,
+                                # We want the button attribute to reflect whether the button is *currently pressed*,
+                                # so on MouseUp the button should be None, not the button that was released.
+                                button=m.button if not isinstance(m, MouseUp) else None,
+                            )
                             for listener in use_mouse_listeners:
                                 listener(mouse)
 
-                            mouse_position = a
+                            mouse_position = m.absolute
 
                     while True:
                         try:

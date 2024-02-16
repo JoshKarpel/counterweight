@@ -9,7 +9,6 @@ from counterweight._context_vars import current_hook_state, current_use_mouse_li
 from counterweight._utils import forever
 from counterweight.geometry import Position, Rect
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
-from counterweight.layout import LayoutBoxDimensions
 
 logger = get_logger()
 
@@ -68,10 +67,6 @@ def use_effect(setup: Setup, deps: Deps | None = None) -> None:
     return current_hook_state.get().use_effect(setup, deps)
 
 
-def use_dims() -> LayoutBoxDimensions:
-    return current_hook_state.get().dims
-
-
 @dataclass(frozen=True, slots=True)
 class Rects:
     content: Rect
@@ -90,7 +85,7 @@ def use_rects() -> Rects:
             In the initial render, the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
     """
-    dims = use_dims()
+    dims = current_hook_state.get().dims
 
     p, b, m = dims.padding_border_margin_rects()
 
@@ -110,8 +105,11 @@ class Mouse:
     motion: Position
     """The difference in the `absolute` position of the mouse since the last render cycle."""
 
+    button: int | None
+    """The button that is currently pressed, or `None` if no button is pressed."""
 
-_INITIAL_MOUSE = Mouse(absolute=Position.flyweight(-1, -1), motion=Position.flyweight(0, 0))
+
+_INITIAL_MOUSE = Mouse(absolute=Position.flyweight(-1, -1), motion=Position.flyweight(0, 0), button=None)
 
 
 def use_mouse() -> Mouse:
@@ -138,9 +136,6 @@ def use_mouse() -> Mouse:
     use_effect(setup=setup, deps=())
 
     return mouse
-
-
-# TODO: document use_hovered
 
 
 @dataclass(frozen=True, slots=True)
