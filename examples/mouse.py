@@ -9,7 +9,7 @@ from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
-from counterweight.hooks.hooks import use_hovered, use_mouse, use_rects, use_state
+from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
 from counterweight.styles import Span
 from counterweight.styles.utilities import *
 

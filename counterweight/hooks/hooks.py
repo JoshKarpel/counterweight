@@ -83,8 +83,8 @@ class Rects:
 def use_rects() -> Rects:
     """
     Returns:
-        The rectangular areas of the
-            content, padding, border, and margin of
+        A recording describing the rectangular areas of the
+            `content`, `padding`, `border`, and `margin` of
             the calling component's top-level element
             *on the previous render cycle*.
             In the initial render, the returned rectangles will all be positioned
@@ -117,7 +117,7 @@ _INITIAL_MOUSE = Mouse(absolute=Position.flyweight(-1, -1), motion=Position.flyw
 def use_mouse() -> Mouse:
     """
     Returns:
-        The current state of the mouse.
+        A record describing the current state of the mouse.
     """
     # Why bother making this a state hook when we could instead store the mouse state directly in a context var?
     # Triggering a state change is a way to signal to the render loop that a component cares about the mouse state
@@ -152,6 +152,11 @@ class Hovered:
 
 
 def use_hovered() -> Hovered:
+    """
+    Returns:
+        A record describing which of the calling component's top-level element's
+            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside.
+    """
     mouse = use_mouse()
     rects = use_rects()
 

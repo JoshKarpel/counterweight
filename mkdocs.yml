@@ -104,6 +104,7 @@ nav:
     - hooks/use_ref.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_hovered.md
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md
