@@ -13,8 +13,9 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import KeyPressed, MouseEvent, MouseUp
 from counterweight.hooks import Setter, use_state
+from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -106,19 +107,19 @@ def root() -> Div:
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             style=button_style,
                             on_hover=text_indigo_500 | border_indigo_500,
-                            on_mouse_up=lambda e: play_today(),
+                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) else None,
                         ),
                         Text(
                             content="[F2] Play Random",
                             style=button_style,
                             on_hover=text_emerald_500 | border_emerald_500,
-                            on_mouse_up=lambda e: play_random(),
+                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) else None,
                         ),
                         Text(
                             content="[q] Quit",
                             style=button_style,
                             on_hover=text_red_500 | border_red_500,
-                            on_mouse_up=lambda e: Quit(),
+                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) else None,
                         ),
                     ],
                 ),
@@ -275,11 +276,16 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
 
 @component
 def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyControl | None] | None = None) -> Text:
+    hovered = use_hovered()
+
+    def on_mouse(event: MouseEvent) -> None:
+        if on_key and isinstance(event, MouseUp):
+            on_key(KeyPressed(key=letter))
+
     return Text(
         content=letter,
-        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
-        on_mouse_up=lambda e: on_key(KeyPressed(key=letter)) if on_key else None,
-        on_hover=border_double,
+        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0 | (border_double if hovered.border else None),
+        on_mouse=on_mouse,
     )
 
 

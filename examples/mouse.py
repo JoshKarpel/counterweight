@@ -9,7 +9,7 @@ from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
-from counterweight.hooks.hooks import use_mouse, use_rects, use_state
+from counterweight.hooks.hooks import use_hovered, use_mouse, use_rects, use_state
 from counterweight.styles import Span
 from counterweight.styles.utilities import *
 
@@ -78,9 +78,10 @@ hover_style = border_heavy | border_amber_600
 def tracking_box() -> Text:
     mouse = use_mouse()
     rects = use_rects()
+    hovered = use_hovered()
 
     return Text(
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
+        style=canvas_style | (hover_style if hovered.border else None),
         content=canvas(
             20,
             10,
@@ -95,8 +96,8 @@ def tracking_box() -> Text:
 
 @component
 def last_clicked_box() -> Text:
-    mouse = use_mouse()
     rects = use_rects()
+    hovered = use_hovered()
 
     clicked, set_clicked = use_state(Position.flyweight(0, 0))
 
@@ -107,7 +108,7 @@ def last_clicked_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
+        style=canvas_style | (hover_style if hovered.border else None),
         content=canvas(
             20,
             10,
@@ -120,17 +121,17 @@ def last_clicked_box() -> Text:
 
 @component
 def last_dragged_box() -> Text:
-    mouse = use_mouse()
     rects = use_rects()
+    hovered = use_hovered()
 
-    start, set_start = use_state(None)
-    end, set_end = use_state(None)
+    start, set_start = use_state(Position.flyweight(0, 0))
+    end, set_end = use_state(Position.flyweight(0, 0))
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseDown(absolute=a):
                 set_start(a - rects.content.top_left())
-                set_end(None)
+                set_end(a - rects.content.top_left())
             case MouseUp(absolute=a):
                 set_end(a - rects.content.top_left())
             case MouseMoved(absolute=a, button=b) if b is not None:
@@ -138,8 +139,12 @@ def last_dragged_box() -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=canvas_style | (hover_style if mouse.absolute in rects.border else None),
-        content=canvas(20, 10, {p: Color.from_name("khaki") for p in start.fill_to(end)} if start and end else {}),
+        style=canvas_style | (hover_style if hovered.border else None),
+        content=canvas(
+            20,
+            10,
+            {p: Color.from_name("khaki") for p in start.fill_to(end)} if start != end else {},
+        ),
     )
 
 

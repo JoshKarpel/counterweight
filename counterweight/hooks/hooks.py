@@ -136,3 +136,23 @@ def use_mouse() -> Mouse:
     use_effect(setup=setup, deps=())
 
     return mouse
+
+
+@dataclass(frozen=True, slots=True)
+class Hovered:
+    content: bool
+    padding: bool
+    border: bool
+    margin: bool
+
+
+def use_hovered() -> Hovered:
+    mouse = use_mouse()
+    rects = use_rects()
+
+    return Hovered(
+        content=mouse.absolute in rects.content,
+        padding=mouse.absolute in rects.padding,
+        border=mouse.absolute in rects.border,
+        margin=mouse.absolute in rects.margin,
+    )

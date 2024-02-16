@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Literal
 
@@ -99,7 +100,8 @@ class LayoutBox:
             node.second_pass()
 
         for node in top_down:
-            node.hooks.dims = node.dims  # TODO: copy?
+            if node.hooks is not None:
+                node.hooks.dims = deepcopy(node.dims)
 
     def first_pass(self) -> None:
         style = self.element.style
