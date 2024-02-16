@@ -31,6 +31,7 @@ from counterweight.events import (
     TerminalResized,
 )
 from counterweight.geometry import Position
+from counterweight.hooks import Mouse
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.layout import LayoutBox
@@ -108,7 +109,7 @@ async def app(
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
-    use_mouse_listeners: WeakSet[Callable[[Position], None]] = WeakSet()
+    use_mouse_listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
     current_use_mouse_listeners.set(use_mouse_listeners)
 
     loop = get_running_loop()
@@ -400,8 +401,9 @@ async def app(
                                         # TODO: note that you get mouse events in the border rect, but relative is relative to the content area
                                         handle_control(b.element.on_mouse(event))
 
+                            mouse = Mouse(absolute=a, motion=a - mouse_position)
                             for listener in use_mouse_listeners:
-                                listener(a)
+                                listener(mouse)
 
                             mouse_position = a
                     # await mouse_event_queue.join()

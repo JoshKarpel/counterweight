@@ -107,17 +107,23 @@ class Mouse:
     absolute: Position
     """The absolute position of the mouse on the screen (i.e., the top-left corner of the screen is `Position(x=0, y=0)`)."""
 
+    motion: Position
+    """The difference in the `absolute` position of the mouse since the last render cycle."""
+
+
+_INITIAL_MOUSE = Mouse(absolute=Position.flyweight(-1, -1), motion=Position.flyweight(0, 0))
+
 
 def use_mouse() -> Mouse:
     """
     Returns:
         The current state of the mouse.
     """
-    absolute, set_absolute_motion_button = use_state(Position.flyweight(-1, -1))
+    mouse, set_mouse = use_state(_INITIAL_MOUSE)
 
     async def setup() -> None:
-        def cb(absolute: Position) -> None:  # this def is a strong binding for cb
-            set_absolute_motion_button(absolute)
+        def cb(mouse: Mouse) -> None:  # this def is a strong binding for cb
+            set_mouse(mouse)
 
         current_use_mouse_listeners.get().add(cb)
 
@@ -125,6 +131,4 @@ def use_mouse() -> Mouse:
 
     use_effect(setup=setup, deps=())
 
-    return Mouse(
-        absolute=absolute,
-    )
+    return mouse
