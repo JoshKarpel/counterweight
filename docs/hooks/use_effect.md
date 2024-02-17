@@ -2,9 +2,9 @@
 
 ## API
 
+::: counterweight.hooks.use_effect
 ::: counterweight.hooks.Setup
 ::: counterweight.hooks.Deps
-::: counterweight.hooks.use_effect
 
 ## Effect Cancellation
 

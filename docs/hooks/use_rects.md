@@ -2,8 +2,8 @@
 
 ## API
 
-::: counterweight.hooks.Rects
 ::: counterweight.hooks.use_rects
+::: counterweight.hooks.Rects
 
 !!! tip "Use `use_hovered` for detecting hover state"
 

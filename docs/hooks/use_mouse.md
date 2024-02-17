@@ -2,8 +2,8 @@
 
 ## API
 
-::: counterweight.hooks.Mouse
 ::: counterweight.hooks.use_mouse
+::: counterweight.hooks.Mouse
 
 !!! tip "`use_mouse` vs. `on_mouse`"
 

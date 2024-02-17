@@ -9,7 +9,6 @@ information about which key was pressed.
 
 ::: counterweight.events.KeyPressed
 
-
 ## Handling Mouse Events
 
 Each time the state of the mouse changes,

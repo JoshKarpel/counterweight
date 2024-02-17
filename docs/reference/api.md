@@ -18,22 +18,25 @@
 
 ## Hooks
 
+::: counterweight.hooks.use_state
 ::: counterweight.hooks.Getter
 ::: counterweight.hooks.Setter
-::: counterweight.hooks.use_state
 
+::: counterweight.hooks.use_effect
 ::: counterweight.hooks.Setup
 ::: counterweight.hooks.Deps
-::: counterweight.hooks.use_effect
 
-::: counterweight.hooks.Ref
 ::: counterweight.hooks.use_ref
+::: counterweight.hooks.Ref
 
-::: counterweight.hooks.Mouse
 ::: counterweight.hooks.use_mouse
+::: counterweight.hooks.Mouse
 
-::: counterweight.hooks.Rects
 ::: counterweight.hooks.use_rects
+::: counterweight.hooks.Rects
+
+::: counterweight.hooks.use_hovered
+::: counterweight.hooks.Hovered
 
 
 ## Events

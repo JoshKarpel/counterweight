@@ -2,5 +2,5 @@
 
 ## API
 
-::: counterweight.hooks.Hovered
 ::: counterweight.hooks.use_hovered
+::: counterweight.hooks.Hovered

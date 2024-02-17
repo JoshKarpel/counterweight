@@ -2,6 +2,6 @@
 
 ## API
 
+::: counterweight.hooks.use_state
 ::: counterweight.hooks.Getter
 ::: counterweight.hooks.Setter
-::: counterweight.hooks.use_state

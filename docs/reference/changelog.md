@@ -14,7 +14,7 @@
 - [#112](https://github.com/JoshKarpel/counterweight/pull/112)
   Major, backwards-incompatible changes to how Counterweight handles mouse interactions.
   The `on_mouse_down` and `on_mouse_up` event handlers have been removed;
-  use the new `on_mouse` event handler instead, which receives all mouse events
+  use the new combined `on_mouse` event handler instead, which receives all mouse events
   ([`MouseMoved`][counterweight.events.MouseMoved],
   [`MouseDown`][counterweight.events.MouseDown], and
   [`MouseUp`][counterweight.events.MouseUp]).
