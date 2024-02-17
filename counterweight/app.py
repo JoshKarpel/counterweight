@@ -150,7 +150,7 @@ async def app(
         screen_style, current_paint = handle_screen_size_change()
 
         should_render = True
-        shadow = update_shadow(screen(), None)
+        shadow = None
         active_effects: set[Task[None]] = set()
 
         should_quit = False
