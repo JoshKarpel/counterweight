@@ -162,7 +162,7 @@ def draggable_text(content: str, start: Style) -> Text:
     mouse = use_mouse()
     offset, set_offset = use_state(Position.flyweight(0, 0))
 
-    # TODO: if you don't slow down, your mouse can easily outrun the render speed?
+    # TODO: if you don't go slow, your mouse can easily outrun the render speed
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseMoved(absolute=a, button=1):
