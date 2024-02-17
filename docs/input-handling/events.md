@@ -1,18 +1,25 @@
 # Events
 
-## API
+## Handling Keyboard Events
 
-::: counterweight.events.AnyEvent
+Each time a key is pressed,
+Counterweight calls the `on_key` event handler
+of every element with a `KeyPressed` event that holds
+information about which key was pressed.
 
 ::: counterweight.events.KeyPressed
+
+## Handling Mouse Events
+
+Each time the state of the mouse changes,
+Counterweight emits a _single_ mouse event,
+one of `MouseMoved`, `MouseDown`, or `MouseUp`.
+
+::: counterweight.events.MouseEvent
+
 ::: counterweight.events.MouseMoved
 ::: counterweight.events.MouseDown
 ::: counterweight.events.MouseUp
-
-## Mouse Event Semantics
-
-Each time the state of the mouse changes, Counterweight emits a _single_ mouse event,
-one of `MouseMoved`, `MouseDown`, or `MouseUp`.
 
 For example, consider the following series of mouse actions and corresponding events:
 
@@ -39,3 +46,16 @@ For example, consider the following series of mouse actions and corresponding ev
 
     You should always use the numbers instead of names to refer to mouse buttons to ensure that your application works
     as expected for both left-handed and right-handed users.
+
+Counterweight calls the
+`on_mouse` event handler of each element whose border rectangle
+contains the new mouse position or the previous mouse position
+with the relevant mouse event object.
+
+!!! tip "`use_mouse` vs. `on_mouse`"
+
+    `use_mouse` and `on_mouse` provide similar functionality, but `use_mouse` is a hook and `on_mouse` is an event handler.
+    `use_mouse` is more efficient when a component depends only on the *current* state of the mouse
+    (e.g., the current position, or whether a button is currently pressed),
+    while `on_mouse` is more convenient when a component needs to respond to *changes* in the mouse state,
+    (e.g., a button release ([`MouseUp`][counterweight.events.MouseUp]).

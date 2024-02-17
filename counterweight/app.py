@@ -10,11 +10,12 @@ from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
 from typing import Iterable, TextIO
+from weakref import WeakSet
 
 from structlog import get_logger
 
-from counterweight._context_vars import current_event_queue
-from counterweight._utils import drain_queue, maybe_await
+from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
+from counterweight._utils import cancel, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
@@ -30,9 +31,9 @@ from counterweight.events import (
     TerminalResized,
 )
 from counterweight.geometry import Position
-from counterweight.hooks.impls import UseEffect
+from counterweight.hooks import Mouse
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import build_layout_tree_from_concrete_element_tree
+from counterweight.layout import LayoutBox
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -46,6 +47,12 @@ from counterweight.paint import BLANK, Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Span, Style
 from counterweight.styles.styles import Flex
+
+SCREEN_LAYOUT = Flex(
+    direction="column",
+    justify_children="start",
+    align_children="stretch",
+)
 
 logger = get_logger()
 
@@ -75,7 +82,6 @@ async def app(
             This is primarily useful when combined with the `autopilot` parameter.
         dimensions: The dimensions of the terminal window, in characters.
             If `None`, the dimensions of the terminal window will be used.
-            Note that if the terminal is resized, the application will still be notified and will update its dimensions accordingly.
         autopilot: An iterable of events and controls to be processed by the application.
             This is primarily useful for testing or generating screenshots programmatically.
             Note that the autopilot will not be processed until after the initial render cycle,
@@ -83,29 +89,32 @@ async def app(
     """
     configure_logging()
 
-    w, h = dimensions or shutil.get_terminal_size()
+    def handle_screen_size_change() -> tuple[Style, Paint]:
+        w, h = dimensions or shutil.get_terminal_size()
+
+        ss = Style(
+            layout=SCREEN_LAYOUT,
+            span=Span(width=w, height=h),
+        )
+
+        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+
+        if not headless:
+            output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
+
+        return ss, cp
 
     @component
     def screen() -> Div:
-        return Div(
-            children=[root()],
-            style=Style(
-                layout=Flex(
-                    direction="column",
-                    justify_children="start",
-                    align_children="stretch",
-                ),
-                span=Span(
-                    width=w,
-                    height=h,
-                ),
-            ),
-        )
+        return Div(children=(root(),), style=screen_style)
 
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
+
+    use_mouse_listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
+    current_use_mouse_listeners.set(use_mouse_listeners)
 
     loop = get_running_loop()
 
@@ -138,15 +147,10 @@ async def app(
             )
             key_thread.start()
 
-        current_paint: Paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
-        instructions = paint_to_instructions(paint=current_paint)
+        screen_style, current_paint = handle_screen_size_change()
 
-        if not headless:
-            output_stream.write(instructions)
-            output_stream.flush()
-
-        needs_render = True
-        shadow = update_shadow(screen(), None)
+        should_render = True
+        shadow = None
         active_effects: set[Task[None]] = set()
 
         should_quit = False
@@ -157,7 +161,7 @@ async def app(
         do_heal_borders = True
 
         def handle_control(control: AnyControl | None) -> None:
-            nonlocal needs_render
+            nonlocal should_render
 
             nonlocal should_quit
             nonlocal should_bell
@@ -177,17 +181,18 @@ async def app(
                     should_screenshot = control
                 case Suspend():
                     should_suspend = control
-                    needs_render = True
+                    should_render = True
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
-                    needs_render = True
+                    should_render = True
 
         mouse_position = Position.flyweight(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
                 if should_quit:
-                    break
+                    logger.info("Quitting application...")
+                    raise KeyboardInterrupt
 
                 if should_bell:
                     if not headless:
@@ -249,18 +254,7 @@ async def app(
 
                         allow_key_thread.set()
 
-                    # TODO: below is the same as a terminal resize, should probably refactor
-                    # note: we may have missed resize events while suspended, so we definitely want to get term size here
-
-                    w, h = shutil.get_terminal_size()
-
-                    # start from scratch
-                    current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
-                    instructions = paint_to_instructions(paint=current_paint)
-                    if not headless:
-                        output_stream.write(CLEAR_SCREEN + instructions)
-                        # don't flush here, we don't necessarily need to flush until the next render
-                        # probably we can even store this until the next render happens and output it then
+                    screen_style, current_paint = handle_screen_size_change()
 
                     logger.debug(
                         "Resuming application",
@@ -270,7 +264,7 @@ async def app(
 
                     should_suspend = None
 
-                if needs_render:
+                if should_render:
                     start_render = perf_counter_ns()
                     shadow = update_shadow(screen(), shadow)
                     logger.debug(
@@ -278,30 +272,12 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
                     )
 
-                    start_concrete = perf_counter_ns()
-                    element_tree = build_concrete_element_tree(shadow)
-                    logger.debug(
-                        "Extracted concrete element tree from shadow tree",
-                        elapsed_ns=f"{perf_counter_ns() - start_concrete:_}",
-                    )
-
                     start_layout = perf_counter_ns()
-                    layout_tree = build_layout_tree_from_concrete_element_tree(element_tree)
+                    layout_tree = build_layout_tree_from_shadow(shadow)
                     layout_tree.compute_layout()
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
-                    )
-
-                    start_hover = perf_counter_ns()
-                    for b in layout_tree.walk_from_bottom():
-                        _, border_rect, _ = b.dims.padding_border_margin_rects()
-                        if mouse_position in border_rect:
-                            # TODO: hover changing layout doesn't really make sense here...
-                            b.element = b.element.model_copy(update={"style": b.element.style | b.element.on_hover})
-                    logger.debug(
-                        "Applied hover styles",
-                        elapsed_ns=f"{perf_counter_ns() - start_hover:_}",
                     )
 
                     start_paint = perf_counter_ns()
@@ -351,12 +327,12 @@ async def app(
                     start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
                     logger.debug(
-                        "Handled effects",
+                        "Reconciled effects",
                         elapsed_ns=f"{perf_counter_ns() - start_effects:_}",
-                        num_effects=len(active_effects),
+                        num_active_effects=len(active_effects),
                     )
 
-                    needs_render = False
+                    should_render = False
 
                     logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
 
@@ -381,43 +357,40 @@ async def app(
 
                 start_event_handling = perf_counter_ns()
                 while events:
-                    start_handle_event = perf_counter_ns()
+                    # start_handle_event = perf_counter_ns()
 
                     event = events.popleft()
 
                     match event:
                         case StateSet():
-                            needs_render = True
+                            should_render = True
                         case TerminalResized():
-                            needs_render = True
-                            w, h = shutil.get_terminal_size()
-
-                            # start from scratch
-                            current_paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
-                            instructions = paint_to_instructions(paint=current_paint)
-                            if not headless:
-                                output_stream.write(CLEAR_SCREEN + instructions)
-                                # don't flush here, we don't necessarily need to flush until the next render
-                                # probably we can even store this until the next render happens and output it then
+                            should_render = True
+                            screen_style, current_paint = handle_screen_size_change()
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
                                     handle_control(e.on_key(event))
-                        case MouseMoved(position=p):
-                            needs_render = True
-                            mouse_position = p
-                        case MouseDown():
+                        case MouseMoved() | MouseDown() | MouseUp() as m:
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
-                                if mouse_position in border_rect:
-                                    if b.element.on_mouse_down:
-                                        handle_control(b.element.on_mouse_down(event))
-                        case MouseUp():
-                            for b in layout_tree.walk_from_bottom():
-                                _, border_rect, _ = b.dims.padding_border_margin_rects()
-                                if mouse_position in border_rect:
-                                    if b.element.on_mouse_up:
-                                        handle_control(b.element.on_mouse_up(event))
+
+                                # Send mouse events if the current *or previous* position is in the border rect
+                                if mouse_position in border_rect or m.absolute in border_rect:
+                                    if b.element.on_mouse:
+                                        handle_control(b.element.on_mouse(event))
+
+                            mouse = Mouse(
+                                absolute=m.absolute,
+                                motion=m.absolute - mouse_position,
+                                # We want the button attribute to reflect whether the button is *currently pressed*,
+                                # so on MouseUp the button should be None, not the button that was released.
+                                button=m.button if not isinstance(m, MouseUp) else None,
+                            )
+                            for listener in use_mouse_listeners:
+                                listener(mouse)
+
+                            mouse_position = m.absolute
 
                     while True:
                         try:
@@ -427,11 +400,11 @@ async def app(
 
                     num_events_handled += 1
 
-                    logger.debug(
-                        "Handled event",
-                        event_obj=event,
-                        elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
-                    )
+                    # logger.debug(
+                    #     "Handled event",
+                    #     event_obj=event,
+                    #     elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
+                    # )
 
                 logger.debug(
                     "Handled events",
@@ -456,22 +429,19 @@ async def app(
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
     new_effects: set[Task[None]] = set()
     for node in shadow.walk():
-        for effect in node.hooks.data:  # TODO: reaching pretty deep here
-            if isinstance(effect, UseEffect):
-                if effect.deps != effect.new_deps or effect.new_deps is None:
-                    effect.deps = effect.new_deps
-                    t = task_group.create_task(effect.setup())
-                    new_effects.add(t)
-                    effect.task = t
-                    logger.debug("Created effect", effect=effect)
-                else:
-                    if effect.task is None:
-                        raise Exception("Effect task should never be None at this point")
-                    new_effects.add(effect.task)
+        for effect in node.hooks.effects:
+            if effect.deps != effect.new_deps or effect.new_deps is None:
+                effect.deps = effect.new_deps
+                t = task_group.create_task(effect.setup())
+                new_effects.add(t)
+                effect.task = t
+            else:
+                if effect.task is None:
+                    raise Exception("Effect task should never be None at this point")
+                new_effects.add(effect.task)
 
     for task in active_effects - new_effects:
-        task.cancel()
-        logger.debug("Cancelled effect task", task=task)
+        await cancel(task)
 
     return new_effects
 
@@ -492,3 +462,11 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
             diff[pos] = new_cell
 
     return diff
+
+
+def build_layout_tree_from_shadow(node: ShadowNode, parent: LayoutBox | None = None) -> LayoutBox:
+    box = LayoutBox(element=node.element, parent=parent, shadow=node)
+
+    box.children.extend(build_layout_tree_from_shadow(node=child_node, parent=box) for child_node in node.children)
+
+    return box

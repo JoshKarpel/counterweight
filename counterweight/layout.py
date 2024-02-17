@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Iterable, Literal
+from typing import TYPE_CHECKING, Iterable, Literal
 
 from more_itertools import take
 from structlog import get_logger
 
 from counterweight._utils import halve_integer, partition_int
-from counterweight.components import Component
 from counterweight.elements import AnyElement, CellPaint
 from counterweight.geometry import Edge, Rect
 from counterweight.styles.styles import BorderEdge
+
+if TYPE_CHECKING:
+    from counterweight.shadow import ShadowNode
+
 
 logger = get_logger()
 
@@ -60,6 +64,7 @@ class LayoutBoxDimensions:
 class LayoutBox:
     element: AnyElement
     parent: LayoutBox | None
+    shadow: ShadowNode
     children: list[LayoutBox] = field(default_factory=list)
     dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
 
@@ -94,6 +99,10 @@ class LayoutBox:
 
         for node in top_down:
             node.second_pass()
+
+        for node in top_down:
+            if node.shadow.hooks is not None:
+                node.shadow.hooks.dims = deepcopy(node.dims)
 
     def first_pass(self) -> None:
         style = self.element.style
@@ -422,21 +431,6 @@ class LayoutBox:
                     child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.width()
                 elif layout.align_children == "stretch" and child.element.style.span.width == "auto":
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
-
-
-def build_layout_tree_from_concrete_element_tree(element: AnyElement, parent: LayoutBox | None = None) -> LayoutBox:
-    box = LayoutBox(element=element, parent=parent)
-
-    box.children.extend(
-        build_layout_tree_from_concrete_element_tree(
-            element=child,
-            parent=box,
-        )
-        for child in element.children
-        if not isinstance(child, Component)
-    )
-
-    return box
 
 
 def wrap_cells(

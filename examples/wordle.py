@@ -13,8 +13,9 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import KeyPressed, MouseEvent, MouseUp
 from counterweight.hooks import Setter, use_state
+from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -92,9 +93,6 @@ def root() -> Div:
 
             return None
 
-        # TODO: Having to put weight_none on every text is annoying
-        button_style = weight_none | pad_x_1 | border_lightrounded
-
         return Div(
             style=col | align_children_center,
             children=[
@@ -102,29 +100,44 @@ def root() -> Div:
                 Div(
                     style=col | align_children_center | gap_children_2 | margin_top_4,
                     children=[
-                        Text(
+                        menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
-                            style=button_style,
-                            on_hover=text_indigo_500 | border_indigo_500,
-                            on_mouse_up=lambda e: play_today(),
+                            hover_style=text_indigo_500 | border_indigo_500,
+                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
-                        Text(
+                        menu_button(
                             content="[F2] Play Random",
-                            style=button_style,
-                            on_hover=text_emerald_500 | border_emerald_500,
-                            on_mouse_up=lambda e: play_random(),
+                            hover_style=text_emerald_500 | border_emerald_500,
+                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
-                        Text(
+                        menu_button(
                             content="[q] Quit",
-                            style=button_style,
-                            on_hover=text_red_500 | border_red_500,
-                            on_mouse_up=lambda e: Quit(),
+                            hover_style=text_red_500 | border_red_500,
+                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                     ],
                 ),
             ],
             on_key=on_key,
         )
+
+
+button_style = weight_none | pad_x_1 | border_lightrounded
+
+
+@component
+def menu_button(
+    content: str,
+    on_mouse: Callable[[MouseEvent], AnyControl | None],
+    hover_style: Style,
+) -> Text:
+    hovered = use_hovered()
+
+    return Text(
+        content=content,
+        style=button_style | (hover_style if hovered.border else None),
+        on_mouse=on_mouse,
+    )
 
 
 @component
@@ -275,12 +288,18 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
 
 @component
 def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyControl | None] | None = None) -> Text:
+    hovered = use_hovered()
+
+    def on_mouse(event: MouseEvent) -> None:
+        if on_key and isinstance(event, MouseUp) and event.button == 1:
+            on_key(KeyPressed(key=letter))
+
     return Text(
         content=letter,
-        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0,
-        on_mouse_up=lambda e: on_key(KeyPressed(key=letter)) if on_key else None,
-        on_hover=border_double,
+        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0 | (border_double if hovered.border else None),
+        on_mouse=on_mouse,
     )
 
 
-asyncio.run(app(root))
+if __name__ == "__main__":
+    asyncio.run(app(root))

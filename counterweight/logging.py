@@ -27,7 +27,7 @@ def configure_logging() -> None:
         wrapper_class=structlog.make_filtering_bound_logger(NOTSET),
         context_class=dict,
         logger_factory=WriteLoggerFactory(DEVLOG_FILE.open(mode="w")),
-        cache_logger_on_first_use=True,
+        cache_logger_on_first_use=False,
     )
 
 

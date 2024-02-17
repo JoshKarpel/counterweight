@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Union
 
@@ -21,20 +23,29 @@ class KeyPressed(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseMoved(_Event):
-    position: Position
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
     button: int | None
+    """The button that was held during the motion, or `None` if no button was pressed."""
 
 
 @dataclass(frozen=True, slots=True)
 class MouseDown(_Event):
-    position: Position
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
     button: int
+    """The mouse button that was pressed during the motion."""
 
 
 @dataclass(frozen=True, slots=True)
 class MouseUp(_Event):
-    position: Position
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
     button: int
+    """The mouse button that was released during the motion."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,12 +58,18 @@ class Dummy(_Event):
     pass
 
 
-AnyEvent = Union[
-    TerminalResized,
-    KeyPressed,
+MouseEvent = Union[
     MouseMoved,
     MouseDown,
     MouseUp,
+]
+
+AnyEvent = Union[
+    TerminalResized,
+    KeyPressed,
     StateSet,
+    MouseMoved,
+    MouseDown,
+    MouseUp,
     Dummy,
 ]
