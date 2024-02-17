@@ -4,7 +4,7 @@
 
 ## `0.0.8`
 
-## Changed
+### Changed
 
 - [#110](https://github.com/JoshKarpel/counterweight/pull/110)
   Calling a `use_state` setter with a `value` equal to the current value of the state

@@ -53,7 +53,7 @@ def use_ref(initial_value: Getter[T] | T) -> Ref[T]:
     return current_hook_state.get().use_ref(initial_value)
 
 
-def use_effect(setup: Setup, deps: Deps | None = None) -> None:
+def use_effect(setup: Setup, deps: Deps = None) -> None:
     """
     Parameters:
         setup: The setup function that will be called when the component first mounts
