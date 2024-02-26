@@ -2,6 +2,16 @@
 
 ## Next
 
+## `0.0.9`
+
+### Fixed
+
+- [#121](https://github.com/JoshKarpel/counterweight/pull/121)
+  A change in effect reconciliation introduced in `0.0.8` caused a regression in the behavior of `use_effect`,
+  where if the `setup` function `return`ed (i.e., stopped itself),
+  Counterweight would crash when trying to cancel the effect.
+  This now works again.
+
 ## `0.0.8`
 
 ### Changed
