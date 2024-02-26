@@ -50,3 +50,14 @@ async def test_cancel_with_task_that_returns_after_cancellation() -> None:
 
     with pytest.raises(RuntimeError):
         await cancel(task)
+
+
+async def test_cancel_with_task_that_has_already_finished() -> None:
+    async def t() -> None:
+        return
+
+    task = create_task(t())
+
+    await task  # run the task to completion
+
+    await cancel(task)
