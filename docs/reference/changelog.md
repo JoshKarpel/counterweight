@@ -4,6 +4,8 @@
 
 ## `0.0.9`
 
+Released `2024-02-27`
+
 ### Fixed
 
 - [#121](https://github.com/JoshKarpel/counterweight/pull/121)
@@ -13,6 +15,8 @@
   This now works again.
 
 ## `0.0.8`
+
+Released `2024-02-17`
 
 ### Changed
 
