@@ -81,7 +81,14 @@ async def forever() -> None:
 
 async def cancel(task: Task[T]) -> None:
     # Based on https://discuss.python.org/t/asyncio-cancel-a-cancellation-utility-as-a-coroutine-this-time-with-feeling/26304/2
+    if task.done():
+        # If the task has already completed, there's nothing to cancel.
+        # This can happen if, for example, an effect aborts itself by returning,
+        # and then we try to cancel it when reconciling effects.
+        return
+
     task.cancel()
+
     try:
         await task
     except CancelledError:
