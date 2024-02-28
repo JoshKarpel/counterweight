@@ -19,9 +19,6 @@ def root() -> Div:
                 style=z(0) | absolute(4, 3) | border_lightrounded | margin_1 | margin_teal_600,
                 content="z =  0",
             ),
-            # TODO: not showing up?
-            # oh... because the div is drawing a background at z=0
-            # ... ugh
             Text(
                 style=z(-1) | absolute(0, 0) | border_lightrounded | margin_1 | margin_red_600,
                 content="z = -1",
