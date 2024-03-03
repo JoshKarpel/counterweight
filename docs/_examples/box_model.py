@@ -10,12 +10,12 @@ from counterweight.styles.utilities import *
 def root() -> Div:
     return Div(
         style=content_green_500
-        | padding_pink_500
+        | padding_orange_500
         | pad_x_2
         | pad_y_1
         | border_lightrounded
-        | border_bg_red_500
-        | margin_blue_500
+        | border_bg_blue_500
+        | margin_red_500
         | margin_x_2
         | margin_y_1
     )
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         app(
             root,
             headless=True,
-            dimensions=(30, 12),
+            dimensions=(30, 10),
             autopilot=[
                 Screenshot.to_file(THIS_DIR / "box-model.svg", indent=1),
                 Quit(),

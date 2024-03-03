@@ -7,7 +7,7 @@ Counterweight's layout system is roughly based on the
 When you build your application, you represent it as a hierarchy of nested elements.
 The layout system constructs a mirrored nested hierarchy of layout boxes,
 each of which has a size and position (calculated by the layout system).
-Each layout box is composed of four **areas** or **rectangles**:
+Each layout box is composed of four nested **rectangles**:
 
 - **Content**: The area where the element's "content" is laid out.
   What the content actually is depends on the element's type.
