@@ -334,6 +334,7 @@ for color, shades in COLORS.items():
                 f"border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background={color}_{shade})))",
                 f"margin_{color}_{shade} = Style(margin=Margin(color={color}_{shade}))",
                 f"padding_{color}_{shade} = Style(padding=Padding(color={color}_{shade}))",
+                f"content_{color}_{shade} = Style(content=Content(color={color}_{shade}))",
             ]
         )
 

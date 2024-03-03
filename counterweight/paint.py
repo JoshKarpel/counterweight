@@ -36,15 +36,15 @@ class P:
 
     @classmethod
     @lru_cache(maxsize=2**10)
-    def blank(cls, z: int) -> P:
+    def blank(cls, color: Color, z: int) -> P:
         return cls(
             char=" ",
-            style=CellStyle(background=Color.from_name("black")),
+            style=CellStyle(background=color),
             z=z,
         )
 
 
-BLANK = P.blank(z=-1_000_000)
+BLANK = P.blank(color=Color.from_name("black"), z=-1_000_000)
 
 
 Paint = dict[Position, P]
@@ -65,8 +65,8 @@ def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
 
 
 @lru_cache(maxsize=2**10)
-def paint_bg(x_range: range, y_range: range, z: int) -> Paint:
-    return {Position.flyweight(x, y): P.blank(z=z) for x, y in product(x_range, y_range)}
+def paint_bg(x_range: range, y_range: range, z: int, color: Color) -> Paint:
+    return {Position.flyweight(x, y): P.blank(color=color, z=z) for x, y in product(x_range, y_range)}
 
 
 def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
@@ -92,7 +92,19 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # so that "anonymous" grouping elements don't hide things behind them.
 
     return (
-        (paint_bg(margin_rect.x_range(), margin_rect.y_range(), element.style.layout.z) | paint) if paint else paint,
+        (
+            (
+                paint_bg(
+                    x_range=margin_rect.x_range(),
+                    y_range=margin_rect.y_range(),
+                    color=element.style.content.color,
+                    z=element.style.layout.z,
+                )
+                | paint
+            )
+            if paint
+            else paint
+        ),
         bhh,
         element.style.layout.z,
     )
