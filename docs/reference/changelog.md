@@ -2,6 +2,11 @@
 
 ## Next
 
+### Added
+
+- [#123](https://github.com/JoshKarpel/counterweight/pull/123)
+  Add styling for content area background color.
+
 ## `0.0.9`
 
 Released `2024-02-27`
