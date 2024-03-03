@@ -7,7 +7,15 @@ from string import printable
 from parsy import Parser, char_from, generate, match_item
 from structlog import get_logger
 
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
+from counterweight.events import (
+    AnyEvent,
+    KeyPressed,
+    MouseDown,
+    MouseMoved,
+    MouseScrolledDown,
+    MouseScrolledUp,
+    MouseUp,
+)
 from counterweight.geometry import Position
 
 logger = get_logger()
@@ -249,7 +257,11 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
     moving = button_info & 32
     button = (button_info & 0b11) + 1
 
-    if moving:
+    if button_info == 65:
+        return MouseScrolledUp(absolute=pos)
+    elif button_info == 64:
+        return MouseScrolledDown(absolute=pos)
+    elif moving:
         return MouseMoved(absolute=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
     elif m == b"m":
         return MouseUp(absolute=pos, button=button)

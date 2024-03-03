@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from asyncio import Queue, get_running_loop, run
 from textwrap import dedent
-from threading import Thread
+from threading import Event, Thread
 
 from typer import Option, Typer
 
@@ -61,7 +61,19 @@ async def _check_input(mouse: bool) -> None:
     input_stream = sys.stdin
     output_stream = sys.stdout
 
-    key_thread = Thread(target=read_keys, args=(input_stream, put_event), daemon=True)
+    allow, waiting = Event(), Event()
+    allow.set()
+
+    key_thread = Thread(
+        target=read_keys,
+        args=(
+            input_stream,
+            put_event,
+            allow,
+            waiting,
+        ),
+        daemon=True,
+    )
     key_thread.start()
 
     original = start_input_control(stream=input_stream)
@@ -71,7 +83,7 @@ async def _check_input(mouse: bool) -> None:
         while True:
             print("Waiting for input (press ctrl+c to exit)...")
             key = await event_queue.get()
-            print(f"Event: {key!r}")
+            print(f"{key!r}")
     except KeyboardInterrupt:
         print("Exiting...")
     finally:

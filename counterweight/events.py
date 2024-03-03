@@ -49,6 +49,24 @@ class MouseUp(_Event):
 
 
 @dataclass(frozen=True, slots=True)
+class MouseScrolledDown(_Event):
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
+    direction: int = 1
+    """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
+
+
+@dataclass(frozen=True, slots=True)
+class MouseScrolledUp(_Event):
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
+    direction: int = -1
+    """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
+
+
+@dataclass(frozen=True, slots=True)
 class StateSet(_Event):
     pass
 
@@ -62,6 +80,8 @@ MouseEvent = Union[
     MouseMoved,
     MouseDown,
     MouseUp,
+    MouseScrolledDown,
+    MouseScrolledUp,
 ]
 
 AnyEvent = Union[
@@ -71,5 +91,7 @@ AnyEvent = Union[
     MouseMoved,
     MouseDown,
     MouseUp,
+    MouseScrolledDown,
+    MouseScrolledUp,
     Dummy,
 ]

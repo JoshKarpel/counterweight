@@ -26,6 +26,8 @@ from counterweight.events import (
     KeyPressed,
     MouseDown,
     MouseMoved,
+    MouseScrolledDown,
+    MouseScrolledUp,
     MouseUp,
     StateSet,
     TerminalResized,
@@ -371,7 +373,7 @@ async def app(
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
                                     handle_control(e.on_key(event))
-                        case MouseMoved() | MouseDown() | MouseUp() as m:
+                        case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
                             for b in layout_tree.walk_from_bottom():
                                 _, border_rect, _ = b.dims.padding_border_margin_rects()
 
@@ -380,15 +382,16 @@ async def app(
                                     if b.element.on_mouse:
                                         handle_control(b.element.on_mouse(event))
 
-                            mouse = Mouse(
-                                absolute=m.absolute,
-                                motion=m.absolute - mouse_position,
-                                # We want the button attribute to reflect whether the button is *currently pressed*,
-                                # so on MouseUp the button should be None, not the button that was released.
-                                button=m.button if not isinstance(m, MouseUp) else None,
-                            )
-                            for listener in use_mouse_listeners:
-                                listener(mouse)
+                            if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
+                                mouse = Mouse(
+                                    absolute=m.absolute,
+                                    motion=m.absolute - mouse_position,
+                                    # We want the button attribute to reflect whether the button is *currently pressed*,
+                                    # so on MouseUp the button should be None, not the button that was released.
+                                    button=m.button if not isinstance(m, MouseUp) else None,
+                                )
+                                for listener in use_mouse_listeners:
+                                    listener(mouse)
 
                             mouse_position = m.absolute
 
