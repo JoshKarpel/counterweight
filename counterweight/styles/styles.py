@@ -594,6 +594,10 @@ class Padding(StyleFragment):
     color: Color = Field(default=Color.from_name("black"))
 
 
+class Content(StyleFragment):
+    color: Color = Field(default=Color.from_name("black"))
+
+
 class Span(StyleFragment):
     width: int | Literal["auto"] = Field(default="auto")
     height: int | Literal["auto"] = Field(default="auto")
@@ -677,4 +681,5 @@ class Style(StyleFragment):
     margin: Margin = Field(default=Margin())
     border: Border | None = Field(default=None)
     padding: Padding = Field(default=Padding())
+    content: Content = Field(default=Content())
     typography: Typography = Field(default=Typography())

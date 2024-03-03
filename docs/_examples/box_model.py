@@ -2,21 +2,22 @@
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
-from counterweight.elements import Text
+from counterweight.elements import Div
 from counterweight.styles.utilities import *
 
 
 @component
-def root() -> Text:
-    return Text(
-        style=text_bg_amber_500
-        | padding_green_500
-        | pad_2
+def root() -> Div:
+    return Div(
+        style=content_green_500
+        | padding_pink_500
+        | pad_x_2
+        | pad_y_1
+        | border_lightrounded
         | border_bg_red_500
-        | border_light
         | margin_blue_500
-        | margin_2,
-        content="Hello, World!",
+        | margin_x_2
+        | margin_y_1
     )
 
 
@@ -32,7 +33,7 @@ if __name__ == "__main__":
         app(
             root,
             headless=True,
-            dimensions=(60, 30),
+            dimensions=(30, 12),
             autopilot=[
                 Screenshot.to_file(THIS_DIR / "box-model.svg", indent=1),
                 Quit(),
