@@ -7,6 +7,14 @@
 - [#123](https://github.com/JoshKarpel/counterweight/pull/123)
   Add styling for content area background color.
 
+### Fixed
+
+- [#125](https://github.com/JoshKarpel/counterweight/pull/125)
+  Mouse wheel scroll events are now captured correctly
+  (they were previously reported as mouse presses).
+  The `check-input` CLI subcommand is also fixed
+  (was broken by [#86](https://github.com/JoshKarpel/counterweight/pull/86)).
+
 ## `0.0.9`
 
 Released `2024-02-27`

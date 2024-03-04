@@ -38,9 +38,7 @@
 ::: counterweight.hooks.use_hovered
 ::: counterweight.hooks.Hovered
 
-
 ## Events
-
 
 ::: counterweight.events.KeyPressed
 
@@ -49,6 +47,9 @@
 ::: counterweight.events.MouseMoved
 ::: counterweight.events.MouseDown
 ::: counterweight.events.MouseUp
+
+::: counterweight.events.MouseScrolledDown
+::: counterweight.events.MouseScrolledUp
 
 ## Controls
 
@@ -66,6 +67,7 @@
 ::: counterweight.styles.Margin
 ::: counterweight.styles.Border
 ::: counterweight.styles.Padding
+::: counterweight.styles.Content
 ::: counterweight.styles.Typography
 ::: counterweight.styles.Color
 ::: counterweight.styles.CellStyle

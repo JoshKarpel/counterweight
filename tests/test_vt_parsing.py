@@ -1,6 +1,14 @@
 import pytest
 
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseMoved, MouseUp
+from counterweight.events import (
+    AnyEvent,
+    KeyPressed,
+    MouseDown,
+    MouseMoved,
+    MouseScrolledDown,
+    MouseScrolledUp,
+    MouseUp,
+)
 from counterweight.geometry import Position
 from counterweight.keys import Key, vt_inputs
 
@@ -113,6 +121,8 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[<32;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=1)]),
         (b"\x1b[<33;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=2)]),
         (b"\x1b[<34;2;1M", [MouseMoved(absolute=Position(x=1, y=0), button=3)]),
+        (b"\x1b[<64;2;1M", [MouseScrolledDown(absolute=Position(x=1, y=0))]),
+        (b"\x1b[<65;2;1M", [MouseScrolledUp(absolute=Position(x=1, y=0))]),
     ],
 )
 def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:

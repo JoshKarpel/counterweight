@@ -2,7 +2,7 @@ from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
-from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
+from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseScrolledDown, MouseScrolledUp, MouseUp
 from counterweight.geometry import Position
 from counterweight.styles import Border, BorderKind, Span, Style
 
@@ -26,6 +26,8 @@ async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> No
         (MouseDown(absolute=Position(1, 0), button=1), True),  # back inside
         (MouseMoved(absolute=Position(1, 1), button=1), True),
         (MouseUp(absolute=Position(1, 1), button=1), True),
+        (MouseScrolledUp(absolute=Position(1, 1)), True),
+        (MouseScrolledDown(absolute=Position(1, 1)), True),
     ]
 
     await app(

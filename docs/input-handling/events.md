@@ -13,13 +13,16 @@ information about which key was pressed.
 
 Each time the state of the mouse changes,
 Counterweight emits a _single_ mouse event,
-one of `MouseMoved`, `MouseDown`, or `MouseUp`.
+one of `MouseMoved`, `MouseDown`, `MouseUp`, `MouseScrolledDown`, or `MouseScrolledUp`.
 
 ::: counterweight.events.MouseEvent
 
 ::: counterweight.events.MouseMoved
 ::: counterweight.events.MouseDown
 ::: counterweight.events.MouseUp
+
+::: counterweight.events.MouseScrolledDown
+::: counterweight.events.MouseScrolledUp
 
 For example, consider the following series of mouse actions and corresponding events:
 
