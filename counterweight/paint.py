@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, product
+from itertools import groupby
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -19,6 +19,7 @@ from counterweight.styles.styles import (
     BorderEdge,
     CellStyle,
     Color,
+    Content,
     JoinedBorderKind,
     JoinedBorderParts,
     Margin,
@@ -64,19 +65,15 @@ def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
     return combined_paint, border_healing_hints
 
 
-@lru_cache(maxsize=2**10)
-def paint_bg(x_range: range, y_range: range, z: int, color: Color) -> Paint:
-    return {Position.flyweight(x, y): P.blank(color=color, z=z) for x, y in product(x_range, y_range)}
-
-
 def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
     b, bhh = paint_border(element, element.style.border, border_rect) if element.style.border else ({}, {})
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
+    c = paint_content(element, element.style.content, dims.content)
 
-    box = m | b | t
+    box = m | b | t | c
 
     match element:
         case Div():
@@ -92,19 +89,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # so that "anonymous" grouping elements don't hide things behind them.
 
     return (
-        (
-            (
-                paint_bg(
-                    x_range=margin_rect.x_range(),
-                    y_range=margin_rect.y_range(),
-                    color=element.style.content.color,
-                    z=element.style.layout.z,
-                )
-                | paint
-            )
-            if paint
-            else paint
-        ),
+        paint,
         bhh,
         element.style.layout.z,
     )
@@ -157,30 +142,29 @@ def paint_text(text: Text, rect: Rect) -> Paint:
     return paint
 
 
-def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    cell_paint = P(char=char, style=CellStyle(background=mp.color), z=element.style.layout.z)
-
+def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect) -> Paint:
+    z = element.style.layout.z
     chars = {}
 
     # top
     for y in range(rect.top, rect.top + edge.top):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # left
     for x in range(rect.left, rect.left + edge.left):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     return chars
 
@@ -267,6 +251,14 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
         bhh = {}
 
     return chars, bhh
+
+
+def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
+    z = element.style.layout.z
+    return {
+        Position.flyweight(x, y): P.blank(color=content.color.at(position=Position.flyweight(x=x, y=y), rect=rect), z=z)
+        for x, y in rect.xy_range()
+    }
 
 
 def svg(paint: Paint) -> ElementTree:

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import Enum
 from functools import cached_property, lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from math import cos, radians, sin, sqrt
+from typing import Literal, NamedTuple, TypeVar, Union
 
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 
+from counterweight.geometry import Position, Rect
 from counterweight.types import FrozenForbidExtras
 
 S = TypeVar("S", bound="StyleFragment")
@@ -116,12 +119,39 @@ class Color(NamedTuple):
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
     def blend(self, other: Color, alpha: float) -> Color:
+        if not 0 <= alpha <= 1:
+            raise ValueError(f"Alpha must be between 0 and 1 inclusive, not {alpha}")
+
         return Color(
             red=int(self.red * (1 - alpha) + other.red * alpha),
             green=int(self.green * (1 - alpha) + other.green * alpha),
             blue=int(self.blue * (1 - alpha) + other.blue * alpha),
         )
 
+    def at(self, position: Position, rect: Rect) -> Color:
+        return self
+
+
+class LinearGradient(NamedTuple):
+    stops: Sequence[Color]
+    angle: float = 0
+
+    def at(self, position: Position, rect: Rect) -> Color:
+        d_x = (position.x - rect.x) / rect.width
+        d_y = (position.y - rect.y) / rect.height
+
+        # TODO: support more than two stops
+        # TODO: support angles that result in negative d
+
+        d = (d_x * sin(radians(self.angle)) + d_y * cos(radians(self.angle))) / sqrt(2)
+
+        return self.stops[0].blend(self.stops[1], d)
+
+
+ColorOrGradient = Union[
+    Color,
+    LinearGradient,
+]
 
 COLORS_BY_NAME = {
     name: Color.from_hex(hex)
@@ -271,6 +301,7 @@ COLORS_BY_NAME = {
 
 
 class CellStyle(StyleFragment):
+    # TODO: support gradients
     foreground: Color = Field(default=Color.from_name("white"))
     background: Color = Field(default=Color.from_name("black"))
     bold: bool = False
@@ -583,7 +614,7 @@ class Margin(StyleFragment):
     bottom: int = Field(default=0)
     left: int = Field(default=0)
     right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorOrGradient = Field(default=Color.from_name("black"))
 
 
 class Padding(StyleFragment):
@@ -591,11 +622,11 @@ class Padding(StyleFragment):
     bottom: int = Field(default=0)
     left: int = Field(default=0)
     right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorOrGradient = Field(default=Color.from_name("black"))
 
 
 class Content(StyleFragment):
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorOrGradient = Field(default=Color.from_name("black"))
 
 
 class Span(StyleFragment):
