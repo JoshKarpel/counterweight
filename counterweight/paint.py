@@ -171,6 +171,7 @@ def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect
 
 def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:
     style = border.style
+    z = element.style.layout.z
 
     bk = border.kind
     bv = bk.value
@@ -207,40 +208,97 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
     v_slice = slice(contract_top, contract_bottom)
     h_slice = slice(contract_left, contract_right)
 
+    fg = style.foreground
+    bg = style.background
+
     if draw_left:
-        left_paint = P(char=left, style=style, z=element.style.layout.z)
         for p in rect.left_edge()[v_slice]:
-            chars[p] = left_paint
+            chars[p] = P(
+                char=left,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
     if draw_right:
-        right_paint = P(char=right, style=style, z=element.style.layout.z)
         for p in rect.right_edge()[v_slice]:
-            chars[p] = right_paint
+            chars[p] = P(
+                char=right,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
     if draw_top:
-        top_paint = P(char=top, style=style, z=element.style.layout.z)
         for p in rect.top_edge()[h_slice]:
-            chars[p] = top_paint
+            chars[p] = P(
+                char=top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, z=element.style.layout.z)
+            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(
+                char=left_top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
         if draw_right:
             chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
-                char=right_top, style=style, z=element.style.layout.z
+                char=right_top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
             )
 
     if draw_bottom:
-        bottom_paint = P(char=bottom, style=style, z=element.style.layout.z)
         for p in rect.bottom_edge()[h_slice]:
-            chars[p] = bottom_paint
+            chars[p] = P(
+                char=bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
         if draw_left:
             chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
-                char=left_bottom, style=style, z=element.style.layout.z
+                char=left_bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
             )
         if draw_right:
             chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
-                char=right_bottom, style=style, z=element.style.layout.z
+                char=right_bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
             )
 
     try:

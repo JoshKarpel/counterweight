@@ -301,9 +301,8 @@ COLORS_BY_NAME = {
 
 
 class CellStyle(StyleFragment):
-    # TODO: support gradients
-    foreground: Color = Field(default=Color.from_name("white"))
-    background: Color = Field(default=Color.from_name("black"))
+    foreground: ColorOrGradient = Field(default=Color.from_name("white"))
+    background: ColorOrGradient = Field(default=Color.from_name("black"))
     bold: bool = False
     dim: bool = False
     italic: bool = False

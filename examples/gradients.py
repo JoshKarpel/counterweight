@@ -20,12 +20,31 @@ def root() -> Div:
         | border_light
         | margin_5
         | Style(
+            border=Border(
+                style=CellStyle(
+                    foreground=LinearGradient(
+                        stops=(
+                            Color.from_name("black"),
+                            Color.from_name("white"),
+                        ),
+                        angle=0,
+                    ),
+                    background=LinearGradient(
+                        stops=(
+                            Color.from_name("teal"),
+                            Color.from_name("yellow"),
+                        ),
+                        angle=45,
+                    ),
+                )
+            ),
             margin=Margin(
                 color=LinearGradient(
                     stops=(
                         Color.from_name("red"),
                         Color.from_name("cyan"),
-                    )
+                    ),
+                    angle=0,
                 )
             ),
             content=Content(
