@@ -17,7 +17,7 @@ def root() -> Div:
         style=row
         | align_children_center
         | justify_children_center
-        | border_mcgugan
+        | border_heavy
         | margin_5
         | Style(
             border=Border(
