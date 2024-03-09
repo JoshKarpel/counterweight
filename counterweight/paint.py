@@ -248,22 +248,24 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
             )
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(
+            p_top_left = Position.flyweight(x=rect_left, y=rect_top)
+            chars[p_top_left] = P(
                 char=left_top,
                 style=style
                 | CellStyle(
-                    foreground=fg.at(position=p, rect=rect),
-                    background=bg.at(position=p, rect=rect),
+                    foreground=fg.at(position=p_top_left, rect=rect),
+                    background=bg.at(position=p_top_left, rect=rect),
                 ),
                 z=z,
             )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
+            p_top_right = Position.flyweight(x=rect_right, y=rect_top)
+            chars[p_top_right] = P(
                 char=right_top,
                 style=style
                 | CellStyle(
-                    foreground=fg.at(position=p, rect=rect),
-                    background=bg.at(position=p, rect=rect),
+                    foreground=fg.at(position=p_top_right, rect=rect),
+                    background=bg.at(position=p_top_right, rect=rect),
                 ),
                 z=z,
             )
@@ -281,22 +283,24 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
             )
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
+            p_bottom_left = Position.flyweight(x=rect_left, y=rect_bottom)
+            chars[p_bottom_left] = P(
                 char=left_bottom,
                 style=style
                 | CellStyle(
-                    foreground=fg.at(position=p, rect=rect),
-                    background=bg.at(position=p, rect=rect),
+                    foreground=fg.at(position=p_bottom_left, rect=rect),
+                    background=bg.at(position=p_bottom_left, rect=rect),
                 ),
                 z=z,
             )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
+            p_bottom_right = Position.flyweight(x=rect_right, y=rect_bottom)
+            chars[p_bottom_right] = P(
                 char=right_bottom,
                 style=style
                 | CellStyle(
-                    foreground=fg.at(position=p, rect=rect),
-                    background=bg.at(position=p, rect=rect),
+                    foreground=fg.at(position=p_bottom_right, rect=rect),
+                    background=bg.at(position=p_bottom_right, rect=rect),
                 ),
                 z=z,
             )

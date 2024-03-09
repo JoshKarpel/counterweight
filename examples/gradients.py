@@ -25,9 +25,9 @@ def root() -> Div:
                     foreground=LinearGradient(
                         stops=(
                             Color.from_name("black"),
-                            Color.from_name("white"),
+                            Color.from_name("red"),
                         ),
-                        angle=0,
+                        angle=45,
                     ),
                     background=LinearGradient(
                         stops=(
