@@ -142,6 +142,7 @@ class LinearGradient(NamedTuple):
 
         # TODO: support more than two stops
         # TODO: support angles that result in negative d
+        # TODO: also this mapping doesn't really seem right...
 
         d = (d_x * sin(radians(self.angle)) + d_y * cos(radians(self.angle))) / sqrt(2)
 
