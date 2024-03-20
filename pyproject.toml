@@ -48,7 +48,7 @@ cachetools = ">=5.3"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"
-black = "==23.3.0"
+black = "==24.3.0"
 watchfiles = ">=0.19"
 pytest = "<8"
 pytest-cov = ">=3"
