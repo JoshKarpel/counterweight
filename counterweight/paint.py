@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, product
+from itertools import groupby
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -19,6 +19,7 @@ from counterweight.styles.styles import (
     BorderEdge,
     CellStyle,
     Color,
+    Content,
     JoinedBorderKind,
     JoinedBorderParts,
     Margin,
@@ -64,19 +65,15 @@ def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
     return combined_paint, border_healing_hints
 
 
-@lru_cache(maxsize=2**10)
-def paint_bg(x_range: range, y_range: range, z: int, color: Color) -> Paint:
-    return {Position.flyweight(x, y): P.blank(color=color, z=z) for x, y in product(x_range, y_range)}
-
-
 def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
     padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
 
     m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
     b, bhh = paint_border(element, element.style.border, border_rect) if element.style.border else ({}, {})
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
+    c = paint_content(element, element.style.content, dims.content)
 
-    box = m | b | t
+    box = m | b | t | c
 
     match element:
         case Div():
@@ -92,19 +89,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     # so that "anonymous" grouping elements don't hide things behind them.
 
     return (
-        (
-            (
-                paint_bg(
-                    x_range=margin_rect.x_range(),
-                    y_range=margin_rect.y_range(),
-                    color=element.style.content.color,
-                    z=element.style.layout.z,
-                )
-                | paint
-            )
-            if paint
-            else paint
-        ),
+        paint,
         bhh,
         element.style.layout.z,
     )
@@ -135,58 +120,55 @@ def paint_text(text: Text, rect: Rect) -> Paint:
         width=rect.width,
     )
 
-    previous_cell_style = None
-
     for y, line in enumerate(lines[: rect.height], start=rect.y):
         justified_line = justify_line(line, rect.width, text.style.typography.justify)
         for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
-            cell_style = cell.style
+            pos = Position.flyweight(x=x, y=y)
+            merged_style = style | cell.style
 
-            # Optimization: reuse the same merged style object if the cell style is the same object.
-            # This helps when painting a lot of text with the same style.
-            if cell_style is not previous_cell_style:
-                merged_style = style | cell_style
-                previous_cell_style = cell_style
-
-            paint[Position.flyweight(x, y)] = P(
+            paint[pos] = P(
                 char=cell.char,
-                style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
+                style=merged_style
+                | CellStyle(
+                    foreground=merged_style.foreground.at(position=pos, rect=rect),
+                    background=merged_style.background.at(position=pos, rect=rect),
+                ),
                 z=text.style.layout.z,
             )
 
     return paint
 
 
-def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    cell_paint = P(char=char, style=CellStyle(background=mp.color), z=element.style.layout.z)
-
+def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect) -> Paint:
+    z = element.style.layout.z
     chars = {}
 
     # top
     for y in range(rect.top, rect.top + edge.top):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # left
     for x in range(rect.left, rect.left + edge.left):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
 
     return chars
 
 
 def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:
     style = border.style
+    z = element.style.layout.z
 
     bk = border.kind
     bv = bk.value
@@ -223,40 +205,101 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
     v_slice = slice(contract_top, contract_bottom)
     h_slice = slice(contract_left, contract_right)
 
+    fg = style.foreground
+    bg = style.background
+
     if draw_left:
-        left_paint = P(char=left, style=style, z=element.style.layout.z)
         for p in rect.left_edge()[v_slice]:
-            chars[p] = left_paint
+            chars[p] = P(
+                char=left,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
     if draw_right:
-        right_paint = P(char=right, style=style, z=element.style.layout.z)
         for p in rect.right_edge()[v_slice]:
-            chars[p] = right_paint
+            chars[p] = P(
+                char=right,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
     if draw_top:
-        top_paint = P(char=top, style=style, z=element.style.layout.z)
         for p in rect.top_edge()[h_slice]:
-            chars[p] = top_paint
+            chars[p] = P(
+                char=top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, z=element.style.layout.z)
+            p_top_left = Position.flyweight(x=rect_left, y=rect_top)
+            chars[p_top_left] = P(
+                char=left_top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p_top_left, rect=rect),
+                    background=bg.at(position=p_top_left, rect=rect),
+                ),
+                z=z,
+            )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
-                char=right_top, style=style, z=element.style.layout.z
+            p_top_right = Position.flyweight(x=rect_right, y=rect_top)
+            chars[p_top_right] = P(
+                char=right_top,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p_top_right, rect=rect),
+                    background=bg.at(position=p_top_right, rect=rect),
+                ),
+                z=z,
             )
 
     if draw_bottom:
-        bottom_paint = P(char=bottom, style=style, z=element.style.layout.z)
         for p in rect.bottom_edge()[h_slice]:
-            chars[p] = bottom_paint
+            chars[p] = P(
+                char=bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p, rect=rect),
+                    background=bg.at(position=p, rect=rect),
+                ),
+                z=z,
+            )
 
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
-                char=left_bottom, style=style, z=element.style.layout.z
+            p_bottom_left = Position.flyweight(x=rect_left, y=rect_bottom)
+            chars[p_bottom_left] = P(
+                char=left_bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p_bottom_left, rect=rect),
+                    background=bg.at(position=p_bottom_left, rect=rect),
+                ),
+                z=z,
             )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
-                char=right_bottom, style=style, z=element.style.layout.z
+            p_bottom_right = Position.flyweight(x=rect_right, y=rect_bottom)
+            chars[p_bottom_right] = P(
+                char=right_bottom,
+                style=style
+                | CellStyle(
+                    foreground=fg.at(position=p_bottom_right, rect=rect),
+                    background=bg.at(position=p_bottom_right, rect=rect),
+                ),
+                z=z,
             )
 
     try:
@@ -267,6 +310,14 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
         bhh = {}
 
     return chars, bhh
+
+
+def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
+    z = element.style.layout.z
+    return {
+        Position.flyweight(x, y): P.blank(color=content.color.at(position=Position.flyweight(x=x, y=y), rect=rect), z=z)
+        for x, y in rect.xy_range()
+    }
 
 
 def svg(paint: Paint) -> ElementTree:

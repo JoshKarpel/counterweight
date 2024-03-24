@@ -6,22 +6,14 @@
 </style>
  <g shape-rendering="crispEdges">
   <rect x="0.00em" y="0.00em" width="16.50em" height="16.95em" fill="#000000" />
-  <rect x="0.00em" y="0.00em" width="5.50em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="0.00em" width="11.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="1.13em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="0.55em" y="1.13em" width="4.40em" height="1.13em" fill="#000000" />
-  <rect x="4.95em" y="1.13em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="1.13em" width="11.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="2.26em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="0.55em" y="2.26em" width="4.40em" height="1.13em" fill="#000000" />
-  <rect x="4.95em" y="2.26em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="2.26em" width="11.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="3.39em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="0.55em" y="3.39em" width="1.65em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="1.13em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="2.26em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="3.39em" width="2.20em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="3.39em" width="4.95em" height="1.13em" fill="#0d9488" />
   <rect x="7.15em" y="3.39em" width="5.50em" height="1.13em" fill="#d97706" />
   <rect x="12.65em" y="3.39em" width="3.85em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="4.52em" width="2.20em" height="1.13em" fill="#dc2626" />
+  <rect x="0.00em" y="4.52em" width="2.20em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="4.52em" width="0.55em" height="1.13em" fill="#0d9488" />
   <rect x="2.75em" y="4.52em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="7.15em" y="4.52em" width="0.55em" height="1.13em" fill="#d97706" />
@@ -69,29 +61,9 @@
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em" />
-  <tspan y="1.13em">
-   <tspan x="0.55em">╭</tspan>
-   <tspan x="1.10em">─</tspan>
-   <tspan x="1.65em">─</tspan>
-   <tspan x="2.20em">─</tspan>
-   <tspan x="2.75em">─</tspan>
-   <tspan x="3.30em">─</tspan>
-   <tspan x="3.85em">─</tspan>
-   <tspan x="4.40em">╮</tspan>
-  </tspan>
-  <tspan y="2.26em">
-   <tspan x="0.55em">│</tspan>
-   <tspan x="1.10em">z</tspan>
-   <tspan x="2.20em">=</tspan>
-   <tspan x="3.30em">-</tspan>
-   <tspan x="3.85em">1</tspan>
-   <tspan x="4.40em">│</tspan>
-  </tspan>
-  <tspan y="3.39em">
-   <tspan x="0.55em">╰</tspan>
-   <tspan x="1.10em">─</tspan>
-   <tspan x="1.65em">─</tspan>
-  </tspan>
+  <tspan y="1.13em" />
+  <tspan y="2.26em" />
+  <tspan y="3.39em" />
   <tspan y="4.52em">
    <tspan x="2.75em">╭</tspan>
    <tspan x="3.30em">─</tspan>
