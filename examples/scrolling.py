@@ -45,7 +45,6 @@ def root() -> Div:
 def scrollable_text() -> Div | Text:
     offset, set_offset = use_state(0)
     hovered = use_hovered()
-    # TODO: content areas extend downwards infinitely right now because they don't get cut off!
 
     def on_key(e: KeyPressed) -> None:
         if not hovered.border:
