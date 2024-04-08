@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Iterable, Literal
 from more_itertools import take
 from structlog import get_logger
 
-from counterweight._utils import halve_integer, partition_int
+from counterweight._utils import clamp, halve_integer, partition_int
 from counterweight.elements import AnyElement, CellPaint
 from counterweight.geometry import Edge, Rect
 from counterweight.styles.styles import BorderEdge
@@ -98,7 +98,12 @@ class LayoutBox:
             node.first_pass()
 
         for node in top_down:
+            # TODO: remove debug log
+            logger.debug("before second pass", t=node.element.type, dims=node.dims)
+
             node.second_pass()
+            # TODO: remove debug log
+            logger.debug("after second pass", t=node.element.type, dims=node.dims)
 
         for node in top_down:
             if node.shadow.hooks is not None:
@@ -141,7 +146,9 @@ class LayoutBox:
                         default=0,
                     )
                 if style.span.height == "auto":
+                    # TODO: remove debug log
                     self.dims.content.height = len(wrapped_lines)
+                    logger.debug("text set self content height", h=len(wrapped_lines))
 
         num_gaps = max(
             sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
@@ -183,6 +190,10 @@ class LayoutBox:
                         elif layout.direction == "row":
                             # The box is as tall as its tallest child
                             self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
+                            # TODO: remove debug log
+                            logger.debug(
+                                "set self height to tallest child", t=self.element.type, h=self.dims.content.height
+                            )
         else:
             self.dims.content.height = style.span.height
 
@@ -190,6 +201,18 @@ class LayoutBox:
         style = self.element.style
         layout = style.layout
         parent = self.parent
+
+        # TODO Experimental: children height/width capped by parent heigh/width dependinging on layout direction
+        # accounts for changes in parent height/width from their second pass (e.g., if they are flex children)
+        if layout.position.type == "relative" and parent:
+            if parent.element.style.layout.direction == "row":
+                self.dims.content.height = clamp(
+                    0, self.dims.content.height, parent.dims.content.height - self.dims.vertical_edge_width()
+                )
+            if parent.element.style.layout.direction == "column":
+                self.dims.content.width = clamp(
+                    0, self.dims.content.width, parent.dims.content.width - self.dims.horizontal_edge_width()
+                )
 
         # handle align self
         if layout.position.type == "relative" and parent:
@@ -201,6 +224,8 @@ class LayoutBox:
                         self.dims.content.y += parent.dims.content.height - self.dims.height()
                     case "stretch":
                         self.dims.content.height = parent.dims.content.height - self.dims.vertical_edge_width()
+                        # TODO: remove debug log
+                        logger.debug("stretch height", t=self.element.type, h=self.dims.content.height)
             elif parent.element.style.layout.direction == "column":
                 match layout.align_self:
                     case "center":
@@ -216,6 +241,8 @@ class LayoutBox:
 
         available_width = self.dims.content.width
         available_height = self.dims.content.height
+        # TODO: remove debug log
+        logger.debug("available height", h=available_height)
 
         relative_children = []
         relative_children_with_weights = []
@@ -266,6 +293,8 @@ class LayoutBox:
                     relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
                     child.dims.content.height = max(flex_portion - child.dims.vertical_edge_width(), 0)
+                    # TODO: remove debug log
+                    logger.debug("set flex child content height", h=child.dims.content.height)
 
                 available_height = 0
 
@@ -273,20 +302,6 @@ class LayoutBox:
             for child in relative_children:
                 available_width -= child.dims.width()
                 available_height -= child.dims.height()
-
-        # TODO: this block was effectively doing nothing because text wrapping was always off
-        # at this point we know how wide each child is, so we can do text wrapping and set heights
-        for child in relative_children:
-            if child.element.type == "text":
-                h = len(
-                    wrap_cells(
-                        cells=child.element.cells,
-                        wrap=child.element.style.typography.wrap,
-                        width=child.dims.content.width,
-                    )
-                )
-                child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
-                logger.debug("set text content height", h=child.dims.content.height)
 
         # determine positions
 
@@ -433,6 +448,28 @@ class LayoutBox:
                     child.dims.content.x = self.dims.content.y + self.dims.content.width - child.dims.width()
                 elif layout.align_children == "stretch" and child.element.style.span.width == "auto":
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
+
+        # TODO: this block was effectively doing nothing because text wrapping was always off
+        # at this point we know how wide each child is, so we can do text wrapping and set heights
+        for child in relative_children:
+            if child.element.type == "text":
+                h = len(
+                    wrap_cells(
+                        cells=child.element.cells,
+                        wrap=child.element.style.typography.wrap,
+                        width=child.dims.content.width,
+                    )
+                )
+                child.dims.content.height = clamp(0, h, available_height - child.dims.vertical_edge_width())
+                # TODO: remove debug log
+                logger.debug(
+                    "set text content height",
+                    type=self.element.type,
+                    h=h,
+                    child_h=child.dims.content.height,
+                    available_height=available_height,
+                    self_h=self.dims.content.height,
+                )
 
 
 def wrap_cells(
