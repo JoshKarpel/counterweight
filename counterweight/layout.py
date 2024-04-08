@@ -274,9 +274,10 @@ class LayoutBox:
                 available_width -= child.dims.width()
                 available_height -= child.dims.height()
 
+        # TODO: this block was effectively doing nothing because text wrapping was always off
         # at this point we know how wide each child is, so we can do text wrapping and set heights
         for child in relative_children:
-            if child.element.type == "text" and child.element.style.typography.wrap != "none":
+            if child.element.type == "text":
                 h = len(
                     wrap_cells(
                         cells=child.element.cells,
@@ -285,6 +286,7 @@ class LayoutBox:
                     )
                 )
                 child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
+                logger.debug("set text content height", h=child.dims.content.height)
 
         # determine positions
 
