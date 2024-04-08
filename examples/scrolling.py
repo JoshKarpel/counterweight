@@ -70,6 +70,7 @@ def scrollable_text() -> Div | Text:
                 on_key=on_key,
                 style=border_lightrounded,
                 content=long_text,
+                offset=(0, offset),
             ),
             Text(
                 style=absolute(x=1, y=0),

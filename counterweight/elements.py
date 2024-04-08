@@ -47,6 +47,7 @@ class Text(FrozenForbidExtras):
     style: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    offset: tuple[int, int] = (0, 0)
 
     @property
     def children(self) -> Sequence[Component | AnyElement]:
