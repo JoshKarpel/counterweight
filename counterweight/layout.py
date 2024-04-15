@@ -98,12 +98,7 @@ class LayoutBox:
             node.first_pass()
 
         for node in top_down:
-            # TODO: remove debug log
-            logger.debug("before second pass", t=node.element.type, dims=node.dims)
-
             node.second_pass()
-            # TODO: remove debug log
-            logger.debug("after second pass", t=node.element.type, dims=node.dims)
 
         for node in top_down:
             if node.shadow.hooks is not None:
@@ -146,9 +141,7 @@ class LayoutBox:
                         default=0,
                     )
                 if style.span.height == "auto":
-                    # TODO: remove debug log
                     self.dims.content.height = len(wrapped_lines)
-                    logger.debug("text set self content height", h=len(wrapped_lines))
 
         num_gaps = max(
             sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
@@ -190,10 +183,6 @@ class LayoutBox:
                         elif layout.direction == "row":
                             # The box is as tall as its tallest child
                             self.dims.content.height = max(self.dims.content.height, child_box.dims.height())
-                            # TODO: remove debug log
-                            logger.debug(
-                                "set self height to tallest child", t=self.element.type, h=self.dims.content.height
-                            )
         else:
             self.dims.content.height = style.span.height
 
@@ -241,8 +230,6 @@ class LayoutBox:
 
         available_width = self.dims.content.width
         available_height = self.dims.content.height
-        # TODO: remove debug log
-        logger.debug("available height", h=available_height)
 
         relative_children = []
         relative_children_with_weights = []
@@ -293,8 +280,6 @@ class LayoutBox:
                     relative_children_with_weights, partition_int(total=available_height, weights=weights)
                 ):
                     child.dims.content.height = max(flex_portion - child.dims.vertical_edge_width(), 0)
-                    # TODO: remove debug log
-                    logger.debug("set flex child content height", h=child.dims.content.height)
 
                 available_height = 0
 

@@ -44,7 +44,6 @@ def file_viewer(text: str) -> Text:
     # then call the callable with those dimensions
 
     def on_key(e: KeyPressed) -> None:
-        logger.debug("rects", r=rects)
         # TODO scroll limits
         match e.key:
             case Key.Down:
