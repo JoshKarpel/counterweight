@@ -15,9 +15,9 @@ jobs:
       id-token: write
     steps:
     - name: Check out repository
-      uses: actions/checkout@v4.1.1
+      uses: actions/checkout@v4.1.2
     - name: Set up Python 3.x
-      uses: actions/setup-python@v5.0.0
+      uses: actions/setup-python@v5.1.0
       with:
         python-version: "3.x"
     - name: Install Poetry
@@ -25,4 +25,4 @@ jobs:
     - name: Build the package
       run: poetry build -vvv
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.8.11
+      uses: pypa/gh-action-pypi-publish@v1.8.14
