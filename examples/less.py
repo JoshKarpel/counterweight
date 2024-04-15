@@ -27,13 +27,17 @@ def root(initial_path: Path) -> Div:
         style=col | align_self_stretch,
         on_key=on_key,
         children=[
-            file_viewer(text),
+            file_viewer(
+                text=text,
+            ),
         ],
     )
 
 
 @component
-def file_viewer(text: str) -> Text:
+def file_viewer(
+    text: str,
+) -> Text:
     x, set_x = use_state(0)
     y, set_y = use_state(0)
 
