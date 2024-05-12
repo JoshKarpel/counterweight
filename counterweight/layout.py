@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from more_itertools import take
 from structlog import get_logger
@@ -129,19 +129,20 @@ class LayoutBox:
         # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
         if self.element.type == "text" and self.element.style.typography.wrap == "none":
             if style.span.width == "auto" or style.span.height == "auto":
-                wrapped_lines = wrap_cells(
+                max_line_len = 0
+                num_lines = 0
+                for line in wrap_cells(
                     cells=self.element.cells,
                     wrap=style.typography.wrap,
                     width=100_000,  # any large number
-                )
+                ):
+                    max_line_len = max(max_line_len, len(line))
+                    num_lines += 1
 
                 if style.span.width == "auto":
-                    self.dims.content.width = max(
-                        (len(line) for line in wrapped_lines),
-                        default=0,
-                    )
+                    self.dims.content.width = max_line_len
                 if style.span.height == "auto":
-                    self.dims.content.height = len(wrapped_lines)
+                    self.dims.content.height = num_lines
 
         num_gaps = max(
             sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
@@ -458,34 +459,19 @@ class LayoutBox:
 
 
 def wrap_cells(
-    cells: Iterable[CellPaint],
+    cells: list[CellPaint],
     wrap: Literal["none", "paragraphs"],
     width: int,
-) -> list[list[CellPaint]]:
+) -> Iterator[list[CellPaint]]:
     if width <= 0:
-        return []
+        return
 
     if wrap == "none":
-        lines: list[list[CellPaint]] = []
-        current_line: list[CellPaint] = []
-        for cell in cells:
+        last_newline_idx = 0
+        for curr_idx, cell in enumerate(cells):
             if cell.char == "\n":
-                lines.append(current_line)
-                current_line = []
-            else:
-                current_line.append(cell)
-        lines.append(current_line)
-        return lines
-
-    raise NotImplementedError("non-none wrapping not yet implemented")
-
-    # wrapper = TextWrapper(width=width)
-    #
-    # paragraphs = text.split("\n\n")  # double newline = paragraph break
-    #
-    # lines = []
-    # for paragraph in paragraphs:
-    #     lines.extend(wrapper.wrap(paragraph))
-    #     lines.append("")  # empty line between paragraphs
-    #
-    # return lines[:-1]  # remove last empty line
+                yield cells[last_newline_idx + 1 : curr_idx]
+                last_newline_idx = curr_idx
+        yield cells[curr_idx:]
+    else:
+        raise NotImplementedError("non-none wrapping not yet implemented")
