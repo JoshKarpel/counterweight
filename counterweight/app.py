@@ -75,7 +75,7 @@ async def app(
     headless: bool = False,
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AnyEvent | AnyControl] = (),
-    line_profile: tuple[object, ...] | None = None,
+    line_profile: tuple[object, ...] = (),
 ) -> None:
     """
     Parameters:
@@ -95,7 +95,7 @@ async def app(
     """
     configure_logging()
 
-    if line_profile is not None:
+    if line_profile:
         profiler = LineProfiler()
         for lp in line_profile:
             profiler.add_function(getattr(lp, "__wrapped__", lp))
@@ -440,7 +440,7 @@ async def app(
 
         logger.info("Application stopped")
 
-        if line_profile is not None and profiler is not None:
+        if line_profile and profiler is not None:
             profiler.disable()
             profiler.print_stats()
 
