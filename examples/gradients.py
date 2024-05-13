@@ -8,6 +8,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
+from counterweight.paint import paint_content, paint_edge, paint_element
 from counterweight.styles import LinearGradient
 from counterweight.styles.utilities import *
 
@@ -35,7 +36,7 @@ def root() -> Div:
         while True:
             logger.info("Rotating")
             set_angle(lambda a: (a + 1) % 360)
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0)
 
     use_effect(rotate, (active,))
 
@@ -43,7 +44,6 @@ def root() -> Div:
         style=row
         | align_children_center
         | justify_children_center
-        | border_heavy
         | margin_8
         | Style(
             margin=Margin(
@@ -55,8 +55,22 @@ def root() -> Div:
                     angle=angle,
                 )
             ),
+            content=Content(
+                color=LinearGradient(
+                    stops=(
+                        Color.from_name("orange"),
+                        Color.from_name("teal"),
+                    ),
+                    angle=-angle,
+                )
+            ),
         ),
-        children=[Text(content=f"Angle: {angle}")],
+        children=[
+            Text(
+                style=align_self_center | weight_none,
+                content=f"{angle}°",
+            ),
+        ],
         on_key=toggle,
     )
 
@@ -180,11 +194,11 @@ if __name__ == "__main__":
         app(
             root,
             line_profile=(
-                # app,
+                app,
                 # LinearGradient.at,
-                # paint_edge,
-                # paint_content,
-                # paint_element,
+                paint_edge,
+                paint_content,
+                paint_element,
                 # Position.__hash__,
                 # P.blank,
                 # Color._blend,

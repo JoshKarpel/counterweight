@@ -49,6 +49,8 @@ BorderHealingHints = dict[Position, JoinedBorderParts]
 def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
     combined_paint: Paint = {}
     border_healing_hints: BorderHealingHints = {}
+    # TODO: this paints every element, even when there's an element that "covers" the same cells.
+    # TODO: it should be possible to paint each cell exactly once, once we identify which element is the "top" one for that cell.
     for paint, hints, _z in sorted(
         (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
         key=lambda pz: pz[-1],
@@ -318,16 +320,27 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
 
 
 def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
-    z = element.style.layout.z
-    color_at = content.color.at
-    blank = P.blank
-    return {
-        p: blank(
-            color=color_at(position=p, rect=rect),
-            z=z,
-        )
-        for p in rect.xy_range()
-    }
+    # TODO: remove debug log
+    logger.debug(
+        "paint_content",
+        content=content,
+        rect=rect,
+    )
+    # Optimization: if the content is a single color, we can just fill the whole rectangle with that color
+    if isinstance(content.color, Color):
+        blank = P.blank(color=content.color, z=element.style.layout.z)
+        return {p: blank for p in rect.xy_range()}
+    else:
+        color_at = content.color.at
+        blank = P.blank
+        z = element.style.layout.z
+        return {
+            p: blank(
+                color=color_at(position=p, rect=rect),
+                z=z,
+            )
+            for p in rect.xy_range()
+        }
 
 
 def svg(paint: Paint) -> ElementTree:
