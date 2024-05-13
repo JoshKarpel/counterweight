@@ -8,6 +8,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
+from counterweight.paint import paint_edge
 from counterweight.styles import LinearGradient
 from counterweight.styles.utilities import *
 
@@ -16,7 +17,7 @@ logger = get_logger()
 
 @component
 def root() -> Div:
-    active, set_active = use_state(False)
+    active, set_active = use_state(True)
     angle, set_angle = use_state(0)
 
     def toggle(event: KeyPressed) -> None:
@@ -35,7 +36,7 @@ def root() -> Div:
         while True:
             logger.info("Rotating")
             set_angle(lambda a: (a + 1) % 360)
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.01)
 
     use_effect(rotate, (active,))
 
@@ -176,4 +177,15 @@ def root() -> Div:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(
+        app(
+            root,
+            line_profile=(
+                # LinearGradient.at,
+                paint_edge,
+                # P.blank,
+                # Color.blend,
+                # Color.flyweight,
+            ),
+        )
+    )

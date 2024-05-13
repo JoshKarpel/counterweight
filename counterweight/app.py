@@ -12,6 +12,7 @@ from time import perf_counter_ns
 from typing import Iterable, TextIO
 from weakref import WeakSet
 
+from line_profiler import LineProfiler
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
@@ -74,6 +75,7 @@ async def app(
     headless: bool = False,
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AnyEvent | AnyControl] = (),
+    line_profile: tuple[object, ...] | None = None,
 ) -> None:
     """
     Parameters:
@@ -88,8 +90,18 @@ async def app(
             This is primarily useful for testing or generating screenshots programmatically.
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
+        line_profile: These callables will be [line-profiled](https://github.com/pyutils/line_profiler) during the application's execution.
+            Stats will be dumped to stdout when the application exits.
     """
     configure_logging()
+
+    if line_profile is not None:
+        profiler = LineProfiler()
+        for lp in line_profile:
+            profiler.add_function(getattr(lp, "__wrapped__", lp))
+        profiler.enable()
+    else:
+        profiler = None
 
     def handle_screen_size_change() -> tuple[Style, Paint]:
         w, h = dimensions or shutil.get_terminal_size()
@@ -427,6 +439,14 @@ async def app(
             stop_handling_resize_signal()
 
         logger.info("Application stopped")
+
+        if line_profile is not None and profiler is not None:
+            profiler.disable()
+            profiler.print_stats()
+
+            for lp in line_profile:
+                if hasattr(lp, "cache_info"):
+                    print(getattr(lp, "__wrapped__", lp), lp.cache_info())
 
 
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from functools import cached_property, lru_cache
+from functools import cache, cached_property, lru_cache
 from math import cos, radians, sin
 from typing import Literal, NamedTuple, TypeVar, Union
 
@@ -105,6 +105,11 @@ class Color(NamedTuple):
     blue: int
 
     @classmethod
+    @cache
+    def flyweight(cls, red: int, green: int, blue: int) -> Color:
+        return cls(red=red, green=green, blue=blue)
+
+    @classmethod
     def from_name(cls, name: str) -> Color:
         return COLORS_BY_NAME[name]
 
@@ -112,7 +117,7 @@ class Color(NamedTuple):
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
         hex = hex.lstrip("#")
-        return cls(
+        return cls.flyweight(
             int(hex[0:2], 16),
             int(hex[2:4], 16),
             int(hex[4:6], 16),
@@ -126,11 +131,10 @@ class Color(NamedTuple):
         if not 0 <= alpha <= 1:
             raise ValueError(f"Alpha must be between 0 and 1 inclusive, not {alpha}")
 
-        return Color(
-            red=int(self.red * (1 - alpha) + other.red * alpha),
-            green=int(self.green * (1 - alpha) + other.green * alpha),
-            blue=int(self.blue * (1 - alpha) + other.blue * alpha),
-        )
+        red = int(self.red * (1 - alpha) + other.red * alpha)
+        green = int(self.green * (1 - alpha) + other.green * alpha)
+        blue = int(self.blue * (1 - alpha) + other.blue * alpha)
+        return Color.flyweight(red=red, green=green, blue=blue)
 
     def at(self, position: Position, rect: Rect) -> Color:
         return self
@@ -153,18 +157,17 @@ class LinearGradient:
         # https://www.w3.org/TR/css-images-3/#linear-gradients
         gradient_line_length = abs(rect.width * self.cos) + abs(rect.height * self.sin)
 
-        # use the center of the cell as the position for symmetry
-        p_x = position.x + 0.5
-        p_y = position.y + 0.5
-        rect_center_x = rect.x + rect.width / 2
-        rect_center_y = rect.y + rect.height / 2
-        position_along_gradient_line = (
+        # numerator is the position along the gradient line;
+        # denominator is the length of the gradient line
+        r = (
+            # use the center of the cell as the position for symmetry
             # rotate relative to the center of the rect
-            ((p_x - rect_center_x) * self.cos)
-            + ((p_y - rect_center_y) * self.sin)
+            ((position.x + 0.5 - (rect.x + rect.width / 2)) * self.cos)
+            + ((position.y + 0.5 - (rect.y + rect.height / 2)) * self.sin)
             + (gradient_line_length / 2)  # re-center at the start of the gradient line
-        )
-        return self.stops[0].blend(self.stops[1], position_along_gradient_line / gradient_line_length)
+        ) / gradient_line_length
+
+        return self.stops[0].blend(self.stops[1], r)
 
 
 ColorLike = Union[

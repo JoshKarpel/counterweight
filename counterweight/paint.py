@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby
 from textwrap import dedent
-from typing import Literal, assert_never
+from typing import Literal, NamedTuple, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from structlog import get_logger
@@ -29,14 +28,13 @@ from counterweight.styles.styles import (
 logger = get_logger()
 
 
-@dataclass(slots=True)
-class P:
+class P(NamedTuple):
     char: str
     style: CellStyle
     z: int
 
     @classmethod
-    @lru_cache(maxsize=2**10)
+    @lru_cache(maxsize=2**14)
     def blank(cls, color: Color, z: int) -> P:
         return cls(
             char=" ",
@@ -141,27 +139,38 @@ def paint_text(text: Text, rect: Rect) -> Paint:
 
 def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect) -> Paint:
     z = element.style.layout.z
+    color_at = mp.color.at
+    blank = P.blank
+
     chars = {}
 
     # top
     for y in range(rect.top, rect.top + edge.top):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
+            p = Position.flyweight(x, y)
+            c = color_at(p, rect=rect)
+            chars[p] = blank(color=c, z=z)
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
         for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
+            p = Position.flyweight(x, y)
+            c = color_at(p, rect=rect)
+            chars[p] = blank(color=c, z=z)
 
     # left
     for x in range(rect.left, rect.left + edge.left):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
+            p = Position.flyweight(x, y)
+            c = color_at(p, rect=rect)
+            chars[p] = blank(color=c, z=z)
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
         for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = P.blank(color=mp.color.at(Position.flyweight(x=x, y=y), rect=rect), z=z)
+            p = Position.flyweight(x, y)
+            c = color_at(p, rect=rect)
+            chars[p] = blank(color=c, z=z)
 
     return chars
 
