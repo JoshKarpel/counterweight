@@ -9,7 +9,7 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from structlog import get_logger
 
-from counterweight._utils import halve_integer
+from counterweight._utils import halve_integer, merge
 from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Edge, Position, Rect
 from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
@@ -34,13 +34,9 @@ class P(NamedTuple):
     z: int
 
     @classmethod
-    @lru_cache(maxsize=2**14)
+    @lru_cache(maxsize=2**16)
     def blank(cls, color: Color, z: int) -> P:
-        return cls(
-            char=" ",
-            style=CellStyle(background=color),
-            z=z,
-        )
+        return cls(char=" ", style=CellStyle(background=color), z=z)
 
 
 BLANK = P.blank(color=Color.from_name("black"), z=-1_000_000)
@@ -71,7 +67,7 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
     t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
     c = paint_content(element, element.style.content, dims.content)
 
-    box = m | b | t | c
+    box = merge(m, b, t, c)
 
     match element:
         case Div():
@@ -323,9 +319,14 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
 
 def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
     z = element.style.layout.z
+    color_at = content.color.at
+    blank = P.blank
     return {
-        Position.flyweight(x, y): P.blank(color=content.color.at(position=Position.flyweight(x=x, y=y), rect=rect), z=z)
-        for x, y in rect.xy_range()
+        p: blank(
+            color=color_at(position=p, rect=rect),
+            z=z,
+        )
+        for p in rect.xy_range()
     }
 
 

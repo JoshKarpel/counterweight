@@ -127,13 +127,23 @@ class Color(NamedTuple):
     def hex(self) -> str:
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
-    def blend(self, other: Color, alpha: float) -> Color:
-        if not 0 <= alpha <= 1:
-            raise ValueError(f"Alpha must be between 0 and 1 inclusive, not {alpha}")
+    def blend(self, other: Color, ratio: float) -> Color:
+        return self._blend(
+            other=other,
+            # "Chunk" floats by rounding to 3 decimal places.
+            # This dramatically improves the hit rate of the cache on the underlying method
+            # without sacrificing much visual quality.
+            ratio=round(ratio, 3),
+        )
 
-        red = int(self.red * (1 - alpha) + other.red * alpha)
-        green = int(self.green * (1 - alpha) + other.green * alpha)
-        blue = int(self.blue * (1 - alpha) + other.blue * alpha)
+    @lru_cache(maxsize=2**20)
+    def _blend(self, other: Color, ratio: float) -> Color:
+        if not 0 <= ratio <= 1:
+            raise ValueError(f"Ratio must be between 0 and 1 inclusive, not {ratio}")
+
+        red = int(self.red * (1 - ratio) + other.red * ratio)
+        green = int(self.green * (1 - ratio) + other.green * ratio)
+        blue = int(self.blue * (1 - ratio) + other.blue * ratio)
         return Color.flyweight(red=red, green=green, blue=blue)
 
     def at(self, position: Position, rect: Rect) -> Color:
@@ -155,17 +165,19 @@ class LinearGradient:
 
     def at(self, position: Position, rect: Rect) -> Color:
         # https://www.w3.org/TR/css-images-3/#linear-gradients
-        gradient_line_length = abs(rect.width * self.cos) + abs(rect.height * self.sin)
-
         # numerator is the position along the gradient line;
         # denominator is the length of the gradient line
         r = (
-            # use the center of the cell as the position for symmetry
-            # rotate relative to the center of the rect
-            ((position.x + 0.5 - (rect.x + rect.width / 2)) * self.cos)
-            + ((position.y + 0.5 - (rect.y + rect.height / 2)) * self.sin)
-            + (gradient_line_length / 2)  # re-center at the start of the gradient line
-        ) / gradient_line_length
+            (
+                # use the center of the cell as the position for symmetry
+                # rotate relative to the center of the rect
+                ((position.x + 0.5 - (rect.x + rect.width / 2)) * self.cos)
+                + ((position.y + 0.5 - (rect.y + rect.height / 2)) * self.sin)
+            )
+            / (abs(rect.width * self.cos) + abs(rect.height * self.sin))
+        ) + (
+            0.5  # re-center at the start of the gradient line
+        )
 
         return self.stops[0].blend(self.stops[1], r)
 
