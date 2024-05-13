@@ -36,17 +36,17 @@ def read_keys(
         # We're just reading from one file,
         # so we can dispense with the ceremony of actually using the results of the select,
         # other than knowing that it did return something.
-        if not selector.select(timeout=1 / 60):
+        if not selector.select(timeout=1 / 30):
             continue
 
         start_parsing = perf_counter_ns()
-        bytes = os.read(stream.fileno(), 2**10)
+        input_bytes = os.read(stream.fileno(), 2**10)
 
-        if not bytes:
+        if not input_bytes:
             continue
 
         try:
-            inputs = vt_inputs.parse(bytes)
+            inputs = vt_inputs.parse(input_bytes)
 
             for i in inputs:
                 put_event(i)
@@ -54,14 +54,14 @@ def read_keys(
             logger.debug(
                 "Parsed user input",
                 inputs=inputs,
-                bytes=bytes,
+                bytes=input_bytes,
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
         except Exception as e:
             logger.error(
                 "Failed to parse input",
                 error=repr(e),
-                bytes=bytes,
+                bytes=input_bytes,
                 elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
             )
 
