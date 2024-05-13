@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property, lru_cache
 from math import cos, radians, sin
@@ -135,20 +136,35 @@ class Color(NamedTuple):
         return self
 
 
-class LinearGradient(NamedTuple):
+@dataclass(frozen=True)
+class LinearGradient:
     stops: Sequence[Color]
     angle: float = 0
 
+    @cached_property
+    def cos(self) -> float:
+        return cos(radians(self.angle))
+
+    @cached_property
+    def sin(self) -> float:
+        return sin(radians(self.angle))
+
     def at(self, position: Position, rect: Rect) -> Color:
-        r = radians(self.angle)
-        total = abs(rect.width * cos(r)) + abs(rect.height * sin(r))
-        x_p = (
-            ((position.x - (rect.x + rect.width / 2)) * cos(r))
-            + ((position.y - (rect.y + rect.height / 2)) * sin(r))
-            + (total / 2)
+        # https://www.w3.org/TR/css-images-3/#linear-gradients
+        gradient_line_length = abs(rect.width * self.cos) + abs(rect.height * self.sin)
+
+        # use the center of the cell as the position for symmetry
+        p_x = position.x + 0.5
+        p_y = position.y + 0.5
+        rect_center_x = rect.x + rect.width / 2
+        rect_center_y = rect.y + rect.height / 2
+        position_along_gradient_line = (
+            # rotate relative to the center of the rect
+            ((p_x - rect_center_x) * self.cos)
+            + ((p_y - rect_center_y) * self.sin)
+            + (gradient_line_length / 2)  # re-center at the start of the gradient line
         )
-        d = x_p / total
-        return self.stops[0].blend(self.stops[1], d)
+        return self.stops[0].blend(self.stops[1], position_along_gradient_line / gradient_line_length)
 
 
 ColorLike = Union[
