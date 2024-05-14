@@ -320,12 +320,6 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
 
 
 def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
-    # TODO: remove debug log
-    logger.debug(
-        "paint_content",
-        content=content,
-        rect=rect,
-    )
     # Optimization: if the content is a single color, we can just fill the whole rectangle with that color
     if isinstance(content.color, Color):
         blank = P.blank(color=content.color, z=element.style.layout.z)
