@@ -141,13 +141,17 @@ class Color(NamedTuple):
         if not 0 <= ratio <= 1:
             raise ValueError(f"Ratio must be between 0 and 1 inclusive, not {ratio}")
 
-        red = int(self.red * (1 - ratio) + other.red * ratio)
-        green = int(self.green * (1 - ratio) + other.green * ratio)
-        blue = int(self.blue * (1 - ratio) + other.blue * ratio)
-        return Color.flyweight(red=red, green=green, blue=blue)
+        return Color.flyweight(
+            red=(int(self.red * (1 - ratio) + other.red * ratio)),
+            green=(int(self.green * (1 - ratio) + other.green * ratio)),
+            blue=(int(self.blue * (1 - ratio) + other.blue * ratio)),
+        )
 
     def at(self, position: Position, rect: Rect) -> Color:
         return self
+
+    def at_many(self, positions: Iterable[Position], rect: Rect) -> dict[Position, Color]:
+        return {p: self for p in positions}
 
 
 @dataclass(frozen=True)
@@ -185,7 +189,6 @@ class LinearGradient:
         # https://www.w3.org/TR/css-images-3/#linear-gradients
         # numerator is the position along the gradient line;
         # denominator is the length of the gradient line
-        colors = {}
         c = self.cos
         s = self.sin
         rect_center_x = rect.x + rect.width / 2
@@ -195,14 +198,15 @@ class LinearGradient:
         # use the center of the cell as the position for symmetry
         # rotate relative to the center of the rect
         # re-center at the start of the gradient line
-        for position in positions:
-            r = (
-                (((position.x + 0.5 - rect_center_x) * c) + ((position.y + 0.5 - rect_center_y) * s))
-                / gradient_line_length
-            ) + 0.5
-
-            colors[position] = self.stops[0].blend(self.stops[1], r)
-        return colors
+        stop_0 = self.stops[0]
+        stop_1 = self.stops[1]
+        return {
+            p: stop_0.blend(
+                stop_1,
+                ((((p.x + 0.5 - rect_center_x) * c) + ((p.y + 0.5 - rect_center_y) * s)) / gradient_line_length) + 0.5,
+            )
+            for p in positions
+        }
 
 
 ColorLike = Union[

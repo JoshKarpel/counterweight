@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from functools import lru_cache
 from itertools import groupby
 from textwrap import dedent
@@ -171,6 +172,28 @@ def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect
             chars[p] = blank(color=c, z=z)
 
     return chars
+
+
+def edge_positions(rect: Rect, edge: Edge) -> Iterator[Position]:
+    # top
+    for y in range(rect.top, rect.top + edge.top):
+        for x in rect.x_range():
+            yield Position.flyweight(x, y)
+
+    # bottom
+    for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
+        for x in rect.x_range():
+            yield Position.flyweight(x, y)
+
+    # left
+    for x in range(rect.left, rect.left + edge.left):
+        for y in rect.y_range():
+            yield Position.flyweight(x, y)
+
+    # right
+    for x in range(rect.right, rect.right - edge.right, -1):
+        for y in rect.y_range():
+            yield Position.flyweight(x, y)
 
 
 def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:

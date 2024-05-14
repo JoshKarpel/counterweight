@@ -202,6 +202,7 @@ if __name__ == "__main__":
                 paint_element,
                 # Position.__hash__,
                 # P.blank,
+                # Color.blend,
                 # Color._blend,
                 # Color.flyweight,
             ),

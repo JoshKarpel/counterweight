@@ -55,8 +55,8 @@ class Rect:
     def y_range(self) -> range:
         return range(self.y, self.y + self.height)
 
-    def xy_range(self) -> Iterator[Position]:
-        return (Position.flyweight(x=x, y=y) for x, y in product(self.x_range(), self.y_range()))
+    def xy_range(self) -> list[Position]:
+        return [Position.flyweight(x=x, y=y) for x in self.x_range() for y in self.y_range()]
 
     @property
     def left(self) -> int:
