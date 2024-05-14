@@ -9,7 +9,6 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
-from counterweight.output import sgr_from_cell_style
 from counterweight.styles import LinearGradient
 from counterweight.styles.utilities import *
 
@@ -89,9 +88,9 @@ if __name__ == "__main__":
         app(
             root,
             line_profile=(
-                # app,
+                app,
                 # paint_to_instructions,
-                sgr_from_cell_style,
+                # sgr_from_cell_style,
                 # LinearGradient.at,
                 # LinearGradient.at_many,
                 # paint_edge,

@@ -313,6 +313,8 @@ async def app(
                             diff_cells=len(healing_diff),
                         )
 
+                    # TODO: should I be diffing paints, instructions, or neither?
+                    # TODO: store the instructions (without movement) for each cell, diff those, generate movements, and apply
                     start_diff = perf_counter_ns()
                     diff = diff_paint(new_paint, current_paint)
                     current_paint |= diff
