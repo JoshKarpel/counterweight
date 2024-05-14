@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from functools import cache, cached_property, lru_cache
@@ -180,6 +180,29 @@ class LinearGradient:
         )
 
         return self.stops[0].blend(self.stops[1], r)
+
+    def at_many(self, positions: Iterable[Position], rect: Rect) -> dict[Position, Color]:
+        # https://www.w3.org/TR/css-images-3/#linear-gradients
+        # numerator is the position along the gradient line;
+        # denominator is the length of the gradient line
+        colors = {}
+        c = self.cos
+        s = self.sin
+        rect_center_x = rect.x + rect.width / 2
+        rect_center_y = rect.y + rect.height / 2
+        gradient_line_length = abs(rect.width * c) + abs(rect.height * s)
+
+        # use the center of the cell as the position for symmetry
+        # rotate relative to the center of the rect
+        # re-center at the start of the gradient line
+        for position in positions:
+            r = (
+                (((position.x + 0.5 - rect_center_x) * c) + ((position.y + 0.5 - rect_center_y) * s))
+                / gradient_line_length
+            ) + 0.5
+
+            colors[position] = self.stops[0].blend(self.stops[1], r)
+        return colors
 
 
 ColorLike = Union[

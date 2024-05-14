@@ -8,7 +8,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
-from counterweight.paint import paint_content, paint_edge, paint_element
+from counterweight.paint import paint_content, paint_element
 from counterweight.styles import LinearGradient
 from counterweight.styles.utilities import *
 
@@ -194,9 +194,10 @@ if __name__ == "__main__":
         app(
             root,
             line_profile=(
-                app,
+                # app,
                 # LinearGradient.at,
-                paint_edge,
+                LinearGradient.at_many,
+                # paint_edge,
                 paint_content,
                 paint_element,
                 # Position.__hash__,
