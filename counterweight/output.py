@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cache, lru_cache
 from typing import TYPE_CHECKING, TextIO
 
 from structlog import get_logger
@@ -58,32 +59,25 @@ def stop_mouse_tracking(stream: TextIO) -> None:  # pragma: untestable
     stream.flush()
 
 
+@cache
 def move_to(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
+@lru_cache(maxsize=2**14)
 def sgr_from_cell_style(style: CellStyle) -> str:
     fg_r, fg_g, fg_b = style.foreground
     bg_r, bg_g, bg_b = style.background
 
-    sgr = f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m\x1b[48;2;{bg_r};{bg_g};{bg_b}m"
-
-    if style.bold:
-        sgr += "\x1b[1m"
-
-    if style.dim:
-        sgr += "\x1b[2m"
-
-    if style.italic:
-        sgr += "\x1b[3m"
-
-    if style.underline:
-        sgr += "\x1b[4m"
-
-    if style.strikethrough:
-        sgr += "\x1b[9m"
-
-    return sgr
+    return (
+        f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m"
+        f"\x1b[48;2;{bg_r};{bg_g};{bg_b}m"
+        f"{'\x1b[1m' if style.bold else ''}"
+        f"{'\x1b[2m' if style.dim else ''}"
+        f"{'\x1b[3m' if style.italic else ''}"
+        f"{'\x1b[4m' if style.underline else ''}"
+        f"{'\x1b[9m' if style.strikethrough else ''}"
+    )
 
 
 def paint_to_instructions(paint: Paint) -> str:

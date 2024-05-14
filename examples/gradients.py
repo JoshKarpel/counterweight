@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from structlog import get_logger
 
@@ -8,6 +9,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
+from counterweight.output import sgr_from_cell_style
 from counterweight.styles import LinearGradient
 from counterweight.styles.utilities import *
 
@@ -18,6 +20,8 @@ logger = get_logger()
 def root() -> Div:
     active, set_active = use_state(True)
     angle, set_angle = use_state(0)
+    num_frames, set_num_frames = use_state(0)
+    start_time, _ = use_state(time.monotonic)
 
     def toggle(event: KeyPressed) -> None:
         match event.key:
@@ -35,12 +39,14 @@ def root() -> Div:
         while True:
             logger.info("Rotating")
             set_angle(lambda a: (a + 1) % 360)
+            set_num_frames(lambda n: n + 1)
             await asyncio.sleep(0)
 
     use_effect(rotate, (active,))
 
     return Div(
-        style=row
+        style=col
+        | gap_children_2
         | align_children_center
         | justify_children_center
         | margin_8
@@ -69,123 +75,13 @@ def root() -> Div:
                 style=align_self_center | weight_none,
                 content=f"{angle}°",
             ),
+            Text(
+                style=align_self_center | weight_none,
+                content=f"{num_frames / (time.monotonic() - start_time):.03} fps",
+            ),
         ],
         on_key=toggle,
     )
-
-
-# @component
-# def root() -> Div:
-#     return Div(
-#         style=row
-#         | align_children_center
-#         | justify_children_center
-#         | border_heavy
-#         | margin_5
-#         | Style(
-#             border=Border(
-#                 style=CellStyle(
-#                     foreground=LinearGradient(
-#                         stops=(
-#                             Color.from_name("black"),
-#                             Color.from_name("red"),
-#                         ),
-#                         angle=45,
-#                     ),
-#                     background=LinearGradient(
-#                         stops=(
-#                             Color.from_name("teal"),
-#                             Color.from_name("yellow"),
-#                         ),
-#                         angle=45,
-#                     ),
-#                 )
-#             ),
-#             margin=Margin(
-#                 color=LinearGradient(
-#                     stops=(
-#                         Color.from_name("red"),
-#                         Color.from_name("cyan"),
-#                     ),
-#                     angle=0,
-#                 )
-#             ),
-#             content=Content(
-#                 color=LinearGradient(
-#                     stops=(
-#                         Color.from_name("orange"),
-#                         Color.from_name("blue"),
-#                     ),
-#                     angle=90,
-#                 )
-#             ),
-#         ),
-#         children=[
-#             Text(
-#                 style=weight_none
-#                 | pad_2
-#                 | border_mcgugan
-#                 | margin_2
-#                 | Style(
-#                     typography=Typography(
-#                         style=CellStyle(
-#                             foreground=LinearGradient(
-#                                 stops=(
-#                                     Color.from_name("greenyellow"),
-#                                     Color.from_name("lightsalmon"),
-#                                 ),
-#                                 angle=45,
-#                             ),
-#                             background=LinearGradient(
-#                                 stops=(
-#                                     Color.from_name("blue"),
-#                                     Color.from_name("black"),
-#                                 ),
-#                                 angle=45,
-#                             ),
-#                         )
-#                     ),
-#                     border=Border(
-#                         style=CellStyle(
-#                             foreground=LinearGradient(
-#                                 stops=(
-#                                     Color.from_name("black"),
-#                                     Color.from_name("red"),
-#                                 ),
-#                                 angle=45,
-#                             ),
-#                             background=LinearGradient(
-#                                 stops=(
-#                                     Color.from_name("teal"),
-#                                     Color.from_name("yellow"),
-#                                 ),
-#                                 angle=45,
-#                             ),
-#                         )
-#                     ),
-#                     margin=Margin(
-#                         color=LinearGradient(
-#                             stops=(
-#                                 Color.from_name("red"),
-#                                 Color.from_name("cyan"),
-#                             ),
-#                             angle=60,
-#                         )
-#                     ),
-#                     padding=Padding(
-#                         color=LinearGradient(
-#                             stops=(
-#                                 Color.from_name("purple"),
-#                                 Color.from_name("green"),
-#                             ),
-#                             angle=30,
-#                         )
-#                     ),
-#                 ),
-#                 content="Hello, Gradients!",
-#             ),
-#         ],
-#     )
 
 
 if __name__ == "__main__":
@@ -193,7 +89,9 @@ if __name__ == "__main__":
         app(
             root,
             line_profile=(
-                app,
+                # app,
+                # paint_to_instructions,
+                sgr_from_cell_style,
                 # LinearGradient.at,
                 # LinearGradient.at_many,
                 # paint_edge,

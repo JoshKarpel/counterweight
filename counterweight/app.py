@@ -299,6 +299,7 @@ async def app(
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
+                        cells=len(new_paint),
                     )
 
                     if do_heal_borders:
