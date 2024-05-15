@@ -76,19 +76,19 @@ class Rect:
 
     def left_edge(self) -> tuple[Position, ...]:
         left = self.left
-        return tuple(Position.flyweight(left, y) for y in self.y_range())
+        return tuple(Position.flyweight(x=left, y=y) for y in self.y_range())
 
     def right_edge(self) -> tuple[Position, ...]:
         right = self.right
-        return tuple(Position.flyweight(right, y) for y in self.y_range())
+        return tuple(Position.flyweight(x=right, y=y) for y in self.y_range())
 
     def top_edge(self) -> tuple[Position, ...]:
         top = self.top
-        return tuple(Position.flyweight(x, top) for x in self.x_range())
+        return tuple(Position.flyweight(x=x, y=top) for x in self.x_range())
 
     def bottom_edge(self) -> tuple[Position, ...]:
         bottom = self.bottom
-        return tuple(Position.flyweight(x, bottom) for x in self.x_range())
+        return tuple(Position.flyweight(x=x, y=bottom) for x in self.x_range())
 
     def top_left(self) -> Position:
         return Position.flyweight(x=self.left, y=self.top)

@@ -40,6 +40,7 @@ from counterweight.layout import LayoutBox
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
+    combine_instructions,
     paint_to_instructions,
     start_mouse_tracking,
     start_output_control,
@@ -103,7 +104,7 @@ async def app(
     else:
         profiler = None
 
-    def handle_screen_size_change() -> tuple[Style, Paint]:
+    def handle_screen_size_change() -> tuple[Style, dict[Position, str]]:
         w, h = dimensions or shutil.get_terminal_size()
 
         ss = Style(
@@ -114,7 +115,7 @@ async def app(
         cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
 
         if not headless:
-            output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
+            output_stream.write(CLEAR_SCREEN + combine_instructions(paint_to_instructions(paint=cp)))
 
         return ss, cp
 
@@ -161,7 +162,7 @@ async def app(
             )
             key_thread.start()
 
-        screen_style, current_paint = handle_screen_size_change()
+        screen_style, current_instructions = handle_screen_size_change()
 
         should_render = True
         shadow = None
@@ -217,7 +218,7 @@ async def app(
                 if should_screenshot:
                     try:
                         start_screenshot = perf_counter_ns()
-                        await maybe_await(should_screenshot.handler(svg(current_paint)))
+                        await maybe_await(should_screenshot.handler(svg(paint)))  # noqa: F821
                         logger.debug(
                             "Took screenshot",
                             handler=should_screenshot.handler,
@@ -268,7 +269,7 @@ async def app(
 
                         allow_key_thread.set()
 
-                    screen_style, current_paint = handle_screen_size_change()
+                    screen_style, current_instructions = handle_screen_size_change()
 
                     logger.debug(
                         "Resuming application",
@@ -295,40 +296,41 @@ async def app(
                     )
 
                     start_paint = perf_counter_ns()
-                    new_paint, border_healing_hints = paint_layout(layout_tree)
+                    paint, border_healing_hints = paint_layout(layout_tree)
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
-                        cells=len(new_paint),
+                        cells=len(paint),
                     )
 
                     if do_heal_borders:
                         start_border_heal = perf_counter_ns()
-                        healing_diff = heal_borders(new_paint, border_healing_hints)
-                        new_paint |= healing_diff
+                        healing_diff = heal_borders(paint, border_healing_hints)
+                        paint |= healing_diff
                         logger.debug(
-                            "Healed borders in new paint",
+                            "Healed borders in paint",
                             elapsed_ns=f"{perf_counter_ns() - start_border_heal:_}",
                             hint_cells=len(border_healing_hints),
                             diff_cells=len(healing_diff),
                         )
 
+                    start_instructions = perf_counter_ns()
+                    new_instructions = paint_to_instructions(paint)
+                    logger.debug(
+                        "Generated instructions for paint",
+                        elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
+                    )
+
                     # TODO: should I be diffing paints, instructions, or neither?
                     # TODO: store the instructions (without movement) for each cell, diff those, generate movements, and apply
                     start_diff = perf_counter_ns()
-                    diff = diff_paint(new_paint, current_paint)
-                    current_paint |= diff
+                    diff = diff_instructions(new_instructions, current_instructions)
+                    current_instructions |= diff
+                    instructions = combine_instructions(diff)
                     logger.debug(
-                        "Diffed new paint from current paint",
+                        "Diffed new instructions from current instructions",
                         elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
                         diff_cells=len(diff),
-                    )
-
-                    start_instructions = perf_counter_ns()
-                    instructions = paint_to_instructions(diff)
-                    logger.debug(
-                        "Generated instructions from paint diff",
-                        elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
                     if not headless:
@@ -383,7 +385,7 @@ async def app(
                             should_render = True
                         case TerminalResized():
                             should_render = True
-                            screen_style, current_paint = handle_screen_size_change()
+                            screen_style, current_instructions = handle_screen_size_change()
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
@@ -486,6 +488,20 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
         # but less precise, so we can short-circuit earlier on cheaper operations.
         if new_cell is not current_cell and new_cell != current_cell:
             diff[pos] = new_cell
+
+    return diff
+
+
+def diff_instructions(
+    new_instructions: dict[Position, str], current_instructions: dict[Position, str]
+) -> dict[Position, str]:
+    diff = {}
+
+    for pos, current_instruction in current_instructions.items():
+        new_instruction = new_instructions.get(pos, "")
+
+        if new_instruction != current_instruction:
+            diff[pos] = new_instruction
 
     return diff
 

@@ -37,10 +37,10 @@ def get_replacement_char(
 @lru_cache(maxsize=2**12)
 def dither(position: Position) -> tuple[Position, Position, Position, Position]:
     return (
-        Position.flyweight(position.x - 1, position.y),  # left
-        Position.flyweight(position.x + 1, position.y),  # right
-        Position.flyweight(position.x, position.y - 1),  # above
-        Position.flyweight(position.x, position.y + 1),  # below
+        Position.flyweight(x=position.x - 1, y=position.y),  # left
+        Position.flyweight(x=position.x + 1, y=position.y),  # right
+        Position.flyweight(x=position.x, y=position.y - 1),  # above
+        Position.flyweight(x=position.x, y=position.y + 1),  # below
     )
 
 

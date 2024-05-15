@@ -171,6 +171,10 @@
   <rect x="19.25em" y="32.77em" width="12.65em" height="1.13em" fill="#000000" />
   <rect x="31.90em" y="32.77em" width="0.55em" height="1.13em" fill="#d97706" />
   <rect x="32.45em" y="32.77em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="18.70em" y="33.90em" width="0.55em" height="1.13em" fill="#d97706" />
+  <rect x="19.25em" y="33.90em" width="12.65em" height="1.13em" fill="#000000" />
+  <rect x="31.90em" y="33.90em" width="0.55em" height="1.13em" fill="#d97706" />
+  <rect x="18.70em" y="35.03em" width="13.75em" height="1.13em" fill="#d97706" />
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em" />
@@ -821,5 +825,31 @@
    <tspan x="19.25em">│</tspan>
    <tspan x="31.35em">│</tspan>
   </tspan>
+  <tspan y="33.90em">
+   <tspan x="19.25em">└</tspan>
+   <tspan x="19.80em">─</tspan>
+   <tspan x="20.35em">─</tspan>
+   <tspan x="20.90em">─</tspan>
+   <tspan x="21.45em">─</tspan>
+   <tspan x="22.00em">─</tspan>
+   <tspan x="22.55em">─</tspan>
+   <tspan x="23.10em">─</tspan>
+   <tspan x="23.65em">─</tspan>
+   <tspan x="24.20em">─</tspan>
+   <tspan x="24.75em">─</tspan>
+   <tspan x="25.30em">─</tspan>
+   <tspan x="25.85em">─</tspan>
+   <tspan x="26.40em">─</tspan>
+   <tspan x="26.95em">─</tspan>
+   <tspan x="27.50em">─</tspan>
+   <tspan x="28.05em">─</tspan>
+   <tspan x="28.60em">─</tspan>
+   <tspan x="29.15em">─</tspan>
+   <tspan x="29.70em">─</tspan>
+   <tspan x="30.25em">─</tspan>
+   <tspan x="30.80em">─</tspan>
+   <tspan x="31.35em">┘</tspan>
+  </tspan>
+  <tspan y="35.03em" />
  </text>
 </svg>

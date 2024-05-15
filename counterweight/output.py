@@ -80,5 +80,9 @@ def sgr_from_cell_style(style: CellStyle) -> str:
     )
 
 
-def paint_to_instructions(paint: Paint) -> str:
-    return "".join(f"{move_to(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items())
+def paint_to_instructions(paint: Paint) -> dict[Position, str]:
+    return {pos: f"{sgr_from_cell_style(cell.style)}{cell.char}" for pos, cell in paint.items()}
+
+
+def combine_instructions(instructions: dict[Position, str]) -> str:
+    return "".join(f"{move_to(pos)}{instruction}\x1b[0m" for pos, instruction in instructions.items())
