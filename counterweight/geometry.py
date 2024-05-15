@@ -16,7 +16,7 @@ class Position(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def flyweight(cls, x: int, y: int) -> Position:
-        return cls(x, y)
+        return cls(x=x, y=y)
 
     def __add__(self, other: Position) -> Position:  # type: ignore[override]
         return Position.flyweight(x=self.x + other.x, y=self.y + other.y)
