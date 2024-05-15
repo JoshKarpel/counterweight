@@ -321,11 +321,9 @@ async def app(
                         elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
                     )
 
-                    # TODO: should I be diffing paints, instructions, or neither?
-                    # TODO: store the instructions (without movement) for each cell, diff those, generate movements, and apply
                     start_diff = perf_counter_ns()
                     diff = diff_instructions(new_instructions, current_instructions)
-                    current_instructions |= diff
+                    current_instructions = new_instructions
                     instructions = combine_instructions(diff)
                     logger.debug(
                         "Diffed new instructions from current instructions",
