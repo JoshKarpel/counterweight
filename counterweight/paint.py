@@ -349,9 +349,8 @@ def paint_content(element: AnyElement, content: Content, rect: Rect) -> Paint:
         return {p: blank for p in rect.xy_range()}
     else:
         colors = content.color.at_many(positions=rect.xy_range(), rect=rect)
-        blank = P.blank
         z = element.style.layout.z
-        return {p: blank(color=colors[p], z=z) for p, c in colors.items()}
+        return {p: P.blank(color=colors[p], z=z) for p, c in colors.items()}
 
 
 def svg(paint: Paint) -> ElementTree:

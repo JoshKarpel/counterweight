@@ -104,20 +104,21 @@ async def app(
     else:
         profiler = None
 
-    def handle_screen_size_change() -> tuple[Style, dict[Position, str]]:
+    def handle_screen_size_change() -> tuple[Style, Paint, dict[Position, str]]:
         w, h = dimensions or shutil.get_terminal_size()
 
-        ss = Style(
+        screen_style = Style(
             layout=SCREEN_LAYOUT,
             span=Span(width=w, height=h),
         )
 
-        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+        paint = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+        instructions = paint_to_instructions(paint=paint)
 
         if not headless:
-            output_stream.write(CLEAR_SCREEN + combine_instructions(paint_to_instructions(paint=cp)))
+            output_stream.write(CLEAR_SCREEN + combine_instructions(instructions))
 
-        return ss, cp
+        return screen_style, paint, instructions
 
     @component
     def screen() -> Div:
@@ -162,7 +163,7 @@ async def app(
             )
             key_thread.start()
 
-        screen_style, current_instructions = handle_screen_size_change()
+        screen_style, paint, current_instructions = handle_screen_size_change()
 
         should_render = True
         shadow = None
@@ -218,7 +219,7 @@ async def app(
                 if should_screenshot:
                     try:
                         start_screenshot = perf_counter_ns()
-                        await maybe_await(should_screenshot.handler(svg(paint)))  # noqa: F821
+                        await maybe_await(should_screenshot.handler(svg(paint)))
                         logger.debug(
                             "Took screenshot",
                             handler=should_screenshot.handler,
@@ -269,7 +270,7 @@ async def app(
 
                         allow_key_thread.set()
 
-                    screen_style, current_instructions = handle_screen_size_change()
+                    screen_style, paint, current_instructions = handle_screen_size_change()
 
                     logger.debug(
                         "Resuming application",
@@ -383,7 +384,7 @@ async def app(
                             should_render = True
                         case TerminalResized():
                             should_render = True
-                            screen_style, current_instructions = handle_screen_size_change()
+                            screen_style, paint, current_instructions = handle_screen_size_change()
                         case KeyPressed():
                             for e in layout_tree.walk_elements_from_bottom():
                                 if e.on_key:
