@@ -66,8 +66,9 @@ def move_to(position: Position) -> str:
 
 @lru_cache(maxsize=2**18)
 def sgr_from_cell_style(style: CellStyle) -> str:
-    fg_r, fg_g, fg_b = style.foreground
-    bg_r, bg_g, bg_b = style.background
+    # Only "resolved" CellStyles with concrete Color values should be passed to this function.
+    fg_r, fg_g, fg_b = style.foreground  # type: ignore[misc]
+    bg_r, bg_g, bg_b = style.background  # type: ignore[misc]
 
     return (
         f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m"

@@ -430,7 +430,9 @@ def svg(paint: Paint) -> ElementTree:
             },
         )
 
-        for bg_color, x_cells_group in groupby(cells, key=lambda x_cell: x_cell[1].style.background.hex):
+        for bg_color, x_cells_group in groupby(
+            cells, key=lambda x_cell: x_cell[1].style.background.at(x_cell[0], y=y).hex
+        ):
             # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
             x_cells = tuple(x_cells_group)
             first_x, first_cell = x_cells[0]
@@ -461,7 +463,7 @@ def svg(paint: Paint) -> ElementTree:
 
                 # optimization: don't write white, it's the default
                 if cell.style.foreground != Color.from_name("white"):
-                    ts.attrib["fill"] = cell.style.foreground.hex
+                    ts.attrib["fill"] = cell.style.foreground.at(x=x, y=y).hex
                 ts.text = cell.char
 
     return ElementTree(element=root)

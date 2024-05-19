@@ -5,7 +5,10 @@
 ### Added
 
 - [#123](https://github.com/JoshKarpel/counterweight/pull/123)
-  Add styling for content area background color.
+  Added styling for content area background color.
+- [#132](https://github.com/JoshKarpel/counterweight/pull/132)
+  Added support for [linear gradients][counterweight.styles.LinearGradient]
+  in all places where `Color`s are accepted.
 
 ### Fixed
 
@@ -14,6 +17,11 @@
   (they were previously reported as mouse presses).
   The `check-input` CLI subcommand is also fixed
   (was broken by [#86](https://github.com/JoshKarpel/counterweight/pull/86)).
+
+### Removed
+
+- [#132](https://github.com/JoshKarpel/counterweight/pull/132)
+  Dropped support for Python `3.11`.
 
 ## `0.0.9`
 
