@@ -26,7 +26,7 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4.1.5
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5.1.0
         with:
@@ -46,7 +46,7 @@ jobs:
       - name: Test docs
         run: poetry run mkdocs build --clean --strict --verbose
       - name: Upload coverage
-        uses: codecov/codecov-action@v4.3.0
+        uses: codecov/codecov-action@v4.4.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
