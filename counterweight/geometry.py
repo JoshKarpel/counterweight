@@ -16,7 +16,7 @@ class Position(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def flyweight(cls, x: int, y: int) -> Position:
-        return cls(x, y)
+        return cls(x=x, y=y)
 
     def __add__(self, other: Position) -> Position:  # type: ignore[override]
         return Position.flyweight(x=self.x + other.x, y=self.y + other.y)
@@ -55,8 +55,8 @@ class Rect:
     def y_range(self) -> range:
         return range(self.y, self.y + self.height)
 
-    def xy_range(self) -> Iterator[tuple[int, int]]:
-        return product(self.x_range(), self.y_range())
+    def xy_range(self) -> list[Position]:
+        return [Position.flyweight(x=x, y=y) for x in self.x_range() for y in self.y_range()]
 
     @property
     def left(self) -> int:
@@ -76,19 +76,19 @@ class Rect:
 
     def left_edge(self) -> tuple[Position, ...]:
         left = self.left
-        return tuple(Position.flyweight(left, y) for y in self.y_range())
+        return tuple(Position.flyweight(x=left, y=y) for y in self.y_range())
 
     def right_edge(self) -> tuple[Position, ...]:
         right = self.right
-        return tuple(Position.flyweight(right, y) for y in self.y_range())
+        return tuple(Position.flyweight(x=right, y=y) for y in self.y_range())
 
     def top_edge(self) -> tuple[Position, ...]:
         top = self.top
-        return tuple(Position.flyweight(x, top) for x in self.x_range())
+        return tuple(Position.flyweight(x=x, y=top) for x in self.x_range())
 
     def bottom_edge(self) -> tuple[Position, ...]:
         bottom = self.bottom
-        return tuple(Position.flyweight(x, bottom) for x in self.x_range())
+        return tuple(Position.flyweight(x=x, y=bottom) for x in self.x_range())
 
     def top_left(self) -> Position:
         return Position.flyweight(x=self.left, y=self.top)

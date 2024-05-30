@@ -78,7 +78,7 @@ class Rects:
 def use_rects() -> Rects:
     """
     Returns:
-        A recording describing the rectangular areas of the
+        A record describing the rectangular areas of the
             `content`, `padding`, `border`, and `margin` of
             the calling component's top-level element
             *on the previous render cycle*.

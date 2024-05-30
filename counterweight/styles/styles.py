@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from enum import Enum
-from functools import cached_property, lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from functools import cache, cached_property, lru_cache
+from math import cos, radians, sin
+from typing import Literal, NamedTuple, TypeVar, Union
 
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
+from structlog import get_logger
 
+from counterweight.geometry import Position, Rect
 from counterweight.types import FrozenForbidExtras
+
+logger = get_logger(__name__)
 
 S = TypeVar("S", bound="StyleFragment")
 
@@ -98,6 +105,11 @@ class Color(NamedTuple):
     blue: int
 
     @classmethod
+    @cache
+    def flyweight(cls, red: int, green: int, blue: int) -> Color:
+        return cls(red=red, green=green, blue=blue)
+
+    @classmethod
     def from_name(cls, name: str) -> Color:
         return COLORS_BY_NAME[name]
 
@@ -105,7 +117,7 @@ class Color(NamedTuple):
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
         hex = hex.lstrip("#")
-        return cls(
+        return cls.flyweight(
             int(hex[0:2], 16),
             int(hex[2:4], 16),
             int(hex[4:6], 16),
@@ -115,13 +127,92 @@ class Color(NamedTuple):
     def hex(self) -> str:
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
-    def blend(self, other: Color, alpha: float) -> Color:
-        return Color(
-            red=int(self.red * (1 - alpha) + other.red * alpha),
-            green=int(self.green * (1 - alpha) + other.green * alpha),
-            blue=int(self.blue * (1 - alpha) + other.blue * alpha),
+    def blend(self, other: Color, ratio: float) -> Color:
+        return self._blend(
+            other=other,
+            # "Chunk" floats by rounding to 3 decimal places.
+            # This dramatically improves the hit rate of the cache on the underlying method
+            # without sacrificing much visual quality.
+            ratio=round(ratio, 3),
         )
 
+    @lru_cache(maxsize=2**20)
+    def _blend(self, other: Color, ratio: float) -> Color:
+        if not 0 <= ratio <= 1:
+            raise ValueError(f"Ratio must be between 0 and 1 inclusive, not {ratio}")
+
+        return Color.flyweight(
+            red=(int(self.red * (1 - ratio) + other.red * ratio)),
+            green=(int(self.green * (1 - ratio) + other.green * ratio)),
+            blue=(int(self.blue * (1 - ratio) + other.blue * ratio)),
+        )
+
+    def at(self, position: Position, rect: Rect) -> Color:
+        return self
+
+    def at_many(self, positions: Iterable[Position], rect: Rect) -> dict[Position, Color]:
+        return {p: self for p in positions}
+
+
+@dataclass(frozen=True)
+class LinearGradient:
+    stops: Sequence[Color]
+    angle: float = 0
+
+    @cached_property
+    def cos(self) -> float:
+        return cos(radians(self.angle))
+
+    @cached_property
+    def sin(self) -> float:
+        return sin(radians(self.angle))
+
+    def at(self, position: Position, rect: Rect) -> Color:
+        # https://www.w3.org/TR/css-images-3/#linear-gradients
+        # numerator is the position along the gradient line;
+        # denominator is the length of the gradient line
+        r = (
+            (
+                # use the center of the cell as the position for symmetry
+                # rotate relative to the center of the rect
+                ((position.x + 0.5 - (rect.x + rect.width / 2)) * self.cos)
+                + ((position.y + 0.5 - (rect.y + rect.height / 2)) * self.sin)
+            )
+            / (abs(rect.width * self.cos) + abs(rect.height * self.sin))
+        ) + (
+            0.5  # re-center at the start of the gradient line
+        )
+
+        return self.stops[0].blend(self.stops[1], r)
+
+    def at_many(self, positions: Iterable[Position], rect: Rect) -> dict[Position, Color]:
+        # https://www.w3.org/TR/css-images-3/#linear-gradients
+        # numerator is the position along the gradient line;
+        # denominator is the length of the gradient line
+        c = self.cos
+        s = self.sin
+        rect_center_x = rect.x + rect.width / 2
+        rect_center_y = rect.y + rect.height / 2
+        gradient_line_length = abs(rect.width * c) + abs(rect.height * s)
+
+        # use the center of the cell as the position for symmetry
+        # rotate relative to the center of the rect
+        # re-center at the start of the gradient line
+        stop_0 = self.stops[0]
+        stop_1 = self.stops[1]
+        return {
+            p: stop_0.blend(
+                stop_1,
+                ((((p.x + 0.5 - rect_center_x) * c) + ((p.y + 0.5 - rect_center_y) * s)) / gradient_line_length) + 0.5,
+            )
+            for p in positions
+        }
+
+
+ColorLike = Union[
+    Color,
+    LinearGradient,
+]
 
 COLORS_BY_NAME = {
     name: Color.from_hex(hex)
@@ -271,8 +362,8 @@ COLORS_BY_NAME = {
 
 
 class CellStyle(StyleFragment):
-    foreground: Color = Field(default=Color.from_name("white"))
-    background: Color = Field(default=Color.from_name("black"))
+    foreground: ColorLike = Field(default=Color.from_name("white"))
+    background: ColorLike = Field(default=Color.from_name("black"))
     bold: bool = False
     dim: bool = False
     italic: bool = False
@@ -583,7 +674,7 @@ class Margin(StyleFragment):
     bottom: int = Field(default=0)
     left: int = Field(default=0)
     right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorLike = Field(default=Color.from_name("black"))
 
 
 class Padding(StyleFragment):
@@ -591,11 +682,11 @@ class Padding(StyleFragment):
     bottom: int = Field(default=0)
     left: int = Field(default=0)
     right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorLike = Field(default=Color.from_name("black"))
 
 
 class Content(StyleFragment):
-    color: Color = Field(default=Color.from_name("black"))
+    color: ColorLike = Field(default=Color.from_name("black"))
 
 
 class Span(StyleFragment):

@@ -70,6 +70,7 @@
 ::: counterweight.styles.Content
 ::: counterweight.styles.Typography
 ::: counterweight.styles.Color
+::: counterweight.styles.LinearGradient
 ::: counterweight.styles.CellStyle
 
 ### Layout

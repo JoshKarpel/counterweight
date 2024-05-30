@@ -111,3 +111,18 @@ def unordered_range(a: int, b: int) -> range:
     """
     step = -1 if b < a else 1
     return range(a, b + step, step)
+
+
+F = TypeVar("F", bound=float)
+
+
+@lru_cache(maxsize=2**12)
+def clamp(min_: F, val: F, max_: F) -> F:
+    return max(min_, min(val, max_))
+
+
+def merge(*dicts: dict[K, V]) -> dict[K, V]:
+    merged = {}
+    for d in dicts:
+        merged.update(d)
+    return merged
