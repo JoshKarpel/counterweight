@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from more_itertools import take
 from structlog import get_logger
 
-from counterweight._utils import halve_integer, partition_int
+from counterweight._utils import clamp, halve_integer, partition_int
 from counterweight.elements import AnyElement, CellPaint
 from counterweight.geometry import Edge, Rect
 from counterweight.styles.styles import BorderEdge
@@ -129,19 +129,20 @@ class LayoutBox:
         # TODO: revisit this, kind of want to differentiate between "auto" and "flex" here, or maybe width=Weight(1) ?
         if self.element.type == "text" and self.element.style.typography.wrap == "none":
             if style.span.width == "auto" or style.span.height == "auto":
-                wrapped_lines = wrap_cells(
+                max_line_len = 0
+                num_lines = 0
+                for line in wrap_cells(
                     cells=self.element.cells,
                     wrap=style.typography.wrap,
                     width=100_000,  # any large number
-                )
+                ):
+                    max_line_len = max(max_line_len, len(line))
+                    num_lines += 1
 
                 if style.span.width == "auto":
-                    self.dims.content.width = max(
-                        (len(line) for line in wrapped_lines),
-                        default=0,
-                    )
+                    self.dims.content.width = max_line_len
                 if style.span.height == "auto":
-                    self.dims.content.height = len(wrapped_lines)
+                    self.dims.content.height = num_lines
 
         num_gaps = max(
             sum(1 for child in self.children if child.element.style.layout.position.type == "relative") - 1, 0
@@ -191,6 +192,18 @@ class LayoutBox:
         layout = style.layout
         parent = self.parent
 
+        # TODO Experimental: children height/width capped by parent heigh/width dependinging on layout direction
+        # accounts for changes in parent height/width from their second pass (e.g., if they are flex children)
+        if layout.position.type == "relative" and parent:
+            if parent.element.style.layout.direction == "row":
+                self.dims.content.height = clamp(
+                    0, self.dims.content.height, parent.dims.content.height - self.dims.vertical_edge_width()
+                )
+            if parent.element.style.layout.direction == "column":
+                self.dims.content.width = clamp(
+                    0, self.dims.content.width, parent.dims.content.width - self.dims.horizontal_edge_width()
+                )
+
         # handle align self
         if layout.position.type == "relative" and parent:
             if parent.element.style.layout.direction == "row":
@@ -201,6 +214,8 @@ class LayoutBox:
                         self.dims.content.y += parent.dims.content.height - self.dims.height()
                     case "stretch":
                         self.dims.content.height = parent.dims.content.height - self.dims.vertical_edge_width()
+                        # TODO: remove debug log
+                        logger.debug("stretch height", t=self.element.type, h=self.dims.content.height)
             elif parent.element.style.layout.direction == "column":
                 match layout.align_self:
                     case "center":
@@ -273,18 +288,6 @@ class LayoutBox:
             for child in relative_children:
                 available_width -= child.dims.width()
                 available_height -= child.dims.height()
-
-        # at this point we know how wide each child is, so we can do text wrapping and set heights
-        for child in relative_children:
-            if child.element.type == "text" and child.element.style.typography.wrap != "none":
-                h = len(
-                    wrap_cells(
-                        cells=child.element.cells,
-                        wrap=child.element.style.typography.wrap,
-                        width=child.dims.content.width,
-                    )
-                )
-                child.dims.content.height = max(min(h, available_height - child.dims.vertical_edge_width()), 0)
 
         # determine positions
 
@@ -432,36 +435,43 @@ class LayoutBox:
                 elif layout.align_children == "stretch" and child.element.style.span.width == "auto":
                     child.dims.content.width = self.dims.content.width - child.dims.horizontal_edge_width()
 
+        # TODO: this block was effectively doing nothing because text wrapping was always off
+        # at this point we know how wide each child is, so we can do text wrapping and set heights
+        # for child in relative_children:
+        #     if child.element.type == "text":
+        #         h = len(
+        #             wrap_cells(
+        #                 cells=child.element.cells,
+        #                 wrap=child.element.style.typography.wrap,
+        #                 width=child.dims.content.width,
+        #             )
+        #         )
+        #         child.dims.content.height = clamp(0, h, available_height - child.dims.vertical_edge_width())
+        #         # TODO: remove debug log
+        #         logger.debug(
+        #             "set text content height",
+        #             type=self.element.type,
+        #             h=h,
+        #             child_h=child.dims.content.height,
+        #             available_height=available_height,
+        #             self_h=self.dims.content.height,
+        #         )
+
 
 def wrap_cells(
-    cells: Iterable[CellPaint],
+    cells: list[CellPaint],
     wrap: Literal["none", "paragraphs"],
     width: int,
-) -> list[list[CellPaint]]:
+) -> Iterator[list[CellPaint]]:
     if width <= 0:
-        return []
+        return
 
     if wrap == "none":
-        lines: list[list[CellPaint]] = []
-        current_line: list[CellPaint] = []
-        for cell in cells:
+        last_newline_idx = 0
+        for curr_idx, cell in enumerate(cells):
             if cell.char == "\n":
-                lines.append(current_line)
-                current_line = []
-            else:
-                current_line.append(cell)
-        lines.append(current_line)
-        return lines
-
-    raise NotImplementedError("non-none wrapping not yet implemented")
-
-    # wrapper = TextWrapper(width=width)
-    #
-    # paragraphs = text.split("\n\n")  # double newline = paragraph break
-    #
-    # lines = []
-    # for paragraph in paragraphs:
-    #     lines.extend(wrapper.wrap(paragraph))
-    #     lines.append("")  # empty line between paragraphs
-    #
-    # return lines[:-1]  # remove last empty line
+                yield cells[last_newline_idx + 1 : curr_idx]
+                last_newline_idx = curr_idx
+        yield cells[curr_idx:]
+    else:
+        raise NotImplementedError("non-none wrapping not yet implemented")

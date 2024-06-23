@@ -105,16 +105,13 @@
   <tspan y="3.39em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
-   <tspan x="19.80em" fill="#f59e0b">B</tspan>
    <tspan x="20.35em" fill="#f59e0b">1</tspan>
    <tspan x="24.20em">║</tspan>
-   <tspan x="28.05em" fill="#f59e0b">B</tspan>
    <tspan x="28.60em" fill="#f59e0b">2</tspan>
    <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="4.52em">
    <tspan x="0.00em">║</tspan>
-   <tspan x="7.70em" fill="#f59e0b">A</tspan>
    <tspan x="8.25em" fill="#f59e0b">1</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="24.20em">║</tspan>
@@ -207,16 +204,12 @@
    <tspan x="14.85em">═</tspan>
    <tspan x="15.40em">═</tspan>
    <tspan x="15.95em">╝</tspan>
-   <tspan x="18.15em" fill="#06b6d4">C</tspan>
-   <tspan x="18.70em" fill="#06b6d4">1</tspan>
+   <tspan x="18.15em" fill="#06b6d4">1</tspan>
    <tspan x="20.35em">║</tspan>
-   <tspan x="22.00em" fill="#06b6d4">C</tspan>
    <tspan x="22.55em" fill="#06b6d4">2</tspan>
    <tspan x="24.20em">║</tspan>
-   <tspan x="26.40em" fill="#06b6d4">C</tspan>
-   <tspan x="26.95em" fill="#06b6d4">3</tspan>
+   <tspan x="26.40em" fill="#06b6d4">3</tspan>
    <tspan x="28.60em">║</tspan>
-   <tspan x="30.25em" fill="#06b6d4">C</tspan>
    <tspan x="30.80em" fill="#06b6d4">4</tspan>
    <tspan x="32.45em">║</tspan>
   </tspan>
@@ -279,7 +272,6 @@
   </tspan>
   <tspan y="15.82em">
    <tspan x="0.00em">║</tspan>
-   <tspan x="7.70em" fill="#f59e0b">A</tspan>
    <tspan x="8.25em" fill="#f59e0b">2</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
@@ -289,14 +281,11 @@
   <tspan y="16.95em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
-   <tspan x="18.70em" fill="#06b6d4">D</tspan>
-   <tspan x="19.25em" fill="#06b6d4">1</tspan>
+   <tspan x="18.70em" fill="#06b6d4">1</tspan>
    <tspan x="21.45em">║</tspan>
-   <tspan x="24.20em" fill="#06b6d4">D</tspan>
-   <tspan x="24.75em" fill="#06b6d4">2</tspan>
+   <tspan x="24.20em" fill="#06b6d4">2</tspan>
    <tspan x="26.95em">║</tspan>
-   <tspan x="29.70em" fill="#06b6d4">D</tspan>
-   <tspan x="30.25em" fill="#06b6d4">3</tspan>
+   <tspan x="29.70em" fill="#06b6d4">3</tspan>
    <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="18.08em">

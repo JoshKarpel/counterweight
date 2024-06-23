@@ -9,7 +9,7 @@ from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
 from time import perf_counter_ns
-from typing import Iterable, TextIO
+from typing import Iterable, ParamSpec, TextIO
 from weakref import WeakSet
 
 from structlog import get_logger
@@ -23,6 +23,7 @@ from counterweight.elements import AnyElement, Div
 from counterweight.events import (
     AnyEvent,
     Dummy,
+    ForceRender,
     KeyPressed,
     MouseDown,
     MouseMoved,
@@ -67,8 +68,12 @@ def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
 
 
+P = ParamSpec("P")
+
+
 async def app(
-    root: Callable[[], Component],
+    root: Callable[[P], Component],
+    *args: P.args,
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
     headless: bool = False,
@@ -108,7 +113,7 @@ async def app(
 
     @component
     def screen() -> Div:
-        return Div(children=(root(),), style=screen_style)
+        return Div(children=(root(*args),), style=screen_style)
 
     logger.info("Application starting...")
 
@@ -191,7 +196,7 @@ async def app(
         mouse_position = Position.flyweight(x=-1, y=-1)
 
         async with TaskGroup() as tg:
-            for ap in chain(autopilot, repeat(None)):
+            for ap in chain((ForceRender(),), autopilot, repeat(None)):
                 if should_quit:
                     logger.info("Quitting application...")
                     raise KeyboardInterrupt
@@ -341,7 +346,7 @@ async def app(
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)
-                        await event_queue.put(Dummy())  # Force a render cycle when the autopilot emits a control
+                        await event_queue.put(Dummy())  # Force a cycle when the autopilot emits a control
                     else:  # i.e., an event
                         await event_queue.put(ap)
                     logger.debug("Handled autopilot command", command=ap)
@@ -394,6 +399,8 @@ async def app(
                                     listener(mouse)
 
                             mouse_position = m.absolute
+                        case ForceRender():
+                            should_render = True
 
                     while True:
                         try:
