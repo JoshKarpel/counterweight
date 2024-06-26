@@ -46,7 +46,7 @@ jobs:
       - name: Test docs
         run: poetry run mkdocs build --clean --strict --verbose
       - name: Upload coverage
-        uses: codecov/codecov-action@v4.4.1
+        uses: codecov/codecov-action@v4.5.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
