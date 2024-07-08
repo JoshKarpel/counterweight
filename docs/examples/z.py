@@ -45,7 +45,7 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(30, 15),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "z.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "z.svg", indent=1),
                 Quit(),
             ],
         )

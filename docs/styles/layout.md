@@ -25,7 +25,7 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 --8<-- "box_model.py:example"
 ```
 
-![Box Model](../_examples/box-model.svg)
+![Box Model](../assets/box-model.svg)
 
 !!! tip "Terminal cells are not square!"
 
@@ -49,7 +49,7 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 --8<-- "relative_positioning.py:example"
 ```
 
-![Relative Positioning](../_examples/relative-positioning.svg)
+![Relative Positioning](../assets/relative-positioning.svg)
 
 ### Absolute Positioning
 
@@ -59,7 +59,7 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 --8<-- "absolute_positioning.py:example"
 ```
 
-![Absolute Positioning](../_examples/absolute-positioning.svg)
+![Absolute Positioning](../assets/absolute-positioning.svg)
 
 #### Controlling Overlapping with `z`
 
@@ -67,14 +67,14 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 --8<-- "z.py:example"
 ```
 
-![Z Layers](../_examples/z.svg)
+![Z Layers](../assets/z.svg)
 
 
 ```python
 --8<-- "absolute_positioning_insets.py:example"
 ```
 
-![Absolute Positioning Insets](../_examples/absolute-positioning-insets.svg)
+![Absolute Positioning Insets](../assets/absolute-positioning-insets.svg)
 
 
 ### Fixed Positioning
@@ -85,4 +85,4 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 --8<-- "fixed_positioning.py:example"
 ```
 
-![Fixed Positioning](../_examples/fixed-positioning.svg)
+![Fixed Positioning](../assets/fixed-positioning.svg)

@@ -42,7 +42,7 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(60, 30),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "fixed-positioning.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "fixed-positioning.svg", indent=1),
                 Quit(),
             ],
         )

@@ -9,8 +9,8 @@ should "join up", but don't because they belong to different elements, they will
 
 With border healing **enabled**:
 
-![Border Healing Enabled](../_examples/border-healing-on.svg)
+![Border Healing Enabled](../assets/border-healing-on.svg)
 
 With border healing **disabled**:
 
-![Border Healing Disabled](../_examples/border-healing-off.svg)
+![Border Healing Disabled](../assets/border-healing-off.svg)

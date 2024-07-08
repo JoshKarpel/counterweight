@@ -62,7 +62,7 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(70, 5),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "border-titles.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-titles.svg", indent=1),
                 Quit(),
             ],
         )
