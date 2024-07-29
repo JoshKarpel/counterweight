@@ -28,7 +28,7 @@ repos:
       - id: python-check-blanket-type-ignore
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.29.0
+    rev: 0.29.1
     hooks:
       - id: check-github-workflows
       - id: check-github-actions
@@ -50,7 +50,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.5.4'
+    rev: 'v0.5.5'
     hooks:
       - id: ruff
         args: [ --fix, --exit-non-zero-on-fix ]
