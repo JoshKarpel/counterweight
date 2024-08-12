@@ -45,7 +45,7 @@ structlog = ">=23.1"
 parsy = ">=2.1"
 more-itertools = ">=9.1"
 cachetools = ">=5.3"
-line-profiler = ">=4.1"
+numpy = ">=2"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=3"
