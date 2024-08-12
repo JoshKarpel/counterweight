@@ -91,9 +91,9 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(60, 20),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "border-healing-on.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-healing-on.svg", indent=1),
                 KeyPressed(key=Key.Space),
-                Screenshot.to_file(THIS_DIR / "border-healing-off.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-healing-off.svg", indent=1),
                 Quit(),
             ],
         )

@@ -8,4 +8,4 @@ inside a `Div` that provides the border.
 --8<-- "border_titles.py:example"
 ```
 
-![Border Titles](../_examples/border-titles.svg)
+![Border Titles](../assets/border-titles.svg)

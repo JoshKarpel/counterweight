@@ -35,7 +35,7 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(30, 10),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "box-model.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "box-model.svg", indent=1),
                 Quit(),
             ],
         )
