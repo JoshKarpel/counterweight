@@ -4,7 +4,7 @@ from asyncio import CancelledError, Queue, QueueEmpty, Task, current_task, get_e
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
-from typing import Awaitable, List, TypeVar, cast
+from typing import Awaitable, List, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -72,7 +72,7 @@ async def maybe_await(val: Awaitable[R] | R) -> R:
     if isawaitable(val):
         return await val
     else:
-        return cast(R, val)  # mypy doesn't narrow the type when isawaitable() is False, so we have to cast
+        return val
 
 
 async def forever() -> None:
