@@ -7,6 +7,7 @@ from functools import cache, cached_property, lru_cache
 from math import cos, radians, sin
 from typing import Literal, NamedTuple, TypeVar, Union
 
+import numpy as np
 from cachetools import LRUCache
 from pydantic import Field, NonNegativeInt, PositiveInt
 from structlog import get_logger
@@ -147,6 +148,14 @@ class Color(NamedTuple):
             blue=(int(self.blue * (1 - ratio) + other.blue * ratio)),
         )
 
+    def blend_many(self, other: Color, ratios: np.ndarray) -> list[Color]:
+        left = 1 - ratios
+        r_arr = np.round(self.red * left + other.red * ratios)
+        g_arr = np.round(self.green * left + other.green * ratios)
+        b_arr = np.round(self.blue * left + other.blue * ratios)
+
+        return [Color.flyweight(red=r, green=g, blue=b) for r, g, b in zip(r_arr, g_arr, b_arr)]
+
     def at(self, position: Position, rect: Rect) -> Color:
         return self
 
@@ -200,13 +209,16 @@ class LinearGradient:
         # re-center at the start of the gradient line
         stop_0 = self.stops[0]
         stop_1 = self.stops[1]
-        return {
-            p: stop_0.blend(
-                stop_1,
-                ((((p.x + 0.5 - rect_center_x) * c) + ((p.y + 0.5 - rect_center_y) * s)) / gradient_line_length) + 0.5,
-            )
-            for p in positions
-        }
+
+        x_arr = np.array([p.x for p in positions])
+        y_arr = np.array([p.y for p in positions])
+
+        blend = (
+            (((x_arr + (0.5 - rect_center_x)) * c) + ((y_arr + (0.5 - rect_center_y)) * s)) / gradient_line_length
+        ) + 0.5
+        colors = stop_0.blend_many(stop_1, blend)
+
+        return {p: c for p, c in zip(positions, colors)}
 
 
 ColorLike = Union[
