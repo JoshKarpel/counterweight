@@ -1773,5 +1773,5 @@ anyio = ">=3.0.0"
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.11.2,<4"
-content-hash = "3353600b995e20a4af39ee6236027cabfb4c09483d80397f4c8631222103740f"
+python-versions = ">=3.12,<4"
+content-hash = "cb22b489cc73f2ade1fbaeaaa9f98864ff77433c1a170091bf549ab8e8f33ad7"
