@@ -6,6 +6,8 @@ from functools import lru_cache
 from itertools import product
 from typing import NamedTuple
 
+import numpy as np
+
 from counterweight._utils import unordered_range
 
 
@@ -52,8 +54,14 @@ class Rect:
     def x_range(self) -> range:
         return range(self.x, self.x + self.width)
 
+    def x_arange(self) -> np.ndarray:
+        return np.arange(self.x, self.x + self.width)
+
     def y_range(self) -> range:
         return range(self.y, self.y + self.height)
+
+    def y_arange(self) -> np.ndarray:
+        return np.arange(self.y, self.y + self.height)
 
     def xy_range(self) -> list[Position]:
         return [Position.flyweight(x=x, y=y) for x in self.x_range() for y in self.y_range()]

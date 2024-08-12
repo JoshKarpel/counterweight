@@ -138,38 +138,36 @@ def paint_text(text: Text, rect: Rect) -> Paint:
 
 def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect) -> Paint:
     z = element.style.layout.z
-    color_at = mp.color.at
-    blank = P.blank
 
     chars = {}
 
     # top
     for y in range(rect.top, rect.top + edge.top):
-        for x in rect.x_range():
-            p = Position.flyweight(x, y)
-            c = color_at(p, rect=rect)
-            chars[p] = blank(color=c, z=z)
+        positions = [Position.flyweight(x=x, y=y) for x in rect.x_range()]
+        colors = mp.color.at_many(positions=positions, rect=rect)
+        for p, c in colors.items():
+            chars[p] = P.blank(color=c, z=z)
 
     # bottom
     for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
-        for x in rect.x_range():
-            p = Position.flyweight(x, y)
-            c = color_at(p, rect=rect)
-            chars[p] = blank(color=c, z=z)
+        positions = [Position.flyweight(x=x, y=y) for x in rect.x_range()]
+        colors = mp.color.at_many(positions=positions, rect=rect)
+        for p, c in colors.items():
+            chars[p] = P.blank(color=c, z=z)
 
     # left
     for x in range(rect.left, rect.left + edge.left):
-        for y in rect.y_range():
-            p = Position.flyweight(x, y)
-            c = color_at(p, rect=rect)
-            chars[p] = blank(color=c, z=z)
+        positions = [Position.flyweight(x=x, y=y) for y in rect.y_range()]
+        colors = mp.color.at_many(positions=positions, rect=rect)
+        for p, c in colors.items():
+            chars[p] = P.blank(color=c, z=z)
 
     # right
     for x in range(rect.right, rect.right - edge.right, -1):
-        for y in rect.y_range():
-            p = Position.flyweight(x, y)
-            c = color_at(p, rect=rect)
-            chars[p] = blank(color=c, z=z)
+        positions = [Position.flyweight(x=x, y=y) for y in rect.y_range()]
+        colors = mp.color.at_many(positions=positions, rect=rect)
+        for p, c in colors.items():
+            chars[p] = P.blank(color=c, z=z)
 
     return chars
 
