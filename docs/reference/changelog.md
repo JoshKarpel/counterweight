@@ -2,6 +2,11 @@
 
 ## Next
 
+### Removed
+
+- [#165](https://github.com/JoshKarpel/counterweight/pull/165)
+  Dropped support for Python `3.11`.
+
 ### Added
 
 - [#123](https://github.com/JoshKarpel/counterweight/pull/123)

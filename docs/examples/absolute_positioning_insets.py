@@ -82,7 +82,7 @@ if __name__ == "__main__":
             headless=True,
             dimensions=(60, 25),
             autopilot=[
-                Screenshot.to_file(THIS_DIR / "absolute-positioning-insets.svg", indent=1),
+                Screenshot.to_file(THIS_DIR.parent / "assets" / "absolute-positioning-insets.svg", indent=1),
                 Quit(),
             ],
         )

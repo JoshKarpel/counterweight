@@ -447,13 +447,17 @@ for j in literal_vals(Typography, "justify"):
 
 generated_lines.append("")
 
-utils_path.write_text(
-    "\n".join(
-        [
-            *utils_text[: start + 1],
-            *generated_lines,
-            *utils_text[stop:],
-            "",
-        ]
-    )
+output = "\n".join(
+    [
+        *utils_text[: start + 1],
+        *generated_lines,
+        *utils_text[stop:],
+        "",
+    ]
 )
+
+if not (utils_path.exists() and utils_path.read_text() == output):
+    utils_path.write_text(output)
+    print(f"Wrote generates utilities to {utils_path}")
+else:
+    print("No changes in generated utilities")

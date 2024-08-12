@@ -1,0 +1,49 @@
+flows:
+  default:
+    nodes:
+      codegen:
+        target:
+          commands: |
+            codegen/generate_utilities.py
+        triggers:
+          - watch: ["codegen/"]
+      screens:
+        target:
+          commands: |
+            docs/examples/generate-screenshots.sh
+        triggers:
+          - code-changes
+      tests:
+        target: tests
+        triggers:
+          - code-changes
+      types:
+        target: types
+        triggers:
+          - code-changes
+      docs:
+        target: docs
+        triggers:
+          - delay: 1
+
+targets:
+  tests:
+    commands: |
+      pytest -vv --cov
+
+  types:
+    commands: |
+      mypy
+
+  docs:
+    commands: |
+      mkdocs serve --strict
+
+triggers:
+  code-changes:
+    watch:
+      - counterweight/
+      - tests/
+      - docs/examples/
+      - pyproject.toml
+      - .coveragerc
