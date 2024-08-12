@@ -62,6 +62,8 @@ mkdocs = ">=1.4"
 mkdocs-material = ">=9"
 mkdocstrings = {extras = ["python"], version = ">=0.19.0"}
 line-profiler = ">=4.1"
+austin-dist = ">=3.6"
+austin-python = ">=1.7"
 
 [tool.poetry.scripts]
 counterweight = 'counterweight.cli:cli'

@@ -20,3 +20,8 @@ docs-screenshots:
 
 docs:
   mkdocs serve
+
+profile FILE DURATION:
+  austin --output profile.austin --exposure {{DURATION}} python {{FILE}}
+  austin2speedscope profile.austin profile.ss
+  reset
