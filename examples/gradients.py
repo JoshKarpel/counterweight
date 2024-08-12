@@ -84,23 +84,4 @@ def root() -> Div:
 
 
 if __name__ == "__main__":
-    asyncio.run(
-        app(
-            root,
-            line_profile=(
-                app,
-                # paint_to_instructions,
-                # sgr_from_cell_style,
-                # LinearGradient.at,
-                # LinearGradient.at_many,
-                # paint_edge,
-                # paint_content,
-                # paint_element,
-                # Position.__hash__,
-                # P.blank,
-                # Color.blend,
-                # Color._blend,
-                # Color.flyweight,
-            ),
-        )
-    )
+    asyncio.run(app(root))
