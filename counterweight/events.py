@@ -76,6 +76,11 @@ class Dummy(_Event):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ForceRender(_Event):
+    pass
+
+
 MouseEvent = Union[
     MouseMoved,
     MouseDown,
@@ -94,4 +99,5 @@ AnyEvent = Union[
     MouseScrolledDown,
     MouseScrolledUp,
     Dummy,
+    ForceRender,
 ]

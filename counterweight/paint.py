@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, product
+from itertools import groupby, islice, product
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -136,10 +136,11 @@ def paint_text(text: Text, rect: Rect) -> Paint:
     )
 
     previous_cell_style = None
+    x_offset, y_offset = text.offset
 
-    for y, line in enumerate(lines[: rect.height], start=rect.y):
+    for y, line in enumerate(islice(lines, y_offset, rect.height + y_offset), start=rect.y):
         justified_line = justify_line(line, rect.width, text.style.typography.justify)
-        for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
+        for x, cell in enumerate(justified_line[x_offset : rect.width + x_offset], start=rect.x):
             cell_style = cell.style
 
             # Optimization: reuse the same merged style object if the cell style is the same object.

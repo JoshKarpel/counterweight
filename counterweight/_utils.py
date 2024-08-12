@@ -65,6 +65,15 @@ def partition_int(total: int, weights: tuple[int, ...]) -> list[int]:
     return partition
 
 
+@lru_cache(maxsize=2**12)
+def clamp(min_: int | None, val: int, max_: int | None) -> int:
+    if min_ is not None and max_ is not None and not min_ <= max_:
+        raise ValueError(f"min must be <= max, but got min={min_}, max={max_}")
+
+    upper = min(val, max_) if max_ is not None else val
+    return max(upper, min_) if min_ is not None else upper
+
+
 R = TypeVar("R")
 
 

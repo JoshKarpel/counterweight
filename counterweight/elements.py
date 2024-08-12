@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Callable, Literal, Sequence, Union
 
+from more_itertools import flatten
 from pydantic import Field
 
 from counterweight.controls import AnyControl
@@ -25,8 +26,8 @@ class Chunk(FrozenForbidExtras):
     style: CellStyle = Field(default_factory=CellStyle)
 
     @cached_property
-    def cells(self) -> tuple[CellPaint, ...]:
-        return tuple(CellPaint(char=char, style=self.style) for char in self.content)
+    def cells(self) -> list[CellPaint]:
+        return [CellPaint(char=char, style=self.style) for char in self.content]
 
     @classmethod
     def space(cls) -> Chunk:
@@ -47,17 +48,18 @@ class Text(FrozenForbidExtras):
     style: Style = Field(default=Style())
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    offset: tuple[int, int] = (0, 0)
 
     @property
     def children(self) -> Sequence[Component | AnyElement]:
         return ()
 
     @cached_property
-    def cells(self) -> tuple[CellPaint, ...]:
+    def cells(self) -> list[CellPaint]:
         if isinstance(self.content, str):
-            return tuple(CellPaint(char=char, style=self.style.typography.style) for char in self.content)
+            return [CellPaint(char=char, style=self.style.typography.style) for char in self.content]
         else:
-            return sum((chunk.cells for chunk in self.content), ())
+            return list(flatten(chunk.cells for chunk in self.content))
 
 
 AnyElement = Union[
