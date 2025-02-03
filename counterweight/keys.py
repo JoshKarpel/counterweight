@@ -175,10 +175,10 @@ SINGLE_CHAR_TRANSFORMS: Mapping[bytes, Key] = {
     b"\x06": Key.ControlF,
     b"\x07": Key.ControlG,
     b"\x08": Key.Backspace,
-    b"\x0B": Key.ControlK,
-    b"\x0C": Key.ControlL,
-    b"\x0E": Key.ControlN,
-    b"\x0F": Key.ControlO,
+    b"\x0b": Key.ControlK,
+    b"\x0c": Key.ControlL,
+    b"\x0e": Key.ControlN,
+    b"\x0f": Key.ControlO,
     b"\x10": Key.ControlP,
     b"\x11": Key.ControlQ,
     b"\x12": Key.ControlR,
@@ -189,7 +189,7 @@ SINGLE_CHAR_TRANSFORMS: Mapping[bytes, Key] = {
     b"\x17": Key.ControlW,
     b"\x18": Key.ControlX,
     b"\x19": Key.ControlY,
-    b"\x1A": Key.ControlZ,
+    b"\x1a": Key.ControlZ,
     b"\x7f": Key.Backspace,
 }
 
