@@ -3,8 +3,9 @@
 alias t := test
 alias w := watch
 alias wt := watch-test
+alias d := docs-serve
+alias db := docs-build
 alias ds := docs-screenshots
-alias d := docs
 alias p := pre-commit
 
 install:
@@ -15,15 +16,18 @@ test:
   uv run pytest -vv --failed-first --cov --durations=10
 
 watch CMD:
-  watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
+  uv run watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
 
 watch-test: (watch "just test")
 
-docs-screenshots:
-  docs/examples/generate-screenshots.sh
+docs-serve:
+  uv run mkdocs serve
 
-docs:
-  mkdocs serve
+docs-build:
+  uv run mkdocs build --strict
+
+docs-screenshots:
+  uv run docs/examples/generate-screenshots.sh
 
 pre-commit:
   git add -u

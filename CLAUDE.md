@@ -31,8 +31,8 @@ just install
 # Run tests with type checking and coverage
 just test
 
-# Generate documentation screenshots
-just docs-screenshots
+# Build the documentation
+just docs-build
 
 # Lint and format code
 just pre-commit
