@@ -6,9 +6,12 @@ alias wt := watch-test
 alias ds := docs-screenshots
 alias d := docs
 
+install:
+  uv sync --extra dev
+
 test:
-  mypy
-  pytest -vv --failed-first --cov --durations=10
+  uv run mypy
+  uv run pytest -vv --failed-first --cov --durations=10
 
 watch CMD:
   watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
@@ -20,6 +23,10 @@ docs-screenshots:
 
 docs:
   mkdocs serve
+
+pre-commit:
+  git add -u
+  uv run pre-commit
 
 profile FILE DURATION:
   austin --output profile.austin --exposure {{DURATION}} python {{FILE}}
