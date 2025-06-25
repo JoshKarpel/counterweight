@@ -206,7 +206,7 @@ dependencies = [
     { name = "typer" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "austin-dist" },
     { name = "austin-python" },
@@ -229,31 +229,34 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "austin-dist", marker = "extra == 'dev'", specifier = ">=3.6" },
-    { name = "austin-python", marker = "extra == 'dev'", specifier = ">=1.7" },
-    { name = "black", marker = "extra == 'dev'", specifier = "==24.3.0" },
     { name = "cachetools", specifier = ">=5.3" },
-    { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.80" },
-    { name = "line-profiler", marker = "extra == 'dev'", specifier = ">=4.1" },
-    { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.4" },
-    { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9" },
-    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'dev'", specifier = ">=0.19.0" },
     { name = "more-itertools", specifier = ">=9.1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1" },
     { name = "parsy", specifier = ">=2.1" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3" },
     { name = "pydantic", specifier = ">=2" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = "<8" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.20" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=3" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3" },
-    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3" },
     { name = "structlog", specifier = ">=23.1" },
     { name = "typer", specifier = ">=0.9" },
-    { name = "types-cachetools", marker = "extra == 'dev'", specifier = ">=5.3" },
-    { name = "watchfiles", marker = "extra == 'dev'", specifier = ">=0.19" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "austin-dist", specifier = ">=3.6" },
+    { name = "austin-python", specifier = ">=1.7" },
+    { name = "black", specifier = "==24.3.0" },
+    { name = "hypothesis", specifier = ">=6.80" },
+    { name = "line-profiler", specifier = ">=4.1" },
+    { name = "mkdocs", specifier = ">=1.4" },
+    { name = "mkdocs-material", specifier = ">=9" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.19.0" },
+    { name = "mypy", specifier = ">=1" },
+    { name = "pre-commit", specifier = ">=3" },
+    { name = "pytest", specifier = "<8" },
+    { name = "pytest-asyncio", specifier = ">=0.20" },
+    { name = "pytest-cov", specifier = ">=3" },
+    { name = "pytest-mock", specifier = ">=3" },
+    { name = "pytest-xdist", specifier = ">=3" },
+    { name = "types-cachetools", specifier = ">=5.3" },
+    { name = "watchfiles", specifier = ">=0.19" },
+]
 
 [[package]]
 name = "coverage"

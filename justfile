@@ -5,6 +5,7 @@ alias w := watch
 alias wt := watch-test
 alias ds := docs-screenshots
 alias d := docs
+alias p := pre-commit
 
 install:
   uv sync --extra dev
@@ -27,6 +28,7 @@ docs:
 pre-commit:
   git add -u
   uv run pre-commit
+  git add -u
 
 profile FILE DURATION:
   austin --output profile.austin --exposure {{DURATION}} python {{FILE}}
