@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Counterweight is an experimental text user interface (TUI) framework for Python, inspired by React and Tailwind CSS. It builds declarative TUI applications using a component-based architecture with hooks for state management and styles for visual presentation.
+Counterweight is an experimental text user interface (TUI) framework for Python, inspired by React and Tailwind CSS.
+It builds declarative TUI applications using a component-based architecture with hooks for state management and styles for visual presentation.
 
 ## Architecture
 
