@@ -1,15 +1,20 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "counterweight"
 version = "0.0.9"
 description = "An experimental TUI framework for Python, inspired by React and Tailwind"
-readme="README.md"
-homepage="https://github.com/JoshKarpel/counterweight"
-repository="https://github.com/JoshKarpel/counterweight"
-documentation="https://www.counterweight.dev"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "JoshKarpel", email = "josh.karpel@gmail.com" }
+]
+keywords = [
+    "tui",
+    "terminal",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -26,47 +31,48 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: Presentation",
     "Typing :: Typed",
 ]
-keywords = [
-    "tui",
-    "terminal",
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.9",
+    "pydantic>=2",
+    "structlog>=23.1",
+    "parsy>=2.1",
+    "more-itertools>=9.1",
+    "cachetools>=5.3",
 ]
-authors = ["JoshKarpel <josh.karpel@gmail.com>"]
-license = "MIT"
-include = ["py.typed"]
 
-[tool.poetry.urls]
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=3",
+    "black==24.3.0",
+    "watchfiles>=0.19",
+    "pytest<8",
+    "pytest-cov>=3",
+    "pytest-xdist>=3",
+    "pytest-asyncio>=0.20",
+    "pytest-mock>=3",
+    "hypothesis>=6.80",
+    "mypy>=1",
+    "types-cachetools>=5.3",
+    "mkdocs>=1.4",
+    "mkdocs-material>=9",
+    "mkdocstrings[python]>=0.19.0",
+    "line-profiler>=4.1",
+    "austin-dist>=3.6",
+    "austin-python>=1.7",
+]
+
+[project.scripts]
+counterweight = "counterweight.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/JoshKarpel/counterweight"
+Repository = "https://github.com/JoshKarpel/counterweight"
+Documentation = "https://www.counterweight.dev"
 "Bug Tracker" = "https://github.com/JoshKarpel/counterweight/issues"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<4"
-typer = ">=0.9"
-pydantic = ">=2"
-structlog = ">=23.1"
-parsy = ">=2.1"
-more-itertools = ">=9.1"
-cachetools = ">=5.3"
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = ">=3"
-black = "==24.3.0"
-watchfiles = ">=0.19"
-pytest = "<8"
-pytest-cov = ">=3"
-pytest-xdist = ">=3"
-pytest-asyncio = ">=0.20"
-pytest-mock = ">=3"
-hypothesis = ">=6.80"
-mypy = ">=1"
-types-cachetools = ">=5.3"
-mkdocs = ">=1.4"
-mkdocs-material = ">=9"
-mkdocstrings = {extras = ["python"], version = ">=0.19.0"}
-line-profiler = ">=4.1"
-austin-dist = ">=3.6"
-austin-python = ">=1.7"
-
-[tool.poetry.scripts]
-counterweight = 'counterweight.cli:cli'
+[tool.hatch.build.targets.wheel]
+include = ["counterweight", "py.typed"]
 
 [tool.black]
 line-length = 120

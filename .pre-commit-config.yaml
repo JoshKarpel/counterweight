@@ -39,13 +39,13 @@ repos:
       - id: generate-utilities
         name: generate utilities
         language: system
-        entry: codegen/generate_utilities.py
+        entry: uv run codegen/generate_utilities.py
         always_run: true
         pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
         language: system
-        entry: docs/examples/generate-screenshots.sh
+        entry: uv run docs/examples/generate-screenshots.sh
         always_run: true
         pass_filenames: false
 
