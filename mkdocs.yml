@@ -38,6 +38,8 @@ theme:
 plugins:
   - tags
   - search
+  - autorefs:
+      resolve_closest: true
   - mkdocstrings:
       handlers:
         python:
@@ -55,7 +57,7 @@ plugins:
             separate_signature: true
             unwrap_annotated: true
             members_order: source
-          import:
+          inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [std, py]
 
@@ -91,6 +93,7 @@ extra:
 
 nav:
   - Home: index.md
+  - changelog.md
   - Components:
     - components/index.md
   - Elements:
@@ -116,8 +119,5 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
-  - Reference:
-    - reference/api.md
-    - reference/changelog.md
   - Under the Hood:
     - under-the-hood/index.md

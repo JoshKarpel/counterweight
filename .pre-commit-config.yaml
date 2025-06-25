@@ -39,26 +39,22 @@ repos:
       - id: generate-utilities
         name: generate utilities
         language: system
-        entry: codegen/generate_utilities.py
+        entry: uv run codegen/generate_utilities.py
         always_run: true
         pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
         language: system
-        entry: docs/examples/generate-screenshots.sh
+        entry: uv run docs/examples/generate-screenshots.sh
         always_run: true
         pass_filenames: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: 'v0.12.0'
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [ --fix, --exit-non-zero-on-fix ]
-
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
+      - id: ruff-format
 
 # TODO: figure out how to get this and snippets to play nicely
 #  - repo: https://github.com/adamchainz/blacken-docs

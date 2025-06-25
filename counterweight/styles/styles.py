@@ -68,7 +68,7 @@ class StyleFragment(FrozenForbidExtras):
         diff: dict[str, object] = {}
 
         for field_name, value in self:
-            field = self.model_fields[field_name]
+            field = type(self).model_fields[field_name]
             field_default = field.default
 
             if field_name not in self.model_fields_set:
