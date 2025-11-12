@@ -248,7 +248,7 @@ dev = [
     { name = "mkdocs-material", specifier = ">=9" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.19.0" },
     { name = "mypy", specifier = ">=1" },
-    { name = "pre-commit", specifier = ">=3" },
+    { name = "pre-commit", specifier = ">=4.4" },
     { name = "pytest", specifier = "<8" },
     { name = "pytest-asyncio", specifier = ">=0.20" },
     { name = "pytest-cov", specifier = ">=3" },
