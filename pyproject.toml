@@ -43,7 +43,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pre-commit>=3",
+    "pre-commit>=4.4",
     "black==24.3.0",
     "watchfiles>=0.19",
     "pytest<8",
