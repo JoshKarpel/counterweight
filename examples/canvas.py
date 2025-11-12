@@ -105,7 +105,7 @@ n = 30
 
 @component
 def random_walkers() -> Text:
-    colors, set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
+    colors, _set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
     walkers, set_walkers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
 
     def update_movers(m: list[tuple[int, int]]) -> list[tuple[int, int]]:

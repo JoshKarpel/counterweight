@@ -56,7 +56,7 @@ def root() -> Div:
 
 @component
 def board() -> Div:
-    positions, set_positions = use_state(
+    positions, _set_positions = use_state(
         {
             (0, 0): (Player.White, PieceCharacter.Rook),
             (0, 1): (Player.White, PieceCharacter.Knight),
