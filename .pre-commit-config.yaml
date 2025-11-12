@@ -38,13 +38,13 @@ repos:
     hooks:
       - id: generate-utilities
         name: generate utilities
-        language: system
+        language: unsupported
         entry: uv run codegen/generate_utilities.py
         always_run: true
         pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
-        language: system
+        language: unsupported
         entry: uv run docs/examples/generate-screenshots.sh
         always_run: true
         pass_filenames: false
