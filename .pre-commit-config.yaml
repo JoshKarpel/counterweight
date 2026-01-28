@@ -72,5 +72,6 @@ repos:
 
 ci:
   skip:
+    - format-justfile
     - generate-utilities
     - generate-screenshots
