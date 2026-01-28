@@ -3,7 +3,7 @@
 branch = True
 
 source =
-    counterweight/
+    src/counterweight/
     tests/
 
 [report]
