@@ -8,33 +8,35 @@ alias db := docs-build
 alias ds := docs-screenshots
 alias p := pre-commit
 
-install:
-  uv sync --extra dev
-
 test:
-  uv run mypy
-  uv run pytest -vv --failed-first --cov --durations=10
+    uv run mypy
+    uv run pytest -vv --failed-first --cov --durations=10
 
 watch CMD:
-  uv run watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
+    uv run watchfiles --verbosity warning 'just {{ CMD }}' counterweight/ tests/ docs/ examples/
 
 watch-test: (watch "just test")
 
 docs-serve:
-  uv run mkdocs serve
+    uv run mkdocs serve
 
 docs-build:
-  uv run mkdocs build --strict
+    uv run mkdocs build --strict
 
 docs-screenshots:
-  uv run docs/examples/generate-screenshots.sh
+    uv run docs/examples/generate-screenshots.sh
 
 pre-commit:
-  git add -u
-  uv run pre-commit
-  git add -u
+    git add -u
+    uv run pre-commit
 
 profile FILE DURATION:
-  austin --output profile.austin --exposure {{DURATION}} python {{FILE}}
-  austin2speedscope profile.austin profile.ss
-  reset
+    austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
+    austin2speedscope profile.austin profile.ss
+    reset
+
+upgrade:
+    uv lock --upgrade
+
+alias update := upgrade
+alias u := upgrade
