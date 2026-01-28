@@ -26,9 +26,9 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@v6.3.1
+        uses: astral-sh/setup-uv@v7.2.0
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -43,7 +43,7 @@ jobs:
       - name: Test docs
         run: uv run mkdocs build --clean --strict --verbose
       - name: Upload coverage
-        uses: codecov/codecov-action@v5.4.3
+        uses: codecov/codecov-action@v5.5.2
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:

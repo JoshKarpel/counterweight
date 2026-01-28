@@ -349,7 +349,7 @@ def svg(paint: Paint) -> ElementTree:
         for bg_color, x_cells_group in groupby(cells, key=lambda x_cell: x_cell[1].style.background.hex):
             # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
             x_cells = tuple(x_cells_group)
-            first_x, first_cell = x_cells[0]
+            first_x, _first_cell = x_cells[0]
 
             SubElement(
                 background_root,
