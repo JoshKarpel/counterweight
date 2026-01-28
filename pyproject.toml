@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "counterweight"
@@ -71,16 +71,9 @@ Repository = "https://github.com/JoshKarpel/counterweight"
 Documentation = "https://www.counterweight.dev"
 "Bug Tracker" = "https://github.com/JoshKarpel/counterweight/issues"
 
-[tool.hatch.build.targets.wheel]
-include = ["counterweight", "py.typed"]
-
-[tool.black]
-line-length = 120
-include = "\\.pyi?$"
-
 [tool.pytest.ini_options]
 addopts = ["--strict-markers", "-Werror"]
-testpaths = ["tests", "counterweight", "docs"]
+testpaths = ["tests", "src/counterweight", "docs"]
 
 markers = ["slow"]
 

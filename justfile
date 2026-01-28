@@ -1,40 +1,53 @@
 #!/usr/bin/env just --justfile
 
-alias t := test
+set ignore-comments := true
+
+[default]
+[doc('List available recipes')]
+list:
+    just --list
+
+[doc('Run a recipe whenever source files change')]
+watch CMD:
+    uv run watchfiles --verbosity warning 'just {{ CMD }}' src/ tests/ docs/ examples/
+
 alias w := watch
-alias wt := watch-test
-alias d := docs-serve
-alias db := docs-build
-alias ds := docs-screenshots
+
+[doc('Stage updated files and run pre-commit hooks')]
+pre-commit:
+    git add --update
+    uv run pre-commit
+
 alias p := pre-commit
 
-install:
-  uv sync --extra dev
-
+[doc('Run type checking and tests with coverage')]
 test:
-  uv run mypy
-  uv run pytest -vv --failed-first --cov --durations=10
+    uv run mypy
+    uv run pytest -vv --failed-first --cov --durations=10
 
-watch CMD:
-  uv run watchfiles '{{CMD}}' counterweight/ tests/ docs/ examples/
+alias t := test
 
-watch-test: (watch "just test")
-
+[doc('Serve documentation locally')]
 docs-serve:
-  uv run mkdocs serve
+    uv run mkdocs serve
 
+alias d := docs-serve
+
+[doc('Build documentation with strict mode')]
 docs-build:
-  uv run mkdocs build --strict
+    uv run mkdocs build --strict
 
-docs-screenshots:
-  uv run docs/examples/generate-screenshots.sh
+alias db := docs-build
 
-pre-commit:
-  git add -u
-  uv run pre-commit
-  git add -u
-
+[doc('Profile a Python file with austin and convert to speedscope format')]
 profile FILE DURATION:
-  austin --output profile.austin --exposure {{DURATION}} python {{FILE}}
-  austin2speedscope profile.austin profile.ss
-  reset
+    austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
+    austin2speedscope profile.austin profile.ss
+    reset
+
+[doc('Upgrade all dependencies')]
+upgrade:
+    uv lock --upgrade
+
+alias update := upgrade
+alias u := upgrade

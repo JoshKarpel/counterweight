@@ -305,7 +305,7 @@ COLORS = {
     },
 }
 
-utils_path = Path(__file__).resolve().parent.parent / "counterweight" / "styles" / "utilities.py"
+utils_path = Path(__file__).resolve().parent.parent / "src" / "counterweight" / "styles" / "utilities.py"
 
 utils_text = utils_path.read_text().splitlines(keepends=False)
 

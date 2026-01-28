@@ -8,7 +8,7 @@ extra_css:
   - assets/style.css
 
 watch:
-  - counterweight/
+  - src/
 
 theme:
   name: material

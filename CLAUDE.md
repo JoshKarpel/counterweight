@@ -11,12 +11,12 @@ It builds declarative TUI applications using a component-based architecture with
 
 The framework follows a React-like architecture:
 
-- **Components** (counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
-- **Elements** (counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
-- **Hooks** (counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`)
-- **App** (counterweight/app.py): Main application loop that handles rendering, input, and event processing
-- **Styles** (counterweight/styles/): Tailwind-inspired utility classes and styling system
-- **Paint/Rendering** (counterweight/paint.py, counterweight/output.py): Terminal rendering engine that converts components to terminal output
+- **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
+- **Elements** (src/counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
+- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`)
+- **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
+- **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
+- **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -40,7 +40,7 @@ just pre-commit
 
 ## Project Structure
 
-- **counterweight/**: Main framework code
+- **src/counterweight/**: Main framework code
   - **hooks/**: React-like hooks for state and side effects
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
