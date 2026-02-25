@@ -8,12 +8,12 @@ from counterweight.styles import Border, BorderKind, Span, Style
 
 
 async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> None:
-    recorder = []
+    recorder: list[MouseEvent] = []
 
     @component
     def root() -> Div:
         return Div(
-            on_mouse=lambda event: recorder.append(event),
+            on_mouse=recorder.append,
             style=Style(span=Span(width=1, height=1), border=Border(kind=BorderKind.Light)),
         )
 

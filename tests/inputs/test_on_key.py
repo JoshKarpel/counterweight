@@ -7,12 +7,12 @@ from counterweight.styles import Span, Style
 
 
 async def test_on_key() -> None:
-    recorder = []
+    recorder: list[KeyPressed] = []
 
     @component
     def root() -> Div:
         return Div(
-            on_key=lambda event: recorder.append(event),
+            on_key=recorder.append,
             style=Style(span=Span(width=10, height=10)),
         )
 
