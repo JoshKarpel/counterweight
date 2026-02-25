@@ -7,7 +7,7 @@ from counterweight.styles import Span, Style
 
 
 async def test_on_key() -> None:
-    recorder = []
+    recorder: list[KeyPressed] = []
 
     @component
     def root() -> Div:
