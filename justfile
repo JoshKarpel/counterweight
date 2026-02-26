@@ -23,7 +23,7 @@ alias p := pre-commit
 [doc('Run type checking and tests with coverage')]
 test:
     uv run mypy
-    uv run pytest -vv --failed-first --cov --durations=10
+    uv run pytest --failed-first --cov --durations=10
 
 alias t := test
 
