@@ -52,7 +52,7 @@ class Style(StyleFragment):
     # Typography (flattened from Typography) — not passed to taffy
     text_style: CellStyle = CellStyle()                     # was typography.style
     text_justify: Literal["left", "center", "right"] = "left"  # was typography.justify
-    text_wrap: Literal["none", "paragraphs"] = "none"       # was typography.wrap
+    text_wrap: Literal["none"] = "none"                     # was typography.wrap; "paragraphs" dropped for now
 ```
 
 **Merge behavior:** `waxy.Style` has its own `__or__` operator with bitmask-
@@ -93,7 +93,8 @@ Notes:
   The border *widths* for layout are on `layout` (e.g.,
   `waxy.Style(border_top=waxy.Length(1))`).
 - Typography fields (`text_style`, `text_justify`, `text_wrap`) are the
-  flattened contents of the old `Typography` class.
+  flattened contents of the old `Typography` class. `text_wrap` is kept but
+  reduced to `Literal["none"]` for now ("paragraphs" dropped).
 - `CellStyle` stays as its own type since it's used in multiple places
   (text style, border style) and has 7 fields — flattening it further would
   create an explosion of fields with ambiguous names.
@@ -238,7 +239,8 @@ Replace the layout engine with waxy tree building + result extraction:
 6. Walk tree top-down, accumulating absolute positions from `layout.location`,
    building `LayoutBoxDimensions` for each node
 
-Keep `LayoutBoxDimensions` and `wrap_cells()`. Delete `LayoutBox`,
+Keep `LayoutBoxDimensions` and `wrap_cells()`. Update `wrap_cells()` to accept
+`None` for width (meaning no constraint). Delete `LayoutBox`,
 `first_pass()`, `second_pass()`, `compute_layout()`.
 
 ### Step 5: Write text measure callback
@@ -254,8 +256,8 @@ def measure_text(
         width = available.width.value
     lines = wrap_cells(
         context.cells,
-        context.style.typography.wrap,
-        int(width) if width is not None else 10_000,
+        context.style.text_wrap,
+        int(width) if width is not None else None,
     )
     return waxy.Size(
         known.width if known.width is not None else max((len(l) for l in lines), default=0),
@@ -323,21 +325,6 @@ the old engine was an approximation. Regenerate snapshots, update assertions.
 
 ---
 
-## Changes Needed in Waxy
-
-Likely minimal:
-
-1. **Layout.margin**: Verify waxy exposes `margin` on the `Layout` object (it
-   does — `layout.margin` returns a `Rect`). If not, we can read from the style.
-
-2. **Rounding**: Enable `tree.enable_rounding()` for integer cell coordinates.
-   Verify rounding behavior is sensible for TUI.
-
-3. **Gap semantics**: Verify behavior when setting both `gap_width` and
-   `gap_height` (taffy applies them per-axis, so setting both should be fine).
-
----
-
 ## Files Changed (Counterweight)
 
 | File | Change |
@@ -354,16 +341,6 @@ Likely minimal:
 | `src/counterweight/__init__.py` | Update public exports |
 | `examples/` | Update to new style API |
 | `tests/` | Update layout tests, regenerate snapshots |
-
-## Files Changed (Waxy)
-
-Likely none, but possibly:
-
-| File | Change |
-|------|--------|
-| `src/layout.rs` | Expose `margin` on `Layout` if not already |
-
----
 
 ## Migration Risk & Mitigations
 
