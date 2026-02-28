@@ -143,13 +143,27 @@ border width to 1 and configure `border_edges` accordingly.
 
 ### 5. Mapping Layout Results Back
 
-After `compute_layout()`, read `waxy.Layout` for each node to build
-counterweight's `LayoutBoxDimensions`:
+After `compute_layout()`, walk the tree top-down, accumulating absolute
+positions from `layout.location`, and build a `ResolvedLayout` for each node:
 
-- `layout.location` → position (relative to parent, accumulated during walk)
-- `layout.padding` / `layout.border` → edge thicknesses
-- `layout.content_box_width()` / `content_box_height()` → content dimensions
-- Margin read from the style we set (taffy may not expose computed margins)
+```python
+@dataclass(frozen=True, slots=True)
+class ResolvedLayout:
+    content: Rect   # absolute position + size of content box
+    padding: Rect   # absolute rect including padding
+    border: Rect    # absolute rect including border
+    margin: Rect    # absolute rect including margin
+```
+
+Each rect is pre-computed from `waxy.Layout` fields:
+- Content rect: from accumulated absolute position + `content_box_width()` /
+  `content_box_height()`
+- Padding rect: content expanded by `layout.padding`
+- Border rect: padding expanded by `layout.border`
+- Margin rect: border expanded by `layout.margin`
+
+This replaces `LayoutBoxDimensions` — no edge thicknesses stored, no
+`expand_by` at paint time, just four ready-to-use absolute rects.
 
 ### 6. Fixed Positioning & Z-Index
 
@@ -237,11 +251,11 @@ Replace the layout engine with waxy tree building + result extraction:
 4. Collect a mapping: `dict[waxy.NodeId, ShadowNode]`
 5. Call `tree.compute_layout(root, available_size, measure=measure_text)`
 6. Walk tree top-down, accumulating absolute positions from `layout.location`,
-   building `LayoutBoxDimensions` for each node
+   building `ResolvedLayout` for each node
 
-Keep `LayoutBoxDimensions` and `wrap_cells()`. Update `wrap_cells()` to accept
-`None` for width (meaning no constraint). Delete `LayoutBox`,
-`first_pass()`, `second_pass()`, `compute_layout()`.
+Keep `wrap_cells()`. Update `wrap_cells()` to accept `None` for width (meaning
+no constraint). Replace `LayoutBoxDimensions` with `ResolvedLayout`. Delete
+`LayoutBox`, `first_pass()`, `second_pass()`, `compute_layout()`.
 
 ### Step 5: Write text measure callback
 
@@ -267,11 +281,12 @@ def measure_text(
 
 ### Step 6: Adapt paint.py
 
-Change `paint_layout` to accept a flat list of `(element, dims)` pairs instead
-of a `LayoutBox` tree. It already just walks the tree and paints each element
-independently, sorted by z-index.
+Change `paint_layout` to accept a flat list of `(element, resolved)` pairs
+instead of a `LayoutBox` tree. It already just walks the tree and paints each
+element independently, sorted by z-index.
 
-Update `paint_element` to read visual properties from the flattened `Style`:
+**`paint_element`**: Update to use `ResolvedLayout` rects directly and
+read visual properties from the flattened `Style`:
 - `element.style.margin_color` instead of `element.style.margin.color`
 - `element.style.padding_color` instead of `element.style.padding.color`
 - `element.style.content_color` instead of `element.style.content.color`
@@ -283,6 +298,23 @@ Update `paint_element` to read visual properties from the flattened `Style`:
 - `element.style.text_style` instead of `element.style.typography.style`
 - `element.style.text_justify` instead of `element.style.typography.justify`
 - `element.style.text_wrap` instead of `element.style.typography.wrap`
+
+**`paint_edge`**: Simplify signature from `(element, mp, edge, rect)` to
+`(outer_rect, inner_rect, color, z)`. Paint the band of cells between two
+rects — no `Edge` needed. The outer/inner rect pairs come directly from
+`ResolvedLayout` (e.g., margin band = `resolved.margin` outer,
+`resolved.border` inner).
+
+**`paint_border`**: No structural change — already takes a `Rect` and uses
+`left_edge()`, `right_edge()`, etc. Just update to read from flattened style
+fields.
+
+**`paint_text`**: No structural change — takes `resolved.content` rect
+directly.
+
+**`Edge` class**: Delete from `geometry.py` — no longer needed. Its only
+consumers were `paint_edge` (now uses rect pairs) and
+`LayoutBoxDimensions.expand_by` (replaced by `ResolvedLayout`).
 
 ### Step 7: Update app.py
 
@@ -309,7 +341,7 @@ During tree building, detect elements with fixed positioning:
 
 ### Step 10: Delete dead code
 
-- `LayoutBox` class (except `LayoutBoxDimensions`)
+- `LayoutBox` class and `LayoutBoxDimensions` (replaced by `ResolvedLayout`)
 - `first_pass()`, `second_pass()`
 - `partition_int()` from `_utils.py`
 - `Flex`, `Span`, `Relative`, `Absolute`, `Fixed`, `Inset` style classes
@@ -317,6 +349,7 @@ During tree building, detect elements with fixed positioning:
 - Old `Content` class (replaced by `content_color` field)
 - Old `Border` class (replaced by flat `border_*` fields)
 - Old `Typography` class (replaced by flat `text_*` fields)
+- `Edge` class from `geometry.py` (no longer needed with `ResolvedLayout` rects)
 
 ### Step 11: Update tests
 
@@ -335,7 +368,8 @@ the old engine was an approximation. Regenerate snapshots, update assertions.
 | `src/counterweight/styles/__init__.py` | Update exports |
 | `src/counterweight/layout.py` | Rewrite: waxy tree build + result extraction. Delete old layout engine. |
 | `src/counterweight/app.py` | Use new layout function, update mouse hit-testing |
-| `src/counterweight/paint.py` | Adapt to flat element+dims list and flattened style field names |
+| `src/counterweight/paint.py` | Adapt to flat element+resolved list, flattened style field names, simplify `paint_edge` to use rect pairs |
+| `src/counterweight/geometry.py` | Remove `Edge` class |
 | `src/counterweight/_utils.py` | Remove `partition_int` if unused |
 | `src/counterweight/elements.py` | Update `Div`/`Text` default style if needed |
 | `src/counterweight/__init__.py` | Update public exports |

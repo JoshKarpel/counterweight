@@ -31,7 +31,7 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: Presentation",
     "Typing :: Typed",
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "typer>=0.9",
     "pydantic>=2",
@@ -39,6 +39,7 @@ dependencies = [
     "parsy>=2.1",
     "more-itertools>=9.1",
     "cachetools>=5.3",
+    "waxy>=0.3.0",
 ]
 
 [dependency-groups]
