@@ -1058,7 +1058,7 @@ Replace:
 **Keep in `_utils.py`:**
 - `halve_integer()` (line 27) — still used by `paint.py:justify_line`
 
-### Step 6: Update `app.py`
+### Step 6: Update `app.py` ✅ DONE
 
 **Render pipeline** (lines 269-337):
 
