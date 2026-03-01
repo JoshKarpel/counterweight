@@ -1,23 +1,10 @@
 #!/usr/bin/env python3
-import sys
-import types
+import subprocess
 from itertools import combinations
 from pathlib import Path
 from typing import get_args, get_type_hints
 
 from more_itertools import flatten
-
-# Stub the counterweight package so its __init__.py doesn't run.
-# This allows importing counterweight.styles.styles during migrations when
-# other parts of the package may have broken imports.
-if "counterweight" not in sys.modules:
-    _stub = types.ModuleType("counterweight")
-    _src = Path(__file__).resolve().parent.parent / "src"
-    _stub.__path__ = [str(_src / "counterweight")]
-    _stub.__package__ = "counterweight"
-    sys.modules["counterweight"] = _stub
-    sys.path.insert(0, str(_src))
-
 
 from counterweight.styles.styles import BorderKind, Style
 
@@ -582,6 +569,26 @@ for n in N:
 
 generated_lines.append("")
 
+# --- Inset utilities (absolute positioning anchors) ---
+
+VERTICAL_INSETS = {
+    "top": "inset_top=waxy.Length(0)",
+    "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()",
+    "bottom": "inset_bottom=waxy.Length(0)",
+}
+HORIZONTAL_INSETS = {
+    "left": "inset_left=waxy.Length(0)",
+    "center": "inset_left=waxy.Auto(), inset_right=waxy.Auto()",
+    "right": "inset_right=waxy.Length(0)",
+}
+for v_name, v_insets in VERTICAL_INSETS.items():
+    for h_name, h_insets in HORIZONTAL_INSETS.items():
+        generated_lines.append(
+            f"inset_{v_name}_{h_name} = Style(layout=waxy.Style(position=waxy.Position.Absolute, {v_insets}, {h_insets}))"
+        )
+
+generated_lines.append("")
+
 # --- Text justify ---
 
 for j in literal_vals(Style, "text_justify"):
@@ -598,8 +605,16 @@ output = "\n".join(
     ]
 )
 
-if not (utils_path.exists() and utils_path.read_text() == output):
-    utils_path.write_text(output)
+formatted = subprocess.run(
+    ["uv", "run", "ruff", "format", "--stdin-filename", str(utils_path), "-"],
+    input=output,
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
+
+if not (utils_path.exists() and utils_path.read_text() == formatted):
+    utils_path.write_text(formatted)
     print(f"Wrote generated utilities to {utils_path}")
 else:
     print("No changes in generated utilities")

@@ -38,6 +38,19 @@ just docs-build
 just pre-commit
 ```
 
+## Style Utilities Codegen
+
+`src/counterweight/styles/utilities.py` contains a large section of generated utility constants
+(between `# Start generated` and `# Stop generated` markers) as well as hand-written helpers below
+the `# Stop generated` marker.
+
+**Never edit the generated section by hand.** To add or change generated utilities, edit
+`codegen/generate_utilities.py` and then run:
+
+```bash
+just codegen
+```
+
 ## Project Structure
 
 - **src/counterweight/**: Main framework code

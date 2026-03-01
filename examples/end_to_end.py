@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from itertools import cycle
 
+import waxy
 from structlog import get_logger
 
 from counterweight.app import app
@@ -10,19 +11,30 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_effect, use_ref, use_state
 from counterweight.keys import Key
-from counterweight.styles import Border, BorderKind, Style
-from counterweight.styles.styles import Flex, Padding
+from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
     border_amber_700,
     border_lime_700,
     border_rose_500,
     border_sky_700,
     border_teal_600,
+    col,
     text_rose_500,
     text_teal_600,
 )
 
 logger = get_logger()
+
+_PAD_BORDER_1 = waxy.Style(
+    padding_top=waxy.Length(1),
+    padding_bottom=waxy.Length(1),
+    padding_left=waxy.Length(1),
+    padding_right=waxy.Length(1),
+    border_top=waxy.Length(1),
+    border_bottom=waxy.Length(1),
+    border_left=waxy.Length(1),
+    border_right=waxy.Length(1),
+)
 
 
 @component
@@ -54,40 +66,31 @@ def toggle() -> Div:
 
     return Div(
         children=[
-            # TODO: why does putting this here break the layout? it's above the outer div...
-            # Paragraph(
-            #     content="End-to-End Demo",
-            #     style=Style(
-            #         span=Span(width="auto"),
-            #         border=Border(kind=BorderKind.LightRounded),
-            #     ),
-            # ),
             Div(
                 children=[
                     Text(
                         content="End-to-End Demo",
                         style=border_color
                         | Style(
-                            border=Border(kind=border),
-                            padding=Padding(top=1, bottom=1, left=1, right=1),
+                            layout=_PAD_BORDER_1,
+                            border_kind=border,
                         ),
                     ),
                     time() if toggled else textpad(),
                 ],
                 style=Style(
-                    layout=Flex(direction="row"),
-                    border=Border(kind=BorderKind.LightRounded),
+                    layout=waxy.Style(
+                        flex_direction=waxy.FlexDirection.Row,
+                        border_top=waxy.Length(1),
+                        border_bottom=waxy.Length(1),
+                        border_left=waxy.Length(1),
+                        border_right=waxy.Length(1),
+                    ),
+                    border_kind=BorderKind.LightRounded,
                 ),
             ),
         ],
-        style=Style(
-            layout=Flex(
-                direction="column",
-                # TODO: without align_children="stretch", the children don't grow in width, even though they have text in them...
-                # maybe I'm applying auto width too late?
-                align_children="stretch",
-            ),
-        ),
+        style=col,
         on_key=on_key,
     )
 
@@ -108,8 +111,8 @@ def time() -> Text:
         style=text_rose_500
         | border_teal_600
         | Style(
-            border=Border(kind=BorderKind.LightRounded),
-            padding=Padding(top=1, bottom=1, left=1, right=1),
+            layout=_PAD_BORDER_1,
+            border_kind=BorderKind.LightRounded,
         ),
     )
 
@@ -135,8 +138,8 @@ def textpad() -> Text:
         style=text_teal_600
         | border_rose_500
         | Style(
-            border=Border(kind=BorderKind.LightRounded),
-            padding=Padding(top=1, bottom=1, left=1, right=1),
+            layout=_PAD_BORDER_1,
+            border_kind=BorderKind.LightRounded,
         ),
         on_key=on_key,
     )

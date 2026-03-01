@@ -98,7 +98,7 @@ def root() -> Div:
             children=[
                 header,
                 Div(
-                    style=col | align_children_center | gap_children_2 | margin_top_4,
+                    style=col | align_children_center | gap_2 | margin_top_4,
                     children=[
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
@@ -201,7 +201,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
         style=col | align_children_stretch,
         children=[
             Div(
-                style=col | justify_children_center | align_self_stretch | align_children_center | gap_children_1,
+                style=col | justify_children_center | align_self_stretch | align_children_center | gap_1,
                 children=guess_rows,
                 on_key=on_key,
             ),
@@ -239,7 +239,7 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
         children.append(letter_box(letter=guess_letter, style=style))
 
     return Div(
-        style=row | weight_none | align_children_center | gap_children_1,
+        style=row | weight_none | align_children_center | gap_1,
         children=children,
     )
 
@@ -271,7 +271,7 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
         style=col | weight_none | justify_children_center | align_children_center,
         children=[
             Div(
-                style=row | weight_none | align_children_center | gap_children_1,
+                style=row | weight_none | align_children_center | gap_1,
                 children=[
                     letter_box(
                         kb_letter,

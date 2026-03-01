@@ -39,7 +39,7 @@ dependencies = [
     "parsy>=2.1",
     "more-itertools>=9.1",
     "cachetools>=5.3",
-    "waxy>=0.3.0",
+    "waxy>=0.4.0",
 ]
 
 [dependency-groups]
@@ -61,6 +61,7 @@ dev = [
     "line-profiler>=4.1",
     "austin-dist>=3.6",
     "austin-python>=1.7",
+    "ruff>=0.15.4",
 ]
 
 [project.scripts]

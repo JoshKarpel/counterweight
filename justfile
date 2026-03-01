@@ -7,6 +7,8 @@ set ignore-comments := true
 list:
     just --list
 
+alias l := list
+
 [doc('Run a recipe whenever source files change')]
 watch CMD:
     uv run watchfiles --verbosity warning 'just {{ CMD }}' src/ tests/ docs/ examples/
@@ -44,6 +46,12 @@ profile FILE DURATION:
     austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
     austin2speedscope profile.austin profile.ss
     reset
+
+[doc('Regenerate style utility constants from codegen/generate_utilities.py')]
+codegen:
+    uv run python codegen/generate_utilities.py
+
+alias c := codegen
 
 [doc('Upgrade all dependencies')]
 upgrade:

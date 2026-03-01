@@ -2433,6 +2433,48 @@ gap_6 = Style(layout=waxy.Style(gap_width=waxy.Length(6), gap_height=waxy.Length
 gap_7 = Style(layout=waxy.Style(gap_width=waxy.Length(7), gap_height=waxy.Length(7)))
 gap_8 = Style(layout=waxy.Style(gap_width=waxy.Length(8), gap_height=waxy.Length(8)))
 
+inset_top_left = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Length(0))
+)
+inset_top_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Auto(), inset_right=waxy.Auto()
+    )
+)
+inset_top_right = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_right=waxy.Length(0))
+)
+inset_center_left = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Auto(), inset_bottom=waxy.Auto(), inset_left=waxy.Length(0)
+    )
+)
+inset_center_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute,
+        inset_top=waxy.Auto(),
+        inset_bottom=waxy.Auto(),
+        inset_left=waxy.Auto(),
+        inset_right=waxy.Auto(),
+    )
+)
+inset_center_right = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Auto(), inset_bottom=waxy.Auto(), inset_right=waxy.Length(0)
+    )
+)
+inset_bottom_left = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_left=waxy.Length(0))
+)
+inset_bottom_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_left=waxy.Auto(), inset_right=waxy.Auto()
+    )
+)
+inset_bottom_right = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_right=waxy.Length(0))
+)
+
 text_justify_left = Style(text_justify="left")
 text_justify_center = Style(text_justify="center")
 text_justify_right = Style(text_justify="right")

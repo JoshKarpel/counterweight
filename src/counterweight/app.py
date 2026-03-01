@@ -36,7 +36,7 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import compute_layout
+from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -154,7 +154,7 @@ async def app(
         should_render = True
         shadow = None
         active_effects: set[Task[None]] = set()
-        elements_and_layouts: list = []
+        elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
         should_quit = False
         should_bell = False

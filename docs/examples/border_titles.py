@@ -1,8 +1,11 @@
 # --8<-- [start:example]
+import waxy
+
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 
@@ -15,27 +18,59 @@ def root() -> Div:
                 style=row | align_self_stretch | justify_children_center | align_children_center | border_lightrounded,
                 children=[
                     Text(
-                        style=inset_top_left | absolute(x=1, y=-1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute, inset_top=waxy.Length(-1), inset_left=waxy.Length(1)
+                            )
+                        ),
                         content=" Top-Left Title ",
                     ),
                     Text(
-                        style=inset_top_center | absolute(x=0, y=-1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute,
+                                inset_top=waxy.Length(-1),
+                                inset_left=waxy.Auto(),
+                                inset_right=waxy.Auto(),
+                            )
+                        ),
                         content=" Top-Center Title ",
                     ),
                     Text(
-                        style=inset_top_right | absolute(x=-1, y=-1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute, inset_top=waxy.Length(-1), inset_right=waxy.Length(1)
+                            )
+                        ),
                         content=" Top-Right Title ",
                     ),
                     Text(
-                        style=inset_bottom_left | absolute(x=1, y=1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute, inset_bottom=waxy.Length(-1), inset_left=waxy.Length(1)
+                            )
+                        ),
                         content=" Bottom-Left Title ",
                     ),
                     Text(
-                        style=inset_bottom_center | absolute(x=0, y=1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute,
+                                inset_bottom=waxy.Length(-1),
+                                inset_left=waxy.Auto(),
+                                inset_right=waxy.Auto(),
+                            )
+                        ),
                         content=" Bottom-Center Title ",
                     ),
                     Text(
-                        style=inset_bottom_right | absolute(x=-1, y=1),
+                        style=Style(
+                            layout=waxy.Style(
+                                position=waxy.Position.Absolute,
+                                inset_bottom=waxy.Length(-1),
+                                inset_right=waxy.Length(1),
+                            )
+                        ),
                         content=" Bottom-Right Title ",
                     ),
                     Text(

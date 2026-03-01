@@ -1,6 +1,7 @@
 import asyncio
 from functools import lru_cache
 
+import waxy
 from more_itertools import intersperse
 from structlog import get_logger
 
@@ -10,7 +11,7 @@ from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
 from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
-from counterweight.styles import Span
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -45,7 +46,7 @@ def root() -> Div:
         children=[
             header(),
             Div(
-                style=row | gap_children_1,
+                style=row | gap_1,
                 children=[
                     tracking_box(),
                     last_clicked_box(),
@@ -53,7 +54,7 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=row | gap_children_1,
+                style=row | gap_1,
                 children=[
                     drag_text_box(),
                 ],
@@ -85,7 +86,11 @@ def tracking_box() -> Text:
         content=canvas(
             20,
             10,
-            ({mouse.absolute - rects.content.top_left(): Color.from_name("red")} if hovered.content else {}),
+            (
+                {mouse.absolute - Position.from_point(rects.content.top_left): Color.from_name("red")}
+                if hovered.content
+                else {}
+            ),
         ),
     )
 
@@ -100,7 +105,7 @@ def last_clicked_box() -> Text:
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseUp(absolute=p, button=1):
-                set_clicked(p - rects.content.top_left())
+                set_clicked(p - Position.from_point(rects.content.top_left))
 
     return Text(
         on_mouse=on_mouse,
@@ -126,12 +131,12 @@ def last_dragged_box() -> Text:
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseDown(absolute=a, button=1):
-                set_start(a - rects.content.top_left())
-                set_end(a - rects.content.top_left())
+                set_start(a - Position.from_point(rects.content.top_left))
+                set_end(a - Position.from_point(rects.content.top_left))
             case MouseUp(absolute=a, button=1):
-                set_end(a - rects.content.top_left())
+                set_end(a - Position.from_point(rects.content.top_left))
             case MouseMoved(absolute=a, button=1):
-                set_end(a - rects.content.top_left())
+                set_end(a - Position.from_point(rects.content.top_left))
 
     return Text(
         on_mouse=on_mouse,
@@ -149,18 +154,18 @@ def drag_text_box() -> Div:
     hovered = use_hovered()
 
     return Div(
-        style=canvas_style | (hover_style if hovered.border else None) | Style(span=Span(width=20, height=10)),
+        style=canvas_style | (hover_style if hovered.border else None) | size(20, 10),
         children=[
-            draggable_text("Drag me!", inset_top_left),
-            draggable_text("No, me!", inset_bottom_right),
+            draggable_text("Drag me!", 0, 0),
+            draggable_text("No, me!", 8, 5),
         ],
     )
 
 
 @component
-def draggable_text(content: str, start: Style) -> Text:
+def draggable_text(content: str, init_x: int, init_y: int) -> Text:
     mouse = use_mouse()
-    offset, set_offset = use_state(Position.flyweight(0, 0))
+    offset, set_offset = use_state(Position.flyweight(init_x, init_y))
 
     # TODO: if you don't go slow, your mouse can easily outrun the render speed
     def on_mouse(event: MouseEvent) -> None:
@@ -170,7 +175,13 @@ def draggable_text(content: str, start: Style) -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=start | absolute(x=offset.x, y=offset.y),
+        style=Style(
+            layout=waxy.Style(
+                position=waxy.Position.Absolute,
+                inset_left=waxy.Length(offset.x),
+                inset_top=waxy.Length(offset.y),
+            )
+        ),
         content=content,
     )
 

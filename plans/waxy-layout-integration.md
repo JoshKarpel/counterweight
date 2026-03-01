@@ -543,14 +543,12 @@ submodule imports still resolve correctly.
         f'text_justify_{j} = Style(text_justify="{j}")'
     ```
 
-11. **Inset utilities** — these previously introspected `Inset.vertical`/`Inset.horizontal`.
-    The approach with waxy is TBD (see Open Questions §2 about centered absolute positioning).
-    For now, generate the non-center variants using `inset_*` fields:
+11. **Inset utilities** — generated all 9 `inset_{vertical}_{horizontal}` constants.
+    Center variants use `waxy.Auto()` on both sides (see Open Questions §2):
 
     ```python
-    VERTICAL = {"top": "inset_top=waxy.Length(0)", "bottom": "inset_bottom=waxy.Length(0)"}
-    HORIZONTAL = {"left": "inset_left=waxy.Length(0)", "right": "inset_right=waxy.Length(0)"}
-    # center variants need investigation — may use auto margins or align_self/justify_self
+    VERTICAL = {"top": "inset_top=waxy.Length(0)", "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()", "bottom": "inset_bottom=waxy.Length(0)"}
+    HORIZONTAL = {"left": "inset_left=waxy.Length(0)", "center": "inset_left=waxy.Auto(), inset_right=waxy.Auto()", "right": "inset_right=waxy.Length(0)"}
     ```
 
 12. **Border contract**:

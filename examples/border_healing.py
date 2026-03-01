@@ -1,7 +1,9 @@
 import asyncio
 from itertools import combinations, product
 from random import randint
+from typing import Literal
 
+import waxy
 from more_itertools import flatten
 from structlog import get_logger
 
@@ -12,12 +14,16 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_state
 from counterweight.keys import Key
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from examples.canvas import clamp
 
 logger = get_logger()
 
-E = list(product(reversed(list(flatten(combinations(BorderEdge, r) for r in range(1, 5)))), repeat=4))
+Side = Literal["top", "bottom", "left", "right"]
+ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
+
+E = list(product(reversed(list(flatten(combinations(ALL_SIDES, r) for r in range(1, 5)))), repeat=4))
 
 
 @component
@@ -62,10 +68,19 @@ def root() -> Div:
 
 
 @component
-def box(e: frozenset[BorderEdge]) -> Text:
+def box(e: frozenset[Side]) -> Text:
     return Text(
-        content=f"Border Join Demo\n{', '.join(be.name for be in e)}",
-        style=Style(border=Border(edges=e)) | text_justify_center | text_bg_amber_800,
+        content=f"Border Join Demo\n{', '.join(sorted(e))}",
+        style=Style(
+            layout=waxy.Style(
+                border_top=waxy.Length(1 if "top" in e else 0),
+                border_bottom=waxy.Length(1 if "bottom" in e else 0),
+                border_left=waxy.Length(1 if "left" in e else 0),
+                border_right=waxy.Length(1 if "right" in e else 0),
+            ),
+        )
+        | text_justify_center
+        | text_bg_amber_800,
     )
 
 

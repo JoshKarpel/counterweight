@@ -11,6 +11,7 @@ from pydantic import ConfigDict, Field
 from counterweight.types import FrozenForbidExtras
 
 S = TypeVar("S", bound="StyleFragment")
+SS = TypeVar("SS", bound="Style")
 
 
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
@@ -588,7 +589,7 @@ class Style(StyleFragment):
         dump.pop("layout", None)
         return dump
 
-    def __or__(self: S, other: S | None) -> S:
+    def __or__(self: SS, other: SS | None) -> SS:
         if other is None:
             return self
         merged_layout = self.layout | other.layout

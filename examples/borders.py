@@ -1,6 +1,8 @@
 import asyncio
 from itertools import combinations, cycle
+from typing import Literal
 
+import waxy
 from more_itertools import flatten
 from structlog import get_logger
 
@@ -9,33 +11,37 @@ from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_ref, use_state
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 logger = get_logger()
+
+Side = Literal["top", "bottom", "left", "right"]
+ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
 
 
 @component
 def root() -> Div:
     border_kind_cycle_ref = use_ref(cycle(BorderKind))
-    border_edge_cycle_ref = use_ref(cycle(reversed(list(flatten(combinations(BorderEdge, r) for r in range(1, 5))))))
+    border_side_cycle_ref = use_ref(cycle(reversed(list(flatten(combinations(ALL_SIDES, r) for r in range(1, 5))))))
 
     def advance_border() -> BorderKind:
         return next(border_kind_cycle_ref.current)
 
-    def advance_edges() -> frozenset[BorderEdge]:
-        return frozenset(next(border_edge_cycle_ref.current))
+    def advance_sides() -> frozenset[Side]:
+        return frozenset(next(border_side_cycle_ref.current))
 
     border_kind, set_border_kind = use_state(advance_border)
-    border_edges, set_border_edges = use_state(advance_edges)
+    border_sides, set_border_sides = use_state(advance_sides)
 
     def on_key(event: KeyPressed) -> None:
         match event.key:
             case "k":
                 set_border_kind(advance_border())
             case "e":
-                set_border_edges(advance_edges())
+                set_border_sides(advance_sides())
 
-    logger.debug("Rendering", border_kind=border_kind, border_edges=border_edges)
+    logger.debug("Rendering", border_kind=border_kind, border_sides=border_sides)
 
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
@@ -44,8 +50,16 @@ def root() -> Div:
                 style=border_heavy,
                 children=[
                     Text(
-                        content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(be.name for be in border_edges)}",
-                        style=Style(border=Border(kind=border_kind, edges=border_edges))
+                        content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(border_sides))}",
+                        style=Style(
+                            layout=waxy.Style(
+                                border_top=waxy.Length(1 if "top" in border_sides else 0),
+                                border_bottom=waxy.Length(1 if "bottom" in border_sides else 0),
+                                border_left=waxy.Length(1 if "left" in border_sides else 0),
+                                border_right=waxy.Length(1 if "right" in border_sides else 0),
+                            ),
+                            border_kind=border_kind,
+                        )
                         | text_justify_center
                         | text_bg_amber_800,
                     )
