@@ -47,8 +47,9 @@ class Style(StyleFragment):
     # Border visual (flattened from Border)
     border_kind: BorderKind | None = None                   # was border.kind; None = no border
     border_style: CellStyle | None = None                   # was border.style (fg/bg colors)
-    border_edges: frozenset[BorderEdge] | None = None       # was border.edges
     border_contract: int = 0                                # was border.contract
+    # Note: border_edges removed — which edges are active is determined by which
+    # waxy.Style.border_* fields are nonzero (read from ResolvedLayout at paint time)
 
     # Typography (flattened from Typography)
     text_style: CellStyle = CellStyle()                     # was typography.style
@@ -173,8 +174,11 @@ Z-index (`style.z`) is purely a paint/render concern and stays on counterweight'
 - `CellStyle` (line 273) — used for text and border rendering (7 fields, too many to flatten further)
 - `BorderKind` (line 295) — enum of border character sets
 - `JoinedBorderKind` (line 509) — enum for border healing
-- `BorderEdge` (line 567) — enum `{Top, Bottom, Left, Right}`
 - `StyleFragment` (line 46) — base class still needed for merge logic
+
+**Delete** (in addition to the classes listed above):
+- `BorderEdge` (line 567) — no longer needed; which edges are active is derived from
+  `waxy.Style.border_*` widths at paint time
 
 **Modify `Style`** (line 678):
 Replace all 7 fields with the flattened structure shown in Design Decision §1.
@@ -208,7 +212,7 @@ Override to merge `layout` via `waxy.Style.__or__` and visual fields via `StyleF
 | `style.border` (None/Border) | `style.border_kind` (None/BorderKind) + layout border widths |
 | `style.border.kind` | `style.border_kind` |
 | `style.border.style` | `style.border_style` |
-| `style.border.edges` | `style.border_edges` |
+| `style.border.edges` | Dropped — derived from `waxy.Style.border_*` widths at paint time |
 | `style.border.contract` | `style.border_contract` |
 | `style.typography.style` | `style.text_style` |
 | `style.typography.justify` | `style.text_justify` |
@@ -350,8 +354,7 @@ the old nested style constructors.
 
    ```python
    # OLD: border_light = Style(border=Border(kind=BorderKind.Light))
-   # NEW: set both layout widths AND visual fields
-   ALL_EDGES = "frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})"
+   # NEW: set both layout widths AND visual kind (no border_edges needed)
    f"border_none = Style(border_kind=None)"
    for b in BorderKind:
        f"""border_{b.name.lower()} = Style(
@@ -360,25 +363,27 @@ the old nested style constructors.
            border_left=waxy.Length(1), border_right=waxy.Length(1),
        ),
        border_kind=BorderKind.{b.name},
-       border_edges={ALL_EDGES},
    )"""
    ```
 
-7. **Border edge selection utilities** — introspect `BorderEdge` (unchanged source, new output):
+7. **Border edge selection utilities** — generate per-edge and combination utilities.
+   No `BorderEdge` enum needed — just set the relevant `waxy.Style.border_*` widths:
 
    ```python
    # OLD: border_top = Style(border=Border(edges=frozenset({BorderEdge.Top})))
-   # NEW: set the specific waxy border widths for selected edges
-   for edges in flatten(combinations(BorderEdge, r) for r in range(1, 4)):
-       edge_set = ", ".join(f"BorderEdge.{e.name}" for e in edges)
+   # NEW: just set the waxy border widths for the selected edges
+   EDGE_SIDES = ["top", "bottom", "left", "right"]
+   for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
        border_widths = ", ".join(
-           f"border_{e.name.lower()}=waxy.Length(1)" for e in edges
+           f"border_{side}=waxy.Length(1)" for side in edges
        )
-       f"border_{'_'.join(e.name.lower() for e in edges)} = Style("
+       f"border_{'_'.join(edges)} = Style("
        f"    layout=waxy.Style({border_widths}),"
-       f"    border_edges=frozenset({{{edge_set}}}),"
        f")"
    ```
+
+   Note: these edge selection utilities don't set `border_kind` — they're meant to be
+   merged with a kind utility via `|`, e.g. `border_light | border_top`.
 
 8. **Padding/margin utilities** — use `waxy.Style` fields:
 
@@ -507,7 +512,7 @@ from counterweight.styles import (
 
 # NEW:
 import waxy
-from counterweight.styles import BorderEdge, BorderKind, CellStyle, Color, Style
+from counterweight.styles import BorderKind, CellStyle, Color, Style
 ```
 
 **Workflow:** After updating `codegen/generate_utilities.py`, run it to regenerate
@@ -528,7 +533,7 @@ __all__ = [
 **New exports** (remove deleted classes, add nothing new — `waxy` types imported directly):
 ```python
 __all__ = [
-    "BorderEdge", "BorderKind", "CellStyle", "Color", "Style",
+    "BorderKind", "CellStyle", "Color", "Style",
 ]
 ```
 
@@ -576,7 +581,8 @@ def compute_layout(
     # Phase 1: Build waxy tree bottom-up
     root_id = _build_node(tree, shadow, node_map)
 
-    # Phase 2: Compute layout
+    # Phase 2: Compute layout (enable rounding for integer terminal coordinates)
+    tree.enable_rounding()
     available = waxy.AvailableSize(
         width=waxy.Definite(available_width),
         height=waxy.Definite(available_height),
@@ -689,23 +695,10 @@ def _extract_layout(
     # Store dims for use_rects() hook
     shadow.hooks.dims = resolved  # type change: was LayoutBoxDimensions, now ResolvedLayout
 
-    # Recurse into children
-    for child_shadow in shadow.children:
-        child_node_id = ...  # need to maintain shadow→node_id mapping
+    # Recurse into children (tree.children() confirmed available in waxy API)
+    for child_node_id, child_shadow in zip(tree.children(node_id), shadow.children):
         _extract_layout(tree, child_node_id, node_map, node_abs_x, node_abs_y, results)
 ```
-
-**Note on shadow→node_id mapping:** `_build_node` stores `node_id → ShadowNode` in `node_map`.
-For `_extract_layout` we also need `ShadowNode → node_id`. Options:
-1. Return the node_id from `_build_node` and store it on the ShadowNode temporarily.
-2. Build a reverse mapping.
-3. Use `tree.children(node_id)` to get child node IDs and iterate them alongside `shadow.children`.
-
-Option 3 is cleanest: in `_extract_layout`, call `tree.children(node_id)` (if waxy supports it)
-or zip `shadow.children` (filtered for non-fixed) with the children order from tree construction.
-
-**Verify:** Does `waxy.TaffyTree` expose a `children(node_id)` method? Check the `.pyi` stub.
-If not, maintain a `dict[ShadowNode, waxy.NodeId]` alongside `node_map`.
 
 ### Step 5: Adapt `paint.py`
 
@@ -769,14 +762,86 @@ So:
 **`paint_border`** (line 188):
 Currently: `paint_border(element, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]`
 
-Change to: `paint_border(style: Style, rect: Rect) -> tuple[Paint, BorderHealingHints]`
+Change to: `paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]`
 
-Replace:
-- `border.style` → `style.border_style`
-- `border.kind` → `style.border_kind`
-- `border.edges` → `style.border_edges`
-- `border.contract` → `style.border_contract`
-- `element.style.layout.z` → `style.z`
+The `border_edges` field is removed. Instead, derive which edges to draw from the
+resolved layout's border widths (which come from `waxy.Layout.border`):
+
+```python
+def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]:
+    bk = style.border_kind
+    if bk is None:
+        return {}, {}
+
+    cell_style = style.border_style
+    bv = bk.value
+    z = style.z
+    contract = style.border_contract
+
+    rect = resolved.border
+
+    # Derive which edges to draw from the resolved layout border widths.
+    # Compare border_rect vs padding_rect — a gap means a nonzero border width.
+    draw_left = resolved.padding.x > resolved.border.x
+    draw_right = (resolved.border.x + resolved.border.width) > (resolved.padding.x + resolved.padding.width)
+    draw_top = resolved.padding.y > resolved.border.y
+    draw_bottom = (resolved.border.y + resolved.border.height) > (resolved.padding.y + resolved.padding.height)
+
+    # Contract: shorten border lines on open edges by N cells
+    if contract:
+        contract_top = contract if not draw_top else None
+        contract_bottom = -contract if not draw_bottom else None
+        contract_left = contract if not draw_left else None
+        contract_right = -contract if not draw_right else None
+    else:
+        contract_top = contract_bottom = contract_left = contract_right = None
+
+    v_slice = slice(contract_top, contract_bottom)
+    h_slice = slice(contract_left, contract_right)
+
+    chars = {}
+
+    if draw_left:
+        left_paint = P(char=bv.left, style=cell_style, z=z)
+        for p in rect.left_edge()[v_slice]:
+            chars[p] = left_paint
+
+    if draw_right:
+        right_paint = P(char=bv.right, style=cell_style, z=z)
+        for p in rect.right_edge()[v_slice]:
+            chars[p] = right_paint
+
+    if draw_top:
+        top_paint = P(char=bv.top, style=cell_style, z=z)
+        for p in rect.top_edge()[h_slice]:
+            chars[p] = top_paint
+        if draw_left:
+            chars[Position.flyweight(x=rect.left, y=rect.top)] = P(char=bv.left_top, style=cell_style, z=z)
+        if draw_right:
+            chars[Position.flyweight(x=rect.right, y=rect.top)] = P(char=bv.right_top, style=cell_style, z=z)
+
+    if draw_bottom:
+        bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
+        for p in rect.bottom_edge()[h_slice]:
+            chars[p] = bottom_paint
+        if draw_left:
+            chars[Position.flyweight(x=rect.left, y=rect.bottom)] = P(char=bv.left_bottom, style=cell_style, z=z)
+        if draw_right:
+            chars[Position.flyweight(x=rect.right, y=rect.bottom)] = P(char=bv.right_bottom, style=cell_style, z=z)
+
+    # Border healing hints
+    try:
+        jbv = JoinedBorderKind[bk.name].value
+        bhh = {k: jbv for k in chars.keys()}
+    except KeyError:
+        bhh = {}
+
+    return chars, bhh
+```
+
+The key insight: `draw_left = resolved.padding.x > resolved.border.x` is true exactly
+when there's a nonzero border width on the left (i.e., `waxy.Style.border_left` was set
+to `Length(1)`). This replaces the old `BorderEdge.Left in border.edges` check.
 
 **`paint_text`** (line 128):
 Currently: `paint_text(text: Text, rect: Rect) -> Paint`
@@ -821,6 +886,7 @@ Change to:
 ```python
 Style(
     layout=waxy.Style(
+        display=waxy.Display.Flex,  # explicit (taffy default, but be clear)
         flex_direction=waxy.FlexDirection.Column,
         justify_content=waxy.AlignContent.Start,
         align_items=waxy.AlignItems.Stretch,
@@ -877,8 +943,8 @@ right shape (`content`, `padding`, `border`, `margin` all as `Rect`).
 |---------|-------------------|
 | `end_to_end.py` | `Border`, `BorderKind`, `Flex`, `Padding` — uses `Style(border=Border(...), padding=Padding(...), layout=Flex(...))` |
 | `mouse.py` | `Span` — uses `Style(span=Span(width=20, height=10))` |
-| `borders.py` | `Border`, `BorderEdge`, `BorderKind` — uses `Style(border=Border(kind=..., edges=...))` |
-| `border_healing.py` | `Border`, `BorderEdge` — uses `Style(border=Border(edges=...))` |
+| `borders.py` | `Border`, `BorderEdge`, `BorderKind` — uses `Style(border=Border(kind=..., edges=...))`. Replace with `waxy.Style` border widths + `border_kind`. |
+| `border_healing.py` | `Border`, `BorderEdge` — uses `Style(border=Border(edges=...))`. Replace with `waxy.Style` border widths. |
 
 Conversions:
 ```python
@@ -893,7 +959,6 @@ Style(
         border_left=waxy.Length(1), border_right=waxy.Length(1),
     ),
     border_kind=border,
-    border_edges=frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right}),
 )
 
 # mouse.py
@@ -901,34 +966,19 @@ Style(
 # NEW:
 size(20, 10)
 
-# borders.py
+# borders.py — this example lets user pick edges dynamically.
+# With border_edges removed, express this as waxy.Style border widths:
 # OLD: Style(border=Border(kind=border_kind, edges=border_edges))
-# NEW:
+# NEW (border_edges is now a set of side name strings like {"top", "left"}):
 Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1 if BorderEdge.Top in border_edges else 0),
-        border_bottom=waxy.Length(1 if BorderEdge.Bottom in border_edges else 0),
-        border_left=waxy.Length(1 if BorderEdge.Left in border_edges else 0),
-        border_right=waxy.Length(1 if BorderEdge.Right in border_edges else 0),
+        border_top=waxy.Length(1 if "top" in active_sides else 0),
+        border_bottom=waxy.Length(1 if "bottom" in active_sides else 0),
+        border_left=waxy.Length(1 if "left" in active_sides else 0),
+        border_right=waxy.Length(1 if "right" in active_sides else 0),
     ),
     border_kind=border_kind,
-    border_edges=border_edges,
 )
-```
-
-Consider adding a helper function for the border boilerplate:
-```python
-def make_border_style(kind: BorderKind, edges: frozenset[BorderEdge]) -> Style:
-    return Style(
-        layout=waxy.Style(
-            border_top=waxy.Length(1 if BorderEdge.Top in edges else 0),
-            border_bottom=waxy.Length(1 if BorderEdge.Bottom in edges else 0),
-            border_left=waxy.Length(1 if BorderEdge.Left in edges else 0),
-            border_right=waxy.Length(1 if BorderEdge.Right in edges else 0),
-        ),
-        border_kind=kind,
-        border_edges=edges,
-    )
 ```
 
 ### Step 8: Delete dead code
@@ -953,6 +1003,7 @@ def make_border_style(kind: BorderKind, edges: frozenset[BorderEdge]) -> Style:
 | `Relative` class | `styles/styles.py:612` |
 | `Absolute` class | `styles/styles.py:629` |
 | `Fixed` class | `styles/styles.py:644` |
+| `BorderEdge` enum | `styles/styles.py:567` |
 | `fixed()` utility function | `styles/utilities.py:2226` |
 | `docs/examples/fixed_positioning.py` | entire file |
 | `Inset` class | `styles/styles.py:624` |
@@ -1019,24 +1070,25 @@ The implementation order matters because of dependencies:
 
 Steps 3-5 can potentially be done in parallel since they have clear interfaces.
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. **`waxy.TaffyTree.children(node_id)`**: Does waxy expose a method to get children of a node?
-   This determines how `_extract_layout` traverses. Check the `.pyi` stub. If not available,
-   maintain a `dict[ShadowNode, NodeId]` reverse mapping.
+1. **`waxy.TaffyTree.children(node_id)`**: **Yes** — `def children(self, parent: NodeId) -> list[NodeId]`
+   exists (stub line 960). Use option 3: call `tree.children(node_id)` in `_extract_layout`
+   and zip with `shadow.children`. No reverse mapping needed.
 
-2. **Inset positioning for `Absolute`**: The old `Absolute` had `inset: Inset(vertical, horizontal)`
-   with values like `"center"`. Taffy's `Absolute` uses `inset_*` values. How to replicate
-   centering? Likely via `inset_left=Auto, inset_right=Auto` for horizontal centering, or
-   via `align_self`/`justify_self` on the absolute child.
+2. **Inset positioning for `Absolute`**: **Centering works via auto insets.** Inset fields accept
+   `Length | Percent | Auto`. For centering:
+   `waxy.Style(position=waxy.Position.Absolute, inset_left=waxy.Auto(), inset_right=waxy.Auto())`
+   for horizontal, and similarly `inset_top=waxy.Auto(), inset_bottom=waxy.Auto()` for vertical.
+   `align_self`/`justify_self` with `AlignItems.Center` is also available as an alternative.
 
-3. **Root node display mode**: Should the root wrapper `Div` use `display=waxy.Display.Flex`
-   explicitly? `waxy.Style()` defaults should be checked — taffy defaults to `Display.Flex`
-   for `Style()` but verify.
+3. **Root node display mode**: The `display` field defaults to `None`, which uses taffy's default
+   (`Display.Flex`). Set `display=waxy.Display.Flex` explicitly on the root wrapper for clarity.
 
-4. **Rounding**: `tree.layout(node)` returns rounded values (vs `tree.unrounded_layout(node)`).
-   Verify that rounding is enabled by default and produces correct integer dimensions for
-   terminal rendering. Watch for off-by-one issues at boundaries.
+4. **Rounding**: `tree.layout(node)` returns rounded values when rounding is enabled.
+   `tree.enable_rounding()` / `tree.disable_rounding()` control it. Default state is not
+   specified in the stub, so **call `tree.enable_rounding()` explicitly** before
+   `compute_layout()` to guarantee integer-friendly values for terminal rendering.
 
 ## Migration Risk & Mitigations
 
