@@ -57,6 +57,13 @@ class Style(StyleFragment):
     text_wrap: Literal["none"] = "none"                     # was typography.wrap; "paragraphs" dropped
 ```
 
+**`waxy.Style` is a Rust-backed Python class, not a pydantic model.** Pydantic cannot
+generate a schema for it automatically, so `Style` must declare
+`model_config: ClassVar[ConfigDict] = {"arbitrary_types_allowed": True}`.
+Also, `waxy.Style()` instances are hashable but not equal by value
+(`waxy.Style() == waxy.Style()` → `False`), so the parent `StyleFragment` cache
+is bypassed — `Style.__or__` does not use `STYLE_MERGE_CACHE`.
+
 **Merge behavior:** `waxy.Style` has its own `__or__` with bitmask-based field tracking.
 The `Style.__or__` merges `layout` via `waxy.Style.__or__` and visual fields via
 the existing `StyleFragment` logic. Since `waxy.Style()` (no fields set) is the
@@ -182,7 +189,7 @@ Z-index (`style.z`) is purely a paint/render concern and stays on counterweight'
 
 ## Implementation Steps
 
-### Step 1: Restructure `Style` in `styles/styles.py`
+### Step 1: Restructure `Style` in `styles/styles.py` ✅ DONE
 
 **Delete these classes** (all `StyleFragment` subclasses):
 - `Flex` (line 654) — 10 fields → replaced by `waxy.Style` fields

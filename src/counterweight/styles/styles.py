@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import cached_property, lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from typing import ClassVar, Literal, NamedTuple, TypeVar
 
+import waxy
 from cachetools import LRUCache
-from pydantic import Field, NonNegativeInt, PositiveInt
+from pydantic import ConfigDict, Field
 
 from counterweight.types import FrozenForbidExtras
 
@@ -564,122 +565,32 @@ class JoinedBorderKind(Enum):
         return f"JoinedBorderKind.{self.name}"
 
 
-class BorderEdge(Enum):
-    Top = "top"
-    Bottom = "bottom"
-    Left = "left"
-    Right = "right"
-
-
-class Border(StyleFragment):
-    kind: BorderKind = Field(default=BorderKind.Light)
-    style: CellStyle = Field(default=CellStyle())
-    edges: frozenset[BorderEdge] = frozenset({BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right})
-    contract: int = Field(default=0)
-
-
-class Margin(StyleFragment):
-    top: int = Field(default=0)
-    bottom: int = Field(default=0)
-    left: int = Field(default=0)
-    right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
-
-
-class Padding(StyleFragment):
-    top: int = Field(default=0)
-    bottom: int = Field(default=0)
-    left: int = Field(default=0)
-    right: int = Field(default=0)
-    color: Color = Field(default=Color.from_name("black"))
-
-
-class Content(StyleFragment):
-    color: Color = Field(default=Color.from_name("black"))
-
-
-class Span(StyleFragment):
-    width: int | Literal["auto"] = Field(default="auto")
-    height: int | Literal["auto"] = Field(default="auto")
-
-
-class Typography(StyleFragment):
-    style: CellStyle = Field(default=CellStyle())
-    justify: Literal["left", "center", "right"] = "left"
-    wrap: Literal["none", "paragraphs"] = "none"
-
-
-class Relative(StyleFragment):
-    """
-    Relative positioning is relative to the parent element's content box.
-    Elements occupy space and are laid out next to their siblings according
-    to the parent's layout direction.
-    """
-
-    type: Literal["relative"] = "relative"
-    x: int = 0
-    y: int = 0
-
-
-class Inset(StyleFragment):
-    vertical: Literal["top", "center", "bottom"] = "top"
-    horizontal: Literal["left", "center", "right"] = "left"
-
-
-class Absolute(StyleFragment):
-    """
-    Absolute positioning is relative to the parent element's content box,
-    but the element does not occupy space in the layout.
-
-    The `inset` property determines which corner of the
-    parent element's content box this element is positioned relative to.
-    """
-
-    type: Literal["absolute"] = "absolute"
-    x: int = 0
-    y: int = 0
-    inset: Inset = Field(default=Inset())
-
-
-class Fixed(StyleFragment):
-    """
-    Fixed positioning is relative to the screen's top-left corner `(0, 0)`.
-    """
-
-    type: Literal["fixed"] = "fixed"
-    x: int = 0
-    y: int = 0
-
-
-class Flex(StyleFragment):
-    type: Literal["flex"] = "flex"
-    direction: Literal["row", "column"] = "row"
-    position: Relative | Absolute | Fixed = Field(default=Relative(), discriminator="type")
-    weight: PositiveInt | None = 1
-    z: int = 0
-    align_self: Literal["none", "start", "center", "end", "stretch"] = "none"
-    justify_children: Literal[
-        "start",
-        "center",
-        "end",
-        "space-between",
-        "space-around",
-        "space-evenly",
-    ] = "start"
-    align_children: Literal[
-        "start",
-        "center",
-        "end",
-        "stretch",
-    ] = "start"
-    gap_children: NonNegativeInt = 0
-
-
 class Style(StyleFragment):
-    layout: Flex = Field(default=Flex())
-    span: Span = Field(default=Span())
-    margin: Margin = Field(default=Margin())
-    border: Border | None = Field(default=None)
-    padding: Padding = Field(default=Padding())
-    content: Content = Field(default=Content())
-    typography: Typography = Field(default=Typography())
+    model_config: ClassVar[ConfigDict] = {"arbitrary_types_allowed": True}
+
+    layout: waxy.Style = Field(default_factory=waxy.Style)
+
+    z: int = 0
+    margin_color: Color = Field(default=Color.from_name("black"))
+    padding_color: Color = Field(default=Color.from_name("black"))
+    content_color: Color = Field(default=Color.from_name("black"))
+
+    border_kind: BorderKind | None = None
+    border_style: CellStyle = Field(default=CellStyle())
+    border_contract: int = 0
+
+    text_style: CellStyle = Field(default=CellStyle())
+    text_justify: Literal["left", "center", "right"] = "left"
+    text_wrap: Literal["none"] = "none"
+
+    def mergeable_dump(self) -> dict[str, object]:
+        dump = super().mergeable_dump()
+        dump.pop("layout", None)
+        return dump
+
+    def __or__(self: S, other: S | None) -> S:
+        if other is None:
+            return self
+        merged_layout = self.layout | other.layout
+        merged = merge_style_fragments(self, other)
+        return merged.model_copy(update={"layout": merged_layout})
