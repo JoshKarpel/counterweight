@@ -966,24 +966,23 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
     else:
         contract_top = contract_bottom = contract_left = contract_right = None
 
-    v_slice = slice(contract_top, contract_bottom)
-    h_slice = slice(contract_left, contract_right)
-
+    # Note: waxy edge methods return Iterator[Point], not sequences, so they
+    # don't support slice indexing. Use itertools.islice instead.
     chars = {}
 
     if draw_left:
         left_paint = P(char=bv.left, style=cell_style, z=z)
-        for p in rect.left_edge()[v_slice]:
+        for p in islice(rect.left_edge(), contract_top, contract_bottom):
             chars[p] = left_paint
 
     if draw_right:
         right_paint = P(char=bv.right, style=cell_style, z=z)
-        for p in rect.right_edge()[v_slice]:
+        for p in islice(rect.right_edge(), contract_top, contract_bottom):
             chars[p] = right_paint
 
     if draw_top:
         top_paint = P(char=bv.top, style=cell_style, z=z)
-        for p in rect.top_edge()[h_slice]:
+        for p in islice(rect.top_edge(), contract_left, contract_right):
             chars[p] = top_paint
         if draw_left:
             chars[Position.flyweight(x=rect.left, y=rect.top)] = P(char=bv.left_top, style=cell_style, z=z)
@@ -992,7 +991,7 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     if draw_bottom:
         bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
-        for p in rect.bottom_edge()[h_slice]:
+        for p in islice(rect.bottom_edge(), contract_left, contract_right):
             chars[p] = bottom_paint
         if draw_left:
             chars[Position.flyweight(x=rect.left, y=rect.bottom)] = P(char=bv.left_bottom, style=cell_style, z=z)
