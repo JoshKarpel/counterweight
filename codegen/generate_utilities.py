@@ -18,7 +18,6 @@ if "counterweight" not in sys.modules:
     sys.modules["counterweight"] = _stub
     sys.path.insert(0, str(_src))
 
-import waxy
 
 from counterweight.styles.styles import BorderKind, Style
 
@@ -367,9 +366,7 @@ DIRECTION_ALIASES = {
 }
 for name, alias in DIRECTION_ALIASES.items():
     generated_lines.append(f"_{name} = waxy.FlexDirection.{name}")
-    generated_lines.append(
-        f"{alias} = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.{name}))"
-    )
+    generated_lines.append(f"{alias} = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.{name}))")
 
 generated_lines.append("")
 
@@ -397,30 +394,22 @@ ALIGN_MAP = {
     "Stretch": "stretch",
 }
 for name, alias in ALIGN_MAP.items():
-    generated_lines.append(
-        f"align_children_{alias} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{name}))"
-    )
+    generated_lines.append(f"align_children_{alias} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
 for name, alias in ALIGN_MAP.items():
-    generated_lines.append(
-        f"align_self_{alias} = Style(layout=waxy.Style(align_self=waxy.AlignItems.{name}))"
-    )
+    generated_lines.append(f"align_self_{alias} = Style(layout=waxy.Style(align_self=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
 for name, alias in ALIGN_MAP.items():
-    generated_lines.append(
-        f"justify_items_{alias} = Style(layout=waxy.Style(justify_items=waxy.AlignItems.{name}))"
-    )
+    generated_lines.append(f"justify_items_{alias} = Style(layout=waxy.Style(justify_items=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
 for name, alias in ALIGN_MAP.items():
-    generated_lines.append(
-        f"justify_self_{alias} = Style(layout=waxy.Style(justify_self=waxy.AlignItems.{name}))"
-    )
+    generated_lines.append(f"justify_self_{alias} = Style(layout=waxy.Style(justify_self=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
@@ -430,9 +419,7 @@ generated_lines.append("weight_none = Style(layout=waxy.Style(flex_grow=0.0))")
 for n in N:
     if n <= 0:
         continue
-    generated_lines.append(
-        f"weight_{n} = Style(layout=waxy.Style(flex_grow={float(n)}, flex_basis=waxy.Length(0)))"
-    )
+    generated_lines.append(f"weight_{n} = Style(layout=waxy.Style(flex_grow={float(n)}, flex_basis=waxy.Length(0)))")
 
 generated_lines.append("")
 
@@ -440,9 +427,7 @@ generated_lines.append("")
 
 generated_lines.append("shrink_0 = Style(layout=waxy.Style(flex_shrink=0.0))")
 for n in range(1, 4):
-    generated_lines.append(
-        f"shrink_{n} = Style(layout=waxy.Style(flex_shrink={float(n)}))"
-    )
+    generated_lines.append(f"shrink_{n} = Style(layout=waxy.Style(flex_shrink={float(n)}))")
 
 generated_lines.append("")
 
@@ -454,9 +439,7 @@ WRAP_MAP = {
     "WrapReverse": "wrap_reverse",
 }
 for name, alias in WRAP_MAP.items():
-    generated_lines.append(
-        f"flex_{alias} = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.{name}))"
-    )
+    generated_lines.append(f"flex_{alias} = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.{name}))")
 
 generated_lines.append("")
 
@@ -509,9 +492,7 @@ generated_lines.append("")
 EDGE_SIDES = ["top", "bottom", "left", "right"]
 for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
     border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
-    generated_lines.append(
-        f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))"
-    )
+    generated_lines.append(f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))")
 
 generated_lines.append("")
 
@@ -526,9 +507,7 @@ generated_lines.append("")
 
 for side in SIDES:
     for n in N:
-        generated_lines.append(
-            f"pad_{side}_{n} = Style(layout=waxy.Style(padding_{side}=waxy.Length({n})))"
-        )
+        generated_lines.append(f"pad_{side}_{n} = Style(layout=waxy.Style(padding_{side}=waxy.Length({n})))")
     generated_lines.append("")
 
 for n in N:
@@ -558,9 +537,7 @@ generated_lines.append("")
 
 for side in SIDES:
     for n in N:
-        generated_lines.append(
-            f"margin_{side}_{n} = Style(layout=waxy.Style(margin_{side}=waxy.Length({n})))"
-        )
+        generated_lines.append(f"margin_{side}_{n} = Style(layout=waxy.Style(margin_{side}=waxy.Length({n})))")
     generated_lines.append("")
 
 for n in N:
@@ -589,16 +566,12 @@ generated_lines.append("")
 # --- Gap utilities ---
 
 for n in N:
-    generated_lines.append(
-        f"gap_width_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n})))"
-    )
+    generated_lines.append(f"gap_width_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n})))")
 
 generated_lines.append("")
 
 for n in N:
-    generated_lines.append(
-        f"gap_height_{n} = Style(layout=waxy.Style(gap_height=waxy.Length({n})))"
-    )
+    generated_lines.append(f"gap_height_{n} = Style(layout=waxy.Style(gap_height=waxy.Length({n})))")
 
 generated_lines.append("")
 

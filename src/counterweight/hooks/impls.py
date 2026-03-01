@@ -8,7 +8,7 @@ from typing import TypeVar
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
-from counterweight.layout import LayoutBoxDimensions
+from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout
 
 
 @dataclass(slots=True)
@@ -39,7 +39,7 @@ class InconsistentHookExecution(Exception):
 @dataclass(slots=True)
 class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
-    dims: LayoutBoxDimensions = field(default_factory=LayoutBoxDimensions)
+    dims: ResolvedLayout = field(default=INITIAL_RESOLVED_LAYOUT)
 
     @property
     def effects(self) -> Iterator[UseEffect]:

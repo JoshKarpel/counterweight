@@ -3,11 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeVar, overload
 
+import waxy
 from structlog import get_logger
 
 from counterweight._context_vars import current_hook_state, current_use_mouse_listeners
 from counterweight._utils import forever
-from counterweight.geometry import Position, Rect
+from counterweight.geometry import Position
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 logger = get_logger()
@@ -69,10 +70,10 @@ def use_effect(setup: Setup, deps: Deps = None) -> None:
 
 @dataclass(frozen=True, slots=True)
 class Rects:
-    content: Rect
-    padding: Rect
-    border: Rect
-    margin: Rect
+    content: waxy.Rect
+    padding: waxy.Rect
+    border: waxy.Rect
+    margin: waxy.Rect
 
 
 def use_rects() -> Rects:
@@ -87,13 +88,11 @@ def use_rects() -> Rects:
     """
     dims = current_hook_state.get().dims
 
-    p, b, m = dims.padding_border_margin_rects()
-
     return Rects(
         content=dims.content,
-        padding=p,
-        border=b,
-        margin=m,
+        padding=dims.padding,
+        border=dims.border,
+        margin=dims.margin,
     )
 
 
@@ -154,10 +153,11 @@ def use_hovered() -> Hovered:
     """
     mouse = use_mouse()
     rects = use_rects()
+    pos = waxy.Point(x=mouse.absolute.x, y=mouse.absolute.y)
 
     return Hovered(
-        content=mouse.absolute in rects.content,
-        padding=mouse.absolute in rects.padding,
-        border=mouse.absolute in rects.border,
-        margin=mouse.absolute in rects.margin,
+        content=rects.content.contains(pos),
+        padding=rects.padding.contains(pos),
+        border=rects.border.contains(pos),
+        margin=rects.margin.contains(pos),
     )
