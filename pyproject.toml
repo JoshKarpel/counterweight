@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "counterweight"
-version = "0.0.9"
+version = "0.1.0"
 description = "An experimental TUI framework for Python, inspired by React and Tailwind"
 readme = "README.md"
 license = "MIT"
