@@ -129,13 +129,19 @@ class ResolvedLayout:
     padding: Rect   # absolute rect including padding
     border: Rect    # absolute rect including border
     margin: Rect    # absolute rect including margin
+    order: int      # taffy's computed paint order (from Layout.order)
 ```
 
-Each rect computed from `waxy.Layout` fields:
-- Content: `(abs_x + margin.left + border.left + padding.left, abs_y + margin.top + border.top + padding.top, content_box_width(), content_box_height())`
-- Padding: content expanded by padding widths
-- Border: padding expanded by border widths
-- Margin: border expanded by margin widths (= full outer box at `(abs_x, abs_y, size.width, size.height)`)
+**Coordinate system** (confirmed empirically):
+- `layout.location` is **relative to the parent's border box** (not content box, not absolute)
+- `layout.location` points to the **node's border box** origin (not margin box)
+- `layout.size` is the **border box size** (excludes margin)
+
+Each rect computed from `waxy.Layout` fields, starting from the border box:
+- Border: `(parent_abs_x + location.x, parent_abs_y + location.y, size.width, size.height)`
+- Margin: border rect expanded outward by `layout.margin` widths
+- Padding: border rect shrunk inward by `layout.border` widths
+- Content: padding rect shrunk inward by `layout.padding` widths
 
 All values rounded to `int` (taffy returns floats; use `tree.layout(node)` which returns rounded values via `enable_rounding()`).
 
@@ -648,35 +654,40 @@ def _extract_layout(
     abs_y: float,
     results: list[tuple[AnyElement, ResolvedLayout]],
 ) -> None:
-    """Walk tree top-down, accumulating absolute positions."""
+    """Walk tree top-down, accumulating absolute positions.
+
+    abs_x/abs_y is the absolute position of the parent's border box origin.
+    For the root node, this is (0, 0).
+    """
     layout = tree.layout(node_id)  # returns rounded Layout
     shadow = node_map[node_id]
 
-    # Accumulate absolute position
-    node_abs_x = abs_x + layout.location.x
-    node_abs_y = abs_y + layout.location.y
+    # location is relative to parent's border box and points to this node's border box
+    border_abs_x = abs_x + layout.location.x
+    border_abs_y = abs_y + layout.location.y
 
-    # Build rects from waxy.Layout
-    # margin rect = outermost (location is already inside parent's content area,
-    # but waxy's location IS the top-left of the margin box)
-    margin_rect = Rect(
-        x=int(node_abs_x),
-        y=int(node_abs_y),
+    # Build rects starting from the border box (what location + size describe)
+    border_rect = Rect(
+        x=int(border_abs_x),
+        y=int(border_abs_y),
         width=int(layout.size.width),
         height=int(layout.size.height),
     )
-    border_rect = Rect(
-        x=int(node_abs_x + layout.margin.left),
-        y=int(node_abs_y + layout.margin.top),
-        width=int(layout.size.width - layout.margin.left - layout.margin.right),
-        height=int(layout.size.height - layout.margin.top - layout.margin.bottom),
+    # Margin rect: border box expanded outward by margin widths
+    margin_rect = Rect(
+        x=int(border_abs_x - layout.margin.left),
+        y=int(border_abs_y - layout.margin.top),
+        width=int(layout.size.width + layout.margin.left + layout.margin.right),
+        height=int(layout.size.height + layout.margin.top + layout.margin.bottom),
     )
+    # Padding rect: border box shrunk inward by border widths
     padding_rect = Rect(
-        x=int(border_rect.x + layout.border.left),
-        y=int(border_rect.y + layout.border.top),
-        width=int(border_rect.width - layout.border.left - layout.border.right),
-        height=int(border_rect.height - layout.border.top - layout.border.bottom),
+        x=int(border_abs_x + layout.border.left),
+        y=int(border_abs_y + layout.border.top),
+        width=int(layout.size.width - layout.border.left - layout.border.right),
+        height=int(layout.size.height - layout.border.top - layout.border.bottom),
     )
+    # Content rect: padding box shrunk inward by padding widths
     content_rect = Rect(
         x=int(padding_rect.x + layout.padding.left),
         y=int(padding_rect.y + layout.padding.top),
@@ -689,15 +700,16 @@ def _extract_layout(
         padding=padding_rect,
         border=border_rect,
         margin=margin_rect,
+        order=layout.order,
     )
     results.append((shadow.element, resolved))
 
     # Store dims for use_rects() hook
     shadow.hooks.dims = resolved  # type change: was LayoutBoxDimensions, now ResolvedLayout
 
-    # Recurse into children (tree.children() confirmed available in waxy API)
+    # Recurse into children — their locations are relative to this node's border box
     for child_node_id, child_shadow in zip(tree.children(node_id), shadow.children):
-        _extract_layout(tree, child_node_id, node_map, node_abs_x, node_abs_y, results)
+        _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
 ```
 
 ### Step 5: Adapt `paint.py`
@@ -710,14 +722,15 @@ Currently takes `LayoutBox` and walks the tree. Change to accept
 def paint_layout(
     elements: list[tuple[AnyElement, ResolvedLayout]],
 ) -> tuple[Paint, BorderHealingHints]:
-    parts: list[tuple[Paint, BorderHealingHints, int]] = [
+    parts: list[tuple[Paint, BorderHealingHints, int, int]] = [
         paint_element(element, resolved) for element, resolved in elements
     ]
-    # Sort by z-index, merge paints
-    parts.sort(key=lambda p: p[2])
+    # Sort by (z-index, taffy order): z is user-controlled priority,
+    # order is taffy's computed topological paint sequence as tiebreaker
+    parts.sort(key=lambda p: (p[2], p[3]))
     paint: Paint = {}
     bhh: BorderHealingHints = {}
-    for p, b, _ in parts:
+    for p, b, _, _ in parts:
         paint |= p
         bhh |= b
     return paint, bhh
@@ -726,7 +739,9 @@ def paint_layout(
 **`paint_element`** (line 72):
 Currently: `paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]`
 
-Change to: `paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int]`
+Change to: `paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]`
+
+Returns `(paint, hints, z, order)` where `z` is `element.style.z` and `order` is `resolved.order`.
 
 Replace:
 - `dims.padding_border_margin_rects()` → `resolved.padding`, `resolved.border`, `resolved.margin`
