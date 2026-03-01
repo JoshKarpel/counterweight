@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 from itertools import cycle
 
-import waxy
 from structlog import get_logger
 
 from counterweight.app import app
@@ -13,28 +12,21 @@ from counterweight.hooks import Setter, use_effect, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
+    border_all,
     border_amber_700,
+    border_lightrounded,
     border_lime_700,
     border_rose_500,
     border_sky_700,
     border_teal_600,
     col,
+    pad_1,
+    row,
     text_rose_500,
     text_teal_600,
 )
 
 logger = get_logger()
-
-_PAD_BORDER_1 = waxy.Style(
-    padding_top=waxy.Length(1),
-    padding_bottom=waxy.Length(1),
-    padding_left=waxy.Length(1),
-    padding_right=waxy.Length(1),
-    border_top=waxy.Length(1),
-    border_bottom=waxy.Length(1),
-    border_left=waxy.Length(1),
-    border_right=waxy.Length(1),
-)
 
 
 @component
@@ -70,24 +62,11 @@ def toggle() -> Div:
                 children=[
                     Text(
                         content="End-to-End Demo",
-                        style=border_color
-                        | Style(
-                            layout=_PAD_BORDER_1,
-                            border_kind=border,
-                        ),
+                        style=border_color | pad_1 | border_all | Style(border_kind=border),
                     ),
                     time() if toggled else textpad(),
                 ],
-                style=Style(
-                    layout=waxy.Style(
-                        flex_direction=waxy.FlexDirection.Row,
-                        border_top=waxy.Length(1),
-                        border_bottom=waxy.Length(1),
-                        border_left=waxy.Length(1),
-                        border_right=waxy.Length(1),
-                    ),
-                    border_kind=BorderKind.LightRounded,
-                ),
+                style=row | border_lightrounded,
             ),
         ],
         style=col,
@@ -108,12 +87,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text_rose_500
-        | border_teal_600
-        | Style(
-            layout=_PAD_BORDER_1,
-            border_kind=BorderKind.LightRounded,
-        ),
+        style=text_rose_500 | border_teal_600 | pad_1 | border_lightrounded,
     )
 
 
@@ -135,12 +109,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text_teal_600
-        | border_rose_500
-        | Style(
-            layout=_PAD_BORDER_1,
-            border_kind=BorderKind.LightRounded,
-        ),
+        style=text_teal_600 | border_rose_500 | pad_1 | border_lightrounded,
         on_key=on_key,
     )
 

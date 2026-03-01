@@ -14,11 +14,9 @@ from counterweight.styles.utilities import *
 Each utility is a pre-defined `Style` specifying just a small set of properties.
 For example, `border_rose_200` is defined as:
 ```python
-from counterweight.styles import Style, Border, Color, CellStyle
+from counterweight.styles import Style, CellStyle, Color
 
-border_rose_200 = Style(
-    border=Border(style=CellStyle(foreground=Color.from_hex("#fecdd3")))
-)
+border_rose_200 = Style(border_style=CellStyle(foreground=Color.from_hex("#fecdd3")))
 ```
 
 Since they are normal `Style`s, they can be combined to form more complex styles using the `|` operator.

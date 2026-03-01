@@ -75,3 +75,39 @@ def test_inset_bottom_right() -> None:
     assert inset_bottom_right.layout.position == waxy.Position.Absolute
     assert inset_bottom_right.layout.inset_bottom == waxy.Length(0)
     assert inset_bottom_right.layout.inset_right == waxy.Length(0)
+
+
+def test_border_all() -> None:
+    assert border_all.layout.border_top == waxy.Length(1)
+    assert border_all.layout.border_bottom == waxy.Length(1)
+    assert border_all.layout.border_left == waxy.Length(1)
+    assert border_all.layout.border_right == waxy.Length(1)
+    assert border_all.border_kind is None
+
+
+def test_border_edges() -> None:
+    result = border_edges({"top", "left"})
+    assert result.layout.border_top == waxy.Length(1)
+    assert result.layout.border_bottom == waxy.Length(0)
+    assert result.layout.border_left == waxy.Length(1)
+    assert result.layout.border_right == waxy.Length(0)
+
+
+def test_margin_top() -> None:
+    result = margin_top(-4)
+    assert result.layout.margin_top == waxy.Length(-4)
+
+
+def test_margin_bottom() -> None:
+    result = margin_bottom(4)
+    assert result.layout.margin_bottom == waxy.Length(4)
+
+
+def test_margin_left() -> None:
+    result = margin_left(-2)
+    assert result.layout.margin_left == waxy.Length(-2)
+
+
+def test_margin_right() -> None:
+    result = margin_right(1)
+    assert result.layout.margin_right == waxy.Length(1)

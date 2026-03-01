@@ -1,7 +1,6 @@
 import asyncio
 from functools import lru_cache
 
-import waxy
 from more_itertools import intersperse
 from structlog import get_logger
 
@@ -11,7 +10,6 @@ from counterweight.elements import Chunk, Div, Text
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
 from counterweight.geometry import Position
 from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
-from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 logger = get_logger()
@@ -175,13 +173,7 @@ def draggable_text(content: str, init_x: int, init_y: int) -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=Style(
-            layout=waxy.Style(
-                position=waxy.Position.Absolute,
-                inset_left=waxy.Length(offset.x),
-                inset_top=waxy.Length(offset.y),
-            )
-        ),
+        style=absolute(offset.x, offset.y),
         content=content,
     )
 

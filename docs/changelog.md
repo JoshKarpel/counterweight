@@ -76,10 +76,10 @@ Released `2024-01-28`
 ### Added
 
 - [#92](https://github.com/JoshKarpel/counterweight/pull/92)
-  Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that chooses which corner
+  Added an `inset` attribute to `Absolute` that chooses which corner
   of the parent's context box to use as the origin for the absolute positioning.
 - [#98](https://github.com/JoshKarpel/counterweight/pull/98)
-  Added a `z` attribute to [`Flex`][counterweight.styles.Flex] that controls the stacking order of elements.
+  Added a `z` attribute to `Flex` that controls the stacking order of elements.
 
 ### Changed
 
@@ -103,7 +103,7 @@ Released `2024-01-06`
   This can be used to run a subprocess that also wants control of the terminal (e.g., a text editor).
 - [#88](https://github.com/JoshKarpel/counterweight/pull/88)
   [#90](https://github.com/JoshKarpel/counterweight/pull/90)
-  Implemented [`Absolute`][counterweight.styles.Absolute] and [`Fixed`][counterweight.styles.Fixed]
+  Implemented `Absolute` and `Fixed`
   positioning, which allow for precise placement of elements outside the normal layout flow.
 
 ## `0.0.4`

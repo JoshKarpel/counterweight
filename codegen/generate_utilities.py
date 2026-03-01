@@ -481,6 +481,12 @@ for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
     border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
     generated_lines.append(f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))")
 
+generated_lines.append(
+    "border_all = Style(layout=waxy.Style("
+    "border_top=waxy.Length(1), border_bottom=waxy.Length(1), "
+    "border_left=waxy.Length(1), border_right=waxy.Length(1)))"
+)
+
 generated_lines.append("")
 
 # --- Border contract ---

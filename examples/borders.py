@@ -2,7 +2,6 @@ import asyncio
 from itertools import combinations, cycle
 from typing import Literal
 
-import waxy
 from more_itertools import flatten
 from structlog import get_logger
 
@@ -51,15 +50,8 @@ def root() -> Div:
                 children=[
                     Text(
                         content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(border_sides))}",
-                        style=Style(
-                            layout=waxy.Style(
-                                border_top=waxy.Length(1 if "top" in border_sides else 0),
-                                border_bottom=waxy.Length(1 if "bottom" in border_sides else 0),
-                                border_left=waxy.Length(1 if "left" in border_sides else 0),
-                                border_right=waxy.Length(1 if "right" in border_sides else 0),
-                            ),
-                            border_kind=border_kind,
-                        )
+                        style=border_edges(border_sides)
+                        | Style(border_kind=border_kind)
                         | text_justify_center
                         | text_bg_amber_800,
                     )

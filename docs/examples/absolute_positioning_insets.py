@@ -1,11 +1,8 @@
 # --8<-- [start:example]
-import waxy
-
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
-from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 
@@ -22,12 +19,8 @@ def root() -> Div:
                         content="inset_top_left",
                     ),
                     Text(
-                        style=Style(
-                            layout=waxy.Style(
-                                position=waxy.Position.Absolute, inset_top=waxy.Length(3), inset_left=waxy.Length(3)
-                            )
-                        ),
-                        content="inset_top_left | absolute(x=3, y=3)",
+                        style=absolute(x=3, y=3),
+                        content="absolute(x=3, y=3)",
                     ),
                     Text(
                         style=inset_top_center,
@@ -46,18 +39,8 @@ def root() -> Div:
                         content="inset_center_center",
                     ),
                     Text(
-                        style=Style(
-                            layout=waxy.Style(
-                                position=waxy.Position.Absolute,
-                                inset_top=waxy.Auto(),
-                                inset_bottom=waxy.Auto(),
-                                inset_left=waxy.Auto(),
-                                inset_right=waxy.Auto(),
-                                margin_left=waxy.Length(-2),
-                                margin_top=waxy.Length(-4),
-                            )
-                        ),
-                        content="inset_center_center | offset(-2, -4)",
+                        style=inset_center_center | margin_left(-2) | margin_top(-4),
+                        content="inset_center_center | margin_left(-2) | margin_top(-4)",
                     ),
                     Text(
                         style=inset_center_right,
@@ -76,12 +59,8 @@ def root() -> Div:
                         content="inset_bottom_right",
                     ),
                     Text(
-                        style=Style(
-                            layout=waxy.Style(
-                                position=waxy.Position.Absolute, inset_bottom=waxy.Length(4), inset_right=waxy.Length(0)
-                            )
-                        ),
-                        content="inset_bottom_right | absolute(y=-4)",
+                        style=inset_bottom_right | margin_bottom(4),
+                        content="inset_bottom_right | margin_bottom(4)",
                     ),
                 ],
             )

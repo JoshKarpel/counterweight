@@ -1,6 +1,11 @@
+from collections.abc import Collection
+from typing import Literal
+
 import waxy
 
 from counterweight.styles import BorderKind, CellStyle, Color, Style
+
+Side = Literal["top", "bottom", "left", "right"]
 
 # Start generated
 
@@ -2153,6 +2158,11 @@ border_top_left_right = Style(
 border_bottom_left_right = Style(
     layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
 )
+border_all = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1)
+    )
+)
 
 border_contract_0 = Style(border_contract=0)
 border_contract_1 = Style(border_contract=1)
@@ -2552,3 +2562,30 @@ def grid_row(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlaceme
 
 def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
     return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
+
+
+def border_edges(sides: Collection[Side]) -> Style:
+    return Style(
+        layout=waxy.Style(
+            border_top=waxy.Length(1 if "top" in sides else 0),
+            border_bottom=waxy.Length(1 if "bottom" in sides else 0),
+            border_left=waxy.Length(1 if "left" in sides else 0),
+            border_right=waxy.Length(1 if "right" in sides else 0),
+        )
+    )
+
+
+def margin_top(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_top=waxy.Length(n)))
+
+
+def margin_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_bottom=waxy.Length(n)))
+
+
+def margin_left(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_left=waxy.Length(n)))
+
+
+def margin_right(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_right=waxy.Length(n)))

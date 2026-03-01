@@ -246,7 +246,7 @@ dev = [
     { name = "black", specifier = "==24.3.0" },
     { name = "hypothesis", specifier = ">=6.80" },
     { name = "line-profiler", specifier = ">=4.1" },
-    { name = "mkdocs", specifier = ">=1.4" },
+    { name = "mkdocs", specifier = "<2" },
     { name = "mkdocs-material", specifier = ">=9" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.19.0" },
     { name = "mypy", specifier = ">=1" },
