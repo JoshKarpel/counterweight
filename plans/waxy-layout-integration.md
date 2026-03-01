@@ -1034,9 +1034,14 @@ Replace:
 - `Rect` class (line 37) — replaced by `waxy.Rect` everywhere
 
 **Keep in `geometry.py`:**
-- `Position` (line 12) — heavily used in painting. Note: `waxy.Point` has the same
-  `(x, y)` shape but is a different type. Paint code uses `Position` with its flyweight
-  cache; we keep it for now and convert `waxy.Point` → `Position` at boundaries as needed.
+- `Position` (line 12) — heavily used in painting. `waxy.Point` is unhashable and
+  stores floats, so it can't be used as a dict key in `Paint`. Add a conversion method:
+  ```python
+  @classmethod
+  def from_point(cls, point: waxy.Point) -> Position:
+      return cls.flyweight(int(point.x), int(point.y))
+  ```
+  Use `Position.from_point(p)` when iterating `waxy.Rect` edge/point methods in paint code.
 
 **Keep in `_utils.py`:**
 - `halve_integer()` (line 27) — still used by `paint.py:justify_line`
