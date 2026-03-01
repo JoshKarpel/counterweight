@@ -120,25 +120,47 @@ After `tree.compute_layout()`, walk the tree top-down accumulating absolute posi
 - `border: waxy.Rect` — border widths
 - `margin: waxy.Rect` — margin widths
 
-Build a `ResolvedLayout` for each node with pre-computed absolute rects:
+Build a `ResolvedLayout` for each node with pre-computed absolute `waxy.Rect`s:
 
 ```python
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
-    content: Rect   # absolute position + size of content box
-    padding: Rect   # absolute rect including padding
-    border: Rect    # absolute rect including border
-    margin: Rect    # absolute rect including margin
-    order: int      # taffy's computed paint order (from Layout.order)
+    content: waxy.Rect   # absolute rect of content box
+    padding: waxy.Rect   # absolute rect including padding
+    border: waxy.Rect    # absolute rect including border
+    margin: waxy.Rect    # absolute rect including margin
+    order: int           # taffy's computed paint order (from Layout.order)
 ```
+
+We use `waxy.Rect` (not counterweight's `Rect`) for all resolved layout rects.
+`waxy.Rect` is constructed with `(left, right, top, bottom)` where all four edges are
+**inclusive** — i.e. a rect covering columns 0–3 and rows 0–2 is
+`waxy.Rect(left=0, right=3, top=0, bottom=2)`.
+
+**`waxy.Rect.width` / `.height` semantics**: these return `right - left` and
+`bottom - top` respectively, which is **one less than the pixel count**. For example,
+a rect covering 4 columns has `width=3`. When you need the actual number of
+columns/rows (e.g. for text wrapping), use `len(rect.top_edge())` or
+`int(rect.width) + 1`.
+
+**`waxy.Rect` API highlights** (all available for paint/hit-test code):
+- `.left`, `.right`, `.top`, `.bottom` — inclusive edges
+- `.top_left`, `.top_right`, `.bottom_left`, `.bottom_right` — `waxy.Point`
+- `.left_edge()`, `.right_edge()`, `.top_edge()`, `.bottom_edge()` — iterators of `waxy.Point`
+- `.points()` / `__iter__` — all points in the rect
+- `.rows()`, `.columns()` — iterators of row/column iterators
+- `.contains(waxy.Point)` — hit testing
+- `.corners()` — four corner points
+- `.size` — `waxy.Size(width, height)`
 
 **Coordinate system** (confirmed empirically):
 - `layout.location` is **relative to the parent's border box** (not content box, not absolute)
 - `layout.location` points to the **node's border box** origin (not margin box)
-- `layout.size` is the **border box size** (excludes margin)
+- `layout.size` is the **border box size** (excludes margin); `size.width` is the pixel count (not off-by-one)
 
-Each rect computed from `waxy.Layout` fields, starting from the border box:
-- Border: `(parent_abs_x + location.x, parent_abs_y + location.y, size.width, size.height)`
+Each rect computed from `waxy.Layout` fields, starting from the border box.
+Note: `layout.size.width/height` are pixel counts, so `right = left + size.width - 1`:
+- Border: `Rect(left=abs_x, right=abs_x + size.width - 1, top=abs_y, bottom=abs_y + size.height - 1)`
 - Margin: border rect expanded outward by `layout.margin` widths
 - Padding: border rect shrunk inward by `layout.border` widths
 - Content: padding rect shrunk inward by `layout.padding` widths
@@ -247,7 +269,7 @@ Override to merge `layout` via `waxy.Style.__or__` and visual fields via `StyleF
 | `align_children="center"` | `align_items=waxy.AlignItems.Center` | |
 | `align_children="end"` | `align_items=waxy.AlignItems.End` | |
 | `align_children="stretch"` | `align_items=waxy.AlignItems.Stretch` | |
-| `gap_children=N` | `gap_width=waxy.Length(N), gap_height=waxy.Length(N)` | Same gap in both directions |
+| `gap_children=N` | `gap_width=waxy.Length(N), gap_height=waxy.Length(N)` | Now split into `gap_width_N`, `gap_height_N`, `gap_N` |
 | `position=Relative(x, y)` | `position=waxy.Position.Relative, inset_left=waxy.Length(x), inset_top=waxy.Length(y)` | |
 | `position=Absolute(x, y)` | `position=waxy.Position.Absolute, inset_left=waxy.Length(x), inset_top=waxy.Length(y)` | |
 | `position=Fixed(x, y)` | **Dropped** — delete `Fixed` class, `fixed()` utility, and doc example | |
@@ -258,11 +280,18 @@ Override to merge `layout` via `waxy.Style.__or__` and visual fields via `StyleF
 |-----------------|-----------------|-------|
 | `flex_shrink=float` | `shrink_0`, `shrink_1`, `shrink_2`, `shrink_3` | taffy default is 1.0 (CSS spec) |
 | `flex_wrap=waxy.FlexWrap.*` | `flex_no_wrap`, `flex_wrap`, `flex_wrap_reverse` | Painting unaffected — taffy resolves positions |
-| `display=waxy.Display.*` | `display_flex`, `display_block`, `display_grid`, `display_none` | Block/Grid are new layout modes |
+| `display=waxy.Display.*` | `display_flex`, `display_block`, `display_grid`, `display_none` | `display_none` elements skipped in layout extraction |
 | `min_size_width`, `min_size_height` | `min_width(n)`, `min_height(n)` | |
 | `max_size_width`, `max_size_height` | `max_width(n)`, `max_height(n)` | |
-| `gap_width` | `gap_x_N` | Independent column gap |
-| `gap_height` | `gap_y_N` | Independent row gap |
+| `aspect_ratio` | `aspect_ratio(ratio)` | |
+| `gap_width` | `gap_width_N` | Per-axis gap (width direction) |
+| `gap_height` | `gap_height_N` | Per-axis gap (height direction) |
+| `justify_items` | `justify_items_start`, etc. | Used in grid layout |
+| `justify_self` | `justify_self_start`, etc. | Used in grid layout |
+| `grid_auto_flow` | `grid_auto_flow_row`, `_column`, `_row_dense`, `_column_dense` | |
+| `grid_template_rows` | `grid_template_rows(*tracks)` | Helper function |
+| `grid_template_columns` | `grid_template_columns(*tracks)` | Helper function |
+| `grid_row`, `grid_column` | `grid_row(start, end)`, `grid_column(start, end)` | Helper functions |
 
 ### Step 2: Update `codegen/generate_utilities.py` and regenerate `styles/utilities.py`
 
@@ -345,6 +374,7 @@ the old nested style constructors.
            f"justify_children_{name} = Style(layout=waxy.Style(justify_content=waxy.AlignContent.{member.name}))"
 
    # Similarly for align_children (waxy.AlignItems) and align_self (waxy.AlignItems)
+   # Also generate justify_items and justify_self (used in grid layout)
    ALIGN_MAP = {
        "Start": "start", "Center": "center", "End": "end", "Stretch": "stretch",
    }
@@ -353,10 +383,16 @@ the old nested style constructors.
        if name:
            f"align_children_{name} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{member.name}))"
            f"align_self_{name} = Style(layout=waxy.Style(align_self=waxy.AlignItems.{member.name}))"
+           f"justify_items_{name} = Style(layout=waxy.Style(justify_items=waxy.AlignItems.{member.name}))"
+           f"justify_self_{name} = Style(layout=waxy.Style(justify_self=waxy.AlignItems.{member.name}))"
    ```
 
    The `_MAP` dicts filter to only the members we want utilities for (waxy enums may have
    additional members like `FlexStart`/`FlexEnd`/`Baseline` that we don't need).
+
+   Note: `justify_items` and `justify_self` use `AlignItems` (not `AlignContent`) — this
+   matches the CSS spec where these properties accept alignment keywords, and waxy models
+   them with the same `AlignItems` enum.
 
 5. **Weight utilities**:
 
@@ -407,7 +443,21 @@ the old nested style constructors.
    f"display_none = Style(layout=waxy.Style(display=waxy.Display.Nil))"
    ```
 
-9. **Border kind utilities** — introspect `BorderKind` enum (unchanged source, new output):
+9. **Grid auto-flow utilities**:
+
+   ```python
+   # NEW (no counterweight equivalent existed):
+   GRID_FLOW_MAP = {
+       "Row": "row", "Column": "column",
+       "RowDense": "row_dense", "ColumnDense": "column_dense",
+   }
+   for member in waxy.GridAutoFlow:
+       name = GRID_FLOW_MAP.get(member.name)
+       if name:
+           f"grid_auto_flow_{name} = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.{member.name}))"
+   ```
+
+10. **Border kind utilities** — introspect `BorderKind` enum (unchanged source, new output):
 
    ```python
    # OLD: border_light = Style(border=Border(kind=BorderKind.Light))
@@ -464,10 +514,10 @@ the old nested style constructors.
 
    ```python
    # OLD: gap_children_N = Style(layout=Flex(gap_children=N))
-   # NEW: split into gap (both), gap_x (column gap), gap_y (row gap)
+   # NEW: use taffy/waxy field names
    for n in N:
-       f"gap_x_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n})))"
-       f"gap_y_{n} = Style(layout=waxy.Style(gap_height=waxy.Length({n})))"
+       f"gap_width_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n})))"
+       f"gap_height_{n} = Style(layout=waxy.Style(gap_height=waxy.Length({n})))"
        f"gap_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n}), gap_height=waxy.Length({n})))"
    ```
 
@@ -553,6 +603,23 @@ def max_width(n: int) -> Style:
 
 def max_height(n: int) -> Style:
     return Style(layout=waxy.Style(max_size_height=waxy.Length(n)))
+
+def aspect_ratio(ratio: float) -> Style:
+    return Style(layout=waxy.Style(aspect_ratio=ratio))
+
+# --- Grid helpers ---
+
+def grid_template_rows(*tracks: GridTrackValue) -> Style:
+    return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
+
+def grid_template_columns(*tracks: GridTrackValue) -> Style:
+    return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
+
+def grid_row(start: GridPlacementValue | None = None, end: GridPlacementValue | None = None) -> Style:
+    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
+
+def grid_column(start: GridPlacementValue | None = None, end: GridPlacementValue | None = None) -> Style:
+    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
 ```
 
 **Why these helpers are needed:**
@@ -562,13 +629,16 @@ def max_height(n: int) -> Style:
   `Style(layout=waxy.Style(size_width=waxy.Length(20), size_height=waxy.Length(10)))`.
 - `min_width()`/`max_width()`/`min_height()`/`max_height()` — constrained sizing is
   common enough to warrant helpers over raw `waxy.Style(min_size_width=waxy.Length(n))`.
+- `grid_template_rows()`/`grid_template_columns()` — grid track definitions take lists
+  of track values; a helper with `*tracks` varargs is much more ergonomic than building
+  a `waxy.Style` with a list literal.
+- `grid_row()`/`grid_column()` — wrap `waxy.GridPlacement` construction.
 - `relative()`/`absolute()` take arbitrary x/y coordinates — can't be pre-generated.
 - `z()` takes an arbitrary z-index value.
 
 **Not adding helpers for** (can use `waxy.Style(...)` directly for these rare cases):
 - `flex_grow()`/`flex_shrink()`/`flex_basis()` — the `weight_N`/`shrink_N` utilities cover
   most flex usage; power users can set `layout=waxy.Style(flex_grow=2.5)` directly.
-- `aspect_ratio()` — niche, use `waxy.Style(aspect_ratio=1.5)` directly.
 - `overflow()` — not yet useful (see future work on scrolling).
 
 **Update `utilities.py` imports** (non-generated header, lines 1-17):
@@ -626,16 +696,15 @@ __all__ = [
 
 ```python
 import waxy
-from counterweight.geometry import Rect
 from counterweight.shadow import ShadowNode
 from counterweight.elements import AnyElement, Text
 
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
-    content: Rect
-    padding: Rect
-    border: Rect
-    margin: Rect
+    content: waxy.Rect
+    padding: waxy.Rect
+    border: waxy.Rect
+    margin: waxy.Rect
 
 
 def compute_layout(
@@ -731,42 +800,51 @@ def _extract_layout(
     """Walk tree top-down, accumulating absolute positions.
 
     abs_x/abs_y is the absolute position of the parent's border box origin.
-    For the root node, this is (0, 0).
+    For the root node, this is (0, 0) — taffy places the root at the origin
+    with location (0, 0) since there is no parent to position it relative to.
     """
     layout = tree.layout(node_id)  # returns rounded Layout
     shadow = node_map[node_id]
+
+    # Skip elements with display: none — taffy excludes them from layout
+    # and they should not be painted or hit-tested.
+    if shadow.element.style.layout.display == waxy.Display.Nil:
+        return
 
     # location is relative to parent's border box and points to this node's border box
     border_abs_x = abs_x + layout.location.x
     border_abs_y = abs_y + layout.location.y
 
-    # Build rects starting from the border box (what location + size describe)
-    border_rect = Rect(
-        x=int(border_abs_x),
-        y=int(border_abs_y),
-        width=int(layout.size.width),
-        height=int(layout.size.height),
-    )
+    # Build rects starting from the border box (what location + size describe).
+    # waxy.Rect uses inclusive (left, right, top, bottom).
+    # layout.size is the border box pixel count, so right = left + width - 1.
+    bx = int(border_abs_x)
+    by = int(border_abs_y)
+    bw = int(layout.size.width)
+    bh = int(layout.size.height)
+
+    border_rect = waxy.Rect(left=bx, right=bx + bw - 1, top=by, bottom=by + bh - 1)
+
     # Margin rect: border box expanded outward by margin widths
-    margin_rect = Rect(
-        x=int(border_abs_x - layout.margin.left),
-        y=int(border_abs_y - layout.margin.top),
-        width=int(layout.size.width + layout.margin.left + layout.margin.right),
-        height=int(layout.size.height + layout.margin.top + layout.margin.bottom),
+    margin_rect = waxy.Rect(
+        left=bx - int(layout.margin.left),
+        right=bx + bw - 1 + int(layout.margin.right),
+        top=by - int(layout.margin.top),
+        bottom=by + bh - 1 + int(layout.margin.bottom),
     )
     # Padding rect: border box shrunk inward by border widths
-    padding_rect = Rect(
-        x=int(border_abs_x + layout.border.left),
-        y=int(border_abs_y + layout.border.top),
-        width=int(layout.size.width - layout.border.left - layout.border.right),
-        height=int(layout.size.height - layout.border.top - layout.border.bottom),
-    )
+    pl = bx + int(layout.border.left)
+    pt = by + int(layout.border.top)
+    pr = bx + bw - 1 - int(layout.border.right)
+    pb = by + bh - 1 - int(layout.border.bottom)
+    padding_rect = waxy.Rect(left=pl, right=pr, top=pt, bottom=pb)
+
     # Content rect: padding box shrunk inward by padding widths
-    content_rect = Rect(
-        x=int(padding_rect.x + layout.padding.left),
-        y=int(padding_rect.y + layout.padding.top),
-        width=int(padding_rect.width - layout.padding.left - layout.padding.right),
-        height=int(padding_rect.height - layout.padding.top - layout.padding.bottom),
+    content_rect = waxy.Rect(
+        left=pl + int(layout.padding.left),
+        right=pr - int(layout.padding.right),
+        top=pt + int(layout.padding.top),
+        bottom=pb - int(layout.padding.bottom),
     )
 
     resolved = ResolvedLayout(
@@ -825,17 +903,20 @@ Replace:
 - `element.style.border` → `element.style.border_kind is not None`
 - `element.style.content.color` → `element.style.content_color`
 - `element.style.layout.z` → `element.style.z`
+- Rename `paint_bg()` → `fill_rect()` (better describes what it does: fills a rectangular area)
 
 **`paint_edge`** (line 160):
 Currently: `paint_edge(element, mp: Margin | Padding, edge: Edge, rect: Rect) -> Paint`
 
-Simplify to: `paint_edge(outer: Rect, inner: Rect, color: Color, z: int) -> Paint`
+Simplify to: `paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Paint`
 
-Instead of using `Edge` thicknesses, compute the band between `outer` and `inner` rects directly:
-- Top strip: `y ∈ [outer.top, inner.top)`, `x ∈ outer.x_range()`
-- Bottom strip: `y ∈ (inner.bottom, outer.bottom]`, `x ∈ outer.x_range()`
-- Left strip: `y ∈ [inner.top, inner.bottom]`, `x ∈ [outer.left, inner.left)`
-- Right strip: `y ∈ [inner.top, inner.bottom]`, `x ∈ (inner.right, outer.right]`
+Instead of using `Edge` thicknesses, compute the band between `outer` and `inner` rects directly.
+Use `waxy.Rect` for each strip and iterate its `.points()`:
+- Top strip: `Rect(left=outer.left, right=outer.right, top=outer.top, bottom=inner.top - 1)`
+- Bottom strip: `Rect(left=outer.left, right=outer.right, top=inner.bottom + 1, bottom=outer.bottom)`
+- Left strip: `Rect(left=outer.left, right=inner.left - 1, top=inner.top, bottom=inner.bottom)`
+- Right strip: `Rect(left=inner.right + 1, right=outer.right, top=inner.top, bottom=inner.bottom)`
+Skip any strip where the rect would be degenerate (e.g. `top > bottom`).
 
 Caller passes:
 - Margin band: `paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)`
@@ -871,10 +952,10 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     # Derive which edges to draw from the resolved layout border widths.
     # Compare border_rect vs padding_rect — a gap means a nonzero border width.
-    draw_left = resolved.padding.x > resolved.border.x
-    draw_right = (resolved.border.x + resolved.border.width) > (resolved.padding.x + resolved.padding.width)
-    draw_top = resolved.padding.y > resolved.border.y
-    draw_bottom = (resolved.border.y + resolved.border.height) > (resolved.padding.y + resolved.padding.height)
+    draw_left = resolved.padding.left > resolved.border.left
+    draw_right = resolved.border.right > resolved.padding.right
+    draw_top = resolved.padding.top > resolved.border.top
+    draw_bottom = resolved.border.bottom > resolved.padding.bottom
 
     # Contract: shorten border lines on open edges by N cells
     if contract:
@@ -935,6 +1016,13 @@ to `Length(1)`). This replaces the old `BorderEdge.Left in border.edges` check.
 **`paint_text`** (line 128):
 Currently: `paint_text(text: Text, rect: Rect) -> Paint`
 
+Change to: `paint_text(text: Text, rect: waxy.Rect) -> Paint`
+
+Note: `waxy.Rect.width` is `right - left` (one less than pixel count). For text
+wrapping and slicing, use `int(rect.width) + 1` where the old code used `rect.width`,
+and `int(rect.height) + 1` where the old code used `rect.height`. Use `rect.left` /
+`rect.top` where the old code used `rect.x` / `rect.y`.
+
 Replace:
 - `text.style.typography.style` → `text.style.text_style`
 - `text.style.typography.wrap` → `text.style.text_wrap`
@@ -942,14 +1030,13 @@ Replace:
 - `text.style.layout.z` → `text.style.z`
 
 **Delete from `geometry.py`:**
-- `Edge` class (line 103) — no longer needed. Only consumers were `paint_edge` (now uses rect pairs)
-  and `LayoutBoxDimensions.expand_by` (replaced by `ResolvedLayout`).
+- `Edge` class (line 103) — no longer needed
+- `Rect` class (line 37) — replaced by `waxy.Rect` everywhere
 
 **Keep in `geometry.py`:**
-- `Position` (line 12) — heavily used in painting
-- `Rect` (line 37) — used for resolved layout rects. Delete `expand_by(edge)` method
-  (only consumer was `LayoutBoxDimensions.padding_border_margin_rects()` which is deleted,
-  and `Edge` is also deleted).
+- `Position` (line 12) — heavily used in painting. Note: `waxy.Point` has the same
+  `(x, y)` shape but is a different type. Paint code uses `Position` with its flyweight
+  cache; we keep it for now and convert `waxy.Point` → `Position` at boundaries as needed.
 
 **Keep in `_utils.py`:**
 - `halve_integer()` (line 27) — still used by `paint.py:justify_line`
@@ -998,7 +1085,7 @@ against `resolved.border`:
 
 ```python
 for element, resolved in reversed(elements_and_layouts):
-    if mouse_position in resolved.border or m.absolute in resolved.border:
+    if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
         if element.on_mouse:
             handle_control(element.on_mouse(event))
 ```
@@ -1020,8 +1107,8 @@ def use_rects() -> Rects:
     )
 ```
 
-The `Rects` dataclass (`hooks/hooks.py:71-75`) stays unchanged — it already has the
-right shape (`content`, `padding`, `border`, `margin` all as `Rect`).
+The `Rects` dataclass (`hooks/hooks.py:71-75`) changes its field types from
+counterweight's `Rect` to `waxy.Rect`.
 
 **Delete:**
 - `build_layout_tree_from_shadow()` function (line 470 in app.py)
@@ -1086,7 +1173,7 @@ Style(
 | `build_layout_tree_from_shadow()` | `app.py:470` |
 | `partition_int()` | `_utils.py:33` |
 | `Edge` class | `geometry.py:103` |
-| `Rect.expand_by()` method | `geometry.py` (method on `Rect`) |
+| `Rect` class | `geometry.py:37` (replaced by `waxy.Rect`) |
 | `Flex` class | `styles/styles.py:654` |
 | `Span` class | `styles/styles.py:601` |
 | `Margin` class | `styles/styles.py:581` |
@@ -1134,7 +1221,7 @@ Style(
 | `src/counterweight/layout.py` | Rewrite: new `ResolvedLayout` + `compute_layout()` using waxy. Delete old engine. Keep `wrap_cells()`. |
 | `src/counterweight/paint.py` | Adapt to `ResolvedLayout`, flattened style field names, simplify `paint_edge` |
 | `src/counterweight/app.py` | Use new layout function, update mouse hit-testing, delete `build_layout_tree_from_shadow` |
-| `src/counterweight/geometry.py` | Delete `Edge` class |
+| `src/counterweight/geometry.py` | Delete `Edge` and `Rect` classes (replaced by `waxy.Rect`) |
 | `src/counterweight/_utils.py` | Delete `partition_int` |
 | `src/counterweight/hooks/impls.py` | Change `Hooks.dims` type from `LayoutBoxDimensions` to `ResolvedLayout` |
 | `src/counterweight/hooks/hooks.py` | Simplify `use_rects()` to read directly from `ResolvedLayout` |
