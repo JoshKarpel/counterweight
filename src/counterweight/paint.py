@@ -3,26 +3,24 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, product
+from itertools import groupby, islice
 from textwrap import dedent
 from typing import Literal, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
+import waxy
 from structlog import get_logger
 
 from counterweight._utils import halve_integer
 from counterweight.elements import AnyElement, CellPaint, Div, Text
-from counterweight.geometry import Edge, Position, Rect
-from counterweight.layout import LayoutBox, LayoutBoxDimensions, wrap_cells
-from counterweight.styles import Border
+from counterweight.geometry import Position
+from counterweight.layout import ResolvedLayout, wrap_cells
 from counterweight.styles.styles import (
-    BorderEdge,
     CellStyle,
     Color,
     JoinedBorderKind,
     JoinedBorderParts,
-    Margin,
-    Padding,
+    Style,
 )
 
 logger = get_logger()
@@ -51,30 +49,30 @@ Paint = dict[Position, P]
 BorderHealingHints = dict[Position, JoinedBorderParts]
 
 
-def paint_layout(layout: LayoutBox) -> tuple[Paint, BorderHealingHints]:
-    combined_paint: Paint = {}
-    border_healing_hints: BorderHealingHints = {}
-    for paint, hints, _z in sorted(
-        (paint_element(l.element, l.dims) for l in layout.walk_from_top()),
-        key=lambda pz: pz[-1],
-    ):
-        combined_paint |= paint
-        border_healing_hints |= hints
-
-    return combined_paint, border_healing_hints
+def paint_layout(
+    elements: list[tuple[AnyElement, ResolvedLayout]],
+) -> tuple[Paint, BorderHealingHints]:
+    parts: list[tuple[Paint, BorderHealingHints, int, int]] = [
+        paint_element(element, resolved) for element, resolved in elements
+    ]
+    parts.sort(key=lambda p: (p[2], p[3]))
+    paint: Paint = {}
+    bhh: BorderHealingHints = {}
+    for p, b, _, _ in parts:
+        paint |= p
+        bhh |= b
+    return paint, bhh
 
 
 @lru_cache(maxsize=2**10)
-def paint_bg(x_range: range, y_range: range, z: int, color: Color) -> Paint:
-    return {Position.flyweight(x, y): P.blank(color=color, z=z) for x, y in product(x_range, y_range)}
+def fill_rect(rect: waxy.Rect, z: int, color: Color) -> Paint:
+    return {Position.from_point(p): P.blank(color=color, z=z) for p in rect.points()}
 
 
-def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint, BorderHealingHints, int]:
-    padding_rect, border_rect, margin_rect = dims.padding_border_margin_rects()
-
-    m = paint_edge(element, element.style.margin, dims.margin, margin_rect)
-    b, bhh = paint_border(element, element.style.border, border_rect) if element.style.border else ({}, {})
-    t = paint_edge(element, element.style.padding, dims.padding, padding_rect)
+def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]:
+    m = paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)
+    b, bhh = paint_border(element.style, resolved)
+    t = paint_edge(resolved.padding, resolved.content, element.style.padding_color, element.style.z)
 
     box = m | b | t
 
@@ -82,31 +80,15 @@ def paint_element(element: AnyElement, dims: LayoutBoxDimensions) -> tuple[Paint
         case Div():
             paint = box
         case Text() as e:
-            paint = box | paint_text(e, dims.content)
+            paint = box | paint_text(e, resolved.content)
         case _:
-            raise NotImplementedError(f"Painting {element} is not implemented")
-
-    # Drawing the background explicitly makes sure that when elements overlaps,
-    # the element with lower z is actually hidden and doesn't show through.
-    # However, we only want to do this for elements that actually have anything in their paint,
-    # so that "anonymous" grouping elements don't hide things behind them.
+            assert_never(element)
 
     return (
-        (
-            (
-                paint_bg(
-                    x_range=margin_rect.x_range(),
-                    y_range=margin_rect.y_range(),
-                    color=element.style.content.color,
-                    z=element.style.layout.z,
-                )
-                | paint
-            )
-            if paint
-            else paint
-        ),
+        (fill_rect(resolved.margin, element.style.z, element.style.content_color) | paint if paint else paint),
         bhh,
-        element.style.layout.z,
+        element.style.z,
+        resolved.order,
     )
 
 
@@ -125,25 +107,25 @@ def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "ri
         assert_never(justify)
 
 
-def paint_text(text: Text, rect: Rect) -> Paint:
-    style = text.style.typography.style
+def paint_text(text: Text, rect: waxy.Rect) -> Paint:
+    style = text.style.text_style
+    width = int(rect.width) + 1
+    height = int(rect.height) + 1
 
     paint = {}
     lines = wrap_cells(
         cells=text.cells,
-        wrap=text.style.typography.wrap,
-        width=rect.width,
+        wrap=text.style.text_wrap,
+        width=width,
     )
 
     previous_cell_style = None
 
-    for y, line in enumerate(lines[: rect.height], start=rect.y):
-        justified_line = justify_line(line, rect.width, text.style.typography.justify)
-        for x, cell in enumerate(justified_line[: rect.width], start=rect.x):
+    for y, line in enumerate(lines[:height], start=int(rect.top)):
+        justified_line = justify_line(line, width, text.style.text_justify)
+        for x, cell in enumerate(justified_line[:width], start=int(rect.left)):
             cell_style = cell.style
 
-            # Optimization: reuse the same merged style object if the cell style is the same object.
-            # This helps when painting a lot of text with the same style.
             if cell_style is not previous_cell_style:
                 merged_style = style | cell_style
                 previous_cell_style = cell_style
@@ -151,66 +133,46 @@ def paint_text(text: Text, rect: Rect) -> Paint:
             paint[Position.flyweight(x, y)] = P(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
-                z=text.style.layout.z,
+                z=text.style.z,
             )
 
     return paint
 
 
-def paint_edge(element: AnyElement, mp: Margin | Padding, edge: Edge, rect: Rect, char: str = " ") -> Paint:
-    cell_paint = P(char=char, style=CellStyle(background=mp.color), z=element.style.layout.z)
+def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Paint:
+    cell_paint = P(char=" ", style=CellStyle(background=color), z=z)
+    chars: Paint = {}
 
-    chars = {}
-
-    # top
-    for y in range(rect.top, rect.top + edge.top):
-        for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
-
-    # bottom
-    for y in range(rect.bottom, rect.bottom - edge.bottom, -1):
-        for x in rect.x_range():
-            chars[Position.flyweight(x, y)] = cell_paint
-
-    # left
-    for x in range(rect.left, rect.left + edge.left):
-        for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
-
-    # right
-    for x in range(rect.right, rect.right - edge.right, -1):
-        for y in rect.y_range():
-            chars[Position.flyweight(x, y)] = cell_paint
+    strips = [
+        waxy.Rect(left=outer.left, right=outer.right, top=outer.top, bottom=inner.top - 1),
+        waxy.Rect(left=outer.left, right=outer.right, top=inner.bottom + 1, bottom=outer.bottom),
+        waxy.Rect(left=outer.left, right=inner.left - 1, top=inner.top, bottom=inner.bottom),
+        waxy.Rect(left=inner.right + 1, right=outer.right, top=inner.top, bottom=inner.bottom),
+    ]
+    for strip in strips:
+        if strip.top <= strip.bottom and strip.left <= strip.right:
+            for p in strip.points():
+                chars[Position.from_point(p)] = cell_paint
 
     return chars
 
 
-def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint, BorderHealingHints]:
-    style = border.style
+def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]:
+    bk = style.border_kind
+    if bk is None:
+        return {}, {}
 
-    bk = border.kind
+    cell_style = style.border_style
     bv = bk.value
-    left = bv.left
-    right = bv.right
-    top = bv.top
-    bottom = bv.bottom
-    left_top = bv.left_top
-    right_top = bv.right_top
-    left_bottom = bv.left_bottom
-    right_bottom = bv.right_bottom
+    z = style.z
+    contract = style.border_contract
 
-    contract = border.contract
-    chars = {}
+    rect = resolved.border
 
-    rect_left = rect.left
-    rect_top = rect.top
-    rect_right = rect.right
-    rect_bottom = rect.bottom
-
-    draw_left = BorderEdge.Left in border.edges
-    draw_right = BorderEdge.Right in border.edges
-    draw_top = BorderEdge.Top in border.edges
-    draw_bottom = BorderEdge.Bottom in border.edges
+    draw_left = resolved.padding.left > resolved.border.left
+    draw_right = resolved.border.right > resolved.padding.right
+    draw_top = resolved.padding.top > resolved.border.top
+    draw_bottom = resolved.border.bottom > resolved.padding.bottom
 
     if contract:
         contract_top = contract if not draw_top else None
@@ -220,50 +182,44 @@ def paint_border(element: AnyElement, border: Border, rect: Rect) -> tuple[Paint
     else:
         contract_top = contract_bottom = contract_left = contract_right = None
 
-    v_slice = slice(contract_top, contract_bottom)
-    h_slice = slice(contract_left, contract_right)
+    chars: Paint = {}
 
     if draw_left:
-        left_paint = P(char=left, style=style, z=element.style.layout.z)
-        for p in rect.left_edge()[v_slice]:
-            chars[p] = left_paint
+        left_paint = P(char=bv.left, style=cell_style, z=z)
+        for p in islice(rect.left_edge(), contract_top, contract_bottom):
+            chars[Position.from_point(p)] = left_paint
 
     if draw_right:
-        right_paint = P(char=right, style=style, z=element.style.layout.z)
-        for p in rect.right_edge()[v_slice]:
-            chars[p] = right_paint
+        right_paint = P(char=bv.right, style=cell_style, z=z)
+        for p in islice(rect.right_edge(), contract_top, contract_bottom):
+            chars[Position.from_point(p)] = right_paint
 
     if draw_top:
-        top_paint = P(char=top, style=style, z=element.style.layout.z)
-        for p in rect.top_edge()[h_slice]:
-            chars[p] = top_paint
-
+        top_paint = P(char=bv.top, style=cell_style, z=z)
+        for p in islice(rect.top_edge(), contract_left, contract_right):
+            chars[Position.from_point(p)] = top_paint
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_top)] = P(char=left_top, style=style, z=element.style.layout.z)
+            chars[Position.flyweight(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_top)] = P(
-                char=right_top, style=style, z=element.style.layout.z
-            )
+            chars[Position.flyweight(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
 
     if draw_bottom:
-        bottom_paint = P(char=bottom, style=style, z=element.style.layout.z)
-        for p in rect.bottom_edge()[h_slice]:
-            chars[p] = bottom_paint
-
+        bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
+        for p in islice(rect.bottom_edge(), contract_left, contract_right):
+            chars[Position.from_point(p)] = bottom_paint
         if draw_left:
-            chars[Position.flyweight(x=rect_left, y=rect_bottom)] = P(
-                char=left_bottom, style=style, z=element.style.layout.z
+            chars[Position.flyweight(x=int(rect.left), y=int(rect.bottom))] = P(
+                char=bv.left_bottom, style=cell_style, z=z
             )
         if draw_right:
-            chars[Position.flyweight(x=rect_right, y=rect_bottom)] = P(
-                char=right_bottom, style=style, z=element.style.layout.z
+            chars[Position.flyweight(x=int(rect.right), y=int(rect.bottom))] = P(
+                char=bv.right_bottom, style=cell_style, z=z
             )
 
     try:
         jbv = JoinedBorderKind[bk.name].value
         bhh = {k: jbv for k in chars.keys()}
     except KeyError:
-        # The border is not joinable
         bhh = {}
 
     return chars, bhh

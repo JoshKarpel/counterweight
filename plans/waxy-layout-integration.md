@@ -691,7 +691,7 @@ __all__ = [
 ]
 ```
 
-### Step 4: Rewrite `layout.py`
+### Step 4: Rewrite `layout.py` ✅ DONE
 
 **Delete entirely:**
 - `LayoutBox` class (line 63) and all methods (`walk_from_top`, `walk_from_bottom`,
@@ -877,7 +877,7 @@ def _extract_layout(
         _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
 ```
 
-### Step 5: Adapt `paint.py`
+### Step 5: Adapt `paint.py` ✅ DONE
 
 **`paint_layout`** (line 54):
 Currently takes `LayoutBox` and walks the tree. Change to accept
