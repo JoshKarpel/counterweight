@@ -2033,78 +2033,100 @@ grid_auto_flow_column_dense = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAu
 border_none = Style(border_kind=None)
 border_light = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.Light,
 )
 border_lightrounded = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.LightRounded,
 )
 border_lightangled = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.LightAngled,
 )
 border_heavy = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.Heavy,
 )
 border_double = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.Double,
 )
 border_thick = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.Thick,
 )
 border_mcgugan = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.McGugan,
 )
 border_lightshade = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.LightShade,
 )
 border_mediumshade = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.MediumShade,
 )
 border_heavyshade = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.HeavyShade,
 )
 border_star = Style(
     layout=waxy.Style(
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=BorderKind.Star,
 )
@@ -2119,10 +2141,18 @@ border_top_right = Style(layout=waxy.Style(border_top=waxy.Length(1), border_rig
 border_bottom_left = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1)))
 border_bottom_right = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_right=waxy.Length(1)))
 border_left_right = Style(layout=waxy.Style(border_left=waxy.Length(1), border_right=waxy.Length(1)))
-border_top_bottom_left = Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1)))
-border_top_bottom_right = Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_right=waxy.Length(1)))
-border_top_left_right = Style(layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1)))
-border_bottom_left_right = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1)))
+border_top_bottom_left = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1))
+)
+border_top_bottom_right = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_right=waxy.Length(1))
+)
+border_top_left_right = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
+)
+border_bottom_left_right = Style(
+    layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
+)
 
 border_contract_0 = Style(border_contract=0)
 border_contract_1 = Style(border_contract=1)
@@ -2194,15 +2224,78 @@ pad_y_6 = Style(layout=waxy.Style(padding_top=waxy.Length(6), padding_bottom=wax
 pad_y_7 = Style(layout=waxy.Style(padding_top=waxy.Length(7), padding_bottom=waxy.Length(7)))
 pad_y_8 = Style(layout=waxy.Style(padding_top=waxy.Length(8), padding_bottom=waxy.Length(8)))
 
-pad_0 = Style(layout=waxy.Style(padding_top=waxy.Length(0), padding_bottom=waxy.Length(0), padding_left=waxy.Length(0), padding_right=waxy.Length(0)))
-pad_1 = Style(layout=waxy.Style(padding_top=waxy.Length(1), padding_bottom=waxy.Length(1), padding_left=waxy.Length(1), padding_right=waxy.Length(1)))
-pad_2 = Style(layout=waxy.Style(padding_top=waxy.Length(2), padding_bottom=waxy.Length(2), padding_left=waxy.Length(2), padding_right=waxy.Length(2)))
-pad_3 = Style(layout=waxy.Style(padding_top=waxy.Length(3), padding_bottom=waxy.Length(3), padding_left=waxy.Length(3), padding_right=waxy.Length(3)))
-pad_4 = Style(layout=waxy.Style(padding_top=waxy.Length(4), padding_bottom=waxy.Length(4), padding_left=waxy.Length(4), padding_right=waxy.Length(4)))
-pad_5 = Style(layout=waxy.Style(padding_top=waxy.Length(5), padding_bottom=waxy.Length(5), padding_left=waxy.Length(5), padding_right=waxy.Length(5)))
-pad_6 = Style(layout=waxy.Style(padding_top=waxy.Length(6), padding_bottom=waxy.Length(6), padding_left=waxy.Length(6), padding_right=waxy.Length(6)))
-pad_7 = Style(layout=waxy.Style(padding_top=waxy.Length(7), padding_bottom=waxy.Length(7), padding_left=waxy.Length(7), padding_right=waxy.Length(7)))
-pad_8 = Style(layout=waxy.Style(padding_top=waxy.Length(8), padding_bottom=waxy.Length(8), padding_left=waxy.Length(8), padding_right=waxy.Length(8)))
+pad_0 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(0),
+        padding_bottom=waxy.Length(0),
+        padding_left=waxy.Length(0),
+        padding_right=waxy.Length(0),
+    )
+)
+pad_1 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(1),
+        padding_bottom=waxy.Length(1),
+        padding_left=waxy.Length(1),
+        padding_right=waxy.Length(1),
+    )
+)
+pad_2 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(2),
+        padding_bottom=waxy.Length(2),
+        padding_left=waxy.Length(2),
+        padding_right=waxy.Length(2),
+    )
+)
+pad_3 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(3),
+        padding_bottom=waxy.Length(3),
+        padding_left=waxy.Length(3),
+        padding_right=waxy.Length(3),
+    )
+)
+pad_4 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(4),
+        padding_bottom=waxy.Length(4),
+        padding_left=waxy.Length(4),
+        padding_right=waxy.Length(4),
+    )
+)
+pad_5 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(5),
+        padding_bottom=waxy.Length(5),
+        padding_left=waxy.Length(5),
+        padding_right=waxy.Length(5),
+    )
+)
+pad_6 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(6),
+        padding_bottom=waxy.Length(6),
+        padding_left=waxy.Length(6),
+        padding_right=waxy.Length(6),
+    )
+)
+pad_7 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(7),
+        padding_bottom=waxy.Length(7),
+        padding_left=waxy.Length(7),
+        padding_right=waxy.Length(7),
+    )
+)
+pad_8 = Style(
+    layout=waxy.Style(
+        padding_top=waxy.Length(8),
+        padding_bottom=waxy.Length(8),
+        padding_left=waxy.Length(8),
+        padding_right=waxy.Length(8),
+    )
+)
 
 margin_top_0 = Style(layout=waxy.Style(margin_top=waxy.Length(0)))
 margin_top_1 = Style(layout=waxy.Style(margin_top=waxy.Length(1)))
@@ -2264,15 +2357,51 @@ margin_y_6 = Style(layout=waxy.Style(margin_top=waxy.Length(6), margin_bottom=wa
 margin_y_7 = Style(layout=waxy.Style(margin_top=waxy.Length(7), margin_bottom=waxy.Length(7)))
 margin_y_8 = Style(layout=waxy.Style(margin_top=waxy.Length(8), margin_bottom=waxy.Length(8)))
 
-margin_0 = Style(layout=waxy.Style(margin_top=waxy.Length(0), margin_bottom=waxy.Length(0), margin_left=waxy.Length(0), margin_right=waxy.Length(0)))
-margin_1 = Style(layout=waxy.Style(margin_top=waxy.Length(1), margin_bottom=waxy.Length(1), margin_left=waxy.Length(1), margin_right=waxy.Length(1)))
-margin_2 = Style(layout=waxy.Style(margin_top=waxy.Length(2), margin_bottom=waxy.Length(2), margin_left=waxy.Length(2), margin_right=waxy.Length(2)))
-margin_3 = Style(layout=waxy.Style(margin_top=waxy.Length(3), margin_bottom=waxy.Length(3), margin_left=waxy.Length(3), margin_right=waxy.Length(3)))
-margin_4 = Style(layout=waxy.Style(margin_top=waxy.Length(4), margin_bottom=waxy.Length(4), margin_left=waxy.Length(4), margin_right=waxy.Length(4)))
-margin_5 = Style(layout=waxy.Style(margin_top=waxy.Length(5), margin_bottom=waxy.Length(5), margin_left=waxy.Length(5), margin_right=waxy.Length(5)))
-margin_6 = Style(layout=waxy.Style(margin_top=waxy.Length(6), margin_bottom=waxy.Length(6), margin_left=waxy.Length(6), margin_right=waxy.Length(6)))
-margin_7 = Style(layout=waxy.Style(margin_top=waxy.Length(7), margin_bottom=waxy.Length(7), margin_left=waxy.Length(7), margin_right=waxy.Length(7)))
-margin_8 = Style(layout=waxy.Style(margin_top=waxy.Length(8), margin_bottom=waxy.Length(8), margin_left=waxy.Length(8), margin_right=waxy.Length(8)))
+margin_0 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(0), margin_bottom=waxy.Length(0), margin_left=waxy.Length(0), margin_right=waxy.Length(0)
+    )
+)
+margin_1 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(1), margin_bottom=waxy.Length(1), margin_left=waxy.Length(1), margin_right=waxy.Length(1)
+    )
+)
+margin_2 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(2), margin_bottom=waxy.Length(2), margin_left=waxy.Length(2), margin_right=waxy.Length(2)
+    )
+)
+margin_3 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(3), margin_bottom=waxy.Length(3), margin_left=waxy.Length(3), margin_right=waxy.Length(3)
+    )
+)
+margin_4 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(4), margin_bottom=waxy.Length(4), margin_left=waxy.Length(4), margin_right=waxy.Length(4)
+    )
+)
+margin_5 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(5), margin_bottom=waxy.Length(5), margin_left=waxy.Length(5), margin_right=waxy.Length(5)
+    )
+)
+margin_6 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(6), margin_bottom=waxy.Length(6), margin_left=waxy.Length(6), margin_right=waxy.Length(6)
+    )
+)
+margin_7 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(7), margin_bottom=waxy.Length(7), margin_left=waxy.Length(7), margin_right=waxy.Length(7)
+    )
+)
+margin_8 = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Length(8), margin_bottom=waxy.Length(8), margin_left=waxy.Length(8), margin_right=waxy.Length(8)
+    )
+)
 
 gap_width_0 = Style(layout=waxy.Style(gap_width=waxy.Length(0)))
 gap_width_1 = Style(layout=waxy.Style(gap_width=waxy.Length(1)))
