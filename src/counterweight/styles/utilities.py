@@ -1970,13 +1970,9 @@ margin_rose_950 = Style(margin_color=rose_950)
 padding_rose_950 = Style(padding_color=rose_950)
 content_rose_950 = Style(content_color=rose_950)
 
-_Row = waxy.FlexDirection.Row
 row = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row))
-_Column = waxy.FlexDirection.Column
 col = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column))
-_RowReverse = waxy.FlexDirection.RowReverse
 row_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.RowReverse))
-_ColumnReverse = waxy.FlexDirection.ColumnReverse
 col_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.ColumnReverse))
 
 justify_children_start = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Start))

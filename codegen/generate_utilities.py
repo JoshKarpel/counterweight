@@ -352,7 +352,6 @@ DIRECTION_ALIASES = {
     "ColumnReverse": "col_reverse",
 }
 for name, alias in DIRECTION_ALIASES.items():
-    generated_lines.append(f"_{name} = waxy.FlexDirection.{name}")
     generated_lines.append(f"{alias} = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.{name}))")
 
 generated_lines.append("")
