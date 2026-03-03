@@ -20,7 +20,7 @@ def root() -> Div:
     return Div(
         style=col | align_children_center | justify_children_center,
         children=[
-            Text(content="Suspend Demo", style=text_amber_600 | weight_none),
+            Text(content="Suspend Demo", style=text_amber_600),
             picker(),
         ],
     )
@@ -79,10 +79,10 @@ def picker() -> Div:
 @component
 def glob_input(glob: str) -> Div:
     return Div(
-        style=row | align_self_stretch | border_bottom | weight_none,
+        style=row | align_self_stretch | border_bottom,
         children=[
-            Text(style=weight_none | border_right | pad_x(1), content="glob"),
-            Text(style=weight_none | pad_x(1), content=glob),
+            Text(style=border_right | pad_x(1), content="glob"),
+            Text(style=pad_x(1), content=glob),
         ],
     )
 
@@ -94,7 +94,7 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
         style=col | justify_children_start | pad_x(1),
         children=[
             Text(
-                style=weight_none | (text_cyan_700 if idx == selected_idx else None),
+                style=text_cyan_700 if idx == selected_idx else default,
                 content=str(file.relative_to(Path.cwd())),
             )
             for idx, file in enumerate(files[start_idx : start_idx + 10], start=start_idx)

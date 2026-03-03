@@ -399,21 +399,7 @@ for name, alias in ALIGN_MAP.items():
 
 generated_lines.append("")
 
-# --- Weight utilities ---
-
-generated_lines.append("weight_none = Style(layout=waxy.Style(flex_grow=0.0))")
-for n in N:
-    if n <= 0:
-        continue
-    generated_lines.append(f"weight_{n} = Style(layout=waxy.Style(flex_grow={float(n)}, flex_basis=waxy.Length(0)))")
-
 generated_lines.append("")
-
-# --- Shrink utilities ---
-
-generated_lines.append("shrink_0 = Style(layout=waxy.Style(flex_shrink=0.0))")
-for n in range(1, 4):
-    generated_lines.append(f"shrink_{n} = Style(layout=waxy.Style(flex_shrink={float(n)}))")
 
 generated_lines.append("")
 

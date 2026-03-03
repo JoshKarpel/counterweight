@@ -12,7 +12,7 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=row | align_self_stretch | justify_children_center | align_children_center | border_lightrounded,
+                style=row | grow(1) | justify_children_center | align_children_center | border_lightrounded | pad(1),
                 children=[
                     Text(
                         style=position_absolute | inset_left(1) | inset_top(-1),
@@ -39,7 +39,6 @@ def root() -> Div:
                         content=" Bottom-Right Title ",
                     ),
                     Text(
-                        style=weight_none,
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     ),
                 ],

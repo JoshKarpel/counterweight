@@ -121,7 +121,7 @@ def board() -> Div:
         style=col | justify_children_center | align_children_center,
         children=[
             Div(
-                style=row | weight_none | justify_children_center | align_children_center,
+                style=row | justify_children_center | align_children_center,
                 children=r,
             )
             for r in rows

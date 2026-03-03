@@ -165,3 +165,16 @@ def test_pad_left() -> None:
 def test_pad_right() -> None:
     result = pad_right(1)
     assert result.layout.padding_right == waxy.Length(1)
+
+
+def test_full_width() -> None:
+    assert full_width.layout.size_width == waxy.Percent(1.0)
+
+
+def test_full_height() -> None:
+    assert full_height.layout.size_height == waxy.Percent(1.0)
+
+
+def test_full() -> None:
+    assert full.layout.size_width == waxy.Percent(1.0)
+    assert full.layout.size_height == waxy.Percent(1.0)

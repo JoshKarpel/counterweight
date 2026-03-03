@@ -7,7 +7,7 @@ from counterweight.events import KeyPressed
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-common_style = align_self_stretch | justify_children_center | align_children_center
+common_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
 border_kind = border_double
 
 

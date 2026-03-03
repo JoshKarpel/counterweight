@@ -14,7 +14,7 @@ def root() -> Div:
         style=col | justify_children_space_around,
         children=[
             Div(
-                style=border_heavy,
+                style=grow(1) | border_heavy,
                 children=[
                     Text(
                         style=text_green_600,
@@ -34,7 +34,7 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=border_heavy,
+                style=grow(1) | border_heavy,
                 children=[
                     Text(
                         style=text_cyan_600,

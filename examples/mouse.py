@@ -69,7 +69,7 @@ def header() -> Text:
     )
 
 
-canvas_style = border_light | weight_none
+canvas_style = border_light
 hover_style = border_heavy | border_amber_600
 
 

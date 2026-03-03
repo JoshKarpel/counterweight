@@ -9,10 +9,10 @@ from counterweight.styles.utilities import *
 @component
 def root() -> Div:
     return Div(
-        style=col | align_self_stretch,
+        style=col,
         children=[
             Div(
-                style=row | align_self_stretch | border_heavy,
+                style=row | grow(1) | border_heavy,
                 children=[
                     Text(
                         style=inset_top_left,

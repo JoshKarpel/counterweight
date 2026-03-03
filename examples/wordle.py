@@ -55,7 +55,7 @@ def root() -> Div:
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
-    header = Text(content="Wordle", style=text_amber_600 | weight_none)
+    header = Text(content="Wordle", style=text_amber_600)
 
     if playing:
         return Div(
@@ -122,7 +122,7 @@ def root() -> Div:
         )
 
 
-button_style = weight_none | pad_x(1) | border_lightrounded
+button_style = pad_x(1) | border_lightrounded
 
 
 @component
@@ -206,7 +206,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 on_key=on_key,
             ),
             Div(
-                style=row | align_self_center | weight_none | pad_y(1),
+                style=row | align_self_center | pad_y(1),
                 children=[Text(content=message, style=message_style)],
             ),
             keyboard(submitted=submitted, solution=solution, on_key=on_key),
@@ -239,7 +239,7 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
         children.append(letter_box(letter=guess_letter, style=style))
 
     return Div(
-        style=row | weight_none | align_children_center | gap_1,
+        style=row | align_children_center | gap_1,
         children=children,
     )
 
@@ -268,10 +268,10 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
                 kb_letter_styles[guess_letter] = border_green_600
 
     return Div(
-        style=col | weight_none | justify_children_center | align_children_center,
+        style=col | justify_children_center | align_children_center,
         children=[
             Div(
-                style=row | weight_none | align_children_center | gap_1,
+                style=row | align_children_center | gap_1,
                 children=[
                     letter_box(
                         kb_letter,
@@ -296,7 +296,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
 
     return Text(
         content=letter,
-        style=style | weight_none | border_heavy | pad_x(1) | pad_y(0) | (border_double if hovered.border else None),
+        style=style | border_heavy | pad_x(1) | pad_y(0) | (border_double if hovered.border else None),
         on_mouse=on_mouse,
     )
 

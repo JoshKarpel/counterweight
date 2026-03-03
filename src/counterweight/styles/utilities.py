@@ -2002,20 +2002,6 @@ justify_self_center = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Cente
 justify_self_end = Style(layout=waxy.Style(justify_self=waxy.AlignItems.End))
 justify_self_stretch = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Stretch))
 
-weight_none = Style(layout=waxy.Style(flex_grow=0.0))
-weight_1 = Style(layout=waxy.Style(flex_grow=1.0, flex_basis=waxy.Length(0)))
-weight_2 = Style(layout=waxy.Style(flex_grow=2.0, flex_basis=waxy.Length(0)))
-weight_3 = Style(layout=waxy.Style(flex_grow=3.0, flex_basis=waxy.Length(0)))
-weight_4 = Style(layout=waxy.Style(flex_grow=4.0, flex_basis=waxy.Length(0)))
-weight_5 = Style(layout=waxy.Style(flex_grow=5.0, flex_basis=waxy.Length(0)))
-weight_6 = Style(layout=waxy.Style(flex_grow=6.0, flex_basis=waxy.Length(0)))
-weight_7 = Style(layout=waxy.Style(flex_grow=7.0, flex_basis=waxy.Length(0)))
-weight_8 = Style(layout=waxy.Style(flex_grow=8.0, flex_basis=waxy.Length(0)))
-
-shrink_0 = Style(layout=waxy.Style(flex_shrink=0.0))
-shrink_1 = Style(layout=waxy.Style(flex_shrink=1.0))
-shrink_2 = Style(layout=waxy.Style(flex_shrink=2.0))
-shrink_3 = Style(layout=waxy.Style(flex_shrink=3.0))
 
 flex_no_wrap = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.NoWrap))
 flex_wrap = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.Wrap))
@@ -2355,8 +2341,25 @@ text_justify_right = Style(text_justify="right")
 # Stop generated
 
 
+default = Style()
+
 position_relative = Style(layout=waxy.Style(position=waxy.Position.Relative))
 position_absolute = Style(layout=waxy.Style(position=waxy.Position.Absolute))
+
+
+@lru_cache(maxsize=256)
+def grow(n: float) -> Style:
+    return Style(layout=waxy.Style(flex_grow=float(n), flex_basis=waxy.Length(0)))
+
+
+@lru_cache(maxsize=256)
+def shrink(n: float) -> Style:
+    return Style(layout=waxy.Style(flex_shrink=float(n)))
+
+
+full_width = Style(layout=waxy.Style(size_width=waxy.Percent(1.0)))
+full_height = Style(layout=waxy.Style(size_height=waxy.Percent(1.0)))
+full = Style(layout=waxy.Style(size_width=waxy.Percent(1.0), size_height=waxy.Percent(1.0)))
 
 
 @lru_cache(maxsize=256)

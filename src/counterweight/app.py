@@ -90,10 +90,7 @@ async def app(
 
         ss = Style(
             layout=waxy.Style(
-                display=waxy.Display.Flex,
-                flex_direction=waxy.FlexDirection.Column,
-                justify_content=waxy.AlignContent.Start,
-                align_items=waxy.AlignItems.Stretch,
+                display=waxy.Display.Grid,
                 size_width=waxy.Length(w),
                 size_height=waxy.Length(h),
             ),
