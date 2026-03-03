@@ -923,6 +923,8 @@ default = Style()
 position_relative = Style(layout=waxy.Style(position=waxy.Position.Relative))
 position_absolute = Style(layout=waxy.Style(position=waxy.Position.Absolute))
 
+border_collapse = Style(layout=waxy.Style(gap_width=waxy.Length(-1), gap_height=waxy.Length(-1)))
+
 
 @lru_cache(maxsize=256)
 def grow(n: float) -> Style:

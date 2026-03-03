@@ -154,7 +154,7 @@ def _extract_layout(
         padding=padding_rect,
         border=border_rect,
         margin=margin_rect,
-        order=layout.order,
+        order=len(results),
     )
     results.append((shadow.element, resolved))
 
