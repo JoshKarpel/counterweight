@@ -67,7 +67,7 @@ def root() -> Div:
 def box(e: frozenset[Side]) -> Text:
     return Text(
         content=f"Border Join Demo\n{', '.join(sorted(e))}",
-        style=border_sides(e) | text_justify_center | text_bg_amber_800,
+        style=border_sides(e) | text_justify_center | text_bg("amber", 800),
     )
 
 

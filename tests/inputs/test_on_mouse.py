@@ -14,7 +14,7 @@ async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> No
     def root() -> Div:
         return Div(
             on_mouse=recorder.append,
-            style=border_light | size(1, 1),
+            style=border_light | size(3, 3),
         )
 
     events: list[tuple[MouseEvent, bool]] = [

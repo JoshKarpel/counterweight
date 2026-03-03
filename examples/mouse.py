@@ -65,12 +65,12 @@ def root() -> Div:
 def header() -> Text:
     return Text(
         content="Mouse Tracking Demo",
-        style=text_justify_center | text_amber_600,
+        style=text_justify_center | text("amber", 600),
     )
 
 
 canvas_style = border_light
-hover_style = border_heavy | border_amber_600
+hover_style = border_heavy | border_color("amber", 600)
 
 
 @component

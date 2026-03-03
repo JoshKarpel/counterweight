@@ -70,7 +70,8 @@ def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
         style=common_style | border_kind | edge_style,
         children=[
             Text(
-                style=text_justify_center | (text_cyan_500 if edge_style == border_bottom_right else text_amber_500),
+                style=text_justify_center
+                | (text("cyan", 500) if edge_style == border_bottom_right else text("amber", 500)),
                 content=s,
             )
         ],

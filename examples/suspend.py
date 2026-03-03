@@ -20,7 +20,7 @@ def root() -> Div:
     return Div(
         style=col | align_children_center | justify_children_center,
         children=[
-            Text(content="Suspend Demo", style=text_amber_600),
+            Text(content="Suspend Demo", style=text("amber", 600)),
             picker(),
         ],
     )
@@ -94,7 +94,7 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
         style=col | justify_children_start | pad_x(1),
         children=[
             Text(
-                style=text_cyan_700 if idx == selected_idx else default,
+                style=text("cyan", 700) if idx == selected_idx else default,
                 content=str(file.relative_to(Path.cwd())),
             )
             for idx, file in enumerate(files[start_idx : start_idx + 10], start=start_idx)

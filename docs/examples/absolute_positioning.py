@@ -17,13 +17,13 @@ def root() -> Div:
                 style=grow(1) | border_heavy,
                 children=[
                     Text(
-                        style=text_green_600,
+                        style=text("green", 600),
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     )
                 ]
                 + [
                     Text(
-                        style=position_absolute | inset_left(x) | inset_top(y) | extra_style | margin_red_600,
+                        style=position_absolute | inset_left(x) | inset_top(y) | extra_style | margin_color("red", 600),
                         content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (
@@ -37,13 +37,17 @@ def root() -> Div:
                 style=grow(1) | border_heavy,
                 children=[
                     Text(
-                        style=text_cyan_600,
+                        style=text("cyan", 600),
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     )
                 ]
                 + [
                     Text(
-                        style=position_absolute | inset_left(x) | inset_top(y) | extra_style | margin_amber_600,
+                        style=position_absolute
+                        | inset_left(x)
+                        | inset_top(y)
+                        | extra_style
+                        | margin_color("amber", 600),
                         content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (

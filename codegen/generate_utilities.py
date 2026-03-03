@@ -326,22 +326,26 @@ generated_lines.extend(
 )
 generated_lines.append("")
 
+# Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
-        generated_lines.extend(
-            [
-                f'{color}_{shade} = Color.from_hex("{hex}")',
-                f"text_{color}_{shade} = Style(text_style=CellStyle(foreground={color}_{shade}))",
-                f"text_bg_{color}_{shade} = Style(text_style=CellStyle(background={color}_{shade}))",
-                f"border_{color}_{shade} = Style(border_style=CellStyle(foreground={color}_{shade}))",
-                f"border_bg_{color}_{shade} = Style(border_style=CellStyle(background={color}_{shade}))",
-                f"margin_{color}_{shade} = Style(margin_color={color}_{shade})",
-                f"padding_{color}_{shade} = Style(padding_color={color}_{shade})",
-                f"content_{color}_{shade} = Style(content_color={color}_{shade})",
-            ]
-        )
-
+        generated_lines.append(f'{color}_{shade} = Color.from_hex("{hex}")')
     generated_lines.append("")
+
+# ColorName and Shade types for functional helpers
+color_names = ", ".join(f'"{c}"' for c in COLORS)
+shade_values = ", ".join(str(s) for s in next(iter(COLORS.values())))
+generated_lines.append(f"ColorName = Literal[{color_names}]")
+generated_lines.append(f"Shade = Literal[{shade_values}]")
+generated_lines.append("")
+
+# Color lookup map
+generated_lines.append("_COLOR_MAP: dict[tuple[str, int], Color] = {")
+for color, shades in COLORS.items():
+    for shade in shades:
+        generated_lines.append(f'    ("{color}", {shade}): {color}_{shade},')
+generated_lines.append("}")
+generated_lines.append("")
 
 # --- Direction utilities ---
 

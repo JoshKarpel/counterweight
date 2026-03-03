@@ -51,7 +51,7 @@ def root() -> Div:
                         style=border_sides(active_sides)
                         | Style(border_kind=border_kind)
                         | text_justify_center
-                        | text_bg_amber_800,
+                        | text_bg("amber", 800),
                     )
                 ],
             )

@@ -55,7 +55,7 @@ def root() -> Div:
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
-    header = Text(content="Wordle", style=text_amber_600)
+    header = Text(content="Wordle", style=text("amber", 600))
 
     if playing:
         return Div(
@@ -102,17 +102,17 @@ def root() -> Div:
                     children=[
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
-                            hover_style=text_indigo_500 | border_indigo_500,
+                            hover_style=text("indigo", 500) | border_color("indigo", 500),
                             on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[F2] Play Random",
-                            hover_style=text_emerald_500 | border_emerald_500,
+                            hover_style=text("emerald", 500) | border_color("emerald", 500),
                             on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[q] Quit",
-                            hover_style=text_red_500 | border_red_500,
+                            hover_style=text("red", 500) | border_color("red", 500),
                             on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                     ],
@@ -186,15 +186,15 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     if state == "playing":
         if len(guess) == 5 and guess not in GUESSABLE_WORDS:
             message = "Not in word list"
-            message_style |= text_red_700
+            message_style |= text("red", 700)
         else:
             message = f"Guess {len(submitted) + 1} of {MAX_SUBMITS}"
     elif state == "win":
         message = f"You won! The word was {solution}"
-        message_style |= text_green_600 | border_green_600 | border_double
+        message_style |= text("green", 600) | border_color("green", 600) | border_double
     elif state == "loss":
         message = f"You lost! The word was {solution}"
-        message_style |= text_red_700 | border_red_700 | border_double
+        message_style |= text("red", 700) | border_color("red", 700) | border_double
     message += "\n[Esc] to return to menu"
 
     return Div(
@@ -226,15 +226,15 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
 
         if type == "submitted":
             if guess_letter == solution_letter:
-                style |= border_green_600
+                style |= border_color("green", 600)
             elif guess_letter in solution:
-                style |= border_yellow_300
+                style |= border_color("yellow", 300)
             else:
-                style |= border_red_700
+                style |= border_color("red", 700)
         elif type == "pending":
-            style |= border_gray_700
+            style |= border_color("gray", 700)
         elif type == "current":
-            style |= border_gray_300 if guess_letter != " " else border_gray_500
+            style |= border_color("gray", 300) if guess_letter != " " else border_color("gray", 500)
 
         children.append(letter_box(letter=guess_letter, style=style))
 
@@ -253,19 +253,19 @@ KEYBOARD = (
 
 @component
 def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None]) -> Div:
-    kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
+    kb_letter_styles = {letter: border_color("gray", 500) for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
     for letter in all_submitted_letters:
         if letter in solution:
-            kb_letter_styles[letter] = border_yellow_300
+            kb_letter_styles[letter] = border_color("yellow", 300)
         else:
-            kb_letter_styles[letter] = border_red_700
+            kb_letter_styles[letter] = border_color("red", 700)
 
     for s in submitted:
         for guess_letter, solution_letter in zip(s, solution):
             if guess_letter == solution_letter:
-                kb_letter_styles[guess_letter] = border_green_600
+                kb_letter_styles[guess_letter] = border_color("green", 600)
 
     return Div(
         style=col | justify_children_center | align_children_center,

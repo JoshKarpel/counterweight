@@ -22,7 +22,7 @@ def root() -> Div:
                         | inset_top(y)
                         | extra_style
                         | border_lightrounded
-                        | margin_red_600,
+                        | margin_color("red", 600),
                         content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (
@@ -41,7 +41,7 @@ def root() -> Div:
                         | inset_top(y)
                         | extra_style
                         | border_heavy
-                        | margin_amber_600,
+                        | margin_color("amber", 600),
                         content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (
@@ -60,7 +60,7 @@ def root() -> Div:
                         | inset_top(y)
                         | extra_style
                         | border_light
-                        | margin_violet_700,
+                        | margin_color("violet", 700),
                         content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (

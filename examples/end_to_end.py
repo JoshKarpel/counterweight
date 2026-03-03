@@ -13,17 +13,12 @@ from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
     border_all,
-    border_amber_700,
+    border_color,
     border_lightrounded,
-    border_lime_700,
-    border_rose_500,
-    border_sky_700,
-    border_teal_600,
     col,
     pad,
     row,
-    text_rose_500,
-    text_teal_600,
+    text,
 )
 
 logger = get_logger()
@@ -38,12 +33,12 @@ def toggle() -> Div:
 
     border, set_border = use_state(advance_border)
 
-    border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
+    border_color_ref = use_ref(cycle([border_color("lime", 700), border_color("amber", 700), border_color("sky", 700)]))
 
     def advance_border_color() -> Style:
         return next(border_color_ref.current)
 
-    border_color, set_border_color = use_state(advance_border_color)
+    border_color_style, set_border_color_style = use_state(advance_border_color)
 
     toggled, set_toggled = use_state(False)
 
@@ -54,7 +49,7 @@ def toggle() -> Div:
             case Key.F1:
                 set_border(advance_border())
             case Key.F2:
-                set_border_color(advance_border_color())
+                set_border_color_style(advance_border_color())
 
     return Div(
         children=[
@@ -62,7 +57,7 @@ def toggle() -> Div:
                 children=[
                     Text(
                         content="End-to-End Demo",
-                        style=border_color | pad(1) | border_all | Style(border_kind=border),
+                        style=border_color_style | pad(1) | border_all | Style(border_kind=border),
                     ),
                     time() if toggled else textpad(),
                 ],
@@ -87,7 +82,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text_rose_500 | border_teal_600 | pad(1) | border_lightrounded,
+        style=text("rose", 500) | border_color("teal", 600) | pad(1) | border_lightrounded,
     )
 
 
@@ -109,7 +104,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text_teal_600 | border_rose_500 | pad(1) | border_lightrounded,
+        style=text("teal", 600) | border_color("rose", 500) | pad(1) | border_lightrounded,
         on_key=on_key,
     )
 

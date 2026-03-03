@@ -13,13 +13,13 @@ def root() -> Div:
         children=[
             Div(
                 style=grow(1)
-                | content_green_500
-                | padding_orange_500
+                | content_color("green", 500)
+                | padding_color("orange", 500)
                 | pad_x(2)
                 | pad_y(1)
                 | border_lightrounded
-                | border_bg_blue_500
-                | margin_red_500
+                | border_bg("blue", 500)
+                | margin_color("red", 500)
                 | margin_x_2
                 | margin_y_1
             )
