@@ -3,12 +3,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
+
+import waxy
 
 from counterweight._utils import unordered_range
-
-if TYPE_CHECKING:
-    import waxy
 
 
 class Position(NamedTuple):

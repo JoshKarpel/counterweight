@@ -1,6 +1,5 @@
 import asyncio
 from itertools import combinations, cycle
-from typing import Literal
 
 from more_itertools import flatten
 from structlog import get_logger
@@ -15,7 +14,6 @@ from counterweight.styles.utilities import *
 
 logger = get_logger()
 
-Side = Literal["top", "bottom", "left", "right"]
 ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
 
 
@@ -31,16 +29,16 @@ def root() -> Div:
         return frozenset(next(border_side_cycle_ref.current))
 
     border_kind, set_border_kind = use_state(advance_border)
-    border_sides, set_border_sides = use_state(advance_sides)
+    active_sides, set_active_sides = use_state(advance_sides)
 
     def on_key(event: KeyPressed) -> None:
         match event.key:
             case "k":
                 set_border_kind(advance_border())
             case "e":
-                set_border_sides(advance_sides())
+                set_active_sides(advance_sides())
 
-    logger.debug("Rendering", border_kind=border_kind, border_sides=border_sides)
+    logger.debug("Rendering", border_kind=border_kind, active_sides=active_sides)
 
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
@@ -49,8 +47,8 @@ def root() -> Div:
                 style=border_heavy,
                 children=[
                     Text(
-                        content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(border_sides))}",
-                        style=border_edges(border_sides)
+                        content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(active_sides))}",
+                        style=border_sides(active_sides)
                         | Style(border_kind=border_kind)
                         | text_justify_center
                         | text_bg_amber_800,

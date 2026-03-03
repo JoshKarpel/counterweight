@@ -86,6 +86,7 @@ pretty = true
 show_error_codes = true
 
 files = ["."]
+exclude = ["site/"]
 
 check_untyped_defs = true
 disallow_incomplete_defs = true

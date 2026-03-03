@@ -1,4 +1,4 @@
-from collections.abc import Collection
+from functools import lru_cache
 from typing import Literal
 
 import waxy
@@ -2170,139 +2170,6 @@ border_contract_6 = Style(border_contract=6)
 border_contract_7 = Style(border_contract=7)
 border_contract_8 = Style(border_contract=8)
 
-pad_top_0 = Style(layout=waxy.Style(padding_top=waxy.Length(0)))
-pad_top_1 = Style(layout=waxy.Style(padding_top=waxy.Length(1)))
-pad_top_2 = Style(layout=waxy.Style(padding_top=waxy.Length(2)))
-pad_top_3 = Style(layout=waxy.Style(padding_top=waxy.Length(3)))
-pad_top_4 = Style(layout=waxy.Style(padding_top=waxy.Length(4)))
-pad_top_5 = Style(layout=waxy.Style(padding_top=waxy.Length(5)))
-pad_top_6 = Style(layout=waxy.Style(padding_top=waxy.Length(6)))
-pad_top_7 = Style(layout=waxy.Style(padding_top=waxy.Length(7)))
-pad_top_8 = Style(layout=waxy.Style(padding_top=waxy.Length(8)))
-
-pad_bottom_0 = Style(layout=waxy.Style(padding_bottom=waxy.Length(0)))
-pad_bottom_1 = Style(layout=waxy.Style(padding_bottom=waxy.Length(1)))
-pad_bottom_2 = Style(layout=waxy.Style(padding_bottom=waxy.Length(2)))
-pad_bottom_3 = Style(layout=waxy.Style(padding_bottom=waxy.Length(3)))
-pad_bottom_4 = Style(layout=waxy.Style(padding_bottom=waxy.Length(4)))
-pad_bottom_5 = Style(layout=waxy.Style(padding_bottom=waxy.Length(5)))
-pad_bottom_6 = Style(layout=waxy.Style(padding_bottom=waxy.Length(6)))
-pad_bottom_7 = Style(layout=waxy.Style(padding_bottom=waxy.Length(7)))
-pad_bottom_8 = Style(layout=waxy.Style(padding_bottom=waxy.Length(8)))
-
-pad_left_0 = Style(layout=waxy.Style(padding_left=waxy.Length(0)))
-pad_left_1 = Style(layout=waxy.Style(padding_left=waxy.Length(1)))
-pad_left_2 = Style(layout=waxy.Style(padding_left=waxy.Length(2)))
-pad_left_3 = Style(layout=waxy.Style(padding_left=waxy.Length(3)))
-pad_left_4 = Style(layout=waxy.Style(padding_left=waxy.Length(4)))
-pad_left_5 = Style(layout=waxy.Style(padding_left=waxy.Length(5)))
-pad_left_6 = Style(layout=waxy.Style(padding_left=waxy.Length(6)))
-pad_left_7 = Style(layout=waxy.Style(padding_left=waxy.Length(7)))
-pad_left_8 = Style(layout=waxy.Style(padding_left=waxy.Length(8)))
-
-pad_right_0 = Style(layout=waxy.Style(padding_right=waxy.Length(0)))
-pad_right_1 = Style(layout=waxy.Style(padding_right=waxy.Length(1)))
-pad_right_2 = Style(layout=waxy.Style(padding_right=waxy.Length(2)))
-pad_right_3 = Style(layout=waxy.Style(padding_right=waxy.Length(3)))
-pad_right_4 = Style(layout=waxy.Style(padding_right=waxy.Length(4)))
-pad_right_5 = Style(layout=waxy.Style(padding_right=waxy.Length(5)))
-pad_right_6 = Style(layout=waxy.Style(padding_right=waxy.Length(6)))
-pad_right_7 = Style(layout=waxy.Style(padding_right=waxy.Length(7)))
-pad_right_8 = Style(layout=waxy.Style(padding_right=waxy.Length(8)))
-
-pad_x_0 = Style(layout=waxy.Style(padding_left=waxy.Length(0), padding_right=waxy.Length(0)))
-pad_x_1 = Style(layout=waxy.Style(padding_left=waxy.Length(1), padding_right=waxy.Length(1)))
-pad_x_2 = Style(layout=waxy.Style(padding_left=waxy.Length(2), padding_right=waxy.Length(2)))
-pad_x_3 = Style(layout=waxy.Style(padding_left=waxy.Length(3), padding_right=waxy.Length(3)))
-pad_x_4 = Style(layout=waxy.Style(padding_left=waxy.Length(4), padding_right=waxy.Length(4)))
-pad_x_5 = Style(layout=waxy.Style(padding_left=waxy.Length(5), padding_right=waxy.Length(5)))
-pad_x_6 = Style(layout=waxy.Style(padding_left=waxy.Length(6), padding_right=waxy.Length(6)))
-pad_x_7 = Style(layout=waxy.Style(padding_left=waxy.Length(7), padding_right=waxy.Length(7)))
-pad_x_8 = Style(layout=waxy.Style(padding_left=waxy.Length(8), padding_right=waxy.Length(8)))
-
-pad_y_0 = Style(layout=waxy.Style(padding_top=waxy.Length(0), padding_bottom=waxy.Length(0)))
-pad_y_1 = Style(layout=waxy.Style(padding_top=waxy.Length(1), padding_bottom=waxy.Length(1)))
-pad_y_2 = Style(layout=waxy.Style(padding_top=waxy.Length(2), padding_bottom=waxy.Length(2)))
-pad_y_3 = Style(layout=waxy.Style(padding_top=waxy.Length(3), padding_bottom=waxy.Length(3)))
-pad_y_4 = Style(layout=waxy.Style(padding_top=waxy.Length(4), padding_bottom=waxy.Length(4)))
-pad_y_5 = Style(layout=waxy.Style(padding_top=waxy.Length(5), padding_bottom=waxy.Length(5)))
-pad_y_6 = Style(layout=waxy.Style(padding_top=waxy.Length(6), padding_bottom=waxy.Length(6)))
-pad_y_7 = Style(layout=waxy.Style(padding_top=waxy.Length(7), padding_bottom=waxy.Length(7)))
-pad_y_8 = Style(layout=waxy.Style(padding_top=waxy.Length(8), padding_bottom=waxy.Length(8)))
-
-pad_0 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(0),
-        padding_bottom=waxy.Length(0),
-        padding_left=waxy.Length(0),
-        padding_right=waxy.Length(0),
-    )
-)
-pad_1 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(1),
-        padding_bottom=waxy.Length(1),
-        padding_left=waxy.Length(1),
-        padding_right=waxy.Length(1),
-    )
-)
-pad_2 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(2),
-        padding_bottom=waxy.Length(2),
-        padding_left=waxy.Length(2),
-        padding_right=waxy.Length(2),
-    )
-)
-pad_3 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(3),
-        padding_bottom=waxy.Length(3),
-        padding_left=waxy.Length(3),
-        padding_right=waxy.Length(3),
-    )
-)
-pad_4 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(4),
-        padding_bottom=waxy.Length(4),
-        padding_left=waxy.Length(4),
-        padding_right=waxy.Length(4),
-    )
-)
-pad_5 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(5),
-        padding_bottom=waxy.Length(5),
-        padding_left=waxy.Length(5),
-        padding_right=waxy.Length(5),
-    )
-)
-pad_6 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(6),
-        padding_bottom=waxy.Length(6),
-        padding_left=waxy.Length(6),
-        padding_right=waxy.Length(6),
-    )
-)
-pad_7 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(7),
-        padding_bottom=waxy.Length(7),
-        padding_left=waxy.Length(7),
-        padding_right=waxy.Length(7),
-    )
-)
-pad_8 = Style(
-    layout=waxy.Style(
-        padding_top=waxy.Length(8),
-        padding_bottom=waxy.Length(8),
-        padding_left=waxy.Length(8),
-        padding_right=waxy.Length(8),
-    )
-)
-
 margin_top_0 = Style(layout=waxy.Style(margin_top=waxy.Length(0)))
 margin_top_1 = Style(layout=waxy.Style(margin_top=waxy.Length(1)))
 margin_top_2 = Style(layout=waxy.Style(margin_top=waxy.Length(2)))
@@ -2488,79 +2355,97 @@ text_justify_right = Style(text_justify="right")
 # Stop generated
 
 
-def relative(x: int = 0, y: int = 0) -> Style:
-    return Style(
-        layout=waxy.Style(
-            position=waxy.Position.Relative,
-            inset_left=waxy.Length(x),
-            inset_top=waxy.Length(y),
-        )
-    )
+position_relative = Style(layout=waxy.Style(position=waxy.Position.Relative))
+position_absolute = Style(layout=waxy.Style(position=waxy.Position.Absolute))
 
 
-def absolute(x: int = 0, y: int = 0) -> Style:
-    return Style(
-        layout=waxy.Style(
-            position=waxy.Position.Absolute,
-            inset_left=waxy.Length(x),
-            inset_top=waxy.Length(y),
-        )
-    )
+@lru_cache(maxsize=256)
+def inset_top(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_top=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
+def inset_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_left(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_left=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_right(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
 def z(z: int = 0) -> Style:
     return Style(z=z)
 
 
+@lru_cache(maxsize=256)
 def width(n: int) -> Style:
     return Style(layout=waxy.Style(size_width=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def height(n: int) -> Style:
     return Style(layout=waxy.Style(size_height=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def size(w: int, h: int) -> Style:
     return Style(layout=waxy.Style(size_width=waxy.Length(w), size_height=waxy.Length(h)))
 
 
+@lru_cache(maxsize=256)
 def min_width(n: int) -> Style:
     return Style(layout=waxy.Style(min_size_width=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def min_height(n: int) -> Style:
     return Style(layout=waxy.Style(min_size_height=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def max_width(n: int) -> Style:
     return Style(layout=waxy.Style(max_size_width=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def max_height(n: int) -> Style:
     return Style(layout=waxy.Style(max_size_height=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def aspect_ratio(ratio: float) -> Style:
     return Style(layout=waxy.Style(aspect_ratio=ratio))
 
 
+@lru_cache(maxsize=256)
 def grid_template_rows(*tracks: waxy.GridTrackValue) -> Style:
     return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
 
 
+@lru_cache(maxsize=256)
 def grid_template_columns(*tracks: waxy.GridTrackValue) -> Style:
     return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
 
 
+@lru_cache(maxsize=256)
 def grid_row(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
     return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
 
 
+@lru_cache(maxsize=256)
 def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
     return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
 
 
-def border_edges(sides: Collection[Side]) -> Style:
+@lru_cache(maxsize=256)
+def border_sides(sides: frozenset[Side]) -> Style:
     return Style(
         layout=waxy.Style(
             border_top=waxy.Length(1 if "top" in sides else 0),
@@ -2571,17 +2456,63 @@ def border_edges(sides: Collection[Side]) -> Style:
     )
 
 
+@lru_cache(maxsize=256)
 def margin_top(n: int) -> Style:
     return Style(layout=waxy.Style(margin_top=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def margin_bottom(n: int) -> Style:
     return Style(layout=waxy.Style(margin_bottom=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def margin_left(n: int) -> Style:
     return Style(layout=waxy.Style(margin_left=waxy.Length(n)))
 
 
+@lru_cache(maxsize=256)
 def margin_right(n: int) -> Style:
     return Style(layout=waxy.Style(margin_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad(n: int) -> Style:
+    return Style(
+        layout=waxy.Style(
+            padding_top=waxy.Length(n),
+            padding_bottom=waxy.Length(n),
+            padding_left=waxy.Length(n),
+            padding_right=waxy.Length(n),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def pad_x(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_left=waxy.Length(n), padding_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_y(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_top=waxy.Length(n), padding_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_top(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_top=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_left(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_left=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_right(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_right=waxy.Length(n)))

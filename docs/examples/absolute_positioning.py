@@ -5,7 +5,7 @@ from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
 
-extra_style = border_light | pad_1 | margin_1
+extra_style = border_light | pad(1) | margin_1
 
 
 @component
@@ -23,8 +23,8 @@ def root() -> Div:
                 ]
                 + [
                     Text(
-                        style=absolute(x=x, y=y) | extra_style | margin_red_600,
-                        content=f"absolute(x={x}, y={y})",
+                        style=position_absolute | inset_left(x) | inset_top(y) | extra_style | margin_red_600,
+                        content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (
                         (0, 0),
@@ -43,8 +43,8 @@ def root() -> Div:
                 ]
                 + [
                     Text(
-                        style=absolute(x=x, y=y) | extra_style | margin_amber_600,
-                        content=f"absolute(x={x}, y={y})",
+                        style=position_absolute | inset_left(x) | inset_top(y) | extra_style | margin_amber_600,
+                        content=f"inset_left({x}) | inset_top({y})",
                     )
                     for x, y in (
                         (0, 0),

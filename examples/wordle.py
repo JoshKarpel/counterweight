@@ -122,7 +122,7 @@ def root() -> Div:
         )
 
 
-button_style = weight_none | pad_x_1 | border_lightrounded
+button_style = weight_none | pad_x(1) | border_lightrounded
 
 
 @component
@@ -181,7 +181,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
-    message_style = text_justify_center | pad_y_1 | pad_x_2 | border_light
+    message_style = text_justify_center | pad_y(1) | pad_x(2) | border_light
 
     if state == "playing":
         if len(guess) == 5 and guess not in GUESSABLE_WORDS:
@@ -206,7 +206,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 on_key=on_key,
             ),
             Div(
-                style=row | align_self_center | weight_none | pad_y_1,
+                style=row | align_self_center | weight_none | pad_y(1),
                 children=[Text(content=message, style=message_style)],
             ),
             keyboard(submitted=submitted, solution=solution, on_key=on_key),
@@ -296,7 +296,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
 
     return Text(
         content=letter,
-        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0 | (border_double if hovered.border else None),
+        style=style | weight_none | border_heavy | pad_x(1) | pad_y(0) | (border_double if hovered.border else None),
         on_mouse=on_mouse,
     )
 

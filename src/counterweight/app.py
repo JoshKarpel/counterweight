@@ -276,7 +276,11 @@ async def app(
                     )
 
                     start_layout = perf_counter_ns()
-                    elements_and_layouts = compute_layout(shadow, w, h)
+                    available = waxy.AvailableSize(
+                        width=waxy.Definite(w),
+                        height=waxy.Definite(h),
+                    )
+                    elements_and_layouts = compute_layout(shadow, available)
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",

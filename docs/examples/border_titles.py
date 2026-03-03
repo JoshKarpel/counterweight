@@ -15,7 +15,7 @@ def root() -> Div:
                 style=row | align_self_stretch | justify_children_center | align_children_center | border_lightrounded,
                 children=[
                     Text(
-                        style=absolute(x=1, y=-1),
+                        style=position_absolute | inset_left(1) | inset_top(-1),
                         content=" Top-Left Title ",
                     ),
                     Text(

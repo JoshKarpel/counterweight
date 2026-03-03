@@ -3,18 +3,32 @@ import waxy
 from counterweight.styles.utilities import *
 
 
-def test_relative() -> None:
-    result = relative(x=3, y=5)
-    assert result.layout.position == waxy.Position.Relative
-    assert result.layout.inset_left == waxy.Length(3)
+def test_position_relative() -> None:
+    assert position_relative.layout.position == waxy.Position.Relative
+
+
+def test_position_absolute() -> None:
+    assert position_absolute.layout.position == waxy.Position.Absolute
+
+
+def test_inset_top() -> None:
+    result = inset_top(5)
     assert result.layout.inset_top == waxy.Length(5)
 
 
-def test_absolute() -> None:
-    result = absolute(x=3, y=5)
-    assert result.layout.position == waxy.Position.Absolute
+def test_inset_bottom() -> None:
+    result = inset_bottom(3)
+    assert result.layout.inset_bottom == waxy.Length(3)
+
+
+def test_inset_left() -> None:
+    result = inset_left(3)
     assert result.layout.inset_left == waxy.Length(3)
-    assert result.layout.inset_top == waxy.Length(5)
+
+
+def test_inset_right() -> None:
+    result = inset_right(7)
+    assert result.layout.inset_right == waxy.Length(7)
 
 
 def test_inset_top_left() -> None:
@@ -85,8 +99,8 @@ def test_border_all() -> None:
     assert border_all.border_kind is None
 
 
-def test_border_edges() -> None:
-    result = border_edges({"top", "left"})
+def test_border_sides() -> None:
+    result = border_sides(frozenset({"top", "left"}))
     assert result.layout.border_top == waxy.Length(1)
     assert result.layout.border_bottom == waxy.Length(0)
     assert result.layout.border_left == waxy.Length(1)
@@ -111,3 +125,43 @@ def test_margin_left() -> None:
 def test_margin_right() -> None:
     result = margin_right(1)
     assert result.layout.margin_right == waxy.Length(1)
+
+
+def test_pad() -> None:
+    result = pad(2)
+    assert result.layout.padding_top == waxy.Length(2)
+    assert result.layout.padding_bottom == waxy.Length(2)
+    assert result.layout.padding_left == waxy.Length(2)
+    assert result.layout.padding_right == waxy.Length(2)
+
+
+def test_pad_x() -> None:
+    result = pad_x(3)
+    assert result.layout.padding_left == waxy.Length(3)
+    assert result.layout.padding_right == waxy.Length(3)
+
+
+def test_pad_y() -> None:
+    result = pad_y(1)
+    assert result.layout.padding_top == waxy.Length(1)
+    assert result.layout.padding_bottom == waxy.Length(1)
+
+
+def test_pad_top() -> None:
+    result = pad_top(4)
+    assert result.layout.padding_top == waxy.Length(4)
+
+
+def test_pad_bottom() -> None:
+    result = pad_bottom(2)
+    assert result.layout.padding_bottom == waxy.Length(2)
+
+
+def test_pad_left() -> None:
+    result = pad_left(3)
+    assert result.layout.padding_left == waxy.Length(3)
+
+
+def test_pad_right() -> None:
+    result = pad_right(1)
+    assert result.layout.padding_right == waxy.Length(1)

@@ -19,8 +19,8 @@ def root() -> Div:
                         content="inset_top_left",
                     ),
                     Text(
-                        style=absolute(x=3, y=3),
-                        content="absolute(x=3, y=3)",
+                        style=position_absolute | inset_left(3) | inset_top(3),
+                        content="position_absolute | inset_left(3) | inset_top(3)",
                     ),
                     Text(
                         style=inset_top_center,

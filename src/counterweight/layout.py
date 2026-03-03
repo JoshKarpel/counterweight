@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, assert_never
+from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
 from counterweight.elements import AnyElement, CellPaint, Div, Text
+from counterweight.styles.styles import TextWrap
 
 if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode
@@ -21,6 +22,7 @@ class ResolvedLayout:
     order: int
 
 
+# right < left and bottom < top → zero-width/height in the inclusive coordinate system
 _EMPTY_RECT = waxy.Rect(left=0, right=-1, top=0, bottom=-1)
 
 INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
@@ -34,8 +36,7 @@ INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
 
 def compute_layout(
     shadow: ShadowNode,
-    available_width: int,
-    available_height: int,
+    available: waxy.AvailableSize,
 ) -> list[tuple[AnyElement, ResolvedLayout]]:
     """
     Build a waxy tree from the shadow tree, compute layout, and return
@@ -47,10 +48,6 @@ def compute_layout(
     root_id = _build_node(tree, shadow, node_map)
 
     tree.enable_rounding()
-    available = waxy.AvailableSize(
-        width=waxy.Definite(available_width),
-        height=waxy.Definite(available_height),
-    )
     tree.compute_layout(root_id, available, measure=_measure_text)
 
     results: list[tuple[AnyElement, ResolvedLayout]] = []
@@ -116,6 +113,7 @@ def _extract_layout(
     layout = tree.layout(node_id)
     shadow = node_map[node_id]
 
+    # display:nil hides the entire subtree, matching CSS display:none semantics
     if shadow.element.style.layout.display == waxy.Display.Nil:
         return
 
@@ -127,6 +125,8 @@ def _extract_layout(
     bw = int(layout.size.width)
     bh = int(layout.size.height)
 
+    # waxy uses exclusive sizing (width=4 → pixels 0..3), but counterweight
+    # uses inclusive cell coordinates (left=0, right=3 → 4 cells), hence the -1.
     border_rect = waxy.Rect(left=bx, right=bx + bw - 1, top=by, bottom=by + bh - 1)
 
     margin_rect = waxy.Rect(
@@ -166,7 +166,7 @@ def _extract_layout(
 
 def wrap_cells(
     cells: Iterable[CellPaint],
-    wrap: Literal["none"],
+    wrap: TextWrap,
     width: int | None,
 ) -> list[list[CellPaint]]:
     if width is not None and width <= 0:

@@ -41,7 +41,7 @@ def root() -> Div:
                 children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
             ),
             Text(
-                style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x_2 | pad_y_1,
+                style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x(2) | pad_y(1),
                 content=dedent(
                     """\
                     - <tab>/<shift+tab> to select next/previous stopwatch
@@ -90,8 +90,8 @@ def stopwatch(selected: bool) -> Text:
             else (border_rose_500 if selected else border_rose_400)
         )
         | (border_heavy if selected else border_double)
-        | pad_x_2
-        | pad_y_1,
+        | pad_x(2)
+        | pad_y(1),
         on_key=on_key,
     )
 

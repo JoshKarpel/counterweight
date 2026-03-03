@@ -173,7 +173,7 @@ def draggable_text(content: str, init_x: int, init_y: int) -> Text:
 
     return Text(
         on_mouse=on_mouse,
-        style=absolute(offset.x, offset.y),
+        style=position_absolute | inset_left(offset.x) | inset_top(offset.y),
         content=content,
     )
 

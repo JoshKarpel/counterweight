@@ -13,6 +13,8 @@ from counterweight.types import FrozenForbidExtras
 S = TypeVar("S", bound="StyleFragment")
 SS = TypeVar("SS", bound="Style")
 
+TextWrap = Literal["none"]
+
 
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
@@ -582,7 +584,7 @@ class Style(StyleFragment):
 
     text_style: CellStyle = Field(default=CellStyle())
     text_justify: Literal["left", "center", "right"] = "left"
-    text_wrap: Literal["none"] = "none"
+    text_wrap: TextWrap = "none"
 
     def mergeable_dump(self) -> dict[str, object]:
         dump = super().mergeable_dump()

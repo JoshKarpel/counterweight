@@ -2,7 +2,7 @@ import pytest
 import waxy
 
 from counterweight.styles.styles import BorderKind, CellStyle, Color, Style
-from counterweight.styles.utilities import absolute, border_heavy, relative
+from counterweight.styles.utilities import border_heavy, inset_left, inset_top, position_absolute, position_relative
 
 
 @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ def test_style_merging(left: Style, right: Style, expected: Style) -> None:
 
 def test_layout_merge_with_visual() -> None:
     """Layout fields merge independently from visual fields."""
-    result = relative(x=3, y=5) | border_heavy
+    result = position_relative | inset_left(3) | inset_top(5) | border_heavy
     assert result.border_kind == BorderKind.Heavy
     assert result.layout.position == waxy.Position.Relative
     assert result.layout.inset_left == waxy.Length(3)
@@ -103,7 +103,7 @@ def test_layout_merge_with_visual() -> None:
 
 
 def test_absolute_merge_with_visual() -> None:
-    result = absolute(x=3, y=5) | border_heavy
+    result = position_absolute | inset_left(3) | inset_top(5) | border_heavy
     assert result.border_kind == BorderKind.Heavy
     assert result.layout.position == waxy.Position.Absolute
     assert result.layout.inset_left == waxy.Length(3)

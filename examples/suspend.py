@@ -81,8 +81,8 @@ def glob_input(glob: str) -> Div:
     return Div(
         style=row | align_self_stretch | border_bottom | weight_none,
         children=[
-            Text(style=weight_none | border_right | pad_x_1, content="glob"),
-            Text(style=weight_none | pad_x_1, content=glob),
+            Text(style=weight_none | border_right | pad_x(1), content="glob"),
+            Text(style=weight_none | pad_x(1), content=glob),
         ],
     )
 
@@ -91,7 +91,7 @@ def glob_input(glob: str) -> Div:
 def file_list(files: list[Path], selected_idx: int) -> Div:
     start_idx = max(0, selected_idx - 5)
     return Div(
-        style=col | justify_children_start | pad_x_1,
+        style=col | justify_children_start | pad_x(1),
         children=[
             Text(
                 style=weight_none | (text_cyan_700 if idx == selected_idx else None),

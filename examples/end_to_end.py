@@ -20,7 +20,7 @@ from counterweight.styles.utilities import (
     border_sky_700,
     border_teal_600,
     col,
-    pad_1,
+    pad,
     row,
     text_rose_500,
     text_teal_600,
@@ -62,7 +62,7 @@ def toggle() -> Div:
                 children=[
                     Text(
                         content="End-to-End Demo",
-                        style=border_color | pad_1 | border_all | Style(border_kind=border),
+                        style=border_color | pad(1) | border_all | Style(border_kind=border),
                     ),
                     time() if toggled else textpad(),
                 ],
@@ -87,7 +87,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text_rose_500 | border_teal_600 | pad_1 | border_lightrounded,
+        style=text_rose_500 | border_teal_600 | pad(1) | border_lightrounded,
     )
 
 
@@ -109,7 +109,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text_teal_600 | border_rose_500 | pad_1 | border_lightrounded,
+        style=text_teal_600 | border_rose_500 | pad(1) | border_lightrounded,
         on_key=on_key,
     )
 

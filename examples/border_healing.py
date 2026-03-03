@@ -1,7 +1,6 @@
 import asyncio
 from itertools import combinations, product
 from random import randint
-from typing import Literal
 
 from more_itertools import flatten
 from structlog import get_logger
@@ -18,7 +17,6 @@ from examples.canvas import clamp
 
 logger = get_logger()
 
-Side = Literal["top", "bottom", "left", "right"]
 ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
 
 E = list(product(reversed(list(flatten(combinations(ALL_SIDES, r) for r in range(1, 5)))), repeat=4))
@@ -69,7 +67,7 @@ def root() -> Div:
 def box(e: frozenset[Side]) -> Text:
     return Text(
         content=f"Border Join Demo\n{', '.join(sorted(e))}",
-        style=border_edges(e) | text_justify_center | text_bg_amber_800,
+        style=border_sides(e) | text_justify_center | text_bg_amber_800,
     )
 
 

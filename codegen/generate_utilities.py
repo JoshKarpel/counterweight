@@ -495,36 +495,6 @@ for n in N:
 
 generated_lines.append("")
 
-# --- Padding utilities ---
-
-for side in SIDES:
-    for n in N:
-        generated_lines.append(f"pad_{side}_{n} = Style(layout=waxy.Style(padding_{side}=waxy.Length({n})))")
-    generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"pad_x_{n} = Style(layout=waxy.Style(padding_left=waxy.Length({n}), padding_right=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"pad_y_{n} = Style(layout=waxy.Style(padding_top=waxy.Length({n}), padding_bottom=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"pad_{n} = Style(layout=waxy.Style("
-        f"padding_top=waxy.Length({n}), padding_bottom=waxy.Length({n}), "
-        f"padding_left=waxy.Length({n}), padding_right=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
 # --- Margin utilities ---
 
 for side in SIDES:
