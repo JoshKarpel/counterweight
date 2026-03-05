@@ -47,7 +47,6 @@ def compute_layout(
 
     root_id = _build_node(tree, shadow, node_map)
 
-    tree.enable_rounding()
     tree.compute_layout(root_id, available, measure=_measure_text)
 
     results: list[tuple[AnyElement, ResolvedLayout]] = []
@@ -110,7 +109,7 @@ def _extract_layout(
     abs_x/abs_y is the absolute position of the parent's border box origin.
     For the root node, this is (0, 0).
     """
-    layout = tree.layout(node_id)
+    layout = tree.unrounded_layout(node_id)
     shadow = node_map[node_id]
 
     # display:nil hides the entire subtree, matching CSS display:none semantics
@@ -120,26 +119,26 @@ def _extract_layout(
     border_abs_x = abs_x + layout.location.x
     border_abs_y = abs_y + layout.location.y
 
+    # Round edges (not position+size independently) so that siblings sharing
+    # a float edge (e.g. gap=-1 border overlap) always round to the same cell.
     bx = int(border_abs_x)
     by = int(border_abs_y)
-    bw = int(layout.size.width)
-    bh = int(layout.size.height)
+    br = int(border_abs_x + layout.size.width) - 1
+    bb = int(border_abs_y + layout.size.height) - 1
 
-    # waxy uses exclusive sizing (width=4 → pixels 0..3), but counterweight
-    # uses inclusive cell coordinates (left=0, right=3 → 4 cells), hence the -1.
-    border_rect = waxy.Rect(left=bx, right=bx + bw - 1, top=by, bottom=by + bh - 1)
+    border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
 
     margin_rect = waxy.Rect(
         left=bx - int(layout.margin.left),
-        right=bx + bw - 1 + int(layout.margin.right),
+        right=br + int(layout.margin.right),
         top=by - int(layout.margin.top),
-        bottom=by + bh - 1 + int(layout.margin.bottom),
+        bottom=bb + int(layout.margin.bottom),
     )
 
     pl = bx + int(layout.border.left)
     pt = by + int(layout.border.top)
-    pr = bx + bw - 1 - int(layout.border.right)
-    pb = by + bh - 1 - int(layout.border.bottom)
+    pr = br - int(layout.border.right)
+    pb = bb - int(layout.border.bottom)
     padding_rect = waxy.Rect(left=pl, right=pr, top=pt, bottom=pb)
 
     content_rect = waxy.Rect(
@@ -160,7 +159,7 @@ def _extract_layout(
 
     shadow.hooks.dims = resolved
 
-    for child_node_id, child_shadow in zip(tree.children(node_id), shadow.children):
+    for child_node_id in tree.children(node_id):
         _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
 
 
