@@ -19,23 +19,23 @@ def root() -> Div:
                         content=" Top-Left Title ",
                     ),
                     Text(
-                        style=inset_top_center | margin_top(-1),
+                        style=inset_top_center | inset_top(-1),
                         content=" Top-Center Title ",
                     ),
                     Text(
-                        style=inset_top_right | margin_right(1) | margin_top(-1),
+                        style=position_absolute | inset_top(-1) | inset_right(1),
                         content=" Top-Right Title ",
                     ),
                     Text(
-                        style=inset_bottom_left | margin_left(1) | margin_bottom(-1),
+                        style=position_absolute | inset_bottom(-1) | inset_left(1),
                         content=" Bottom-Left Title ",
                     ),
                     Text(
-                        style=inset_bottom_center | margin_bottom(-1),
+                        style=inset_bottom_center | inset_bottom(-1),
                         content=" Bottom-Center Title ",
                     ),
                     Text(
-                        style=inset_bottom_right | margin_right(1) | margin_bottom(-1),
+                        style=position_absolute | inset_bottom(-1) | inset_right(1),
                         content=" Bottom-Right Title ",
                     ),
                     Text(

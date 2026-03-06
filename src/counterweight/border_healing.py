@@ -20,21 +20,13 @@ def get_replacement_char(
     right: str | None,
     above: str | None,
     below: str | None,
-    left_is_hint: bool = False,
-    right_is_hint: bool = False,
-    above_is_hint: bool = False,
-    below_is_hint: bool = False,
 ) -> str | None:
     if (
         c := parts.select(
-            top=center in parts.connects_top or above in parts.connects_bottom or (above_is_hint and above is not None),
-            bottom=center in parts.connects_bottom
-            or below in parts.connects_top
-            or (below_is_hint and below is not None),
-            left=center in parts.connects_left or left in parts.connects_right or (left_is_hint and left is not None),
-            right=center in parts.connects_right
-            or right in parts.connects_left
-            or (right_is_hint and right is not None),
+            top=center in parts.connects_top or above in parts.connects_bottom,
+            bottom=center in parts.connects_bottom or below in parts.connects_top,
+            left=center in parts.connects_left or left in parts.connects_right,
+            right=center in parts.connects_right or right in parts.connects_left,
         )
     ) != center:
         return c

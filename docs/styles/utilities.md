@@ -12,11 +12,12 @@ from counterweight.styles.utilities import *
 ```
 
 Each utility is a pre-defined `Style` specifying just a small set of properties.
-For example, `border_rose_200` is defined as:
+Color utilities are functional, taking a color name and shade as arguments.
+For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200:
 ```python
 from counterweight.styles import Style, CellStyle, Color
 
-border_rose_200 = Style(border_style=CellStyle(foreground=Color.from_hex("#fecdd3")))
+border_color("rose", 200) == Style(border_style=CellStyle(foreground=Color.from_hex("#fecdd3")))
 ```
 
 Since they are normal `Style`s, they can be combined to form more complex styles using the `|` operator.
@@ -25,11 +26,11 @@ Here we make a new `Style` for a `rose_200`-colored heavy border on the top and 
 ```python
 from counterweight.styles.utilities import *
 
-border_heavy_top_bottom_rose_200 = border_heavy | border_rose_200 | border_top_bottom
+border_heavy_top_bottom_rose_200 = border_heavy | border_color("rose", 200) | border_top_bottom
 ```
 
 Actually giving a name to the new style is optional.
-We can also use the expression `border_heavy | border_rose_200 | border_top_bottom` directly in our component:
+We can also use the expression directly in our component:
 
 ```python
 from counterweight.styles.utilities import *
@@ -41,7 +42,7 @@ from counterweight.elements import Text
 def my_component() -> Text:
     return Text(
         content="Hello, world!",
-        style=border_heavy | border_rose_200 | border_top_bottom,
+        style=border_heavy | border_color("rose", 200) | border_top_bottom,
     )
 ```
 

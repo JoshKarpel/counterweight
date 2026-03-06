@@ -225,6 +225,27 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
     return chars, bhh
 
 
+def paint_to_str(paint: Paint) -> str:
+    """Render a Paint as a 2D character grid (spaces for empty cells).
+
+    Useful for unit tests: assert paint_to_str(final_paint) == expected_str.
+    """
+    if not paint:
+        return ""
+    min_x = min(p.x for p in paint)
+    max_x = max(p.x for p in paint)
+    min_y = min(p.y for p in paint)
+    max_y = max(p.y for p in paint)
+    rows = []
+    for y in range(min_y, max_y + 1):
+        row = ""
+        for x in range(min_x, max_x + 1):
+            cell = paint.get(Position.flyweight(x, y))
+            row += cell.char if cell else " "
+        rows.append(row)
+    return "\n".join(rows)
+
+
 def svg(paint: Paint) -> ElementTree:
     w, h = max(paint.keys())
 

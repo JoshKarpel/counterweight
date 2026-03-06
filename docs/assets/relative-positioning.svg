@@ -115,12 +115,10 @@
   <rect x="37.40em" y="21.47em" width="0.55em" height="1.13em" fill="#6d28d9" />
   <rect x="37.95em" y="21.47em" width="6.05em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="22.60em" width="20.35em" height="1.13em" fill="#000000" />
-  <rect x="20.35em" y="22.60em" width="0.55em" height="1.13em" fill="#d97706" />
-  <rect x="20.90em" y="22.60em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="20.35em" y="22.60em" width="17.05em" height="1.13em" fill="#d97706" />
   <rect x="37.40em" y="22.60em" width="0.55em" height="1.13em" fill="#6d28d9" />
   <rect x="37.95em" y="22.60em" width="6.05em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="23.73em" width="20.35em" height="1.13em" fill="#000000" />
-  <rect x="20.35em" y="23.73em" width="17.05em" height="1.13em" fill="#d97706" />
+  <rect x="0.00em" y="23.73em" width="37.40em" height="1.13em" fill="#000000" />
   <rect x="37.40em" y="23.73em" width="0.55em" height="1.13em" fill="#6d28d9" />
   <rect x="37.95em" y="23.73em" width="6.05em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="24.86em" width="37.40em" height="1.13em" fill="#000000" />
@@ -619,20 +617,6 @@
    <tspan x="20.90em">┃</tspan>
   </tspan>
   <tspan y="21.47em">
-   <tspan x="20.90em">┃</tspan>
-   <tspan x="37.95em">┌</tspan>
-   <tspan x="38.50em">─</tspan>
-   <tspan x="39.05em">─</tspan>
-   <tspan x="39.60em">─</tspan>
-   <tspan x="40.15em">─</tspan>
-   <tspan x="40.70em">─</tspan>
-   <tspan x="41.25em">─</tspan>
-   <tspan x="41.80em">─</tspan>
-   <tspan x="42.35em">─</tspan>
-   <tspan x="42.90em">─</tspan>
-   <tspan x="43.45em">─</tspan>
-  </tspan>
-  <tspan y="22.60em">
    <tspan x="20.90em">┗</tspan>
    <tspan x="21.45em">━</tspan>
    <tspan x="22.00em">━</tspan>
@@ -663,6 +647,19 @@
    <tspan x="35.75em">━</tspan>
    <tspan x="36.30em">━</tspan>
    <tspan x="36.85em">━</tspan>
+   <tspan x="37.95em">┌</tspan>
+   <tspan x="38.50em">─</tspan>
+   <tspan x="39.05em">─</tspan>
+   <tspan x="39.60em">─</tspan>
+   <tspan x="40.15em">─</tspan>
+   <tspan x="40.70em">─</tspan>
+   <tspan x="41.25em">─</tspan>
+   <tspan x="41.80em">─</tspan>
+   <tspan x="42.35em">─</tspan>
+   <tspan x="42.90em">─</tspan>
+   <tspan x="43.45em">─</tspan>
+  </tspan>
+  <tspan y="22.60em">
    <tspan x="37.95em">│</tspan>
   </tspan>
   <tspan y="23.73em">

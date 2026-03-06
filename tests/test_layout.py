@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import waxy
 
-from counterweight.elements import Div
+from counterweight.elements import AnyElement, Div
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import compute_layout
+from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.shadow import ShadowNode
+from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
     border_all,
     border_collapse,
@@ -23,8 +24,17 @@ def _shadow(element: Div, children: list[ShadowNode] | None = None) -> ShadowNod
     return ShadowNode(component=None, element=element, hooks=Hooks(), children=children or [])
 
 
-def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple]:
+def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
     return compute_layout(root, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
+
+
+def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
+    """Wrap root in a fixed-size grid container, matching what app.py does."""
+    screen_style = Style(
+        layout=waxy.Style(display=waxy.Display.Grid, size_width=waxy.Length(w), size_height=waxy.Length(h))
+    )
+    screen = _shadow(Div(style=screen_style), children=[root])
+    return compute_layout(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
 
 
 # ---------------------------------------------------------------------------
@@ -178,3 +188,26 @@ def test_absolute_negative_insets_preserve_size() -> None:
 
     assert layout_child.border.right - layout_child.border.left + 1 == 5
     assert layout_child.border.bottom - layout_child.border.top + 1 == 3
+
+
+# ---------------------------------------------------------------------------
+# Last-child bottom edge: when taffy produces a bottom float slightly above
+# an integer (e.g. 20.000000048 instead of 20.0), rounding must snap it to
+# the screen boundary rather than one row past it.
+# ---------------------------------------------------------------------------
+
+
+def test_col_collapse_last_child_bottom_on_screen() -> None:
+    # 3 equal-grow rows that together fill a 20-row screen.  The last row's
+    # bottom border must land on row 19 (0-indexed), not row 20 (off-screen).
+    # Uses _layout_screened to match the app's screen-wrapper, which causes
+    # taffy to produce a bottom float slightly above 20.0 (e.g. 20.000000048).
+    child_a = _shadow(Div(style=border_all | grow(1)))
+    child_b = _shadow(Div(style=border_all | grow(1)))
+    child_c = _shadow(Div(style=border_all | grow(1)))
+    root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b, child_c])
+
+    # screen=0, root_div=1, child_a=2, child_b=3, child_c=4
+    _, _, _layout_a, _layout_b, layout_c = [rl for _, rl in _layout_screened(root, h=20)]
+
+    assert layout_c.border.bottom == 19

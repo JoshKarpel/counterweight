@@ -105,17 +105,17 @@
   <tspan y="3.39em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
-   <tspan x="20.35em" fill="#06b6d4">B</tspan>
-   <tspan x="20.90em" fill="#06b6d4">1</tspan>
+   <tspan x="19.80em" fill="#06b6d4">B</tspan>
+   <tspan x="20.35em" fill="#06b6d4">1</tspan>
    <tspan x="24.20em">║</tspan>
-   <tspan x="28.60em" fill="#06b6d4">B</tspan>
-   <tspan x="29.15em" fill="#06b6d4">2</tspan>
+   <tspan x="28.05em" fill="#06b6d4">B</tspan>
+   <tspan x="28.60em" fill="#06b6d4">2</tspan>
    <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="4.52em">
    <tspan x="0.00em">║</tspan>
-   <tspan x="8.25em" fill="#06b6d4">A</tspan>
-   <tspan x="8.80em" fill="#06b6d4">1</tspan>
+   <tspan x="7.70em" fill="#06b6d4">A</tspan>
+   <tspan x="8.25em" fill="#06b6d4">1</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="24.20em">║</tspan>
    <tspan x="32.45em">║</tspan>
@@ -210,11 +210,11 @@
    <tspan x="18.15em" fill="#06b6d4">C</tspan>
    <tspan x="18.70em" fill="#06b6d4">1</tspan>
    <tspan x="19.80em">║</tspan>
-   <tspan x="22.55em" fill="#06b6d4">C</tspan>
-   <tspan x="23.10em" fill="#06b6d4">2</tspan>
+   <tspan x="22.00em" fill="#06b6d4">C</tspan>
+   <tspan x="22.55em" fill="#06b6d4">2</tspan>
    <tspan x="24.20em">║</tspan>
-   <tspan x="26.40em" fill="#06b6d4">C</tspan>
-   <tspan x="26.95em" fill="#06b6d4">3</tspan>
+   <tspan x="25.85em" fill="#06b6d4">C</tspan>
+   <tspan x="26.40em" fill="#06b6d4">3</tspan>
    <tspan x="28.05em">║</tspan>
    <tspan x="30.25em" fill="#06b6d4">C</tspan>
    <tspan x="30.80em" fill="#06b6d4">4</tspan>
@@ -268,21 +268,23 @@
    <tspan x="30.80em">═</tspan>
    <tspan x="31.35em">═</tspan>
    <tspan x="31.90em">═</tspan>
-   <tspan x="32.45em">╩</tspan>
+   <tspan x="32.45em">╣</tspan>
   </tspan>
   <tspan y="14.69em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
    <tspan x="26.95em">║</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="15.82em">
    <tspan x="0.00em">║</tspan>
-   <tspan x="8.25em" fill="#06b6d4">A</tspan>
-   <tspan x="8.80em" fill="#06b6d4">2</tspan>
+   <tspan x="7.70em" fill="#06b6d4">A</tspan>
+   <tspan x="8.25em" fill="#06b6d4">2</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
    <tspan x="26.95em">║</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="16.95em">
    <tspan x="0.00em">║</tspan>
@@ -295,24 +297,28 @@
    <tspan x="26.95em">║</tspan>
    <tspan x="29.70em" fill="#06b6d4">D</tspan>
    <tspan x="30.25em" fill="#06b6d4">3</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="18.08em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
    <tspan x="26.95em">║</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="19.21em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
    <tspan x="26.95em">║</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="20.34em">
    <tspan x="0.00em">║</tspan>
    <tspan x="15.95em">║</tspan>
    <tspan x="21.45em">║</tspan>
    <tspan x="26.95em">║</tspan>
+   <tspan x="32.45em">║</tspan>
   </tspan>
   <tspan y="21.47em">
    <tspan x="0.00em">╚</tspan>
@@ -344,9 +350,37 @@
    <tspan x="14.30em">═</tspan>
    <tspan x="14.85em">═</tspan>
    <tspan x="15.40em">═</tspan>
-   <tspan x="15.95em">╣</tspan>
-   <tspan x="21.45em">║</tspan>
-   <tspan x="26.95em">║</tspan>
+   <tspan x="15.95em">╩</tspan>
+   <tspan x="16.50em">═</tspan>
+   <tspan x="17.05em">═</tspan>
+   <tspan x="17.60em">═</tspan>
+   <tspan x="18.15em">═</tspan>
+   <tspan x="18.70em">═</tspan>
+   <tspan x="19.25em">═</tspan>
+   <tspan x="19.80em">═</tspan>
+   <tspan x="20.35em">═</tspan>
+   <tspan x="20.90em">═</tspan>
+   <tspan x="21.45em">╩</tspan>
+   <tspan x="22.00em">═</tspan>
+   <tspan x="22.55em">═</tspan>
+   <tspan x="23.10em">═</tspan>
+   <tspan x="23.65em">═</tspan>
+   <tspan x="24.20em">═</tspan>
+   <tspan x="24.75em">═</tspan>
+   <tspan x="25.30em">═</tspan>
+   <tspan x="25.85em">═</tspan>
+   <tspan x="26.40em">═</tspan>
+   <tspan x="26.95em">╩</tspan>
+   <tspan x="27.50em">═</tspan>
+   <tspan x="28.05em">═</tspan>
+   <tspan x="28.60em">═</tspan>
+   <tspan x="29.15em">═</tspan>
+   <tspan x="29.70em">═</tspan>
+   <tspan x="30.25em">═</tspan>
+   <tspan x="30.80em">═</tspan>
+   <tspan x="31.35em">═</tspan>
+   <tspan x="31.90em">═</tspan>
+   <tspan x="32.45em">╝</tspan>
   </tspan>
  </text>
 </svg>
