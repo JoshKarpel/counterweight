@@ -12,15 +12,23 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=row | grow(1) | border_heavy,
+                style=row | grow(1) | border_heavy | justify_children_center | align_children_center,
                 children=[
-                    Text(
-                        style=inset_top_left,
-                        content="inset_top_left",
-                    ),
                     Text(
                         style=position_absolute | inset_left(3) | inset_top(3),
                         content="position_absolute | inset_left(3) | inset_top(3)",
+                    ),
+                    Text(
+                        style=inset_center_center | margin_left(-2) | margin_top(-4),
+                        content="inset_center_center | margin_left(-2) | margin_top(-4)",
+                    ),
+                    Text(
+                        style=inset_bottom_right | margin_bottom(4),
+                        content="inset_bottom_right | margin_bottom(4)",
+                    ),
+                    Text(
+                        style=inset_top_left,
+                        content="inset_top_left",
                     ),
                     Text(
                         style=inset_top_center,
@@ -39,10 +47,6 @@ def root() -> Div:
                         content="inset_center_center",
                     ),
                     Text(
-                        style=inset_center_center | margin_left(-2) | margin_top(-4),
-                        content="inset_center_center | margin_left(-2) | margin_top(-4)",
-                    ),
-                    Text(
                         style=inset_center_right,
                         content="inset_center_right",
                     ),
@@ -57,10 +61,6 @@ def root() -> Div:
                     Text(
                         style=inset_bottom_right,
                         content="inset_bottom_right",
-                    ),
-                    Text(
-                        style=inset_bottom_right | margin_bottom(4),
-                        content="inset_bottom_right | margin_bottom(4)",
                     ),
                 ],
             )
