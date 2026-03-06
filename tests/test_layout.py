@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import waxy
 
-from counterweight.elements import AnyElement, Div
+from counterweight.elements import AnyElement, Div, Text
 from counterweight.hooks.impls import Hooks
 from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.shadow import ShadowNode
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
+    align_children_center,
     border_all,
     border_collapse,
+    border_lightrounded,
     col,
     grow,
+    inset_bottom,
+    inset_bottom_center,
     inset_left,
     inset_top,
+    justify_children_center,
+    pad,
     position_absolute,
     row,
     size,
@@ -211,3 +217,34 @@ def test_col_collapse_last_child_bottom_on_screen() -> None:
     _, _, _layout_a, _layout_b, layout_c = [rl for _, rl in _layout_screened(root, h=20)]
 
     assert layout_c.border.bottom == 19
+
+
+# ---------------------------------------------------------------------------
+# Auto-centering via inset_left=Auto / inset_right=Auto produces a fractional
+# location.x (e.g. 24.5) when the element width and container width have
+# different parities.  The rounding must not inflate the element's cell width.
+# ---------------------------------------------------------------------------
+
+
+def test_auto_centered_text_has_correct_width() -> None:
+    # " Bottom-Center Title " is 21 chars.  The parent is 70 wide with a 1-cell
+    # border and 1-cell pad, giving a padding box of 68.  (68 - 21) / 2 = 23.5,
+    # so taffy places the element at x=24.5 (padding_box_left=1 + 23.5).
+    # Python's banker's rounding would round 45.5 → 46 giving width 22; we
+    # must get exactly 21.
+    title_shadow = ShadowNode(
+        component=None,
+        element=Text(content=" Bottom-Center Title ", style=inset_bottom_center | inset_bottom(-1)),
+        hooks=Hooks(),
+    )
+    container_shadow = _shadow(
+        Div(style=row | grow(1) | justify_children_center | align_children_center | border_lightrounded | pad(1)),
+        children=[title_shadow],
+    )
+    root = _shadow(Div(style=col), children=[container_shadow])
+
+    results = _layout_screened(root, w=70, h=5)
+    title_layouts = [rl for elem, rl in results if isinstance(elem, Text)]
+    assert len(title_layouts) == 1
+    layout = title_layouts[0]
+    assert layout.border.right - layout.border.left + 1 == 21

@@ -120,16 +120,15 @@ def _extract_layout(
     border_abs_x = abs_x + layout.location.x
     border_abs_y = abs_y + layout.location.y
 
-    # Round edges (not position+size independently) so that siblings sharing
-    # a float edge (e.g. gap=-1 border overlap) always round to the same cell.
-    # floor for left/top (round toward -inf) so negative coordinates are handled
-    # correctly.  round-1 for right/bottom snaps near-integer floats (including
-    # values like 20.000000048 that taffy produces for the last flex child) to
-    # the nearest integer, avoiding off-by-one errors in both directions.
+    # floor for left/top (round toward -inf) so negative coordinates work.
+    # ceil(sum - 0.5) - 1 is "round half down" for the right/bottom edge:
+    #   - avoids Python's banker's rounding of exact half-integers (e.g. 45.5
+    #     from auto-centering a 21-wide element at x=24.5 rounds to 45, not 46)
+    #   - snaps near-integer taffy floats (e.g. 20.000000048 → 19, not 20)
     bx = math.floor(border_abs_x)
     by = math.floor(border_abs_y)
-    br = round(border_abs_x + layout.size.width) - 1
-    bb = round(border_abs_y + layout.size.height) - 1
+    br = math.ceil(border_abs_x + layout.size.width - 0.5) - 1
+    bb = math.ceil(border_abs_y + layout.size.height - 0.5) - 1
 
     border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
 
