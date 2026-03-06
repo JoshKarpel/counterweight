@@ -17,7 +17,7 @@ def root() -> Div:
                 | inset_left(6)
                 | inset_top(6)
                 | border_lightrounded
-                | margin_1
+                | margin(1)
                 | margin_color("purple", 600),
                 content="z = +1",
             ),
@@ -27,7 +27,7 @@ def root() -> Div:
                 | inset_left(4)
                 | inset_top(3)
                 | border_lightrounded
-                | margin_1
+                | margin(1)
                 | margin_color("teal", 600),
                 content="z =  0",
             ),
@@ -37,7 +37,7 @@ def root() -> Div:
                 | inset_left(0)
                 | inset_top(0)
                 | border_lightrounded
-                | margin_1
+                | margin(1)
                 | margin_color("red", 600),
                 content="z = -1",
             ),
@@ -47,7 +47,7 @@ def root() -> Div:
                 | inset_left(13)
                 | inset_top(3)
                 | border_lightrounded
-                | margin_1
+                | margin(1)
                 | margin_color("amber", 600),
                 content="z = +2",
             ),

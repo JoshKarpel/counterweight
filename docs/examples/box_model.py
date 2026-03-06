@@ -20,8 +20,8 @@ def root() -> Div:
                 | border_lightrounded
                 | border_bg("blue", 500)
                 | margin_color("red", 500)
-                | margin_x_2
-                | margin_y_1
+                | margin_x(2)
+                | margin_y(1)
             )
         ],
     )

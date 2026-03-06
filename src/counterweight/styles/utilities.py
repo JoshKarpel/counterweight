@@ -723,152 +723,6 @@ border_all = Style(
     )
 )
 
-border_contract_0 = Style(border_contract=0)
-border_contract_1 = Style(border_contract=1)
-border_contract_2 = Style(border_contract=2)
-border_contract_3 = Style(border_contract=3)
-border_contract_4 = Style(border_contract=4)
-border_contract_5 = Style(border_contract=5)
-border_contract_6 = Style(border_contract=6)
-border_contract_7 = Style(border_contract=7)
-border_contract_8 = Style(border_contract=8)
-
-margin_top_0 = Style(layout=waxy.Style(margin_top=waxy.Length(0)))
-margin_top_1 = Style(layout=waxy.Style(margin_top=waxy.Length(1)))
-margin_top_2 = Style(layout=waxy.Style(margin_top=waxy.Length(2)))
-margin_top_3 = Style(layout=waxy.Style(margin_top=waxy.Length(3)))
-margin_top_4 = Style(layout=waxy.Style(margin_top=waxy.Length(4)))
-margin_top_5 = Style(layout=waxy.Style(margin_top=waxy.Length(5)))
-margin_top_6 = Style(layout=waxy.Style(margin_top=waxy.Length(6)))
-margin_top_7 = Style(layout=waxy.Style(margin_top=waxy.Length(7)))
-margin_top_8 = Style(layout=waxy.Style(margin_top=waxy.Length(8)))
-
-margin_bottom_0 = Style(layout=waxy.Style(margin_bottom=waxy.Length(0)))
-margin_bottom_1 = Style(layout=waxy.Style(margin_bottom=waxy.Length(1)))
-margin_bottom_2 = Style(layout=waxy.Style(margin_bottom=waxy.Length(2)))
-margin_bottom_3 = Style(layout=waxy.Style(margin_bottom=waxy.Length(3)))
-margin_bottom_4 = Style(layout=waxy.Style(margin_bottom=waxy.Length(4)))
-margin_bottom_5 = Style(layout=waxy.Style(margin_bottom=waxy.Length(5)))
-margin_bottom_6 = Style(layout=waxy.Style(margin_bottom=waxy.Length(6)))
-margin_bottom_7 = Style(layout=waxy.Style(margin_bottom=waxy.Length(7)))
-margin_bottom_8 = Style(layout=waxy.Style(margin_bottom=waxy.Length(8)))
-
-margin_left_0 = Style(layout=waxy.Style(margin_left=waxy.Length(0)))
-margin_left_1 = Style(layout=waxy.Style(margin_left=waxy.Length(1)))
-margin_left_2 = Style(layout=waxy.Style(margin_left=waxy.Length(2)))
-margin_left_3 = Style(layout=waxy.Style(margin_left=waxy.Length(3)))
-margin_left_4 = Style(layout=waxy.Style(margin_left=waxy.Length(4)))
-margin_left_5 = Style(layout=waxy.Style(margin_left=waxy.Length(5)))
-margin_left_6 = Style(layout=waxy.Style(margin_left=waxy.Length(6)))
-margin_left_7 = Style(layout=waxy.Style(margin_left=waxy.Length(7)))
-margin_left_8 = Style(layout=waxy.Style(margin_left=waxy.Length(8)))
-
-margin_right_0 = Style(layout=waxy.Style(margin_right=waxy.Length(0)))
-margin_right_1 = Style(layout=waxy.Style(margin_right=waxy.Length(1)))
-margin_right_2 = Style(layout=waxy.Style(margin_right=waxy.Length(2)))
-margin_right_3 = Style(layout=waxy.Style(margin_right=waxy.Length(3)))
-margin_right_4 = Style(layout=waxy.Style(margin_right=waxy.Length(4)))
-margin_right_5 = Style(layout=waxy.Style(margin_right=waxy.Length(5)))
-margin_right_6 = Style(layout=waxy.Style(margin_right=waxy.Length(6)))
-margin_right_7 = Style(layout=waxy.Style(margin_right=waxy.Length(7)))
-margin_right_8 = Style(layout=waxy.Style(margin_right=waxy.Length(8)))
-
-margin_x_0 = Style(layout=waxy.Style(margin_left=waxy.Length(0), margin_right=waxy.Length(0)))
-margin_x_1 = Style(layout=waxy.Style(margin_left=waxy.Length(1), margin_right=waxy.Length(1)))
-margin_x_2 = Style(layout=waxy.Style(margin_left=waxy.Length(2), margin_right=waxy.Length(2)))
-margin_x_3 = Style(layout=waxy.Style(margin_left=waxy.Length(3), margin_right=waxy.Length(3)))
-margin_x_4 = Style(layout=waxy.Style(margin_left=waxy.Length(4), margin_right=waxy.Length(4)))
-margin_x_5 = Style(layout=waxy.Style(margin_left=waxy.Length(5), margin_right=waxy.Length(5)))
-margin_x_6 = Style(layout=waxy.Style(margin_left=waxy.Length(6), margin_right=waxy.Length(6)))
-margin_x_7 = Style(layout=waxy.Style(margin_left=waxy.Length(7), margin_right=waxy.Length(7)))
-margin_x_8 = Style(layout=waxy.Style(margin_left=waxy.Length(8), margin_right=waxy.Length(8)))
-
-margin_y_0 = Style(layout=waxy.Style(margin_top=waxy.Length(0), margin_bottom=waxy.Length(0)))
-margin_y_1 = Style(layout=waxy.Style(margin_top=waxy.Length(1), margin_bottom=waxy.Length(1)))
-margin_y_2 = Style(layout=waxy.Style(margin_top=waxy.Length(2), margin_bottom=waxy.Length(2)))
-margin_y_3 = Style(layout=waxy.Style(margin_top=waxy.Length(3), margin_bottom=waxy.Length(3)))
-margin_y_4 = Style(layout=waxy.Style(margin_top=waxy.Length(4), margin_bottom=waxy.Length(4)))
-margin_y_5 = Style(layout=waxy.Style(margin_top=waxy.Length(5), margin_bottom=waxy.Length(5)))
-margin_y_6 = Style(layout=waxy.Style(margin_top=waxy.Length(6), margin_bottom=waxy.Length(6)))
-margin_y_7 = Style(layout=waxy.Style(margin_top=waxy.Length(7), margin_bottom=waxy.Length(7)))
-margin_y_8 = Style(layout=waxy.Style(margin_top=waxy.Length(8), margin_bottom=waxy.Length(8)))
-
-margin_0 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(0), margin_bottom=waxy.Length(0), margin_left=waxy.Length(0), margin_right=waxy.Length(0)
-    )
-)
-margin_1 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(1), margin_bottom=waxy.Length(1), margin_left=waxy.Length(1), margin_right=waxy.Length(1)
-    )
-)
-margin_2 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(2), margin_bottom=waxy.Length(2), margin_left=waxy.Length(2), margin_right=waxy.Length(2)
-    )
-)
-margin_3 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(3), margin_bottom=waxy.Length(3), margin_left=waxy.Length(3), margin_right=waxy.Length(3)
-    )
-)
-margin_4 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(4), margin_bottom=waxy.Length(4), margin_left=waxy.Length(4), margin_right=waxy.Length(4)
-    )
-)
-margin_5 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(5), margin_bottom=waxy.Length(5), margin_left=waxy.Length(5), margin_right=waxy.Length(5)
-    )
-)
-margin_6 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(6), margin_bottom=waxy.Length(6), margin_left=waxy.Length(6), margin_right=waxy.Length(6)
-    )
-)
-margin_7 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(7), margin_bottom=waxy.Length(7), margin_left=waxy.Length(7), margin_right=waxy.Length(7)
-    )
-)
-margin_8 = Style(
-    layout=waxy.Style(
-        margin_top=waxy.Length(8), margin_bottom=waxy.Length(8), margin_left=waxy.Length(8), margin_right=waxy.Length(8)
-    )
-)
-
-gap_width_0 = Style(layout=waxy.Style(gap_width=waxy.Length(0)))
-gap_width_1 = Style(layout=waxy.Style(gap_width=waxy.Length(1)))
-gap_width_2 = Style(layout=waxy.Style(gap_width=waxy.Length(2)))
-gap_width_3 = Style(layout=waxy.Style(gap_width=waxy.Length(3)))
-gap_width_4 = Style(layout=waxy.Style(gap_width=waxy.Length(4)))
-gap_width_5 = Style(layout=waxy.Style(gap_width=waxy.Length(5)))
-gap_width_6 = Style(layout=waxy.Style(gap_width=waxy.Length(6)))
-gap_width_7 = Style(layout=waxy.Style(gap_width=waxy.Length(7)))
-gap_width_8 = Style(layout=waxy.Style(gap_width=waxy.Length(8)))
-
-gap_height_0 = Style(layout=waxy.Style(gap_height=waxy.Length(0)))
-gap_height_1 = Style(layout=waxy.Style(gap_height=waxy.Length(1)))
-gap_height_2 = Style(layout=waxy.Style(gap_height=waxy.Length(2)))
-gap_height_3 = Style(layout=waxy.Style(gap_height=waxy.Length(3)))
-gap_height_4 = Style(layout=waxy.Style(gap_height=waxy.Length(4)))
-gap_height_5 = Style(layout=waxy.Style(gap_height=waxy.Length(5)))
-gap_height_6 = Style(layout=waxy.Style(gap_height=waxy.Length(6)))
-gap_height_7 = Style(layout=waxy.Style(gap_height=waxy.Length(7)))
-gap_height_8 = Style(layout=waxy.Style(gap_height=waxy.Length(8)))
-
-gap_0 = Style(layout=waxy.Style(gap_width=waxy.Length(0), gap_height=waxy.Length(0)))
-gap_1 = Style(layout=waxy.Style(gap_width=waxy.Length(1), gap_height=waxy.Length(1)))
-gap_2 = Style(layout=waxy.Style(gap_width=waxy.Length(2), gap_height=waxy.Length(2)))
-gap_3 = Style(layout=waxy.Style(gap_width=waxy.Length(3), gap_height=waxy.Length(3)))
-gap_4 = Style(layout=waxy.Style(gap_width=waxy.Length(4), gap_height=waxy.Length(4)))
-gap_5 = Style(layout=waxy.Style(gap_width=waxy.Length(5), gap_height=waxy.Length(5)))
-gap_6 = Style(layout=waxy.Style(gap_width=waxy.Length(6), gap_height=waxy.Length(6)))
-gap_7 = Style(layout=waxy.Style(gap_width=waxy.Length(7), gap_height=waxy.Length(7)))
-gap_8 = Style(layout=waxy.Style(gap_width=waxy.Length(8), gap_height=waxy.Length(8)))
-
 inset_top_left = Style(
     layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Length(0))
 )
@@ -1027,6 +881,11 @@ def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlac
 
 
 @lru_cache(maxsize=256)
+def border_contract(n: int) -> Style:
+    return Style(border_contract=n)
+
+
+@lru_cache(maxsize=256)
 def border_sides(sides: frozenset[Side]) -> Style:
     return Style(
         layout=waxy.Style(
@@ -1056,6 +915,43 @@ def margin_left(n: int) -> Style:
 @lru_cache(maxsize=256)
 def margin_right(n: int) -> Style:
     return Style(layout=waxy.Style(margin_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_x(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_left=waxy.Length(n), margin_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_y(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_top=waxy.Length(n), margin_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin(n: int) -> Style:
+    return Style(
+        layout=waxy.Style(
+            margin_top=waxy.Length(n),
+            margin_bottom=waxy.Length(n),
+            margin_left=waxy.Length(n),
+            margin_right=waxy.Length(n),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def gap_width(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_width=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def gap_height(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def gap(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_width=waxy.Length(n), gap_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)

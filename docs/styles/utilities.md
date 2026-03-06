@@ -12,7 +12,8 @@ from counterweight.styles.utilities import *
 ```
 
 Each utility is a pre-defined `Style` specifying just a small set of properties.
-Color utilities are functional, taking a color name and shade as arguments.
+Many utilities are functional (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`) and accept a numeric argument.
+Color utilities take a color name and shade as arguments.
 For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200:
 ```python
 from counterweight.styles import Style, CellStyle, Color
@@ -48,7 +49,7 @@ def my_component() -> Text:
 
 !!! tip "Performance Considerations"
 
-    If you have an expression like `border_heavy | border_rose_200 | border_top_bottom` in your component,
+    If you have an expression like `border_heavy | border_color("rose", 200) | border_top_bottom` in your component,
     it will be evaluated every time the component is rendered.
     Merging styles with `|` does take some time, though it is aggressively cached inside the framework.
     If you find that this is causing performance issues,

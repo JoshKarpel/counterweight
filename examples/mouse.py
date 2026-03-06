@@ -44,7 +44,7 @@ def root() -> Div:
         children=[
             header(),
             Div(
-                style=row | gap_1,
+                style=row | gap(1),
                 children=[
                     tracking_box(),
                     last_clicked_box(),
@@ -52,7 +52,7 @@ def root() -> Div:
                 ],
             ),
             Div(
-                style=row | gap_1,
+                style=row | gap(1),
                 children=[
                     drag_text_box(),
                 ],

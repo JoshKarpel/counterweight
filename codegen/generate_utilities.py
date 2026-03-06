@@ -13,7 +13,6 @@ def literal_vals(obj: object, field: str) -> tuple[str, ...]:
     return get_args(get_type_hints(obj)[field])
 
 
-SIDES = ["top", "bottom", "left", "right"]
 N = list(range(9))
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
@@ -475,62 +474,6 @@ generated_lines.append(
     "border_top=waxy.Length(1), border_bottom=waxy.Length(1), "
     "border_left=waxy.Length(1), border_right=waxy.Length(1)))"
 )
-
-generated_lines.append("")
-
-# --- Border contract ---
-
-for n in N:
-    generated_lines.append(f"border_contract_{n} = Style(border_contract={n})")
-
-generated_lines.append("")
-
-# --- Margin utilities ---
-
-for side in SIDES:
-    for n in N:
-        generated_lines.append(f"margin_{side}_{n} = Style(layout=waxy.Style(margin_{side}=waxy.Length({n})))")
-    generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"margin_x_{n} = Style(layout=waxy.Style(margin_left=waxy.Length({n}), margin_right=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"margin_y_{n} = Style(layout=waxy.Style(margin_top=waxy.Length({n}), margin_bottom=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"margin_{n} = Style(layout=waxy.Style("
-        f"margin_top=waxy.Length({n}), margin_bottom=waxy.Length({n}), "
-        f"margin_left=waxy.Length({n}), margin_right=waxy.Length({n})))"
-    )
-
-generated_lines.append("")
-
-# --- Gap utilities ---
-
-for n in N:
-    generated_lines.append(f"gap_width_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n})))")
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(f"gap_height_{n} = Style(layout=waxy.Style(gap_height=waxy.Length({n})))")
-
-generated_lines.append("")
-
-for n in N:
-    generated_lines.append(
-        f"gap_{n} = Style(layout=waxy.Style(gap_width=waxy.Length({n}), gap_height=waxy.Length({n})))"
-    )
 
 generated_lines.append("")
 

@@ -5,7 +5,7 @@ from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
 
-extra_style = pad(1) | margin_1
+extra_style = pad(1) | margin(1)
 
 
 @component

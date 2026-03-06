@@ -78,6 +78,16 @@ class Screenshot(_Control):
 
 
 @dataclass(frozen=True, slots=True)
+class PrintPaint(_Control):
+    """
+    Print the current paint as a text grid to stdout.
+
+    Useful for interactive debugging of rendering output.
+    The print occurs at the beginning of the next render cycle.
+    """
+
+
+@dataclass(frozen=True, slots=True)
 class Suspend(_Control):
     """
     Suspend the application while the handler function is running.
@@ -101,6 +111,7 @@ AnyControl = Union[
     Quit,
     Bell,
     Screenshot,
+    PrintPaint,
     Suspend,
     ToggleBorderHealing,
 ]

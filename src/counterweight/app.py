@@ -19,7 +19,16 @@ from counterweight._context_vars import current_event_queue, current_use_mouse_l
 from counterweight._utils import cancel, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
+from counterweight.controls import (
+    AnyControl,
+    Bell,
+    PrintPaint,
+    Quit,
+    Screenshot,
+    Suspend,
+    ToggleBorderHealing,
+    _Control,
+)
 from counterweight.elements import AnyElement, Div
 from counterweight.events import (
     AnyEvent,
@@ -46,7 +55,7 @@ from counterweight.output import (
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import BLANK, Paint, paint_layout, svg
+from counterweight.paint import BLANK, Paint, paint_layout, paint_to_str, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -156,6 +165,7 @@ async def app(
         should_quit = False
         should_bell = False
         should_screenshot: Screenshot | None = None
+        should_print_paint = False
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
@@ -166,6 +176,7 @@ async def app(
             nonlocal should_quit
             nonlocal should_bell
             nonlocal should_screenshot
+            nonlocal should_print_paint
             nonlocal should_suspend
 
             nonlocal do_heal_borders
@@ -179,6 +190,8 @@ async def app(
                     should_bell = True
                 case Screenshot():
                     should_screenshot = control
+                case PrintPaint():
+                    should_print_paint = True
                 case Suspend():
                     should_suspend = control
                     should_render = True
@@ -199,6 +212,10 @@ async def app(
                         output_stream.write("\a")
                         output_stream.flush()
                     should_bell = False
+
+                if should_print_paint:
+                    print(paint_to_str(current_paint), flush=True)
+                    should_print_paint = False
 
                 if should_screenshot:
                     try:
