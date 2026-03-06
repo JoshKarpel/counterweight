@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
@@ -121,10 +122,13 @@ def _extract_layout(
 
     # Round edges (not position+size independently) so that siblings sharing
     # a float edge (e.g. gap=-1 border overlap) always round to the same cell.
-    bx = int(border_abs_x)
-    by = int(border_abs_y)
-    br = int(border_abs_x + layout.size.width) - 1
-    bb = int(border_abs_y + layout.size.height) - 1
+    # floor for left/top (round toward -inf), ceil-1 for right/bottom (round toward +inf then step back),
+    # so that shared edges between adjacent siblings always map to the same integer cell coordinate,
+    # including when elements have negative coordinates.
+    bx = math.floor(border_abs_x)
+    by = math.floor(border_abs_y)
+    br = math.ceil(border_abs_x + layout.size.width) - 1
+    bb = math.ceil(border_abs_y + layout.size.height) - 1
 
     border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
 
