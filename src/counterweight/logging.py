@@ -47,3 +47,10 @@ def tail_devlog() -> None:
                         break
                     else:
                         sleep(0.01)
+
+
+def last_devlog(n: int) -> None:
+    DEVLOG_FILE.touch(exist_ok=True)
+    lines = DEVLOG_FILE.read_text().splitlines(keepends=True)
+    for line in lines[-n:]:
+        print(line, end="")
