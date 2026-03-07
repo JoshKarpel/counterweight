@@ -57,7 +57,7 @@ class Text(FrozenForbidExtras):
         if isinstance(self.content, str):
             return tuple(CellPaint(char=char, style=self.style.text_style) for char in self.content)
         else:
-            return sum((chunk.cells for chunk in self.content), ())
+            return tuple(cell for chunk in self.content for cell in chunk.cells)
 
 
 AnyElement = Union[
