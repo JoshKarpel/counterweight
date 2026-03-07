@@ -19,6 +19,8 @@ from counterweight.styles.utilities import (
     inset_left,
     inset_top,
     justify_children_center,
+    justify_children_space_around,
+    justify_children_space_evenly,
     pad,
     position_absolute,
     row,
@@ -248,3 +250,46 @@ def test_auto_centered_text_has_correct_width() -> None:
     assert len(title_layouts) == 1
     layout = title_layouts[0]
     assert layout.border.right - layout.border.left + 1 == 21
+
+
+# ---------------------------------------------------------------------------
+# justify_content fractional placement: a fixed-size child must not gain an
+# extra row/column when space_evenly or space_around places it at a fractional
+# position whose end coordinate has frac > 0.5.
+# ---------------------------------------------------------------------------
+
+
+def test_space_evenly_col_does_not_inflate_child_height() -> None:
+    # H=29, child_a=6, child_b=4: gap=(29-6-4)/3=19/3=6.333...
+    # child_b floats to y=18.667, end=22.667 → floor gives height 4, not 5.
+    child_a = _shadow(Div(style=size(20, 6)))
+    child_b = _shadow(Div(style=size(20, 4)))
+    root = _shadow(Div(style=col | justify_children_space_evenly), children=[child_a, child_b])
+
+    _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=60, h=29)]
+
+    assert layout_b.border.bottom - layout_b.border.top + 1 == 4
+
+
+def test_space_around_col_does_not_inflate_child_height() -> None:
+    # H=31, child_a=6, child_b=4: G=(31-6-4)/2=10.5 per item.
+    # child_b floats to y=21.75, end=25.75 → floor gives height 4, not 5.
+    child_a = _shadow(Div(style=size(20, 6)))
+    child_b = _shadow(Div(style=size(20, 4)))
+    root = _shadow(Div(style=col | justify_children_space_around), children=[child_a, child_b])
+
+    _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=60, h=31)]
+
+    assert layout_b.border.bottom - layout_b.border.top + 1 == 4
+
+
+def test_space_evenly_row_does_not_inflate_child_width() -> None:
+    # W=29, child_a=6, child_b=4: gap=(29-6-4)/3=19/3=6.333...
+    # child_b floats to x=18.667, end=22.667 → floor gives width 4, not 5.
+    child_a = _shadow(Div(style=size(6, 3)))
+    child_b = _shadow(Div(style=size(4, 3)))
+    root = _shadow(Div(style=row | justify_children_space_evenly), children=[child_a, child_b])
+
+    _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=29, h=20)]
+
+    assert layout_b.border.right - layout_b.border.left + 1 == 4

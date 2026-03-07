@@ -1,5 +1,5 @@
 import asyncio
-from itertools import combinations, cycle
+from itertools import combinations
 
 from more_itertools import flatten
 from structlog import get_logger
@@ -15,28 +15,33 @@ from counterweight.styles.utilities import *
 logger = get_logger()
 
 ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
+BORDER_KINDS: list[BorderKind] = list(BorderKind)
+SIDE_COMBOS: list[tuple[Side, ...]] = list(flatten(combinations(ALL_SIDES, r) for r in range(1, 5)))
+FULL_SIDES_IDX: int = SIDE_COMBOS.index(tuple(ALL_SIDES))
 
 
 @component
 def root() -> Div:
-    border_kind_cycle_ref = use_ref(cycle(BorderKind))
-    border_side_cycle_ref = use_ref(cycle(reversed(list(flatten(combinations(ALL_SIDES, r) for r in range(1, 5))))))
+    border_kind_idx = use_ref(0)
+    border_side_idx = use_ref(FULL_SIDES_IDX)
 
-    def advance_border() -> BorderKind:
-        return next(border_kind_cycle_ref.current)
-
-    def advance_sides() -> frozenset[Side]:
-        return frozenset(next(border_side_cycle_ref.current))
-
-    border_kind, set_border_kind = use_state(advance_border)
-    active_sides, set_active_sides = use_state(advance_sides)
+    border_kind, set_border_kind = use_state(lambda: BORDER_KINDS[0])
+    active_sides, set_active_sides = use_state(lambda: frozenset(SIDE_COMBOS[FULL_SIDES_IDX]))
 
     def on_key(event: KeyPressed) -> None:
         match event.key:
             case "k":
-                set_border_kind(advance_border())
+                border_kind_idx.current = (border_kind_idx.current + 1) % len(BORDER_KINDS)
+                set_border_kind(BORDER_KINDS[border_kind_idx.current])
+            case "K":
+                border_kind_idx.current = (border_kind_idx.current - 1) % len(BORDER_KINDS)
+                set_border_kind(BORDER_KINDS[border_kind_idx.current])
             case "e":
-                set_active_sides(advance_sides())
+                border_side_idx.current = (border_side_idx.current + 1) % len(SIDE_COMBOS)
+                set_active_sides(frozenset(SIDE_COMBOS[border_side_idx.current]))
+            case "E":
+                border_side_idx.current = (border_side_idx.current - 1) % len(SIDE_COMBOS)
+                set_active_sides(frozenset(SIDE_COMBOS[border_side_idx.current]))
 
     logger.debug("Rendering", border_kind=border_kind, active_sides=active_sides)
 
@@ -56,8 +61,8 @@ def root() -> Div:
                 ],
             ),
             Text(
-                content="k  cycle border kind\ne  cycle active edges",
-                style=border_color("slate", 400) | text("slate", 200) | border_lightrounded | pad_x(2) | pad_y(1),
+                content="k/K  cycle border kind\ne/E  cycle active edges",
+                style=border_color("slate", 400) | text("slate", 200) | border_lightrounded | pad_x(2),
             ),
         ],
         on_key=on_key,

@@ -122,14 +122,16 @@ def _extract_layout(
     border_abs_y = abs_y + layout.location.y
 
     # floor for left/top (round toward -inf) so negative coordinates work.
-    # ceil(sum - 0.5) - 1 is "round half down" for the right/bottom edge:
-    #   - avoids Python's banker's rounding of exact half-integers (e.g. 45.5
-    #     from auto-centering a 21-wide element at x=24.5 rounds to 45, not 46)
-    #   - snaps near-integer taffy floats (e.g. 20.000000048 → 19, not 20)
+    # floor(end) - 1 for right/bottom: always rounds down, so a fractional start
+    # position (e.g. 18.667 from justify_content:space_evenly) doesn't inflate the
+    # element's discrete row/column count when the size is an exact integer (e.g.
+    # start=18.667, size=4.0 → end=22.667 → floor=22 → bb=21, height=4, not 5).
+    # This also correctly handles fractional flex sizes where frac(start)+frac(size)
+    # reaches an exact integer boundary (e.g. start=12.667, size=7.333 → end=20.0).
     bx = math.floor(border_abs_x)
     by = math.floor(border_abs_y)
-    br = math.ceil(border_abs_x + layout.size.width - 0.5) - 1
-    bb = math.ceil(border_abs_y + layout.size.height - 0.5) - 1
+    br = math.floor(border_abs_x + layout.size.width) - 1
+    bb = math.floor(border_abs_y + layout.size.height) - 1
 
     border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
 
