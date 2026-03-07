@@ -209,7 +209,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 style=row | align_self_center | pad_y(1),
                 children=[Text(content=message, style=message_style)],
             ),
-            keyboard(submitted=submitted, solution=solution, on_key=on_key),
+            keyboard(submitted=submitted, solution=solution, on_key=on_key, on_clear=lambda: set_guess("")),
         ],
     )
 
@@ -252,7 +252,9 @@ KEYBOARD = (
 
 
 @component
-def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None]) -> Div:
+def keyboard(
+    submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None], on_clear: Callable[[], None]
+) -> Div:
     kb_letter_styles = {letter: border_color("gray", 500) for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
@@ -267,21 +269,49 @@ def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed],
             if guess_letter == solution_letter:
                 kb_letter_styles[guess_letter] = border_color("green", 600)
 
+    def on_submit(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            return on_key(KeyPressed(key=Key.Enter))
+        return None
+
+    def on_backspace(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            return on_key(KeyPressed(key=Key.Backspace))
+        return None
+
+    def on_clear_click(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            on_clear()
+        return None
+
     return Div(
-        style=col | justify_children_center | align_children_center,
+        style=row | align_children_stretch | gap(2),
         children=[
             Div(
-                style=row | align_children_center | gap(1),
+                style=col | justify_children_center | align_children_center,
                 children=[
-                    letter_box(
-                        kb_letter,
-                        style=kb_letter_styles[kb_letter],
-                        on_key=on_key,
+                    Div(
+                        style=row | align_children_center | gap(1),
+                        children=[
+                            letter_box(
+                                kb_letter,
+                                style=kb_letter_styles[kb_letter],
+                                on_key=on_key,
+                            )
+                            for kb_letter in kb_row
+                        ],
                     )
-                    for kb_letter in kb_row
+                    for kb_row in KEYBOARD
                 ],
-            )
-            for kb_row in KEYBOARD
+            ),
+            Div(
+                style=col | justify_children_space_between | align_children_end,
+                children=[
+                    menu_button(content="Submit", on_mouse=on_submit, hover_style=border_color("green", 600)),
+                    menu_button(content="Back", on_mouse=on_backspace, hover_style=border_color("yellow", 300)),
+                    menu_button(content="Clear", on_mouse=on_clear_click, hover_style=border_color("red", 700)),
+                ],
+            ),
         ],
     )
 
