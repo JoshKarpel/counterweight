@@ -10,8 +10,8 @@ list:
 alias l := list
 
 [doc('Run a recipe whenever source files change')]
-watch CMD:
-    uv run watchfiles --verbosity warning 'just {{ CMD }}' src/ tests/ docs/ examples/
+watch *CMD:
+    uv run watchfiles --verbosity warning '{{ CMD }}' src/ tests/ docs/ examples/
 
 alias w := watch
 

@@ -779,6 +779,9 @@ position_absolute = Style(layout=waxy.Style(position=waxy.Position.Absolute))
 
 border_collapse = Style(layout=waxy.Style(gap_width=waxy.Length(-1), gap_height=waxy.Length(-1)))
 
+content_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.ContentBox))
+border_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.BorderBox))
+
 
 @lru_cache(maxsize=256)
 def grow(n: float) -> Style:
