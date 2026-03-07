@@ -96,7 +96,11 @@ def test_border_all() -> None:
     assert border_all.layout.border_bottom == waxy.Length(1)
     assert border_all.layout.border_left == waxy.Length(1)
     assert border_all.layout.border_right == waxy.Length(1)
-    assert border_all.border_kind == BorderKind.Light
+    assert border_all.border_kind is None
+
+
+def test_border_none_overrides_kind() -> None:
+    assert (border_light | border_none).border_kind is None
 
 
 def test_border_sides() -> None:
