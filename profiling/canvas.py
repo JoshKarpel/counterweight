@@ -1,5 +1,7 @@
 import asyncio
 import random
+import time
+from collections import deque
 from itertools import product
 
 from more_itertools import grouper
@@ -14,6 +16,8 @@ from counterweight.styles.utilities import *
 from counterweight.utils import clamp
 
 logger = get_logger()
+
+_frame_times: deque[float] = deque(maxlen=300)
 
 BLACK = Color.from_name("black")
 
@@ -40,11 +44,31 @@ def canvas(
 
 
 @component
+def fps_display() -> Text:
+    fps, set_fps = use_state(0.0)
+
+    async def tick() -> None:
+        while True:
+            await asyncio.sleep(0.25)
+            if len(_frame_times) >= 2:
+                elapsed = _frame_times[-1] - _frame_times[0]
+                set_fps((len(_frame_times) - 1) / elapsed if elapsed > 0 else 0.0)
+
+    use_effect(tick, deps=())
+
+    return Text(
+        content=[Chunk(content=f"FPS: {fps:.1f}", style=CellStyle(foreground=green_400))],
+    )
+
+
+@component
 def root() -> Div:
+    _frame_times.append(time.monotonic())
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
         children=[
             header(),
+            fps_display(),
             Div(
                 style=col | align_children_center | justify_children_center | border_collapse,
                 children=[
