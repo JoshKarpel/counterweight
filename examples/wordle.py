@@ -152,6 +152,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     def on_key(event: KeyPressed) -> AnyControl | None:
         match state, event.key:
+            # TODO: add a button to the left of the keyboard for this
             case _, Key.Escape:
                 stop_playing()
             case "playing", Key.Backspace:
