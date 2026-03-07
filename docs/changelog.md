@@ -5,6 +5,10 @@
 ### Added
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
+
+
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added a `PrintPaint` autopilot control that prints the current rendered frame as a text grid,
   useful for debugging layout and rendering output.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)

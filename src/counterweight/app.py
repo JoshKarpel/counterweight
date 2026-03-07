@@ -171,6 +171,12 @@ async def app(
 
         do_heal_borders = True
 
+        # Warmup: render and lay out once without painting so that use_rects()
+        # returns real dimensions on the first visible render.
+        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
+        shadow = update_shadow(screen(), shadow)
+        compute_layout(shadow, warmup_available)
+
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
 

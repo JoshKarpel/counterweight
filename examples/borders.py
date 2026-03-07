@@ -54,7 +54,11 @@ def root() -> Div:
                         | text_bg("amber", 800),
                     )
                 ],
-            )
+            ),
+            Text(
+                content="k  cycle border kind\ne  cycle active edges",
+                style=border_color("slate", 400) | text("slate", 200) | border_lightrounded | pad_x(2) | pad_y(1),
+            ),
         ],
         on_key=on_key,
     )

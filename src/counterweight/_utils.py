@@ -68,6 +68,10 @@ async def cancel(task: Task[T]) -> None:
         raise RuntimeError("Cancelled task did not end with an exception")
 
 
+def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
+    return max(min_, min(val, max_))
+
+
 def unordered_range(a: int, b: int) -> range:
     """
     A range from a to b (inclusive), regardless of the order of a and b.
