@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeVar, overload
+from typing import overload
 
 import waxy
 from structlog import get_logger
@@ -13,18 +13,16 @@ from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 logger = get_logger()
 
-T = TypeVar("T")
+
+@overload
+def use_state[T](initial_value: Getter[T]) -> tuple[T, Setter[T]]: ...
 
 
 @overload
-def use_state(initial_value: Getter[T]) -> tuple[T, Setter[T]]: ...
+def use_state[T](initial_value: T) -> tuple[T, Setter[T]]: ...
 
 
-@overload
-def use_state(initial_value: T) -> tuple[T, Setter[T]]: ...
-
-
-def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
+def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
     """
     Parameters:
         initial_value: The initial value of the state.
@@ -42,7 +40,7 @@ def use_state(initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
     return current_hook_state.get().use_state(initial_value)
 
 
-def use_ref(initial_value: Getter[T] | T) -> Ref[T]:
+def use_ref[T](initial_value: Getter[T] | T) -> Ref[T]:
     """
     Parameters:
         initial_value: the initial value of the ref.

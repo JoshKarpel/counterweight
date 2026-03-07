@@ -4,13 +4,10 @@ import dataclasses
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import Literal, NamedTuple, TypeVar
+from typing import Literal, NamedTuple
 
 import waxy
 from cachetools import LRUCache
-
-S = TypeVar("S", bound="StyleFragment")
-SS = TypeVar("SS", bound="Style")
 
 TextWrap = Literal["none"]
 
@@ -18,7 +15,7 @@ TextWrap = Literal["none"]
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
 
-def merge_style_fragments(left: S, right: S) -> S:
+def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
     # Start with right's values as the baseline.
     kwargs: dict[str, object] = {f.name: getattr(right, f.name) for f in dataclasses.fields(right)}  # type: ignore[arg-type]
     # Override with left's non-default values (left wins where it was explicitly set).
@@ -35,7 +32,7 @@ def merge_style_fragments(left: S, right: S) -> S:
 class StyleFragment:
     __slots__ = ()
 
-    def __or__(self: S, other: S | None) -> S:
+    def __or__[S: StyleFragment](self: S, other: S | None) -> S:
         if other is None:
             return self
 
@@ -546,7 +543,7 @@ class Style(StyleFragment):
     text_justify: Literal["left", "center", "right"] = "left"
     text_wrap: TextWrap = "none"
 
-    def __or__(self: SS, other: SS | None) -> SS:
+    def __or__[SS: Style](self: SS, other: SS | None) -> SS:
         if other is None:
             return self
         merged_layout = self.layout | other.layout

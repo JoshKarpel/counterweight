@@ -4,14 +4,10 @@ from asyncio import CancelledError, Queue, QueueEmpty, Task, current_task, get_e
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
-from typing import Awaitable, List, TypeVar
-
-T = TypeVar("T")
-K = TypeVar("K")
-V = TypeVar("V")
+from typing import Awaitable
 
 
-async def drain_queue(queue: Queue[T]) -> List[T]:
+async def drain_queue[T](queue: Queue[T]) -> list[T]:
     items = [await queue.get()]
 
     while True:
@@ -30,10 +26,7 @@ def halve_integer(x: int) -> tuple[int, int]:
     return ceil(half), floor(half)
 
 
-R = TypeVar("R")
-
-
-async def maybe_await(val: Awaitable[R] | R) -> R:
+async def maybe_await[R](val: Awaitable[R] | R) -> R:
     if isawaitable(val):
         return await val
     else:
@@ -44,7 +37,7 @@ async def forever() -> None:
     await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
 
 
-async def cancel(task: Task[T]) -> None:
+async def cancel[T](task: Task[T]) -> None:
     # Based on https://discuss.python.org/t/asyncio-cancel-a-cancellation-utility-as-a-coroutine-this-time-with-feeling/26304/2
     if task.done():
         # If the task has already completed, there's nothing to cancel.
