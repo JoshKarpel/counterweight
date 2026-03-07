@@ -53,6 +53,12 @@ codegen:
 
 alias c := codegen
 
+[doc('Run the counterweight devlog')]
+devlog:
+    uv run counterweight devlog
+
+alias dl := devlog
+
 [doc('Upgrade all dependencies')]
 upgrade:
     uv lock --upgrade
