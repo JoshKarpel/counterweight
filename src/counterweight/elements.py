@@ -55,7 +55,7 @@ class Text(FrozenForbidExtras):
     @cached_property
     def cells(self) -> tuple[CellPaint, ...]:
         if isinstance(self.content, str):
-            return tuple(CellPaint(char=char, style=self.style.typography.style) for char in self.content)
+            return tuple(CellPaint(char=char, style=self.style.text_style) for char in self.content)
         else:
             return sum((chunk.cells for chunk in self.content), ())
 

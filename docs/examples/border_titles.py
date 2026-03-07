@@ -12,34 +12,33 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=row | align_self_stretch | justify_children_center | align_children_center | border_lightrounded,
+                style=row | grow(1) | justify_children_center | align_children_center | border_lightrounded | pad(1),
                 children=[
                     Text(
-                        style=inset_top_left | absolute(x=1, y=-1),
+                        style=position_absolute | inset_left(1) | inset_top(-1),
                         content=" Top-Left Title ",
                     ),
                     Text(
-                        style=inset_top_center | absolute(x=0, y=-1),
+                        style=inset_top_center | inset_top(-1),
                         content=" Top-Center Title ",
                     ),
                     Text(
-                        style=inset_top_right | absolute(x=-1, y=-1),
+                        style=position_absolute | inset_top(-1) | inset_right(1),
                         content=" Top-Right Title ",
                     ),
                     Text(
-                        style=inset_bottom_left | absolute(x=1, y=1),
+                        style=position_absolute | inset_bottom(-1) | inset_left(1),
                         content=" Bottom-Left Title ",
                     ),
                     Text(
-                        style=inset_bottom_center | absolute(x=0, y=1),
+                        style=inset_bottom_center | inset_bottom(-1),
                         content=" Bottom-Center Title ",
                     ),
                     Text(
-                        style=inset_bottom_right | absolute(x=-1, y=1),
+                        style=position_absolute | inset_bottom(-1) | inset_right(1),
                         content=" Bottom-Right Title ",
                     ),
                     Text(
-                        style=weight_none,
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     ),
                 ],

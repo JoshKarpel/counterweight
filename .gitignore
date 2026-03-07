@@ -140,3 +140,5 @@ dmypy.json
 
 *.austin
 *.ss
+
+.claude/settings.local.json

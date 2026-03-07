@@ -12,13 +12,23 @@ from time import perf_counter_ns
 from typing import Iterable, TextIO
 from weakref import WeakSet
 
+import waxy
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
 from counterweight._utils import cancel, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend, ToggleBorderHealing, _Control
+from counterweight.controls import (
+    AnyControl,
+    Bell,
+    PrintPaint,
+    Quit,
+    Screenshot,
+    Suspend,
+    ToggleBorderHealing,
+    _Control,
+)
 from counterweight.elements import AnyElement, Div
 from counterweight.events import (
     AnyEvent,
@@ -35,11 +45,12 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import LayoutBox
+from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
+    paint_to_str,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
@@ -47,14 +58,7 @@ from counterweight.output import (
 )
 from counterweight.paint import BLANK, Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
-from counterweight.styles import Span, Style
-from counterweight.styles.styles import Flex
-
-SCREEN_LAYOUT = Flex(
-    direction="column",
-    justify_children="start",
-    align_children="stretch",
-)
+from counterweight.styles import Style
 
 logger = get_logger()
 
@@ -91,12 +95,15 @@ async def app(
     """
     configure_logging()
 
-    def handle_screen_size_change() -> tuple[Style, Paint]:
+    def handle_screen_size_change() -> tuple[Style, Paint, int, int]:
         w, h = dimensions or shutil.get_terminal_size()
 
         ss = Style(
-            layout=SCREEN_LAYOUT,
-            span=Span(width=w, height=h),
+            layout=waxy.Style(
+                display=waxy.Display.Grid,
+                size_width=waxy.Length(w),
+                size_height=waxy.Length(h),
+            ),
         )
 
         cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
@@ -104,7 +111,7 @@ async def app(
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
 
-        return ss, cp
+        return ss, cp, w, h
 
     @component
     def screen() -> Div:
@@ -149,18 +156,26 @@ async def app(
             )
             key_thread.start()
 
-        screen_style, current_paint = handle_screen_size_change()
+        screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
         shadow = None
         active_effects: set[Task[None]] = set()
+        elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
         should_quit = False
         should_bell = False
         should_screenshot: Screenshot | None = None
+        should_print_paint: PrintPaint | None = None
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
+
+        # Warmup: render and lay out once without painting so that use_rects()
+        # returns real dimensions on the first visible render.
+        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
+        shadow = update_shadow(screen(), shadow)
+        compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -168,6 +183,7 @@ async def app(
             nonlocal should_quit
             nonlocal should_bell
             nonlocal should_screenshot
+            nonlocal should_print_paint
             nonlocal should_suspend
 
             nonlocal do_heal_borders
@@ -181,6 +197,8 @@ async def app(
                     should_bell = True
                 case Screenshot():
                     should_screenshot = control
+                case PrintPaint():
+                    should_print_paint = control
                 case Suspend():
                     should_suspend = control
                     should_render = True
@@ -201,6 +219,11 @@ async def app(
                         output_stream.write("\a")
                         output_stream.flush()
                     should_bell = False
+
+                if should_print_paint:
+                    output = paint_to_str(current_paint, ansi=should_print_paint.ansi)
+                    print(output, file=should_print_paint.stream, flush=True)
+                    should_print_paint = None
 
                 if should_screenshot:
                     try:
@@ -256,7 +279,7 @@ async def app(
 
                         allow_key_thread.set()
 
-                    screen_style, current_paint = handle_screen_size_change()
+                    screen_style, current_paint, w, h = handle_screen_size_change()
 
                     logger.debug(
                         "Resuming application",
@@ -275,15 +298,18 @@ async def app(
                     )
 
                     start_layout = perf_counter_ns()
-                    layout_tree = build_layout_tree_from_shadow(shadow)
-                    layout_tree.compute_layout()
+                    available = waxy.AvailableSize(
+                        width=waxy.Definite(w),
+                        height=waxy.Definite(h),
+                    )
+                    elements_and_layouts = compute_layout(shadow, available)
                     logger.debug(
                         "Calculated layout",
                         elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
                     )
 
                     start_paint = perf_counter_ns()
-                    new_paint, border_healing_hints = paint_layout(layout_tree)
+                    new_paint, border_healing_hints = paint_layout(elements_and_layouts)
                     logger.debug(
                         "Generated new paint",
                         elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
@@ -368,19 +394,19 @@ async def app(
                             should_render = True
                         case TerminalResized():
                             should_render = True
-                            screen_style, current_paint = handle_screen_size_change()
+                            screen_style, current_paint, w, h = handle_screen_size_change()
                         case KeyPressed():
-                            for e in layout_tree.walk_elements_from_bottom():
-                                if e.on_key:
-                                    handle_control(e.on_key(event))
+                            for element, _ in reversed(elements_and_layouts):
+                                if element.on_key:
+                                    handle_control(element.on_key(event))
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            for b in layout_tree.walk_from_bottom():
-                                _, border_rect, _ = b.dims.padding_border_margin_rects()
-
+                            mouse_pos = waxy.Point(x=mouse_position.x, y=mouse_position.y)
+                            event_pos = waxy.Point(x=m.absolute.x, y=m.absolute.y)
+                            for element, resolved in reversed(elements_and_layouts):
                                 # Send mouse events if the current *or previous* position is in the border rect
-                                if mouse_position in border_rect or m.absolute in border_rect:
-                                    if b.element.on_mouse:
-                                        handle_control(b.element.on_mouse(event))
+                                if resolved.border.contains(mouse_pos) or resolved.border.contains(event_pos):
+                                    if element.on_mouse:
+                                        handle_control(element.on_mouse(event))
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(
@@ -465,11 +491,3 @@ def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
             diff[pos] = new_cell
 
     return diff
-
-
-def build_layout_tree_from_shadow(node: ShadowNode, parent: LayoutBox | None = None) -> LayoutBox:
-    box = LayoutBox(element=node.element, parent=parent, shadow=node)
-
-    box.children.extend(build_layout_tree_from_shadow(node=child_node, parent=box) for child_node in node.children)
-
-    return box

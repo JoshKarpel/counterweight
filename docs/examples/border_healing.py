@@ -7,8 +7,20 @@ from counterweight.events import KeyPressed
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-common_style = align_self_stretch | justify_children_center | align_children_center
-border_kind = border_double
+container_style = grow(1) | align_self_stretch | border_collapse
+box_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
+
+
+def box(s: str) -> Div:
+    return Div(
+        style=box_style | border_double,
+        children=[
+            Text(
+                style=text_justify_center | text("cyan", 500),
+                content=s,
+            )
+        ],
+    )
 
 
 @component
@@ -21,58 +33,21 @@ def root() -> Div:
                 return None
 
     return Div(
-        style=row | common_style,
+        style=row | container_style,
         on_key=on_key,
         children=[
             Div(
-                style=col | common_style,
-                children=[
-                    box("A1", edge_style=None),
-                    box("A2", edge_style=border_bottom_left_right),
-                ],
+                style=col | container_style,
+                children=[box("A1"), box("A2")],
             ),
             Div(
-                style=col | common_style,
+                style=col | container_style,
                 children=[
-                    Div(
-                        style=row | common_style,
-                        children=[
-                            box("B1", edge_style=border_top_bottom_right),
-                            box("B2", edge_style=border_top_bottom_right),
-                        ],
-                    ),
-                    Div(
-                        style=row | common_style,
-                        children=[
-                            box("C1"),
-                            box("C2"),
-                            box("C3"),
-                            box("C4"),
-                        ],
-                    ),
-                    Div(
-                        style=row | common_style,
-                        children=[
-                            box("D1"),
-                            box("D2"),
-                            box("D3"),
-                        ],
-                    ),
+                    Div(style=row | container_style, children=[box("B1"), box("B2")]),
+                    Div(style=row | container_style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
+                    Div(style=row | container_style, children=[box("D1"), box("D2"), box("D3")]),
                 ],
             ),
-        ],
-    )
-
-
-@component
-def box(s: str, edge_style: Style | None = border_bottom_right) -> Div:
-    return Div(
-        style=common_style | border_kind | edge_style,
-        children=[
-            Text(
-                style=text_justify_center | (text_cyan_500 if edge_style == border_bottom_right else text_amber_500),
-                content=s,
-            )
         ],
     )
 

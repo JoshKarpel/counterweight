@@ -9,15 +9,21 @@ from counterweight.styles.utilities import *
 @component
 def root() -> Div:
     return Div(
-        style=content_green_500
-        | padding_orange_500
-        | pad_x_2
-        | pad_y_1
-        | border_lightrounded
-        | border_bg_blue_500
-        | margin_red_500
-        | margin_x_2
-        | margin_y_1
+        style=col,
+        children=[
+            Div(
+                style=grow(1)
+                | content_color("green", 500)
+                | padding_color("orange", 500)
+                | pad_x(2)
+                | pad_y(1)
+                | border_lightrounded
+                | border_bg("blue", 500)
+                | margin_color("red", 500)
+                | margin_x(2)
+                | margin_y(1)
+            )
+        ],
     )
 
 

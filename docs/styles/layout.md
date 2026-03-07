@@ -43,8 +43,6 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 
 ### Relative Positioning
 
-::: counterweight.styles.Relative
-
 ```python
 --8<-- "relative_positioning.py:example"
 ```
@@ -52,8 +50,6 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 ![Relative Positioning](../assets/relative-positioning.svg)
 
 ### Absolute Positioning
-
-::: counterweight.styles.Absolute
 
 ```python
 --8<-- "absolute_positioning.py:example"
@@ -75,14 +71,3 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 ```
 
 ![Absolute Positioning Insets](../assets/absolute-positioning-insets.svg)
-
-
-### Fixed Positioning
-
-::: counterweight.styles.Fixed
-
-```python
---8<-- "fixed_positioning.py:example"
-```
-
-![Fixed Positioning](../assets/fixed-positioning.svg)

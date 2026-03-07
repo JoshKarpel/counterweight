@@ -10,16 +10,15 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_effect, use_ref, use_state
 from counterweight.keys import Key
-from counterweight.styles import Border, BorderKind, Style
-from counterweight.styles.styles import Flex, Padding
+from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
-    border_amber_700,
-    border_lime_700,
-    border_rose_500,
-    border_sky_700,
-    border_teal_600,
-    text_rose_500,
-    text_teal_600,
+    border_all,
+    border_color,
+    border_lightrounded,
+    col,
+    pad,
+    row,
+    text,
 )
 
 logger = get_logger()
@@ -34,12 +33,12 @@ def toggle() -> Div:
 
     border, set_border = use_state(advance_border)
 
-    border_color_ref = use_ref(cycle([border_lime_700, border_amber_700, border_sky_700]))
+    border_color_ref = use_ref(cycle([border_color("lime", 700), border_color("amber", 700), border_color("sky", 700)]))
 
     def advance_border_color() -> Style:
         return next(border_color_ref.current)
 
-    border_color, set_border_color = use_state(advance_border_color)
+    border_color_style, set_border_color_style = use_state(advance_border_color)
 
     toggled, set_toggled = use_state(False)
 
@@ -50,44 +49,22 @@ def toggle() -> Div:
             case Key.F1:
                 set_border(advance_border())
             case Key.F2:
-                set_border_color(advance_border_color())
+                set_border_color_style(advance_border_color())
 
     return Div(
         children=[
-            # TODO: why does putting this here break the layout? it's above the outer div...
-            # Paragraph(
-            #     content="End-to-End Demo",
-            #     style=Style(
-            #         span=Span(width="auto"),
-            #         border=Border(kind=BorderKind.LightRounded),
-            #     ),
-            # ),
             Div(
                 children=[
                     Text(
                         content="End-to-End Demo",
-                        style=border_color
-                        | Style(
-                            border=Border(kind=border),
-                            padding=Padding(top=1, bottom=1, left=1, right=1),
-                        ),
+                        style=border_color_style | pad(1) | border_all | Style(border_kind=border),
                     ),
                     time() if toggled else textpad(),
                 ],
-                style=Style(
-                    layout=Flex(direction="row"),
-                    border=Border(kind=BorderKind.LightRounded),
-                ),
+                style=row | border_lightrounded,
             ),
         ],
-        style=Style(
-            layout=Flex(
-                direction="column",
-                # TODO: without align_children="stretch", the children don't grow in width, even though they have text in them...
-                # maybe I'm applying auto width too late?
-                align_children="stretch",
-            ),
-        ),
+        style=col,
         on_key=on_key,
     )
 
@@ -105,12 +82,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text_rose_500
-        | border_teal_600
-        | Style(
-            border=Border(kind=BorderKind.LightRounded),
-            padding=Padding(top=1, bottom=1, left=1, right=1),
-        ),
+        style=text("rose", 500) | border_color("teal", 600) | pad(1) | border_lightrounded,
     )
 
 
@@ -132,12 +104,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text_teal_600
-        | border_rose_500
-        | Style(
-            border=Border(kind=BorderKind.LightRounded),
-            padding=Padding(top=1, bottom=1, left=1, right=1),
-        ),
+        style=text("teal", 600) | border_color("rose", 500) | pad(1) | border_lightrounded,
         on_key=on_key,
     )
 

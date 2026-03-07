@@ -93,8 +93,8 @@ def board() -> Div:
         },
     )
 
-    b = text_bg_amber_600
-    w = text_bg_amber_900
+    b = text_bg("amber", 600)
+    w = text_bg("amber", 900)
     rows: list[list[Text]] = []
     for r in range(8):
         rows.append([])
@@ -121,7 +121,7 @@ def board() -> Div:
         style=col | justify_children_center | align_children_center,
         children=[
             Div(
-                style=row | weight_none | justify_children_center | align_children_center,
+                style=row | justify_children_center | align_children_center,
                 children=r,
             )
             for r in rows

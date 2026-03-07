@@ -32,7 +32,7 @@ def root() -> Div:
         style=col | justify_children_space_between | align_children_center,
         children=[
             Text(
-                style=text_amber_600,
+                style=text("amber", 600),
                 content="Stopwatch",
             ),
             Div(
@@ -41,7 +41,7 @@ def root() -> Div:
                 children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
             ),
             Text(
-                style=border_slate_400 | text_slate_200 | border_lightrounded | pad_x_2 | pad_y_1,
+                style=border_color("slate", 400) | text("slate", 200) | border_lightrounded | pad_x(2) | pad_y(1),
                 content=dedent(
                     """\
                     - <tab>/<shift+tab> to select next/previous stopwatch
@@ -85,13 +85,13 @@ def stopwatch(selected: bool) -> Text:
     return Text(
         content=f"{elapsed_time:.6f}",
         style=(
-            (border_emerald_600 if selected else border_emerald_300)
+            (border_color("emerald", 600) if selected else border_color("emerald", 300))
             if running
-            else (border_rose_500 if selected else border_rose_400)
+            else (border_color("rose", 500) if selected else border_color("rose", 400))
         )
         | (border_heavy if selected else border_double)
-        | pad_x_2
-        | pad_y_1,
+        | pad_x(2)
+        | pad_y(1),
         on_key=on_key,
     )
 

@@ -1,16 +1,43 @@
 # Changelog
 
-## Next
-
-### Removed
-
-- [#165](https://github.com/JoshKarpel/counterweight/pull/165)
-  Dropped support for Python `3.11`.
+## `0.1.0`
 
 ### Added
 
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
+
+
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  Added a `PrintPaint` autopilot control that prints the current rendered frame as a text grid,
+  useful for debugging layout and rendering output.
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;
+  `margin(n)`, `margin_x(n)`, `margin_y(n)`, `margin_top(n)`, etc.;
+  `gap(n)`, `gap_width(n)`, `gap_height(n)`;
+  `size(w, h)`, `grow(n)`;
+  `inset_top(n)`, `inset_bottom(n)`, `inset_left(n)`, `inset_right(n)`;
+  `full`, `full_width`, `full_height`.
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  New style utilities `position_absolute` and `position_relative` replace the old
+  `absolute(x, y)`, `relative(x, y)`, and `fixed(x, y)` helpers.
+  Offsets are now expressed with `inset_left(n)` / `inset_top(n)` (and friends) instead of `x`/`y` arguments.
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  Color style utilities (e.g. `text("slate", 500)`, `border_bg("blue", 300)`,
+  `content_color("green", 500)`, `margin_color("red", 600)`) now use functional helpers
+  instead of per-shade constants, greatly reducing the size of the generated utilities module.
 - [#123](https://github.com/JoshKarpel/counterweight/pull/123)
   Add styling for content area background color.
+
+### Changed
+
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  The layout engine has been replaced with [waxy](https://github.com/JoshKarpel/waxy),
+  a Python binding for the [taffy](https://github.com/DioxusLabs/taffy) flexbox/grid layout engine.
+  This brings standard CSS flexbox semantics, improved correctness for complex layouts,
+  and eliminates the hand-rolled layout engine.
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  `use_rects` now returns `waxy.Rect` objects instead of the removed `counterweight.geometry.Rect`.
 
 ### Fixed
 
@@ -19,6 +46,22 @@
   (they were previously reported as mouse presses).
   The `check-input` CLI subcommand is also fixed
   (was broken by [#86](https://github.com/JoshKarpel/counterweight/pull/86)).
+
+### Removed
+
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  The following style types have been removed; layout is now configured directly via
+  `waxy.Style` on the `Style.layout` field or through the new utility helpers:
+  `Border`, `BorderEdge`, `Margin`, `Padding`, `Content`, `Span`, `Typography`,
+  `Relative`, `Absolute`, `Fixed`, `Flex`, `Inset`.
+  The `Style` model is now flat: border, margin, padding, typography, and positioning
+  properties are top-level fields rather than nested sub-models.
+- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
+  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed;
+  use `waxy.Rect` instead.
+- [#165](https://github.com/JoshKarpel/counterweight/pull/165)
+  Dropped support for Python `3.11` and `3.12`.
+  Python `3.13` or later is now required.
 
 ## `0.0.9`
 
@@ -76,10 +119,10 @@ Released `2024-01-28`
 ### Added
 
 - [#92](https://github.com/JoshKarpel/counterweight/pull/92)
-  Added an `inset` attribute to [`Absolute`][counterweight.styles.Absolute] that chooses which corner
+  Added an `inset` attribute to `Absolute` that chooses which corner
   of the parent's context box to use as the origin for the absolute positioning.
 - [#98](https://github.com/JoshKarpel/counterweight/pull/98)
-  Added a `z` attribute to [`Flex`][counterweight.styles.Flex] that controls the stacking order of elements.
+  Added a `z` attribute to `Flex` that controls the stacking order of elements.
 
 ### Changed
 
@@ -103,7 +146,7 @@ Released `2024-01-06`
   This can be used to run a subprocess that also wants control of the terminal (e.g., a text editor).
 - [#88](https://github.com/JoshKarpel/counterweight/pull/88)
   [#90](https://github.com/JoshKarpel/counterweight/pull/90)
-  Implemented [`Absolute`][counterweight.styles.Absolute] and [`Fixed`][counterweight.styles.Fixed]
+  Implemented `Absolute` and `Fixed`
   positioning, which allow for precise placement of elements outside the normal layout flow.
 
 ## `0.0.4`

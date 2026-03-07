@@ -1,2231 +1,1034 @@
-from counterweight.styles import (
-    Absolute,
-    Border,
-    BorderEdge,
-    BorderKind,
-    CellStyle,
-    Color,
-    Content,
-    Fixed,
-    Flex,
-    Inset,
-    Margin,
-    Padding,
-    Relative,
-    Style,
-    Typography,
-)
+from functools import lru_cache
+from typing import Literal
+
+import waxy
+
+from counterweight.styles import BorderKind, CellStyle, Color, Style
+
+Side = Literal["top", "bottom", "left", "right"]
 
 # Start generated
 
-text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))
-text_black = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#000000"))))
+text_white = Style(text_style=CellStyle(foreground=Color.from_hex("#ffffff")))
+text_black = Style(text_style=CellStyle(foreground=Color.from_hex("#000000")))
 
 slate_50 = Color.from_hex("#f8fafc")
-text_slate_50 = Style(typography=Typography(style=CellStyle(foreground=slate_50)))
-text_bg_slate_50 = Style(typography=Typography(style=CellStyle(background=slate_50)))
-border_slate_50 = Style(border=Border(style=CellStyle(foreground=slate_50)))
-border_bg_slate_50 = Style(border=Border(style=CellStyle(background=slate_50)))
-margin_slate_50 = Style(margin=Margin(color=slate_50))
-padding_slate_50 = Style(padding=Padding(color=slate_50))
-content_slate_50 = Style(content=Content(color=slate_50))
 slate_100 = Color.from_hex("#f1f5f9")
-text_slate_100 = Style(typography=Typography(style=CellStyle(foreground=slate_100)))
-text_bg_slate_100 = Style(typography=Typography(style=CellStyle(background=slate_100)))
-border_slate_100 = Style(border=Border(style=CellStyle(foreground=slate_100)))
-border_bg_slate_100 = Style(border=Border(style=CellStyle(background=slate_100)))
-margin_slate_100 = Style(margin=Margin(color=slate_100))
-padding_slate_100 = Style(padding=Padding(color=slate_100))
-content_slate_100 = Style(content=Content(color=slate_100))
 slate_200 = Color.from_hex("#e2e8f0")
-text_slate_200 = Style(typography=Typography(style=CellStyle(foreground=slate_200)))
-text_bg_slate_200 = Style(typography=Typography(style=CellStyle(background=slate_200)))
-border_slate_200 = Style(border=Border(style=CellStyle(foreground=slate_200)))
-border_bg_slate_200 = Style(border=Border(style=CellStyle(background=slate_200)))
-margin_slate_200 = Style(margin=Margin(color=slate_200))
-padding_slate_200 = Style(padding=Padding(color=slate_200))
-content_slate_200 = Style(content=Content(color=slate_200))
 slate_300 = Color.from_hex("#cbd5e1")
-text_slate_300 = Style(typography=Typography(style=CellStyle(foreground=slate_300)))
-text_bg_slate_300 = Style(typography=Typography(style=CellStyle(background=slate_300)))
-border_slate_300 = Style(border=Border(style=CellStyle(foreground=slate_300)))
-border_bg_slate_300 = Style(border=Border(style=CellStyle(background=slate_300)))
-margin_slate_300 = Style(margin=Margin(color=slate_300))
-padding_slate_300 = Style(padding=Padding(color=slate_300))
-content_slate_300 = Style(content=Content(color=slate_300))
 slate_400 = Color.from_hex("#94a3b8")
-text_slate_400 = Style(typography=Typography(style=CellStyle(foreground=slate_400)))
-text_bg_slate_400 = Style(typography=Typography(style=CellStyle(background=slate_400)))
-border_slate_400 = Style(border=Border(style=CellStyle(foreground=slate_400)))
-border_bg_slate_400 = Style(border=Border(style=CellStyle(background=slate_400)))
-margin_slate_400 = Style(margin=Margin(color=slate_400))
-padding_slate_400 = Style(padding=Padding(color=slate_400))
-content_slate_400 = Style(content=Content(color=slate_400))
 slate_500 = Color.from_hex("#64748b")
-text_slate_500 = Style(typography=Typography(style=CellStyle(foreground=slate_500)))
-text_bg_slate_500 = Style(typography=Typography(style=CellStyle(background=slate_500)))
-border_slate_500 = Style(border=Border(style=CellStyle(foreground=slate_500)))
-border_bg_slate_500 = Style(border=Border(style=CellStyle(background=slate_500)))
-margin_slate_500 = Style(margin=Margin(color=slate_500))
-padding_slate_500 = Style(padding=Padding(color=slate_500))
-content_slate_500 = Style(content=Content(color=slate_500))
 slate_600 = Color.from_hex("#475569")
-text_slate_600 = Style(typography=Typography(style=CellStyle(foreground=slate_600)))
-text_bg_slate_600 = Style(typography=Typography(style=CellStyle(background=slate_600)))
-border_slate_600 = Style(border=Border(style=CellStyle(foreground=slate_600)))
-border_bg_slate_600 = Style(border=Border(style=CellStyle(background=slate_600)))
-margin_slate_600 = Style(margin=Margin(color=slate_600))
-padding_slate_600 = Style(padding=Padding(color=slate_600))
-content_slate_600 = Style(content=Content(color=slate_600))
 slate_700 = Color.from_hex("#334155")
-text_slate_700 = Style(typography=Typography(style=CellStyle(foreground=slate_700)))
-text_bg_slate_700 = Style(typography=Typography(style=CellStyle(background=slate_700)))
-border_slate_700 = Style(border=Border(style=CellStyle(foreground=slate_700)))
-border_bg_slate_700 = Style(border=Border(style=CellStyle(background=slate_700)))
-margin_slate_700 = Style(margin=Margin(color=slate_700))
-padding_slate_700 = Style(padding=Padding(color=slate_700))
-content_slate_700 = Style(content=Content(color=slate_700))
 slate_800 = Color.from_hex("#1e293b")
-text_slate_800 = Style(typography=Typography(style=CellStyle(foreground=slate_800)))
-text_bg_slate_800 = Style(typography=Typography(style=CellStyle(background=slate_800)))
-border_slate_800 = Style(border=Border(style=CellStyle(foreground=slate_800)))
-border_bg_slate_800 = Style(border=Border(style=CellStyle(background=slate_800)))
-margin_slate_800 = Style(margin=Margin(color=slate_800))
-padding_slate_800 = Style(padding=Padding(color=slate_800))
-content_slate_800 = Style(content=Content(color=slate_800))
 slate_900 = Color.from_hex("#0f172a")
-text_slate_900 = Style(typography=Typography(style=CellStyle(foreground=slate_900)))
-text_bg_slate_900 = Style(typography=Typography(style=CellStyle(background=slate_900)))
-border_slate_900 = Style(border=Border(style=CellStyle(foreground=slate_900)))
-border_bg_slate_900 = Style(border=Border(style=CellStyle(background=slate_900)))
-margin_slate_900 = Style(margin=Margin(color=slate_900))
-padding_slate_900 = Style(padding=Padding(color=slate_900))
-content_slate_900 = Style(content=Content(color=slate_900))
 slate_950 = Color.from_hex("#020617")
-text_slate_950 = Style(typography=Typography(style=CellStyle(foreground=slate_950)))
-text_bg_slate_950 = Style(typography=Typography(style=CellStyle(background=slate_950)))
-border_slate_950 = Style(border=Border(style=CellStyle(foreground=slate_950)))
-border_bg_slate_950 = Style(border=Border(style=CellStyle(background=slate_950)))
-margin_slate_950 = Style(margin=Margin(color=slate_950))
-padding_slate_950 = Style(padding=Padding(color=slate_950))
-content_slate_950 = Style(content=Content(color=slate_950))
 
 gray_50 = Color.from_hex("#f9fafb")
-text_gray_50 = Style(typography=Typography(style=CellStyle(foreground=gray_50)))
-text_bg_gray_50 = Style(typography=Typography(style=CellStyle(background=gray_50)))
-border_gray_50 = Style(border=Border(style=CellStyle(foreground=gray_50)))
-border_bg_gray_50 = Style(border=Border(style=CellStyle(background=gray_50)))
-margin_gray_50 = Style(margin=Margin(color=gray_50))
-padding_gray_50 = Style(padding=Padding(color=gray_50))
-content_gray_50 = Style(content=Content(color=gray_50))
 gray_100 = Color.from_hex("#f3f4f6")
-text_gray_100 = Style(typography=Typography(style=CellStyle(foreground=gray_100)))
-text_bg_gray_100 = Style(typography=Typography(style=CellStyle(background=gray_100)))
-border_gray_100 = Style(border=Border(style=CellStyle(foreground=gray_100)))
-border_bg_gray_100 = Style(border=Border(style=CellStyle(background=gray_100)))
-margin_gray_100 = Style(margin=Margin(color=gray_100))
-padding_gray_100 = Style(padding=Padding(color=gray_100))
-content_gray_100 = Style(content=Content(color=gray_100))
 gray_200 = Color.from_hex("#e5e7eb")
-text_gray_200 = Style(typography=Typography(style=CellStyle(foreground=gray_200)))
-text_bg_gray_200 = Style(typography=Typography(style=CellStyle(background=gray_200)))
-border_gray_200 = Style(border=Border(style=CellStyle(foreground=gray_200)))
-border_bg_gray_200 = Style(border=Border(style=CellStyle(background=gray_200)))
-margin_gray_200 = Style(margin=Margin(color=gray_200))
-padding_gray_200 = Style(padding=Padding(color=gray_200))
-content_gray_200 = Style(content=Content(color=gray_200))
 gray_300 = Color.from_hex("#d1d5db")
-text_gray_300 = Style(typography=Typography(style=CellStyle(foreground=gray_300)))
-text_bg_gray_300 = Style(typography=Typography(style=CellStyle(background=gray_300)))
-border_gray_300 = Style(border=Border(style=CellStyle(foreground=gray_300)))
-border_bg_gray_300 = Style(border=Border(style=CellStyle(background=gray_300)))
-margin_gray_300 = Style(margin=Margin(color=gray_300))
-padding_gray_300 = Style(padding=Padding(color=gray_300))
-content_gray_300 = Style(content=Content(color=gray_300))
 gray_400 = Color.from_hex("#9ca3af")
-text_gray_400 = Style(typography=Typography(style=CellStyle(foreground=gray_400)))
-text_bg_gray_400 = Style(typography=Typography(style=CellStyle(background=gray_400)))
-border_gray_400 = Style(border=Border(style=CellStyle(foreground=gray_400)))
-border_bg_gray_400 = Style(border=Border(style=CellStyle(background=gray_400)))
-margin_gray_400 = Style(margin=Margin(color=gray_400))
-padding_gray_400 = Style(padding=Padding(color=gray_400))
-content_gray_400 = Style(content=Content(color=gray_400))
 gray_500 = Color.from_hex("#6b7280")
-text_gray_500 = Style(typography=Typography(style=CellStyle(foreground=gray_500)))
-text_bg_gray_500 = Style(typography=Typography(style=CellStyle(background=gray_500)))
-border_gray_500 = Style(border=Border(style=CellStyle(foreground=gray_500)))
-border_bg_gray_500 = Style(border=Border(style=CellStyle(background=gray_500)))
-margin_gray_500 = Style(margin=Margin(color=gray_500))
-padding_gray_500 = Style(padding=Padding(color=gray_500))
-content_gray_500 = Style(content=Content(color=gray_500))
 gray_600 = Color.from_hex("#4b5563")
-text_gray_600 = Style(typography=Typography(style=CellStyle(foreground=gray_600)))
-text_bg_gray_600 = Style(typography=Typography(style=CellStyle(background=gray_600)))
-border_gray_600 = Style(border=Border(style=CellStyle(foreground=gray_600)))
-border_bg_gray_600 = Style(border=Border(style=CellStyle(background=gray_600)))
-margin_gray_600 = Style(margin=Margin(color=gray_600))
-padding_gray_600 = Style(padding=Padding(color=gray_600))
-content_gray_600 = Style(content=Content(color=gray_600))
 gray_700 = Color.from_hex("#374151")
-text_gray_700 = Style(typography=Typography(style=CellStyle(foreground=gray_700)))
-text_bg_gray_700 = Style(typography=Typography(style=CellStyle(background=gray_700)))
-border_gray_700 = Style(border=Border(style=CellStyle(foreground=gray_700)))
-border_bg_gray_700 = Style(border=Border(style=CellStyle(background=gray_700)))
-margin_gray_700 = Style(margin=Margin(color=gray_700))
-padding_gray_700 = Style(padding=Padding(color=gray_700))
-content_gray_700 = Style(content=Content(color=gray_700))
 gray_800 = Color.from_hex("#1f2937")
-text_gray_800 = Style(typography=Typography(style=CellStyle(foreground=gray_800)))
-text_bg_gray_800 = Style(typography=Typography(style=CellStyle(background=gray_800)))
-border_gray_800 = Style(border=Border(style=CellStyle(foreground=gray_800)))
-border_bg_gray_800 = Style(border=Border(style=CellStyle(background=gray_800)))
-margin_gray_800 = Style(margin=Margin(color=gray_800))
-padding_gray_800 = Style(padding=Padding(color=gray_800))
-content_gray_800 = Style(content=Content(color=gray_800))
 gray_900 = Color.from_hex("#111827")
-text_gray_900 = Style(typography=Typography(style=CellStyle(foreground=gray_900)))
-text_bg_gray_900 = Style(typography=Typography(style=CellStyle(background=gray_900)))
-border_gray_900 = Style(border=Border(style=CellStyle(foreground=gray_900)))
-border_bg_gray_900 = Style(border=Border(style=CellStyle(background=gray_900)))
-margin_gray_900 = Style(margin=Margin(color=gray_900))
-padding_gray_900 = Style(padding=Padding(color=gray_900))
-content_gray_900 = Style(content=Content(color=gray_900))
 gray_950 = Color.from_hex("#030712")
-text_gray_950 = Style(typography=Typography(style=CellStyle(foreground=gray_950)))
-text_bg_gray_950 = Style(typography=Typography(style=CellStyle(background=gray_950)))
-border_gray_950 = Style(border=Border(style=CellStyle(foreground=gray_950)))
-border_bg_gray_950 = Style(border=Border(style=CellStyle(background=gray_950)))
-margin_gray_950 = Style(margin=Margin(color=gray_950))
-padding_gray_950 = Style(padding=Padding(color=gray_950))
-content_gray_950 = Style(content=Content(color=gray_950))
 
 zinc_50 = Color.from_hex("#fafafa")
-text_zinc_50 = Style(typography=Typography(style=CellStyle(foreground=zinc_50)))
-text_bg_zinc_50 = Style(typography=Typography(style=CellStyle(background=zinc_50)))
-border_zinc_50 = Style(border=Border(style=CellStyle(foreground=zinc_50)))
-border_bg_zinc_50 = Style(border=Border(style=CellStyle(background=zinc_50)))
-margin_zinc_50 = Style(margin=Margin(color=zinc_50))
-padding_zinc_50 = Style(padding=Padding(color=zinc_50))
-content_zinc_50 = Style(content=Content(color=zinc_50))
 zinc_100 = Color.from_hex("#f4f4f5")
-text_zinc_100 = Style(typography=Typography(style=CellStyle(foreground=zinc_100)))
-text_bg_zinc_100 = Style(typography=Typography(style=CellStyle(background=zinc_100)))
-border_zinc_100 = Style(border=Border(style=CellStyle(foreground=zinc_100)))
-border_bg_zinc_100 = Style(border=Border(style=CellStyle(background=zinc_100)))
-margin_zinc_100 = Style(margin=Margin(color=zinc_100))
-padding_zinc_100 = Style(padding=Padding(color=zinc_100))
-content_zinc_100 = Style(content=Content(color=zinc_100))
 zinc_200 = Color.from_hex("#e4e4e7")
-text_zinc_200 = Style(typography=Typography(style=CellStyle(foreground=zinc_200)))
-text_bg_zinc_200 = Style(typography=Typography(style=CellStyle(background=zinc_200)))
-border_zinc_200 = Style(border=Border(style=CellStyle(foreground=zinc_200)))
-border_bg_zinc_200 = Style(border=Border(style=CellStyle(background=zinc_200)))
-margin_zinc_200 = Style(margin=Margin(color=zinc_200))
-padding_zinc_200 = Style(padding=Padding(color=zinc_200))
-content_zinc_200 = Style(content=Content(color=zinc_200))
 zinc_300 = Color.from_hex("#d4d4d8")
-text_zinc_300 = Style(typography=Typography(style=CellStyle(foreground=zinc_300)))
-text_bg_zinc_300 = Style(typography=Typography(style=CellStyle(background=zinc_300)))
-border_zinc_300 = Style(border=Border(style=CellStyle(foreground=zinc_300)))
-border_bg_zinc_300 = Style(border=Border(style=CellStyle(background=zinc_300)))
-margin_zinc_300 = Style(margin=Margin(color=zinc_300))
-padding_zinc_300 = Style(padding=Padding(color=zinc_300))
-content_zinc_300 = Style(content=Content(color=zinc_300))
 zinc_400 = Color.from_hex("#a1a1aa")
-text_zinc_400 = Style(typography=Typography(style=CellStyle(foreground=zinc_400)))
-text_bg_zinc_400 = Style(typography=Typography(style=CellStyle(background=zinc_400)))
-border_zinc_400 = Style(border=Border(style=CellStyle(foreground=zinc_400)))
-border_bg_zinc_400 = Style(border=Border(style=CellStyle(background=zinc_400)))
-margin_zinc_400 = Style(margin=Margin(color=zinc_400))
-padding_zinc_400 = Style(padding=Padding(color=zinc_400))
-content_zinc_400 = Style(content=Content(color=zinc_400))
 zinc_500 = Color.from_hex("#71717a")
-text_zinc_500 = Style(typography=Typography(style=CellStyle(foreground=zinc_500)))
-text_bg_zinc_500 = Style(typography=Typography(style=CellStyle(background=zinc_500)))
-border_zinc_500 = Style(border=Border(style=CellStyle(foreground=zinc_500)))
-border_bg_zinc_500 = Style(border=Border(style=CellStyle(background=zinc_500)))
-margin_zinc_500 = Style(margin=Margin(color=zinc_500))
-padding_zinc_500 = Style(padding=Padding(color=zinc_500))
-content_zinc_500 = Style(content=Content(color=zinc_500))
 zinc_600 = Color.from_hex("#52525b")
-text_zinc_600 = Style(typography=Typography(style=CellStyle(foreground=zinc_600)))
-text_bg_zinc_600 = Style(typography=Typography(style=CellStyle(background=zinc_600)))
-border_zinc_600 = Style(border=Border(style=CellStyle(foreground=zinc_600)))
-border_bg_zinc_600 = Style(border=Border(style=CellStyle(background=zinc_600)))
-margin_zinc_600 = Style(margin=Margin(color=zinc_600))
-padding_zinc_600 = Style(padding=Padding(color=zinc_600))
-content_zinc_600 = Style(content=Content(color=zinc_600))
 zinc_700 = Color.from_hex("#3f3f46")
-text_zinc_700 = Style(typography=Typography(style=CellStyle(foreground=zinc_700)))
-text_bg_zinc_700 = Style(typography=Typography(style=CellStyle(background=zinc_700)))
-border_zinc_700 = Style(border=Border(style=CellStyle(foreground=zinc_700)))
-border_bg_zinc_700 = Style(border=Border(style=CellStyle(background=zinc_700)))
-margin_zinc_700 = Style(margin=Margin(color=zinc_700))
-padding_zinc_700 = Style(padding=Padding(color=zinc_700))
-content_zinc_700 = Style(content=Content(color=zinc_700))
 zinc_800 = Color.from_hex("#27272a")
-text_zinc_800 = Style(typography=Typography(style=CellStyle(foreground=zinc_800)))
-text_bg_zinc_800 = Style(typography=Typography(style=CellStyle(background=zinc_800)))
-border_zinc_800 = Style(border=Border(style=CellStyle(foreground=zinc_800)))
-border_bg_zinc_800 = Style(border=Border(style=CellStyle(background=zinc_800)))
-margin_zinc_800 = Style(margin=Margin(color=zinc_800))
-padding_zinc_800 = Style(padding=Padding(color=zinc_800))
-content_zinc_800 = Style(content=Content(color=zinc_800))
 zinc_900 = Color.from_hex("#18181b")
-text_zinc_900 = Style(typography=Typography(style=CellStyle(foreground=zinc_900)))
-text_bg_zinc_900 = Style(typography=Typography(style=CellStyle(background=zinc_900)))
-border_zinc_900 = Style(border=Border(style=CellStyle(foreground=zinc_900)))
-border_bg_zinc_900 = Style(border=Border(style=CellStyle(background=zinc_900)))
-margin_zinc_900 = Style(margin=Margin(color=zinc_900))
-padding_zinc_900 = Style(padding=Padding(color=zinc_900))
-content_zinc_900 = Style(content=Content(color=zinc_900))
 zinc_950 = Color.from_hex("#09090b")
-text_zinc_950 = Style(typography=Typography(style=CellStyle(foreground=zinc_950)))
-text_bg_zinc_950 = Style(typography=Typography(style=CellStyle(background=zinc_950)))
-border_zinc_950 = Style(border=Border(style=CellStyle(foreground=zinc_950)))
-border_bg_zinc_950 = Style(border=Border(style=CellStyle(background=zinc_950)))
-margin_zinc_950 = Style(margin=Margin(color=zinc_950))
-padding_zinc_950 = Style(padding=Padding(color=zinc_950))
-content_zinc_950 = Style(content=Content(color=zinc_950))
 
 neutral_50 = Color.from_hex("#fafafa")
-text_neutral_50 = Style(typography=Typography(style=CellStyle(foreground=neutral_50)))
-text_bg_neutral_50 = Style(typography=Typography(style=CellStyle(background=neutral_50)))
-border_neutral_50 = Style(border=Border(style=CellStyle(foreground=neutral_50)))
-border_bg_neutral_50 = Style(border=Border(style=CellStyle(background=neutral_50)))
-margin_neutral_50 = Style(margin=Margin(color=neutral_50))
-padding_neutral_50 = Style(padding=Padding(color=neutral_50))
-content_neutral_50 = Style(content=Content(color=neutral_50))
 neutral_100 = Color.from_hex("#f5f5f5")
-text_neutral_100 = Style(typography=Typography(style=CellStyle(foreground=neutral_100)))
-text_bg_neutral_100 = Style(typography=Typography(style=CellStyle(background=neutral_100)))
-border_neutral_100 = Style(border=Border(style=CellStyle(foreground=neutral_100)))
-border_bg_neutral_100 = Style(border=Border(style=CellStyle(background=neutral_100)))
-margin_neutral_100 = Style(margin=Margin(color=neutral_100))
-padding_neutral_100 = Style(padding=Padding(color=neutral_100))
-content_neutral_100 = Style(content=Content(color=neutral_100))
 neutral_200 = Color.from_hex("#e5e5e5")
-text_neutral_200 = Style(typography=Typography(style=CellStyle(foreground=neutral_200)))
-text_bg_neutral_200 = Style(typography=Typography(style=CellStyle(background=neutral_200)))
-border_neutral_200 = Style(border=Border(style=CellStyle(foreground=neutral_200)))
-border_bg_neutral_200 = Style(border=Border(style=CellStyle(background=neutral_200)))
-margin_neutral_200 = Style(margin=Margin(color=neutral_200))
-padding_neutral_200 = Style(padding=Padding(color=neutral_200))
-content_neutral_200 = Style(content=Content(color=neutral_200))
 neutral_300 = Color.from_hex("#d4d4d4")
-text_neutral_300 = Style(typography=Typography(style=CellStyle(foreground=neutral_300)))
-text_bg_neutral_300 = Style(typography=Typography(style=CellStyle(background=neutral_300)))
-border_neutral_300 = Style(border=Border(style=CellStyle(foreground=neutral_300)))
-border_bg_neutral_300 = Style(border=Border(style=CellStyle(background=neutral_300)))
-margin_neutral_300 = Style(margin=Margin(color=neutral_300))
-padding_neutral_300 = Style(padding=Padding(color=neutral_300))
-content_neutral_300 = Style(content=Content(color=neutral_300))
 neutral_400 = Color.from_hex("#a3a3a3")
-text_neutral_400 = Style(typography=Typography(style=CellStyle(foreground=neutral_400)))
-text_bg_neutral_400 = Style(typography=Typography(style=CellStyle(background=neutral_400)))
-border_neutral_400 = Style(border=Border(style=CellStyle(foreground=neutral_400)))
-border_bg_neutral_400 = Style(border=Border(style=CellStyle(background=neutral_400)))
-margin_neutral_400 = Style(margin=Margin(color=neutral_400))
-padding_neutral_400 = Style(padding=Padding(color=neutral_400))
-content_neutral_400 = Style(content=Content(color=neutral_400))
 neutral_500 = Color.from_hex("#737373")
-text_neutral_500 = Style(typography=Typography(style=CellStyle(foreground=neutral_500)))
-text_bg_neutral_500 = Style(typography=Typography(style=CellStyle(background=neutral_500)))
-border_neutral_500 = Style(border=Border(style=CellStyle(foreground=neutral_500)))
-border_bg_neutral_500 = Style(border=Border(style=CellStyle(background=neutral_500)))
-margin_neutral_500 = Style(margin=Margin(color=neutral_500))
-padding_neutral_500 = Style(padding=Padding(color=neutral_500))
-content_neutral_500 = Style(content=Content(color=neutral_500))
 neutral_600 = Color.from_hex("#525252")
-text_neutral_600 = Style(typography=Typography(style=CellStyle(foreground=neutral_600)))
-text_bg_neutral_600 = Style(typography=Typography(style=CellStyle(background=neutral_600)))
-border_neutral_600 = Style(border=Border(style=CellStyle(foreground=neutral_600)))
-border_bg_neutral_600 = Style(border=Border(style=CellStyle(background=neutral_600)))
-margin_neutral_600 = Style(margin=Margin(color=neutral_600))
-padding_neutral_600 = Style(padding=Padding(color=neutral_600))
-content_neutral_600 = Style(content=Content(color=neutral_600))
 neutral_700 = Color.from_hex("#404040")
-text_neutral_700 = Style(typography=Typography(style=CellStyle(foreground=neutral_700)))
-text_bg_neutral_700 = Style(typography=Typography(style=CellStyle(background=neutral_700)))
-border_neutral_700 = Style(border=Border(style=CellStyle(foreground=neutral_700)))
-border_bg_neutral_700 = Style(border=Border(style=CellStyle(background=neutral_700)))
-margin_neutral_700 = Style(margin=Margin(color=neutral_700))
-padding_neutral_700 = Style(padding=Padding(color=neutral_700))
-content_neutral_700 = Style(content=Content(color=neutral_700))
 neutral_800 = Color.from_hex("#262626")
-text_neutral_800 = Style(typography=Typography(style=CellStyle(foreground=neutral_800)))
-text_bg_neutral_800 = Style(typography=Typography(style=CellStyle(background=neutral_800)))
-border_neutral_800 = Style(border=Border(style=CellStyle(foreground=neutral_800)))
-border_bg_neutral_800 = Style(border=Border(style=CellStyle(background=neutral_800)))
-margin_neutral_800 = Style(margin=Margin(color=neutral_800))
-padding_neutral_800 = Style(padding=Padding(color=neutral_800))
-content_neutral_800 = Style(content=Content(color=neutral_800))
 neutral_900 = Color.from_hex("#171717")
-text_neutral_900 = Style(typography=Typography(style=CellStyle(foreground=neutral_900)))
-text_bg_neutral_900 = Style(typography=Typography(style=CellStyle(background=neutral_900)))
-border_neutral_900 = Style(border=Border(style=CellStyle(foreground=neutral_900)))
-border_bg_neutral_900 = Style(border=Border(style=CellStyle(background=neutral_900)))
-margin_neutral_900 = Style(margin=Margin(color=neutral_900))
-padding_neutral_900 = Style(padding=Padding(color=neutral_900))
-content_neutral_900 = Style(content=Content(color=neutral_900))
 neutral_950 = Color.from_hex("#0a0a0a")
-text_neutral_950 = Style(typography=Typography(style=CellStyle(foreground=neutral_950)))
-text_bg_neutral_950 = Style(typography=Typography(style=CellStyle(background=neutral_950)))
-border_neutral_950 = Style(border=Border(style=CellStyle(foreground=neutral_950)))
-border_bg_neutral_950 = Style(border=Border(style=CellStyle(background=neutral_950)))
-margin_neutral_950 = Style(margin=Margin(color=neutral_950))
-padding_neutral_950 = Style(padding=Padding(color=neutral_950))
-content_neutral_950 = Style(content=Content(color=neutral_950))
 
 stone_50 = Color.from_hex("#fafaf9")
-text_stone_50 = Style(typography=Typography(style=CellStyle(foreground=stone_50)))
-text_bg_stone_50 = Style(typography=Typography(style=CellStyle(background=stone_50)))
-border_stone_50 = Style(border=Border(style=CellStyle(foreground=stone_50)))
-border_bg_stone_50 = Style(border=Border(style=CellStyle(background=stone_50)))
-margin_stone_50 = Style(margin=Margin(color=stone_50))
-padding_stone_50 = Style(padding=Padding(color=stone_50))
-content_stone_50 = Style(content=Content(color=stone_50))
 stone_100 = Color.from_hex("#f5f5f4")
-text_stone_100 = Style(typography=Typography(style=CellStyle(foreground=stone_100)))
-text_bg_stone_100 = Style(typography=Typography(style=CellStyle(background=stone_100)))
-border_stone_100 = Style(border=Border(style=CellStyle(foreground=stone_100)))
-border_bg_stone_100 = Style(border=Border(style=CellStyle(background=stone_100)))
-margin_stone_100 = Style(margin=Margin(color=stone_100))
-padding_stone_100 = Style(padding=Padding(color=stone_100))
-content_stone_100 = Style(content=Content(color=stone_100))
 stone_200 = Color.from_hex("#e7e5e4")
-text_stone_200 = Style(typography=Typography(style=CellStyle(foreground=stone_200)))
-text_bg_stone_200 = Style(typography=Typography(style=CellStyle(background=stone_200)))
-border_stone_200 = Style(border=Border(style=CellStyle(foreground=stone_200)))
-border_bg_stone_200 = Style(border=Border(style=CellStyle(background=stone_200)))
-margin_stone_200 = Style(margin=Margin(color=stone_200))
-padding_stone_200 = Style(padding=Padding(color=stone_200))
-content_stone_200 = Style(content=Content(color=stone_200))
 stone_300 = Color.from_hex("#d6d3d1")
-text_stone_300 = Style(typography=Typography(style=CellStyle(foreground=stone_300)))
-text_bg_stone_300 = Style(typography=Typography(style=CellStyle(background=stone_300)))
-border_stone_300 = Style(border=Border(style=CellStyle(foreground=stone_300)))
-border_bg_stone_300 = Style(border=Border(style=CellStyle(background=stone_300)))
-margin_stone_300 = Style(margin=Margin(color=stone_300))
-padding_stone_300 = Style(padding=Padding(color=stone_300))
-content_stone_300 = Style(content=Content(color=stone_300))
 stone_400 = Color.from_hex("#a8a29e")
-text_stone_400 = Style(typography=Typography(style=CellStyle(foreground=stone_400)))
-text_bg_stone_400 = Style(typography=Typography(style=CellStyle(background=stone_400)))
-border_stone_400 = Style(border=Border(style=CellStyle(foreground=stone_400)))
-border_bg_stone_400 = Style(border=Border(style=CellStyle(background=stone_400)))
-margin_stone_400 = Style(margin=Margin(color=stone_400))
-padding_stone_400 = Style(padding=Padding(color=stone_400))
-content_stone_400 = Style(content=Content(color=stone_400))
 stone_500 = Color.from_hex("#78716c")
-text_stone_500 = Style(typography=Typography(style=CellStyle(foreground=stone_500)))
-text_bg_stone_500 = Style(typography=Typography(style=CellStyle(background=stone_500)))
-border_stone_500 = Style(border=Border(style=CellStyle(foreground=stone_500)))
-border_bg_stone_500 = Style(border=Border(style=CellStyle(background=stone_500)))
-margin_stone_500 = Style(margin=Margin(color=stone_500))
-padding_stone_500 = Style(padding=Padding(color=stone_500))
-content_stone_500 = Style(content=Content(color=stone_500))
 stone_600 = Color.from_hex("#57534e")
-text_stone_600 = Style(typography=Typography(style=CellStyle(foreground=stone_600)))
-text_bg_stone_600 = Style(typography=Typography(style=CellStyle(background=stone_600)))
-border_stone_600 = Style(border=Border(style=CellStyle(foreground=stone_600)))
-border_bg_stone_600 = Style(border=Border(style=CellStyle(background=stone_600)))
-margin_stone_600 = Style(margin=Margin(color=stone_600))
-padding_stone_600 = Style(padding=Padding(color=stone_600))
-content_stone_600 = Style(content=Content(color=stone_600))
 stone_700 = Color.from_hex("#44403c")
-text_stone_700 = Style(typography=Typography(style=CellStyle(foreground=stone_700)))
-text_bg_stone_700 = Style(typography=Typography(style=CellStyle(background=stone_700)))
-border_stone_700 = Style(border=Border(style=CellStyle(foreground=stone_700)))
-border_bg_stone_700 = Style(border=Border(style=CellStyle(background=stone_700)))
-margin_stone_700 = Style(margin=Margin(color=stone_700))
-padding_stone_700 = Style(padding=Padding(color=stone_700))
-content_stone_700 = Style(content=Content(color=stone_700))
 stone_800 = Color.from_hex("#292524")
-text_stone_800 = Style(typography=Typography(style=CellStyle(foreground=stone_800)))
-text_bg_stone_800 = Style(typography=Typography(style=CellStyle(background=stone_800)))
-border_stone_800 = Style(border=Border(style=CellStyle(foreground=stone_800)))
-border_bg_stone_800 = Style(border=Border(style=CellStyle(background=stone_800)))
-margin_stone_800 = Style(margin=Margin(color=stone_800))
-padding_stone_800 = Style(padding=Padding(color=stone_800))
-content_stone_800 = Style(content=Content(color=stone_800))
 stone_900 = Color.from_hex("#1c1917")
-text_stone_900 = Style(typography=Typography(style=CellStyle(foreground=stone_900)))
-text_bg_stone_900 = Style(typography=Typography(style=CellStyle(background=stone_900)))
-border_stone_900 = Style(border=Border(style=CellStyle(foreground=stone_900)))
-border_bg_stone_900 = Style(border=Border(style=CellStyle(background=stone_900)))
-margin_stone_900 = Style(margin=Margin(color=stone_900))
-padding_stone_900 = Style(padding=Padding(color=stone_900))
-content_stone_900 = Style(content=Content(color=stone_900))
 stone_950 = Color.from_hex("#0c0a09")
-text_stone_950 = Style(typography=Typography(style=CellStyle(foreground=stone_950)))
-text_bg_stone_950 = Style(typography=Typography(style=CellStyle(background=stone_950)))
-border_stone_950 = Style(border=Border(style=CellStyle(foreground=stone_950)))
-border_bg_stone_950 = Style(border=Border(style=CellStyle(background=stone_950)))
-margin_stone_950 = Style(margin=Margin(color=stone_950))
-padding_stone_950 = Style(padding=Padding(color=stone_950))
-content_stone_950 = Style(content=Content(color=stone_950))
 
 red_50 = Color.from_hex("#fef2f2")
-text_red_50 = Style(typography=Typography(style=CellStyle(foreground=red_50)))
-text_bg_red_50 = Style(typography=Typography(style=CellStyle(background=red_50)))
-border_red_50 = Style(border=Border(style=CellStyle(foreground=red_50)))
-border_bg_red_50 = Style(border=Border(style=CellStyle(background=red_50)))
-margin_red_50 = Style(margin=Margin(color=red_50))
-padding_red_50 = Style(padding=Padding(color=red_50))
-content_red_50 = Style(content=Content(color=red_50))
 red_100 = Color.from_hex("#fee2e2")
-text_red_100 = Style(typography=Typography(style=CellStyle(foreground=red_100)))
-text_bg_red_100 = Style(typography=Typography(style=CellStyle(background=red_100)))
-border_red_100 = Style(border=Border(style=CellStyle(foreground=red_100)))
-border_bg_red_100 = Style(border=Border(style=CellStyle(background=red_100)))
-margin_red_100 = Style(margin=Margin(color=red_100))
-padding_red_100 = Style(padding=Padding(color=red_100))
-content_red_100 = Style(content=Content(color=red_100))
 red_200 = Color.from_hex("#fecaca")
-text_red_200 = Style(typography=Typography(style=CellStyle(foreground=red_200)))
-text_bg_red_200 = Style(typography=Typography(style=CellStyle(background=red_200)))
-border_red_200 = Style(border=Border(style=CellStyle(foreground=red_200)))
-border_bg_red_200 = Style(border=Border(style=CellStyle(background=red_200)))
-margin_red_200 = Style(margin=Margin(color=red_200))
-padding_red_200 = Style(padding=Padding(color=red_200))
-content_red_200 = Style(content=Content(color=red_200))
 red_300 = Color.from_hex("#fca5a5")
-text_red_300 = Style(typography=Typography(style=CellStyle(foreground=red_300)))
-text_bg_red_300 = Style(typography=Typography(style=CellStyle(background=red_300)))
-border_red_300 = Style(border=Border(style=CellStyle(foreground=red_300)))
-border_bg_red_300 = Style(border=Border(style=CellStyle(background=red_300)))
-margin_red_300 = Style(margin=Margin(color=red_300))
-padding_red_300 = Style(padding=Padding(color=red_300))
-content_red_300 = Style(content=Content(color=red_300))
 red_400 = Color.from_hex("#f87171")
-text_red_400 = Style(typography=Typography(style=CellStyle(foreground=red_400)))
-text_bg_red_400 = Style(typography=Typography(style=CellStyle(background=red_400)))
-border_red_400 = Style(border=Border(style=CellStyle(foreground=red_400)))
-border_bg_red_400 = Style(border=Border(style=CellStyle(background=red_400)))
-margin_red_400 = Style(margin=Margin(color=red_400))
-padding_red_400 = Style(padding=Padding(color=red_400))
-content_red_400 = Style(content=Content(color=red_400))
 red_500 = Color.from_hex("#ef4444")
-text_red_500 = Style(typography=Typography(style=CellStyle(foreground=red_500)))
-text_bg_red_500 = Style(typography=Typography(style=CellStyle(background=red_500)))
-border_red_500 = Style(border=Border(style=CellStyle(foreground=red_500)))
-border_bg_red_500 = Style(border=Border(style=CellStyle(background=red_500)))
-margin_red_500 = Style(margin=Margin(color=red_500))
-padding_red_500 = Style(padding=Padding(color=red_500))
-content_red_500 = Style(content=Content(color=red_500))
 red_600 = Color.from_hex("#dc2626")
-text_red_600 = Style(typography=Typography(style=CellStyle(foreground=red_600)))
-text_bg_red_600 = Style(typography=Typography(style=CellStyle(background=red_600)))
-border_red_600 = Style(border=Border(style=CellStyle(foreground=red_600)))
-border_bg_red_600 = Style(border=Border(style=CellStyle(background=red_600)))
-margin_red_600 = Style(margin=Margin(color=red_600))
-padding_red_600 = Style(padding=Padding(color=red_600))
-content_red_600 = Style(content=Content(color=red_600))
 red_700 = Color.from_hex("#b91c1c")
-text_red_700 = Style(typography=Typography(style=CellStyle(foreground=red_700)))
-text_bg_red_700 = Style(typography=Typography(style=CellStyle(background=red_700)))
-border_red_700 = Style(border=Border(style=CellStyle(foreground=red_700)))
-border_bg_red_700 = Style(border=Border(style=CellStyle(background=red_700)))
-margin_red_700 = Style(margin=Margin(color=red_700))
-padding_red_700 = Style(padding=Padding(color=red_700))
-content_red_700 = Style(content=Content(color=red_700))
 red_800 = Color.from_hex("#991b1b")
-text_red_800 = Style(typography=Typography(style=CellStyle(foreground=red_800)))
-text_bg_red_800 = Style(typography=Typography(style=CellStyle(background=red_800)))
-border_red_800 = Style(border=Border(style=CellStyle(foreground=red_800)))
-border_bg_red_800 = Style(border=Border(style=CellStyle(background=red_800)))
-margin_red_800 = Style(margin=Margin(color=red_800))
-padding_red_800 = Style(padding=Padding(color=red_800))
-content_red_800 = Style(content=Content(color=red_800))
 red_900 = Color.from_hex("#7f1d1d")
-text_red_900 = Style(typography=Typography(style=CellStyle(foreground=red_900)))
-text_bg_red_900 = Style(typography=Typography(style=CellStyle(background=red_900)))
-border_red_900 = Style(border=Border(style=CellStyle(foreground=red_900)))
-border_bg_red_900 = Style(border=Border(style=CellStyle(background=red_900)))
-margin_red_900 = Style(margin=Margin(color=red_900))
-padding_red_900 = Style(padding=Padding(color=red_900))
-content_red_900 = Style(content=Content(color=red_900))
 red_950 = Color.from_hex("#450a0a")
-text_red_950 = Style(typography=Typography(style=CellStyle(foreground=red_950)))
-text_bg_red_950 = Style(typography=Typography(style=CellStyle(background=red_950)))
-border_red_950 = Style(border=Border(style=CellStyle(foreground=red_950)))
-border_bg_red_950 = Style(border=Border(style=CellStyle(background=red_950)))
-margin_red_950 = Style(margin=Margin(color=red_950))
-padding_red_950 = Style(padding=Padding(color=red_950))
-content_red_950 = Style(content=Content(color=red_950))
 
 orange_50 = Color.from_hex("#fff7ed")
-text_orange_50 = Style(typography=Typography(style=CellStyle(foreground=orange_50)))
-text_bg_orange_50 = Style(typography=Typography(style=CellStyle(background=orange_50)))
-border_orange_50 = Style(border=Border(style=CellStyle(foreground=orange_50)))
-border_bg_orange_50 = Style(border=Border(style=CellStyle(background=orange_50)))
-margin_orange_50 = Style(margin=Margin(color=orange_50))
-padding_orange_50 = Style(padding=Padding(color=orange_50))
-content_orange_50 = Style(content=Content(color=orange_50))
 orange_100 = Color.from_hex("#ffedd5")
-text_orange_100 = Style(typography=Typography(style=CellStyle(foreground=orange_100)))
-text_bg_orange_100 = Style(typography=Typography(style=CellStyle(background=orange_100)))
-border_orange_100 = Style(border=Border(style=CellStyle(foreground=orange_100)))
-border_bg_orange_100 = Style(border=Border(style=CellStyle(background=orange_100)))
-margin_orange_100 = Style(margin=Margin(color=orange_100))
-padding_orange_100 = Style(padding=Padding(color=orange_100))
-content_orange_100 = Style(content=Content(color=orange_100))
 orange_200 = Color.from_hex("#fed7aa")
-text_orange_200 = Style(typography=Typography(style=CellStyle(foreground=orange_200)))
-text_bg_orange_200 = Style(typography=Typography(style=CellStyle(background=orange_200)))
-border_orange_200 = Style(border=Border(style=CellStyle(foreground=orange_200)))
-border_bg_orange_200 = Style(border=Border(style=CellStyle(background=orange_200)))
-margin_orange_200 = Style(margin=Margin(color=orange_200))
-padding_orange_200 = Style(padding=Padding(color=orange_200))
-content_orange_200 = Style(content=Content(color=orange_200))
 orange_300 = Color.from_hex("#fdba74")
-text_orange_300 = Style(typography=Typography(style=CellStyle(foreground=orange_300)))
-text_bg_orange_300 = Style(typography=Typography(style=CellStyle(background=orange_300)))
-border_orange_300 = Style(border=Border(style=CellStyle(foreground=orange_300)))
-border_bg_orange_300 = Style(border=Border(style=CellStyle(background=orange_300)))
-margin_orange_300 = Style(margin=Margin(color=orange_300))
-padding_orange_300 = Style(padding=Padding(color=orange_300))
-content_orange_300 = Style(content=Content(color=orange_300))
 orange_400 = Color.from_hex("#fb923c")
-text_orange_400 = Style(typography=Typography(style=CellStyle(foreground=orange_400)))
-text_bg_orange_400 = Style(typography=Typography(style=CellStyle(background=orange_400)))
-border_orange_400 = Style(border=Border(style=CellStyle(foreground=orange_400)))
-border_bg_orange_400 = Style(border=Border(style=CellStyle(background=orange_400)))
-margin_orange_400 = Style(margin=Margin(color=orange_400))
-padding_orange_400 = Style(padding=Padding(color=orange_400))
-content_orange_400 = Style(content=Content(color=orange_400))
 orange_500 = Color.from_hex("#f97316")
-text_orange_500 = Style(typography=Typography(style=CellStyle(foreground=orange_500)))
-text_bg_orange_500 = Style(typography=Typography(style=CellStyle(background=orange_500)))
-border_orange_500 = Style(border=Border(style=CellStyle(foreground=orange_500)))
-border_bg_orange_500 = Style(border=Border(style=CellStyle(background=orange_500)))
-margin_orange_500 = Style(margin=Margin(color=orange_500))
-padding_orange_500 = Style(padding=Padding(color=orange_500))
-content_orange_500 = Style(content=Content(color=orange_500))
 orange_600 = Color.from_hex("#ea580c")
-text_orange_600 = Style(typography=Typography(style=CellStyle(foreground=orange_600)))
-text_bg_orange_600 = Style(typography=Typography(style=CellStyle(background=orange_600)))
-border_orange_600 = Style(border=Border(style=CellStyle(foreground=orange_600)))
-border_bg_orange_600 = Style(border=Border(style=CellStyle(background=orange_600)))
-margin_orange_600 = Style(margin=Margin(color=orange_600))
-padding_orange_600 = Style(padding=Padding(color=orange_600))
-content_orange_600 = Style(content=Content(color=orange_600))
 orange_700 = Color.from_hex("#c2410c")
-text_orange_700 = Style(typography=Typography(style=CellStyle(foreground=orange_700)))
-text_bg_orange_700 = Style(typography=Typography(style=CellStyle(background=orange_700)))
-border_orange_700 = Style(border=Border(style=CellStyle(foreground=orange_700)))
-border_bg_orange_700 = Style(border=Border(style=CellStyle(background=orange_700)))
-margin_orange_700 = Style(margin=Margin(color=orange_700))
-padding_orange_700 = Style(padding=Padding(color=orange_700))
-content_orange_700 = Style(content=Content(color=orange_700))
 orange_800 = Color.from_hex("#9a3412")
-text_orange_800 = Style(typography=Typography(style=CellStyle(foreground=orange_800)))
-text_bg_orange_800 = Style(typography=Typography(style=CellStyle(background=orange_800)))
-border_orange_800 = Style(border=Border(style=CellStyle(foreground=orange_800)))
-border_bg_orange_800 = Style(border=Border(style=CellStyle(background=orange_800)))
-margin_orange_800 = Style(margin=Margin(color=orange_800))
-padding_orange_800 = Style(padding=Padding(color=orange_800))
-content_orange_800 = Style(content=Content(color=orange_800))
 orange_900 = Color.from_hex("#7c2d12")
-text_orange_900 = Style(typography=Typography(style=CellStyle(foreground=orange_900)))
-text_bg_orange_900 = Style(typography=Typography(style=CellStyle(background=orange_900)))
-border_orange_900 = Style(border=Border(style=CellStyle(foreground=orange_900)))
-border_bg_orange_900 = Style(border=Border(style=CellStyle(background=orange_900)))
-margin_orange_900 = Style(margin=Margin(color=orange_900))
-padding_orange_900 = Style(padding=Padding(color=orange_900))
-content_orange_900 = Style(content=Content(color=orange_900))
 orange_950 = Color.from_hex("#431407")
-text_orange_950 = Style(typography=Typography(style=CellStyle(foreground=orange_950)))
-text_bg_orange_950 = Style(typography=Typography(style=CellStyle(background=orange_950)))
-border_orange_950 = Style(border=Border(style=CellStyle(foreground=orange_950)))
-border_bg_orange_950 = Style(border=Border(style=CellStyle(background=orange_950)))
-margin_orange_950 = Style(margin=Margin(color=orange_950))
-padding_orange_950 = Style(padding=Padding(color=orange_950))
-content_orange_950 = Style(content=Content(color=orange_950))
 
 amber_50 = Color.from_hex("#fffbeb")
-text_amber_50 = Style(typography=Typography(style=CellStyle(foreground=amber_50)))
-text_bg_amber_50 = Style(typography=Typography(style=CellStyle(background=amber_50)))
-border_amber_50 = Style(border=Border(style=CellStyle(foreground=amber_50)))
-border_bg_amber_50 = Style(border=Border(style=CellStyle(background=amber_50)))
-margin_amber_50 = Style(margin=Margin(color=amber_50))
-padding_amber_50 = Style(padding=Padding(color=amber_50))
-content_amber_50 = Style(content=Content(color=amber_50))
 amber_100 = Color.from_hex("#fef3c7")
-text_amber_100 = Style(typography=Typography(style=CellStyle(foreground=amber_100)))
-text_bg_amber_100 = Style(typography=Typography(style=CellStyle(background=amber_100)))
-border_amber_100 = Style(border=Border(style=CellStyle(foreground=amber_100)))
-border_bg_amber_100 = Style(border=Border(style=CellStyle(background=amber_100)))
-margin_amber_100 = Style(margin=Margin(color=amber_100))
-padding_amber_100 = Style(padding=Padding(color=amber_100))
-content_amber_100 = Style(content=Content(color=amber_100))
 amber_200 = Color.from_hex("#fde68a")
-text_amber_200 = Style(typography=Typography(style=CellStyle(foreground=amber_200)))
-text_bg_amber_200 = Style(typography=Typography(style=CellStyle(background=amber_200)))
-border_amber_200 = Style(border=Border(style=CellStyle(foreground=amber_200)))
-border_bg_amber_200 = Style(border=Border(style=CellStyle(background=amber_200)))
-margin_amber_200 = Style(margin=Margin(color=amber_200))
-padding_amber_200 = Style(padding=Padding(color=amber_200))
-content_amber_200 = Style(content=Content(color=amber_200))
 amber_300 = Color.from_hex("#fcd34d")
-text_amber_300 = Style(typography=Typography(style=CellStyle(foreground=amber_300)))
-text_bg_amber_300 = Style(typography=Typography(style=CellStyle(background=amber_300)))
-border_amber_300 = Style(border=Border(style=CellStyle(foreground=amber_300)))
-border_bg_amber_300 = Style(border=Border(style=CellStyle(background=amber_300)))
-margin_amber_300 = Style(margin=Margin(color=amber_300))
-padding_amber_300 = Style(padding=Padding(color=amber_300))
-content_amber_300 = Style(content=Content(color=amber_300))
 amber_400 = Color.from_hex("#fbbf24")
-text_amber_400 = Style(typography=Typography(style=CellStyle(foreground=amber_400)))
-text_bg_amber_400 = Style(typography=Typography(style=CellStyle(background=amber_400)))
-border_amber_400 = Style(border=Border(style=CellStyle(foreground=amber_400)))
-border_bg_amber_400 = Style(border=Border(style=CellStyle(background=amber_400)))
-margin_amber_400 = Style(margin=Margin(color=amber_400))
-padding_amber_400 = Style(padding=Padding(color=amber_400))
-content_amber_400 = Style(content=Content(color=amber_400))
 amber_500 = Color.from_hex("#f59e0b")
-text_amber_500 = Style(typography=Typography(style=CellStyle(foreground=amber_500)))
-text_bg_amber_500 = Style(typography=Typography(style=CellStyle(background=amber_500)))
-border_amber_500 = Style(border=Border(style=CellStyle(foreground=amber_500)))
-border_bg_amber_500 = Style(border=Border(style=CellStyle(background=amber_500)))
-margin_amber_500 = Style(margin=Margin(color=amber_500))
-padding_amber_500 = Style(padding=Padding(color=amber_500))
-content_amber_500 = Style(content=Content(color=amber_500))
 amber_600 = Color.from_hex("#d97706")
-text_amber_600 = Style(typography=Typography(style=CellStyle(foreground=amber_600)))
-text_bg_amber_600 = Style(typography=Typography(style=CellStyle(background=amber_600)))
-border_amber_600 = Style(border=Border(style=CellStyle(foreground=amber_600)))
-border_bg_amber_600 = Style(border=Border(style=CellStyle(background=amber_600)))
-margin_amber_600 = Style(margin=Margin(color=amber_600))
-padding_amber_600 = Style(padding=Padding(color=amber_600))
-content_amber_600 = Style(content=Content(color=amber_600))
 amber_700 = Color.from_hex("#b45309")
-text_amber_700 = Style(typography=Typography(style=CellStyle(foreground=amber_700)))
-text_bg_amber_700 = Style(typography=Typography(style=CellStyle(background=amber_700)))
-border_amber_700 = Style(border=Border(style=CellStyle(foreground=amber_700)))
-border_bg_amber_700 = Style(border=Border(style=CellStyle(background=amber_700)))
-margin_amber_700 = Style(margin=Margin(color=amber_700))
-padding_amber_700 = Style(padding=Padding(color=amber_700))
-content_amber_700 = Style(content=Content(color=amber_700))
 amber_800 = Color.from_hex("#92400e")
-text_amber_800 = Style(typography=Typography(style=CellStyle(foreground=amber_800)))
-text_bg_amber_800 = Style(typography=Typography(style=CellStyle(background=amber_800)))
-border_amber_800 = Style(border=Border(style=CellStyle(foreground=amber_800)))
-border_bg_amber_800 = Style(border=Border(style=CellStyle(background=amber_800)))
-margin_amber_800 = Style(margin=Margin(color=amber_800))
-padding_amber_800 = Style(padding=Padding(color=amber_800))
-content_amber_800 = Style(content=Content(color=amber_800))
 amber_900 = Color.from_hex("#78350f")
-text_amber_900 = Style(typography=Typography(style=CellStyle(foreground=amber_900)))
-text_bg_amber_900 = Style(typography=Typography(style=CellStyle(background=amber_900)))
-border_amber_900 = Style(border=Border(style=CellStyle(foreground=amber_900)))
-border_bg_amber_900 = Style(border=Border(style=CellStyle(background=amber_900)))
-margin_amber_900 = Style(margin=Margin(color=amber_900))
-padding_amber_900 = Style(padding=Padding(color=amber_900))
-content_amber_900 = Style(content=Content(color=amber_900))
 amber_950 = Color.from_hex("#451a03")
-text_amber_950 = Style(typography=Typography(style=CellStyle(foreground=amber_950)))
-text_bg_amber_950 = Style(typography=Typography(style=CellStyle(background=amber_950)))
-border_amber_950 = Style(border=Border(style=CellStyle(foreground=amber_950)))
-border_bg_amber_950 = Style(border=Border(style=CellStyle(background=amber_950)))
-margin_amber_950 = Style(margin=Margin(color=amber_950))
-padding_amber_950 = Style(padding=Padding(color=amber_950))
-content_amber_950 = Style(content=Content(color=amber_950))
 
 yellow_50 = Color.from_hex("#fefce8")
-text_yellow_50 = Style(typography=Typography(style=CellStyle(foreground=yellow_50)))
-text_bg_yellow_50 = Style(typography=Typography(style=CellStyle(background=yellow_50)))
-border_yellow_50 = Style(border=Border(style=CellStyle(foreground=yellow_50)))
-border_bg_yellow_50 = Style(border=Border(style=CellStyle(background=yellow_50)))
-margin_yellow_50 = Style(margin=Margin(color=yellow_50))
-padding_yellow_50 = Style(padding=Padding(color=yellow_50))
-content_yellow_50 = Style(content=Content(color=yellow_50))
 yellow_100 = Color.from_hex("#fef9c3")
-text_yellow_100 = Style(typography=Typography(style=CellStyle(foreground=yellow_100)))
-text_bg_yellow_100 = Style(typography=Typography(style=CellStyle(background=yellow_100)))
-border_yellow_100 = Style(border=Border(style=CellStyle(foreground=yellow_100)))
-border_bg_yellow_100 = Style(border=Border(style=CellStyle(background=yellow_100)))
-margin_yellow_100 = Style(margin=Margin(color=yellow_100))
-padding_yellow_100 = Style(padding=Padding(color=yellow_100))
-content_yellow_100 = Style(content=Content(color=yellow_100))
 yellow_200 = Color.from_hex("#fef08a")
-text_yellow_200 = Style(typography=Typography(style=CellStyle(foreground=yellow_200)))
-text_bg_yellow_200 = Style(typography=Typography(style=CellStyle(background=yellow_200)))
-border_yellow_200 = Style(border=Border(style=CellStyle(foreground=yellow_200)))
-border_bg_yellow_200 = Style(border=Border(style=CellStyle(background=yellow_200)))
-margin_yellow_200 = Style(margin=Margin(color=yellow_200))
-padding_yellow_200 = Style(padding=Padding(color=yellow_200))
-content_yellow_200 = Style(content=Content(color=yellow_200))
 yellow_300 = Color.from_hex("#fde047")
-text_yellow_300 = Style(typography=Typography(style=CellStyle(foreground=yellow_300)))
-text_bg_yellow_300 = Style(typography=Typography(style=CellStyle(background=yellow_300)))
-border_yellow_300 = Style(border=Border(style=CellStyle(foreground=yellow_300)))
-border_bg_yellow_300 = Style(border=Border(style=CellStyle(background=yellow_300)))
-margin_yellow_300 = Style(margin=Margin(color=yellow_300))
-padding_yellow_300 = Style(padding=Padding(color=yellow_300))
-content_yellow_300 = Style(content=Content(color=yellow_300))
 yellow_400 = Color.from_hex("#facc15")
-text_yellow_400 = Style(typography=Typography(style=CellStyle(foreground=yellow_400)))
-text_bg_yellow_400 = Style(typography=Typography(style=CellStyle(background=yellow_400)))
-border_yellow_400 = Style(border=Border(style=CellStyle(foreground=yellow_400)))
-border_bg_yellow_400 = Style(border=Border(style=CellStyle(background=yellow_400)))
-margin_yellow_400 = Style(margin=Margin(color=yellow_400))
-padding_yellow_400 = Style(padding=Padding(color=yellow_400))
-content_yellow_400 = Style(content=Content(color=yellow_400))
 yellow_500 = Color.from_hex("#eab308")
-text_yellow_500 = Style(typography=Typography(style=CellStyle(foreground=yellow_500)))
-text_bg_yellow_500 = Style(typography=Typography(style=CellStyle(background=yellow_500)))
-border_yellow_500 = Style(border=Border(style=CellStyle(foreground=yellow_500)))
-border_bg_yellow_500 = Style(border=Border(style=CellStyle(background=yellow_500)))
-margin_yellow_500 = Style(margin=Margin(color=yellow_500))
-padding_yellow_500 = Style(padding=Padding(color=yellow_500))
-content_yellow_500 = Style(content=Content(color=yellow_500))
 yellow_600 = Color.from_hex("#ca8a04")
-text_yellow_600 = Style(typography=Typography(style=CellStyle(foreground=yellow_600)))
-text_bg_yellow_600 = Style(typography=Typography(style=CellStyle(background=yellow_600)))
-border_yellow_600 = Style(border=Border(style=CellStyle(foreground=yellow_600)))
-border_bg_yellow_600 = Style(border=Border(style=CellStyle(background=yellow_600)))
-margin_yellow_600 = Style(margin=Margin(color=yellow_600))
-padding_yellow_600 = Style(padding=Padding(color=yellow_600))
-content_yellow_600 = Style(content=Content(color=yellow_600))
 yellow_700 = Color.from_hex("#a16207")
-text_yellow_700 = Style(typography=Typography(style=CellStyle(foreground=yellow_700)))
-text_bg_yellow_700 = Style(typography=Typography(style=CellStyle(background=yellow_700)))
-border_yellow_700 = Style(border=Border(style=CellStyle(foreground=yellow_700)))
-border_bg_yellow_700 = Style(border=Border(style=CellStyle(background=yellow_700)))
-margin_yellow_700 = Style(margin=Margin(color=yellow_700))
-padding_yellow_700 = Style(padding=Padding(color=yellow_700))
-content_yellow_700 = Style(content=Content(color=yellow_700))
 yellow_800 = Color.from_hex("#854d0e")
-text_yellow_800 = Style(typography=Typography(style=CellStyle(foreground=yellow_800)))
-text_bg_yellow_800 = Style(typography=Typography(style=CellStyle(background=yellow_800)))
-border_yellow_800 = Style(border=Border(style=CellStyle(foreground=yellow_800)))
-border_bg_yellow_800 = Style(border=Border(style=CellStyle(background=yellow_800)))
-margin_yellow_800 = Style(margin=Margin(color=yellow_800))
-padding_yellow_800 = Style(padding=Padding(color=yellow_800))
-content_yellow_800 = Style(content=Content(color=yellow_800))
 yellow_900 = Color.from_hex("#713f12")
-text_yellow_900 = Style(typography=Typography(style=CellStyle(foreground=yellow_900)))
-text_bg_yellow_900 = Style(typography=Typography(style=CellStyle(background=yellow_900)))
-border_yellow_900 = Style(border=Border(style=CellStyle(foreground=yellow_900)))
-border_bg_yellow_900 = Style(border=Border(style=CellStyle(background=yellow_900)))
-margin_yellow_900 = Style(margin=Margin(color=yellow_900))
-padding_yellow_900 = Style(padding=Padding(color=yellow_900))
-content_yellow_900 = Style(content=Content(color=yellow_900))
 yellow_950 = Color.from_hex("#422006")
-text_yellow_950 = Style(typography=Typography(style=CellStyle(foreground=yellow_950)))
-text_bg_yellow_950 = Style(typography=Typography(style=CellStyle(background=yellow_950)))
-border_yellow_950 = Style(border=Border(style=CellStyle(foreground=yellow_950)))
-border_bg_yellow_950 = Style(border=Border(style=CellStyle(background=yellow_950)))
-margin_yellow_950 = Style(margin=Margin(color=yellow_950))
-padding_yellow_950 = Style(padding=Padding(color=yellow_950))
-content_yellow_950 = Style(content=Content(color=yellow_950))
 
 lime_50 = Color.from_hex("#f7fee7")
-text_lime_50 = Style(typography=Typography(style=CellStyle(foreground=lime_50)))
-text_bg_lime_50 = Style(typography=Typography(style=CellStyle(background=lime_50)))
-border_lime_50 = Style(border=Border(style=CellStyle(foreground=lime_50)))
-border_bg_lime_50 = Style(border=Border(style=CellStyle(background=lime_50)))
-margin_lime_50 = Style(margin=Margin(color=lime_50))
-padding_lime_50 = Style(padding=Padding(color=lime_50))
-content_lime_50 = Style(content=Content(color=lime_50))
 lime_100 = Color.from_hex("#ecfccb")
-text_lime_100 = Style(typography=Typography(style=CellStyle(foreground=lime_100)))
-text_bg_lime_100 = Style(typography=Typography(style=CellStyle(background=lime_100)))
-border_lime_100 = Style(border=Border(style=CellStyle(foreground=lime_100)))
-border_bg_lime_100 = Style(border=Border(style=CellStyle(background=lime_100)))
-margin_lime_100 = Style(margin=Margin(color=lime_100))
-padding_lime_100 = Style(padding=Padding(color=lime_100))
-content_lime_100 = Style(content=Content(color=lime_100))
 lime_200 = Color.from_hex("#d9f99d")
-text_lime_200 = Style(typography=Typography(style=CellStyle(foreground=lime_200)))
-text_bg_lime_200 = Style(typography=Typography(style=CellStyle(background=lime_200)))
-border_lime_200 = Style(border=Border(style=CellStyle(foreground=lime_200)))
-border_bg_lime_200 = Style(border=Border(style=CellStyle(background=lime_200)))
-margin_lime_200 = Style(margin=Margin(color=lime_200))
-padding_lime_200 = Style(padding=Padding(color=lime_200))
-content_lime_200 = Style(content=Content(color=lime_200))
 lime_300 = Color.from_hex("#bef264")
-text_lime_300 = Style(typography=Typography(style=CellStyle(foreground=lime_300)))
-text_bg_lime_300 = Style(typography=Typography(style=CellStyle(background=lime_300)))
-border_lime_300 = Style(border=Border(style=CellStyle(foreground=lime_300)))
-border_bg_lime_300 = Style(border=Border(style=CellStyle(background=lime_300)))
-margin_lime_300 = Style(margin=Margin(color=lime_300))
-padding_lime_300 = Style(padding=Padding(color=lime_300))
-content_lime_300 = Style(content=Content(color=lime_300))
 lime_400 = Color.from_hex("#a3e635")
-text_lime_400 = Style(typography=Typography(style=CellStyle(foreground=lime_400)))
-text_bg_lime_400 = Style(typography=Typography(style=CellStyle(background=lime_400)))
-border_lime_400 = Style(border=Border(style=CellStyle(foreground=lime_400)))
-border_bg_lime_400 = Style(border=Border(style=CellStyle(background=lime_400)))
-margin_lime_400 = Style(margin=Margin(color=lime_400))
-padding_lime_400 = Style(padding=Padding(color=lime_400))
-content_lime_400 = Style(content=Content(color=lime_400))
 lime_500 = Color.from_hex("#84cc16")
-text_lime_500 = Style(typography=Typography(style=CellStyle(foreground=lime_500)))
-text_bg_lime_500 = Style(typography=Typography(style=CellStyle(background=lime_500)))
-border_lime_500 = Style(border=Border(style=CellStyle(foreground=lime_500)))
-border_bg_lime_500 = Style(border=Border(style=CellStyle(background=lime_500)))
-margin_lime_500 = Style(margin=Margin(color=lime_500))
-padding_lime_500 = Style(padding=Padding(color=lime_500))
-content_lime_500 = Style(content=Content(color=lime_500))
 lime_600 = Color.from_hex("#65a30d")
-text_lime_600 = Style(typography=Typography(style=CellStyle(foreground=lime_600)))
-text_bg_lime_600 = Style(typography=Typography(style=CellStyle(background=lime_600)))
-border_lime_600 = Style(border=Border(style=CellStyle(foreground=lime_600)))
-border_bg_lime_600 = Style(border=Border(style=CellStyle(background=lime_600)))
-margin_lime_600 = Style(margin=Margin(color=lime_600))
-padding_lime_600 = Style(padding=Padding(color=lime_600))
-content_lime_600 = Style(content=Content(color=lime_600))
 lime_700 = Color.from_hex("#4d7c0f")
-text_lime_700 = Style(typography=Typography(style=CellStyle(foreground=lime_700)))
-text_bg_lime_700 = Style(typography=Typography(style=CellStyle(background=lime_700)))
-border_lime_700 = Style(border=Border(style=CellStyle(foreground=lime_700)))
-border_bg_lime_700 = Style(border=Border(style=CellStyle(background=lime_700)))
-margin_lime_700 = Style(margin=Margin(color=lime_700))
-padding_lime_700 = Style(padding=Padding(color=lime_700))
-content_lime_700 = Style(content=Content(color=lime_700))
 lime_800 = Color.from_hex("#3f6212")
-text_lime_800 = Style(typography=Typography(style=CellStyle(foreground=lime_800)))
-text_bg_lime_800 = Style(typography=Typography(style=CellStyle(background=lime_800)))
-border_lime_800 = Style(border=Border(style=CellStyle(foreground=lime_800)))
-border_bg_lime_800 = Style(border=Border(style=CellStyle(background=lime_800)))
-margin_lime_800 = Style(margin=Margin(color=lime_800))
-padding_lime_800 = Style(padding=Padding(color=lime_800))
-content_lime_800 = Style(content=Content(color=lime_800))
 lime_900 = Color.from_hex("#365314")
-text_lime_900 = Style(typography=Typography(style=CellStyle(foreground=lime_900)))
-text_bg_lime_900 = Style(typography=Typography(style=CellStyle(background=lime_900)))
-border_lime_900 = Style(border=Border(style=CellStyle(foreground=lime_900)))
-border_bg_lime_900 = Style(border=Border(style=CellStyle(background=lime_900)))
-margin_lime_900 = Style(margin=Margin(color=lime_900))
-padding_lime_900 = Style(padding=Padding(color=lime_900))
-content_lime_900 = Style(content=Content(color=lime_900))
 lime_950 = Color.from_hex("#1a2e05")
-text_lime_950 = Style(typography=Typography(style=CellStyle(foreground=lime_950)))
-text_bg_lime_950 = Style(typography=Typography(style=CellStyle(background=lime_950)))
-border_lime_950 = Style(border=Border(style=CellStyle(foreground=lime_950)))
-border_bg_lime_950 = Style(border=Border(style=CellStyle(background=lime_950)))
-margin_lime_950 = Style(margin=Margin(color=lime_950))
-padding_lime_950 = Style(padding=Padding(color=lime_950))
-content_lime_950 = Style(content=Content(color=lime_950))
 
 green_50 = Color.from_hex("#f0fdf4")
-text_green_50 = Style(typography=Typography(style=CellStyle(foreground=green_50)))
-text_bg_green_50 = Style(typography=Typography(style=CellStyle(background=green_50)))
-border_green_50 = Style(border=Border(style=CellStyle(foreground=green_50)))
-border_bg_green_50 = Style(border=Border(style=CellStyle(background=green_50)))
-margin_green_50 = Style(margin=Margin(color=green_50))
-padding_green_50 = Style(padding=Padding(color=green_50))
-content_green_50 = Style(content=Content(color=green_50))
 green_100 = Color.from_hex("#dcfce7")
-text_green_100 = Style(typography=Typography(style=CellStyle(foreground=green_100)))
-text_bg_green_100 = Style(typography=Typography(style=CellStyle(background=green_100)))
-border_green_100 = Style(border=Border(style=CellStyle(foreground=green_100)))
-border_bg_green_100 = Style(border=Border(style=CellStyle(background=green_100)))
-margin_green_100 = Style(margin=Margin(color=green_100))
-padding_green_100 = Style(padding=Padding(color=green_100))
-content_green_100 = Style(content=Content(color=green_100))
 green_200 = Color.from_hex("#bbf7d0")
-text_green_200 = Style(typography=Typography(style=CellStyle(foreground=green_200)))
-text_bg_green_200 = Style(typography=Typography(style=CellStyle(background=green_200)))
-border_green_200 = Style(border=Border(style=CellStyle(foreground=green_200)))
-border_bg_green_200 = Style(border=Border(style=CellStyle(background=green_200)))
-margin_green_200 = Style(margin=Margin(color=green_200))
-padding_green_200 = Style(padding=Padding(color=green_200))
-content_green_200 = Style(content=Content(color=green_200))
 green_300 = Color.from_hex("#86efac")
-text_green_300 = Style(typography=Typography(style=CellStyle(foreground=green_300)))
-text_bg_green_300 = Style(typography=Typography(style=CellStyle(background=green_300)))
-border_green_300 = Style(border=Border(style=CellStyle(foreground=green_300)))
-border_bg_green_300 = Style(border=Border(style=CellStyle(background=green_300)))
-margin_green_300 = Style(margin=Margin(color=green_300))
-padding_green_300 = Style(padding=Padding(color=green_300))
-content_green_300 = Style(content=Content(color=green_300))
 green_400 = Color.from_hex("#4ade80")
-text_green_400 = Style(typography=Typography(style=CellStyle(foreground=green_400)))
-text_bg_green_400 = Style(typography=Typography(style=CellStyle(background=green_400)))
-border_green_400 = Style(border=Border(style=CellStyle(foreground=green_400)))
-border_bg_green_400 = Style(border=Border(style=CellStyle(background=green_400)))
-margin_green_400 = Style(margin=Margin(color=green_400))
-padding_green_400 = Style(padding=Padding(color=green_400))
-content_green_400 = Style(content=Content(color=green_400))
 green_500 = Color.from_hex("#22c55e")
-text_green_500 = Style(typography=Typography(style=CellStyle(foreground=green_500)))
-text_bg_green_500 = Style(typography=Typography(style=CellStyle(background=green_500)))
-border_green_500 = Style(border=Border(style=CellStyle(foreground=green_500)))
-border_bg_green_500 = Style(border=Border(style=CellStyle(background=green_500)))
-margin_green_500 = Style(margin=Margin(color=green_500))
-padding_green_500 = Style(padding=Padding(color=green_500))
-content_green_500 = Style(content=Content(color=green_500))
 green_600 = Color.from_hex("#16a34a")
-text_green_600 = Style(typography=Typography(style=CellStyle(foreground=green_600)))
-text_bg_green_600 = Style(typography=Typography(style=CellStyle(background=green_600)))
-border_green_600 = Style(border=Border(style=CellStyle(foreground=green_600)))
-border_bg_green_600 = Style(border=Border(style=CellStyle(background=green_600)))
-margin_green_600 = Style(margin=Margin(color=green_600))
-padding_green_600 = Style(padding=Padding(color=green_600))
-content_green_600 = Style(content=Content(color=green_600))
 green_700 = Color.from_hex("#15803d")
-text_green_700 = Style(typography=Typography(style=CellStyle(foreground=green_700)))
-text_bg_green_700 = Style(typography=Typography(style=CellStyle(background=green_700)))
-border_green_700 = Style(border=Border(style=CellStyle(foreground=green_700)))
-border_bg_green_700 = Style(border=Border(style=CellStyle(background=green_700)))
-margin_green_700 = Style(margin=Margin(color=green_700))
-padding_green_700 = Style(padding=Padding(color=green_700))
-content_green_700 = Style(content=Content(color=green_700))
 green_800 = Color.from_hex("#166534")
-text_green_800 = Style(typography=Typography(style=CellStyle(foreground=green_800)))
-text_bg_green_800 = Style(typography=Typography(style=CellStyle(background=green_800)))
-border_green_800 = Style(border=Border(style=CellStyle(foreground=green_800)))
-border_bg_green_800 = Style(border=Border(style=CellStyle(background=green_800)))
-margin_green_800 = Style(margin=Margin(color=green_800))
-padding_green_800 = Style(padding=Padding(color=green_800))
-content_green_800 = Style(content=Content(color=green_800))
 green_900 = Color.from_hex("#14532d")
-text_green_900 = Style(typography=Typography(style=CellStyle(foreground=green_900)))
-text_bg_green_900 = Style(typography=Typography(style=CellStyle(background=green_900)))
-border_green_900 = Style(border=Border(style=CellStyle(foreground=green_900)))
-border_bg_green_900 = Style(border=Border(style=CellStyle(background=green_900)))
-margin_green_900 = Style(margin=Margin(color=green_900))
-padding_green_900 = Style(padding=Padding(color=green_900))
-content_green_900 = Style(content=Content(color=green_900))
 green_950 = Color.from_hex("#052e16")
-text_green_950 = Style(typography=Typography(style=CellStyle(foreground=green_950)))
-text_bg_green_950 = Style(typography=Typography(style=CellStyle(background=green_950)))
-border_green_950 = Style(border=Border(style=CellStyle(foreground=green_950)))
-border_bg_green_950 = Style(border=Border(style=CellStyle(background=green_950)))
-margin_green_950 = Style(margin=Margin(color=green_950))
-padding_green_950 = Style(padding=Padding(color=green_950))
-content_green_950 = Style(content=Content(color=green_950))
 
 emerald_50 = Color.from_hex("#ecfdf5")
-text_emerald_50 = Style(typography=Typography(style=CellStyle(foreground=emerald_50)))
-text_bg_emerald_50 = Style(typography=Typography(style=CellStyle(background=emerald_50)))
-border_emerald_50 = Style(border=Border(style=CellStyle(foreground=emerald_50)))
-border_bg_emerald_50 = Style(border=Border(style=CellStyle(background=emerald_50)))
-margin_emerald_50 = Style(margin=Margin(color=emerald_50))
-padding_emerald_50 = Style(padding=Padding(color=emerald_50))
-content_emerald_50 = Style(content=Content(color=emerald_50))
 emerald_100 = Color.from_hex("#d1fae5")
-text_emerald_100 = Style(typography=Typography(style=CellStyle(foreground=emerald_100)))
-text_bg_emerald_100 = Style(typography=Typography(style=CellStyle(background=emerald_100)))
-border_emerald_100 = Style(border=Border(style=CellStyle(foreground=emerald_100)))
-border_bg_emerald_100 = Style(border=Border(style=CellStyle(background=emerald_100)))
-margin_emerald_100 = Style(margin=Margin(color=emerald_100))
-padding_emerald_100 = Style(padding=Padding(color=emerald_100))
-content_emerald_100 = Style(content=Content(color=emerald_100))
 emerald_200 = Color.from_hex("#a7f3d0")
-text_emerald_200 = Style(typography=Typography(style=CellStyle(foreground=emerald_200)))
-text_bg_emerald_200 = Style(typography=Typography(style=CellStyle(background=emerald_200)))
-border_emerald_200 = Style(border=Border(style=CellStyle(foreground=emerald_200)))
-border_bg_emerald_200 = Style(border=Border(style=CellStyle(background=emerald_200)))
-margin_emerald_200 = Style(margin=Margin(color=emerald_200))
-padding_emerald_200 = Style(padding=Padding(color=emerald_200))
-content_emerald_200 = Style(content=Content(color=emerald_200))
 emerald_300 = Color.from_hex("#6ee7b7")
-text_emerald_300 = Style(typography=Typography(style=CellStyle(foreground=emerald_300)))
-text_bg_emerald_300 = Style(typography=Typography(style=CellStyle(background=emerald_300)))
-border_emerald_300 = Style(border=Border(style=CellStyle(foreground=emerald_300)))
-border_bg_emerald_300 = Style(border=Border(style=CellStyle(background=emerald_300)))
-margin_emerald_300 = Style(margin=Margin(color=emerald_300))
-padding_emerald_300 = Style(padding=Padding(color=emerald_300))
-content_emerald_300 = Style(content=Content(color=emerald_300))
 emerald_400 = Color.from_hex("#34d399")
-text_emerald_400 = Style(typography=Typography(style=CellStyle(foreground=emerald_400)))
-text_bg_emerald_400 = Style(typography=Typography(style=CellStyle(background=emerald_400)))
-border_emerald_400 = Style(border=Border(style=CellStyle(foreground=emerald_400)))
-border_bg_emerald_400 = Style(border=Border(style=CellStyle(background=emerald_400)))
-margin_emerald_400 = Style(margin=Margin(color=emerald_400))
-padding_emerald_400 = Style(padding=Padding(color=emerald_400))
-content_emerald_400 = Style(content=Content(color=emerald_400))
 emerald_500 = Color.from_hex("#10b981")
-text_emerald_500 = Style(typography=Typography(style=CellStyle(foreground=emerald_500)))
-text_bg_emerald_500 = Style(typography=Typography(style=CellStyle(background=emerald_500)))
-border_emerald_500 = Style(border=Border(style=CellStyle(foreground=emerald_500)))
-border_bg_emerald_500 = Style(border=Border(style=CellStyle(background=emerald_500)))
-margin_emerald_500 = Style(margin=Margin(color=emerald_500))
-padding_emerald_500 = Style(padding=Padding(color=emerald_500))
-content_emerald_500 = Style(content=Content(color=emerald_500))
 emerald_600 = Color.from_hex("#059669")
-text_emerald_600 = Style(typography=Typography(style=CellStyle(foreground=emerald_600)))
-text_bg_emerald_600 = Style(typography=Typography(style=CellStyle(background=emerald_600)))
-border_emerald_600 = Style(border=Border(style=CellStyle(foreground=emerald_600)))
-border_bg_emerald_600 = Style(border=Border(style=CellStyle(background=emerald_600)))
-margin_emerald_600 = Style(margin=Margin(color=emerald_600))
-padding_emerald_600 = Style(padding=Padding(color=emerald_600))
-content_emerald_600 = Style(content=Content(color=emerald_600))
 emerald_700 = Color.from_hex("#047857")
-text_emerald_700 = Style(typography=Typography(style=CellStyle(foreground=emerald_700)))
-text_bg_emerald_700 = Style(typography=Typography(style=CellStyle(background=emerald_700)))
-border_emerald_700 = Style(border=Border(style=CellStyle(foreground=emerald_700)))
-border_bg_emerald_700 = Style(border=Border(style=CellStyle(background=emerald_700)))
-margin_emerald_700 = Style(margin=Margin(color=emerald_700))
-padding_emerald_700 = Style(padding=Padding(color=emerald_700))
-content_emerald_700 = Style(content=Content(color=emerald_700))
 emerald_800 = Color.from_hex("#065f46")
-text_emerald_800 = Style(typography=Typography(style=CellStyle(foreground=emerald_800)))
-text_bg_emerald_800 = Style(typography=Typography(style=CellStyle(background=emerald_800)))
-border_emerald_800 = Style(border=Border(style=CellStyle(foreground=emerald_800)))
-border_bg_emerald_800 = Style(border=Border(style=CellStyle(background=emerald_800)))
-margin_emerald_800 = Style(margin=Margin(color=emerald_800))
-padding_emerald_800 = Style(padding=Padding(color=emerald_800))
-content_emerald_800 = Style(content=Content(color=emerald_800))
 emerald_900 = Color.from_hex("#064e3b")
-text_emerald_900 = Style(typography=Typography(style=CellStyle(foreground=emerald_900)))
-text_bg_emerald_900 = Style(typography=Typography(style=CellStyle(background=emerald_900)))
-border_emerald_900 = Style(border=Border(style=CellStyle(foreground=emerald_900)))
-border_bg_emerald_900 = Style(border=Border(style=CellStyle(background=emerald_900)))
-margin_emerald_900 = Style(margin=Margin(color=emerald_900))
-padding_emerald_900 = Style(padding=Padding(color=emerald_900))
-content_emerald_900 = Style(content=Content(color=emerald_900))
 emerald_950 = Color.from_hex("#022c22")
-text_emerald_950 = Style(typography=Typography(style=CellStyle(foreground=emerald_950)))
-text_bg_emerald_950 = Style(typography=Typography(style=CellStyle(background=emerald_950)))
-border_emerald_950 = Style(border=Border(style=CellStyle(foreground=emerald_950)))
-border_bg_emerald_950 = Style(border=Border(style=CellStyle(background=emerald_950)))
-margin_emerald_950 = Style(margin=Margin(color=emerald_950))
-padding_emerald_950 = Style(padding=Padding(color=emerald_950))
-content_emerald_950 = Style(content=Content(color=emerald_950))
 
 teal_50 = Color.from_hex("#f0fdfa")
-text_teal_50 = Style(typography=Typography(style=CellStyle(foreground=teal_50)))
-text_bg_teal_50 = Style(typography=Typography(style=CellStyle(background=teal_50)))
-border_teal_50 = Style(border=Border(style=CellStyle(foreground=teal_50)))
-border_bg_teal_50 = Style(border=Border(style=CellStyle(background=teal_50)))
-margin_teal_50 = Style(margin=Margin(color=teal_50))
-padding_teal_50 = Style(padding=Padding(color=teal_50))
-content_teal_50 = Style(content=Content(color=teal_50))
 teal_100 = Color.from_hex("#ccfbf1")
-text_teal_100 = Style(typography=Typography(style=CellStyle(foreground=teal_100)))
-text_bg_teal_100 = Style(typography=Typography(style=CellStyle(background=teal_100)))
-border_teal_100 = Style(border=Border(style=CellStyle(foreground=teal_100)))
-border_bg_teal_100 = Style(border=Border(style=CellStyle(background=teal_100)))
-margin_teal_100 = Style(margin=Margin(color=teal_100))
-padding_teal_100 = Style(padding=Padding(color=teal_100))
-content_teal_100 = Style(content=Content(color=teal_100))
 teal_200 = Color.from_hex("#99f6e4")
-text_teal_200 = Style(typography=Typography(style=CellStyle(foreground=teal_200)))
-text_bg_teal_200 = Style(typography=Typography(style=CellStyle(background=teal_200)))
-border_teal_200 = Style(border=Border(style=CellStyle(foreground=teal_200)))
-border_bg_teal_200 = Style(border=Border(style=CellStyle(background=teal_200)))
-margin_teal_200 = Style(margin=Margin(color=teal_200))
-padding_teal_200 = Style(padding=Padding(color=teal_200))
-content_teal_200 = Style(content=Content(color=teal_200))
 teal_300 = Color.from_hex("#5eead4")
-text_teal_300 = Style(typography=Typography(style=CellStyle(foreground=teal_300)))
-text_bg_teal_300 = Style(typography=Typography(style=CellStyle(background=teal_300)))
-border_teal_300 = Style(border=Border(style=CellStyle(foreground=teal_300)))
-border_bg_teal_300 = Style(border=Border(style=CellStyle(background=teal_300)))
-margin_teal_300 = Style(margin=Margin(color=teal_300))
-padding_teal_300 = Style(padding=Padding(color=teal_300))
-content_teal_300 = Style(content=Content(color=teal_300))
 teal_400 = Color.from_hex("#2dd4bf")
-text_teal_400 = Style(typography=Typography(style=CellStyle(foreground=teal_400)))
-text_bg_teal_400 = Style(typography=Typography(style=CellStyle(background=teal_400)))
-border_teal_400 = Style(border=Border(style=CellStyle(foreground=teal_400)))
-border_bg_teal_400 = Style(border=Border(style=CellStyle(background=teal_400)))
-margin_teal_400 = Style(margin=Margin(color=teal_400))
-padding_teal_400 = Style(padding=Padding(color=teal_400))
-content_teal_400 = Style(content=Content(color=teal_400))
 teal_500 = Color.from_hex("#14b8a6")
-text_teal_500 = Style(typography=Typography(style=CellStyle(foreground=teal_500)))
-text_bg_teal_500 = Style(typography=Typography(style=CellStyle(background=teal_500)))
-border_teal_500 = Style(border=Border(style=CellStyle(foreground=teal_500)))
-border_bg_teal_500 = Style(border=Border(style=CellStyle(background=teal_500)))
-margin_teal_500 = Style(margin=Margin(color=teal_500))
-padding_teal_500 = Style(padding=Padding(color=teal_500))
-content_teal_500 = Style(content=Content(color=teal_500))
 teal_600 = Color.from_hex("#0d9488")
-text_teal_600 = Style(typography=Typography(style=CellStyle(foreground=teal_600)))
-text_bg_teal_600 = Style(typography=Typography(style=CellStyle(background=teal_600)))
-border_teal_600 = Style(border=Border(style=CellStyle(foreground=teal_600)))
-border_bg_teal_600 = Style(border=Border(style=CellStyle(background=teal_600)))
-margin_teal_600 = Style(margin=Margin(color=teal_600))
-padding_teal_600 = Style(padding=Padding(color=teal_600))
-content_teal_600 = Style(content=Content(color=teal_600))
 teal_700 = Color.from_hex("#0f766e")
-text_teal_700 = Style(typography=Typography(style=CellStyle(foreground=teal_700)))
-text_bg_teal_700 = Style(typography=Typography(style=CellStyle(background=teal_700)))
-border_teal_700 = Style(border=Border(style=CellStyle(foreground=teal_700)))
-border_bg_teal_700 = Style(border=Border(style=CellStyle(background=teal_700)))
-margin_teal_700 = Style(margin=Margin(color=teal_700))
-padding_teal_700 = Style(padding=Padding(color=teal_700))
-content_teal_700 = Style(content=Content(color=teal_700))
 teal_800 = Color.from_hex("#115e59")
-text_teal_800 = Style(typography=Typography(style=CellStyle(foreground=teal_800)))
-text_bg_teal_800 = Style(typography=Typography(style=CellStyle(background=teal_800)))
-border_teal_800 = Style(border=Border(style=CellStyle(foreground=teal_800)))
-border_bg_teal_800 = Style(border=Border(style=CellStyle(background=teal_800)))
-margin_teal_800 = Style(margin=Margin(color=teal_800))
-padding_teal_800 = Style(padding=Padding(color=teal_800))
-content_teal_800 = Style(content=Content(color=teal_800))
 teal_900 = Color.from_hex("#134e4a")
-text_teal_900 = Style(typography=Typography(style=CellStyle(foreground=teal_900)))
-text_bg_teal_900 = Style(typography=Typography(style=CellStyle(background=teal_900)))
-border_teal_900 = Style(border=Border(style=CellStyle(foreground=teal_900)))
-border_bg_teal_900 = Style(border=Border(style=CellStyle(background=teal_900)))
-margin_teal_900 = Style(margin=Margin(color=teal_900))
-padding_teal_900 = Style(padding=Padding(color=teal_900))
-content_teal_900 = Style(content=Content(color=teal_900))
 teal_950 = Color.from_hex("#042f2e")
-text_teal_950 = Style(typography=Typography(style=CellStyle(foreground=teal_950)))
-text_bg_teal_950 = Style(typography=Typography(style=CellStyle(background=teal_950)))
-border_teal_950 = Style(border=Border(style=CellStyle(foreground=teal_950)))
-border_bg_teal_950 = Style(border=Border(style=CellStyle(background=teal_950)))
-margin_teal_950 = Style(margin=Margin(color=teal_950))
-padding_teal_950 = Style(padding=Padding(color=teal_950))
-content_teal_950 = Style(content=Content(color=teal_950))
 
 cyan_50 = Color.from_hex("#ecfeff")
-text_cyan_50 = Style(typography=Typography(style=CellStyle(foreground=cyan_50)))
-text_bg_cyan_50 = Style(typography=Typography(style=CellStyle(background=cyan_50)))
-border_cyan_50 = Style(border=Border(style=CellStyle(foreground=cyan_50)))
-border_bg_cyan_50 = Style(border=Border(style=CellStyle(background=cyan_50)))
-margin_cyan_50 = Style(margin=Margin(color=cyan_50))
-padding_cyan_50 = Style(padding=Padding(color=cyan_50))
-content_cyan_50 = Style(content=Content(color=cyan_50))
 cyan_100 = Color.from_hex("#cffafe")
-text_cyan_100 = Style(typography=Typography(style=CellStyle(foreground=cyan_100)))
-text_bg_cyan_100 = Style(typography=Typography(style=CellStyle(background=cyan_100)))
-border_cyan_100 = Style(border=Border(style=CellStyle(foreground=cyan_100)))
-border_bg_cyan_100 = Style(border=Border(style=CellStyle(background=cyan_100)))
-margin_cyan_100 = Style(margin=Margin(color=cyan_100))
-padding_cyan_100 = Style(padding=Padding(color=cyan_100))
-content_cyan_100 = Style(content=Content(color=cyan_100))
 cyan_200 = Color.from_hex("#a5f3fc")
-text_cyan_200 = Style(typography=Typography(style=CellStyle(foreground=cyan_200)))
-text_bg_cyan_200 = Style(typography=Typography(style=CellStyle(background=cyan_200)))
-border_cyan_200 = Style(border=Border(style=CellStyle(foreground=cyan_200)))
-border_bg_cyan_200 = Style(border=Border(style=CellStyle(background=cyan_200)))
-margin_cyan_200 = Style(margin=Margin(color=cyan_200))
-padding_cyan_200 = Style(padding=Padding(color=cyan_200))
-content_cyan_200 = Style(content=Content(color=cyan_200))
 cyan_300 = Color.from_hex("#67e8f9")
-text_cyan_300 = Style(typography=Typography(style=CellStyle(foreground=cyan_300)))
-text_bg_cyan_300 = Style(typography=Typography(style=CellStyle(background=cyan_300)))
-border_cyan_300 = Style(border=Border(style=CellStyle(foreground=cyan_300)))
-border_bg_cyan_300 = Style(border=Border(style=CellStyle(background=cyan_300)))
-margin_cyan_300 = Style(margin=Margin(color=cyan_300))
-padding_cyan_300 = Style(padding=Padding(color=cyan_300))
-content_cyan_300 = Style(content=Content(color=cyan_300))
 cyan_400 = Color.from_hex("#22d3ee")
-text_cyan_400 = Style(typography=Typography(style=CellStyle(foreground=cyan_400)))
-text_bg_cyan_400 = Style(typography=Typography(style=CellStyle(background=cyan_400)))
-border_cyan_400 = Style(border=Border(style=CellStyle(foreground=cyan_400)))
-border_bg_cyan_400 = Style(border=Border(style=CellStyle(background=cyan_400)))
-margin_cyan_400 = Style(margin=Margin(color=cyan_400))
-padding_cyan_400 = Style(padding=Padding(color=cyan_400))
-content_cyan_400 = Style(content=Content(color=cyan_400))
 cyan_500 = Color.from_hex("#06b6d4")
-text_cyan_500 = Style(typography=Typography(style=CellStyle(foreground=cyan_500)))
-text_bg_cyan_500 = Style(typography=Typography(style=CellStyle(background=cyan_500)))
-border_cyan_500 = Style(border=Border(style=CellStyle(foreground=cyan_500)))
-border_bg_cyan_500 = Style(border=Border(style=CellStyle(background=cyan_500)))
-margin_cyan_500 = Style(margin=Margin(color=cyan_500))
-padding_cyan_500 = Style(padding=Padding(color=cyan_500))
-content_cyan_500 = Style(content=Content(color=cyan_500))
 cyan_600 = Color.from_hex("#0891b2")
-text_cyan_600 = Style(typography=Typography(style=CellStyle(foreground=cyan_600)))
-text_bg_cyan_600 = Style(typography=Typography(style=CellStyle(background=cyan_600)))
-border_cyan_600 = Style(border=Border(style=CellStyle(foreground=cyan_600)))
-border_bg_cyan_600 = Style(border=Border(style=CellStyle(background=cyan_600)))
-margin_cyan_600 = Style(margin=Margin(color=cyan_600))
-padding_cyan_600 = Style(padding=Padding(color=cyan_600))
-content_cyan_600 = Style(content=Content(color=cyan_600))
 cyan_700 = Color.from_hex("#0e7490")
-text_cyan_700 = Style(typography=Typography(style=CellStyle(foreground=cyan_700)))
-text_bg_cyan_700 = Style(typography=Typography(style=CellStyle(background=cyan_700)))
-border_cyan_700 = Style(border=Border(style=CellStyle(foreground=cyan_700)))
-border_bg_cyan_700 = Style(border=Border(style=CellStyle(background=cyan_700)))
-margin_cyan_700 = Style(margin=Margin(color=cyan_700))
-padding_cyan_700 = Style(padding=Padding(color=cyan_700))
-content_cyan_700 = Style(content=Content(color=cyan_700))
 cyan_800 = Color.from_hex("#155e75")
-text_cyan_800 = Style(typography=Typography(style=CellStyle(foreground=cyan_800)))
-text_bg_cyan_800 = Style(typography=Typography(style=CellStyle(background=cyan_800)))
-border_cyan_800 = Style(border=Border(style=CellStyle(foreground=cyan_800)))
-border_bg_cyan_800 = Style(border=Border(style=CellStyle(background=cyan_800)))
-margin_cyan_800 = Style(margin=Margin(color=cyan_800))
-padding_cyan_800 = Style(padding=Padding(color=cyan_800))
-content_cyan_800 = Style(content=Content(color=cyan_800))
 cyan_900 = Color.from_hex("#164e63")
-text_cyan_900 = Style(typography=Typography(style=CellStyle(foreground=cyan_900)))
-text_bg_cyan_900 = Style(typography=Typography(style=CellStyle(background=cyan_900)))
-border_cyan_900 = Style(border=Border(style=CellStyle(foreground=cyan_900)))
-border_bg_cyan_900 = Style(border=Border(style=CellStyle(background=cyan_900)))
-margin_cyan_900 = Style(margin=Margin(color=cyan_900))
-padding_cyan_900 = Style(padding=Padding(color=cyan_900))
-content_cyan_900 = Style(content=Content(color=cyan_900))
 cyan_950 = Color.from_hex("#083344")
-text_cyan_950 = Style(typography=Typography(style=CellStyle(foreground=cyan_950)))
-text_bg_cyan_950 = Style(typography=Typography(style=CellStyle(background=cyan_950)))
-border_cyan_950 = Style(border=Border(style=CellStyle(foreground=cyan_950)))
-border_bg_cyan_950 = Style(border=Border(style=CellStyle(background=cyan_950)))
-margin_cyan_950 = Style(margin=Margin(color=cyan_950))
-padding_cyan_950 = Style(padding=Padding(color=cyan_950))
-content_cyan_950 = Style(content=Content(color=cyan_950))
 
 sky_50 = Color.from_hex("#f0f9ff")
-text_sky_50 = Style(typography=Typography(style=CellStyle(foreground=sky_50)))
-text_bg_sky_50 = Style(typography=Typography(style=CellStyle(background=sky_50)))
-border_sky_50 = Style(border=Border(style=CellStyle(foreground=sky_50)))
-border_bg_sky_50 = Style(border=Border(style=CellStyle(background=sky_50)))
-margin_sky_50 = Style(margin=Margin(color=sky_50))
-padding_sky_50 = Style(padding=Padding(color=sky_50))
-content_sky_50 = Style(content=Content(color=sky_50))
 sky_100 = Color.from_hex("#e0f2fe")
-text_sky_100 = Style(typography=Typography(style=CellStyle(foreground=sky_100)))
-text_bg_sky_100 = Style(typography=Typography(style=CellStyle(background=sky_100)))
-border_sky_100 = Style(border=Border(style=CellStyle(foreground=sky_100)))
-border_bg_sky_100 = Style(border=Border(style=CellStyle(background=sky_100)))
-margin_sky_100 = Style(margin=Margin(color=sky_100))
-padding_sky_100 = Style(padding=Padding(color=sky_100))
-content_sky_100 = Style(content=Content(color=sky_100))
 sky_200 = Color.from_hex("#bae6fd")
-text_sky_200 = Style(typography=Typography(style=CellStyle(foreground=sky_200)))
-text_bg_sky_200 = Style(typography=Typography(style=CellStyle(background=sky_200)))
-border_sky_200 = Style(border=Border(style=CellStyle(foreground=sky_200)))
-border_bg_sky_200 = Style(border=Border(style=CellStyle(background=sky_200)))
-margin_sky_200 = Style(margin=Margin(color=sky_200))
-padding_sky_200 = Style(padding=Padding(color=sky_200))
-content_sky_200 = Style(content=Content(color=sky_200))
 sky_300 = Color.from_hex("#7dd3fc")
-text_sky_300 = Style(typography=Typography(style=CellStyle(foreground=sky_300)))
-text_bg_sky_300 = Style(typography=Typography(style=CellStyle(background=sky_300)))
-border_sky_300 = Style(border=Border(style=CellStyle(foreground=sky_300)))
-border_bg_sky_300 = Style(border=Border(style=CellStyle(background=sky_300)))
-margin_sky_300 = Style(margin=Margin(color=sky_300))
-padding_sky_300 = Style(padding=Padding(color=sky_300))
-content_sky_300 = Style(content=Content(color=sky_300))
 sky_400 = Color.from_hex("#38bdf8")
-text_sky_400 = Style(typography=Typography(style=CellStyle(foreground=sky_400)))
-text_bg_sky_400 = Style(typography=Typography(style=CellStyle(background=sky_400)))
-border_sky_400 = Style(border=Border(style=CellStyle(foreground=sky_400)))
-border_bg_sky_400 = Style(border=Border(style=CellStyle(background=sky_400)))
-margin_sky_400 = Style(margin=Margin(color=sky_400))
-padding_sky_400 = Style(padding=Padding(color=sky_400))
-content_sky_400 = Style(content=Content(color=sky_400))
 sky_500 = Color.from_hex("#0ea5e9")
-text_sky_500 = Style(typography=Typography(style=CellStyle(foreground=sky_500)))
-text_bg_sky_500 = Style(typography=Typography(style=CellStyle(background=sky_500)))
-border_sky_500 = Style(border=Border(style=CellStyle(foreground=sky_500)))
-border_bg_sky_500 = Style(border=Border(style=CellStyle(background=sky_500)))
-margin_sky_500 = Style(margin=Margin(color=sky_500))
-padding_sky_500 = Style(padding=Padding(color=sky_500))
-content_sky_500 = Style(content=Content(color=sky_500))
 sky_600 = Color.from_hex("#0284c7")
-text_sky_600 = Style(typography=Typography(style=CellStyle(foreground=sky_600)))
-text_bg_sky_600 = Style(typography=Typography(style=CellStyle(background=sky_600)))
-border_sky_600 = Style(border=Border(style=CellStyle(foreground=sky_600)))
-border_bg_sky_600 = Style(border=Border(style=CellStyle(background=sky_600)))
-margin_sky_600 = Style(margin=Margin(color=sky_600))
-padding_sky_600 = Style(padding=Padding(color=sky_600))
-content_sky_600 = Style(content=Content(color=sky_600))
 sky_700 = Color.from_hex("#0369a1")
-text_sky_700 = Style(typography=Typography(style=CellStyle(foreground=sky_700)))
-text_bg_sky_700 = Style(typography=Typography(style=CellStyle(background=sky_700)))
-border_sky_700 = Style(border=Border(style=CellStyle(foreground=sky_700)))
-border_bg_sky_700 = Style(border=Border(style=CellStyle(background=sky_700)))
-margin_sky_700 = Style(margin=Margin(color=sky_700))
-padding_sky_700 = Style(padding=Padding(color=sky_700))
-content_sky_700 = Style(content=Content(color=sky_700))
 sky_800 = Color.from_hex("#075985")
-text_sky_800 = Style(typography=Typography(style=CellStyle(foreground=sky_800)))
-text_bg_sky_800 = Style(typography=Typography(style=CellStyle(background=sky_800)))
-border_sky_800 = Style(border=Border(style=CellStyle(foreground=sky_800)))
-border_bg_sky_800 = Style(border=Border(style=CellStyle(background=sky_800)))
-margin_sky_800 = Style(margin=Margin(color=sky_800))
-padding_sky_800 = Style(padding=Padding(color=sky_800))
-content_sky_800 = Style(content=Content(color=sky_800))
 sky_900 = Color.from_hex("#0c4a6e")
-text_sky_900 = Style(typography=Typography(style=CellStyle(foreground=sky_900)))
-text_bg_sky_900 = Style(typography=Typography(style=CellStyle(background=sky_900)))
-border_sky_900 = Style(border=Border(style=CellStyle(foreground=sky_900)))
-border_bg_sky_900 = Style(border=Border(style=CellStyle(background=sky_900)))
-margin_sky_900 = Style(margin=Margin(color=sky_900))
-padding_sky_900 = Style(padding=Padding(color=sky_900))
-content_sky_900 = Style(content=Content(color=sky_900))
 sky_950 = Color.from_hex("#082f49")
-text_sky_950 = Style(typography=Typography(style=CellStyle(foreground=sky_950)))
-text_bg_sky_950 = Style(typography=Typography(style=CellStyle(background=sky_950)))
-border_sky_950 = Style(border=Border(style=CellStyle(foreground=sky_950)))
-border_bg_sky_950 = Style(border=Border(style=CellStyle(background=sky_950)))
-margin_sky_950 = Style(margin=Margin(color=sky_950))
-padding_sky_950 = Style(padding=Padding(color=sky_950))
-content_sky_950 = Style(content=Content(color=sky_950))
 
 blue_50 = Color.from_hex("#eff6ff")
-text_blue_50 = Style(typography=Typography(style=CellStyle(foreground=blue_50)))
-text_bg_blue_50 = Style(typography=Typography(style=CellStyle(background=blue_50)))
-border_blue_50 = Style(border=Border(style=CellStyle(foreground=blue_50)))
-border_bg_blue_50 = Style(border=Border(style=CellStyle(background=blue_50)))
-margin_blue_50 = Style(margin=Margin(color=blue_50))
-padding_blue_50 = Style(padding=Padding(color=blue_50))
-content_blue_50 = Style(content=Content(color=blue_50))
 blue_100 = Color.from_hex("#dbeafe")
-text_blue_100 = Style(typography=Typography(style=CellStyle(foreground=blue_100)))
-text_bg_blue_100 = Style(typography=Typography(style=CellStyle(background=blue_100)))
-border_blue_100 = Style(border=Border(style=CellStyle(foreground=blue_100)))
-border_bg_blue_100 = Style(border=Border(style=CellStyle(background=blue_100)))
-margin_blue_100 = Style(margin=Margin(color=blue_100))
-padding_blue_100 = Style(padding=Padding(color=blue_100))
-content_blue_100 = Style(content=Content(color=blue_100))
 blue_200 = Color.from_hex("#bfdbfe")
-text_blue_200 = Style(typography=Typography(style=CellStyle(foreground=blue_200)))
-text_bg_blue_200 = Style(typography=Typography(style=CellStyle(background=blue_200)))
-border_blue_200 = Style(border=Border(style=CellStyle(foreground=blue_200)))
-border_bg_blue_200 = Style(border=Border(style=CellStyle(background=blue_200)))
-margin_blue_200 = Style(margin=Margin(color=blue_200))
-padding_blue_200 = Style(padding=Padding(color=blue_200))
-content_blue_200 = Style(content=Content(color=blue_200))
 blue_300 = Color.from_hex("#93c5fd")
-text_blue_300 = Style(typography=Typography(style=CellStyle(foreground=blue_300)))
-text_bg_blue_300 = Style(typography=Typography(style=CellStyle(background=blue_300)))
-border_blue_300 = Style(border=Border(style=CellStyle(foreground=blue_300)))
-border_bg_blue_300 = Style(border=Border(style=CellStyle(background=blue_300)))
-margin_blue_300 = Style(margin=Margin(color=blue_300))
-padding_blue_300 = Style(padding=Padding(color=blue_300))
-content_blue_300 = Style(content=Content(color=blue_300))
 blue_400 = Color.from_hex("#60a5fa")
-text_blue_400 = Style(typography=Typography(style=CellStyle(foreground=blue_400)))
-text_bg_blue_400 = Style(typography=Typography(style=CellStyle(background=blue_400)))
-border_blue_400 = Style(border=Border(style=CellStyle(foreground=blue_400)))
-border_bg_blue_400 = Style(border=Border(style=CellStyle(background=blue_400)))
-margin_blue_400 = Style(margin=Margin(color=blue_400))
-padding_blue_400 = Style(padding=Padding(color=blue_400))
-content_blue_400 = Style(content=Content(color=blue_400))
 blue_500 = Color.from_hex("#3b82f6")
-text_blue_500 = Style(typography=Typography(style=CellStyle(foreground=blue_500)))
-text_bg_blue_500 = Style(typography=Typography(style=CellStyle(background=blue_500)))
-border_blue_500 = Style(border=Border(style=CellStyle(foreground=blue_500)))
-border_bg_blue_500 = Style(border=Border(style=CellStyle(background=blue_500)))
-margin_blue_500 = Style(margin=Margin(color=blue_500))
-padding_blue_500 = Style(padding=Padding(color=blue_500))
-content_blue_500 = Style(content=Content(color=blue_500))
 blue_600 = Color.from_hex("#2563eb")
-text_blue_600 = Style(typography=Typography(style=CellStyle(foreground=blue_600)))
-text_bg_blue_600 = Style(typography=Typography(style=CellStyle(background=blue_600)))
-border_blue_600 = Style(border=Border(style=CellStyle(foreground=blue_600)))
-border_bg_blue_600 = Style(border=Border(style=CellStyle(background=blue_600)))
-margin_blue_600 = Style(margin=Margin(color=blue_600))
-padding_blue_600 = Style(padding=Padding(color=blue_600))
-content_blue_600 = Style(content=Content(color=blue_600))
 blue_700 = Color.from_hex("#1d4ed8")
-text_blue_700 = Style(typography=Typography(style=CellStyle(foreground=blue_700)))
-text_bg_blue_700 = Style(typography=Typography(style=CellStyle(background=blue_700)))
-border_blue_700 = Style(border=Border(style=CellStyle(foreground=blue_700)))
-border_bg_blue_700 = Style(border=Border(style=CellStyle(background=blue_700)))
-margin_blue_700 = Style(margin=Margin(color=blue_700))
-padding_blue_700 = Style(padding=Padding(color=blue_700))
-content_blue_700 = Style(content=Content(color=blue_700))
 blue_800 = Color.from_hex("#1e40af")
-text_blue_800 = Style(typography=Typography(style=CellStyle(foreground=blue_800)))
-text_bg_blue_800 = Style(typography=Typography(style=CellStyle(background=blue_800)))
-border_blue_800 = Style(border=Border(style=CellStyle(foreground=blue_800)))
-border_bg_blue_800 = Style(border=Border(style=CellStyle(background=blue_800)))
-margin_blue_800 = Style(margin=Margin(color=blue_800))
-padding_blue_800 = Style(padding=Padding(color=blue_800))
-content_blue_800 = Style(content=Content(color=blue_800))
 blue_900 = Color.from_hex("#1e3a8a")
-text_blue_900 = Style(typography=Typography(style=CellStyle(foreground=blue_900)))
-text_bg_blue_900 = Style(typography=Typography(style=CellStyle(background=blue_900)))
-border_blue_900 = Style(border=Border(style=CellStyle(foreground=blue_900)))
-border_bg_blue_900 = Style(border=Border(style=CellStyle(background=blue_900)))
-margin_blue_900 = Style(margin=Margin(color=blue_900))
-padding_blue_900 = Style(padding=Padding(color=blue_900))
-content_blue_900 = Style(content=Content(color=blue_900))
 blue_950 = Color.from_hex("#172554")
-text_blue_950 = Style(typography=Typography(style=CellStyle(foreground=blue_950)))
-text_bg_blue_950 = Style(typography=Typography(style=CellStyle(background=blue_950)))
-border_blue_950 = Style(border=Border(style=CellStyle(foreground=blue_950)))
-border_bg_blue_950 = Style(border=Border(style=CellStyle(background=blue_950)))
-margin_blue_950 = Style(margin=Margin(color=blue_950))
-padding_blue_950 = Style(padding=Padding(color=blue_950))
-content_blue_950 = Style(content=Content(color=blue_950))
 
 indigo_50 = Color.from_hex("#eef2ff")
-text_indigo_50 = Style(typography=Typography(style=CellStyle(foreground=indigo_50)))
-text_bg_indigo_50 = Style(typography=Typography(style=CellStyle(background=indigo_50)))
-border_indigo_50 = Style(border=Border(style=CellStyle(foreground=indigo_50)))
-border_bg_indigo_50 = Style(border=Border(style=CellStyle(background=indigo_50)))
-margin_indigo_50 = Style(margin=Margin(color=indigo_50))
-padding_indigo_50 = Style(padding=Padding(color=indigo_50))
-content_indigo_50 = Style(content=Content(color=indigo_50))
 indigo_100 = Color.from_hex("#e0e7ff")
-text_indigo_100 = Style(typography=Typography(style=CellStyle(foreground=indigo_100)))
-text_bg_indigo_100 = Style(typography=Typography(style=CellStyle(background=indigo_100)))
-border_indigo_100 = Style(border=Border(style=CellStyle(foreground=indigo_100)))
-border_bg_indigo_100 = Style(border=Border(style=CellStyle(background=indigo_100)))
-margin_indigo_100 = Style(margin=Margin(color=indigo_100))
-padding_indigo_100 = Style(padding=Padding(color=indigo_100))
-content_indigo_100 = Style(content=Content(color=indigo_100))
 indigo_200 = Color.from_hex("#c7d2fe")
-text_indigo_200 = Style(typography=Typography(style=CellStyle(foreground=indigo_200)))
-text_bg_indigo_200 = Style(typography=Typography(style=CellStyle(background=indigo_200)))
-border_indigo_200 = Style(border=Border(style=CellStyle(foreground=indigo_200)))
-border_bg_indigo_200 = Style(border=Border(style=CellStyle(background=indigo_200)))
-margin_indigo_200 = Style(margin=Margin(color=indigo_200))
-padding_indigo_200 = Style(padding=Padding(color=indigo_200))
-content_indigo_200 = Style(content=Content(color=indigo_200))
 indigo_300 = Color.from_hex("#a5b4fc")
-text_indigo_300 = Style(typography=Typography(style=CellStyle(foreground=indigo_300)))
-text_bg_indigo_300 = Style(typography=Typography(style=CellStyle(background=indigo_300)))
-border_indigo_300 = Style(border=Border(style=CellStyle(foreground=indigo_300)))
-border_bg_indigo_300 = Style(border=Border(style=CellStyle(background=indigo_300)))
-margin_indigo_300 = Style(margin=Margin(color=indigo_300))
-padding_indigo_300 = Style(padding=Padding(color=indigo_300))
-content_indigo_300 = Style(content=Content(color=indigo_300))
 indigo_400 = Color.from_hex("#818cf8")
-text_indigo_400 = Style(typography=Typography(style=CellStyle(foreground=indigo_400)))
-text_bg_indigo_400 = Style(typography=Typography(style=CellStyle(background=indigo_400)))
-border_indigo_400 = Style(border=Border(style=CellStyle(foreground=indigo_400)))
-border_bg_indigo_400 = Style(border=Border(style=CellStyle(background=indigo_400)))
-margin_indigo_400 = Style(margin=Margin(color=indigo_400))
-padding_indigo_400 = Style(padding=Padding(color=indigo_400))
-content_indigo_400 = Style(content=Content(color=indigo_400))
 indigo_500 = Color.from_hex("#6366f1")
-text_indigo_500 = Style(typography=Typography(style=CellStyle(foreground=indigo_500)))
-text_bg_indigo_500 = Style(typography=Typography(style=CellStyle(background=indigo_500)))
-border_indigo_500 = Style(border=Border(style=CellStyle(foreground=indigo_500)))
-border_bg_indigo_500 = Style(border=Border(style=CellStyle(background=indigo_500)))
-margin_indigo_500 = Style(margin=Margin(color=indigo_500))
-padding_indigo_500 = Style(padding=Padding(color=indigo_500))
-content_indigo_500 = Style(content=Content(color=indigo_500))
 indigo_600 = Color.from_hex("#4f46e5")
-text_indigo_600 = Style(typography=Typography(style=CellStyle(foreground=indigo_600)))
-text_bg_indigo_600 = Style(typography=Typography(style=CellStyle(background=indigo_600)))
-border_indigo_600 = Style(border=Border(style=CellStyle(foreground=indigo_600)))
-border_bg_indigo_600 = Style(border=Border(style=CellStyle(background=indigo_600)))
-margin_indigo_600 = Style(margin=Margin(color=indigo_600))
-padding_indigo_600 = Style(padding=Padding(color=indigo_600))
-content_indigo_600 = Style(content=Content(color=indigo_600))
 indigo_700 = Color.from_hex("#4338ca")
-text_indigo_700 = Style(typography=Typography(style=CellStyle(foreground=indigo_700)))
-text_bg_indigo_700 = Style(typography=Typography(style=CellStyle(background=indigo_700)))
-border_indigo_700 = Style(border=Border(style=CellStyle(foreground=indigo_700)))
-border_bg_indigo_700 = Style(border=Border(style=CellStyle(background=indigo_700)))
-margin_indigo_700 = Style(margin=Margin(color=indigo_700))
-padding_indigo_700 = Style(padding=Padding(color=indigo_700))
-content_indigo_700 = Style(content=Content(color=indigo_700))
 indigo_800 = Color.from_hex("#3730a3")
-text_indigo_800 = Style(typography=Typography(style=CellStyle(foreground=indigo_800)))
-text_bg_indigo_800 = Style(typography=Typography(style=CellStyle(background=indigo_800)))
-border_indigo_800 = Style(border=Border(style=CellStyle(foreground=indigo_800)))
-border_bg_indigo_800 = Style(border=Border(style=CellStyle(background=indigo_800)))
-margin_indigo_800 = Style(margin=Margin(color=indigo_800))
-padding_indigo_800 = Style(padding=Padding(color=indigo_800))
-content_indigo_800 = Style(content=Content(color=indigo_800))
 indigo_900 = Color.from_hex("#312e81")
-text_indigo_900 = Style(typography=Typography(style=CellStyle(foreground=indigo_900)))
-text_bg_indigo_900 = Style(typography=Typography(style=CellStyle(background=indigo_900)))
-border_indigo_900 = Style(border=Border(style=CellStyle(foreground=indigo_900)))
-border_bg_indigo_900 = Style(border=Border(style=CellStyle(background=indigo_900)))
-margin_indigo_900 = Style(margin=Margin(color=indigo_900))
-padding_indigo_900 = Style(padding=Padding(color=indigo_900))
-content_indigo_900 = Style(content=Content(color=indigo_900))
 indigo_950 = Color.from_hex("#1e1b4b")
-text_indigo_950 = Style(typography=Typography(style=CellStyle(foreground=indigo_950)))
-text_bg_indigo_950 = Style(typography=Typography(style=CellStyle(background=indigo_950)))
-border_indigo_950 = Style(border=Border(style=CellStyle(foreground=indigo_950)))
-border_bg_indigo_950 = Style(border=Border(style=CellStyle(background=indigo_950)))
-margin_indigo_950 = Style(margin=Margin(color=indigo_950))
-padding_indigo_950 = Style(padding=Padding(color=indigo_950))
-content_indigo_950 = Style(content=Content(color=indigo_950))
 
 violet_50 = Color.from_hex("#f5f3ff")
-text_violet_50 = Style(typography=Typography(style=CellStyle(foreground=violet_50)))
-text_bg_violet_50 = Style(typography=Typography(style=CellStyle(background=violet_50)))
-border_violet_50 = Style(border=Border(style=CellStyle(foreground=violet_50)))
-border_bg_violet_50 = Style(border=Border(style=CellStyle(background=violet_50)))
-margin_violet_50 = Style(margin=Margin(color=violet_50))
-padding_violet_50 = Style(padding=Padding(color=violet_50))
-content_violet_50 = Style(content=Content(color=violet_50))
 violet_100 = Color.from_hex("#ede9fe")
-text_violet_100 = Style(typography=Typography(style=CellStyle(foreground=violet_100)))
-text_bg_violet_100 = Style(typography=Typography(style=CellStyle(background=violet_100)))
-border_violet_100 = Style(border=Border(style=CellStyle(foreground=violet_100)))
-border_bg_violet_100 = Style(border=Border(style=CellStyle(background=violet_100)))
-margin_violet_100 = Style(margin=Margin(color=violet_100))
-padding_violet_100 = Style(padding=Padding(color=violet_100))
-content_violet_100 = Style(content=Content(color=violet_100))
 violet_200 = Color.from_hex("#ddd6fe")
-text_violet_200 = Style(typography=Typography(style=CellStyle(foreground=violet_200)))
-text_bg_violet_200 = Style(typography=Typography(style=CellStyle(background=violet_200)))
-border_violet_200 = Style(border=Border(style=CellStyle(foreground=violet_200)))
-border_bg_violet_200 = Style(border=Border(style=CellStyle(background=violet_200)))
-margin_violet_200 = Style(margin=Margin(color=violet_200))
-padding_violet_200 = Style(padding=Padding(color=violet_200))
-content_violet_200 = Style(content=Content(color=violet_200))
 violet_300 = Color.from_hex("#c4b5fd")
-text_violet_300 = Style(typography=Typography(style=CellStyle(foreground=violet_300)))
-text_bg_violet_300 = Style(typography=Typography(style=CellStyle(background=violet_300)))
-border_violet_300 = Style(border=Border(style=CellStyle(foreground=violet_300)))
-border_bg_violet_300 = Style(border=Border(style=CellStyle(background=violet_300)))
-margin_violet_300 = Style(margin=Margin(color=violet_300))
-padding_violet_300 = Style(padding=Padding(color=violet_300))
-content_violet_300 = Style(content=Content(color=violet_300))
 violet_400 = Color.from_hex("#a78bfa")
-text_violet_400 = Style(typography=Typography(style=CellStyle(foreground=violet_400)))
-text_bg_violet_400 = Style(typography=Typography(style=CellStyle(background=violet_400)))
-border_violet_400 = Style(border=Border(style=CellStyle(foreground=violet_400)))
-border_bg_violet_400 = Style(border=Border(style=CellStyle(background=violet_400)))
-margin_violet_400 = Style(margin=Margin(color=violet_400))
-padding_violet_400 = Style(padding=Padding(color=violet_400))
-content_violet_400 = Style(content=Content(color=violet_400))
 violet_500 = Color.from_hex("#8b5cf6")
-text_violet_500 = Style(typography=Typography(style=CellStyle(foreground=violet_500)))
-text_bg_violet_500 = Style(typography=Typography(style=CellStyle(background=violet_500)))
-border_violet_500 = Style(border=Border(style=CellStyle(foreground=violet_500)))
-border_bg_violet_500 = Style(border=Border(style=CellStyle(background=violet_500)))
-margin_violet_500 = Style(margin=Margin(color=violet_500))
-padding_violet_500 = Style(padding=Padding(color=violet_500))
-content_violet_500 = Style(content=Content(color=violet_500))
 violet_600 = Color.from_hex("#7c3aed")
-text_violet_600 = Style(typography=Typography(style=CellStyle(foreground=violet_600)))
-text_bg_violet_600 = Style(typography=Typography(style=CellStyle(background=violet_600)))
-border_violet_600 = Style(border=Border(style=CellStyle(foreground=violet_600)))
-border_bg_violet_600 = Style(border=Border(style=CellStyle(background=violet_600)))
-margin_violet_600 = Style(margin=Margin(color=violet_600))
-padding_violet_600 = Style(padding=Padding(color=violet_600))
-content_violet_600 = Style(content=Content(color=violet_600))
 violet_700 = Color.from_hex("#6d28d9")
-text_violet_700 = Style(typography=Typography(style=CellStyle(foreground=violet_700)))
-text_bg_violet_700 = Style(typography=Typography(style=CellStyle(background=violet_700)))
-border_violet_700 = Style(border=Border(style=CellStyle(foreground=violet_700)))
-border_bg_violet_700 = Style(border=Border(style=CellStyle(background=violet_700)))
-margin_violet_700 = Style(margin=Margin(color=violet_700))
-padding_violet_700 = Style(padding=Padding(color=violet_700))
-content_violet_700 = Style(content=Content(color=violet_700))
 violet_800 = Color.from_hex("#5b21b6")
-text_violet_800 = Style(typography=Typography(style=CellStyle(foreground=violet_800)))
-text_bg_violet_800 = Style(typography=Typography(style=CellStyle(background=violet_800)))
-border_violet_800 = Style(border=Border(style=CellStyle(foreground=violet_800)))
-border_bg_violet_800 = Style(border=Border(style=CellStyle(background=violet_800)))
-margin_violet_800 = Style(margin=Margin(color=violet_800))
-padding_violet_800 = Style(padding=Padding(color=violet_800))
-content_violet_800 = Style(content=Content(color=violet_800))
 violet_900 = Color.from_hex("#4c1d95")
-text_violet_900 = Style(typography=Typography(style=CellStyle(foreground=violet_900)))
-text_bg_violet_900 = Style(typography=Typography(style=CellStyle(background=violet_900)))
-border_violet_900 = Style(border=Border(style=CellStyle(foreground=violet_900)))
-border_bg_violet_900 = Style(border=Border(style=CellStyle(background=violet_900)))
-margin_violet_900 = Style(margin=Margin(color=violet_900))
-padding_violet_900 = Style(padding=Padding(color=violet_900))
-content_violet_900 = Style(content=Content(color=violet_900))
 violet_950 = Color.from_hex("#2e1065")
-text_violet_950 = Style(typography=Typography(style=CellStyle(foreground=violet_950)))
-text_bg_violet_950 = Style(typography=Typography(style=CellStyle(background=violet_950)))
-border_violet_950 = Style(border=Border(style=CellStyle(foreground=violet_950)))
-border_bg_violet_950 = Style(border=Border(style=CellStyle(background=violet_950)))
-margin_violet_950 = Style(margin=Margin(color=violet_950))
-padding_violet_950 = Style(padding=Padding(color=violet_950))
-content_violet_950 = Style(content=Content(color=violet_950))
 
 purple_50 = Color.from_hex("#faf5ff")
-text_purple_50 = Style(typography=Typography(style=CellStyle(foreground=purple_50)))
-text_bg_purple_50 = Style(typography=Typography(style=CellStyle(background=purple_50)))
-border_purple_50 = Style(border=Border(style=CellStyle(foreground=purple_50)))
-border_bg_purple_50 = Style(border=Border(style=CellStyle(background=purple_50)))
-margin_purple_50 = Style(margin=Margin(color=purple_50))
-padding_purple_50 = Style(padding=Padding(color=purple_50))
-content_purple_50 = Style(content=Content(color=purple_50))
 purple_100 = Color.from_hex("#f3e8ff")
-text_purple_100 = Style(typography=Typography(style=CellStyle(foreground=purple_100)))
-text_bg_purple_100 = Style(typography=Typography(style=CellStyle(background=purple_100)))
-border_purple_100 = Style(border=Border(style=CellStyle(foreground=purple_100)))
-border_bg_purple_100 = Style(border=Border(style=CellStyle(background=purple_100)))
-margin_purple_100 = Style(margin=Margin(color=purple_100))
-padding_purple_100 = Style(padding=Padding(color=purple_100))
-content_purple_100 = Style(content=Content(color=purple_100))
 purple_200 = Color.from_hex("#e9d5ff")
-text_purple_200 = Style(typography=Typography(style=CellStyle(foreground=purple_200)))
-text_bg_purple_200 = Style(typography=Typography(style=CellStyle(background=purple_200)))
-border_purple_200 = Style(border=Border(style=CellStyle(foreground=purple_200)))
-border_bg_purple_200 = Style(border=Border(style=CellStyle(background=purple_200)))
-margin_purple_200 = Style(margin=Margin(color=purple_200))
-padding_purple_200 = Style(padding=Padding(color=purple_200))
-content_purple_200 = Style(content=Content(color=purple_200))
 purple_300 = Color.from_hex("#d8b4fe")
-text_purple_300 = Style(typography=Typography(style=CellStyle(foreground=purple_300)))
-text_bg_purple_300 = Style(typography=Typography(style=CellStyle(background=purple_300)))
-border_purple_300 = Style(border=Border(style=CellStyle(foreground=purple_300)))
-border_bg_purple_300 = Style(border=Border(style=CellStyle(background=purple_300)))
-margin_purple_300 = Style(margin=Margin(color=purple_300))
-padding_purple_300 = Style(padding=Padding(color=purple_300))
-content_purple_300 = Style(content=Content(color=purple_300))
 purple_400 = Color.from_hex("#c084fc")
-text_purple_400 = Style(typography=Typography(style=CellStyle(foreground=purple_400)))
-text_bg_purple_400 = Style(typography=Typography(style=CellStyle(background=purple_400)))
-border_purple_400 = Style(border=Border(style=CellStyle(foreground=purple_400)))
-border_bg_purple_400 = Style(border=Border(style=CellStyle(background=purple_400)))
-margin_purple_400 = Style(margin=Margin(color=purple_400))
-padding_purple_400 = Style(padding=Padding(color=purple_400))
-content_purple_400 = Style(content=Content(color=purple_400))
 purple_500 = Color.from_hex("#a855f7")
-text_purple_500 = Style(typography=Typography(style=CellStyle(foreground=purple_500)))
-text_bg_purple_500 = Style(typography=Typography(style=CellStyle(background=purple_500)))
-border_purple_500 = Style(border=Border(style=CellStyle(foreground=purple_500)))
-border_bg_purple_500 = Style(border=Border(style=CellStyle(background=purple_500)))
-margin_purple_500 = Style(margin=Margin(color=purple_500))
-padding_purple_500 = Style(padding=Padding(color=purple_500))
-content_purple_500 = Style(content=Content(color=purple_500))
 purple_600 = Color.from_hex("#9333ea")
-text_purple_600 = Style(typography=Typography(style=CellStyle(foreground=purple_600)))
-text_bg_purple_600 = Style(typography=Typography(style=CellStyle(background=purple_600)))
-border_purple_600 = Style(border=Border(style=CellStyle(foreground=purple_600)))
-border_bg_purple_600 = Style(border=Border(style=CellStyle(background=purple_600)))
-margin_purple_600 = Style(margin=Margin(color=purple_600))
-padding_purple_600 = Style(padding=Padding(color=purple_600))
-content_purple_600 = Style(content=Content(color=purple_600))
 purple_700 = Color.from_hex("#7e22ce")
-text_purple_700 = Style(typography=Typography(style=CellStyle(foreground=purple_700)))
-text_bg_purple_700 = Style(typography=Typography(style=CellStyle(background=purple_700)))
-border_purple_700 = Style(border=Border(style=CellStyle(foreground=purple_700)))
-border_bg_purple_700 = Style(border=Border(style=CellStyle(background=purple_700)))
-margin_purple_700 = Style(margin=Margin(color=purple_700))
-padding_purple_700 = Style(padding=Padding(color=purple_700))
-content_purple_700 = Style(content=Content(color=purple_700))
 purple_800 = Color.from_hex("#6b21a8")
-text_purple_800 = Style(typography=Typography(style=CellStyle(foreground=purple_800)))
-text_bg_purple_800 = Style(typography=Typography(style=CellStyle(background=purple_800)))
-border_purple_800 = Style(border=Border(style=CellStyle(foreground=purple_800)))
-border_bg_purple_800 = Style(border=Border(style=CellStyle(background=purple_800)))
-margin_purple_800 = Style(margin=Margin(color=purple_800))
-padding_purple_800 = Style(padding=Padding(color=purple_800))
-content_purple_800 = Style(content=Content(color=purple_800))
 purple_900 = Color.from_hex("#581c87")
-text_purple_900 = Style(typography=Typography(style=CellStyle(foreground=purple_900)))
-text_bg_purple_900 = Style(typography=Typography(style=CellStyle(background=purple_900)))
-border_purple_900 = Style(border=Border(style=CellStyle(foreground=purple_900)))
-border_bg_purple_900 = Style(border=Border(style=CellStyle(background=purple_900)))
-margin_purple_900 = Style(margin=Margin(color=purple_900))
-padding_purple_900 = Style(padding=Padding(color=purple_900))
-content_purple_900 = Style(content=Content(color=purple_900))
 purple_950 = Color.from_hex("#3b0764")
-text_purple_950 = Style(typography=Typography(style=CellStyle(foreground=purple_950)))
-text_bg_purple_950 = Style(typography=Typography(style=CellStyle(background=purple_950)))
-border_purple_950 = Style(border=Border(style=CellStyle(foreground=purple_950)))
-border_bg_purple_950 = Style(border=Border(style=CellStyle(background=purple_950)))
-margin_purple_950 = Style(margin=Margin(color=purple_950))
-padding_purple_950 = Style(padding=Padding(color=purple_950))
-content_purple_950 = Style(content=Content(color=purple_950))
 
 fuchsia_50 = Color.from_hex("#fdf4ff")
-text_fuchsia_50 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_50)))
-text_bg_fuchsia_50 = Style(typography=Typography(style=CellStyle(background=fuchsia_50)))
-border_fuchsia_50 = Style(border=Border(style=CellStyle(foreground=fuchsia_50)))
-border_bg_fuchsia_50 = Style(border=Border(style=CellStyle(background=fuchsia_50)))
-margin_fuchsia_50 = Style(margin=Margin(color=fuchsia_50))
-padding_fuchsia_50 = Style(padding=Padding(color=fuchsia_50))
-content_fuchsia_50 = Style(content=Content(color=fuchsia_50))
 fuchsia_100 = Color.from_hex("#fae8ff")
-text_fuchsia_100 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_100)))
-text_bg_fuchsia_100 = Style(typography=Typography(style=CellStyle(background=fuchsia_100)))
-border_fuchsia_100 = Style(border=Border(style=CellStyle(foreground=fuchsia_100)))
-border_bg_fuchsia_100 = Style(border=Border(style=CellStyle(background=fuchsia_100)))
-margin_fuchsia_100 = Style(margin=Margin(color=fuchsia_100))
-padding_fuchsia_100 = Style(padding=Padding(color=fuchsia_100))
-content_fuchsia_100 = Style(content=Content(color=fuchsia_100))
 fuchsia_200 = Color.from_hex("#f5d0fe")
-text_fuchsia_200 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_200)))
-text_bg_fuchsia_200 = Style(typography=Typography(style=CellStyle(background=fuchsia_200)))
-border_fuchsia_200 = Style(border=Border(style=CellStyle(foreground=fuchsia_200)))
-border_bg_fuchsia_200 = Style(border=Border(style=CellStyle(background=fuchsia_200)))
-margin_fuchsia_200 = Style(margin=Margin(color=fuchsia_200))
-padding_fuchsia_200 = Style(padding=Padding(color=fuchsia_200))
-content_fuchsia_200 = Style(content=Content(color=fuchsia_200))
 fuchsia_300 = Color.from_hex("#f0abfc")
-text_fuchsia_300 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_300)))
-text_bg_fuchsia_300 = Style(typography=Typography(style=CellStyle(background=fuchsia_300)))
-border_fuchsia_300 = Style(border=Border(style=CellStyle(foreground=fuchsia_300)))
-border_bg_fuchsia_300 = Style(border=Border(style=CellStyle(background=fuchsia_300)))
-margin_fuchsia_300 = Style(margin=Margin(color=fuchsia_300))
-padding_fuchsia_300 = Style(padding=Padding(color=fuchsia_300))
-content_fuchsia_300 = Style(content=Content(color=fuchsia_300))
 fuchsia_400 = Color.from_hex("#e879f9")
-text_fuchsia_400 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_400)))
-text_bg_fuchsia_400 = Style(typography=Typography(style=CellStyle(background=fuchsia_400)))
-border_fuchsia_400 = Style(border=Border(style=CellStyle(foreground=fuchsia_400)))
-border_bg_fuchsia_400 = Style(border=Border(style=CellStyle(background=fuchsia_400)))
-margin_fuchsia_400 = Style(margin=Margin(color=fuchsia_400))
-padding_fuchsia_400 = Style(padding=Padding(color=fuchsia_400))
-content_fuchsia_400 = Style(content=Content(color=fuchsia_400))
 fuchsia_500 = Color.from_hex("#d946ef")
-text_fuchsia_500 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_500)))
-text_bg_fuchsia_500 = Style(typography=Typography(style=CellStyle(background=fuchsia_500)))
-border_fuchsia_500 = Style(border=Border(style=CellStyle(foreground=fuchsia_500)))
-border_bg_fuchsia_500 = Style(border=Border(style=CellStyle(background=fuchsia_500)))
-margin_fuchsia_500 = Style(margin=Margin(color=fuchsia_500))
-padding_fuchsia_500 = Style(padding=Padding(color=fuchsia_500))
-content_fuchsia_500 = Style(content=Content(color=fuchsia_500))
 fuchsia_600 = Color.from_hex("#c026d3")
-text_fuchsia_600 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_600)))
-text_bg_fuchsia_600 = Style(typography=Typography(style=CellStyle(background=fuchsia_600)))
-border_fuchsia_600 = Style(border=Border(style=CellStyle(foreground=fuchsia_600)))
-border_bg_fuchsia_600 = Style(border=Border(style=CellStyle(background=fuchsia_600)))
-margin_fuchsia_600 = Style(margin=Margin(color=fuchsia_600))
-padding_fuchsia_600 = Style(padding=Padding(color=fuchsia_600))
-content_fuchsia_600 = Style(content=Content(color=fuchsia_600))
 fuchsia_700 = Color.from_hex("#a21caf")
-text_fuchsia_700 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_700)))
-text_bg_fuchsia_700 = Style(typography=Typography(style=CellStyle(background=fuchsia_700)))
-border_fuchsia_700 = Style(border=Border(style=CellStyle(foreground=fuchsia_700)))
-border_bg_fuchsia_700 = Style(border=Border(style=CellStyle(background=fuchsia_700)))
-margin_fuchsia_700 = Style(margin=Margin(color=fuchsia_700))
-padding_fuchsia_700 = Style(padding=Padding(color=fuchsia_700))
-content_fuchsia_700 = Style(content=Content(color=fuchsia_700))
 fuchsia_800 = Color.from_hex("#86198f")
-text_fuchsia_800 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_800)))
-text_bg_fuchsia_800 = Style(typography=Typography(style=CellStyle(background=fuchsia_800)))
-border_fuchsia_800 = Style(border=Border(style=CellStyle(foreground=fuchsia_800)))
-border_bg_fuchsia_800 = Style(border=Border(style=CellStyle(background=fuchsia_800)))
-margin_fuchsia_800 = Style(margin=Margin(color=fuchsia_800))
-padding_fuchsia_800 = Style(padding=Padding(color=fuchsia_800))
-content_fuchsia_800 = Style(content=Content(color=fuchsia_800))
 fuchsia_900 = Color.from_hex("#701a75")
-text_fuchsia_900 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_900)))
-text_bg_fuchsia_900 = Style(typography=Typography(style=CellStyle(background=fuchsia_900)))
-border_fuchsia_900 = Style(border=Border(style=CellStyle(foreground=fuchsia_900)))
-border_bg_fuchsia_900 = Style(border=Border(style=CellStyle(background=fuchsia_900)))
-margin_fuchsia_900 = Style(margin=Margin(color=fuchsia_900))
-padding_fuchsia_900 = Style(padding=Padding(color=fuchsia_900))
-content_fuchsia_900 = Style(content=Content(color=fuchsia_900))
 fuchsia_950 = Color.from_hex("#4a044e")
-text_fuchsia_950 = Style(typography=Typography(style=CellStyle(foreground=fuchsia_950)))
-text_bg_fuchsia_950 = Style(typography=Typography(style=CellStyle(background=fuchsia_950)))
-border_fuchsia_950 = Style(border=Border(style=CellStyle(foreground=fuchsia_950)))
-border_bg_fuchsia_950 = Style(border=Border(style=CellStyle(background=fuchsia_950)))
-margin_fuchsia_950 = Style(margin=Margin(color=fuchsia_950))
-padding_fuchsia_950 = Style(padding=Padding(color=fuchsia_950))
-content_fuchsia_950 = Style(content=Content(color=fuchsia_950))
 
 pink_50 = Color.from_hex("#fdf2f8")
-text_pink_50 = Style(typography=Typography(style=CellStyle(foreground=pink_50)))
-text_bg_pink_50 = Style(typography=Typography(style=CellStyle(background=pink_50)))
-border_pink_50 = Style(border=Border(style=CellStyle(foreground=pink_50)))
-border_bg_pink_50 = Style(border=Border(style=CellStyle(background=pink_50)))
-margin_pink_50 = Style(margin=Margin(color=pink_50))
-padding_pink_50 = Style(padding=Padding(color=pink_50))
-content_pink_50 = Style(content=Content(color=pink_50))
 pink_100 = Color.from_hex("#fce7f3")
-text_pink_100 = Style(typography=Typography(style=CellStyle(foreground=pink_100)))
-text_bg_pink_100 = Style(typography=Typography(style=CellStyle(background=pink_100)))
-border_pink_100 = Style(border=Border(style=CellStyle(foreground=pink_100)))
-border_bg_pink_100 = Style(border=Border(style=CellStyle(background=pink_100)))
-margin_pink_100 = Style(margin=Margin(color=pink_100))
-padding_pink_100 = Style(padding=Padding(color=pink_100))
-content_pink_100 = Style(content=Content(color=pink_100))
 pink_200 = Color.from_hex("#fbcfe8")
-text_pink_200 = Style(typography=Typography(style=CellStyle(foreground=pink_200)))
-text_bg_pink_200 = Style(typography=Typography(style=CellStyle(background=pink_200)))
-border_pink_200 = Style(border=Border(style=CellStyle(foreground=pink_200)))
-border_bg_pink_200 = Style(border=Border(style=CellStyle(background=pink_200)))
-margin_pink_200 = Style(margin=Margin(color=pink_200))
-padding_pink_200 = Style(padding=Padding(color=pink_200))
-content_pink_200 = Style(content=Content(color=pink_200))
 pink_300 = Color.from_hex("#f9a8d4")
-text_pink_300 = Style(typography=Typography(style=CellStyle(foreground=pink_300)))
-text_bg_pink_300 = Style(typography=Typography(style=CellStyle(background=pink_300)))
-border_pink_300 = Style(border=Border(style=CellStyle(foreground=pink_300)))
-border_bg_pink_300 = Style(border=Border(style=CellStyle(background=pink_300)))
-margin_pink_300 = Style(margin=Margin(color=pink_300))
-padding_pink_300 = Style(padding=Padding(color=pink_300))
-content_pink_300 = Style(content=Content(color=pink_300))
 pink_400 = Color.from_hex("#f472b6")
-text_pink_400 = Style(typography=Typography(style=CellStyle(foreground=pink_400)))
-text_bg_pink_400 = Style(typography=Typography(style=CellStyle(background=pink_400)))
-border_pink_400 = Style(border=Border(style=CellStyle(foreground=pink_400)))
-border_bg_pink_400 = Style(border=Border(style=CellStyle(background=pink_400)))
-margin_pink_400 = Style(margin=Margin(color=pink_400))
-padding_pink_400 = Style(padding=Padding(color=pink_400))
-content_pink_400 = Style(content=Content(color=pink_400))
 pink_500 = Color.from_hex("#ec4899")
-text_pink_500 = Style(typography=Typography(style=CellStyle(foreground=pink_500)))
-text_bg_pink_500 = Style(typography=Typography(style=CellStyle(background=pink_500)))
-border_pink_500 = Style(border=Border(style=CellStyle(foreground=pink_500)))
-border_bg_pink_500 = Style(border=Border(style=CellStyle(background=pink_500)))
-margin_pink_500 = Style(margin=Margin(color=pink_500))
-padding_pink_500 = Style(padding=Padding(color=pink_500))
-content_pink_500 = Style(content=Content(color=pink_500))
 pink_600 = Color.from_hex("#db2777")
-text_pink_600 = Style(typography=Typography(style=CellStyle(foreground=pink_600)))
-text_bg_pink_600 = Style(typography=Typography(style=CellStyle(background=pink_600)))
-border_pink_600 = Style(border=Border(style=CellStyle(foreground=pink_600)))
-border_bg_pink_600 = Style(border=Border(style=CellStyle(background=pink_600)))
-margin_pink_600 = Style(margin=Margin(color=pink_600))
-padding_pink_600 = Style(padding=Padding(color=pink_600))
-content_pink_600 = Style(content=Content(color=pink_600))
 pink_700 = Color.from_hex("#be185d")
-text_pink_700 = Style(typography=Typography(style=CellStyle(foreground=pink_700)))
-text_bg_pink_700 = Style(typography=Typography(style=CellStyle(background=pink_700)))
-border_pink_700 = Style(border=Border(style=CellStyle(foreground=pink_700)))
-border_bg_pink_700 = Style(border=Border(style=CellStyle(background=pink_700)))
-margin_pink_700 = Style(margin=Margin(color=pink_700))
-padding_pink_700 = Style(padding=Padding(color=pink_700))
-content_pink_700 = Style(content=Content(color=pink_700))
 pink_800 = Color.from_hex("#9d174d")
-text_pink_800 = Style(typography=Typography(style=CellStyle(foreground=pink_800)))
-text_bg_pink_800 = Style(typography=Typography(style=CellStyle(background=pink_800)))
-border_pink_800 = Style(border=Border(style=CellStyle(foreground=pink_800)))
-border_bg_pink_800 = Style(border=Border(style=CellStyle(background=pink_800)))
-margin_pink_800 = Style(margin=Margin(color=pink_800))
-padding_pink_800 = Style(padding=Padding(color=pink_800))
-content_pink_800 = Style(content=Content(color=pink_800))
 pink_900 = Color.from_hex("#831843")
-text_pink_900 = Style(typography=Typography(style=CellStyle(foreground=pink_900)))
-text_bg_pink_900 = Style(typography=Typography(style=CellStyle(background=pink_900)))
-border_pink_900 = Style(border=Border(style=CellStyle(foreground=pink_900)))
-border_bg_pink_900 = Style(border=Border(style=CellStyle(background=pink_900)))
-margin_pink_900 = Style(margin=Margin(color=pink_900))
-padding_pink_900 = Style(padding=Padding(color=pink_900))
-content_pink_900 = Style(content=Content(color=pink_900))
 pink_950 = Color.from_hex("#500724")
-text_pink_950 = Style(typography=Typography(style=CellStyle(foreground=pink_950)))
-text_bg_pink_950 = Style(typography=Typography(style=CellStyle(background=pink_950)))
-border_pink_950 = Style(border=Border(style=CellStyle(foreground=pink_950)))
-border_bg_pink_950 = Style(border=Border(style=CellStyle(background=pink_950)))
-margin_pink_950 = Style(margin=Margin(color=pink_950))
-padding_pink_950 = Style(padding=Padding(color=pink_950))
-content_pink_950 = Style(content=Content(color=pink_950))
 
 rose_50 = Color.from_hex("#fff1f2")
-text_rose_50 = Style(typography=Typography(style=CellStyle(foreground=rose_50)))
-text_bg_rose_50 = Style(typography=Typography(style=CellStyle(background=rose_50)))
-border_rose_50 = Style(border=Border(style=CellStyle(foreground=rose_50)))
-border_bg_rose_50 = Style(border=Border(style=CellStyle(background=rose_50)))
-margin_rose_50 = Style(margin=Margin(color=rose_50))
-padding_rose_50 = Style(padding=Padding(color=rose_50))
-content_rose_50 = Style(content=Content(color=rose_50))
 rose_100 = Color.from_hex("#ffe4e6")
-text_rose_100 = Style(typography=Typography(style=CellStyle(foreground=rose_100)))
-text_bg_rose_100 = Style(typography=Typography(style=CellStyle(background=rose_100)))
-border_rose_100 = Style(border=Border(style=CellStyle(foreground=rose_100)))
-border_bg_rose_100 = Style(border=Border(style=CellStyle(background=rose_100)))
-margin_rose_100 = Style(margin=Margin(color=rose_100))
-padding_rose_100 = Style(padding=Padding(color=rose_100))
-content_rose_100 = Style(content=Content(color=rose_100))
 rose_200 = Color.from_hex("#fecdd3")
-text_rose_200 = Style(typography=Typography(style=CellStyle(foreground=rose_200)))
-text_bg_rose_200 = Style(typography=Typography(style=CellStyle(background=rose_200)))
-border_rose_200 = Style(border=Border(style=CellStyle(foreground=rose_200)))
-border_bg_rose_200 = Style(border=Border(style=CellStyle(background=rose_200)))
-margin_rose_200 = Style(margin=Margin(color=rose_200))
-padding_rose_200 = Style(padding=Padding(color=rose_200))
-content_rose_200 = Style(content=Content(color=rose_200))
 rose_300 = Color.from_hex("#fda4af")
-text_rose_300 = Style(typography=Typography(style=CellStyle(foreground=rose_300)))
-text_bg_rose_300 = Style(typography=Typography(style=CellStyle(background=rose_300)))
-border_rose_300 = Style(border=Border(style=CellStyle(foreground=rose_300)))
-border_bg_rose_300 = Style(border=Border(style=CellStyle(background=rose_300)))
-margin_rose_300 = Style(margin=Margin(color=rose_300))
-padding_rose_300 = Style(padding=Padding(color=rose_300))
-content_rose_300 = Style(content=Content(color=rose_300))
 rose_400 = Color.from_hex("#fb7185")
-text_rose_400 = Style(typography=Typography(style=CellStyle(foreground=rose_400)))
-text_bg_rose_400 = Style(typography=Typography(style=CellStyle(background=rose_400)))
-border_rose_400 = Style(border=Border(style=CellStyle(foreground=rose_400)))
-border_bg_rose_400 = Style(border=Border(style=CellStyle(background=rose_400)))
-margin_rose_400 = Style(margin=Margin(color=rose_400))
-padding_rose_400 = Style(padding=Padding(color=rose_400))
-content_rose_400 = Style(content=Content(color=rose_400))
 rose_500 = Color.from_hex("#f43f5e")
-text_rose_500 = Style(typography=Typography(style=CellStyle(foreground=rose_500)))
-text_bg_rose_500 = Style(typography=Typography(style=CellStyle(background=rose_500)))
-border_rose_500 = Style(border=Border(style=CellStyle(foreground=rose_500)))
-border_bg_rose_500 = Style(border=Border(style=CellStyle(background=rose_500)))
-margin_rose_500 = Style(margin=Margin(color=rose_500))
-padding_rose_500 = Style(padding=Padding(color=rose_500))
-content_rose_500 = Style(content=Content(color=rose_500))
 rose_600 = Color.from_hex("#e11d48")
-text_rose_600 = Style(typography=Typography(style=CellStyle(foreground=rose_600)))
-text_bg_rose_600 = Style(typography=Typography(style=CellStyle(background=rose_600)))
-border_rose_600 = Style(border=Border(style=CellStyle(foreground=rose_600)))
-border_bg_rose_600 = Style(border=Border(style=CellStyle(background=rose_600)))
-margin_rose_600 = Style(margin=Margin(color=rose_600))
-padding_rose_600 = Style(padding=Padding(color=rose_600))
-content_rose_600 = Style(content=Content(color=rose_600))
 rose_700 = Color.from_hex("#be123c")
-text_rose_700 = Style(typography=Typography(style=CellStyle(foreground=rose_700)))
-text_bg_rose_700 = Style(typography=Typography(style=CellStyle(background=rose_700)))
-border_rose_700 = Style(border=Border(style=CellStyle(foreground=rose_700)))
-border_bg_rose_700 = Style(border=Border(style=CellStyle(background=rose_700)))
-margin_rose_700 = Style(margin=Margin(color=rose_700))
-padding_rose_700 = Style(padding=Padding(color=rose_700))
-content_rose_700 = Style(content=Content(color=rose_700))
 rose_800 = Color.from_hex("#9f1239")
-text_rose_800 = Style(typography=Typography(style=CellStyle(foreground=rose_800)))
-text_bg_rose_800 = Style(typography=Typography(style=CellStyle(background=rose_800)))
-border_rose_800 = Style(border=Border(style=CellStyle(foreground=rose_800)))
-border_bg_rose_800 = Style(border=Border(style=CellStyle(background=rose_800)))
-margin_rose_800 = Style(margin=Margin(color=rose_800))
-padding_rose_800 = Style(padding=Padding(color=rose_800))
-content_rose_800 = Style(content=Content(color=rose_800))
 rose_900 = Color.from_hex("#881337")
-text_rose_900 = Style(typography=Typography(style=CellStyle(foreground=rose_900)))
-text_bg_rose_900 = Style(typography=Typography(style=CellStyle(background=rose_900)))
-border_rose_900 = Style(border=Border(style=CellStyle(foreground=rose_900)))
-border_bg_rose_900 = Style(border=Border(style=CellStyle(background=rose_900)))
-margin_rose_900 = Style(margin=Margin(color=rose_900))
-padding_rose_900 = Style(padding=Padding(color=rose_900))
-content_rose_900 = Style(content=Content(color=rose_900))
 rose_950 = Color.from_hex("#4c0519")
-text_rose_950 = Style(typography=Typography(style=CellStyle(foreground=rose_950)))
-text_bg_rose_950 = Style(typography=Typography(style=CellStyle(background=rose_950)))
-border_rose_950 = Style(border=Border(style=CellStyle(foreground=rose_950)))
-border_bg_rose_950 = Style(border=Border(style=CellStyle(background=rose_950)))
-margin_rose_950 = Style(margin=Margin(color=rose_950))
-padding_rose_950 = Style(padding=Padding(color=rose_950))
-content_rose_950 = Style(content=Content(color=rose_950))
 
-row = Style(layout=Flex(direction="row"))
-col = Style(layout=Flex(direction="column"))
+ColorName = Literal[
+    "slate",
+    "gray",
+    "zinc",
+    "neutral",
+    "stone",
+    "red",
+    "orange",
+    "amber",
+    "yellow",
+    "lime",
+    "green",
+    "emerald",
+    "teal",
+    "cyan",
+    "sky",
+    "blue",
+    "indigo",
+    "violet",
+    "purple",
+    "fuchsia",
+    "pink",
+    "rose",
+]
+Shade = Literal[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 
-inset_top_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="left"))))
-inset_top_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="center"))))
-inset_top_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="top", horizontal="right"))))
-inset_center_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="left"))))
-inset_center_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="center"))))
-inset_center_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="center", horizontal="right"))))
-inset_bottom_left = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="left"))))
-inset_bottom_center = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="center"))))
-inset_bottom_right = Style(layout=Flex(position=Absolute(inset=Inset(vertical="bottom", horizontal="right"))))
+_COLOR_MAP: dict[tuple[str, int], Color] = {
+    ("slate", 50): slate_50,
+    ("slate", 100): slate_100,
+    ("slate", 200): slate_200,
+    ("slate", 300): slate_300,
+    ("slate", 400): slate_400,
+    ("slate", 500): slate_500,
+    ("slate", 600): slate_600,
+    ("slate", 700): slate_700,
+    ("slate", 800): slate_800,
+    ("slate", 900): slate_900,
+    ("slate", 950): slate_950,
+    ("gray", 50): gray_50,
+    ("gray", 100): gray_100,
+    ("gray", 200): gray_200,
+    ("gray", 300): gray_300,
+    ("gray", 400): gray_400,
+    ("gray", 500): gray_500,
+    ("gray", 600): gray_600,
+    ("gray", 700): gray_700,
+    ("gray", 800): gray_800,
+    ("gray", 900): gray_900,
+    ("gray", 950): gray_950,
+    ("zinc", 50): zinc_50,
+    ("zinc", 100): zinc_100,
+    ("zinc", 200): zinc_200,
+    ("zinc", 300): zinc_300,
+    ("zinc", 400): zinc_400,
+    ("zinc", 500): zinc_500,
+    ("zinc", 600): zinc_600,
+    ("zinc", 700): zinc_700,
+    ("zinc", 800): zinc_800,
+    ("zinc", 900): zinc_900,
+    ("zinc", 950): zinc_950,
+    ("neutral", 50): neutral_50,
+    ("neutral", 100): neutral_100,
+    ("neutral", 200): neutral_200,
+    ("neutral", 300): neutral_300,
+    ("neutral", 400): neutral_400,
+    ("neutral", 500): neutral_500,
+    ("neutral", 600): neutral_600,
+    ("neutral", 700): neutral_700,
+    ("neutral", 800): neutral_800,
+    ("neutral", 900): neutral_900,
+    ("neutral", 950): neutral_950,
+    ("stone", 50): stone_50,
+    ("stone", 100): stone_100,
+    ("stone", 200): stone_200,
+    ("stone", 300): stone_300,
+    ("stone", 400): stone_400,
+    ("stone", 500): stone_500,
+    ("stone", 600): stone_600,
+    ("stone", 700): stone_700,
+    ("stone", 800): stone_800,
+    ("stone", 900): stone_900,
+    ("stone", 950): stone_950,
+    ("red", 50): red_50,
+    ("red", 100): red_100,
+    ("red", 200): red_200,
+    ("red", 300): red_300,
+    ("red", 400): red_400,
+    ("red", 500): red_500,
+    ("red", 600): red_600,
+    ("red", 700): red_700,
+    ("red", 800): red_800,
+    ("red", 900): red_900,
+    ("red", 950): red_950,
+    ("orange", 50): orange_50,
+    ("orange", 100): orange_100,
+    ("orange", 200): orange_200,
+    ("orange", 300): orange_300,
+    ("orange", 400): orange_400,
+    ("orange", 500): orange_500,
+    ("orange", 600): orange_600,
+    ("orange", 700): orange_700,
+    ("orange", 800): orange_800,
+    ("orange", 900): orange_900,
+    ("orange", 950): orange_950,
+    ("amber", 50): amber_50,
+    ("amber", 100): amber_100,
+    ("amber", 200): amber_200,
+    ("amber", 300): amber_300,
+    ("amber", 400): amber_400,
+    ("amber", 500): amber_500,
+    ("amber", 600): amber_600,
+    ("amber", 700): amber_700,
+    ("amber", 800): amber_800,
+    ("amber", 900): amber_900,
+    ("amber", 950): amber_950,
+    ("yellow", 50): yellow_50,
+    ("yellow", 100): yellow_100,
+    ("yellow", 200): yellow_200,
+    ("yellow", 300): yellow_300,
+    ("yellow", 400): yellow_400,
+    ("yellow", 500): yellow_500,
+    ("yellow", 600): yellow_600,
+    ("yellow", 700): yellow_700,
+    ("yellow", 800): yellow_800,
+    ("yellow", 900): yellow_900,
+    ("yellow", 950): yellow_950,
+    ("lime", 50): lime_50,
+    ("lime", 100): lime_100,
+    ("lime", 200): lime_200,
+    ("lime", 300): lime_300,
+    ("lime", 400): lime_400,
+    ("lime", 500): lime_500,
+    ("lime", 600): lime_600,
+    ("lime", 700): lime_700,
+    ("lime", 800): lime_800,
+    ("lime", 900): lime_900,
+    ("lime", 950): lime_950,
+    ("green", 50): green_50,
+    ("green", 100): green_100,
+    ("green", 200): green_200,
+    ("green", 300): green_300,
+    ("green", 400): green_400,
+    ("green", 500): green_500,
+    ("green", 600): green_600,
+    ("green", 700): green_700,
+    ("green", 800): green_800,
+    ("green", 900): green_900,
+    ("green", 950): green_950,
+    ("emerald", 50): emerald_50,
+    ("emerald", 100): emerald_100,
+    ("emerald", 200): emerald_200,
+    ("emerald", 300): emerald_300,
+    ("emerald", 400): emerald_400,
+    ("emerald", 500): emerald_500,
+    ("emerald", 600): emerald_600,
+    ("emerald", 700): emerald_700,
+    ("emerald", 800): emerald_800,
+    ("emerald", 900): emerald_900,
+    ("emerald", 950): emerald_950,
+    ("teal", 50): teal_50,
+    ("teal", 100): teal_100,
+    ("teal", 200): teal_200,
+    ("teal", 300): teal_300,
+    ("teal", 400): teal_400,
+    ("teal", 500): teal_500,
+    ("teal", 600): teal_600,
+    ("teal", 700): teal_700,
+    ("teal", 800): teal_800,
+    ("teal", 900): teal_900,
+    ("teal", 950): teal_950,
+    ("cyan", 50): cyan_50,
+    ("cyan", 100): cyan_100,
+    ("cyan", 200): cyan_200,
+    ("cyan", 300): cyan_300,
+    ("cyan", 400): cyan_400,
+    ("cyan", 500): cyan_500,
+    ("cyan", 600): cyan_600,
+    ("cyan", 700): cyan_700,
+    ("cyan", 800): cyan_800,
+    ("cyan", 900): cyan_900,
+    ("cyan", 950): cyan_950,
+    ("sky", 50): sky_50,
+    ("sky", 100): sky_100,
+    ("sky", 200): sky_200,
+    ("sky", 300): sky_300,
+    ("sky", 400): sky_400,
+    ("sky", 500): sky_500,
+    ("sky", 600): sky_600,
+    ("sky", 700): sky_700,
+    ("sky", 800): sky_800,
+    ("sky", 900): sky_900,
+    ("sky", 950): sky_950,
+    ("blue", 50): blue_50,
+    ("blue", 100): blue_100,
+    ("blue", 200): blue_200,
+    ("blue", 300): blue_300,
+    ("blue", 400): blue_400,
+    ("blue", 500): blue_500,
+    ("blue", 600): blue_600,
+    ("blue", 700): blue_700,
+    ("blue", 800): blue_800,
+    ("blue", 900): blue_900,
+    ("blue", 950): blue_950,
+    ("indigo", 50): indigo_50,
+    ("indigo", 100): indigo_100,
+    ("indigo", 200): indigo_200,
+    ("indigo", 300): indigo_300,
+    ("indigo", 400): indigo_400,
+    ("indigo", 500): indigo_500,
+    ("indigo", 600): indigo_600,
+    ("indigo", 700): indigo_700,
+    ("indigo", 800): indigo_800,
+    ("indigo", 900): indigo_900,
+    ("indigo", 950): indigo_950,
+    ("violet", 50): violet_50,
+    ("violet", 100): violet_100,
+    ("violet", 200): violet_200,
+    ("violet", 300): violet_300,
+    ("violet", 400): violet_400,
+    ("violet", 500): violet_500,
+    ("violet", 600): violet_600,
+    ("violet", 700): violet_700,
+    ("violet", 800): violet_800,
+    ("violet", 900): violet_900,
+    ("violet", 950): violet_950,
+    ("purple", 50): purple_50,
+    ("purple", 100): purple_100,
+    ("purple", 200): purple_200,
+    ("purple", 300): purple_300,
+    ("purple", 400): purple_400,
+    ("purple", 500): purple_500,
+    ("purple", 600): purple_600,
+    ("purple", 700): purple_700,
+    ("purple", 800): purple_800,
+    ("purple", 900): purple_900,
+    ("purple", 950): purple_950,
+    ("fuchsia", 50): fuchsia_50,
+    ("fuchsia", 100): fuchsia_100,
+    ("fuchsia", 200): fuchsia_200,
+    ("fuchsia", 300): fuchsia_300,
+    ("fuchsia", 400): fuchsia_400,
+    ("fuchsia", 500): fuchsia_500,
+    ("fuchsia", 600): fuchsia_600,
+    ("fuchsia", 700): fuchsia_700,
+    ("fuchsia", 800): fuchsia_800,
+    ("fuchsia", 900): fuchsia_900,
+    ("fuchsia", 950): fuchsia_950,
+    ("pink", 50): pink_50,
+    ("pink", 100): pink_100,
+    ("pink", 200): pink_200,
+    ("pink", 300): pink_300,
+    ("pink", 400): pink_400,
+    ("pink", 500): pink_500,
+    ("pink", 600): pink_600,
+    ("pink", 700): pink_700,
+    ("pink", 800): pink_800,
+    ("pink", 900): pink_900,
+    ("pink", 950): pink_950,
+    ("rose", 50): rose_50,
+    ("rose", 100): rose_100,
+    ("rose", 200): rose_200,
+    ("rose", 300): rose_300,
+    ("rose", 400): rose_400,
+    ("rose", 500): rose_500,
+    ("rose", 600): rose_600,
+    ("rose", 700): rose_700,
+    ("rose", 800): rose_800,
+    ("rose", 900): rose_900,
+    ("rose", 950): rose_950,
+}
 
-justify_children_start = Style(layout=Flex(justify_children="start"))
-justify_children_center = Style(layout=Flex(justify_children="center"))
-justify_children_end = Style(layout=Flex(justify_children="end"))
-justify_children_space_between = Style(layout=Flex(justify_children="space-between"))
-justify_children_space_around = Style(layout=Flex(justify_children="space-around"))
-justify_children_space_evenly = Style(layout=Flex(justify_children="space-evenly"))
+row = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row))
+col = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column))
+row_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.RowReverse))
+col_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.ColumnReverse))
 
-align_children_start = Style(layout=Flex(align_children="start"))
-align_children_center = Style(layout=Flex(align_children="center"))
-align_children_end = Style(layout=Flex(align_children="end"))
-align_children_stretch = Style(layout=Flex(align_children="stretch"))
+justify_children_start = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Start))
+justify_children_center = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Center))
+justify_children_end = Style(layout=waxy.Style(justify_content=waxy.AlignContent.End))
+justify_children_space_between = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceBetween))
+justify_children_space_around = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceAround))
+justify_children_space_evenly = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceEvenly))
 
-align_self_none = Style(layout=Flex(align_self="none"))
-align_self_start = Style(layout=Flex(align_self="start"))
-align_self_center = Style(layout=Flex(align_self="center"))
-align_self_end = Style(layout=Flex(align_self="end"))
-align_self_stretch = Style(layout=Flex(align_self="stretch"))
+align_children_start = Style(layout=waxy.Style(align_items=waxy.AlignItems.Start))
+align_children_center = Style(layout=waxy.Style(align_items=waxy.AlignItems.Center))
+align_children_end = Style(layout=waxy.Style(align_items=waxy.AlignItems.End))
+align_children_stretch = Style(layout=waxy.Style(align_items=waxy.AlignItems.Stretch))
 
-weight_none = Style(layout=Flex(weight=None))
-weight_1 = Style(layout=Flex(weight=1))
-weight_2 = Style(layout=Flex(weight=2))
-weight_3 = Style(layout=Flex(weight=3))
-weight_4 = Style(layout=Flex(weight=4))
-weight_5 = Style(layout=Flex(weight=5))
-weight_6 = Style(layout=Flex(weight=6))
-weight_7 = Style(layout=Flex(weight=7))
-weight_8 = Style(layout=Flex(weight=8))
+align_self_start = Style(layout=waxy.Style(align_self=waxy.AlignItems.Start))
+align_self_center = Style(layout=waxy.Style(align_self=waxy.AlignItems.Center))
+align_self_end = Style(layout=waxy.Style(align_self=waxy.AlignItems.End))
+align_self_stretch = Style(layout=waxy.Style(align_self=waxy.AlignItems.Stretch))
 
-border_none = Style(border=None)
-border_light = Style(border=Border(kind=BorderKind.Light))
-border_lightrounded = Style(border=Border(kind=BorderKind.LightRounded))
-border_lightangled = Style(border=Border(kind=BorderKind.LightAngled))
-border_heavy = Style(border=Border(kind=BorderKind.Heavy))
-border_double = Style(border=Border(kind=BorderKind.Double))
-border_thick = Style(border=Border(kind=BorderKind.Thick))
-border_mcgugan = Style(border=Border(kind=BorderKind.McGugan))
-border_lightshade = Style(border=Border(kind=BorderKind.LightShade))
-border_mediumshade = Style(border=Border(kind=BorderKind.MediumShade))
-border_heavyshade = Style(border=Border(kind=BorderKind.HeavyShade))
-border_star = Style(border=Border(kind=BorderKind.Star))
+justify_items_start = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Start))
+justify_items_center = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Center))
+justify_items_end = Style(layout=waxy.Style(justify_items=waxy.AlignItems.End))
+justify_items_stretch = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Stretch))
 
-border_top = Style(border=Border(edges=frozenset((BorderEdge.Top,))))
-border_bottom = Style(border=Border(edges=frozenset((BorderEdge.Bottom,))))
-border_left = Style(border=Border(edges=frozenset((BorderEdge.Left,))))
-border_right = Style(border=Border(edges=frozenset((BorderEdge.Right,))))
-border_top_bottom = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom))))
-border_top_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left))))
-border_top_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Right))))
-border_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left))))
-border_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Right))))
-border_left_right = Style(border=Border(edges=frozenset((BorderEdge.Left, BorderEdge.Right))))
-border_top_bottom_left = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Left))))
-border_top_bottom_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Bottom, BorderEdge.Right))))
-border_top_left_right = Style(border=Border(edges=frozenset((BorderEdge.Top, BorderEdge.Left, BorderEdge.Right))))
-border_bottom_left_right = Style(border=Border(edges=frozenset((BorderEdge.Bottom, BorderEdge.Left, BorderEdge.Right))))
+justify_self_start = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Start))
+justify_self_center = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Center))
+justify_self_end = Style(layout=waxy.Style(justify_self=waxy.AlignItems.End))
+justify_self_stretch = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Stretch))
 
-border_contract_0 = Style(border=Border(contract=0))
-border_contract_1 = Style(border=Border(contract=1))
-border_contract_2 = Style(border=Border(contract=2))
-border_contract_3 = Style(border=Border(contract=3))
-border_contract_4 = Style(border=Border(contract=4))
-border_contract_5 = Style(border=Border(contract=5))
-border_contract_6 = Style(border=Border(contract=6))
-border_contract_7 = Style(border=Border(contract=7))
-border_contract_8 = Style(border=Border(contract=8))
 
-pad_top_0 = Style(padding=Padding(top=0))
-pad_top_1 = Style(padding=Padding(top=1))
-pad_top_2 = Style(padding=Padding(top=2))
-pad_top_3 = Style(padding=Padding(top=3))
-pad_top_4 = Style(padding=Padding(top=4))
-pad_top_5 = Style(padding=Padding(top=5))
-pad_top_6 = Style(padding=Padding(top=6))
-pad_top_7 = Style(padding=Padding(top=7))
-pad_top_8 = Style(padding=Padding(top=8))
+flex_no_wrap = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.NoWrap))
+flex_wrap = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.Wrap))
+flex_wrap_reverse = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.WrapReverse))
 
-pad_bottom_0 = Style(padding=Padding(bottom=0))
-pad_bottom_1 = Style(padding=Padding(bottom=1))
-pad_bottom_2 = Style(padding=Padding(bottom=2))
-pad_bottom_3 = Style(padding=Padding(bottom=3))
-pad_bottom_4 = Style(padding=Padding(bottom=4))
-pad_bottom_5 = Style(padding=Padding(bottom=5))
-pad_bottom_6 = Style(padding=Padding(bottom=6))
-pad_bottom_7 = Style(padding=Padding(bottom=7))
-pad_bottom_8 = Style(padding=Padding(bottom=8))
+display_flex = Style(layout=waxy.Style(display=waxy.Display.Flex))
+display_block = Style(layout=waxy.Style(display=waxy.Display.Block))
+display_grid = Style(layout=waxy.Style(display=waxy.Display.Grid))
+display_none = Style(layout=waxy.Style(display=waxy.Display.Nil))
 
-pad_left_0 = Style(padding=Padding(left=0))
-pad_left_1 = Style(padding=Padding(left=1))
-pad_left_2 = Style(padding=Padding(left=2))
-pad_left_3 = Style(padding=Padding(left=3))
-pad_left_4 = Style(padding=Padding(left=4))
-pad_left_5 = Style(padding=Padding(left=5))
-pad_left_6 = Style(padding=Padding(left=6))
-pad_left_7 = Style(padding=Padding(left=7))
-pad_left_8 = Style(padding=Padding(left=8))
+grid_auto_flow_row = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.Row))
+grid_auto_flow_column = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.Column))
+grid_auto_flow_row_dense = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.RowDense))
+grid_auto_flow_column_dense = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.ColumnDense))
 
-pad_right_0 = Style(padding=Padding(right=0))
-pad_right_1 = Style(padding=Padding(right=1))
-pad_right_2 = Style(padding=Padding(right=2))
-pad_right_3 = Style(padding=Padding(right=3))
-pad_right_4 = Style(padding=Padding(right=4))
-pad_right_5 = Style(padding=Padding(right=5))
-pad_right_6 = Style(padding=Padding(right=6))
-pad_right_7 = Style(padding=Padding(right=7))
-pad_right_8 = Style(padding=Padding(right=8))
+border_none = Style(border_kind=None)
+border_light = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.Light,
+)
+border_lightrounded = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.LightRounded,
+)
+border_lightangled = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.LightAngled,
+)
+border_heavy = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.Heavy,
+)
+border_double = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.Double,
+)
+border_thick = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.Thick,
+)
+border_mcgugan = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.McGugan,
+)
+border_lightshade = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.LightShade,
+)
+border_mediumshade = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.MediumShade,
+)
+border_heavyshade = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.HeavyShade,
+)
+border_star = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
+    ),
+    border_kind=BorderKind.Star,
+)
 
-pad_x_0 = Style(padding=Padding(left=0, right=0))
-pad_x_1 = Style(padding=Padding(left=1, right=1))
-pad_x_2 = Style(padding=Padding(left=2, right=2))
-pad_x_3 = Style(padding=Padding(left=3, right=3))
-pad_x_4 = Style(padding=Padding(left=4, right=4))
-pad_x_5 = Style(padding=Padding(left=5, right=5))
-pad_x_6 = Style(padding=Padding(left=6, right=6))
-pad_x_7 = Style(padding=Padding(left=7, right=7))
-pad_x_8 = Style(padding=Padding(left=8, right=8))
+border_top = Style(layout=waxy.Style(border_top=waxy.Length(1)))
+border_bottom = Style(layout=waxy.Style(border_bottom=waxy.Length(1)))
+border_left = Style(layout=waxy.Style(border_left=waxy.Length(1)))
+border_right = Style(layout=waxy.Style(border_right=waxy.Length(1)))
+border_top_bottom = Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1)))
+border_top_left = Style(layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1)))
+border_top_right = Style(layout=waxy.Style(border_top=waxy.Length(1), border_right=waxy.Length(1)))
+border_bottom_left = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1)))
+border_bottom_right = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_right=waxy.Length(1)))
+border_left_right = Style(layout=waxy.Style(border_left=waxy.Length(1), border_right=waxy.Length(1)))
+border_top_bottom_left = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1))
+)
+border_top_bottom_right = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_right=waxy.Length(1))
+)
+border_top_left_right = Style(
+    layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
+)
+border_bottom_left_right = Style(
+    layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
+)
+border_all = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1)
+    )
+)
 
-pad_y_0 = Style(padding=Padding(top=0, bottom=0))
-pad_y_1 = Style(padding=Padding(top=1, bottom=1))
-pad_y_2 = Style(padding=Padding(top=2, bottom=2))
-pad_y_3 = Style(padding=Padding(top=3, bottom=3))
-pad_y_4 = Style(padding=Padding(top=4, bottom=4))
-pad_y_5 = Style(padding=Padding(top=5, bottom=5))
-pad_y_6 = Style(padding=Padding(top=6, bottom=6))
-pad_y_7 = Style(padding=Padding(top=7, bottom=7))
-pad_y_8 = Style(padding=Padding(top=8, bottom=8))
+inset_top_left = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Length(0))
+)
+inset_top_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Auto(), inset_right=waxy.Auto()
+    )
+)
+inset_top_right = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_right=waxy.Length(0))
+)
+inset_center_left = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Auto(), inset_bottom=waxy.Auto(), inset_left=waxy.Length(0)
+    )
+)
+inset_center_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute,
+        inset_top=waxy.Auto(),
+        inset_bottom=waxy.Auto(),
+        inset_left=waxy.Auto(),
+        inset_right=waxy.Auto(),
+    )
+)
+inset_center_right = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_top=waxy.Auto(), inset_bottom=waxy.Auto(), inset_right=waxy.Length(0)
+    )
+)
+inset_bottom_left = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_left=waxy.Length(0))
+)
+inset_bottom_center = Style(
+    layout=waxy.Style(
+        position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_left=waxy.Auto(), inset_right=waxy.Auto()
+    )
+)
+inset_bottom_right = Style(
+    layout=waxy.Style(position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_right=waxy.Length(0))
+)
 
-pad_0 = Style(padding=Padding(top=0, bottom=0, left=0, right=0))
-pad_1 = Style(padding=Padding(top=1, bottom=1, left=1, right=1))
-pad_2 = Style(padding=Padding(top=2, bottom=2, left=2, right=2))
-pad_3 = Style(padding=Padding(top=3, bottom=3, left=3, right=3))
-pad_4 = Style(padding=Padding(top=4, bottom=4, left=4, right=4))
-pad_5 = Style(padding=Padding(top=5, bottom=5, left=5, right=5))
-pad_6 = Style(padding=Padding(top=6, bottom=6, left=6, right=6))
-pad_7 = Style(padding=Padding(top=7, bottom=7, left=7, right=7))
-pad_8 = Style(padding=Padding(top=8, bottom=8, left=8, right=8))
-
-margin_top_0 = Style(margin=Margin(top=0))
-margin_top_1 = Style(margin=Margin(top=1))
-margin_top_2 = Style(margin=Margin(top=2))
-margin_top_3 = Style(margin=Margin(top=3))
-margin_top_4 = Style(margin=Margin(top=4))
-margin_top_5 = Style(margin=Margin(top=5))
-margin_top_6 = Style(margin=Margin(top=6))
-margin_top_7 = Style(margin=Margin(top=7))
-margin_top_8 = Style(margin=Margin(top=8))
-
-margin_bottom_0 = Style(margin=Margin(bottom=0))
-margin_bottom_1 = Style(margin=Margin(bottom=1))
-margin_bottom_2 = Style(margin=Margin(bottom=2))
-margin_bottom_3 = Style(margin=Margin(bottom=3))
-margin_bottom_4 = Style(margin=Margin(bottom=4))
-margin_bottom_5 = Style(margin=Margin(bottom=5))
-margin_bottom_6 = Style(margin=Margin(bottom=6))
-margin_bottom_7 = Style(margin=Margin(bottom=7))
-margin_bottom_8 = Style(margin=Margin(bottom=8))
-
-margin_left_0 = Style(margin=Margin(left=0))
-margin_left_1 = Style(margin=Margin(left=1))
-margin_left_2 = Style(margin=Margin(left=2))
-margin_left_3 = Style(margin=Margin(left=3))
-margin_left_4 = Style(margin=Margin(left=4))
-margin_left_5 = Style(margin=Margin(left=5))
-margin_left_6 = Style(margin=Margin(left=6))
-margin_left_7 = Style(margin=Margin(left=7))
-margin_left_8 = Style(margin=Margin(left=8))
-
-margin_right_0 = Style(margin=Margin(right=0))
-margin_right_1 = Style(margin=Margin(right=1))
-margin_right_2 = Style(margin=Margin(right=2))
-margin_right_3 = Style(margin=Margin(right=3))
-margin_right_4 = Style(margin=Margin(right=4))
-margin_right_5 = Style(margin=Margin(right=5))
-margin_right_6 = Style(margin=Margin(right=6))
-margin_right_7 = Style(margin=Margin(right=7))
-margin_right_8 = Style(margin=Margin(right=8))
-
-margin_x_0 = Style(margin=Margin(left=0, right=0))
-margin_x_1 = Style(margin=Margin(left=1, right=1))
-margin_x_2 = Style(margin=Margin(left=2, right=2))
-margin_x_3 = Style(margin=Margin(left=3, right=3))
-margin_x_4 = Style(margin=Margin(left=4, right=4))
-margin_x_5 = Style(margin=Margin(left=5, right=5))
-margin_x_6 = Style(margin=Margin(left=6, right=6))
-margin_x_7 = Style(margin=Margin(left=7, right=7))
-margin_x_8 = Style(margin=Margin(left=8, right=8))
-
-margin_y_0 = Style(margin=Margin(top=0, bottom=0))
-margin_y_1 = Style(margin=Margin(top=1, bottom=1))
-margin_y_2 = Style(margin=Margin(top=2, bottom=2))
-margin_y_3 = Style(margin=Margin(top=3, bottom=3))
-margin_y_4 = Style(margin=Margin(top=4, bottom=4))
-margin_y_5 = Style(margin=Margin(top=5, bottom=5))
-margin_y_6 = Style(margin=Margin(top=6, bottom=6))
-margin_y_7 = Style(margin=Margin(top=7, bottom=7))
-margin_y_8 = Style(margin=Margin(top=8, bottom=8))
-
-margin_0 = Style(margin=Margin(top=0, bottom=0, left=0, right=0))
-margin_1 = Style(margin=Margin(top=1, bottom=1, left=1, right=1))
-margin_2 = Style(margin=Margin(top=2, bottom=2, left=2, right=2))
-margin_3 = Style(margin=Margin(top=3, bottom=3, left=3, right=3))
-margin_4 = Style(margin=Margin(top=4, bottom=4, left=4, right=4))
-margin_5 = Style(margin=Margin(top=5, bottom=5, left=5, right=5))
-margin_6 = Style(margin=Margin(top=6, bottom=6, left=6, right=6))
-margin_7 = Style(margin=Margin(top=7, bottom=7, left=7, right=7))
-margin_8 = Style(margin=Margin(top=8, bottom=8, left=8, right=8))
-
-gap_children_0 = Style(layout=Flex(gap_children=0))
-gap_children_1 = Style(layout=Flex(gap_children=1))
-gap_children_2 = Style(layout=Flex(gap_children=2))
-gap_children_3 = Style(layout=Flex(gap_children=3))
-gap_children_4 = Style(layout=Flex(gap_children=4))
-gap_children_5 = Style(layout=Flex(gap_children=5))
-gap_children_6 = Style(layout=Flex(gap_children=6))
-gap_children_7 = Style(layout=Flex(gap_children=7))
-gap_children_8 = Style(layout=Flex(gap_children=8))
-
-text_justify_left = Style(typography=Typography(justify="left"))
-text_justify_center = Style(typography=Typography(justify="center"))
-text_justify_right = Style(typography=Typography(justify="right"))
+text_justify_left = Style(text_justify="left")
+text_justify_center = Style(text_justify="center")
+text_justify_right = Style(text_justify="right")
 
 # Stop generated
 
 
-def relative(x: int = 0, y: int = 0) -> Style:
-    return Style(layout=Flex(position=Relative(x=x, y=y)))
+default = Style()
+
+position_relative = Style(layout=waxy.Style(position=waxy.Position.Relative))
+position_absolute = Style(layout=waxy.Style(position=waxy.Position.Absolute))
+
+border_collapse = Style(layout=waxy.Style(gap_width=waxy.Length(-1), gap_height=waxy.Length(-1)))
+
+content_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.ContentBox))
+border_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.BorderBox))
 
 
-def absolute(x: int = 0, y: int = 0) -> Style:
-    return Style(layout=Flex(position=Absolute(x=x, y=y)))
+@lru_cache(maxsize=256)
+def grow(n: float) -> Style:
+    return Style(layout=waxy.Style(flex_grow=float(n), flex_basis=waxy.Length(0)))
 
 
-def fixed(x: int = 0, y: int = 0) -> Style:
-    return Style(layout=Flex(position=Fixed(x=x, y=y)))
+@lru_cache(maxsize=256)
+def shrink(n: float) -> Style:
+    return Style(layout=waxy.Style(flex_shrink=float(n)))
 
 
+full_width = Style(layout=waxy.Style(size_width=waxy.Percent(1.0)))
+full_height = Style(layout=waxy.Style(size_height=waxy.Percent(1.0)))
+full = Style(layout=waxy.Style(size_width=waxy.Percent(1.0), size_height=waxy.Percent(1.0)))
+
+
+@lru_cache(maxsize=256)
+def inset_top(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_top=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_left(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_left=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_right(n: int) -> Style:
+    return Style(layout=waxy.Style(inset_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
 def z(z: int = 0) -> Style:
-    return Style(layout=Flex(z=z))
+    return Style(z=z)
+
+
+@lru_cache(maxsize=256)
+def width(n: int) -> Style:
+    return Style(layout=waxy.Style(size_width=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def height(n: int) -> Style:
+    return Style(layout=waxy.Style(size_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def size(w: int, h: int) -> Style:
+    return Style(layout=waxy.Style(size_width=waxy.Length(w), size_height=waxy.Length(h)))
+
+
+@lru_cache(maxsize=256)
+def min_width(n: int) -> Style:
+    return Style(layout=waxy.Style(min_size_width=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def min_height(n: int) -> Style:
+    return Style(layout=waxy.Style(min_size_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def max_width(n: int) -> Style:
+    return Style(layout=waxy.Style(max_size_width=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def max_height(n: int) -> Style:
+    return Style(layout=waxy.Style(max_size_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def aspect_ratio(ratio: float) -> Style:
+    return Style(layout=waxy.Style(aspect_ratio=ratio))
+
+
+@lru_cache(maxsize=256)
+def grid_template_rows(*tracks: waxy.GridTrackValue) -> Style:
+    return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
+
+
+@lru_cache(maxsize=256)
+def grid_template_columns(*tracks: waxy.GridTrackValue) -> Style:
+    return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
+
+
+@lru_cache(maxsize=256)
+def grid_row(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
+    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
+
+
+@lru_cache(maxsize=256)
+def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
+    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
+
+
+@lru_cache(maxsize=256)
+def border_contract(n: int) -> Style:
+    return Style(border_contract=n)
+
+
+@lru_cache(maxsize=256)
+def border_sides(sides: frozenset[Side]) -> Style:
+    return Style(
+        layout=waxy.Style(
+            border_top=waxy.Length(1 if "top" in sides else 0),
+            border_bottom=waxy.Length(1 if "bottom" in sides else 0),
+            border_left=waxy.Length(1 if "left" in sides else 0),
+            border_right=waxy.Length(1 if "right" in sides else 0),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def margin_top(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_top=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_left(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_left=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_right(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_x(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_left=waxy.Length(n), margin_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin_y(n: int) -> Style:
+    return Style(layout=waxy.Style(margin_top=waxy.Length(n), margin_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def margin(n: int) -> Style:
+    return Style(
+        layout=waxy.Style(
+            margin_top=waxy.Length(n),
+            margin_bottom=waxy.Length(n),
+            margin_left=waxy.Length(n),
+            margin_right=waxy.Length(n),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def gap_width(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_width=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def gap_height(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def gap(n: int) -> Style:
+    return Style(layout=waxy.Style(gap_width=waxy.Length(n), gap_height=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad(n: int) -> Style:
+    return Style(
+        layout=waxy.Style(
+            padding_top=waxy.Length(n),
+            padding_bottom=waxy.Length(n),
+            padding_left=waxy.Length(n),
+            padding_right=waxy.Length(n),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def pad_x(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_left=waxy.Length(n), padding_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_y(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_top=waxy.Length(n), padding_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_top(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_top=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_bottom(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_left(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_left=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_right(n: int) -> Style:
+    return Style(layout=waxy.Style(padding_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def text(color: ColorName, shade: Shade) -> Style:
+    return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
+
+
+@lru_cache(maxsize=256)
+def text_bg(color: ColorName, shade: Shade) -> Style:
+    return Style(text_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
+
+
+@lru_cache(maxsize=256)
+def border_color(color: ColorName, shade: Shade) -> Style:
+    return Style(border_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
+
+
+@lru_cache(maxsize=256)
+def border_bg(color: ColorName, shade: Shade) -> Style:
+    return Style(border_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
+
+
+@lru_cache(maxsize=256)
+def margin_color(color: ColorName, shade: Shade) -> Style:
+    return Style(margin_color=_COLOR_MAP[(color, shade)])
+
+
+@lru_cache(maxsize=256)
+def padding_color(color: ColorName, shade: Shade) -> Style:
+    return Style(padding_color=_COLOR_MAP[(color, shade)])
+
+
+@lru_cache(maxsize=256)
+def content_color(color: ColorName, shade: Shade) -> Style:
+    return Style(content_color=_COLOR_MAP[(color, shade)])

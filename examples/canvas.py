@@ -1,7 +1,6 @@
 import asyncio
 import random
 from asyncio import sleep
-from functools import lru_cache
 from itertools import product
 
 from more_itertools import grouper
@@ -13,6 +12,7 @@ from counterweight.elements import Chunk, Div, Text
 from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
+from counterweight.utils import clamp
 
 logger = get_logger()
 
@@ -38,11 +38,6 @@ def canvas(
         )
         c.append(Chunk.newline())
     return c[:-1]  # strip off last newline
-
-
-@lru_cache(maxsize=2**12)
-def clamp(min_: int, val: int, max_: int) -> int:
-    return max(min_, min(val, max_))
 
 
 @component
@@ -133,7 +128,7 @@ def random_walkers() -> Text:
             height=h,
             cells=dict(zip(walkers, colors)),
         ),
-        style=border_heavy | border_slate_400,
+        style=border_heavy | border_color("slate", 400),
     )
 
 

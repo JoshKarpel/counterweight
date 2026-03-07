@@ -7,9 +7,11 @@ set ignore-comments := true
 list:
     just --list
 
+alias l := list
+
 [doc('Run a recipe whenever source files change')]
-watch CMD:
-    uv run watchfiles --verbosity warning 'just {{ CMD }}' src/ tests/ docs/ examples/
+watch *CMD:
+    uv run watchfiles --verbosity warning '{{ CMD }}' src/ tests/ docs/ examples/
 
 alias w := watch
 
@@ -20,10 +22,10 @@ pre-commit:
 
 alias p := pre-commit
 
-[doc('Run type checking and tests with coverage')]
+[doc('Run type checking and tests')]
 test:
     uv run mypy
-    uv run pytest -vv --failed-first --cov --durations=10
+    uv run pytest --failed-first
 
 alias t := test
 
@@ -44,6 +46,12 @@ profile FILE DURATION:
     austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
     austin2speedscope profile.austin profile.ss
     reset
+
+[doc('Regenerate style utility constants from codegen/generate_utilities.py')]
+codegen:
+    uv run python codegen/generate_utilities.py
+
+alias c := codegen
 
 [doc('Upgrade all dependencies')]
 upgrade:

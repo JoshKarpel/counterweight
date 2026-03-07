@@ -12,19 +12,43 @@ def root() -> Div:
         style=col,
         children=[
             Text(
-                style=z(1) | absolute(6, 6) | border_lightrounded | margin_1 | margin_purple_600,
+                style=z(1)
+                | position_absolute
+                | inset_left(6)
+                | inset_top(6)
+                | border_lightrounded
+                | margin(1)
+                | margin_color("purple", 600),
                 content="z = +1",
             ),
             Text(
-                style=z(0) | absolute(4, 3) | border_lightrounded | margin_1 | margin_teal_600,
+                style=z(0)
+                | position_absolute
+                | inset_left(4)
+                | inset_top(3)
+                | border_lightrounded
+                | margin(1)
+                | margin_color("teal", 600),
                 content="z =  0",
             ),
             Text(
-                style=z(-1) | absolute(0, 0) | border_lightrounded | margin_1 | margin_red_600,
+                style=z(-1)
+                | position_absolute
+                | inset_left(0)
+                | inset_top(0)
+                | border_lightrounded
+                | margin(1)
+                | margin_color("red", 600),
                 content="z = -1",
             ),
             Text(
-                style=z(2) | absolute(13, 3) | border_lightrounded | margin_1 | margin_amber_600,
+                style=z(2)
+                | position_absolute
+                | inset_left(13)
+                | inset_top(3)
+                | border_lightrounded
+                | margin(1)
+                | margin_color("amber", 600),
                 content="z = +2",
             ),
         ],

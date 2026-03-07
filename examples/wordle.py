@@ -55,7 +55,7 @@ def root() -> Div:
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
-    header = Text(content="Wordle", style=text_amber_600 | weight_none)
+    header = Text(content="Wordle", style=text("amber", 600))
 
     if playing:
         return Div(
@@ -98,21 +98,21 @@ def root() -> Div:
             children=[
                 header,
                 Div(
-                    style=col | align_children_center | gap_children_2 | margin_top_4,
+                    style=col | align_children_center | gap(2) | margin_top(4),
                     children=[
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
-                            hover_style=text_indigo_500 | border_indigo_500,
+                            hover_style=text("indigo", 500) | border_color("indigo", 500),
                             on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[F2] Play Random",
-                            hover_style=text_emerald_500 | border_emerald_500,
+                            hover_style=text("emerald", 500) | border_color("emerald", 500),
                             on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[q] Quit",
-                            hover_style=text_red_500 | border_red_500,
+                            hover_style=text("red", 500) | border_color("red", 500),
                             on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                     ],
@@ -122,7 +122,7 @@ def root() -> Div:
         )
 
 
-button_style = weight_none | pad_x_1 | border_lightrounded
+button_style = pad_x(1) | border_lightrounded
 
 
 @component
@@ -152,6 +152,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     def on_key(event: KeyPressed) -> AnyControl | None:
         match state, event.key:
+            # TODO: add a button to the left of the keyboard for this
             case _, Key.Escape:
                 stop_playing()
             case "playing", Key.Backspace:
@@ -181,35 +182,35 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
-    message_style = text_justify_center | pad_y_1 | pad_x_2 | border_light
+    message_style = text_justify_center | pad_y(1) | pad_x(2) | border_light
 
     if state == "playing":
         if len(guess) == 5 and guess not in GUESSABLE_WORDS:
             message = "Not in word list"
-            message_style |= text_red_700
+            message_style |= text("red", 700)
         else:
             message = f"Guess {len(submitted) + 1} of {MAX_SUBMITS}"
     elif state == "win":
         message = f"You won! The word was {solution}"
-        message_style |= text_green_600 | border_green_600 | border_double
+        message_style |= text("green", 600) | border_color("green", 600) | border_double
     elif state == "loss":
         message = f"You lost! The word was {solution}"
-        message_style |= text_red_700 | border_red_700 | border_double
+        message_style |= text("red", 700) | border_color("red", 700) | border_double
     message += "\n[Esc] to return to menu"
 
     return Div(
         style=col | align_children_stretch,
         children=[
             Div(
-                style=col | justify_children_center | align_self_stretch | align_children_center | gap_children_1,
+                style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
                 children=guess_rows,
                 on_key=on_key,
             ),
             Div(
-                style=row | align_self_center | weight_none | pad_y_1,
+                style=row | align_self_center | pad_y(1),
                 children=[Text(content=message, style=message_style)],
             ),
-            keyboard(submitted=submitted, solution=solution, on_key=on_key),
+            keyboard(submitted=submitted, solution=solution, on_key=on_key, on_clear=lambda: set_guess("")),
         ],
     )
 
@@ -226,20 +227,20 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
 
         if type == "submitted":
             if guess_letter == solution_letter:
-                style |= border_green_600
+                style |= border_color("green", 600)
             elif guess_letter in solution:
-                style |= border_yellow_300
+                style |= border_color("yellow", 300)
             else:
-                style |= border_red_700
+                style |= border_color("red", 700)
         elif type == "pending":
-            style |= border_gray_700
+            style |= border_color("gray", 700)
         elif type == "current":
-            style |= border_gray_300 if guess_letter != " " else border_gray_500
+            style |= border_color("gray", 300) if guess_letter != " " else border_color("gray", 500)
 
         children.append(letter_box(letter=guess_letter, style=style))
 
     return Div(
-        style=row | weight_none | align_children_center | gap_children_1,
+        style=row | align_children_center | gap(1),
         children=children,
     )
 
@@ -252,36 +253,66 @@ KEYBOARD = (
 
 
 @component
-def keyboard(submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None]) -> Div:
-    kb_letter_styles = {letter: border_gray_500 for letter in ascii_uppercase}
+def keyboard(
+    submitted: list[str], solution: str, on_key: Callable[[KeyPressed], AnyControl | None], on_clear: Callable[[], None]
+) -> Div:
+    kb_letter_styles = {letter: border_color("gray", 500) for letter in ascii_uppercase}
 
     all_submitted_letters = "".join(submitted)
     for letter in all_submitted_letters:
         if letter in solution:
-            kb_letter_styles[letter] = border_yellow_300
+            kb_letter_styles[letter] = border_color("yellow", 300)
         else:
-            kb_letter_styles[letter] = border_red_700
+            kb_letter_styles[letter] = border_color("red", 700)
 
     for s in submitted:
         for guess_letter, solution_letter in zip(s, solution):
             if guess_letter == solution_letter:
-                kb_letter_styles[guess_letter] = border_green_600
+                kb_letter_styles[guess_letter] = border_color("green", 600)
+
+    def on_submit(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            return on_key(KeyPressed(key=Key.Enter))
+        return None
+
+    def on_backspace(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            return on_key(KeyPressed(key=Key.Backspace))
+        return None
+
+    def on_clear_click(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseUp) and event.button == 1:
+            on_clear()
+        return None
 
     return Div(
-        style=col | weight_none | justify_children_center | align_children_center,
+        style=row | align_children_stretch | gap(2),
         children=[
             Div(
-                style=row | weight_none | align_children_center | gap_children_1,
+                style=col | justify_children_center | align_children_center,
                 children=[
-                    letter_box(
-                        kb_letter,
-                        style=kb_letter_styles[kb_letter],
-                        on_key=on_key,
+                    Div(
+                        style=row | align_children_center | gap(1),
+                        children=[
+                            letter_box(
+                                kb_letter,
+                                style=kb_letter_styles[kb_letter],
+                                on_key=on_key,
+                            )
+                            for kb_letter in kb_row
+                        ],
                     )
-                    for kb_letter in kb_row
+                    for kb_row in KEYBOARD
                 ],
-            )
-            for kb_row in KEYBOARD
+            ),
+            Div(
+                style=col | justify_children_space_between | align_children_end,
+                children=[
+                    menu_button(content="Submit", on_mouse=on_submit, hover_style=border_color("green", 600)),
+                    menu_button(content="Back", on_mouse=on_backspace, hover_style=border_color("yellow", 300)),
+                    menu_button(content="Clear", on_mouse=on_clear_click, hover_style=border_color("red", 700)),
+                ],
+            ),
         ],
     )
 
@@ -296,7 +327,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
 
     return Text(
         content=letter,
-        style=style | weight_none | border_heavy | pad_x_1 | pad_y_0 | (border_double if hovered.border else None),
+        style=style | border_heavy | pad_x(1) | pad_y(0) | (border_double if hovered.border else None),
         on_mouse=on_mouse,
     )
 

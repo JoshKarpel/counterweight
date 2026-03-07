@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
+import subprocess
 from itertools import combinations
 from pathlib import Path
 from typing import get_args, get_type_hints
 
 from more_itertools import flatten
 
-from counterweight.styles.styles import BorderEdge, BorderKind, Flex, Typography
+from counterweight.styles.styles import BorderKind, Style
 
 
 def literal_vals(obj: object, field: str) -> tuple[str, ...]:
     return get_args(get_type_hints(obj)[field])
 
-
-SIDES = ["top", "bottom", "left", "right"]
-N = list(range(9))
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -315,135 +313,192 @@ stop = utils_text.index("# Stop generated")
 
 generated_lines = [""]
 
+# --- Color utilities ---
+
 generated_lines.extend(
     (
-        'text_white = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#ffffff"))))',
-        'text_black = Style(typography=Typography(style=CellStyle(foreground=Color.from_hex("#000000"))))',
+        'text_white = Style(text_style=CellStyle(foreground=Color.from_hex("#ffffff")))',
+        'text_black = Style(text_style=CellStyle(foreground=Color.from_hex("#000000")))',
     )
 )
 generated_lines.append("")
 
+# Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
-        generated_lines.extend(
-            [
-                f'{color}_{shade} = Color.from_hex("{hex}")',
-                f"text_{color}_{shade} = Style(typography=Typography(style=CellStyle(foreground={color}_{shade})))",
-                f"text_bg_{color}_{shade} = Style(typography=Typography(style=CellStyle(background={color}_{shade})))",
-                f"border_{color}_{shade} = Style(border=Border(style=CellStyle(foreground={color}_{shade})))",
-                f"border_bg_{color}_{shade} = Style(border=Border(style=CellStyle(background={color}_{shade})))",
-                f"margin_{color}_{shade} = Style(margin=Margin(color={color}_{shade}))",
-                f"padding_{color}_{shade} = Style(padding=Padding(color={color}_{shade}))",
-                f"content_{color}_{shade} = Style(content=Content(color={color}_{shade}))",
-            ]
-        )
-
+        generated_lines.append(f'{color}_{shade} = Color.from_hex("{hex}")')
     generated_lines.append("")
 
-for d in literal_vals(Flex, "direction"):
-    generated_lines.append(f'{d[:3]} = Style(layout=Flex(direction="{d}"))')
+# ColorName and Shade types for functional helpers
+color_names = ", ".join(f'"{c}"' for c in COLORS)
+shade_values = ", ".join(str(s) for s in next(iter(COLORS.values())))
+generated_lines.append(f"ColorName = Literal[{color_names}]")
+generated_lines.append(f"Shade = Literal[{shade_values}]")
+generated_lines.append("")
+
+# Color lookup map
+generated_lines.append("_COLOR_MAP: dict[tuple[str, int], Color] = {")
+for color, shades in COLORS.items():
+    for shade in shades:
+        generated_lines.append(f'    ("{color}", {shade}): {color}_{shade},')
+generated_lines.append("}")
+generated_lines.append("")
+
+# --- Direction utilities ---
+
+DIRECTION_ALIASES = {
+    "Row": "row",
+    "Column": "col",
+    "RowReverse": "row_reverse",
+    "ColumnReverse": "col_reverse",
+}
+for name, alias in DIRECTION_ALIASES.items():
+    generated_lines.append(f"{alias} = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.{name}))")
 
 generated_lines.append("")
 
-for v in ("top", "center", "bottom"):
-    for h in ("left", "center", "right"):
-        generated_lines.append(
-            f'inset_{v}_{h} = Style(layout=Flex(position=Absolute(inset=Inset(vertical="{v}", horizontal="{h}"))))'
-        )
+# --- Justify/align utilities ---
 
-generated_lines.append("")
-
-for j in literal_vals(Flex, "justify_children"):
-    generated_lines.append(f'justify_children_{j.replace("-", "_")} = Style(layout=Flex(justify_children="{j}"))')
-
-generated_lines.append("")
-
-for a in literal_vals(Flex, "align_children"):
-    generated_lines.append(f'align_children_{a.replace("-", "_")} = Style(layout=Flex(align_children="{a}"))')
-
-generated_lines.append("")
-
-for a in literal_vals(Flex, "align_self"):
-    generated_lines.append(f'align_self_{a.replace("-", "_")} = Style(layout=Flex(align_self="{a}"))')
-
-generated_lines.append("")
-
-generated_lines.append("weight_none = Style(layout=Flex(weight=None))")
-for n in N:
-    if n <= 0:
-        continue
-    generated_lines.append(f"weight_{n} = Style(layout=Flex(weight={n}))")
-
-generated_lines.append("")
-
-generated_lines.append("border_none = Style(border=None)")
-for b in BorderKind:
-    generated_lines.append(f"border_{b.name.lower()} = Style(border=Border(kind=BorderKind.{b.name}))")
-
-generated_lines.append("")
-
-for edges in flatten(combinations(BorderEdge, r) for r in range(1, 4)):
-    z = ", ".join(f"BorderEdge.{e.name}" for e in edges) + ("," if len(edges) == 1 else "")
+JUSTIFY_MAP = {
+    "Start": "start",
+    "Center": "center",
+    "End": "end",
+    "SpaceBetween": "space_between",
+    "SpaceAround": "space_around",
+    "SpaceEvenly": "space_evenly",
+}
+for name, alias in JUSTIFY_MAP.items():
     generated_lines.append(
-        f"border_{'_'.join(e.name.lower() for e in edges)} = Style(border=Border(edges=frozenset(({z}))))".replace(
-            "'", '"'
-        )
+        f"justify_children_{alias} = Style(layout=waxy.Style(justify_content=waxy.AlignContent.{name}))"
     )
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"border_contract_{n} = Style(border=Border(contract={n}))")
+ALIGN_MAP = {
+    "Start": "start",
+    "Center": "center",
+    "End": "end",
+    "Stretch": "stretch",
+}
+for name, alias in ALIGN_MAP.items():
+    generated_lines.append(f"align_children_{alias} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
-for side in SIDES:
-    for n in N:
-        generated_lines.append(f"pad_{side}_{n} = Style(padding=Padding({side}={n}))")
-    generated_lines.append("")
-
-for n in N:
-    generated_lines.append(f"pad_x_{n} = Style(padding=Padding(left={n}, right={n}))")
+for name, alias in ALIGN_MAP.items():
+    generated_lines.append(f"align_self_{alias} = Style(layout=waxy.Style(align_self=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"pad_y_{n} = Style(padding=Padding(top={n}, bottom={n}))")
+for name, alias in ALIGN_MAP.items():
+    generated_lines.append(f"justify_items_{alias} = Style(layout=waxy.Style(justify_items=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"pad_{n} = Style(padding=Padding(top={n}, bottom={n}, left={n}, right={n}))")
+for name, alias in ALIGN_MAP.items():
+    generated_lines.append(f"justify_self_{alias} = Style(layout=waxy.Style(justify_self=waxy.AlignItems.{name}))")
 
 generated_lines.append("")
 
-for side in SIDES:
-    for n in N:
-        generated_lines.append(f"margin_{side}_{n} = Style(margin=Margin({side}={n}))")
-    generated_lines.append("")
-
-for n in N:
-    generated_lines.append(f"margin_x_{n} = Style(margin=Margin(left={n}, right={n}))")
+generated_lines.append("")
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"margin_y_{n} = Style(margin=Margin(top={n}, bottom={n}))")
+# --- Flex wrap utilities ---
+
+WRAP_MAP = {
+    "NoWrap": "no_wrap",
+    "Wrap": "wrap",
+    "WrapReverse": "wrap_reverse",
+}
+for name, alias in WRAP_MAP.items():
+    generated_lines.append(f"flex_{alias} = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.{name}))")
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"margin_{n} = Style(margin=Margin(top={n}, bottom={n}, left={n}, right={n}))")
+# --- Display utilities ---
+
+generated_lines.extend(
+    [
+        "display_flex = Style(layout=waxy.Style(display=waxy.Display.Flex))",
+        "display_block = Style(layout=waxy.Style(display=waxy.Display.Block))",
+        "display_grid = Style(layout=waxy.Style(display=waxy.Display.Grid))",
+        "display_none = Style(layout=waxy.Style(display=waxy.Display.Nil))",
+    ]
+)
 
 generated_lines.append("")
 
-for n in N:
-    generated_lines.append(f"gap_children_{n} = Style(layout=Flex(gap_children={n}))")
+# --- Grid auto-flow utilities ---
+
+GRID_FLOW_MAP = {
+    "Row": "row",
+    "Column": "column",
+    "RowDense": "row_dense",
+    "ColumnDense": "column_dense",
+}
+for name, alias in GRID_FLOW_MAP.items():
+    generated_lines.append(
+        f"grid_auto_flow_{alias} = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.{name}))"
+    )
 
 generated_lines.append("")
 
-for j in literal_vals(Typography, "justify"):
-    generated_lines.append(f'text_justify_{j} = Style(typography=Typography(justify="{j}"))')
+# --- Border kind utilities ---
+
+generated_lines.append("border_none = Style(border_kind=None)")
+for b in BorderKind:
+    generated_lines.append(
+        f"border_{b.name.lower()} = Style(\n"
+        f"    layout=waxy.Style(\n"
+        f"        border_top=waxy.Length(1), border_bottom=waxy.Length(1),\n"
+        f"        border_left=waxy.Length(1), border_right=waxy.Length(1),\n"
+        f"    ),\n"
+        f"    border_kind=BorderKind.{b.name},\n"
+        f")"
+    )
+
+generated_lines.append("")
+
+# --- Border edge selection utilities ---
+
+EDGE_SIDES = ["top", "bottom", "left", "right"]
+for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
+    border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
+    generated_lines.append(f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))")
+
+generated_lines.append(
+    "border_all = Style(layout=waxy.Style("
+    "border_top=waxy.Length(1), border_bottom=waxy.Length(1), "
+    "border_left=waxy.Length(1), border_right=waxy.Length(1)))"
+)
+
+generated_lines.append("")
+
+# --- Inset utilities (absolute positioning anchors) ---
+
+VERTICAL_INSETS = {
+    "top": "inset_top=waxy.Length(0)",
+    "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()",
+    "bottom": "inset_bottom=waxy.Length(0)",
+}
+HORIZONTAL_INSETS = {
+    "left": "inset_left=waxy.Length(0)",
+    "center": "inset_left=waxy.Auto(), inset_right=waxy.Auto()",
+    "right": "inset_right=waxy.Length(0)",
+}
+for v_name, v_insets in VERTICAL_INSETS.items():
+    for h_name, h_insets in HORIZONTAL_INSETS.items():
+        generated_lines.append(
+            f"inset_{v_name}_{h_name} = Style(layout=waxy.Style(position=waxy.Position.Absolute, {v_insets}, {h_insets}))"
+        )
+
+generated_lines.append("")
+
+# --- Text justify ---
+
+for j in literal_vals(Style, "text_justify"):
+    generated_lines.append(f'text_justify_{j} = Style(text_justify="{j}")')
 
 generated_lines.append("")
 
@@ -456,8 +511,16 @@ output = "\n".join(
     ]
 )
 
-if not (utils_path.exists() and utils_path.read_text() == output):
-    utils_path.write_text(output)
-    print(f"Wrote generates utilities to {utils_path}")
+formatted = subprocess.run(
+    ["uv", "run", "ruff", "format", "--stdin-filename", str(utils_path), "-"],
+    input=output,
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
+
+if not (utils_path.exists() and utils_path.read_text() == formatted):
+    utils_path.write_text(formatted)
+    print(f"Wrote generated utilities to {utils_path}")
 else:
     print("No changes in generated utilities")

@@ -88,3 +88,29 @@ def sgr_from_cell_style(style: CellStyle) -> str:
 
 def paint_to_instructions(paint: Paint) -> str:
     return "".join(f"{move_to(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items())
+
+
+def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
+    """Render a Paint as a 2D character grid (spaces for empty cells).
+
+    Parameters:
+        ansi: If `True`, include ANSI color/style escape codes in the output.
+            If `False`, produce a plain character grid.
+    """
+    if not paint:
+        return ""
+    min_x = min(p.x for p in paint)
+    max_x = max(p.x for p in paint)
+    min_y = min(p.y for p in paint)
+    max_y = max(p.y for p in paint)
+    rows = []
+    for y in range(min_y, max_y + 1):
+        row = ""
+        for x in range(min_x, max_x + 1):
+            cell = paint.get(Position.flyweight(x, y))
+            if cell:
+                row += f"{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" if ansi else cell.char
+            else:
+                row += " "
+        rows.append(row)
+    return "\n".join(rows)
