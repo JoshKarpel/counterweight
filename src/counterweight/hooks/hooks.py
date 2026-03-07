@@ -106,7 +106,7 @@ class Mouse:
     """The button that is currently pressed, or `None` if no button is pressed."""
 
 
-_INITIAL_MOUSE = Mouse(absolute=Position.flyweight(-1, -1), motion=Position.flyweight(0, 0), button=None)
+_INITIAL_MOUSE = Mouse(absolute=Position(-1, -1), motion=Position(0, 0), button=None)
 
 
 def use_mouse() -> Mouse:

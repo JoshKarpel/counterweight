@@ -1,37 +1,33 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from functools import lru_cache
+from dataclasses import dataclass
 from itertools import product
-from typing import NamedTuple
 
 import waxy
 
-from counterweight._utils import unordered_range
+from counterweight._utils import flyweight, unordered_range
 
 
-class Position(NamedTuple):
+@flyweight(maxsize=2**14)
+@dataclass(frozen=True, slots=True, order=True)
+class Position:
     x: int
     y: int
 
     @classmethod
-    @lru_cache(maxsize=2**14)
-    def flyweight(cls, x: int, y: int) -> Position:
-        return cls(x, y)
-
-    @classmethod
     def from_point(cls, point: waxy.Point) -> Position:
-        return cls.flyweight(int(point.x), int(point.y))
+        return cls(int(point.x), int(point.y))
 
-    def __add__(self, other: Position) -> Position:  # type: ignore[override]
-        return Position.flyweight(x=self.x + other.x, y=self.y + other.y)
+    def __add__(self, other: Position) -> Position:
+        return Position(x=self.x + other.x, y=self.y + other.y)
 
     def __sub__(self, other: Position) -> Position:
-        return Position.flyweight(x=self.x - other.x, y=self.y - other.y)
+        return Position(x=self.x - other.x, y=self.y - other.y)
 
     def fill_to(self, other: Position) -> Iterator[Position]:
         return (
-            Position.flyweight(x=x, y=y)
+            Position(x=x, y=y)
             for x, y in product(
                 unordered_range(self.x, other.x),
                 unordered_range(self.y, other.y),

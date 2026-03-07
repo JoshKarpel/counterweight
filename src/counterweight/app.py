@@ -107,7 +107,7 @@ async def app(
             ),
         )
 
-        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+        cp = {Position(x, y): BLANK for x in range(w) for y in range(h)}
 
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
@@ -207,7 +207,7 @@ async def app(
                     do_heal_borders = not do_heal_borders
                     should_render = True
 
-        mouse_position = Position.flyweight(x=-1, y=-1)
+        mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
