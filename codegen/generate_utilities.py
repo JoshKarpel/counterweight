@@ -13,8 +13,6 @@ def literal_vals(obj: object, field: str) -> tuple[str, ...]:
     return get_args(get_type_hints(obj)[field])
 
 
-N = list(range(9))
-
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
     "slate": {

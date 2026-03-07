@@ -50,12 +50,13 @@ from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
     paint_to_instructions,
+    paint_to_str,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import BLANK, Paint, paint_layout, paint_to_str, svg
+from counterweight.paint import BLANK, Paint, paint_layout, svg
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -165,7 +166,7 @@ async def app(
         should_quit = False
         should_bell = False
         should_screenshot: Screenshot | None = None
-        should_print_paint = False
+        should_print_paint: PrintPaint | None = None
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
@@ -191,7 +192,7 @@ async def app(
                 case Screenshot():
                     should_screenshot = control
                 case PrintPaint():
-                    should_print_paint = True
+                    should_print_paint = control
                 case Suspend():
                     should_suspend = control
                     should_render = True
@@ -214,8 +215,9 @@ async def app(
                     should_bell = False
 
                 if should_print_paint:
-                    print(paint_to_str(current_paint), flush=True)
-                    should_print_paint = False
+                    output = paint_to_str(current_paint, ansi=should_print_paint.ansi)
+                    print(output, file=should_print_paint.stream, flush=True)
+                    should_print_paint = None
 
                 if should_screenshot:
                     try:

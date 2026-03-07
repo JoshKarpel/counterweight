@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
+from typing import TextIO, Union
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import indent as indent_svg
 
@@ -80,11 +81,21 @@ class Screenshot(_Control):
 @dataclass(frozen=True, slots=True)
 class PrintPaint(_Control):
     """
-    Print the current paint as a text grid to stdout.
+    Print the current paint as a text grid to stderr.
 
     Useful for interactive debugging of rendering output.
     The print occurs at the beginning of the next render cycle.
+
+    Parameters:
+        stream: The stream to print to. Defaults to `sys.stderr`.
+        ansi: If `True`, include ANSI color/style escape codes in the output.
+            Defaults to `True`, which renders colors and styles in the terminal.
+            Set to `False` for a plain character grid (useful for layout debugging
+            or capturing output in logs).
     """
+
+    stream: TextIO = field(default_factory=lambda: sys.stderr)
+    ansi: bool = True
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import waxy
+import io
+from collections.abc import Callable
 
-from counterweight.border_healing import heal_borders
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.hooks.impls import Hooks
-from counterweight.layout import ResolvedLayout, compute_layout
-from counterweight.paint import paint_layout, paint_to_str
-from counterweight.shadow import ShadowNode
-from counterweight.styles.styles import Style
+from counterweight.app import app
+from counterweight.components import Component, component
+from counterweight.controls import PrintPaint, Quit
+from counterweight.elements import Div, Text
 from counterweight.styles.utilities import (
     align_children_center,
     align_self_stretch,
@@ -24,34 +22,15 @@ from counterweight.styles.utilities import (
 )
 
 
-def _shadow(element: AnyElement, children: list[ShadowNode] | None = None) -> ShadowNode:
-    return ShadowNode(component=None, element=element, hooks=Hooks(), children=children or [])
-
-
-def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
-    return compute_layout(root, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
-
-
-def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
-    screen_style = Style(
-        layout=waxy.Style(display=waxy.Display.Grid, size_width=waxy.Length(w), size_height=waxy.Length(h))
+async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> str:
+    capture = io.StringIO()
+    await app(
+        root_fn,
+        headless=True,
+        dimensions=dimensions,
+        autopilot=[PrintPaint(stream=capture, ansi=False), Quit()],
     )
-    screen = _shadow(Div(style=screen_style), children=[root])
-    return compute_layout(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
-
-
-def _render(root: ShadowNode, w: int = 60, h: int = 20) -> str:
-    elements = _layout(root, w, h)
-    paint, hints = paint_layout(elements)
-    paint |= heal_borders(paint, hints)
-    return paint_to_str(paint)
-
-
-def _render_screened(root: ShadowNode, w: int = 60, h: int = 20) -> str:
-    elements = _layout_screened(root, w, h)
-    paint, hints = paint_layout(elements)
-    paint |= heal_borders(paint, hints)
-    return paint_to_str(paint)
+    return capture.getvalue().rstrip("\n")
 
 
 # ---------------------------------------------------------------------------
@@ -59,12 +38,18 @@ def _render_screened(root: ShadowNode, w: int = 60, h: int = 20) -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_row_collapse_two_siblings_heals_seam() -> None:
-    child_a = _shadow(Div(style=border_light | size(5, 3)))
-    child_b = _shadow(Div(style=border_light | size(5, 3)))
-    root = _shadow(Div(style=row | border_collapse), children=[child_a, child_b])
+async def test_row_collapse_two_siblings_heals_seam() -> None:
+    @component
+    def root() -> Div:
+        return Div(
+            style=row | border_collapse,
+            children=[
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+            ],
+        )
 
-    assert _render(root) == "\n".join(
+    assert await _render(root, (9, 3)) == "\n".join(
         [
             "┌───┬───┐",
             "│   │   │",
@@ -73,13 +58,19 @@ def test_row_collapse_two_siblings_heals_seam() -> None:
     )
 
 
-def test_row_collapse_three_siblings_heals_both_seams() -> None:
-    child_a = _shadow(Div(style=border_light | size(5, 3)))
-    child_b = _shadow(Div(style=border_light | size(5, 3)))
-    child_c = _shadow(Div(style=border_light | size(5, 3)))
-    root = _shadow(Div(style=row | border_collapse), children=[child_a, child_b, child_c])
+async def test_row_collapse_three_siblings_heals_both_seams() -> None:
+    @component
+    def root() -> Div:
+        return Div(
+            style=row | border_collapse,
+            children=[
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+            ],
+        )
 
-    assert _render(root) == "\n".join(
+    assert await _render(root, (13, 3)) == "\n".join(
         [
             "┌───┬───┬───┐",
             "│   │   │   │",
@@ -93,12 +84,18 @@ def test_row_collapse_three_siblings_heals_both_seams() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_col_collapse_two_siblings_heals_seam() -> None:
-    child_a = _shadow(Div(style=border_light | size(5, 3)))
-    child_b = _shadow(Div(style=border_light | size(5, 3)))
-    root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b])
+async def test_col_collapse_two_siblings_heals_seam() -> None:
+    @component
+    def root() -> Div:
+        return Div(
+            style=col | border_collapse,
+            children=[
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+            ],
+        )
 
-    assert _render(root) == "\n".join(
+    assert await _render(root, (5, 5)) == "\n".join(
         [
             "┌───┐",
             "│   │",
@@ -109,13 +106,19 @@ def test_col_collapse_two_siblings_heals_seam() -> None:
     )
 
 
-def test_col_collapse_three_siblings_heals_both_seams() -> None:
-    child_a = _shadow(Div(style=border_light | size(5, 3)))
-    child_b = _shadow(Div(style=border_light | size(5, 3)))
-    child_c = _shadow(Div(style=border_light | size(5, 3)))
-    root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b, child_c])
+async def test_col_collapse_three_siblings_heals_both_seams() -> None:
+    @component
+    def root() -> Div:
+        return Div(
+            style=col | border_collapse,
+            children=[
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+                Div(style=border_light | size(5, 3)),
+            ],
+        )
 
-    assert _render(root) == "\n".join(
+    assert await _render(root, (5, 7)) == "\n".join(
         [
             "┌───┐",
             "│   │",
@@ -133,35 +136,37 @@ def test_col_collapse_three_siblings_heals_both_seams() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_doc_example_border_healing() -> None:
+async def test_doc_example_border_healing() -> None:
     container_style = grow(1) | align_self_stretch | border_collapse
     box_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
 
-    def box(label: str) -> ShadowNode:
-        return _shadow(
-            Div(style=box_style | border_double),
-            children=[_shadow(Text(content=label, style=text_justify_center))],
+    @component
+    def root() -> Div:
+        def box(label: str) -> Div:
+            return Div(
+                style=box_style | border_double,
+                children=[Text(content=label, style=text_justify_center)],
+            )
+
+        return Div(
+            style=row | container_style,
+            children=[
+                Div(
+                    style=col | container_style,
+                    children=[box("A1"), box("A2")],
+                ),
+                Div(
+                    style=col | container_style,
+                    children=[
+                        Div(style=row | container_style, children=[box("B1"), box("B2")]),
+                        Div(style=row | container_style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
+                        Div(style=row | container_style, children=[box("D1"), box("D2"), box("D3")]),
+                    ],
+                ),
+            ],
         )
 
-    root = _shadow(
-        Div(style=row | container_style),
-        children=[
-            _shadow(
-                Div(style=col | container_style),
-                children=[box("A1"), box("A2")],
-            ),
-            _shadow(
-                Div(style=col | container_style),
-                children=[
-                    _shadow(Div(style=row | container_style), children=[box("B1"), box("B2")]),
-                    _shadow(Div(style=row | container_style), children=[box("C1"), box("C2"), box("C3"), box("C4")]),
-                    _shadow(Div(style=row | container_style), children=[box("D1"), box("D2"), box("D3")]),
-                ],
-            ),
-        ],
-    )
-
-    assert _render_screened(root) == "\n".join(
+    assert await _render(root, (60, 20)) == "\n".join(
         [
             "╔════════════════════════════╦══════════════╦══════════════╗",
             "║                            ║              ║              ║",
