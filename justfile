@@ -41,11 +41,10 @@ docs-build:
 
 alias db := docs-build
 
-[doc('Profile a Python file with austin and convert to speedscope format')]
-profile FILE DURATION:
-    austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
-    austin2speedscope profile.austin profile.ss
-    reset
+[doc('Profile a Python file with scalene')]
+profile FILE:
+    -uv run scalene run --cpu-only --profile-all {{ FILE }}
+    uv run scalene view --cli --reduced
 
 [doc('Regenerate style utility constants from codegen/generate_utilities.py')]
 codegen:

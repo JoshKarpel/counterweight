@@ -140,5 +140,6 @@ dmypy.json
 
 *.austin
 *.ss
+scalene-profile.json
 
 .claude/settings.local.json
