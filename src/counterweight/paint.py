@@ -109,6 +109,8 @@ def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "ri
 
 def paint_text(text: Text, rect: waxy.Rect) -> Paint:
     style = text.style.text_style
+    # waxy.Rect uses an inclusive coordinate system: width = right - left (one less than the
+    # number of cells).  Adding 1 converts to cell count for slicing and iteration.
     width = int(rect.width) + 1
     height = int(rect.height) + 1
 

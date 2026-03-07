@@ -107,8 +107,9 @@ def _extract_layout(
 ) -> None:
     """Walk tree top-down, accumulating absolute positions.
 
-    abs_x/abs_y is the absolute position of the parent's border box origin.
-    For the root node, this is (0, 0).
+    abs_x/abs_y is the absolute position of the current node's parent's border box origin,
+    i.e. the origin that taffy's relative ``layout.location`` is measured from.
+    For the root node, pass (0, 0).
     """
     layout = tree.unrounded_layout(node_id)
     shadow = node_map[node_id]

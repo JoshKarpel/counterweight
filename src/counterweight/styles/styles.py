@@ -578,7 +578,7 @@ class Style(StyleFragment):
     padding_color: Color = Field(default=Color.from_name("black"))
     content_color: Color = Field(default=Color.from_name("black"))
 
-    border_kind: BorderKind | None = None
+    border_kind: BorderKind | None = BorderKind.Light
     border_style: CellStyle = Field(default=CellStyle())
     border_contract: int = 0
 

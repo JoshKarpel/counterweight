@@ -26,7 +26,7 @@ from counterweight.styles.utilities import (
 )
 
 
-def _shadow(element: Div, children: list[ShadowNode] | None = None) -> ShadowNode:
+def _shadow(element: AnyElement, children: list[ShadowNode] | None = None) -> ShadowNode:
     return ShadowNode(component=None, element=element, hooks=Hooks(), children=children or [])
 
 
