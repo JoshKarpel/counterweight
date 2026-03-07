@@ -1,30 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from functools import cached_property
-from typing import Callable, Literal, Sequence, Union
-
-from pydantic import Field
+from dataclasses import dataclass
+from typing import Callable, Sequence, Union
 
 from counterweight.controls import AnyControl
 from counterweight.events import KeyPressed, MouseEvent
 from counterweight.styles import CellStyle, Style
-from counterweight.types import FrozenForbidExtras
+from counterweight.styles.styles import _DEFAULT_CELL_STYLE
+
+_DEFAULT_STYLE = Style()
 
 
-class Div(FrozenForbidExtras):
-    type: Literal["div"] = "div"
-    style: Style = Field(default=Style())
-    children: Sequence[Component | AnyElement] = Field(default=())
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Div:
+    style: Style = _DEFAULT_STYLE
+    children: Sequence[Component | AnyElement] = ()
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
 
 
-class Chunk(FrozenForbidExtras):
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Chunk:
     content: str
-    style: CellStyle = Field(default_factory=CellStyle)
+    style: CellStyle = _DEFAULT_CELL_STYLE
 
-    @cached_property
+    @property
     def cells(self) -> tuple[CellPaint, ...]:
         return tuple(CellPaint(char=char, style=self.style) for char in self.content)
 
@@ -41,18 +41,18 @@ SPACE = Chunk(content=" ")
 NEWLINE = Chunk(content="\n")
 
 
-class Text(FrozenForbidExtras):
-    type: Literal["text"] = "text"
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Text:
     content: str | Sequence[Chunk]
-    style: Style = Field(default=Style())
+    style: Style = _DEFAULT_STYLE
     on_key: Callable[[KeyPressed], AnyControl | None] | None = None
     on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
 
     @property
-    def children(self) -> Sequence[Component | AnyElement]:
+    def children(self) -> tuple[Component | AnyElement, ...]:
         return ()
 
-    @cached_property
+    @property
     def cells(self) -> tuple[CellPaint, ...]:
         if isinstance(self.content, str):
             return tuple(CellPaint(char=char, style=self.style.text_style) for char in self.content)
@@ -67,11 +67,8 @@ AnyElement = Union[
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 
-Div.model_rebuild()
-Text.model_rebuild()
-
 
 @dataclass(slots=True)
 class CellPaint:
     char: str
-    style: CellStyle = field(default=CellStyle())
+    style: CellStyle = _DEFAULT_CELL_STYLE

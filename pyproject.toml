@@ -33,7 +33,6 @@ classifiers = [
 requires-python = ">=3.13"
 dependencies = [
     "typer>=0.9",
-    "pydantic>=2",
     "structlog>=23.1",
     "parsy>=2.1",
     "more-itertools>=9.1",

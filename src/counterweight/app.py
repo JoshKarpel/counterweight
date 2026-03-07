@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
@@ -476,7 +477,13 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    return root.element.model_copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+    match root.element:
+        case Div():
+            return dataclasses.replace(
+                root.element, children=tuple(build_concrete_element_tree(child) for child in root.children)
+            )
+        case _:
+            return root.element
 
 
 def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:

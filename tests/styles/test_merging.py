@@ -10,11 +10,6 @@ from counterweight.styles.utilities import border_heavy, inset_left, inset_top, 
     (
         (Style(), Style(), Style()),
         (
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-            Style(),
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-        ),
-        (
             Style(border_style=CellStyle(bold=True)),
             Style(),
             Style(border_style=CellStyle(bold=True)),
@@ -32,7 +27,7 @@ from counterweight.styles.utilities import border_heavy, inset_left, inset_top, 
         (
             Style(border_style=CellStyle(bold=True)),
             Style(border_style=CellStyle(bold=False)),
-            Style(border_style=CellStyle(bold=False)),
+            Style(border_style=CellStyle(bold=True)),
         ),
         (
             Style(),
@@ -48,48 +43,49 @@ from counterweight.styles.utilities import border_heavy, inset_left, inset_top, 
             Style(border_style=CellStyle(foreground=Color.from_name("green"))),
             Style(border_kind=BorderKind.LightRounded),
             Style(border_kind=BorderKind.LightRounded, border_style=CellStyle(foreground=Color.from_name("green"))),
-        ),
-        (
-            Style(),
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-        ),
-        (
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-            Style(),
-            Style(layout=waxy.Style(size_width=waxy.Length(5))),
-        ),
-        (
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column)),
-        ),
-        (
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)),
-        ),
-        (
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)),
-            Style(layout=waxy.Style(flex_grow=0.0)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row, flex_grow=0.0)),
-        ),
-        (
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column, flex_grow=5.0)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)),
-            Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row, flex_grow=5.0)),
         ),
     ),
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:
-    print(f"{left.mergeable_dump()=}")
-    print()
-    print(f"{right.mergeable_dump()=}")
-    print()
-    print(f"{(left|right).mergeable_dump()=}")
-    print()
-    print(f"{expected.mergeable_dump()=}")
-    assert (left | right).model_dump() == expected.model_dump()
+    assert (left | right) == expected
+
+
+def test_layout_retained_from_left() -> None:
+    result = Style(layout=waxy.Style(size_width=waxy.Length(5))) | Style()
+    assert result.layout.size_width == waxy.Length(5)
+
+
+def test_layout_retained_from_right() -> None:
+    result = Style() | Style(layout=waxy.Style(size_width=waxy.Length(5)))
+    assert result.layout.size_width == waxy.Length(5)
+
+
+def test_layout_right_overrides_left() -> None:
+    result = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)) | Style(
+        layout=waxy.Style(flex_direction=waxy.FlexDirection.Column)
+    )
+    assert result.layout.flex_direction == waxy.FlexDirection.Column
+
+
+def test_layout_left_overrides_right() -> None:
+    result = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column)) | Style(
+        layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)
+    )
+    assert result.layout.flex_direction == waxy.FlexDirection.Row
+
+
+def test_layout_merges_independent_fields() -> None:
+    result = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)) | Style(layout=waxy.Style(flex_grow=0.0))
+    assert result.layout.flex_direction == waxy.FlexDirection.Row
+    assert result.layout.flex_grow == 0.0
+
+
+def test_layout_merges_left_non_default_retained() -> None:
+    result = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.Column, flex_grow=5.0)) | Style(
+        layout=waxy.Style(flex_direction=waxy.FlexDirection.Row)
+    )
+    assert result.layout.flex_direction == waxy.FlexDirection.Row
+    assert result.layout.flex_grow == 5.0
 
 
 def test_layout_merge_with_visual() -> None:

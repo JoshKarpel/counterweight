@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable, Coroutine, Generic, TypeVar
-
-from pydantic import BaseModel
 
 T = TypeVar("T")
 
@@ -12,5 +11,6 @@ Setup = Callable[[], Coroutine[None, None, None]]
 Deps = tuple[object, ...] | None
 
 
-class Ref(BaseModel, Generic[T]):
+@dataclass(slots=True)
+class Ref(Generic[T]):
     current: T
