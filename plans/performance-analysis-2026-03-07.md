@@ -62,7 +62,7 @@ Relevant code: `src/counterweight/shadow.py` (`update_shadow`), `src/counterweig
 
 ### 3. Incremental paint for Text nodes (saves ~2–4 ms/cycle, ~15–25%)
 
-**Status:** PARTIALLY DONE
+**Status:** DONE (user-side optimizations); framework-side incremental paint is N/A
 
 `canvas()` moved to `counterweight.utils` and optimized:
 - Coordinate pairs precomputed and cached per `(width, height)` via `_canvas_rows` —
@@ -73,12 +73,11 @@ Relevant code: `src/counterweight/shadow.py` (`update_shadow`), `src/counterweig
   workload (~31 unique pairs), drops canvas allocations from ~1,800 Chunks + 1,800
   CellStyles per frame to ~31 cached objects after warmup.
 
-Remaining (framework-side):
-- `canvas()` still rebuilds the full `list[Chunk]` every frame. A framework-level
-  mechanism for `Text` nodes to skip unchanged chunks during paint traversal would
-  allow truly incremental rendering.
+Framework-side incremental paint is not viable: user components are declarative and return
+a new element tree on every render, so the framework has no stable chunk references to diff
+against without re-running the component.
 
-Relevant code: `src/counterweight/utils.py`, `src/counterweight/paint.py`
+Relevant code: `src/counterweight/utils.py`
 
 ---
 
@@ -98,7 +97,51 @@ Also a good pattern to document for framework users.
 
 ---
 
-### 5. Narrow border-healing hint set (saves ~0.4 ms/cycle, ~2.5%)
+### 5a. Cache `paint_edge()` output (saves est. ~0.5–1 ms/cycle on static layouts)
+
+**Status:** DONE
+
+`paint_edge()` fills margin/padding strips from `(outer, inner, color, z)` arguments — all hashable
+(`waxy.Rect` supports value equality, `Color` and `int` are trivially hashable). It does the same
+kind of point-by-point iteration as `fill_rect()`, which already has `@lru_cache`. Adding
+`@lru_cache(maxsize=2**10)` to `paint_edge()` would make static layouts hit the cache every frame.
+
+Relevant code: `src/counterweight/paint.py:145`
+
+---
+
+### 5b. Cache `paint_text()` output (saves est. ~1–2 ms/cycle on static text)
+
+**Status:** DONE
+
+`paint_text()` rebuilds its full `Paint` dict every frame — running `wrap_cells`, `justify_line`,
+and dict construction — even when the `Text` element and rect are unchanged. `Text` is a frozen
+dataclass (hashable) and `waxy.Rect` supports value equality, so `@lru_cache` keyed on
+`(text, rect)` would return the cached dict by reference on subsequent calls.
+
+Note: the cached dict must not be mutated by callers. Currently `paint_element()` merges via
+`box | paint_text(...)` which creates a new dict — safe.
+
+Relevant code: `src/counterweight/paint.py:111`
+
+---
+
+### 5c. Batch adjacent cells in `paint_to_instructions()` (reduces bytes written)
+
+**Status:** TODO / low priority
+
+`paint_to_instructions()` emits one `move_to + SGR + char + reset` per cell (~40 bytes each).
+For adjacent cells on the same row with the same style, only one `move_to` and one SGR are needed;
+subsequent chars on the same run can be concatenated. Sorting diff cells by `(y, x)` then grouping
+same-style runs would reduce output bytes substantially (e.g. a 60-char line of same-style text
+goes from ~2400 bytes to ~50 bytes). Impact on write time is modest at current scale but grows
+with terminal size or high-churn frames.
+
+Relevant code: `src/counterweight/output.py:89`
+
+---
+
+### 6. Narrow border-healing hint set (saves ~0.4 ms/cycle, ~2.5%)
 
 **Status:** TODO / low priority
 
@@ -108,6 +151,8 @@ frame to find the same 5 fixes. The hint set could be derived lazily from the di
 from the full layout.
 
 Relevant code: `src/counterweight/paint.py` (border healing logic)
+
+---
 
 ---
 
