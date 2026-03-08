@@ -149,14 +149,15 @@ Relevant code: `src/counterweight/output.py:89`
 
 ### 6. Narrow border-healing hint set (saves ~0.4 ms/cycle, ~2.5%)
 
-**Status:** TODO / low priority
+**Status:** Done (2026-03-08)
 
-`hint_cells` is constant at 279 every frame — the same set of cells is inspected every
-frame to find the same 5 fixes. The hint set could be derived lazily from the diff output
-(only cells adjacent to changed cells need border healing) rather than computed eagerly
-from the full layout.
+`hint_cells` was constant at 279 (canvas) / 784 (dashboard) every frame. Healing only
+ever produces fixes at corner positions — straight-edge overlaps always yield the same
+character. `paint_border()` now emits hints only for the (up to 4) corner positions of
+each bordered element, reducing hint_cells to ~16 (canvas) / ~48 (dashboard).
 
-Relevant code: `src/counterweight/paint.py` (border healing logic)
+Implemented in `src/counterweight/paint.py` `paint_border()` — replaced full `chars`
+dict broadcast with conditional corner-only population inside the `try/except/else` block.
 
 ---
 
