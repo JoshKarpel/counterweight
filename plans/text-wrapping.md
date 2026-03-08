@@ -15,7 +15,7 @@ layout algorithms.
 | `none`    | No wrapping — lines only break on explicit `\n` (current behavior) |
 | `wrap`    | Greedy word wrap: break lines at word boundaries to fit within the available width, falling back to character-level breaks for words longer than the width |
 | `balance` | Like `wrap`, but redistributes words across lines so line lengths are as equal as possible (good for headings) |
-| `pretty`  | Like `wrap`, but uses a paragraph-level algorithm (Knuth-Plass or similar minimum-raggedness) to avoid orphans and produce even line lengths |
+| `pretty`  | Full paragraph-level optimization (Safari-style): evaluates **all** lines to improve rag evenness, prevent orphans, and produce the best overall typography |
 
 ---
 
@@ -83,20 +83,44 @@ This keeps the algorithm simple (O(n log n) at worst) and avoids the factorial
 complexity of a true optimal balancer. For counterweight's use case (terminal text,
 not millions of characters), this is perfectly adequate.
 
-#### `pretty` mode — minimum-raggedness (Knuth-Plass style)
+#### `pretty` mode — full paragraph optimization (Safari-style)
 
-Use a dynamic-programming approach for minimum raggedness:
+Inspired by [Safari/WebKit's `text-wrap: pretty`](https://webkit.org/blog/16547/better-typography-with-text-wrap-pretty/),
+which goes far beyond Chrome's orphan-only approach. Chrome `pretty` only checks the
+last line and prevents orphans when the last line is < 1/3 of available width.
+Safari evaluates **every line** in the paragraph to produce the best overall
+typography. Our implementation follows Safari's philosophy.
+
+Use a Knuth-Plass-inspired dynamic-programming approach for minimum raggedness,
+which optimizes all lines simultaneously:
 
 1. Split into words with their lengths.
-2. Define a cost function: `cost(i, j) = (width - line_length(words[i..j]))^2`
-   when the words fit, `∞` otherwise.
-3. DP: `dp[j] = min over i of (dp[i] + cost(i+1, j))` for placing words `i+1..j`
-   on one line.
-4. Backtrack to find optimal break points.
-5. Special case: the last line has zero cost (it's okay for the last line to be
-   short), which naturally avoids orphan penalties.
+2. Define a cost function for placing words `i..j` on one line:
+   `cost(i, j) = (width - line_length(words[i..j]))^3`
+   Using a **cubic** penalty (rather than quadratic) more aggressively penalizes
+   very long/short lines while being more tolerant of small deviations — this
+   produces the "even rag" effect that Safari targets.
+3. DP: `dp[j] = min over i of (dp[i] + cost(i+1, j))` — finds globally optimal
+   break points across the entire paragraph.
+4. Backtrack to reconstruct the optimal line breaks.
+5. **Last-line relaxation**: the last line has zero cost (it's acceptable for the
+   last line to be shorter), which naturally prevents orphan penalties without
+   needing a special orphan check.
+6. **Orphan prevention**: if the last line contains a single short word (< 1/3 of
+   width), add a penalty to discourage it — the DP will redistribute words from
+   earlier lines to avoid this.
 
-This is O(n * W) where n = number of words, W = width — very fast for terminal text.
+This covers the key goals from the WebKit blog post that apply to a terminal context:
+- **Even rag**: cubic cost penalizes jagged line-length variation across all lines
+- **Orphan prevention**: last-line relaxation + single-word penalty
+- **Global optimization**: every line is considered, not just the last few
+
+Note: hyphenation and typographic river detection (also mentioned in the WebKit post)
+are out of scope for this initial implementation — they require language-specific
+dictionaries and sub-character-level analysis respectively.
+
+The algorithm is O(n^2) where n = number of words — trivially fast for terminal text
+(typically < 100 words per text element).
 
 #### Updated `wrap_cells()` structure
 
@@ -178,10 +202,13 @@ Add thorough tests for `wrap_cells()` covering:
   - Heading-like short text → roughly equal line lengths
 
 - **`pretty` mode:**
+  - Produces more even rag than greedy (line lengths vary less across the paragraph)
   - Avoids orphaned single short word on last line
-  - Produces more even line lengths than greedy for multi-line paragraphs
+  - Redistributes words from earlier lines to prevent orphans (not just the last line)
   - Falls back gracefully when width is very tight
   - Matches greedy when text fits in one line
+  - Comparison test: same input with `wrap` vs `pretty` showing `pretty` produces
+    smaller max deviation between adjacent line lengths
 
 - **Edge cases (all modes):**
   - `width=None` → no wrapping (single line per paragraph)
