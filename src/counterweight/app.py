@@ -160,7 +160,7 @@ async def app(
         screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
-        shadow = None
+        shadow: ShadowNode | None = None
         active_effects: set[Task[None]] = set()
         elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
@@ -175,7 +175,7 @@ async def app(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-        shadow = update_shadow(screen(), shadow)
+        shadow, _ = update_shadow(screen(), shadow)
         compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
@@ -292,10 +292,11 @@ async def app(
 
                 if should_render:
                     start_render = perf_counter_ns()
-                    shadow = update_shadow(screen(), shadow)
+                    shadow, user_code_ns = update_shadow(screen(), shadow)
                     logger.debug(
                         "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
+                        user_code_ns=f"{user_code_ns:_}",
                     )
 
                     start_layout = perf_counter_ns()

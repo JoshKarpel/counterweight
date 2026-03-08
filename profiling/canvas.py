@@ -123,8 +123,10 @@ n = 30
 
 @component
 def random_walkers() -> Text:
-    colors, _set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
-    walkers, set_walkers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
+    # We don't update the colors, but we want to generate a unique set of colors in each instance of the component,
+    # so we use a state hook to generate them once and then never update them
+    colors, _set_colors = use_state(lambda: random.sample(list(COLORS_BY_NAME.values()), k=n))
+    walkers, set_walkers = use_state(lambda: [(random.randrange(w), random.randrange(h)) for _ in range(n)])
 
     def update_movers(m: list[tuple[int, int]]) -> list[tuple[int, int]]:
         new = []
