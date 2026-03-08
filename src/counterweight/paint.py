@@ -228,9 +228,20 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     try:
         jbv = JoinedBorderKind[bk.name].value
-        bhh = {k: jbv for k in chars.keys()}
     except KeyError:
+        bhh: BorderHealingHints = {}
+    else:
         bhh = {}
+        if draw_top:
+            if draw_left:
+                bhh[Position(x=int(rect.left), y=int(rect.top))] = jbv
+            if draw_right:
+                bhh[Position(x=int(rect.right), y=int(rect.top))] = jbv
+        if draw_bottom:
+            if draw_left:
+                bhh[Position(x=int(rect.left), y=int(rect.bottom))] = jbv
+            if draw_right:
+                bhh[Position(x=int(rect.right), y=int(rect.bottom))] = jbv
 
     return chars, bhh
 
