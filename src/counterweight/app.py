@@ -96,8 +96,8 @@ async def app(
     """
     configure_logging()
 
-    def handle_screen_size_change() -> tuple[Style, Paint, int, int]:
-        w, h = dimensions or shutil.get_terminal_size()
+    def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
+        w, h = override or dimensions or shutil.get_terminal_size()
 
         ss = Style(
             layout=waxy.Style(
@@ -394,9 +394,9 @@ async def app(
                     match event:
                         case StateSet():
                             should_render = True
-                        case TerminalResized():
+                        case TerminalResized(dimensions=override):
                             should_render = True
-                            screen_style, current_paint, w, h = handle_screen_size_change()
+                            screen_style, current_paint, w, h = handle_screen_size_change(override)
                         case KeyPressed():
                             for element, _ in reversed(elements_and_layouts):
                                 if element.on_key:

@@ -161,6 +161,35 @@ dict broadcast with conditional corner-only population inside the `try/except/el
 
 ---
 
+### 7. Sparse paint / dirty-region tracking (saves ~1 ms/cycle on static workloads)
+
+**Status:** TODO
+
+`current_paint` is initialized as a full `w×h` dict of BLANK cells (`app.py:110`), so
+`diff_paint` iterates all `w×h` entries every frame — 1,920 iterations for an 80×24 terminal
+even when only 1 cell changed (dashboard frame counter).
+
+**Required changes:**
+
+1. **Initialize `current_paint` as `{}`** instead of pre-filling with BLANK. BLANK is the
+   implicit default (see `.get(pos, BLANK)` usage). Replace the explicit `CLEAR_SCREEN` write
+   (currently driven by the BLANK-filled paint dict) with a raw escape sequence instead.
+
+2. **Keep `new_paint` sparse** — `paint_layout` should not write BLANK cells into the dict;
+   callers already treat missing positions as BLANK.
+
+3. **`diff_paint` scans `new_paint.keys() | current_paint.keys()`** instead of only
+   `current_paint.keys()`. With both dicts sparse, this set is O(content cells), not
+   O(terminal size).
+
+**Expected gain:** Dashboard drops from ~1,920 iterations/frame to ~25 (one card's content),
+recovering most of the 1.0ms diff cost. Canvas (all cells change) gets no benefit.
+
+Relevant code: `src/counterweight/app.py:110` (init), `app.py:490` (`diff_paint`),
+`src/counterweight/paint.py` (`paint_layout`).
+
+---
+
 ## Metrics Reference
 
 ### Run 1 (before `user_code_ns`)

@@ -13,7 +13,7 @@ class _Event:
 
 @dataclass(frozen=True, slots=True)
 class TerminalResized(_Event):
-    pass
+    dimensions: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)
