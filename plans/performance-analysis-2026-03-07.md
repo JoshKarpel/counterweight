@@ -128,7 +128,7 @@ Relevant code: `src/counterweight/paint.py:111`
 
 ### 5c. Batch adjacent cells in `paint_to_instructions()` (reduces bytes written)
 
-**Status:** TODO / low priority
+**Status:** DONE
 
 `paint_to_instructions()` emits one `move_to + SGR + char + reset` per cell (~40 bytes each).
 For adjacent cells on the same row with the same style, only one `move_to` and one SGR are needed;
@@ -151,8 +151,6 @@ frame to find the same 5 fixes. The hint set could be derived lazily from the di
 from the full layout.
 
 Relevant code: `src/counterweight/paint.py` (border healing logic)
-
----
 
 ---
 
@@ -211,6 +209,51 @@ Steady-state performance is unchanged: median ~15.7ms (~63.6 FPS).
 
 Shadow tree: **-67% median** vs run 2 (2.485ms → 0.818ms user_code). Bottleneck fully shifts to paint (37%) and layout (27%).
 Overall cycle: **-13% median** (15.7ms → 13.7ms, ~73 FPS median).
+
+### Run 4 (`paint_edge` cache, `paint_text` cache, batched `paint_to_instructions`)
+
+| Event | Count | Mean | Median | P95 | Max |
+|---|---|---|---|---|---|
+| Updated shadow tree | 99 | 1.117 ms | 1.003 ms | 1.954 ms | 2.783 ms |
+| — user_code_ns | 99 | 1.040 ms | 0.940 ms | 1.713 ms | 2.574 ms |
+| — framework overhead | 99 | 0.077 ms | 0.062 ms | 0.167 ms | 0.347 ms |
+| Calculated layout | 99 | 4.114 ms | 3.858 ms | 6.094 ms | 6.994 ms |
+| Generated new paint | 100 | 6.105 ms | 5.684 ms | 8.820 ms | 12.511 ms |
+| Healed borders | 100 | 0.453 ms | 0.391 ms | 0.846 ms | 1.284 ms |
+| Diffed new paint | 100 | 1.352 ms | 1.232 ms | 2.327 ms | 2.991 ms |
+| Generated instructions | 100 | 1.672 ms | 0.353 ms | 0.589 ms | 128.960 ms |
+| Wrote and flushed | 100 | 0.443 ms | 0.490 ms | 0.733 ms | 1.093 ms |
+| Reconciled effects | 100 | 0.025 ms | 0.022 ms | 0.041 ms | 0.078 ms |
+| **Completed render cycle** | **100** | **17.387 ms** | **15.983 ms** | **19.540 ms** | **145.362 ms** |
+
+Extra metrics (run 4):
+- `hint_cells` (border heal): constant 279 every cycle
+- `diff_cells` (border heal): constant 5 every cycle
+- `diff_cells` (paint diff): mean 207, median 207
+- `bytes` written: mean ~8,620 B, median ~8,602 B
+- `num_events`: mean 4.1 per cycle
+- `num_active_effects`: constant 5
+
+**Result: net regression on the canvas workload (+2.2ms median, 13.7ms → 16.0ms).** The 128ms
+instructions spike is a one-time outlier (likely first-call sort). All three changes hurt this workload:
+
+- `paint_text` cache: canvas `Text` content changes every frame → constant cache misses → lru_cache
+  lookup overhead with no benefit.
+- `paint_edge` cache: probably negligible effect either way (margin/padding rects are static,
+  but the work per call is also small).
+- Instruction batching (`sorted()` call): adds ~0.175ms/cycle median for the sort overhead on
+  ~200 diff cells every frame.
+
+These optimizations benefit static-text workloads (menus, forms, dashboards with stable content)
+but are a regression for high-churn workloads like canvas. The right fix for canvas specifically
+remains framework-side skip-layout (#1) or component memoization (#2).
+
+Scalene hotspots (run 4, top lines by CPU%):
+- `_utils.py:80–91` (flyweight `__new__`) — 3.38% combined, still dominant
+- `paint.py:159` — `paint[Position(x, y)] = P(...)` — 0.61%
+- `app.py:494` — `new_paint.get(pos, BLANK)` in diff loop — 0.48%
+- `output.py:95` — `sorted(paint.items(), ...)` — 0.41% (new cost from batching)
+- `layout.py:189` — cell append in wrap_cells — 0.55%
 
 ### Extra metrics (run 2)
 - `hint_cells` (border heal): constant 279 every cycle

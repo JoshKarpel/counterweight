@@ -54,7 +54,7 @@ alias c := codegen
 
 [doc('Run the counterweight devlog')]
 devlog *ARGS:
-    uv run counterweight devlog {{ ARGS }}
+    @uv run counterweight devlog {{ ARGS }}
 
 alias dl := devlog
 
