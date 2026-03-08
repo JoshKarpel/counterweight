@@ -4,7 +4,6 @@ import time
 from collections import deque
 from itertools import product
 
-from more_itertools import grouper
 from structlog import get_logger
 
 from counterweight.app import app
@@ -13,34 +12,11 @@ from counterweight.elements import Chunk, Div, Text
 from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
-from counterweight.utils import clamp
+from counterweight.utils import canvas, clamp
 
 logger = get_logger()
 
 _frame_times: deque[float] = deque(maxlen=300)
-
-BLACK = Color.from_name("black")
-
-
-def canvas(
-    width: int,
-    height: int,
-    cells: dict[tuple[int, int], Color],
-) -> list[Chunk]:
-    c: list[Chunk] = []
-    for y_top, y_bot in grouper(range(height), 2):
-        c.extend(
-            Chunk(
-                content="▀",
-                style=CellStyle(
-                    foreground=cells.get((x, y_top), BLACK),
-                    background=cells.get((x, y_bot), BLACK),
-                ),
-            )
-            for x in range(width)
-        )
-        c.append(Chunk.newline())
-    return c[:-1]  # strip off last newline
 
 
 @component

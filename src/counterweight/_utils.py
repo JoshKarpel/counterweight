@@ -62,10 +62,6 @@ async def cancel[T](task: Task[T]) -> None:
         raise RuntimeError("Cancelled task did not end with an exception")
 
 
-def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
-    return max(min_, min(val, max_))
-
-
 def flyweight[T](maxsize: int = 2**10) -> Callable[[type[T]], type[T]]:
     """
     Class decorator that interns instances of a dataclass by their field values.
