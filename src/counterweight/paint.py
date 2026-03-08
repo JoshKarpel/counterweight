@@ -11,7 +11,7 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 import waxy
 from structlog import get_logger
 
-from counterweight._utils import halve_integer
+from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import ResolvedLayout, wrap_cells
@@ -26,6 +26,7 @@ from counterweight.styles.styles import (
 logger = get_logger()
 
 
+@flyweight(maxsize=2**14)
 @dataclass(slots=True)
 class P:
     char: str
@@ -132,7 +133,7 @@ def paint_text(text: Text, rect: waxy.Rect) -> Paint:
                 merged_style = style | cell_style
                 previous_cell_style = cell_style
 
-            paint[Position.flyweight(x, y)] = P(
+            paint[Position(x, y)] = P(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
                 z=text.style.z,
@@ -201,22 +202,18 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
         for p in islice(rect.top_edge(), contract_left, contract_right):
             chars[Position.from_point(p)] = top_paint
         if draw_left:
-            chars[Position.flyweight(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
+            chars[Position(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
         if draw_right:
-            chars[Position.flyweight(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
+            chars[Position(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
 
     if draw_bottom:
         bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
         for p in islice(rect.bottom_edge(), contract_left, contract_right):
             chars[Position.from_point(p)] = bottom_paint
         if draw_left:
-            chars[Position.flyweight(x=int(rect.left), y=int(rect.bottom))] = P(
-                char=bv.left_bottom, style=cell_style, z=z
-            )
+            chars[Position(x=int(rect.left), y=int(rect.bottom))] = P(char=bv.left_bottom, style=cell_style, z=z)
         if draw_right:
-            chars[Position.flyweight(x=int(rect.right), y=int(rect.bottom))] = P(
-                char=bv.right_bottom, style=cell_style, z=z
-            )
+            chars[Position(x=int(rect.right), y=int(rect.bottom))] = P(char=bv.right_bottom, style=cell_style, z=z)
 
     try:
         jbv = JoinedBorderKind[bk.name].value
@@ -228,7 +225,8 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
 
 def svg(paint: Paint) -> ElementTree:
-    w, h = max(paint.keys())
+    max_pos = max(paint.keys())
+    w, h = max_pos.x, max_pos.y
 
     # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
     w += 1

@@ -31,7 +31,7 @@ def canvas(
     return list(
         intersperse(
             Chunk.newline(),
-            (canvas_chunk(cells.get(Position.flyweight(x, y), BLACK)) for y in range(height) for x in range(width)),
+            (canvas_chunk(cells.get(Position(x, y), BLACK)) for y in range(height) for x in range(width)),
             n=width,
         )
     )
@@ -98,7 +98,7 @@ def last_clicked_box() -> Text:
     rects = use_rects()
     hovered = use_hovered()
 
-    clicked, set_clicked = use_state(Position.flyweight(0, 0))
+    clicked, set_clicked = use_state(Position(0, 0))
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
@@ -123,8 +123,8 @@ def last_dragged_box() -> Text:
     rects = use_rects()
     hovered = use_hovered()
 
-    start, set_start = use_state(Position.flyweight(0, 0))
-    end, set_end = use_state(Position.flyweight(0, 0))
+    start, set_start = use_state(Position(0, 0))
+    end, set_end = use_state(Position(0, 0))
 
     def on_mouse(event: MouseEvent) -> None:
         match event:
@@ -163,7 +163,7 @@ def drag_text_box() -> Div:
 @component
 def draggable_text(content: str, init_x: int, init_y: int) -> Text:
     mouse = use_mouse()
-    offset, set_offset = use_state(Position.flyweight(init_x, init_y))
+    offset, set_offset = use_state(Position(init_x, init_y))
 
     # TODO: if you don't go slow, your mouse can easily outrun the render speed
     def on_mouse(event: MouseEvent) -> None:

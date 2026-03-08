@@ -11,7 +11,7 @@ from counterweight._context_vars import current_event_queue
 from counterweight.constants import PACKAGE_NAME, __version__
 from counterweight.events import AnyEvent
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.logging import tail_devlog
+from counterweight.logging import last_devlog, tail_devlog
 from counterweight.output import start_mouse_tracking, stop_mouse_tracking
 
 cli = Typer(
@@ -34,9 +34,15 @@ def version() -> None:
 
 
 @cli.command()
-def devlog() -> None:
+def devlog(
+    last: int | None = Option(default=None, help="Print the last N log messages and exit."),
+    json: bool = Option(default=False, help="Read from the JSON-lines log (use with --last)."),
+) -> None:
     """Tail the developer log file."""
-    tail_devlog()
+    if last is not None:
+        last_devlog(last, json=json)
+    else:
+        tail_devlog(json=json)
 
 
 @cli.command()

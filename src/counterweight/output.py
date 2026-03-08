@@ -107,7 +107,7 @@ def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
     for y in range(min_y, max_y + 1):
         row = ""
         for x in range(min_x, max_x + 1):
-            cell = paint.get(Position.flyweight(x, y))
+            cell = paint.get(Position(x, y))
             if cell:
                 row += f"{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" if ansi else cell.char
             else:
