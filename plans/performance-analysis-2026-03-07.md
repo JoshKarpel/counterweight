@@ -163,7 +163,7 @@ dict broadcast with conditional corner-only population inside the `try/except/el
 
 ### 7. Sparse paint / dirty-region tracking (saves ~1 ms/cycle on static workloads)
 
-**Status:** TODO
+**Status:** TODO — tests written (`tests/test_paint_tracking.py`), implementation reverted; approach needs rethink
 
 `current_paint` is initialized as a full `w×h` dict of BLANK cells (`app.py:110`), so
 `diff_paint` iterates all `w×h` entries every frame — 1,920 iterations for an 80×24 terminal
@@ -335,6 +335,59 @@ Scalene hotspots (run 5, top lines by CPU%):
 - `_utils.py:80–91` (flyweight `__new__`) — 1.87% combined
 - `paint.py:65` — `bhh |= b` (border healing hint merge) — 0.67%
 - `geometry.py:18–20` — `Position.from_point()` — 1.47% combined
+
+### Run 6 — `profiling/canvas.py` (after #6 corner hints + #7 sparse paint; battery power)
+
+> **Clock-speed caveat:** recorded on battery — absolute times are ~1.8× slower than runs 1–4.
+> Compare proportions only.
+
+| Event | Count | Mean | Median | %cycle | P95 | Max |
+|---|---|---|---|---|---|---|
+| Updated shadow tree | 49 | 1.767 ms | 1.576 ms | 6.4% | 2.767 ms | 3.750 ms |
+| — user_code | 49 | 1.639 ms | 1.472 ms | 6.0% | 2.619 ms | 3.545 ms |
+| — framework overhead | 49 | 0.128 ms | 0.111 ms | 0.5% | 0.252 ms | 0.278 ms |
+| Calculated layout | 49 | 6.744 ms | 6.479 ms | 26.4% | 8.835 ms | 9.478 ms |
+| Generated new paint | 50 | 10.080 ms | 10.137 ms | 41.2% | 12.379 ms | 13.659 ms |
+| Healed borders | 50 | 0.089 ms | 0.074 ms | 0.3% | 0.150 ms | 0.386 ms |
+| Diffed new paint | 50 | 1.539 ms | 1.431 ms | 5.8% | 2.298 ms | 2.851 ms |
+| Generated instructions | 50 | 0.593 ms | 0.530 ms | 2.2% | 1.004 ms | 1.039 ms |
+| Wrote and flushed | 50 | 0.687 ms | 0.720 ms | 2.9% | 1.083 ms | 1.876 ms |
+| Reconciled effects | 50 | 0.054 ms | 0.038 ms | 0.2% | 0.098 ms | 0.359 ms |
+| **Completed render cycle** | **50** | **24.951 ms** | **24.583 ms** | — | **29.745 ms** | **30.216 ms** |
+
+Extra metrics (run 6):
+- `hint_cells` (border heal): constant 9 every cycle (was 279 in run 3 — **#6 working**)
+- `diff_cells` (border heal): constant 5 every cycle
+- `diff_cells` (paint diff): mean 207, median 207
+- `bytes` written: mean ~8,628 B
+- `num_events`: mean 4.1 per cycle
+- `num_active_effects`: constant 5
+
+**Bottleneck proportions vs run 3** (clock-speed-independent comparison):
+
+| Sub-step | Run 3 % | Run 6 % | Δ | Driver |
+|---|---|---|---|---|
+| Generated new paint | 37.3% | 41.2% | +3.9% | New filter comprehension in `paint_layout` (paint.py:70 at 0.18%) adds overhead with no canvas benefit |
+| Calculated layout | 26.8% | 26.4% | ≈ same | — |
+| Diffed new paint | 8.5% | 5.8% | **−2.7%** | #7 sparse current_paint — fewer entries to scan |
+| Shadow tree | 6.4% | 6.4% | same | — |
+| Healed borders | 2.8% | **0.3%** | **−2.5%** | **#6 corner-only hints; hint_cells 279→9** |
+| Write | 3.1% | 2.9% | same | — |
+| Instructions | 1.4% | 2.2% | +0.8% | within noise |
+
+**Result:** #6 (border healing) is a clean win. #7 (sparse paint) saves on the diff step but adds overhead
+in paint generation — mixed on canvas (fully-dynamic), expected to help dashboard significantly.
+Dominant bottleneck remains `Generated new paint` (41%) and `Layout` (26%).
+
+Scalene hotspots (run 6, top lines by CPU%):
+- `_utils.py:80–91` (flyweight `__new__`) — 1.20% + 1.13% + 0.66% = ~3% combined, still dominant
+- `layout.py:189` — cell append in `wrap_cells` — 0.67%
+- `paint.py:163` — `paint[Position(x, y)] = P(...)` in `_paint_text` — 0.57%
+- `app.py:363` — `output_stream.flush()` — 0.52%
+- `paint.py:70` — sparse filter comprehension — 0.18% **(new cost from #7)**
+- `layout.py:79` — `_measure_text` — 0.24%
+
+---
 
 ### Extra metrics (run 2)
 - `hint_cells` (border heal): constant 279 every cycle

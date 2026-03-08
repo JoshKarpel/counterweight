@@ -15,6 +15,7 @@ the plain-text grid written to current_paint.
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
@@ -25,7 +26,7 @@ from counterweight.hooks import use_state
 from counterweight.styles.utilities import col, size
 
 
-async def _render(root_fn: type[Component], dimensions: tuple[int, int]) -> str:
+async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> str:
     capture = io.StringIO()
     await app(
         root_fn,
@@ -36,7 +37,7 @@ async def _render(root_fn: type[Component], dimensions: tuple[int, int]) -> str:
     return capture.getvalue().rstrip("\n")
 
 
-async def _two_frames(root_fn: type[Component], dimensions: tuple[int, int]) -> tuple[str, str]:
+async def _two_frames(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> tuple[str, str]:
     """Capture paint before and after a single key press."""
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
@@ -71,7 +72,83 @@ async def test_initial_render_empty_screen_is_all_spaces() -> None:
     def root() -> Div:
         return Div()
 
-    assert await _render(root, (5, 1)) == "     "
+    assert await _render(root, (5, 3)) == "\n".join(["     ", "     ", "     "])
+
+
+async def test_initial_render_uncovered_rows_are_spaces() -> None:
+    """Rows not touched by any element must still render as spaces."""
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=size(5, 1),
+            children=[Text(content="Hello")],
+        )
+
+    assert await _render(root, (5, 3)) == "\n".join(["Hello", "     ", "     "])
+
+
+async def test_ansi_background_is_explicit_black() -> None:
+    """With ansi=True, every cell — even blank ones — has explicit black-background ANSI codes."""
+
+    @component
+    def root() -> Div:
+        return Div()
+
+    capture = io.StringIO()
+    await app(
+        root,
+        headless=True,
+        dimensions=(2, 1),
+        autopilot=[PrintPaint(stream=capture, ansi=True), Quit()],
+    )
+    output = capture.getvalue()
+    # Every position should carry the black background escape
+    assert output.count("\x1b[48;2;0;0;0m") == 2  # one per column
+
+
+async def test_ansi_uncovered_area_has_explicit_black_background() -> None:
+    """With ansi=True, positions not covered by any element still show black background."""
+
+    @component
+    def root() -> Div:
+        return Div(style=size(1, 1), children=[Text(content="X")])
+
+    capture = io.StringIO()
+    await app(
+        root,
+        headless=True,
+        dimensions=(2, 1),
+        autopilot=[PrintPaint(stream=capture, ansi=True), Quit()],
+    )
+    output = capture.getvalue()
+    # Both the "X" cell and the blank cell to its right should set a background
+    assert output.count("\x1b[48;2;0;0;0m") == 2
+
+
+async def test_ansi_after_resize_new_area_has_explicit_black_background() -> None:
+    """After resize to a larger terminal, the new uncovered cells have explicit black background."""
+
+    @component
+    def root() -> Div:
+        return Div()
+
+    c1, c2 = io.StringIO(), io.StringIO()
+    await app(
+        root,
+        headless=True,
+        dimensions=(1, 1),
+        autopilot=[
+            PrintPaint(stream=c1, ansi=True),
+            TerminalResized(dimensions=(2, 1)),
+            PrintPaint(stream=c2, ansi=True),
+            Quit(),
+        ],
+    )
+    # Before: 1 column, 1 black background code
+    assert c1.getvalue().count("\x1b[48;2;0;0;0m") == 1
+    # After: 2 columns, both should have explicit black background
+    assert c2.getvalue().count("\x1b[48;2;0;0;0m") == 2
 
 
 async def test_initial_render_multiline() -> None:
@@ -267,6 +344,55 @@ async def test_resize_with_new_dimensions() -> None:
     )
     assert c1.getvalue().rstrip("\n") == "Hi   "
     assert c2.getvalue().rstrip("\n") == "Hi      "
+
+
+async def test_resize_to_larger_new_area_is_spaces() -> None:
+    """After growing the terminal, the new rows/columns show as spaces."""
+
+    @component
+    def root() -> Div:
+        return Div(children=[Text(content="Hi")])
+
+    c1, c2 = io.StringIO(), io.StringIO()
+    await app(
+        root,
+        headless=True,
+        dimensions=(5, 1),
+        autopilot=[
+            PrintPaint(stream=c1, ansi=False),
+            TerminalResized(dimensions=(5, 3)),
+            PrintPaint(stream=c2, ansi=False),
+            Quit(),
+        ],
+    )
+    assert c1.getvalue().rstrip("\n") == "Hi   "
+    assert c2.getvalue().rstrip("\n") == "\n".join(["Hi   ", "     ", "     "])
+
+
+async def test_resize_to_smaller_no_stale_rows() -> None:
+    """After shrinking the terminal, rows outside the new bounds are gone."""
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=col | size(5, 3),
+            children=[Text(content="L1"), Text(content="L2"), Text(content="L3")],
+        )
+
+    c1, c2 = io.StringIO(), io.StringIO()
+    await app(
+        root,
+        headless=True,
+        dimensions=(5, 3),
+        autopilot=[
+            PrintPaint(stream=c1, ansi=False),
+            TerminalResized(dimensions=(5, 1)),
+            PrintPaint(stream=c2, ansi=False),
+            Quit(),
+        ],
+    )
+    assert c1.getvalue().rstrip("\n") == "\n".join(["L1   ", "L2   ", "L3   "])
+    assert c2.getvalue().rstrip("\n") == "L1   "
 
 
 async def test_resize_clears_stale_content() -> None:
