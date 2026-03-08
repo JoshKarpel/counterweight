@@ -1,6 +1,6 @@
 import pytest
 
-from counterweight._utils import clamp
+from counterweight.utils import clamp
 
 
 @pytest.mark.parametrize(

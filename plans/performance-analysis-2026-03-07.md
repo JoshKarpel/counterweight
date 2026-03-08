@@ -62,19 +62,23 @@ Relevant code: `src/counterweight/shadow.py` (`update_shadow`), `src/counterweig
 
 ### 3. Incremental paint for Text nodes (saves ~2–4 ms/cycle, ~15–25%)
 
-**Status:** TODO
+**Status:** PARTIALLY DONE
 
-`canvas()` in `profiling/canvas.py` rebuilds all `width * (height/2)` Chunk objects
-unconditionally every frame. With `n=30` walkers in `w*h=900` cells, only ~3.3% of cells
-change per frame. The paint step traverses all ~1,800 Chunks regardless.
+`canvas()` moved to `counterweight.utils` and optimized:
+- Coordinate pairs precomputed and cached per `(width, height)` via `_canvas_rows` —
+  eliminates 900 temp tuple allocations per call.
+- Row-structured iteration replaces flat `enumerate` + `i % width` modulo per cell.
+- `_canvas_chunk(fg, bg)` cached via `lru_cache(maxsize=512)` — each unique color pair
+  allocated once; subsequent calls return the interned `Chunk`. For the random walkers
+  workload (~31 unique pairs), drops canvas allocations from ~1,800 Chunks + 1,800
+  CellStyles per frame to ~31 cached objects after warmup.
 
-Two angles:
-- **Framework side:** allow `Text` nodes to declare their chunks as a diff-friendly
-  structure so unchanged chunks can be skipped during paint traversal.
-- **User side:** `canvas()` could track the previous cell dict and only rebuild changed
-  Chunks. This is a lower-level workaround but immediately available to app authors.
+Remaining (framework-side):
+- `canvas()` still rebuilds the full `list[Chunk]` every frame. A framework-level
+  mechanism for `Text` nodes to skip unchanged chunks during paint traversal would
+  allow truly incremental rendering.
 
-Relevant code: `src/counterweight/paint.py`, `profiling/canvas.py`
+Relevant code: `src/counterweight/utils.py`, `src/counterweight/paint.py`
 
 ---
 
@@ -143,6 +147,25 @@ Relevant code: `src/counterweight/paint.py` (border healing logic)
 
 Run 2 high outliers (layout 15.6ms, cycle 33.3ms) are isolated GC/OS scheduling spikes, not regressions.
 Steady-state performance is unchanged: median ~15.7ms (~63.6 FPS).
+
+### Run 3 (`@flyweight` on `CellStyle`, `_canvas_chunk` cache, `NEWLINE` constant, `canvas` in utils)
+
+| Event | Count | Mean | Median | P95 | Max |
+|---|---|---|---|---|---|
+| Updated shadow tree | 49 | 1.041 ms | 0.881 ms | 1.870 ms | 3.723 ms |
+| — user_code_ns | 49 | 0.970 ms | 0.818 ms | 1.793 ms | 3.364 ms |
+| — framework overhead | 49 | 0.071 ms | 0.058 ms | 0.125 ms | 0.359 ms |
+| Calculated layout | 49 | 3.813 ms | 3.681 ms | 5.127 ms | 6.326 ms |
+| Generated new paint | 50 | 5.234 ms | 5.121 ms | 6.277 ms | 7.379 ms |
+| Healed borders | 50 | 0.395 ms | 0.380 ms | 0.471 ms | 0.616 ms |
+| Diffed new paint | 50 | 1.299 ms | 1.166 ms | 1.689 ms | 3.125 ms |
+| Generated instructions | 50 | 0.211 ms | 0.194 ms | 0.358 ms | 0.382 ms |
+| Wrote and flushed | 50 | 0.409 ms | 0.420 ms | 0.596 ms | 0.820 ms |
+| Reconciled effects | 50 | 0.020 ms | 0.020 ms | 0.029 ms | 0.034 ms |
+| **Completed render cycle** | **50** | **14.188 ms** | **13.740 ms** | **17.275 ms** | **19.502 ms** |
+
+Shadow tree: **-67% median** vs run 2 (2.485ms → 0.818ms user_code). Bottleneck fully shifts to paint (37%) and layout (27%).
+Overall cycle: **-13% median** (15.7ms → 13.7ms, ~73 FPS median).
 
 ### Extra metrics (run 2)
 - `hint_cells` (border heal): constant 279 every cycle

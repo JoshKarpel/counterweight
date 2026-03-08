@@ -4,10 +4,10 @@ from functools import lru_cache
 
 from more_itertools import grouper
 
-from counterweight.elements import Chunk
+from counterweight.elements import NEWLINE, Chunk
 from counterweight.styles.styles import CellStyle, Color
 
-_BLACK = Color(0, 0, 0)
+_BLACK = Color.from_name("black")
 
 
 def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
@@ -15,12 +15,13 @@ def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
 
 
 @lru_cache(maxsize=64)
-def _canvas_coords(width: int, height: int) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    coords: list[tuple[tuple[int, int], tuple[int, int]]] = []
-    for y_top, y_bot in grouper(range(height), 2):
-        for x in range(width):
-            coords.append(((x, y_top), (x, y_bot)))
-    return coords
+def _canvas_rows(width: int, height: int) -> list[list[tuple[tuple[int, int], tuple[int, int]]]]:
+    return [[((x, y_top), (x, y_bot)) for x in range(width)] for y_top, y_bot in grouper(range(height), 2)]
+
+
+@lru_cache(maxsize=2**10)
+def _canvas_chunk(fg: Color, bg: Color) -> Chunk:
+    return Chunk(content="▀", style=CellStyle(foreground=fg, background=bg))
 
 
 def canvas(
@@ -29,20 +30,26 @@ def canvas(
     cells: dict[tuple[int, int], Color],
     default: Color = _BLACK,
 ) -> list[Chunk]:
-    coords = _canvas_coords(width, height)
+    """
+    Render a pixel grid as a list of Chunks using half-block characters (▀).
+
+    Each character cell represents two vertically-stacked pixels: the upper pixel maps to
+    the foreground color and the lower pixel maps to the background color. This doubles the
+    effective vertical resolution of a terminal canvas.
+
+    `width` and `height` are in pixels; `height` must be even. `cells` is a sparse mapping
+    of `(x, y)` pixel coordinates to colors — unmapped pixels use `default` (black).
+    The returned chunks are suitable for use as the `content` of a `Text` element.
+    """
+    if height % 2 != 0:
+        raise ValueError(f"canvas height must be even, got {height}")
+    rows = _canvas_rows(width, height)
     chunks: list[Chunk] = []
-    for i, (top, bot) in enumerate(coords):
-        if i > 0 and i % width == 0:
-            chunks.append(Chunk.newline())
-        chunks.append(
-            Chunk(
-                content="▀",
-                style=CellStyle(
-                    foreground=cells.get(top, default),
-                    background=cells.get(bot, default),
-                ),
-            )
-        )
+    for i, row in enumerate(rows):
+        if i > 0:
+            chunks.append(NEWLINE)
+        for top, bot in row:
+            chunks.append(_canvas_chunk(cells.get(top, default), cells.get(bot, default)))
     return chunks
 
 

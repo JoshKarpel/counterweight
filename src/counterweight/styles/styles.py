@@ -9,6 +9,8 @@ from typing import Literal, NamedTuple
 import waxy
 from cachetools import LRUCache
 
+from counterweight._utils import flyweight
+
 TextWrap = Literal["none"]
 
 
@@ -226,6 +228,7 @@ _WHITE = COLORS_BY_NAME["white"]
 _BLACK = COLORS_BY_NAME["black"]
 
 
+@flyweight(maxsize=2**10)
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CellStyle(StyleFragment):
     foreground: Color = _WHITE
