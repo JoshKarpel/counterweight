@@ -5,6 +5,12 @@
 **Dataset:** 500 log lines, 50 complete render cycles, ~0.82 s wall time.
 **Result:** Median cycle 15.7 ms (~63.6 FPS).
 
+> **Workload bias warning:** The canvas workload is maximally dynamic — content changes on every
+> frame, so optimizations that assume temporal locality (caches, memoization) get no hits and only
+> pay overhead. Most real apps (dashboards, menus, forms) have mostly-stable content between frames
+> and would benefit more from those optimizations. The canvas is a useful stress test for raw
+> throughput but flatters different optimizations than a typical app would.
+
 ---
 
 ## Render Cycle Breakdown
@@ -254,6 +260,51 @@ Scalene hotspots (run 4, top lines by CPU%):
 - `app.py:494` — `new_paint.get(pos, BLANK)` in diff loop — 0.48%
 - `output.py:95` — `sorted(paint.items(), ...)` — 0.41% (new cost from batching)
 - `layout.py:189` — cell append in wrap_cells — 0.55%
+
+### Run 5 — `profiling/dashboard.py` (mostly-static workload)
+
+| Event | Count | Mean | Median | %cycle | P95 | Max |
+|---|---|---|---|---|---|---|
+| Updated shadow tree | 199 | 1.436 ms | 1.207 ms | 14.0% | 1.917 ms | 27.985 ms |
+| — user_code | 199 | 1.304 ms | 1.089 ms | 12.6% | 1.723 ms | 27.798 ms |
+| — framework overhead | 199 | 0.132 ms | 0.119 ms | 1.4% | 0.193 ms | 0.889 ms |
+| Calculated layout | 199 | 1.066 ms | 0.978 ms | 11.3% | 1.746 ms | 2.736 ms |
+| Generated new paint | 200 | 2.825 ms | 2.474 ms | 28.6% | 3.658 ms | 39.366 ms |
+| Healed borders | 200 | 1.101 ms | 1.016 ms | 11.8% | 1.493 ms | 2.227 ms |
+| Diffed new paint | 200 | 1.109 ms | 1.001 ms | 11.6% | 1.749 ms | 3.172 ms |
+| Generated instructions | 200 | 0.013 ms | 0.011 ms | 0.1% | 0.023 ms | 0.093 ms |
+| Wrote and flushed | 200 | 0.056 ms | 0.048 ms | 0.6% | 0.107 ms | 0.574 ms |
+| Reconciled effects | 200 | 0.038 ms | 0.034 ms | 0.4% | 0.066 ms | 0.138 ms |
+| **Completed render cycle** | **200** | **9.427 ms** | **8.642 ms** | — | **12.855 ms** | **45.571 ms** |
+
+Extra metrics (run 5):
+- `hint_cells` (border heal): constant 784 every cycle (12 bordered metric cards vs canvas's 4)
+- `diff_cells` (border heal): constant 17 every cycle
+- `diff_cells` (paint diff): mean 1.2, median 1 — only the frame counter changes
+- `bytes` written: mean 47 B (vs canvas's 8,620 B)
+- `num_events`: mean 1.0 per cycle
+- `num_active_effects`: constant 2
+
+**Result: 8.6ms median (~116 FPS).** Paint_text and paint_edge caches are doing real work —
+paint generation drops to 2.47ms (vs canvas 5.68ms) for a workload with 24 static Text elements
+and 1 changing one. Instructions + write are essentially free (0.01ms / 47B vs 0.35ms / 8.6KB).
+
+Bottleneck breakdown shifts completely vs canvas:
+
+| Bottleneck | Dashboard | Root cause |
+|---|---|---|
+| Generated new paint (29%) | 2.47 ms | Still dominant but 2× faster with cache hits |
+| Shadow tree (14%) | 1.21 ms | 12 `metric_card` components re-run every frame with unchanged props — memoization (#2) would eliminate this |
+| Border healing (12%) | 1.02 ms | 784 hints checked every frame to find 17 fixes — **larger than canvas** due to 12 bordered cards; hint-narrowing (#6) would make this near-zero |
+| Diffed new paint (12%) | 1.00 ms | Full terminal scan to find 1 changed cell — cost is O(terminal size), not O(changes); dirty-region tracking would eliminate this |
+| Layout (11%) | 0.98 ms | Runs every cycle even though nothing structural changed — skip-layout (#1) would eliminate this |
+
+Scalene hotspots (run 5, top lines by CPU%):
+- `app.py:494` — `new_paint.get(pos, BLANK)` in diff loop — 0.91% (most expensive single line)
+- `border_healing.py:64` — `get_replacement_char()` — 0.84%
+- `_utils.py:80–91` (flyweight `__new__`) — 1.87% combined
+- `paint.py:65` — `bhh |= b` (border healing hint merge) — 0.67%
+- `geometry.py:18–20` — `Position.from_point()` — 1.47% combined
 
 ### Extra metrics (run 2)
 - `hint_cells` (border heal): constant 279 every cycle

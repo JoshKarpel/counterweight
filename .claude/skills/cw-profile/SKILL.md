@@ -12,12 +12,14 @@ Two complementary tools: **Scalene** (line-level CPU profiler) and the **structu
 ### 1. Run a profiling session
 
 ```bash
-just profile profiling/canvas.py
+just profile profiling/canvas.py     # high-churn: all content changes every frame
+just profile profiling/dashboard.py  # mostly-static: one frame counter changes, rest cached
 ```
 
-This runs `profiling/canvas.py` under Scalene for up to 60 seconds, then prints a reduced CLI summary. The full profile is saved to `scalene-profile.json` in the project root.
+Both run for up to 60 seconds under Scalene, then print a reduced CLI summary. The full profile is saved to `scalene-profile.json` in the project root.
 
-The canvas workload is high-churn (4 random-walker canvases, all moving every frame). It stresses paint generation and layout. It is **not** representative of static-text workloads.
+- **canvas.py** — adversarial for caches: 4 random-walker canvases, ~1,800 cells changing every frame. Stresses raw paint throughput. Optimizations that rely on temporal locality (lru_cache, memoization) show no benefit here.
+- **dashboard.py** — representative of typical apps: 12 static metric cards + 1 live frame counter. Most Text elements are stable between frames, so paint_text and paint_edge caches hit heavily. Use this to validate cache-based optimizations.
 
 ### 2. Analyze the devlog
 
