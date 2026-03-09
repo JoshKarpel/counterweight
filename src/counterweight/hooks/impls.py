@@ -3,7 +3,6 @@ from __future__ import annotations
 from asyncio import Task
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
@@ -29,9 +28,6 @@ class UseEffect:
     task: Task[None] | None = None
 
 
-T = TypeVar("T")
-
-
 class InconsistentHookExecution(Exception):
     pass
 
@@ -45,7 +41,7 @@ class Hooks:
     def effects(self) -> Iterator[UseEffect]:
         return (hook for hook in self.data if isinstance(hook, UseEffect))
 
-    def use_state(self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
+    def use_state[T](self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseState):
@@ -68,7 +64,7 @@ class Hooks:
 
         return hook.value, set_state  # type: ignore[return-value]
 
-    def use_ref(self, initial_value: Getter[T] | T) -> Ref[T]:
+    def use_ref[T](self, initial_value: Getter[T] | T) -> Ref[T]:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseRef):

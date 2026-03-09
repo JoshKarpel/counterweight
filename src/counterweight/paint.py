@@ -11,7 +11,7 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 import waxy
 from structlog import get_logger
 
-from counterweight._utils import halve_integer
+from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Position
 from counterweight.layout import ResolvedLayout, wrap_cells
@@ -21,11 +21,13 @@ from counterweight.styles.styles import (
     JoinedBorderKind,
     JoinedBorderParts,
     Style,
+    TextWrap,
 )
 
 logger = get_logger()
 
 
+@flyweight(maxsize=2**14)
 @dataclass(slots=True)
 class P:
     char: str
@@ -69,6 +71,25 @@ def fill_rect(rect: waxy.Rect, z: int, color: Color) -> Paint:
     return {Position.from_point(p): P.blank(color=color, z=z) for p in rect.points()}
 
 
+@lru_cache(maxsize=2**10)
+def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Paint:
+    cell_paint = P(char=" ", style=CellStyle(background=color), z=z)
+    chars: Paint = {}
+
+    strips = [
+        waxy.Rect(left=outer.left, right=outer.right, top=outer.top, bottom=inner.top - 1),
+        waxy.Rect(left=outer.left, right=outer.right, top=inner.bottom + 1, bottom=outer.bottom),
+        waxy.Rect(left=outer.left, right=inner.left - 1, top=inner.top, bottom=inner.bottom),
+        waxy.Rect(left=inner.right + 1, right=outer.right, top=inner.top, bottom=inner.bottom),
+    ]
+    for strip in strips:
+        if strip.top <= strip.bottom and strip.left <= strip.right:
+            for p in strip.points():
+                chars[Position.from_point(p)] = cell_paint
+
+    return chars
+
+
 def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]:
     m = paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)
     b, bhh = paint_border(element.style, resolved)
@@ -107,56 +128,47 @@ def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "ri
         assert_never(justify)
 
 
-def paint_text(text: Text, rect: waxy.Rect) -> Paint:
-    style = text.style.text_style
+@lru_cache(maxsize=2**10)
+def _paint_text(
+    cells: tuple[CellPaint, ...],
+    wrap: TextWrap,
+    justify: Literal["left", "right", "center"],
+    text_style: CellStyle,
+    z: int,
+    rect: waxy.Rect,
+) -> Paint:
     # waxy.Rect uses an inclusive coordinate system: width = right - left (one less than the
     # number of cells).  Adding 1 converts to cell count for slicing and iteration.
     width = int(rect.width) + 1
     height = int(rect.height) + 1
 
     paint = {}
-    lines = wrap_cells(
-        cells=text.cells,
-        wrap=text.style.text_wrap,
-        width=width,
-    )
+    lines = wrap_cells(cells=cells, wrap=wrap, width=width)
 
     previous_cell_style = None
 
     for y, line in enumerate(lines[:height], start=int(rect.top)):
-        justified_line = justify_line(line, width, text.style.text_justify)
+        justified_line = justify_line(line, width, justify)
         for x, cell in enumerate(justified_line[:width], start=int(rect.left)):
             cell_style = cell.style
 
             if cell_style is not previous_cell_style:
-                merged_style = style | cell_style
+                merged_style = text_style | cell_style
                 previous_cell_style = cell_style
 
-            paint[Position.flyweight(x, y)] = P(
+            paint[Position(x, y)] = P(
                 char=cell.char,
                 style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
-                z=text.style.z,
+                z=z,
             )
 
     return paint
 
 
-def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Paint:
-    cell_paint = P(char=" ", style=CellStyle(background=color), z=z)
-    chars: Paint = {}
-
-    strips = [
-        waxy.Rect(left=outer.left, right=outer.right, top=outer.top, bottom=inner.top - 1),
-        waxy.Rect(left=outer.left, right=outer.right, top=inner.bottom + 1, bottom=outer.bottom),
-        waxy.Rect(left=outer.left, right=inner.left - 1, top=inner.top, bottom=inner.bottom),
-        waxy.Rect(left=inner.right + 1, right=outer.right, top=inner.top, bottom=inner.bottom),
-    ]
-    for strip in strips:
-        if strip.top <= strip.bottom and strip.left <= strip.right:
-            for p in strip.points():
-                chars[Position.from_point(p)] = cell_paint
-
-    return chars
+def paint_text(text: Text, rect: waxy.Rect) -> Paint:
+    return _paint_text(
+        text.cells, text.style.text_wrap, text.style.text_justify, text.style.text_style, text.style.z, rect
+    )
 
 
 def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]:
@@ -201,34 +213,42 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
         for p in islice(rect.top_edge(), contract_left, contract_right):
             chars[Position.from_point(p)] = top_paint
         if draw_left:
-            chars[Position.flyweight(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
+            chars[Position(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
         if draw_right:
-            chars[Position.flyweight(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
+            chars[Position(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
 
     if draw_bottom:
         bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
         for p in islice(rect.bottom_edge(), contract_left, contract_right):
             chars[Position.from_point(p)] = bottom_paint
         if draw_left:
-            chars[Position.flyweight(x=int(rect.left), y=int(rect.bottom))] = P(
-                char=bv.left_bottom, style=cell_style, z=z
-            )
+            chars[Position(x=int(rect.left), y=int(rect.bottom))] = P(char=bv.left_bottom, style=cell_style, z=z)
         if draw_right:
-            chars[Position.flyweight(x=int(rect.right), y=int(rect.bottom))] = P(
-                char=bv.right_bottom, style=cell_style, z=z
-            )
+            chars[Position(x=int(rect.right), y=int(rect.bottom))] = P(char=bv.right_bottom, style=cell_style, z=z)
 
     try:
         jbv = JoinedBorderKind[bk.name].value
-        bhh = {k: jbv for k in chars.keys()}
     except KeyError:
+        bhh: BorderHealingHints = {}
+    else:
         bhh = {}
+        if draw_top:
+            if draw_left:
+                bhh[Position(x=int(rect.left), y=int(rect.top))] = jbv
+            if draw_right:
+                bhh[Position(x=int(rect.right), y=int(rect.top))] = jbv
+        if draw_bottom:
+            if draw_left:
+                bhh[Position(x=int(rect.left), y=int(rect.bottom))] = jbv
+            if draw_right:
+                bhh[Position(x=int(rect.right), y=int(rect.bottom))] = jbv
 
     return chars, bhh
 
 
 def svg(paint: Paint) -> ElementTree:
-    w, h = max(paint.keys())
+    max_pos = max(paint.keys())
+    w, h = max_pos.x, max_pos.y
 
     # Measurements start from the top-left corner of each cell, so the width/height need be 1 unit larger for the actual content
     w += 1

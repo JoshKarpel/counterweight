@@ -33,7 +33,6 @@ classifiers = [
 requires-python = ">=3.13"
 dependencies = [
     "typer>=0.9",
-    "pydantic>=2",
     "structlog>=23.1",
     "parsy>=2.1",
     "more-itertools>=9.1",
@@ -58,9 +57,8 @@ dev = [
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.19.0",
     "line-profiler>=4.1",
-    "austin-dist>=3.6",
-    "austin-python>=1.7",
     "ruff>=0.15.4",
+    "scalene>=2.1.4",
 ]
 
 [project.scripts]

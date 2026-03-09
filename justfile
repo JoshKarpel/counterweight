@@ -41,17 +41,21 @@ docs-build:
 
 alias db := docs-build
 
-[doc('Profile a Python file with austin and convert to speedscope format')]
-profile FILE DURATION:
-    austin --output profile.austin --exposure {{ DURATION }} python {{ FILE }}
-    austin2speedscope profile.austin profile.ss
-    reset
+[doc('Profile a Python file with scalene')]
+profile FILE:
+    uv run scalene run --cpu-only --profile-all {{ FILE }}
 
 [doc('Regenerate style utility constants from codegen/generate_utilities.py')]
 codegen:
     uv run python codegen/generate_utilities.py
 
 alias c := codegen
+
+[doc('Run the counterweight devlog')]
+devlog *ARGS:
+    @uv run counterweight devlog {{ ARGS }}
+
+alias dl := devlog
 
 [doc('Upgrade all dependencies')]
 upgrade:

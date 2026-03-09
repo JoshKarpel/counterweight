@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import Callable, Coroutine, Generic, TypeVar
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 
-from pydantic import BaseModel
-
-T = TypeVar("T")
-
-Getter = Callable[[], T]
-Setter = Callable[[Callable[[T], T] | T], None]
-Setup = Callable[[], Coroutine[None, None, None]]
-Deps = tuple[object, ...] | None
+type Getter[T] = Callable[[], T]
+type Setter[T] = Callable[[Callable[[T], T] | T], None]
+type Setup = Callable[[], Coroutine[None, None, None]]
+type Deps = tuple[object, ...] | None
 
 
-class Ref(BaseModel, Generic[T]):
+@dataclass(slots=True)
+class Ref[T]:
     current: T

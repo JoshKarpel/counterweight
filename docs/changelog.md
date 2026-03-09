@@ -4,6 +4,14 @@
 
 ### Added
 
+- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
+  Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
+  half-block pixel art in a terminal canvas using `▀` characters.
+
+- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
+  Documented style merging semantics: styles are additive-only, meaning a field equal to its
+  default value is treated as "not set" and does not override a value from the other style.
+
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
@@ -30,6 +38,10 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
+  Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
+  from Pydantic models to frozen `dataclass` instances, removing the runtime Pydantic dependency.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   The layout engine has been replaced with [waxy](https://github.com/JoshKarpel/waxy),

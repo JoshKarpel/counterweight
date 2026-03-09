@@ -99,10 +99,6 @@ def test_border_all() -> None:
     assert border_all.border_kind is None
 
 
-def test_border_none_overrides_kind() -> None:
-    assert (border_light | border_none).border_kind is None
-
-
 def test_border_sides() -> None:
     result = border_sides(frozenset({"top", "left"}))
     assert result.layout.border_top == waxy.Length(1)

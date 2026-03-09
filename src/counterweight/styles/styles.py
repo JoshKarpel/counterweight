@@ -1,17 +1,15 @@
 from __future__ import annotations
 
+import dataclasses
+from dataclasses import dataclass, field
 from enum import Enum
-from functools import cached_property, lru_cache
-from typing import ClassVar, Literal, NamedTuple, TypeVar
+from functools import lru_cache
+from typing import Literal, NamedTuple
 
 import waxy
 from cachetools import LRUCache
-from pydantic import ConfigDict, Field
 
-from counterweight.types import FrozenForbidExtras
-
-S = TypeVar("S", bound="StyleFragment")
-SS = TypeVar("SS", bound="Style")
+from counterweight._utils import flyweight
 
 TextWrap = Literal["none"]
 
@@ -19,81 +17,36 @@ TextWrap = Literal["none"]
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
 
 
-UNSET = object()
+def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
+    # Start with left's values as the baseline.
+    kwargs: dict[str, object] = {f.name: getattr(left, f.name) for f in dataclasses.fields(left) if f.init}  # type: ignore[arg-type]
+    # Override with right's non-default values (right wins where it was explicitly set).
+    for f in dataclasses.fields(right):  # type: ignore[arg-type]
+        if not f.init:
+            continue
+        val = getattr(right, f.name)
+        if isinstance(val, StyleFragment):
+            kwargs[f.name] = merge_style_fragments(getattr(left, f.name), val)
+        elif f.default is not dataclasses.MISSING and val != f.default:
+            kwargs[f.name] = val
+        # Fields with default_factory (e.g. layout) keep left's value — Style.__or__ handles layout separately.
+    return type(left)(**kwargs)
 
 
-def recursive_merge_dicts(a: dict[str, object], b: dict[str, object]) -> dict[str, object]:
-    merged: dict[str, object] = {}
+class StyleFragment:
+    __slots__ = ()
 
-    for key in a.keys() | b.keys():
-        a_val, b_val = a.get(key, UNSET), b.get(key, UNSET)
-
-        if isinstance(a_val, dict) and isinstance(b_val, dict):
-            merged[key] = recursive_merge_dicts(a_val, b_val)
-        elif b_val is not UNSET:
-            merged[key] = b_val
-        elif a_val is not UNSET:
-            merged[key] = a_val
-
-    return merged
-
-
-def merge_style_fragments(left: S, right: S) -> S:
-    return type(left).model_validate(
-        recursive_merge_dicts(
-            left.mergeable_dump(),
-            right.mergeable_dump(),
-        )
-    )
-
-
-class StyleFragment(FrozenForbidExtras):
-    def __or__(self: S, other: S | None) -> S:
+    def __or__[S: StyleFragment](self: S, other: S | None) -> S:
         if other is None:
             return self
 
-        key = (
-            self._cached_hash,
-            other._cached_hash,
-        )
+        key = (hash(self), hash(other))
         try:
             return STYLE_MERGE_CACHE[key]  # type: ignore[return-value]
         except KeyError:
             merged = merge_style_fragments(self, other)
             STYLE_MERGE_CACHE[key] = merged
             return merged
-
-    @cached_property
-    def _cached_hash(self) -> int:
-        """This is safe because all style fragments are immutable."""
-        return hash(self)
-
-    def mergeable_dump(self) -> dict[str, object]:
-        diff: dict[str, object] = {}
-
-        for field_name, value in self:
-            field = type(self).model_fields[field_name]
-            field_default = field.default
-
-            if field_name not in self.model_fields_set:
-                continue
-
-            if isinstance(value, StyleFragment):
-                if isinstance(field_default, StyleFragment):
-                    # Value and default are both fragments
-                    sub_diff = value.mergeable_dump()
-                    if isinstance(field.discriminator, str):
-                        sub_diff[field.discriminator] = getattr(value, field.discriminator)
-                    if sub_diff:
-                        diff[field_name] = sub_diff
-                else:
-                    # Value is a fragment, default is a primitive
-                    diff[field_name] = value.mergeable_dump()
-            else:
-                # Not a fragment, so it's a primitive
-                diff[field_name] = value
-
-        return diff
 
 
 class Color(NamedTuple):
@@ -273,15 +226,36 @@ COLORS_BY_NAME = {
     }.items()
 }
 
+_WHITE = COLORS_BY_NAME["white"]
+_BLACK = COLORS_BY_NAME["black"]
 
+
+@flyweight(maxsize=2**10)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class CellStyle(StyleFragment):
-    foreground: Color = Field(default=Color.from_name("white"))
-    background: Color = Field(default=Color.from_name("black"))
+    foreground: Color = _WHITE
+    background: Color = _BLACK
     bold: bool = False
     dim: bool = False
     italic: bool = False
     underline: bool = False
     strikethrough: bool = False
+    _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+            ),
+        )
+
+    def __hash__(self) -> int:
+        return self._hash
+
+
+_DEFAULT_CELL_STYLE = CellStyle()
 
 
 class BorderParts(NamedTuple):
@@ -568,32 +542,28 @@ class JoinedBorderKind(Enum):
         return f"JoinedBorderKind.{self.name}"
 
 
+@dataclass(frozen=True, kw_only=True)
 class Style(StyleFragment):
-    model_config: ClassVar[ConfigDict] = {"arbitrary_types_allowed": True}
-
-    layout: waxy.Style = Field(default_factory=waxy.Style)
+    # layout is excluded from __eq__ and __hash__ because waxy.Style does not support value equality.
+    # Layout merging is handled separately in __or__ via waxy.Style.__or__.
+    layout: waxy.Style = field(default_factory=waxy.Style, compare=False, hash=False)
 
     z: int = 0
-    margin_color: Color = Field(default=Color.from_name("black"))
-    padding_color: Color = Field(default=Color.from_name("black"))
-    content_color: Color = Field(default=Color.from_name("black"))
+    margin_color: Color = _BLACK
+    padding_color: Color = _BLACK
+    content_color: Color = _BLACK
 
     border_kind: BorderKind | None = None
-    border_style: CellStyle = Field(default=CellStyle())
+    border_style: CellStyle = _DEFAULT_CELL_STYLE
     border_contract: int = 0
 
-    text_style: CellStyle = Field(default=CellStyle())
+    text_style: CellStyle = _DEFAULT_CELL_STYLE
     text_justify: Literal["left", "center", "right"] = "left"
     text_wrap: TextWrap = "none"
 
-    def mergeable_dump(self) -> dict[str, object]:
-        dump = super().mergeable_dump()
-        dump.pop("layout", None)
-        return dump
-
-    def __or__(self: SS, other: SS | None) -> SS:
+    def __or__[SS: Style](self: SS, other: SS | None) -> SS:
         if other is None:
             return self
         merged_layout = self.layout | other.layout
         merged = merge_style_fragments(self, other)
-        return merged.model_copy(update={"layout": merged_layout})
+        return dataclasses.replace(merged, layout=merged_layout)

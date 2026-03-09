@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
@@ -95,8 +96,8 @@ async def app(
     """
     configure_logging()
 
-    def handle_screen_size_change() -> tuple[Style, Paint, int, int]:
-        w, h = dimensions or shutil.get_terminal_size()
+    def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
+        w, h = override or dimensions or shutil.get_terminal_size()
 
         ss = Style(
             layout=waxy.Style(
@@ -106,7 +107,7 @@ async def app(
             ),
         )
 
-        cp = {Position.flyweight(x, y): BLANK for x in range(w) for y in range(h)}
+        cp = {Position(x, y): BLANK for x in range(w) for y in range(h)}
 
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
@@ -159,7 +160,7 @@ async def app(
         screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
-        shadow = None
+        shadow: ShadowNode | None = None
         active_effects: set[Task[None]] = set()
         elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
@@ -174,7 +175,7 @@ async def app(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-        shadow = update_shadow(screen(), shadow)
+        shadow, _ = update_shadow(screen(), shadow)
         compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
@@ -206,7 +207,7 @@ async def app(
                     do_heal_borders = not do_heal_borders
                     should_render = True
 
-        mouse_position = Position.flyweight(x=-1, y=-1)
+        mouse_position = Position(x=-1, y=-1)
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -291,10 +292,11 @@ async def app(
 
                 if should_render:
                     start_render = perf_counter_ns()
-                    shadow = update_shadow(screen(), shadow)
+                    shadow, user_code_ns = update_shadow(screen(), shadow)
                     logger.debug(
                         "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",
+                        user_code_ns=f"{user_code_ns:_}",
                     )
 
                     start_layout = perf_counter_ns()
@@ -392,9 +394,9 @@ async def app(
                     match event:
                         case StateSet():
                             should_render = True
-                        case TerminalResized():
+                        case TerminalResized(dimensions=override):
                             should_render = True
-                            screen_style, current_paint, w, h = handle_screen_size_change()
+                            screen_style, current_paint, w, h = handle_screen_size_change(override)
                         case KeyPressed():
                             for element, _ in reversed(elements_and_layouts):
                                 if element.on_key:
@@ -476,7 +478,13 @@ async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], ta
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    return root.element.model_copy(update={"children": [build_concrete_element_tree(child) for child in root.children]})
+    match root.element:
+        case Div():
+            return dataclasses.replace(
+                root.element, children=tuple(build_concrete_element_tree(child) for child in root.children)
+            )
+        case _:
+            return root.element
 
 
 def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
