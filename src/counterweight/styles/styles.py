@@ -19,9 +19,11 @@ STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2
 
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
     # Start with right's values as the baseline.
-    kwargs: dict[str, object] = {f.name: getattr(right, f.name) for f in dataclasses.fields(right)}  # type: ignore[arg-type]
+    kwargs: dict[str, object] = {f.name: getattr(right, f.name) for f in dataclasses.fields(right) if f.init}  # type: ignore[arg-type]
     # Override with left's non-default values (left wins where it was explicitly set).
     for f in dataclasses.fields(left):  # type: ignore[arg-type]
+        if not f.init:
+            continue
         val = getattr(left, f.name)
         if isinstance(val, StyleFragment):
             kwargs[f.name] = merge_style_fragments(val, getattr(right, f.name))
@@ -238,6 +240,19 @@ class CellStyle(StyleFragment):
     italic: bool = False
     underline: bool = False
     strikethrough: bool = False
+    _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+            ),
+        )
+
+    def __hash__(self) -> int:
+        return self._hash
 
 
 _DEFAULT_CELL_STYLE = CellStyle()

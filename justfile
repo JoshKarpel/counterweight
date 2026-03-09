@@ -43,8 +43,7 @@ alias db := docs-build
 
 [doc('Profile a Python file with scalene')]
 profile FILE:
-    -uv run scalene run --cpu-only --profile-all {{ FILE }}
-    uv run scalene view --cli --reduced
+    uv run scalene run --cpu-only --profile-all {{ FILE }}
 
 [doc('Regenerate style utility constants from codegen/generate_utilities.py')]
 codegen:

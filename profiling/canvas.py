@@ -4,8 +4,6 @@ import time
 from collections import deque
 from itertools import product
 
-from structlog import get_logger
-
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
@@ -13,8 +11,6 @@ from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import canvas, clamp
-
-logger = get_logger()
 
 _frame_times: deque[float] = deque(maxlen=300)
 
