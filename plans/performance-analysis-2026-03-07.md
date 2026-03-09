@@ -389,6 +389,53 @@ Scalene hotspots (run 6, top lines by CPU%):
 
 ---
 
+### Run 7 — `profiling/dashboard.py` (after #6 corner hints; sparse paint #7 reverted)
+
+| Event | Count | Mean | Median | %cycle | P95 | Max |
+|---|---|---|---|---|---|---|
+| Updated shadow tree | 49 | 1.200 ms | 1.105 ms | 16.6% | 1.625 ms | 2.865 ms |
+| — user_code | 49 | 1.084 ms | 0.998 ms | 15.0% | 1.479 ms | 2.370 ms |
+| — framework overhead | 49 | 0.116 ms | 0.103 ms | 1.5% | 0.171 ms | 0.495 ms |
+| Calculated layout | 49 | 0.962 ms | 0.908 ms | 13.7% | 1.110 ms | 2.338 ms |
+| Generated new paint | 50 | 2.159 ms | 2.115 ms | 31.8% | 2.537 ms | 2.687 ms |
+| Healed borders | 50 | 0.089 ms | 0.075 ms | 1.1% | 0.264 ms | 0.331 ms |
+| Diffed new paint | 50 | 0.981 ms | 0.943 ms | 14.2% | 1.292 ms | 1.367 ms |
+| Generated instructions | 50 | 0.010 ms | 0.010 ms | 0.1% | 0.015 ms | 0.016 ms |
+| Wrote and flushed | 50 | 0.042 ms | 0.042 ms | 0.6% | 0.057 ms | 0.075 ms |
+| Reconciled effects | 50 | 0.032 ms | 0.030 ms | 0.5% | 0.041 ms | 0.116 ms |
+| **Completed render cycle** | **50** | **6.908 ms** | **6.650 ms** | — | **8.451 ms** | **11.688 ms** |
+
+Extra metrics (run 7):
+- `hint_cells` (border heal): constant 21 every cycle (was 784 in run 5 — **#6 working**)
+- `diff_cells` (border heal): constant 17 every cycle
+- `diff_cells` (paint diff): mean 1.2, median 1 — only the frame counter changes
+- `bytes` written: mean 49 B
+- `num_events`: mean 1.0 per cycle
+- `num_active_effects`: constant 2
+
+**Result: 6.65ms median (~150 FPS), up from 8.64ms (~116 FPS) in run 5 — 23% improvement.**
+Entire gain comes from #6 (corner-only border healing hints): 1.016ms → 0.075ms, hint_cells 784 → 21.
+Border healing dropped from 11.8% to 1.1% of cycle.
+
+Proportional bottlenecks (shadow/diff/layout absolute times unchanged; percentages rose only because border healing shrank):
+
+| Bottleneck | Run 7 % | Run 7 median | Root cause |
+|---|---|---|---|
+| Generated new paint | 31.8% | 2.12 ms | Still dominant; paint_text/paint_edge caches hit for static cards |
+| Shadow tree | 16.6% | 1.11 ms | 12 `metric_card` components re-run unchanged every frame — memoization (#2) |
+| Diffed new paint | 14.2% | 0.94 ms | O(terminal size) scan to find 1 changed cell — sparse diff (#7) |
+| Calculated layout | 13.7% | 0.91 ms | Runs every cycle with no structural changes — skip-layout (#1) |
+
+Scalene hotspots (run 7, top lines by CPU%):
+- `app.py:494` — `new_paint.get(pos, BLANK)` in diff loop — 1.02% **(most expensive single line; target of #7)**
+- `_utils.py:80–91` (flyweight `__new__`) — ~2.5% combined
+- `layout.py:79` — `_measure_text` — 0.86%
+- `paint.py:58–65` — `paint_element` loop + `bhh |= b` — 1.36% combined
+- `geometry.py:18–20` — `Position.from_point()` — 0.95% combined
+- `styles/styles.py:22–28` — `merge_style_fragments` — ~0.78% combined
+
+---
+
 ### Extra metrics (run 2)
 - `hint_cells` (border heal): constant 279 every cycle
 - `diff_cells` (border heal): constant 5 every cycle
