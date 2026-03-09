@@ -44,6 +44,17 @@ from counterweight.styles.utilities import border_heavy, inset_left, inset_top, 
             Style(border_kind=BorderKind.LightRounded),
             Style(border_kind=BorderKind.LightRounded, border_style=CellStyle(foreground=Color.from_name("green"))),
         ),
+        # right wins when both sides have non-default values for the same field
+        (
+            Style(border_kind=BorderKind.Heavy),
+            Style(border_kind=BorderKind.Double),
+            Style(border_kind=BorderKind.Double),
+        ),
+        (
+            Style(border_style=CellStyle(bold=True)),
+            Style(border_style=CellStyle(italic=True)),
+            Style(border_style=CellStyle(bold=True, italic=True)),
+        ),
     ),
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:

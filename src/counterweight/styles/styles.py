@@ -18,18 +18,18 @@ STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2
 
 
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
-    # Start with right's values as the baseline.
-    kwargs: dict[str, object] = {f.name: getattr(right, f.name) for f in dataclasses.fields(right) if f.init}  # type: ignore[arg-type]
-    # Override with left's non-default values (left wins where it was explicitly set).
-    for f in dataclasses.fields(left):  # type: ignore[arg-type]
+    # Start with left's values as the baseline.
+    kwargs: dict[str, object] = {f.name: getattr(left, f.name) for f in dataclasses.fields(left) if f.init}  # type: ignore[arg-type]
+    # Override with right's non-default values (right wins where it was explicitly set).
+    for f in dataclasses.fields(right):  # type: ignore[arg-type]
         if not f.init:
             continue
-        val = getattr(left, f.name)
+        val = getattr(right, f.name)
         if isinstance(val, StyleFragment):
-            kwargs[f.name] = merge_style_fragments(val, getattr(right, f.name))
+            kwargs[f.name] = merge_style_fragments(getattr(left, f.name), val)
         elif f.default is not dataclasses.MISSING and val != f.default:
             kwargs[f.name] = val
-        # Fields with default_factory (e.g. layout) keep right's value — Style.__or__ handles layout separately.
+        # Fields with default_factory (e.g. layout) keep left's value — Style.__or__ handles layout separately.
     return type(left)(**kwargs)
 
 

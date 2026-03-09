@@ -346,7 +346,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
 
     return Text(
         content=letter,
-        style=style | border_heavy | pad_x(1) | pad_y(0) | (border_double if hovered.border else None),
+        style=style | pad_x(1) | pad_y(0) | (border_double if hovered.border else border_heavy),
         on_mouse=on_mouse,
     )
 
