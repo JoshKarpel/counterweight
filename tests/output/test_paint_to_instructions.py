@@ -31,35 +31,20 @@ def cell(char: str, style: CellStyle = DEFAULT, z: int = 0) -> P:
             {Position(0, 0): cell("A")},
             f"{mt(0, 0)}{sgr(DEFAULT)}A{RESET}",
         ),
-        # two adjacent cells on the same row with the same style are batched
+        # two adjacent cells — each gets its own escape sequence
         (
             {Position(0, 0): cell("A"), Position(1, 0): cell("B")},
-            f"{mt(0, 0)}{sgr(DEFAULT)}AB{RESET}",
+            f"{mt(0, 0)}{sgr(DEFAULT)}A{RESET}{mt(1, 0)}{sgr(DEFAULT)}B{RESET}",
         ),
-        # three adjacent cells batched
-        (
-            {Position(0, 0): cell("A"), Position(1, 0): cell("B"), Position(2, 0): cell("C")},
-            f"{mt(0, 0)}{sgr(DEFAULT)}ABC{RESET}",
-        ),
-        # style change mid-row breaks the run
+        # style change mid-row
         (
             {Position(0, 0): cell("A"), Position(1, 0): cell("B", RED_FG)},
             f"{mt(0, 0)}{sgr(DEFAULT)}A{RESET}{mt(1, 0)}{sgr(RED_FG)}B{RESET}",
         ),
-        # gap in x breaks the run (x=1 missing)
-        (
-            {Position(0, 0): cell("A"), Position(2, 0): cell("B")},
-            f"{mt(0, 0)}{sgr(DEFAULT)}A{RESET}{mt(2, 0)}{sgr(DEFAULT)}B{RESET}",
-        ),
-        # different rows break the run even with same style
+        # different rows
         (
             {Position(0, 0): cell("A"), Position(0, 1): cell("B")},
             f"{mt(0, 0)}{sgr(DEFAULT)}A{RESET}{mt(0, 1)}{sgr(DEFAULT)}B{RESET}",
-        ),
-        # output is sorted by (y, x) regardless of dict insertion order
-        (
-            {Position(1, 0): cell("B"), Position(0, 0): cell("A")},
-            f"{mt(0, 0)}{sgr(DEFAULT)}AB{RESET}",
         ),
     ),
 )

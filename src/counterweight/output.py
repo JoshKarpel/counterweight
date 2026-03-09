@@ -87,26 +87,7 @@ def sgr_from_cell_style(style: CellStyle) -> str:
 
 
 def paint_to_instructions(paint: Paint) -> str:
-    parts: list[str] = []
-    prev_x: int | None = None
-    prev_y: int | None = None
-    prev_style: CellStyle | None = None
-
-    for pos, cell in sorted(paint.items(), key=lambda item: (item[0].y, item[0].x)):
-        style = cell.style
-        if pos.y != prev_y or pos.x != prev_x + 1 or style is not prev_style:  # type: ignore[operator]
-            if prev_style is not None:
-                parts.append("\x1b[0m")
-            parts.append(f"{move_to(pos)}{sgr_from_cell_style(style)}")
-        parts.append(cell.char)
-        prev_x = pos.x
-        prev_y = pos.y
-        prev_style = style
-
-    if prev_style is not None:
-        parts.append("\x1b[0m")
-
-    return "".join(parts)
+    return "".join(f"{move_to(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items())
 
 
 def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
