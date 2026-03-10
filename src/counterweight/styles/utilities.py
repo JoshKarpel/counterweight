@@ -771,8 +771,8 @@ text_justify_right = Style(text_justify="right")
 
 text_wrap_none = Style(text_wrap="none")
 text_wrap_stable = Style(text_wrap="stable")
-text_wrap_balance = Style(text_wrap="balance")
 text_wrap_pretty = Style(text_wrap="pretty")
+text_wrap_balance = Style(text_wrap="balance")
 
 # Stop generated
 

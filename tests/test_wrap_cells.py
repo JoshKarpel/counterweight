@@ -71,7 +71,7 @@ def test_stable_exact_fit() -> None:
 
 def test_stable_long_word_mid_break() -> None:
     result = wrap_cells(cells("abcdefghij"), "stable", 4)
-    assert lines_text(result) == ["abcd", "efgh", "ij"]
+    assert lines_text(result) == ["abc-", "def-", "ghij"]
 
 
 def test_stable_multiple_paragraphs() -> None:
@@ -157,4 +157,4 @@ def test_pretty_empty() -> None:
 
 def test_pretty_long_word_break() -> None:
     result = wrap_cells(cells("abcdefghij"), "pretty", 4)
-    assert lines_text(result) == ["abcd", "efgh", "ij"]
+    assert lines_text(result) == ["abc-", "def-", "ghij"]

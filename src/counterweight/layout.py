@@ -200,8 +200,20 @@ def _split_words(paragraph: list[CellPaint]) -> list[list[CellPaint]]:
 
 
 def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]:
-    """Break a word that is longer than width into width-sized chunks."""
-    return [word[i : i + width] for i in range(0, len(word), width)]
+    """Break a word that is longer than width into width-sized chunks, hyphenating all but the last."""
+    if width <= 1:
+        return [word[i : i + width] for i in range(0, len(word), width)]
+    chunks: list[list[CellPaint]] = []
+    i = 0
+    while i < len(word):
+        if i + width < len(word):
+            hyphen = CellPaint(char="-", style=word[i + width - 2].style)
+            chunks.append([*word[i : i + width - 1], hyphen])
+            i += width - 1
+        else:
+            chunks.append(word[i : i + width])
+            break
+    return chunks
 
 
 def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
