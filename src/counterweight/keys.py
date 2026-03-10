@@ -153,7 +153,7 @@ class Key(str, Enum):
 
     ControlSpace = "ctrl-space"
     Tab = "tab"
-    Space = "space"
+    Space = " "
     Enter = "enter"
     Backspace = "backspace"
 

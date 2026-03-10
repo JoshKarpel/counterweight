@@ -42,8 +42,6 @@ def root() -> Div:
                 set_wrap_idx(lambda i: (i - 1) % len(WRAP_MODES))
             case Key.Backspace:
                 set_input_text(lambda t: t[:-1])
-            case Key.Space:
-                set_input_text(lambda t: t + " ")
             case char if len(char) == 1 and char.isprintable():
                 set_input_text(lambda t: t + char)
         return None
