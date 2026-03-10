@@ -113,7 +113,7 @@ def input_pane(content: str) -> Div:
             ),
             Text(
                 content=content,
-                style=grow(1) | text_wrap_stable | text_color("sky", 100),
+                style=grow(1) | text_wrap_stable | text_color("sky", 200),
             ),
         ],
     )
@@ -146,7 +146,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
             ),
             Text(
                 content=content or " ",
-                style=grow(1) | wrap_style | text_color("violet", 100),
+                style=grow(1) | wrap_style | text_color("violet", 200),
             ),
         ],
     )

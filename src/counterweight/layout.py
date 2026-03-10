@@ -299,7 +299,7 @@ def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint
 
 
 def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
-    """DP optimal line-breaking minimising sum of squared slack on non-last lines."""
+    """DP optimal line-breaking minimizing sum of squared slack on non-last lines."""
     words = _split_words(paragraph)
     if not words:
         return [[]]
