@@ -21,15 +21,15 @@ def root() -> Div:
     return Div(
         style=col | full | align_children_stretch | justify_children_start | pad(1),
         children=[
-            Text(content="Suspend Demo", style=text("amber", 600) | text_justify_center | pad_bottom(1)),
+            Text(content="Suspend Demo", style=text_color("amber", 600) | text_justify_center | pad_bottom(1)),
             Div(
                 style=row | gap(1) | pad_bottom(1),
                 children=[
-                    Text(content="↑ / ↓  navigate", style=text("slate", 400)),
-                    Text(content="|", style=text("slate", 600)),
-                    Text(content="type  edit glob", style=text("slate", 400)),
-                    Text(content="|", style=text("slate", 600)),
-                    Text(content="⏎  open in $EDITOR", style=text("slate", 400)),
+                    Text(content="↑ / ↓  navigate", style=text_color("slate", 400)),
+                    Text(content="|", style=text_color("slate", 600)),
+                    Text(content="type  edit glob", style=text_color("slate", 400)),
+                    Text(content="|", style=text_color("slate", 600)),
+                    Text(content="⏎  open in $EDITOR", style=text_color("slate", 400)),
                 ],
             ),
             picker(),
@@ -116,7 +116,7 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
         style=col | justify_children_start | pad_x(1) | border_lightrounded | grow(1),
         children=[
             Text(
-                style=text("cyan", 300) if idx == selected_idx else default,
+                style=text_color("cyan", 300) if idx == selected_idx else default,
                 content=str(file.relative_to(Path.cwd())),
             )
             for idx, file in enumerate(files[start_idx : start_idx + visible], start=start_idx)

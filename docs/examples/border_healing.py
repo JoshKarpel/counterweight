@@ -16,7 +16,7 @@ def box(s: str) -> Div:
         style=box_style | border_double,
         children=[
             Text(
-                style=text_justify_center | text("cyan", 500),
+                style=text_justify_center | text_color("cyan", 500),
                 content=s,
             )
         ],

@@ -17,7 +17,7 @@ def root() -> Div:
                 style=grow(1) | border_heavy,
                 children=[
                     Text(
-                        style=text("green", 600),
+                        style=text_color("green", 600),
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     )
                 ]
@@ -37,7 +37,7 @@ def root() -> Div:
                 style=grow(1) | border_heavy,
                 children=[
                     Text(
-                        style=text("cyan", 600),
+                        style=text_color("cyan", 600),
                         content="Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
                     )
                 ]

@@ -18,7 +18,7 @@ from counterweight.styles.utilities import (
     col,
     pad,
     row,
-    text,
+    text_color,
 )
 
 logger = get_logger()
@@ -82,7 +82,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text("rose", 500) | border_color("teal", 600) | pad(1) | border_lightrounded,
+        style=text_color("rose", 500) | border_color("teal", 600) | pad(1) | border_lightrounded,
     )
 
 
@@ -104,7 +104,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text("teal", 600) | border_color("rose", 500) | pad(1) | border_lightrounded,
+        style=text_color("teal", 600) | border_color("rose", 500) | pad(1) | border_lightrounded,
         on_key=on_key,
     )
 

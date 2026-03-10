@@ -1005,7 +1005,7 @@ def pad_right(n: int) -> Style:
 
 
 @lru_cache(maxsize=256)
-def text(color: ColorName, shade: Shade) -> Style:
+def text_color(color: ColorName, shade: Shade) -> Style:
     return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
 
 

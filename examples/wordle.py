@@ -55,7 +55,7 @@ def root() -> Div:
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
-    header = Text(content="Wordle", style=text("amber", 600))
+    header = Text(content="Wordle", style=text_color("amber", 600))
 
     if playing:
         return Div(
@@ -102,17 +102,17 @@ def root() -> Div:
                     children=[
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
-                            hover_style=text("indigo", 500) | border_color("indigo", 500),
+                            hover_style=text_color("indigo", 500) | border_color("indigo", 500),
                             on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[F2] Play Random",
-                            hover_style=text("emerald", 500) | border_color("emerald", 500),
+                            hover_style=text_color("emerald", 500) | border_color("emerald", 500),
                             on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                         menu_button(
                             content="[q] Quit",
-                            hover_style=text("red", 500) | border_color("red", 500),
+                            hover_style=text_color("red", 500) | border_color("red", 500),
                             on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),
                     ],
@@ -186,15 +186,15 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     if state == "playing":
         if len(guess) == 5 and guess not in GUESSABLE_WORDS:
             message = "Not in word list"
-            message_style |= text("red", 700)
+            message_style |= text_color("red", 700)
         else:
             message = f"Guess {len(submitted) + 1} of {MAX_SUBMITS}"
     elif state == "win":
         message = f"You won! The word was {solution}"
-        message_style |= text("green", 600) | border_color("green", 600) | border_double
+        message_style |= text_color("green", 600) | border_color("green", 600) | border_double
     elif state == "loss":
         message = f"You lost! The word was {solution}"
-        message_style |= text("red", 700) | border_color("red", 700) | border_double
+        message_style |= text_color("red", 700) | border_color("red", 700) | border_double
 
     return Div(
         style=col | align_children_stretch,

@@ -119,6 +119,7 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+    - cookbook/layout-problems.md
   - utilities.md
   - Under the Hood:
     - under-the-hood/index.md

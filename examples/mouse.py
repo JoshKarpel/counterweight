@@ -65,7 +65,7 @@ def root() -> Div:
 def header() -> Text:
     return Text(
         content="Mouse Tracking Demo",
-        style=text_justify_center | text("amber", 600),
+        style=text_justify_center | text_color("amber", 600),
     )
 
 
