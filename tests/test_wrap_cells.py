@@ -117,13 +117,12 @@ def test_balance_line_count_matches_greedy() -> None:
 
 def test_balance_is_more_even() -> None:
     # "aaa bbb ccc" at width 8: greedy → ["aaa bbb", "ccc"] (7, 3)
-    # balance → ["aaa", "bbb ccc"] (3, 7) or similar — max line len <= greedy's max
+    # balance should produce shorter max line and longer min line than greedy.
     c = cells("aaa bbb ccc")
     result = wrap_cells(c, "balance", 8)
-    max_len = max(len(l) for l in result)
     greedy_result = wrap_cells(cells("aaa bbb ccc"), "stable", 8)
-    greedy_max = max(len(l) for l in greedy_result)
-    assert max_len <= greedy_max
+    assert max(len(l) for l in result) <= max(len(l) for l in greedy_result)
+    assert min(len(l) for l in result) >= min(len(l) for l in greedy_result)
 
 
 def test_balance_empty() -> None:

@@ -25,6 +25,8 @@ from counterweight.styles.utilities import (
     position_absolute,
     row,
     size,
+    text_wrap_balance,
+    text_wrap_pretty,
     text_wrap_stable,
 )
 
@@ -301,6 +303,34 @@ def test_text_wrap_stable_measures_correct_height() -> None:
     # Use col (flex-direction: column) so the text's width is cross-axis stretched
     # to 8, giving taffy a definite known.width to pass to the measure callback.
     text_node = _shadow(Text(content="hello world", style=text_wrap_stable))
+    container = _shadow(
+        Div(style=col | Style(layout=waxy.Style(size_width=waxy.Length(8)))),
+        children=[text_node],
+    )
+
+    results = _layout(container, w=20, h=20)
+    text_layout = next(rl for el, rl in results if isinstance(el, Text))
+
+    assert text_layout.border.bottom - text_layout.border.top + 1 == 2
+
+
+def test_text_wrap_balance_measures_correct_height() -> None:
+    # "hello world" at width=8 → balance wraps to 2 lines (same line count as greedy)
+    text_node = _shadow(Text(content="hello world", style=text_wrap_balance))
+    container = _shadow(
+        Div(style=col | Style(layout=waxy.Style(size_width=waxy.Length(8)))),
+        children=[text_node],
+    )
+
+    results = _layout(container, w=20, h=20)
+    text_layout = next(rl for el, rl in results if isinstance(el, Text))
+
+    assert text_layout.border.bottom - text_layout.border.top + 1 == 2
+
+
+def test_text_wrap_pretty_measures_correct_height() -> None:
+    # "hello world" at width=8 → pretty wraps to 2 lines (same line count as greedy)
+    text_node = _shadow(Text(content="hello world", style=text_wrap_pretty))
     container = _shadow(
         Div(style=col | Style(layout=waxy.Style(size_width=waxy.Length(8)))),
         children=[text_node],

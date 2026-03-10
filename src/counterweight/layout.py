@@ -362,8 +362,7 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
                 break
             slack = width - ll
             if j == n:
-                # Last line: free if short, small penalty for very short orphan.
-                cost = float(slack) if slack >= width // 2 else float(slack) ** 2
+                cost = 0.0
             else:
                 cost = float(slack) ** 2
             total = cost + dp[j]

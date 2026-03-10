@@ -10,10 +10,6 @@
   minimizes ragged lines). The default remains `text_wrap_none` (no wrapping).
   Words longer than the available width are broken with a hyphen.
 
-- [#318](https://github.com/JoshKarpel/counterweight/pull/318)
-  Renamed the `text(color, shade)` style utility to `text_color(color, shade)` for
-  consistency with `border_color`, `border_bg`, and `text_bg`.
-
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
   half-block pixel art in a terminal canvas using `▀` characters.
@@ -48,6 +44,11 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#318](https://github.com/JoshKarpel/counterweight/pull/318)
+  **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.
+  Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
+  matching on the enum member (`Key.Space`) is unaffected.
 
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
