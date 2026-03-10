@@ -216,10 +216,23 @@ def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]
     return chunks
 
 
+def _space_cell(paragraph: list[CellPaint]) -> CellPaint:
+    """Return a space CellPaint sourced from the first actual space in the paragraph.
+
+    Falls back to the first cell's style when no space exists.
+    """
+    for cell in paragraph:
+        if cell.char == " ":
+            return cell
+    return CellPaint(char=" ", style=paragraph[0].style) if paragraph else CellPaint(char=" ")
+
+
 def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
     words = _split_words(paragraph)
     lines: list[list[CellPaint]] = []
     current: list[CellPaint] = []
+
+    space_cell = _space_cell(paragraph)
 
     for word in words:
         chunks = _break_long_word(word, width) if len(word) > width else [word]
@@ -227,7 +240,7 @@ def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
             if not current:
                 current = list(chunk)
             elif len(current) + 1 + len(chunk) <= width:
-                current.append(paragraph[0].__class__(char=" ", style=chunk[0].style))
+                current.append(space_cell)
                 current.extend(chunk)
             else:
                 lines.append(current)
@@ -280,7 +293,17 @@ def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint
     if not words:
         return [[]]
 
-    space_cell = CellPaint(char=" ", style=words[0][0].style)
+    space_cell = _space_cell(paragraph)
+
+    # Break long words before estimating line count so _greedy_line_count is accurate.
+    flat_words: list[list[CellPaint]] = []
+    for word in words:
+        if len(word) > width:
+            flat_words.extend(_break_long_word(word, width))
+        else:
+            flat_words.append(word)
+    words = flat_words
+
     k = _greedy_line_count(words, width)
 
     if k <= 1:
@@ -304,7 +327,7 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
     if not words:
         return [[]]
 
-    space_cell = CellPaint(char=" ", style=words[0][0].style)
+    space_cell = _space_cell(paragraph)
 
     # Break any word longer than width into width-sized chunks first.
     flat_words: list[list[CellPaint]] = []
@@ -318,10 +341,14 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
     n = len(words)
     INF = float("inf")
 
-    # cost[i][j] = cost of putting words[i..j-1] on one line (INF if they don't fit).
-    # line_len[i][j] = total characters (words + spaces).
+    # Precompute prefix sums of word lengths so line_length is O(1).
+    # prefix[i] = sum of len(words[0]) .. len(words[i-1])
+    prefix: list[int] = [0] * (n + 1)
+    for idx in range(n):
+        prefix[idx + 1] = prefix[idx] + len(words[idx])
+
     def line_length(i: int, j: int) -> int:
-        return sum(len(words[k]) for k in range(i, j)) + (j - i - 1)
+        return (prefix[j] - prefix[i]) + (j - i - 1)
 
     # dp[i] = min cost to break words[i..n-1], bp[i] = best j for first break.
     dp: list[float] = [INF] * (n + 1)

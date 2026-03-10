@@ -4,7 +4,7 @@ import pytest
 
 from counterweight.elements import CellPaint
 from counterweight.layout import wrap_cells
-from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import CellStyle, TextWrap
 
 
 def cells(text: str) -> list[CellPaint]:
@@ -49,8 +49,8 @@ def test_none_width_zero_returns_empty() -> None:
 
 
 @pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
-def test_no_width_no_wrap(mode: str) -> None:
-    result = wrap_cells(cells("hello world foo"), mode, None)  # type: ignore[arg-type]
+def test_no_width_no_wrap(mode: TextWrap) -> None:
+    result = wrap_cells(cells("hello world foo"), mode, None)
     assert lines_text(result) == ["hello world foo"]
 
 

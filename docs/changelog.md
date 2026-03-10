@@ -4,6 +4,16 @@
 
 ### Added
 
+- [#318](https://github.com/JoshKarpel/counterweight/pull/318)
+  Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
+  `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
+  minimizes ragged lines). The default remains `text_wrap_none` (no wrapping).
+  Words longer than the available width are broken with a hyphen.
+
+- [#318](https://github.com/JoshKarpel/counterweight/pull/318)
+  Renamed the `text(color, shade)` style utility to `text_color(color, shade)` for
+  consistency with `border_color`, `border_bg`, and `text_bg`.
+
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
   half-block pixel art in a terminal canvas using `▀` characters.
