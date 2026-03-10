@@ -170,6 +170,184 @@ def _extract_layout(
         _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
 
 
+def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
+    paragraphs: list[list[CellPaint]] = []
+    current: list[CellPaint] = []
+    for cell in cells:
+        if cell.char == "\n":
+            paragraphs.append(current)
+            current = []
+        else:
+            current.append(cell)
+    paragraphs.append(current)
+    return paragraphs
+
+
+def _split_words(paragraph: list[CellPaint]) -> list[list[CellPaint]]:
+    """Split a paragraph into non-space word runs (spaces discarded)."""
+    words: list[list[CellPaint]] = []
+    current: list[CellPaint] = []
+    for cell in paragraph:
+        if cell.char == " ":
+            if current:
+                words.append(current)
+                current = []
+        else:
+            current.append(cell)
+    if current:
+        words.append(current)
+    return words
+
+
+def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]:
+    """Break a word that is longer than width into width-sized chunks."""
+    return [word[i : i + width] for i in range(0, len(word), width)]
+
+
+def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+    words = _split_words(paragraph)
+    lines: list[list[CellPaint]] = []
+    current: list[CellPaint] = []
+
+    for word in words:
+        chunks = _break_long_word(word, width) if len(word) > width else [word]
+        for chunk in chunks:
+            if not current:
+                current = list(chunk)
+            elif len(current) + 1 + len(chunk) <= width:
+                current.append(paragraph[0].__class__(char=" ", style=chunk[0].style))
+                current.extend(chunk)
+            else:
+                lines.append(current)
+                current = list(chunk)
+
+    lines.append(current)
+    return lines
+
+
+def _greedy_line_count(words: list[list[CellPaint]], width: int) -> int:
+    count = 1
+    length = 0
+    for word in words:
+        wlen = len(word)
+        if not length:
+            length = wlen
+        elif length + 1 + wlen <= width:
+            length += 1 + wlen
+        else:
+            count += 1
+            length = wlen
+    return count
+
+
+def _wrap_at_target(
+    words: list[list[CellPaint]], width: int, target: int, space_cell: CellPaint
+) -> list[list[CellPaint]]:
+    """Greedy wrap with long-word breaking, targeting `target` width for line breaks."""
+    lines: list[list[CellPaint]] = []
+    current: list[CellPaint] = []
+
+    for word in words:
+        chunks = _break_long_word(word, width) if len(word) > width else [word]
+        for chunk in chunks:
+            if not current:
+                current = list(chunk)
+            elif len(current) + 1 + len(chunk) <= target:
+                current.append(space_cell)
+                current.extend(chunk)
+            else:
+                lines.append(current)
+                current = list(chunk)
+
+    lines.append(current)
+    return lines
+
+
+def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+    words = _split_words(paragraph)
+    if not words:
+        return [[]]
+
+    space_cell = CellPaint(char=" ", style=words[0][0].style)
+    k = _greedy_line_count(words, width)
+
+    if k <= 1:
+        return _wrap_at_target(words, width, width, space_cell)
+
+    # Binary search for the narrowest target that still yields k lines.
+    lo, hi = 1, width
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if _greedy_line_count(words, mid) <= k:
+            hi = mid
+        else:
+            lo = mid + 1
+
+    return _wrap_at_target(words, width, lo, space_cell)
+
+
+def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+    """DP optimal line-breaking minimising sum of squared slack on non-last lines."""
+    words = _split_words(paragraph)
+    if not words:
+        return [[]]
+
+    space_cell = CellPaint(char=" ", style=words[0][0].style)
+
+    # Break any word longer than width into width-sized chunks first.
+    flat_words: list[list[CellPaint]] = []
+    for word in words:
+        if len(word) > width:
+            flat_words.extend(_break_long_word(word, width))
+        else:
+            flat_words.append(word)
+    words = flat_words
+
+    n = len(words)
+    INF = float("inf")
+
+    # cost[i][j] = cost of putting words[i..j-1] on one line (INF if they don't fit).
+    # line_len[i][j] = total characters (words + spaces).
+    def line_length(i: int, j: int) -> int:
+        return sum(len(words[k]) for k in range(i, j)) + (j - i - 1)
+
+    # dp[i] = min cost to break words[i..n-1], bp[i] = best j for first break.
+    dp: list[float] = [INF] * (n + 1)
+    bp: list[int] = [0] * (n + 1)
+    dp[n] = 0.0
+
+    for i in range(n - 1, -1, -1):
+        for j in range(i + 1, n + 1):
+            ll = line_length(i, j)
+            if ll > width:
+                break
+            slack = width - ll
+            if j == n:
+                # Last line: free if short, small penalty for very short orphan.
+                cost = float(slack) if slack >= width // 2 else float(slack) ** 2
+            else:
+                cost = float(slack) ** 2
+            total = cost + dp[j]
+            if total < dp[i]:
+                dp[i] = total
+                bp[i] = j
+
+    # Reconstruct lines.
+    lines: list[list[CellPaint]] = []
+    i = 0
+    while i < n:
+        j = bp[i]
+        line: list[CellPaint] = []
+        for k in range(i, j):
+            if k > i:
+                line.append(space_cell)
+            line.extend(words[k])
+        lines.append(line)
+        i = j
+
+    return lines if lines else [[]]
+
+
 def wrap_cells(
     cells: Iterable[CellPaint],
     wrap: TextWrap,
@@ -178,14 +356,19 @@ def wrap_cells(
     if width is not None and width <= 0:
         return []
 
-    if wrap == "none":
-        lines: list[list[CellPaint]] = []
-        current_line: list[CellPaint] = []
-        for cell in cells:
-            if cell.char == "\n":
-                lines.append(current_line)
-                current_line = []
-            else:
-                current_line.append(cell)
-        lines.append(current_line)
-        return lines
+    paragraphs = _split_paragraphs(cells)
+
+    if wrap == "none" or width is None:
+        return paragraphs
+
+    result: list[list[CellPaint]] = []
+    for paragraph in paragraphs:
+        if wrap == "stable":
+            result.extend(_wrap_greedy(paragraph, width))
+        elif wrap == "balance":
+            result.extend(_wrap_balance(paragraph, width))
+        elif wrap == "pretty":
+            result.extend(_wrap_pretty(paragraph, width))
+        else:
+            assert_never(wrap)
+    return result

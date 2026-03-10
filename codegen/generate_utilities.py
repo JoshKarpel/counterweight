@@ -502,6 +502,13 @@ for j in literal_vals(Style, "text_justify"):
 
 generated_lines.append("")
 
+# --- Text wrap ---
+
+for w in literal_vals(Style, "text_wrap"):
+    generated_lines.append(f'text_wrap_{w} = Style(text_wrap="{w}")')
+
+generated_lines.append("")
+
 output = "\n".join(
     [
         *utils_text[: start + 1],

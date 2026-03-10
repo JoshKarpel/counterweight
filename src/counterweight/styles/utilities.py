@@ -769,6 +769,11 @@ text_justify_left = Style(text_justify="left")
 text_justify_center = Style(text_justify="center")
 text_justify_right = Style(text_justify="right")
 
+text_wrap_none = Style(text_wrap="none")
+text_wrap_stable = Style(text_wrap="stable")
+text_wrap_balance = Style(text_wrap="balance")
+text_wrap_pretty = Style(text_wrap="pretty")
+
 # Stop generated
 
 
