@@ -115,6 +115,7 @@ nav:
   - Styles:
     - styles/index.md
     - styles/layout.md
+    - styles/text-wrapping.md
     - styles/utilities.md
   - Cookbook:
     - cookbook/border-titles.md
