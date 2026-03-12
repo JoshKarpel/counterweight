@@ -157,3 +157,25 @@ def test_pretty_empty() -> None:
 def test_pretty_long_word_break() -> None:
     result = wrap_cells(cells("abcdefghij"), "pretty", 4)
     assert lines_text(result) == ["abc-", "def-", "ghij"]
+
+
+# ---------------------------------------------------------------------------
+# Whitespace preservation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+def test_multiple_spaces_preserved_when_fits(mode: TextWrap) -> None:
+    # "a   b" has a 3-space run; width is large enough to fit everything on one line.
+    result = wrap_cells(cells("a   b"), mode, 10)
+    assert lines_text(result) == ["a   b"]
+
+
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+def test_multiple_spaces_preserved_within_line_dropped_at_break(mode: TextWrap) -> None:
+    # "aa   bb   cc" has 3-space runs between words.
+    # At width=9, "aa   bb" (7 chars) fits on line 1; "cc" goes to line 2.
+    # The 3-space run within line 1 is preserved; the run at the break boundary is dropped.
+    result = wrap_cells(cells("aa   bb   cc"), mode, 9)
+    assert lines_text(result)[0] == "aa   bb"
+    assert lines_text(result)[-1] == "cc"
