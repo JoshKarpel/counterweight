@@ -249,10 +249,6 @@ def _flatten_long_words(
                 flat_spaces.append([] if j > 0 else spaces[i - 1] if i > 0 else [])
             flat_words.append(chunk)
 
-        # After all chunks of this word, if there's a following inter-word space, it will be
-        # appended when the next word's first chunk is processed (spaces[i] referenced as spaces[i-1]
-        # with i incremented). Nothing to do here.
-
     return flat_words, flat_spaces
 
 
@@ -389,14 +385,16 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
     # (size n, space_prefix[0] = 0)
     space_prefix: list[int] = [0] * n
     for idx in range(1, n):
-        space_prefix[idx] = space_prefix[idx - 1] + (len(flat_spaces[idx - 1]) if idx - 1 < len(flat_spaces) else 0)
+        space_prefix[idx] = space_prefix[idx - 1] + len(flat_spaces[idx - 1])
 
     def line_length(i: int, j: int) -> int:
         word_len = prefix[j] - prefix[i]
         space_len = space_prefix[j - 1] - space_prefix[i] if j > i + 1 else 0
         return word_len + space_len
 
-    # dp[i] = min cost to break flat_words[i..n-1], bp[i] = best j for first break.
+    # dp[i] = min cost to break flat_words[i..n-1], bp[i] = best j for first break after i.
+    # bp[i] is always set to j > i before use because _flatten_long_words ensures every word fits
+    # within width, so each word can at minimum occupy its own line.
     dp: list[float] = [INF] * (n + 1)
     bp: list[int] = [0] * (n + 1)
     dp[n] = 0.0

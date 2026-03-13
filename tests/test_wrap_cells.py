@@ -159,6 +159,22 @@ def test_pretty_long_word_break() -> None:
     assert lines_text(result) == ["abc-", "def-", "ghij"]
 
 
+def test_pretty_each_word_own_line_when_narrow() -> None:
+    # Each word is exactly width; every word must go on its own line.
+    # Exercises the bp[i] > i invariant: every bp[i] must be set to i+1.
+    result = wrap_cells(cells("ab cd ef"), "pretty", 2)
+    assert lines_text(result) == ["ab", "cd", "ef"]
+
+
+def test_pretty_multi_space_run_in_line_length() -> None:
+    # "a   b c" has a 3-space run after "a".
+    # At width=6, "a   b" (5 chars) fits on line 1 and "c" on line 2.
+    # Verifies space_prefix accumulation counts multi-space runs correctly.
+    result = wrap_cells(cells("a   b c"), "pretty", 6)
+    assert lines_text(result)[0] == "a   b"
+    assert lines_text(result)[-1] == "c"
+
+
 # ---------------------------------------------------------------------------
 # Whitespace preservation
 # ---------------------------------------------------------------------------
