@@ -11,7 +11,7 @@ from cachetools import LRUCache
 
 from counterweight._utils import flyweight
 
-TextWrap = Literal["none"]
+TextWrap = Literal["none", "stable", "pretty", "balance"]
 
 
 STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)

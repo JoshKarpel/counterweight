@@ -92,12 +92,12 @@ def root() -> Div:
         children=[
             Text(
                 content="Eight-Thousanders",
-                style=text("amber", 400) | pad_y(1),
+                style=text_color("amber", 400) | pad_y(1),
             ),
             data_table(peaks=sorted_peaks, selected=selected, sort_col=sort_col, sort_asc=sort_asc),
             Text(
                 content=f"  ↑ / ↓  navigate  •  1-4  sort by column  •  {selected + 1} / {len(PEAKS)}",
-                style=text("slate", 400) | pad_y(1),
+                style=text_color("slate", 400) | pad_y(1),
             ),
         ],
     )
@@ -130,7 +130,7 @@ def header_cell(label: str, col_width: int, col_idx: int, sort_col: int, sort_as
     indicator = (" ↑" if sort_asc else " ↓") if col_idx == sort_col else ""
     return Text(
         content=f"{label}{indicator}",
-        style=content_box | border_light | width(col_width) | pad_x(1) | text("amber", 300) | text_bold,
+        style=content_box | border_light | width(col_width) | pad_x(1) | text_color("amber", 300) | text_bold,
     )
 
 
@@ -154,7 +154,7 @@ def data_cell(value: str, col_width: int, selected: bool) -> Text:
             | border_light
             | width(col_width)
             | pad_x(1)
-            | (text_bold | text("sky", 200) if selected else text("slate", 300))
+            | (text_bold | text_color("sky", 200) if selected else text_color("slate", 300))
         ),
     )
 

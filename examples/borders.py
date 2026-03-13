@@ -62,7 +62,7 @@ def root() -> Div:
             ),
             Text(
                 content="k/K  cycle border kind\ne/E  cycle active edges",
-                style=border_color("slate", 400) | text("slate", 200) | border_lightrounded | pad_x(2),
+                style=border_color("slate", 400) | text_color("slate", 200) | border_lightrounded | pad_x(2),
             ),
         ],
         on_key=on_key,

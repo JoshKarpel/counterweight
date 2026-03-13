@@ -769,6 +769,11 @@ text_justify_left = Style(text_justify="left")
 text_justify_center = Style(text_justify="center")
 text_justify_right = Style(text_justify="right")
 
+text_wrap_none = Style(text_wrap="none")
+text_wrap_stable = Style(text_wrap="stable")
+text_wrap_pretty = Style(text_wrap="pretty")
+text_wrap_balance = Style(text_wrap="balance")
+
 # Stop generated
 
 
@@ -1000,7 +1005,7 @@ def pad_right(n: int) -> Style:
 
 
 @lru_cache(maxsize=256)
-def text(color: ColorName, shade: Shade) -> Style:
+def text_color(color: ColorName, shade: Shade) -> Style:
     return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
 
 
