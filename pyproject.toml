@@ -59,6 +59,7 @@ dev = [
     "line-profiler>=4.1",
     "ruff>=0.15.4",
     "scalene>=2.1.4",
+    "psutil>=5.9",
 ]
 
 [project.scripts]

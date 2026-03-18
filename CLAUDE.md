@@ -75,7 +75,7 @@ just codegen
 - Use pathlib instead of os.path
 - Follow PEP 8 conventions for naming
 - Use rich for terminal output
-- Pydantic for data modeling
+- Use frozen dataclasses for data modeling (pydantic has been removed)
 - Use pytest for testing
 - No implicit optional types
 - Don't write lots of comments; the code and test names should be self-explanatory.
