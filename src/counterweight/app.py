@@ -160,6 +160,7 @@ async def app(
         screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
+        should_render_twice = True  # warmup pass: run once without painting so use_rects() has real dimensions
         shadow: ShadowNode | None = None
         active_effects: set[Task[None]] = set()
         elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
@@ -171,12 +172,6 @@ async def app(
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
-
-        # Warmup: render and lay out once without painting so that use_rects()
-        # returns real dimensions on the first visible render.
-        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-        shadow, _ = update_shadow(screen(), shadow)
-        compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -290,6 +285,13 @@ async def app(
 
                     should_suspend = None
 
+                if should_render_twice:
+                    warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
+                    shadow, _ = update_shadow(screen(), shadow)
+                    compute_layout(shadow, warmup_available)
+                    should_render_twice = False
+                    should_render = True
+
                 if should_render:
                     start_render = perf_counter_ns()
                     shadow, user_code_ns = update_shadow(screen(), shadow)
@@ -396,6 +398,7 @@ async def app(
                             should_render = True
                         case TerminalResized(dimensions=override):
                             should_render = True
+                            should_render_twice = True
                             screen_style, current_paint, w, h = handle_screen_size_change(override)
                         case KeyPressed():
                             for element, _ in reversed(elements_and_layouts):

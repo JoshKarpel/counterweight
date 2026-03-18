@@ -1,11 +1,9 @@
 import asyncio
 from collections import deque
 from dataclasses import dataclass
-from time import time
 from typing import Any
 
 import psutil
-import waxy
 
 from counterweight.app import app
 from counterweight.components import component
@@ -16,16 +14,18 @@ from counterweight.hooks import Ref, use_effect, use_rects, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.utilities import (
+    ColorName,
+    Shade,
     align_children_center,
     align_children_stretch,
+    border_collapse,
     border_color,
     border_light,
     col,
     default,
-    display_grid,
+    flex_wrap,
     full,
     full_width,
-    grid_template_rows,
     grow,
     justify_children_center,
     min_width,
@@ -38,6 +38,10 @@ from counterweight.styles.utilities import (
 
 _SPARKLINE_CHARS = "▁▂▃▄▅▆▇█"
 _HISTORY_LEN = 60
+_SPARKLINE_DISPLAY = 20  # chars shown per core row
+
+# Each core row: "CPU11 " (6) + "100.00% " (8) + sparkline (20) = 34 content; +2 pad = 36
+_CORE_ROW_WIDTH = 36
 
 _text_bold = Style(text_style=CellStyle(bold=True))
 
@@ -58,12 +62,9 @@ class SystemStats:
     mem_total_gb: float
     mem_used_gb: float
     mem_percent: float
-    load_avg: tuple[float, float, float]
-    uptime_seconds: float
-    num_processes: int
 
 
-def _usage_color(pct: float) -> tuple[str, int]:
+def _usage_color(pct: float) -> tuple[ColorName, Shade]:
     if pct < 25:
         return "green", 400
     elif pct < 50:
@@ -77,9 +78,6 @@ def _usage_color(pct: float) -> tuple[str, int]:
 def collect_stats() -> tuple[SystemStats, tuple[ProcessInfo, ...]]:
     cpu_percents = tuple(psutil.cpu_percent(percpu=True))
     mem = psutil.virtual_memory()
-    load = psutil.getloadavg()
-    boot_time = psutil.boot_time()
-
     procs: list[ProcessInfo] = []
     for proc in psutil.process_iter(["pid", "username", "cpu_percent", "memory_percent", "status", "name", "cmdline"]):
         try:
@@ -104,16 +102,13 @@ def collect_stats() -> tuple[SystemStats, tuple[ProcessInfo, ...]]:
         mem_total_gb=mem.total / 1024**3,
         mem_used_gb=mem.used / 1024**3,
         mem_percent=mem.percent,
-        load_avg=(load[0], load[1], load[2]),
-        uptime_seconds=time() - boot_time,
-        num_processes=len(procs),
     )
     return stats, tuple(procs)
 
 
 def _sparkline_chunks(history: deque[float]) -> list[Chunk]:
     chunks: list[Chunk] = []
-    for val in history:
+    for val in list(history)[-_SPARKLINE_DISPLAY:]:
         idx = min(int(val / 100 * len(_SPARKLINE_CHARS)), len(_SPARKLINE_CHARS) - 1)
         char = _SPARKLINE_CHARS[idx]
         color, shade = _usage_color(val)
@@ -121,8 +116,24 @@ def _sparkline_chunks(history: deque[float]) -> list[Chunk]:
     return chunks
 
 
-SORT_COLS = ["PID", "USER", "CPU%", "MEM%", "STATUS", "COMMAND"]
-_COL_WIDTHS = [7, 13, 6, 6, 9, 0]  # 0 = grow
+SORT_COLS = ["PID", "USER", "CPU%", "MEM%", "COMMAND"]
+_SORT_INDICATOR_WIDTH = 2  # " ↑" or " ↓"
+
+
+def _col_widths(procs: tuple[ProcessInfo, ...]) -> list[int]:
+    # Compute content width for each fixed column, then add 2 for pad_x(1) (border-box)
+    header_content = [len(label) + _SORT_INDICATOR_WIDTH for label in SORT_COLS[:-1]]
+    if procs:
+        data_content = [
+            max(len(str(p.pid)) for p in procs),
+            max(len(p.user) for p in procs),
+            max(len(f"{p.cpu_percent:.2f}%") for p in procs),
+            max(len(f"{p.mem_percent:.2f}%") for p in procs),
+        ]
+        content = [max(h, d) for h, d in zip(header_content, data_content)]
+    else:
+        content = header_content
+    return [c + 2 for c in content] + [0]  # 0 = grow for COMMAND
 
 
 @component
@@ -169,7 +180,7 @@ def root() -> Div:
                 set_selected(lambda s: s + 10)
             case Key.ControlU:
                 set_selected(lambda s: max(0, s - 10))
-            case "1" | "2" | "3" | "4" | "5" | "6" as k:
+            case "1" | "2" | "3" | "4" | "5" as k:
                 col = int(k) - 1
                 if col == sort_col:
                     set_sort_asc(not sort_asc)
@@ -183,20 +194,33 @@ def root() -> Div:
                 set_filter_text(lambda t: t[:-1])
         return None
 
+    def _loading(style: Style) -> Div:
+        return Div(
+            style=style | align_children_center | justify_children_center,
+            children=[Text(content="Loading…", style=text_color("slate", 500))],
+        )
+
     if data is None:
         return Div(
-            style=full | col | align_children_center | justify_children_center,
+            style=col | full | align_children_stretch | border_collapse,
             on_key=on_key,
-            children=[Text(content="Collecting data…", style=text_color("slate", 400))],
+            children=[
+                Div(
+                    style=col | align_children_stretch | border_collapse,
+                    children=[
+                        _loading(col | grow(1) | border_light | border_color("slate", 700)),
+                        _loading(col | border_light | border_color("slate", 700)),
+                    ],
+                ),
+                _loading(col | grow(1) | align_children_stretch | border_light | border_color("slate", 700)),
+                status_bar(filter_active=filter_active, filter_text=filter_text),
+            ],
         )
 
     stats, procs = data
 
     return Div(
-        style=display_grid
-        | grid_template_rows(waxy.Length(5), waxy.Fraction(1), waxy.Length(1))
-        | full
-        | align_children_stretch,
+        style=col | full | align_children_stretch | border_collapse,
         on_key=on_key,
         children=[
             system_overview(stats=stats, cpu_history=cpu_history.current),
@@ -217,7 +241,7 @@ def root() -> Div:
 @component
 def system_overview(stats: SystemStats, cpu_history: dict[int, deque[float]]) -> Div:
     return Div(
-        style=row | align_children_stretch | border_light | border_color("slate", 700),
+        style=col | align_children_stretch | border_collapse,
         children=[
             cpu_panel(cpu_history=cpu_history, cpu_percents=stats.cpu_percents),
             memory_panel(
@@ -225,7 +249,6 @@ def system_overview(stats: SystemStats, cpu_history: dict[int, deque[float]]) ->
                 total_gb=stats.mem_total_gb,
                 mem_percent=stats.mem_percent,
             ),
-            system_info_panel(stats=stats),
         ],
     )
 
@@ -238,72 +261,37 @@ def cpu_panel(cpu_history: dict[int, deque[float]], cpu_percents: tuple[float, .
         color, shade = _usage_color(pct)
         label = Chunk(content=f"CPU{i:<2} ", style=CellStyle(foreground=text_color("slate", 400).text_style.foreground))
         pct_chunk = Chunk(
-            content=f"{pct:5.1f}% ", style=CellStyle(foreground=text_color(color, shade).text_style.foreground)
+            content=f"{pct:6.2f}% ", style=CellStyle(foreground=text_color(color, shade).text_style.foreground)
         )
         rows.append(
             Text(
                 content=[label, pct_chunk, *_sparkline_chunks(hist)],
-                style=grow(1) | min_width(0),
+                style=width(_CORE_ROW_WIDTH) | pad_x(1),
             )
         )
 
     return Div(
-        style=col | grow(1) | min_width(0) | align_children_stretch | pad_x(1),
+        style=row | flex_wrap | grow(1) | min_width(0) | border_light | border_color("slate", 700),
         children=rows,
     )
 
 
 @component
-def memory_panel(used_gb: float, total_gb: float, mem_percent: float) -> Div:
-    bar_width = 30
+def memory_panel(used_gb: float, total_gb: float, mem_percent: float) -> Text:
+    bar_width = 20
     filled = int(mem_percent / 100 * bar_width)
     empty = bar_width - filled
     color, shade = _usage_color(mem_percent)
-    bar_chunks = [
+    chunks = [
+        Chunk(content="MEM ", style=CellStyle(foreground=text_color("slate", 400).text_style.foreground)),
         Chunk(content="█" * filled, style=CellStyle(foreground=text_color(color, shade).text_style.foreground)),
         Chunk(content="░" * empty, style=CellStyle(foreground=text_color("slate", 600).text_style.foreground)),
+        Chunk(
+            content=f"  {used_gb:.2f}/{total_gb:.2f} GB ({mem_percent:.2f}%)",
+            style=CellStyle(foreground=text_color("slate", 400).text_style.foreground),
+        ),
     ]
-
-    return Div(
-        style=col | grow(1) | min_width(0) | pad_x(1) | justify_children_center,
-        children=[
-            Text(
-                content=[
-                    Chunk(content="MEM ", style=CellStyle(foreground=text_color("slate", 400).text_style.foreground)),
-                    *bar_chunks,
-                ],
-            ),
-            Text(
-                content=f"    {used_gb:.1f} GB / {total_gb:.1f} GB ({mem_percent:.1f}%)",
-                style=text_color("slate", 400),
-            ),
-        ],
-    )
-
-
-@component
-def system_info_panel(stats: SystemStats) -> Div:
-    h = int(stats.uptime_seconds) // 3600
-    m = (int(stats.uptime_seconds) % 3600) // 60
-    s = int(stats.uptime_seconds) % 60
-
-    return Div(
-        style=col | grow(1) | min_width(0) | pad_x(1) | justify_children_center,
-        children=[
-            Text(
-                content=f"Uptime:   {h:02d}:{m:02d}:{s:02d}",
-                style=text_color("slate", 300),
-            ),
-            Text(
-                content=f"Load:     {stats.load_avg[0]:.2f}  {stats.load_avg[1]:.2f}  {stats.load_avg[2]:.2f}",
-                style=text_color("slate", 300),
-            ),
-            Text(
-                content=f"Procs:    {stats.num_processes}",
-                style=text_color("slate", 300),
-            ),
-        ],
-    )
+    return Text(content=chunks, style=pad_x(1) | border_light | border_color("slate", 700))
 
 
 @component
@@ -331,24 +319,25 @@ def process_section(
                 return p.cpu_percent
             case 3:
                 return p.mem_percent
-            case 4:
-                return p.status
             case _:
                 return p.command
 
     visible.sort(key=sort_key, reverse=not sort_asc)
     num_visible = len(visible)
 
-    children: list[object] = [
-        process_header(sort_col=sort_col, sort_asc=sort_asc),
-        process_list(procs=tuple(visible), selected=selected, num_procs=num_visible),
-    ]
-    if filter_active:
-        children = [filter_bar(filter_text=filter_text), *children]
+    widths = _col_widths(tuple(visible))
+
+    table = Div(
+        style=col | grow(1) | align_children_stretch | border_light | border_color("slate", 700),
+        children=[
+            process_header(sort_col=sort_col, sort_asc=sort_asc, col_widths=widths),
+            process_list(procs=tuple(visible), selected=selected, num_procs=num_visible, col_widths=widths),
+        ],
+    )
 
     return Div(
         style=col | grow(1) | align_children_stretch,
-        children=children,  # type: ignore[arg-type]
+        children=([filter_bar(filter_text=filter_text), table] if filter_active else [table]),
     )
 
 
@@ -361,10 +350,10 @@ def filter_bar(filter_text: str) -> Text:
 
 
 @component
-def process_header(sort_col: int, sort_asc: bool) -> Div:
+def process_header(sort_col: int, sort_asc: bool, col_widths: list[int]) -> Div:
     indicator = "↑" if sort_asc else "↓"
     cols = []
-    for i, (label, w) in enumerate(zip(SORT_COLS, _COL_WIDTHS)):
+    for i, (label, w) in enumerate(zip(SORT_COLS, col_widths)):
         suffix = f" {indicator}" if i == sort_col else "  "
         cell_style = text_color("amber", 300) | _text_bold
         if w > 0:
@@ -372,22 +361,22 @@ def process_header(sort_col: int, sort_asc: bool) -> Div:
         else:
             cols.append(Text(content=f"{label}{suffix}", style=cell_style | grow(1) | min_width(0) | pad_x(1)))
     return Div(
-        style=row | align_children_stretch | border_color("slate", 700) | border_light,
+        style=row | align_children_stretch,
         children=cols,
     )
 
 
 @component
-def process_list(procs: tuple[ProcessInfo, ...], selected: int, num_procs: int) -> Div:
+def process_list(procs: tuple[ProcessInfo, ...], selected: int, num_procs: int, col_widths: list[int]) -> Div:
     rects = use_rects()
-    visible_height = max(1, int(rects.content.height))
+    visible_height = int(rects.content.height)
 
     clamped = min(selected, max(0, num_procs - 1))
     half = visible_height // 2
     start = max(0, min(clamped - half, num_procs - visible_height))
     end = min(start + visible_height, num_procs)
 
-    rows = [process_row(proc=procs[i], is_selected=(i == clamped)) for i in range(start, end)]
+    rows = [process_row(proc=procs[i], is_selected=(i == clamped), col_widths=col_widths) for i in range(start, end)]
 
     return Div(
         style=col | grow(1) | align_children_stretch,
@@ -396,38 +385,30 @@ def process_list(procs: tuple[ProcessInfo, ...], selected: int, num_procs: int) 
 
 
 @component
-def process_row(proc: ProcessInfo, is_selected: bool) -> Div:
+def process_row(proc: ProcessInfo, is_selected: bool, col_widths: list[int]) -> Div:
     cpu_color, cpu_shade = _usage_color(proc.cpu_percent)
     mem_color, mem_shade = _usage_color(proc.mem_percent)
 
-    base_style = text_bg("blue", 900) if is_selected else default
+    sel = _text_bold if is_selected else default
 
-    pid_cell = Text(
-        content=str(proc.pid), style=base_style | width(_COL_WIDTHS[0]) | pad_x(1) | text_color("slate", 300)
-    )
-    user_cell = Text(
-        content=proc.user[:12], style=base_style | width(_COL_WIDTHS[1]) | pad_x(1) | text_color("cyan", 300)
-    )
+    pid_cell = Text(content=str(proc.pid), style=sel | width(col_widths[0]) | pad_x(1) | text_color("slate", 300))
+    user_cell = Text(content=proc.user[:12], style=sel | width(col_widths[1]) | pad_x(1) | text_color("cyan", 300))
     cpu_cell = Text(
-        content=f"{proc.cpu_percent:5.1f}%",
-        style=base_style | width(_COL_WIDTHS[2]) | pad_x(1) | text_color(cpu_color, cpu_shade),
+        content=f"{proc.cpu_percent:.2f}%",
+        style=sel | width(col_widths[2]) | pad_x(1) | text_color(cpu_color, cpu_shade),
     )
     mem_cell = Text(
-        content=f"{proc.mem_percent:5.1f}%",
-        style=base_style | width(_COL_WIDTHS[3]) | pad_x(1) | text_color(mem_color, mem_shade),
-    )
-    status_cell = Text(
-        content=proc.status,
-        style=base_style | width(_COL_WIDTHS[4]) | pad_x(1) | text_color("slate", 400),
+        content=f"{proc.mem_percent:.2f}%",
+        style=sel | width(col_widths[3]) | pad_x(1) | text_color(mem_color, mem_shade),
     )
     cmd_cell = Text(
         content=proc.command,
-        style=base_style | grow(1) | min_width(0) | pad_x(1) | text_color("slate", 200),
+        style=sel | grow(1) | min_width(0) | pad_x(1) | text_color("slate", 200),
     )
 
     return Div(
         style=row | align_children_stretch,
-        children=[pid_cell, user_cell, cpu_cell, mem_cell, status_cell, cmd_cell],
+        children=[pid_cell, user_cell, cpu_cell, mem_cell, cmd_cell],
     )
 
 
