@@ -40,8 +40,8 @@ _SPARKLINE_CHARS = "▁▂▃▄▅▆▇█"
 _HISTORY_LEN = 60
 _SPARKLINE_DISPLAY = 20  # chars shown per core row
 
-# Each core row: "CPU11 " (6) + "100.00% " (8) + sparkline (20) = 34 content; +2 pad = 36
-_CORE_ROW_WIDTH = 36
+# Each core row: "CPU11 " (6) + "100.1% " (7) + sparkline (20) = 33 content; +2 pad = 35
+_CORE_ROW_WIDTH = 35
 
 _text_bold = Style(text_style=CellStyle(bold=True))
 
@@ -127,7 +127,7 @@ def _col_widths(procs: tuple[ProcessInfo, ...]) -> list[int]:
         data_content = [
             max(len(str(p.pid)) for p in procs),
             max(len(p.user) for p in procs),
-            max(len(f"{p.cpu_percent:.2f}%") for p in procs),
+            max(len(f"{p.cpu_percent:.1f}%") for p in procs),
             max(len(f"{p.mem_percent:.2f}%") for p in procs),
         ]
         content = [max(h, d) for h, d in zip(header_content, data_content)]
@@ -261,7 +261,7 @@ def cpu_panel(cpu_history: dict[int, deque[float]], cpu_percents: tuple[float, .
         color, shade = _usage_color(pct)
         label = Chunk(content=f"CPU{i:<2} ", style=CellStyle(foreground=text_color("slate", 400).text_style.foreground))
         pct_chunk = Chunk(
-            content=f"{pct:6.2f}% ", style=CellStyle(foreground=text_color(color, shade).text_style.foreground)
+            content=f"{pct:5.1f}% ", style=CellStyle(foreground=text_color(color, shade).text_style.foreground)
         )
         rows.append(
             Text(
@@ -278,18 +278,18 @@ def cpu_panel(cpu_history: dict[int, deque[float]], cpu_percents: tuple[float, .
 
 @component
 def memory_panel(used_gb: float, total_gb: float, mem_percent: float) -> Text:
-    bar_width = 20
+    rects = use_rects()
+    prefix = "MEM "
+    label = f"  {used_gb:.2f}/{total_gb:.2f} GB ({mem_percent:.2f}%)"
+    bar_width = max(0, int(rects.content.width) - len(prefix) - len(label))
     filled = int(mem_percent / 100 * bar_width)
     empty = bar_width - filled
     color, shade = _usage_color(mem_percent)
     chunks = [
-        Chunk(content="MEM ", style=CellStyle(foreground=text_color("slate", 400).text_style.foreground)),
+        Chunk(content=prefix, style=CellStyle(foreground=text_color("slate", 400).text_style.foreground)),
         Chunk(content="█" * filled, style=CellStyle(foreground=text_color(color, shade).text_style.foreground)),
         Chunk(content="░" * empty, style=CellStyle(foreground=text_color("slate", 600).text_style.foreground)),
-        Chunk(
-            content=f"  {used_gb:.2f}/{total_gb:.2f} GB ({mem_percent:.2f}%)",
-            style=CellStyle(foreground=text_color("slate", 400).text_style.foreground),
-        ),
+        Chunk(content=label, style=CellStyle(foreground=text_color("slate", 400).text_style.foreground)),
     ]
     return Text(content=chunks, style=pad_x(1) | border_light | border_color("slate", 700))
 
@@ -394,7 +394,7 @@ def process_row(proc: ProcessInfo, is_selected: bool, col_widths: list[int]) -> 
     pid_cell = Text(content=str(proc.pid), style=sel | width(col_widths[0]) | pad_x(1) | text_color("slate", 300))
     user_cell = Text(content=proc.user[:12], style=sel | width(col_widths[1]) | pad_x(1) | text_color("cyan", 300))
     cpu_cell = Text(
-        content=f"{proc.cpu_percent:.2f}%",
+        content=f"{proc.cpu_percent:.1f}%",
         style=sel | width(col_widths[2]) | pad_x(1) | text_color(cpu_color, cpu_shade),
     )
     mem_cell = Text(
