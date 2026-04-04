@@ -26,6 +26,7 @@ from counterweight.controls import (
     PrintPaint,
     Quit,
     Screenshot,
+    StopPropagation,
     Suspend,
     ToggleBorderHealing,
     _Control,
@@ -178,7 +179,7 @@ async def app(
         shadow, _ = update_shadow(screen(), shadow)
         compute_layout(shadow, warmup_available)
 
-        def handle_control(control: AnyControl | None) -> None:
+        def handle_control(control: AnyControl | None) -> bool:
             nonlocal should_render
 
             nonlocal should_quit
@@ -192,6 +193,8 @@ async def app(
             match control:
                 case None:
                     pass
+                case StopPropagation():
+                    return True
                 case Quit():
                     should_quit = True
                 case Bell():
@@ -206,6 +209,7 @@ async def app(
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+            return False
 
         mouse_position = Position(x=-1, y=-1)
 
@@ -400,15 +404,19 @@ async def app(
                         case KeyPressed():
                             for element, _ in reversed(elements_and_layouts):
                                 if element.on_key:
-                                    handle_control(element.on_key(event))
+                                    if handle_control(element.on_key(event)):
+                                        break
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
                             mouse_pos = waxy.Point(x=mouse_position.x, y=mouse_position.y)
                             event_pos = waxy.Point(x=m.absolute.x, y=m.absolute.y)
                             for element, resolved in reversed(elements_and_layouts):
+                                if resolved.clip_rect is not None and not resolved.clip_rect.contains(event_pos):
+                                    continue
                                 # Send mouse events if the current *or previous* position is in the border rect
                                 if resolved.border.contains(mouse_pos) or resolved.border.contains(event_pos):
                                     if element.on_mouse:
-                                        handle_control(element.on_mouse(event))
+                                        if handle_control(element.on_mouse(event)):
+                                            break
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(

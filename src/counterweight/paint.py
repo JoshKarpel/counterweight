@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator, MutableMapping
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby, islice
 from textwrap import dedent
-from typing import Literal, assert_never
+from typing import Literal, Mapping, Self, TypeVar, assert_never
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import waxy
@@ -23,6 +24,36 @@ from counterweight.styles.styles import (
     Style,
     TextWrap,
 )
+
+_T = TypeVar("_T")
+
+
+class ClipDict(MutableMapping[Position, _T]):
+    def __init__(self, clip: waxy.Rect | None) -> None:
+        self._data: dict[Position, _T] = {}
+        self._clip = clip
+
+    def __setitem__(self, key: Position, value: _T) -> None:
+        if self._clip is None or self._clip.contains(waxy.Point(x=key.x, y=key.y)):
+            self._data[key] = value
+
+    def __getitem__(self, key: Position) -> _T:
+        return self._data[key]
+
+    def __delitem__(self, key: Position) -> None:
+        del self._data[key]
+
+    def __iter__(self) -> Iterator[Position]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __ior__(self, other: Mapping[Position, _T]) -> Self:
+        for key, value in other.items():
+            self[key] = value
+        return self
+
 
 logger = get_logger()
 
@@ -54,7 +85,7 @@ BorderHealingHints = dict[Position, JoinedBorderParts]
 def paint_layout(
     elements: list[tuple[AnyElement, ResolvedLayout]],
 ) -> tuple[Paint, BorderHealingHints]:
-    parts: list[tuple[Paint, BorderHealingHints, int, int]] = [
+    parts: list[tuple[Mapping[Position, P], Mapping[Position, JoinedBorderParts], int, int]] = [
         paint_element(element, resolved) for element, resolved in elements
     ]
     parts.sort(key=lambda p: (p[2], p[3]))
@@ -90,11 +121,16 @@ def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Pain
     return chars
 
 
-def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]:
+def paint_element(
+    element: AnyElement, resolved: ResolvedLayout
+) -> tuple[Mapping[Position, P], Mapping[Position, JoinedBorderParts], int, int]:
+    clip = resolved.clip_rect
+    cell_paint: ClipDict[P] = ClipDict(clip)
+    border_hints: ClipDict[JoinedBorderParts] = ClipDict(clip)
+
     m = paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)
     b, bhh = paint_border(element.style, resolved)
     t = paint_edge(resolved.padding, resolved.content, element.style.padding_color, element.style.z)
-
     box = m | b | t
 
     match element:
@@ -105,12 +141,12 @@ def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint,
         case _:
             assert_never(element)
 
-    return (
-        (fill_rect(resolved.margin, element.style.z, element.style.content_color) | paint if paint else paint),
-        bhh,
-        element.style.z,
-        resolved.order,
-    )
+    if paint:
+        cell_paint |= fill_rect(resolved.margin, element.style.z, element.style.content_color)
+        cell_paint |= paint
+    border_hints |= bhh
+
+    return cell_paint, border_hints, element.style.z, resolved.order
 
 
 def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:

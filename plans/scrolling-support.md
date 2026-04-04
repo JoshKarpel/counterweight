@@ -59,8 +59,11 @@ Taffy computes static layout. It does not know about scroll offsets — it just 
 container can scroll (via overflow mode and `content_size > size`). The scroll offset must live in
 counterweight, stored per scroll-container element, and applied during painting.
 
-The offset is stored in the `ShadowNode.hooks` for the component that owns the scroll container,
-via a new `use_scroll` hook.
+**Implementation:** The offset is stored as `scroll_offset_x: int = 0` / `scroll_offset_y: int = 0`
+fields on `Style` (not on `Hooks` as originally planned). `use_scroll` encodes the current offset
+into the `Style` it returns each render, and `_extract_layout` reads the offset directly from
+`shadow.element.style.scroll_offset_x/y`. This is simpler than a `hooks.scroll_offset` side-channel
+because `_extract_layout` already has access to the element's style.
 
 ### 2. Clipping at the paint level via `ClipDict`
 
@@ -96,8 +99,19 @@ class ClipDict(UserDict[Position, T]):
             super().__setitem__(key, value)
 ```
 
-`UserDict` (from `collections`) stores data in `self.data` and is designed for subclassing —
-`__getitem__`, `__delitem__`, `__iter__`, `__len__`, and `|=` are all inherited.
+**Implementation note:** Use `MutableMapping[Position, T]` (from `collections.abc`), NOT `UserDict`.
+`UserDict.update` with a plain dict bypasses `__setitem__` by writing directly to `self.data`,
+so `|=` would silently skip the clip filter. `MutableMapping.update` calls `self[key] = value` for
+each item, routing through our filtered `__setitem__`. However, `MutableMapping.__ior__` is NOT
+defined in Python 3.14 (it exists in 3.9's `dict` but the ABC doesn't provide it), so an explicit
+`__ior__` override is still required:
+
+```python
+def __ior__(self, other: Mapping[Position, _T]) -> Self:
+    for key, value in other.items():
+        self[key] = value
+    return self
+```
 
 `paint_element` creates a `ClipDict[P]` (for cell paint) and a `ClipDict[JoinedBorderParts]`
 (for border healing hints) using `resolved.clip_rect`, then merges the results from the
@@ -143,6 +157,10 @@ def use_scroll(
     scroll_y: bool = True,
     initial_offset_x: int = 0,
     initial_offset_y: int = 0,
+    mouse_scroll_x: int = 1,
+    mouse_scroll_y: int = 1,
+    key_scroll_x: int = 1,
+    key_scroll_y: int = 1,
 ) -> tuple[ScrollState, Style, Callable[[AnyMouseEvent], AnyControl | None], Callable[[KeyPressed], AnyControl | None]]:
 ```
 
@@ -280,12 +298,13 @@ Change the waxy dependency from `waxy>=0.4.0` to `waxy>=0.5.0`, then run `just u
 
 ### Step 1: Add scroll state infrastructure to hooks
 
-**File:** `src/counterweight/hooks/impls.py`
+**File:** `src/counterweight/styles/styles.py`
 
-Add `scroll_offset: tuple[int, int]` field to `Hooks` (default `(0, 0)`). `use_scroll` writes
-the current offset here during render so that the subsequent `_extract_layout` pass can read it
-from `shadow.hooks.scroll_offset` when it encounters a scroll container. This is the same
-pattern as `use_rects` / `hooks.dims`.
+Add `scroll_offset_x: int = 0` and `scroll_offset_y: int = 0` to `Style`. These are
+counterweight-level fields — not part of `waxy.Style` — that carry the current scroll position
+from render time into the layout pass. `use_scroll` encodes the current offset from `use_state`
+into the `Style` it returns; `_extract_layout` reads them directly from `shadow.element.style`.
+No `Hooks` modification is needed.
 
 **File:** `src/counterweight/hooks/hooks.py`
 
@@ -293,11 +312,10 @@ Add `ScrollState` dataclass and `use_scroll` hook function.
 
 `use_scroll` internally:
 - Calls `use_state((0, 0))` for the scroll offset
-- Writes the current offset to `current_hook_state.get().scroll_offset` (same frame, before layout)
 - Calls `use_rects()` to get viewport dimensions (from previous frame, same as `use_hovered`)
-- Returns `ScrollState` (computed from rects + offset), a `Style` with overflow and
-  `flex_direction` set, and an `on_mouse` handler that handles scroll events and returns
-  `StopPropagation()` when it acts
+- Returns `ScrollState` (computed from rects + offset), a `Style` with overflow, `flex_direction`,
+  `scroll_offset_x`, and `scroll_offset_y` set; plus `on_mouse` and `on_key` handlers that
+  update the offset and return `StopPropagation()` when they act
 
 ### Step 2: Propagate scroll offset through layout
 
@@ -305,7 +323,7 @@ Add `ScrollState` dataclass and `use_scroll` hook function.
 
 Modify `_extract_layout` to:
 1. Detect scroll containers: check `waxy.Style.overflow_x`/`overflow_y` on the element's style
-2. Read the scroll offset from the shadow node's hooks (via a new field or a mapping)
+2. Read the scroll offset from `shadow.element.style.scroll_offset_x/y`
 3. When recursing into a scroll container's children, subtract `(scroll_x, scroll_y)` from
    `(abs_x, abs_y)` — this shifts children upward/leftward by the scroll amount
 4. Read `layout.content_size` from taffy and store it on `ResolvedLayout`
@@ -420,8 +438,8 @@ event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 | File | Change |
 |---|---|
 | `pyproject.toml` | Bump waxy to `>=0.5.0` |
+| `src/counterweight/styles/styles.py` | Add `scroll_offset_x`, `scroll_offset_y` to `Style` |
 | `src/counterweight/hooks/hooks.py` | Add `ScrollState`, `use_scroll` |
-| `src/counterweight/hooks/impls.py` | Add `scroll_offset` to `Hooks` |
 | `src/counterweight/hooks/__init__.py` | Export new symbols |
 | `src/counterweight/controls.py` | Add `StopPropagation` control |
 | `src/counterweight/layout.py` | Scroll offset application, clip rect propagation, `ResolvedLayout` new fields |
@@ -434,137 +452,49 @@ event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 
 ---
 
-## Example App: Split-Pane File Viewer
+## Example App: File Browser
 
 **File:** `examples/file_viewer.py`
 
-A side-by-side viewer for two files. Demonstrates independent scroll state per pane, mouse
-scroll, keyboard scroll on the focused pane, and click-to-focus.
+A file browser with a scrollable directory tree on the left and the selected file's content
+on the right. Demonstrates independent scroll state per pane, mouse scroll, keyboard navigation
+in the tree (↑/↓ move selection), and click-to-focus.
 
 ### Component structure
 
 ```
-root(left_path, right_path)
+root(start_dir)
   Div [row | full]
-    file_pane(left_path, focused=True/False, ...)
-    file_pane(right_path, focused=True/False, ...)
+    tree_pane(tree, selected_idx, ..., focused="tree")
+    content_pane(selected_path, focused="content")
   Text [status bar]
 ```
 
 ### Key design points
 
-**Focus tracking:** `root` holds `focused: Literal["left", "right"]` in `use_state`. Tab
-switches focus; clicking a pane focuses it. The focused pane's `on_key=scroll_on_key`; the
-unfocused pane gets `on_key=None`. This avoids both panes scrolling simultaneously — without
-focus tracking `on_key` goes to all elements, so both would scroll.
+**Focus tracking:** `root` holds `focused_pane: "tree" | "content"` in `use_state`. Tab
+switches focus; clicking a pane focuses it. The focused pane receives `on_key`; the
+unfocused pane gets `on_key=None`. This avoids both panes responding to keyboard scroll
+simultaneously.
 
-**Wrap toggle:** Only the right pane's wrap mode is toggleable (`"none"` | `"stable"`),
-defaulting to `"none"`. The left pane is always `"none"` — it's intended for file tree /
-structured content where wrapping never makes sense. `Key.W` toggles the right pane's wrap
-mode (only active when the right pane is focused). Status bar shows the right pane's current
-wrap mode.
+**Tree navigation:** `tree_pane` handles ↑/↓ arrow keys to move the selection index, then
+falls through to `scroll_on_key` for scroll behavior. The tree is built once at mount via
+`use_state(lambda: _build_tree(base))`.
 
-**Horizontal scrolling:** When wrap mode is `"none"`, lines can exceed the pane width, so
-horizontal scroll is needed. Pass `scroll_x=True, scroll_y=True` to `use_scroll` when wrap is
-`"none"`, and `scroll_x=False, scroll_y=True` when wrap is `"stable"` (wrapped content never
-overflows horizontally). Left/right arrows scroll horizontally in `"none"` mode; the
-`on_key` handler from `use_scroll` handles this automatically based on the `scroll_x` flag.
+**Horizontal scrolling:** The content pane uses `scroll_x=True, scroll_y=True` since file
+content can have long lines.
 
-**`on_mouse` composition:** `file_pane` needs both click-to-focus and mouse scroll. Since
-`on_mouse` is a single callable, wrap them manually:
+**`on_mouse` composition:** Both panes need click-to-focus and mouse scroll. Since `on_mouse`
+is a single callable, compose them manually:
 
 ```python
 def on_mouse(event: MouseEvent) -> AnyControl | None:
     if isinstance(event, MouseDown):
-        set_focused(side)
+        set_focused_pane("tree")
     return scroll_on_mouse(event)
 ```
 
-**File content:** Read the file once at component mount via `use_state` initialized with the
-file contents. Render as a single `Text` element with `text_wrap_stable` inside the scroll
-container. `_measure_text` reports the correct wrapped height to taffy, so `content_size`
-is accurate without needing per-line elements.
-
-**Border title:** Render the filename as an absolutely-positioned `Text` at `inset_top(-1) |
-inset_left(2)` inside each pane (same pattern as `text_wrap.py`).
-
-**CLI:** Accept two file paths as positional args. Use `sys.argv` directly or a minimal typer
-command — keep it simple, the focus is the scrolling demo.
-
-### Sketch
-
-```python
-@component
-def root(left_path: str, right_path: str) -> Div:
-    focused, set_focused = use_state("left")
-    right_wrap, set_right_wrap = use_state("none")
-
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match event.key:
-            case Key.ControlC: return Quit()
-            case Key.Tab: set_focused(lambda f: "right" if f == "left" else "left")
-            case Key.W if focused == "right":
-                set_right_wrap(lambda w: "stable" if w == "none" else "none")
-        return None
-
-    return Div(
-        style=col | full | align_children_stretch,
-        on_key=on_key,
-        children=[
-            Div(
-                style=row | grow(1) | align_children_stretch,
-                children=[
-                    file_pane(left_path, focused == "left", set_focused, "left", "none"),
-                    file_pane(right_path, focused == "right", set_focused, "right", right_wrap),
-                ],
-            ),
-            Text(
-                content=f"tab: switch pane  ·  w: toggle wrap [{right_wrap}]  ·  scroll / arrows: scroll  ·  ctrl+c: quit",
-                style=text_justify_center | text_color("slate", 500) | pad_y(1),
-            ),
-        ],
-    )
-
-
-@component
-def file_pane(
-    path: str,
-    focused: bool,
-    set_focused: Callable[[str], None],
-    side: str,
-    wrap: Literal["none", "stable"],
-) -> Div:
-    content, _ = use_state(lambda: pathlib.Path(path).read_text())
-    scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(
-        scroll_x=(wrap == "none"),
-        scroll_y=True,
-    )
-
-    def on_mouse(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseDown):
-            set_focused(side)
-        return scroll_on_mouse(event)
-
-    border_col = border_color("sky", 600) if focused else border_color("slate", 700)
-    wrap_style = text_wrap_stable if wrap == "stable" else text_wrap_none
-
-    return Div(
-        style=grow(1) | min_width(0) | col | align_children_stretch
-              | border_lightrounded | border_col | scroll_style,
-        on_mouse=on_mouse,
-        on_key=scroll_on_key if focused else None,
-        children=[
-            Text(
-                content=f" {path} [{wrap}] ",
-                style=position_absolute | inset_top(-1) | inset_left(2) | border_col,
-            ),
-            Text(
-                content=content,
-                style=grow(1) | wrap_style,
-            ),
-        ],
-    )
-```
+**CLI:** Accept an optional directory path (defaults to `.`). Use `sys.argv` directly.
 
 ---
 

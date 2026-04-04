@@ -118,6 +118,11 @@ class ToggleBorderHealing(_Control):
     """
 
 
+@dataclass(frozen=True, slots=True)
+class StopPropagation(_Control):
+    """Stop dispatching the current event to further elements."""
+
+
 AnyControl = Union[
     Quit,
     Bell,
@@ -125,4 +130,5 @@ AnyControl = Union[
     PrintPaint,
     Suspend,
     ToggleBorderHealing,
+    StopPropagation,
 ]
