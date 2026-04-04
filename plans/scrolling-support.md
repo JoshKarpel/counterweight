@@ -76,6 +76,9 @@ hierarchy is available) and stored on `ResolvedLayout.clip_rect`. By the time pa
 the flat `(element, ResolvedLayout)` list already carries each element's effective clip rect —
 no propagation is needed at paint time.
 
+`waxy.Rect.intersection` (available in waxy 0.5.0) computes the intersection of two rects,
+returning `None` if they don't overlap. Use this instead of a hand-written `intersect_rects`.
+
 Rather than threading a `clip_rect` parameter through every paint sub-function, we introduce
 `ClipDict[T]`, a `MutableMapping[Position, T]` that silently discards writes whose key falls
 outside the clip rect:
@@ -250,9 +253,7 @@ def _extract_layout(tree, node_id, node_map, abs_x, abs_y, results, clip_rect=No
     results.append((shadow.element, resolved))
 
     if is_clipping_container:
-        child_clip = padding_rect
-        if clip_rect is not None:
-            child_clip = intersect_rects(clip_rect, child_clip)
+        child_clip = padding_rect if clip_rect is None else clip_rect.intersection(padding_rect)
     else:
         child_clip = clip_rect
     for child_node_id in tree.children(node_id):
