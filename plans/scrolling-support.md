@@ -270,6 +270,14 @@ See decision 8 for `overflow_hidden` standalone behavior.
 
 ## Implementation Steps
 
+### Step 0: Upgrade waxy to 0.5.0
+
+**File:** `pyproject.toml`
+
+Change the waxy dependency from `waxy>=0.4.0` to `waxy>=0.5.0`, then run `just upgrade` (or
+`uv lock --upgrade-package waxy`) to update the lockfile. This is required to get
+`waxy.Rect.intersection`, which is used in the clip rect propagation logic.
+
 ### Step 1: Add scroll state infrastructure to hooks
 
 **File:** `src/counterweight/hooks/impls.py`
@@ -411,6 +419,7 @@ event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 
 | File | Change |
 |---|---|
+| `pyproject.toml` | Bump waxy to `>=0.5.0` |
 | `src/counterweight/hooks/hooks.py` | Add `ScrollState`, `use_scroll` |
 | `src/counterweight/hooks/impls.py` | Add `scroll_offset` to `Hooks` |
 | `src/counterweight/hooks/__init__.py` | Export new symbols |
