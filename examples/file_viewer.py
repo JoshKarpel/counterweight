@@ -1,28 +1,80 @@
 from __future__ import annotations
 
+import asyncio
 import pathlib
+import subprocess
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Quit
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseDown, MouseEvent
-from counterweight.hooks import Setter, use_scroll, use_state
+from counterweight.hooks import Setter, use_effect, use_scroll, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
+# (depth, path, is_dir) — is_dir precomputed so renders don't make stat calls
+TreeEntry = tuple[int, pathlib.Path, bool]
 
-def _build_tree(root: pathlib.Path) -> list[tuple[int, pathlib.Path]]:
-    """Return a flat list of (depth, path) for all files/dirs under root, sorted."""
-    entries: list[tuple[int, pathlib.Path]] = []
+
+def _read_path(path: pathlib.Path) -> str:
+    if path.is_dir():
+        return f"[directory: {path}]"
+    try:
+        return path.read_text(errors="replace")
+    except OSError as e:
+        return f"[error: {e}]"
+
+
+def _build_tree(root: pathlib.Path) -> list[TreeEntry]:
+    """Return a flat list of (depth, path, is_dir) for files/dirs under root, respecting .gitignore if in a git repo."""
+    visible: set[pathlib.Path] | None = None
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0:
+            visible = set()
+            for line in result.stdout.splitlines():
+                p = root / line.strip()
+                visible.add(p)
+                for ancestor in p.parents:
+                    if ancestor == root:
+                        break
+                    visible.add(ancestor)
+    except Exception:
+        pass
+
+    entries: list[TreeEntry] = []
 
     def walk(path: pathlib.Path, depth: int) -> None:
-        entries.append((depth, path))
-        if path.is_dir():
-            for child in sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name)):
+        is_dir = path.is_dir()
+        entries.append((depth, path, is_dir))
+        if is_dir:
+            try:
+                children = sorted(
+                    (c for c in path.iterdir() if visible is None or c in visible),
+                    key=lambda p: (p.is_file(), p.name),
+                )
+            except PermissionError:
+                return
+            for child in children:
                 walk(child, depth + 1)
 
-    for child in sorted(root.iterdir(), key=lambda p: (p.is_file(), p.name)):
+    try:
+        top_level = sorted(
+            (c for c in root.iterdir() if visible is None or c in visible),
+            key=lambda p: (p.is_file(), p.name),
+        )
+    except PermissionError:
+        return entries
+
+    for child in top_level:
         walk(child, 0)
     return entries
 
@@ -30,11 +82,18 @@ def _build_tree(root: pathlib.Path) -> list[tuple[int, pathlib.Path]]:
 @component
 def root() -> Div:
     base = pathlib.Path.cwd()
-    tree, _ = use_state(lambda: _build_tree(base))
+    tree: list[TreeEntry]
+    tree, set_tree = use_state(list[TreeEntry])
     selected_idx, set_selected_idx = use_state(0)
     focused_pane, set_focused_pane = use_state("tree")
 
-    _depth, selected_path = tree[selected_idx]
+    async def load_tree() -> None:
+        loaded = await asyncio.to_thread(_build_tree, base)
+        set_tree(loaded)
+
+    use_effect(load_tree, deps=())
+
+    selected_path = tree[selected_idx][1] if tree else base
 
     def on_key(event: KeyPressed) -> AnyControl | None:
         match event.key:
@@ -66,7 +125,7 @@ def root() -> Div:
                 ],
             ),
             Text(
-                content="tab: switch pane  ·  ↑/↓: navigate tree  ·  scroll/arrows: scroll content  ·  ctrl+c: quit",
+                content="tab: switch  ·  ↑/↓: navigate  ·  arrows/scroll: scroll  ·  ctrl+c: quit",
                 style=text_justify_center | text_color("slate", 500) | pad_y(1),
             ),
         ],
@@ -75,7 +134,7 @@ def root() -> Div:
 
 @component
 def tree_pane(
-    tree: list[tuple[int, pathlib.Path]],
+    tree: list[TreeEntry],
     selected_idx: int,
     set_selected_idx: Setter[int],
     focused: bool,
@@ -83,10 +142,24 @@ def tree_pane(
 ) -> Div:
     _scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(scroll_y=True)
 
+    # Cache formatted lines — only rebuild when tree identity or selection changes.
+    # is_dir is precomputed in each TreeEntry so no stat calls happen here.
+    lines_cache, set_lines_cache = use_state(lambda: (tree, selected_idx, ""))
+    cached_tree, cached_idx, lines_text = lines_cache
+    if tree is not cached_tree or selected_idx != cached_idx:
+        lines = []
+        for i, (depth, path, is_dir) in enumerate(tree):
+            prefix = "  " * depth + ("▸ " if is_dir else "  ")
+            marker = "● " if i == selected_idx else "  "
+            name = path.name + ("/" if is_dir else "")
+            lines.append(f"{marker}{prefix}{name}")
+        lines_text = "\n".join(lines)
+        set_lines_cache((tree, selected_idx, lines_text))
+
     def on_key(event: KeyPressed) -> AnyControl | None:
         match event.key:
             case Key.Down:
-                set_selected_idx(lambda i: min(i + 1, len(tree) - 1))
+                set_selected_idx(lambda i: min(i + 1, max(len(tree) - 1, 0)))
                 return None
             case Key.Up:
                 set_selected_idx(lambda i: max(i - 1, 0))
@@ -100,13 +173,6 @@ def tree_pane(
 
     border_col = border_color("sky", 600) if focused else border_color("slate", 700)
 
-    lines = []
-    for i, (depth, path) in enumerate(tree):
-        prefix = "  " * depth + ("▸ " if path.is_dir() else "  ")
-        marker = "● " if i == selected_idx else "  "
-        name = path.name + ("/" if path.is_dir() else "")
-        lines.append(f"{marker}{prefix}{name}")
-
     return Div(
         style=width(30) | col | align_children_stretch | border_lightrounded | border_col | scroll_style,
         on_mouse=on_mouse,
@@ -117,7 +183,7 @@ def tree_pane(
                 style=position_absolute | inset_top(-1) | inset_left(2) | border_col,
             ),
             Text(
-                content="\n".join(lines),
+                content=lines_text,
                 style=grow(1) | text_wrap_none,
             ),
         ],
@@ -130,7 +196,16 @@ def content_pane(
     focused: bool,
     set_focused_pane: Setter[str],
 ) -> Div:
-    _scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(scroll_x=True, scroll_y=True)
+    _scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(
+        scroll_x=True, scroll_y=True, reset_on=path
+    )
+
+    body_cache, set_body_cache = use_state(lambda: (path, _read_path(path)))
+    if body_cache[0] != path:
+        body = _read_path(path)
+        set_body_cache((path, body))
+    else:
+        body = body_cache[1]
 
     def on_mouse(event: MouseEvent) -> AnyControl | None:
         if isinstance(event, MouseDown):
@@ -138,14 +213,6 @@ def content_pane(
         return scroll_on_mouse(event)
 
     border_col = border_color("sky", 600) if focused else border_color("slate", 700)
-
-    if path.is_dir():
-        body = f"[directory: {path}]"
-    else:
-        try:
-            body = path.read_text(errors="replace")
-        except OSError as e:
-            body = f"[error: {e}]"
 
     return Div(
         style=grow(1) | min_width(0) | col | align_children_stretch | border_lightrounded | border_col | scroll_style,
@@ -165,6 +232,4 @@ def content_pane(
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(app(root))

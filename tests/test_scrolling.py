@@ -9,7 +9,7 @@ from counterweight.controls import PrintPaint, Quit
 from counterweight.elements import Div, Text
 from counterweight.events import AnyEvent, KeyPressed, MouseEvent, MouseScrolledDown, MouseScrolledUp
 from counterweight.geometry import Position
-from counterweight.hooks import ScrollState, use_scroll
+from counterweight.hooks import ScrollState, use_scroll, use_state
 from counterweight.styles.utilities import (
     align_children_stretch,
     col,
@@ -405,3 +405,41 @@ async def test_horizontal_scroll_moves_content_left() -> None:
     assert "A" in result_initial
     assert "A" not in result_scrolled
     assert "D" in result_scrolled
+
+
+# ---------------------------------------------------------------------------
+# reset_on: scroll offset resets when the key changes
+# ---------------------------------------------------------------------------
+
+
+async def test_reset_on_clears_scroll_offset() -> None:
+    @component
+    def root() -> Div:
+        page, set_page = use_state("A")
+        _, scroll_style, _on_mouse, on_key = use_scroll(scroll_y=True, reset_on=page)
+
+        def on_key_outer(event: KeyPressed) -> None:
+            if event.key == "tab":
+                set_page(lambda p: "B" if p == "A" else "A")
+            else:
+                on_key(event)
+
+        content = "AAAAAAAAAA\n" * 6 if page == "A" else "BBBBBBBBBB\n" * 6
+        return Div(
+            style=col | full | align_children_stretch,
+            on_key=on_key_outer,
+            children=[
+                Div(
+                    style=size(10, 3) | scroll_style | col | align_children_stretch,
+                    children=[Text(content=content)],
+                ),
+            ],
+        )
+
+    # Scroll down then switch page — offset should reset so first row is visible
+    result = await _render_after_events(
+        root,
+        (10, 5),
+        [KeyPressed(key="down"), KeyPressed(key="down"), KeyPressed(key="tab")],
+    )
+    assert "B" in result

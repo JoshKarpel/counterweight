@@ -29,12 +29,15 @@ _T = TypeVar("_T")
 
 
 class ClipDict(MutableMapping[Position, _T]):
-    def __init__(self, clip: waxy.Rect | None) -> None:
+    def __init__(self, clip: waxy.Rect) -> None:
         self._data: dict[Position, _T] = {}
-        self._clip = clip
+        self._left = int(clip.left)
+        self._right = int(clip.right)
+        self._top = int(clip.top)
+        self._bottom = int(clip.bottom)
 
     def __setitem__(self, key: Position, value: _T) -> None:
-        if self._clip is None or self._clip.contains(waxy.Point(x=key.x, y=key.y)):
+        if self._left <= key.x <= self._right and self._top <= key.y <= self._bottom:
             self._data[key] = value
 
     def __getitem__(self, key: Position) -> _T:
@@ -53,6 +56,10 @@ class ClipDict(MutableMapping[Position, _T]):
         for key, value in other.items():
             self[key] = value
         return self
+
+    def merge_within_clip(self, other: Mapping[Position, _T]) -> None:
+        """Merge a mapping whose keys are already guaranteed to be within the clip rect."""
+        self._data.update(other)
 
 
 logger = get_logger()
@@ -124,10 +131,6 @@ def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Pain
 def paint_element(
     element: AnyElement, resolved: ResolvedLayout
 ) -> tuple[Mapping[Position, P], Mapping[Position, JoinedBorderParts], int, int]:
-    clip = resolved.clip_rect
-    cell_paint: ClipDict[P] = ClipDict(clip)
-    border_hints: ClipDict[JoinedBorderParts] = ClipDict(clip)
-
     m = paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)
     b, bhh = paint_border(element.style, resolved)
     t = paint_edge(resolved.padding, resolved.content, element.style.padding_color, element.style.z)
@@ -141,12 +144,30 @@ def paint_element(
         case _:
             assert_never(element)
 
-    if paint:
-        cell_paint |= fill_rect(resolved.margin, element.style.z, element.style.content_color)
-        cell_paint |= paint
-    border_hints |= bhh
-
-    return cell_paint, border_hints, element.style.z, resolved.order
+    clip = resolved.clip_rect
+    if clip is None:
+        # Fast path: no clipping needed — use C-level dict merge
+        if paint:
+            return (
+                fill_rect(resolved.margin, element.style.z, element.style.content_color) | paint,
+                bhh,
+                element.style.z,
+                resolved.order,
+            )
+        return {}, bhh, element.style.z, resolved.order
+    else:
+        # Clipping path: filter cells through ClipDict
+        cell_paint: ClipDict[P] = ClipDict(clip)
+        border_hints: ClipDict[JoinedBorderParts] = ClipDict(clip)
+        if paint:
+            # Intersect the fill rect with the clip before filling — avoids iterating
+            # the full content height (e.g. hundreds of rows) when only the viewport is visible.
+            fill_region = clip.intersection(resolved.margin)
+            if fill_region is not None:
+                cell_paint.merge_within_clip(fill_rect(fill_region, element.style.z, element.style.content_color))
+            cell_paint |= paint
+        border_hints |= bhh
+        return cell_paint, border_hints, element.style.z, resolved.order
 
 
 def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:

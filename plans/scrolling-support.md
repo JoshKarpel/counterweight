@@ -512,3 +512,6 @@ def on_mouse(event: MouseEvent) -> AnyControl | None:
   supporting a list of handlers or having `use_scroll` return a composable handler
 - **Performance: large scroll containers** — a container with 10,000 items but a 20-row viewport
   should not lay out or paint all 10,000 items; requires virtualization (think React's `react-window`)
+- **Component `key` prop** — a `key` on any element that forces its subtree to unmount/remount when
+  the key changes, resetting all hook state; analogous to React's `key` prop. Would make `reset_on`
+  in `use_scroll` unnecessary: callers could just change the key on the scroll container instead.

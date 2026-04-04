@@ -161,6 +161,7 @@ def use_scroll(
     mouse_scroll_y: int = 1,
     key_scroll_x: int = 1,
     key_scroll_y: int = 1,
+    reset_on: object = None,
 ) -> tuple[ScrollState, Style, Callable[[MouseEvent], AnyControl | None], Callable[[KeyPressed], AnyControl | None]]:
     """
     Parameters:
@@ -172,6 +173,9 @@ def use_scroll(
         mouse_scroll_y: Number of rows to scroll per mouse wheel tick (vertical).
         key_scroll_x: Number of columns to scroll per left/right arrow key press.
         key_scroll_y: Number of rows to scroll per up/down arrow key press.
+        reset_on: When this value changes between renders, the scroll offset is reset to
+            ``(initial_offset_x, initial_offset_y)``. Useful for resetting scroll when the
+            content changes (e.g. navigating to a different file).
 
     Returns:
         A [`ScrollState`][counterweight.hooks.ScrollState] describing the current scroll position and bounds.
@@ -183,6 +187,13 @@ def use_scroll(
         An ``on_key``-compatible handler for arrow key scroll events.
     """
     (offset_x, offset_y), set_offset = use_state((initial_offset_x, initial_offset_y))
+    last_reset_key, set_last_reset_key = use_state(reset_on)
+
+    if reset_on != last_reset_key:
+        set_last_reset_key(reset_on)
+        set_offset((initial_offset_x, initial_offset_y))
+        offset_x, offset_y = initial_offset_x, initial_offset_y
+
     rects = use_rects()
 
     viewport_width = int(rects.padding.width) + 1
@@ -192,12 +203,25 @@ def use_scroll(
     overflow_y = waxy.Overflow.Scroll if scroll_y else waxy.Overflow.Hidden
     flex_dir = waxy.FlexDirection.Row if (scroll_x and not scroll_y) else waxy.FlexDirection.Column
 
-    scroll_style = Style(
-        layout=waxy.Style(
+    if scroll_x:
+        # When horizontal scrolling is enabled, children must NOT be stretched to the
+        # container width — they need to take their natural (content) width so they can
+        # overflow horizontally. Override any align_children_stretch the caller may have set.
+        layout = waxy.Style(
             overflow_x=overflow_x,
             overflow_y=overflow_y,
             flex_direction=flex_dir,
-        ),
+            align_items=waxy.AlignItems.FlexStart,
+        )
+    else:
+        layout = waxy.Style(
+            overflow_x=overflow_x,
+            overflow_y=overflow_y,
+            flex_direction=flex_dir,
+        )
+
+    scroll_style = Style(
+        layout=layout,
         scroll_offset_x=offset_x,
         scroll_offset_y=offset_y,
     )
