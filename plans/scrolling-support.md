@@ -98,9 +98,11 @@ class ClipDict(UserDict[Position, T]):
 
 `paint_element` creates a `ClipDict[P]` (for cell paint) and a `ClipDict[JoinedBorderParts]`
 (for border healing hints) using `resolved.clip_rect`, then merges the results from the
-unchanged lru-cached functions into them via `|=`. Clipping happens automatically at merge
+unchanged sub-functions into them via `|=`. Clipping happens automatically at merge
 time — no clip parameters are added to `fill_rect`, `paint_edge`, `_paint_text`, or
 `paint_border`. These functions continue to return plain dicts.
+(`fill_rect`, `paint_edge`, `_paint_text` are lru_cached; `paint_border` is not, but all four
+are unchanged and continue to return plain dicts regardless.)
 
 `paint_element` returns `tuple[Mapping[Position, P], Mapping[Position, JoinedBorderParts], int, int]`
 (relaxed from `dict` to `Mapping`). `paint_layout` accumulates into a plain `dict` as before,
@@ -113,6 +115,11 @@ We apply it in `_extract_layout`: when walking a scroll container's children, su
 container's `(scroll_x, scroll_y)` from `abs_x`/`abs_y` before recursing. This means child
 `ResolvedLayout` rects reflect their actual screen position (post-scroll), so paint and
 hit-testing work without further adjustment.
+
+The offset is available at layout time because `use_scroll` runs during component render
+(which precedes layout) and writes the current offset to `hooks.scroll_offset`. This is the
+same timing as `use_rects` / `hooks.dims`: render produces data that layout reads.
+`_extract_layout` reads `shadow.hooks.scroll_offset` when it encounters a scroll container.
 
 ### 4. `use_scroll` hook API
 
@@ -133,7 +140,7 @@ def use_scroll(
     scroll_y: bool = True,
     initial_offset_x: int = 0,
     initial_offset_y: int = 0,
-) -> tuple[ScrollState, Style, Callable[[AnyMouseEvent], AnyControl | None]]:
+) -> tuple[ScrollState, Style, Callable[[AnyMouseEvent], AnyControl | None], Callable[[KeyPressed], AnyControl | None]]:
 ```
 
 The hook returns:
@@ -143,6 +150,10 @@ The hook returns:
 - `on_mouse` handler — an `on_mouse`-compatible callable that handles `MouseScrolledUp` /
   `MouseScrolledDown` events and returns `StopPropagation()` when it acts on them; the
   component applies this to the scroll container element via `on_mouse=scroll_on_mouse`
+- `on_key` handler — an `on_key`-compatible callable that handles arrow key presses:
+  `"up"`/`"down"` scroll vertically (if `scroll_y`), `"left"`/`"right"` scroll horizontally
+  (if `scroll_x`); returns `StopPropagation()` when it acts, `None` otherwise; the component
+  applies this to the scroll container element via `on_key=scroll_on_key`
 
 The hook internally calls `use_state` for the offset and `use_rects` for viewport dimensions.
 
@@ -151,13 +162,29 @@ Returning a style keeps elements simple and follows the existing pattern where l
 configured via style merging. The style also carries an internal marker (a new `Style` field) that
 the layout system reads to identify scroll containers.
 
-### 5. Scroll events via `on_mouse` + `StopPropagation`
+**Note on flex direction:** taffy only reports a meaningful `content_size` when the container's
+children are laid out along the scroll axis. For vertical scroll (`scroll_y=True`), the returned
+`Style` sets `flex_direction=Column` so children stack vertically. Horizontal scroll sets
+`flex_direction=Row`. Without this, a single child can report `content_size=(0,0)` (verified
+empirically against waxy).
 
-Scroll events are handled via the existing `on_mouse` element dispatch. `use_scroll` returns an
-`on_mouse` handler that the component applies to its scroll container element. When a
-`MouseScrolledUp` or `MouseScrolledDown` arrives and the event position is within the container's
-border rect, the handler updates the scroll offset and returns `StopPropagation()` to prevent
-outer scroll containers from also scrolling.
+### 5. Scroll events via `on_mouse` + `on_key` + `StopPropagation`
+
+Scroll events are handled via the existing `on_mouse` and `on_key` element dispatch.
+`use_scroll` returns both handlers.
+
+**Mouse:** When `MouseScrolledUp` or `MouseScrolledDown` arrives and the event position is
+within the container's border rect, the `on_mouse` handler updates the scroll offset (clamped
+to `[0, max_offset]`) and returns `StopPropagation()` to prevent outer scroll containers from
+also scrolling.
+
+**Keyboard:** The `on_key` handler matches `KeyPressed(key="up")` / `KeyPressed(key="down")`
+for vertical scroll and `KeyPressed(key="left")` / `KeyPressed(key="right")` for horizontal
+scroll (controlled by the `scroll_x`/`scroll_y` flags passed to `use_scroll`). It returns
+`StopPropagation()` when it acts, `None` otherwise. Arrow key strings come from the `Key` enum
+in `counterweight/keys.py` (`Key.Up = "up"`, `Key.Down = "down"`, etc.).
+
+Both handlers share the same offset-update and clamp logic.
 
 A new `StopPropagation` control is added to `controls.py`:
 
@@ -199,7 +226,16 @@ Users can build their own scrollbar indicators using `ScrollState.offset_y` and
 `ScrollState.max_offset_y` if needed. Taffy's `scrollbar_width` can reserve gutter space for
 a future built-in scrollbar.
 
-### 8. Clip rect propagation for nested scroll containers
+### 8. `overflow_hidden` clips without `use_scroll`
+
+CSS `overflow: hidden` clips content without enabling scrolling — useful for text truncation,
+masked overlays, etc. The paint clipping logic activates based on the overflow style on
+`waxy.Style`, not on the presence of `use_scroll`. For elements with `overflow: hidden` or
+`overflow: clip`, the clip rect is set to the padding rect (same as scroll containers) and the
+scroll offset defaults to `(0, 0)`. The `overflow_hidden` / `overflow_clip` utilities are
+therefore useful on their own without `use_scroll`.
+
+### 9. Clip rect propagation for nested scroll containers
 
 Scroll containers can nest. A scrollable list inside a scrollable panel should clip to the
 *intersection* of both clip rects. During `_extract_layout`, we pass a `clip_rect` parameter
@@ -227,6 +263,7 @@ def _extract_layout(tree, node_id, node_map, abs_x, abs_y, results, clip_rect=No
 (any overflow mode that restricts visible content). `hidden` and `clip` are effectively
 identical in counterweight — both clip without scrolling; the distinction (whether programmatic
 scroll manipulation is allowed) only matters in browsers. `use_scroll` always sets `scroll`.
+See decision 8 for `overflow_hidden` standalone behavior.
 
 ---
 
@@ -234,20 +271,24 @@ scroll manipulation is allowed) only matters in browsers. `use_scroll` always se
 
 ### Step 1: Add scroll state infrastructure to hooks
 
+**File:** `src/counterweight/hooks/impls.py`
+
+Add `scroll_offset: tuple[int, int]` field to `Hooks` (default `(0, 0)`). `use_scroll` writes
+the current offset here during render so that the subsequent `_extract_layout` pass can read it
+from `shadow.hooks.scroll_offset` when it encounters a scroll container. This is the same
+pattern as `use_rects` / `hooks.dims`.
+
 **File:** `src/counterweight/hooks/hooks.py`
 
 Add `ScrollState` dataclass and `use_scroll` hook function.
 
 `use_scroll` internally:
 - Calls `use_state((0, 0))` for the scroll offset
+- Writes the current offset to `current_hook_state.get().scroll_offset` (same frame, before layout)
 - Calls `use_rects()` to get viewport dimensions (from previous frame, same as `use_hovered`)
-- Returns `ScrollState` (computed from rects + offset), a `Style` with overflow set, and an
-  `on_mouse` handler that handles scroll events and returns `StopPropagation()` when it acts
-
-**File:** `src/counterweight/hooks/impls.py`
-
-Add `scroll_offset: tuple[int, int]` field to `Hooks` (default `(0, 0)`). The layout step
-reads `hooks.scroll_offset` when it encounters a scroll container.
+- Returns `ScrollState` (computed from rects + offset), a `Style` with overflow and
+  `flex_direction` set, and an `on_mouse` handler that handles scroll events and returns
+  `StopPropagation()` when it acts
 
 ### Step 2: Propagate scroll offset through layout
 
@@ -308,7 +349,8 @@ dispatch path — no special-casing needed. The `on_mouse` handler returned by `
 checks whether the event position is within the container's border rect, updates the offset
 (clamped to `[0, max_offset]`), and returns `StopPropagation()`.
 
-For keyboard scrolling: defer to future work (requires focus tracking).
+Arrow key scroll (`on_key` handler from `use_scroll`) flows through the same `on_key` dispatch
+path — no special-casing needed.
 
 ### Step 5: Style utilities for overflow
 
@@ -334,22 +376,7 @@ overflow_y_scroll = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Scroll))
 These are useful even without `use_scroll` — `overflow_hidden` / `overflow_clip` enable
 content clipping without scrolling (useful for text truncation, masked overlays, etc.).
 
-### Step 6: `use_scroll` populates scroll metadata on hooks
-
-**File:** `src/counterweight/hooks/impls.py`
-
-Add a `scroll_offset: tuple[int, int]` field to `Hooks`, default `(0, 0)`. When `use_scroll`
-is called, it stores the setter and reads the offset from hooks. The layout step reads
-`hooks.scroll_offset` when it encounters a scroll container.
-
-Alternatively, `use_scroll` could store the offset as a regular `use_state` value and the
-layout step finds it via a mapping keyed by shadow node identity. This avoids adding fields to
-`Hooks` but requires the mapping to be populated before layout runs.
-
-**Decision:** Add `scroll_offset` directly to `Hooks`. It's simpler and mirrors how `dims` is
-already stored on `Hooks` for `use_rects`.
-
-### Step 7: Hit-testing adjustment for scrolled content
+### Step 6: Hit-testing adjustment for scrolled content
 
 **File:** `src/counterweight/app.py`
 
@@ -362,18 +389,20 @@ However, we must also ensure that children scrolled outside the clip rect don't 
 mouse events. During mouse dispatch, skip elements where `resolved.clip_rect` is set and the
 event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 
-### Step 8: Tests
+### Step 7: Tests
 
 **File:** `tests/test_scrolling.py`
 
 - Scroll container clips children outside viewport
 - `use_scroll` returns correct `ScrollState` values
 - Mouse scroll events update scroll offset
+- Arrow key events update scroll offset (`on_key` handler)
 - Scroll offset is clamped to `[0, max_offset]`
 - Nested scroll containers clip to intersection
 - Children scrolled off-screen don't receive mouse events
 - `overflow_hidden` clips without enabling scrolling
 - Horizontal scrolling works independently of vertical
+- `on_key` handler respects `scroll_x`/`scroll_y` flags (e.g. left/right ignored when `scroll_x=False`)
 
 ---
 
@@ -394,19 +423,10 @@ event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 
 ---
 
-## Open Questions
-
-1. **Should `overflow_hidden` clip without `use_scroll`?** CSS `overflow: hidden` clips content
-   without enabling scrolling. This is useful independently (e.g. truncating text in a fixed-size
-   box). The paint clipping logic should activate based on the overflow style, not the presence of
-   `use_scroll`. The scroll offset just defaults to (0, 0) when there's no `use_scroll`.
-
----
-
 ## Future Work
 
 - **Visual scrollbar rendering** — paint a scrollbar track/thumb in the gutter
-- **Keyboard scrolling** — arrow keys, Page Up/Down, Home/End within focused scroll containers
+- **Extended keyboard scrolling** — Page Up/Down, Home/End within focused scroll containers
 - **Virtualized scrolling** — only render items near the viewport for large lists
 - **`scroll_to` API** — `scroll_to(offset)` or `scroll_to_item(index)` for programmatic positioning;
   can be added to `ScrollState` or as an additional return value from `use_scroll` without changing the architecture
