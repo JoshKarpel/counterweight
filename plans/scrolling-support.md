@@ -430,6 +430,141 @@ event position is not contained in it (i.e. `pos not in resolved.clip_rect`).
 | `codegen/generate_utilities.py` | Overflow utility generation |
 | `src/counterweight/styles/utilities.py` | Generated overflow utilities (via codegen) |
 | `tests/test_scrolling.py` | New test file |
+| `examples/file_viewer.py` | New example app |
+
+---
+
+## Example App: Split-Pane File Viewer
+
+**File:** `examples/file_viewer.py`
+
+A side-by-side viewer for two files. Demonstrates independent scroll state per pane, mouse
+scroll, keyboard scroll on the focused pane, and click-to-focus.
+
+### Component structure
+
+```
+root(left_path, right_path)
+  Div [row | full]
+    file_pane(left_path, focused=True/False, ...)
+    file_pane(right_path, focused=True/False, ...)
+  Text [status bar]
+```
+
+### Key design points
+
+**Focus tracking:** `root` holds `focused: Literal["left", "right"]` in `use_state`. Tab
+switches focus; clicking a pane focuses it. The focused pane's `on_key=scroll_on_key`; the
+unfocused pane gets `on_key=None`. This avoids both panes scrolling simultaneously — without
+focus tracking `on_key` goes to all elements, so both would scroll.
+
+**Wrap toggle:** Only the right pane's wrap mode is toggleable (`"none"` | `"stable"`),
+defaulting to `"none"`. The left pane is always `"none"` — it's intended for file tree /
+structured content where wrapping never makes sense. `Key.W` toggles the right pane's wrap
+mode (only active when the right pane is focused). Status bar shows the right pane's current
+wrap mode.
+
+**Horizontal scrolling:** When wrap mode is `"none"`, lines can exceed the pane width, so
+horizontal scroll is needed. Pass `scroll_x=True, scroll_y=True` to `use_scroll` when wrap is
+`"none"`, and `scroll_x=False, scroll_y=True` when wrap is `"stable"` (wrapped content never
+overflows horizontally). Left/right arrows scroll horizontally in `"none"` mode; the
+`on_key` handler from `use_scroll` handles this automatically based on the `scroll_x` flag.
+
+**`on_mouse` composition:** `file_pane` needs both click-to-focus and mouse scroll. Since
+`on_mouse` is a single callable, wrap them manually:
+
+```python
+def on_mouse(event: MouseEvent) -> AnyControl | None:
+    if isinstance(event, MouseDown):
+        set_focused(side)
+    return scroll_on_mouse(event)
+```
+
+**File content:** Read the file once at component mount via `use_state` initialized with the
+file contents. Render as a single `Text` element with `text_wrap_stable` inside the scroll
+container. `_measure_text` reports the correct wrapped height to taffy, so `content_size`
+is accurate without needing per-line elements.
+
+**Border title:** Render the filename as an absolutely-positioned `Text` at `inset_top(-1) |
+inset_left(2)` inside each pane (same pattern as `text_wrap.py`).
+
+**CLI:** Accept two file paths as positional args. Use `sys.argv` directly or a minimal typer
+command — keep it simple, the focus is the scrolling demo.
+
+### Sketch
+
+```python
+@component
+def root(left_path: str, right_path: str) -> Div:
+    focused, set_focused = use_state("left")
+    right_wrap, set_right_wrap = use_state("none")
+
+    def on_key(event: KeyPressed) -> AnyControl | None:
+        match event.key:
+            case Key.ControlC: return Quit()
+            case Key.Tab: set_focused(lambda f: "right" if f == "left" else "left")
+            case Key.W if focused == "right":
+                set_right_wrap(lambda w: "stable" if w == "none" else "none")
+        return None
+
+    return Div(
+        style=col | full | align_children_stretch,
+        on_key=on_key,
+        children=[
+            Div(
+                style=row | grow(1) | align_children_stretch,
+                children=[
+                    file_pane(left_path, focused == "left", set_focused, "left", "none"),
+                    file_pane(right_path, focused == "right", set_focused, "right", right_wrap),
+                ],
+            ),
+            Text(
+                content=f"tab: switch pane  ·  w: toggle wrap [{right_wrap}]  ·  scroll / arrows: scroll  ·  ctrl+c: quit",
+                style=text_justify_center | text_color("slate", 500) | pad_y(1),
+            ),
+        ],
+    )
+
+
+@component
+def file_pane(
+    path: str,
+    focused: bool,
+    set_focused: Callable[[str], None],
+    side: str,
+    wrap: Literal["none", "stable"],
+) -> Div:
+    content, _ = use_state(lambda: pathlib.Path(path).read_text())
+    scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(
+        scroll_x=(wrap == "none"),
+        scroll_y=True,
+    )
+
+    def on_mouse(event: MouseEvent) -> AnyControl | None:
+        if isinstance(event, MouseDown):
+            set_focused(side)
+        return scroll_on_mouse(event)
+
+    border_col = border_color("sky", 600) if focused else border_color("slate", 700)
+    wrap_style = text_wrap_stable if wrap == "stable" else text_wrap_none
+
+    return Div(
+        style=grow(1) | min_width(0) | col | align_children_stretch
+              | border_lightrounded | border_col | scroll_style,
+        on_mouse=on_mouse,
+        on_key=scroll_on_key if focused else None,
+        children=[
+            Text(
+                content=f" {path} [{wrap}] ",
+                style=position_absolute | inset_top(-1) | inset_left(2) | border_col,
+            ),
+            Text(
+                content=content,
+                style=grow(1) | wrap_style,
+            ),
+        ],
+    )
+```
 
 ---
 
