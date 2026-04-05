@@ -443,3 +443,139 @@ async def test_reset_on_clears_scroll_offset() -> None:
         [KeyPressed(key="down"), KeyPressed(key="down"), KeyPressed(key="tab")],
     )
     assert "B" in result
+
+
+# ---------------------------------------------------------------------------
+# auto_scroll_to_y: viewport follows a cursor row
+# ---------------------------------------------------------------------------
+
+
+async def test_auto_scroll_to_y_keeps_row_visible() -> None:
+    ITEMS = [f"item{i:02d}" for i in range(20)]
+
+    # use_scroll must be in the component whose top-level element IS the scroll container
+    # so that use_rects() returns the container's own dimensions, not a parent's.
+    @component
+    def scroll_list() -> Div:
+        selected, set_selected = use_state(0)
+        _, scroll_style, _on_mouse, _on_key = use_scroll(scroll_y=True, auto_scroll_to_y=selected)
+
+        def on_key(event: KeyPressed) -> None:
+            if event.key == "down":
+                set_selected(lambda i: min(i + 1, len(ITEMS) - 1))
+
+        return Div(
+            style=size(6, 3) | scroll_style | col | align_children_stretch,
+            on_key=on_key,
+            children=[Text(content="\n".join(ITEMS))],
+        )
+
+    @component
+    def root() -> Div:
+        return Div(style=col | full | align_children_stretch, children=[scroll_list()])
+
+    # After 5 down presses the selected row (item05) should be visible in the 3-row viewport
+    result = await _render_after_events(
+        root,
+        (10, 5),
+        [KeyPressed(key="down")] * 5,
+    )
+    assert "item05" in result
+    assert "item00" not in result
+
+
+async def test_auto_scroll_to_y_scrolls_back_up() -> None:
+    ITEMS = [f"item{i:02d}" for i in range(20)]
+
+    @component
+    def scroll_list() -> Div:
+        selected, set_selected = use_state(10)
+        _, scroll_style, _on_mouse, _on_key = use_scroll(scroll_y=True, auto_scroll_to_y=selected)
+
+        def on_key(event: KeyPressed) -> None:
+            if event.key == "up":
+                set_selected(lambda i: max(i - 1, 0))
+
+        return Div(
+            style=size(6, 3) | scroll_style | col | align_children_stretch,
+            on_key=on_key,
+            children=[Text(content="\n".join(ITEMS))],
+        )
+
+    @component
+    def root() -> Div:
+        return Div(style=col | full | align_children_stretch, children=[scroll_list()])
+
+    # Start at item10; pressing up 5 times should bring item05 into view
+    result = await _render_after_events(
+        root,
+        (10, 5),
+        [KeyPressed(key="up")] * 5,
+    )
+    assert "item05" in result
+
+
+# ---------------------------------------------------------------------------
+# ScrollState.scroll_to: programmatic viewport control
+# ---------------------------------------------------------------------------
+
+
+async def test_scroll_state_scroll_to_moves_viewport() -> None:
+    ITEMS = [f"item{i:02d}" for i in range(20)]
+
+    @component
+    def scroll_list() -> Div:
+        state, scroll_style, _on_mouse, _on_key = use_scroll(scroll_y=True)
+
+        def on_key(event: KeyPressed) -> None:
+            if event.key == "down":
+                state.scroll_to(0, 5)
+
+        return Div(
+            style=size(6, 3) | scroll_style | col | align_children_stretch,
+            on_key=on_key,
+            children=[Text(content="\n".join(ITEMS))],
+        )
+
+    @component
+    def root() -> Div:
+        return Div(style=col | full | align_children_stretch, children=[scroll_list()])
+
+    result = await _render_after_events(root, (10, 5), [KeyPressed(key="down")])
+    assert "item05" in result
+    assert "item00" not in result
+
+
+async def test_scroll_state_scroll_to_does_not_conflict_with_mouse_scroll() -> None:
+    """scroll_to in key handler + mouse scroll should coexist: mouse can freely adjust viewport."""
+    ITEMS = [f"item{i:02d}" for i in range(20)]
+
+    @component
+    def scroll_list() -> Div:
+        cursor, set_cursor = use_state(0)
+        state, scroll_style, on_mouse, _on_key = use_scroll(scroll_y=True)
+
+        def on_key(event: KeyPressed) -> None:
+            if event.key == "down":
+                new = min(cursor + 1, len(ITEMS) - 1)
+                set_cursor(new)
+                vh = state.viewport_height
+                if new >= state.offset_y + vh:
+                    state.scroll_to(0, new - vh + 1)
+
+        return Div(
+            style=size(6, 3) | scroll_style | col | align_children_stretch,
+            on_key=on_key,
+            on_mouse=on_mouse,
+            children=[Text(content="\n".join(ITEMS))],
+        )
+
+    @component
+    def root() -> Div:
+        return Div(style=col | full | align_children_stretch, children=[scroll_list()])
+
+    # Navigate to bottom (item19), then mouse-scroll up — viewport should stay scrolled up
+    downs: list[AnyEvent] = [KeyPressed(key="down")] * 19
+    result = await _render_after_events(root, (10, 5), [*downs, MouseScrolledUp(absolute=Position(1, 1))])
+    # After scroll-up, item19 should no longer be at the bottom edge
+    assert "item19" not in result

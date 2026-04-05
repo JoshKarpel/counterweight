@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import overload
 
 import waxy
@@ -150,6 +150,7 @@ class ScrollState:
     viewport_height: int
     content_width: int
     content_height: int
+    scroll_to: Callable[[int, int], None] = field(repr=False, compare=False)
 
 
 def use_scroll(
@@ -162,6 +163,8 @@ def use_scroll(
     key_scroll_x: int = 1,
     key_scroll_y: int = 1,
     reset_on: object = None,
+    auto_scroll_to_x: int | None = None,
+    auto_scroll_to_y: int | None = None,
 ) -> tuple[ScrollState, Style, Callable[[MouseEvent], AnyControl | None], Callable[[KeyPressed], AnyControl | None]]:
     """
     Parameters:
@@ -176,6 +179,12 @@ def use_scroll(
         reset_on: When this value changes between renders, the scroll offset is reset to
             ``(initial_offset_x, initial_offset_y)``. Useful for resetting scroll when the
             content changes (e.g. navigating to a different file).
+        auto_scroll_to_x: When set, the scroll offset is adjusted each render so that this
+            column is visible in the viewport. Useful for following a cursor horizontally.
+            Must be called from a component whose top-level element is the scroll container.
+        auto_scroll_to_y: When set, the scroll offset is adjusted each render so that this
+            row is visible in the viewport. Useful for following a cursor vertically.
+            Must be called from a component whose top-level element is the scroll container.
 
     Returns:
         A [`ScrollState`][counterweight.hooks.ScrollState] describing the current scroll position and bounds.
@@ -195,9 +204,33 @@ def use_scroll(
         offset_x, offset_y = initial_offset_x, initial_offset_y
 
     rects = use_rects()
+    dims = current_hook_state.get().dims
 
     viewport_width = int(rects.padding.width) + 1
     viewport_height = int(rects.padding.height) + 1
+
+    # content_size is only available when this component's top-level element IS the scroll
+    # container. When it's None (outer wrapper component), skip clamping to avoid blocking scroll.
+    content_width = int(dims.content_size.width) if dims.content_size is not None else viewport_width
+    content_height = int(dims.content_size.height) if dims.content_size is not None else viewport_height
+    max_offset_x = max(0, content_width - viewport_width) if dims.content_size is not None else 2**31
+    max_offset_y = max(0, content_height - viewport_height) if dims.content_size is not None else 2**31
+
+    if auto_scroll_to_x is not None:
+        if auto_scroll_to_x < offset_x:
+            offset_x = max(0, auto_scroll_to_x)
+            set_offset((offset_x, offset_y))
+        elif auto_scroll_to_x >= offset_x + viewport_width:
+            offset_x = min(max_offset_x, auto_scroll_to_x - viewport_width + 1)
+            set_offset((offset_x, offset_y))
+
+    if auto_scroll_to_y is not None:
+        if auto_scroll_to_y < offset_y:
+            offset_y = max(0, auto_scroll_to_y)
+            set_offset((offset_x, offset_y))
+        elif auto_scroll_to_y >= offset_y + viewport_height:
+            offset_y = min(max_offset_y, auto_scroll_to_y - viewport_height + 1)
+            set_offset((offset_x, offset_y))
 
     overflow_x = waxy.Overflow.Scroll if scroll_x else waxy.Overflow.Hidden
     overflow_y = waxy.Overflow.Scroll if scroll_y else waxy.Overflow.Hidden
@@ -226,22 +259,26 @@ def use_scroll(
         scroll_offset_y=offset_y,
     )
 
+    def _scroll_to(x: int, y: int) -> None:
+        set_offset((max(0, min(x, max_offset_x)), max(0, min(y, max_offset_y))))
+
     state = ScrollState(
         offset_x=offset_x,
         offset_y=offset_y,
-        max_offset_x=0,
-        max_offset_y=0,
+        max_offset_x=max_offset_x,
+        max_offset_y=max_offset_y,
         viewport_width=viewport_width,
         viewport_height=viewport_height,
-        content_width=viewport_width,
-        content_height=viewport_height,
+        content_width=content_width,
+        content_height=content_height,
+        scroll_to=_scroll_to,
     )
 
     def _update_offset(dx: int, dy: int) -> None:
         def clamp(current: tuple[int, int]) -> tuple[int, int]:
             cx, cy = current
-            new_x = max(0, cx + dx)
-            new_y = max(0, cy + dy)
+            new_x = max(0, min(cx + dx, max_offset_x))
+            new_y = max(0, min(cy + dy, max_offset_y))
             return (new_x, new_y)
 
         set_offset(clamp)

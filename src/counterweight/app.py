@@ -4,6 +4,7 @@ import dataclasses
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from asyncio import sleep as asyncio_sleep
 from collections import deque
 from collections.abc import Callable
 from itertools import chain, repeat
@@ -26,6 +27,7 @@ from counterweight.controls import (
     PrintPaint,
     Quit,
     Screenshot,
+    Sleep,
     StopPropagation,
     Suspend,
     ToggleBorderHealing,
@@ -170,6 +172,7 @@ async def app(
         should_screenshot: Screenshot | None = None
         should_print_paint: PrintPaint | None = None
         should_suspend: Suspend | None = None
+        should_sleep: Sleep | None = None
 
         do_heal_borders = True
 
@@ -187,6 +190,7 @@ async def app(
             nonlocal should_screenshot
             nonlocal should_print_paint
             nonlocal should_suspend
+            nonlocal should_sleep
 
             nonlocal do_heal_borders
 
@@ -206,6 +210,8 @@ async def app(
                 case Suspend():
                     should_suspend = control
                     should_render = True
+                case Sleep():
+                    should_sleep = control
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
@@ -293,6 +299,10 @@ async def app(
                     )
 
                     should_suspend = None
+
+                if should_sleep:
+                    await asyncio_sleep(should_sleep.seconds)
+                    should_sleep = None
 
                 if should_render:
                     start_render = perf_counter_ns()

@@ -6,9 +6,9 @@ import subprocess
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit
+from counterweight.controls import AnyControl, Quit, StopPropagation
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseDown, MouseEvent
+from counterweight.events import KeyPressed, MouseDown, MouseEvent, MouseScrolledDown, MouseScrolledUp
 from counterweight.hooks import Setter, use_effect, use_scroll, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -108,7 +108,7 @@ def root() -> Div:
         on_key=on_key,
         children=[
             Div(
-                style=row | grow(1) | align_children_stretch,
+                style=row | grow(1) | min_height(0) | align_children_stretch,
                 children=[
                     tree_pane(
                         tree,
@@ -140,7 +140,9 @@ def tree_pane(
     focused: bool,
     set_focused_pane: Setter[str],
 ) -> Div:
-    _scroll_state, scroll_style, scroll_on_mouse, scroll_on_key = use_scroll(scroll_y=True)
+    _scroll_state, scroll_style, _scroll_on_mouse, scroll_on_key = use_scroll(
+        scroll_y=True, auto_scroll_to_y=selected_idx
+    )
 
     # Cache formatted lines — only rebuild when tree identity or selection changes.
     # is_dir is precomputed in each TreeEntry so no stat calls happen here.
@@ -169,7 +171,13 @@ def tree_pane(
     def on_mouse(event: MouseEvent) -> AnyControl | None:
         if isinstance(event, MouseDown):
             set_focused_pane("tree")
-        return scroll_on_mouse(event)
+        if isinstance(event, MouseScrolledDown):
+            set_selected_idx(lambda i: min(i + 1, max(len(tree) - 1, 0)))
+            return StopPropagation()
+        elif isinstance(event, MouseScrolledUp):
+            set_selected_idx(lambda i: max(i - 1, 0))
+            return StopPropagation()
+        return None
 
     border_col = border_color("sky", 600) if focused else border_color("slate", 700)
 
@@ -184,7 +192,7 @@ def tree_pane(
             ),
             Text(
                 content=lines_text,
-                style=grow(1) | text_wrap_none,
+                style=text_wrap_none,
             ),
         ],
     )
@@ -225,7 +233,7 @@ def content_pane(
             ),
             Text(
                 content=body,
-                style=grow(1) | text_wrap_none,
+                style=text_wrap_none,
             ),
         ],
     )
