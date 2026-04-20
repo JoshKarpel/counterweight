@@ -1,6 +1,6 @@
 #!/usr/bin/env just --justfile
 
-set ignore-comments := true
+set ignore-comments
 
 [default]
 [doc('List available recipes')]
