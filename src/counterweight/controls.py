@@ -118,11 +118,30 @@ class ToggleBorderHealing(_Control):
     """
 
 
+@dataclass(frozen=True, slots=True)
+class Sleep(_Control):
+    """
+    Pause autopilot processing for the given number of seconds.
+
+    Useful in headless/autopilot mode to wait for async effects (e.g. background threads)
+    to complete before taking a screenshot or asserting on rendered output.
+    """
+
+    seconds: float
+
+
+@dataclass(frozen=True, slots=True)
+class StopPropagation(_Control):
+    """Stop dispatching the current event to further elements."""
+
+
 AnyControl = Union[
     Quit,
     Bell,
     Screenshot,
     PrintPaint,
     Suspend,
+    Sleep,
     ToggleBorderHealing,
+    StopPropagation,
 ]

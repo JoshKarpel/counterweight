@@ -4,6 +4,7 @@ import dataclasses
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from asyncio import sleep as asyncio_sleep
 from collections import deque
 from collections.abc import Callable
 from itertools import chain, repeat
@@ -26,6 +27,8 @@ from counterweight.controls import (
     PrintPaint,
     Quit,
     Screenshot,
+    Sleep,
+    StopPropagation,
     Suspend,
     ToggleBorderHealing,
     _Control,
@@ -169,6 +172,7 @@ async def app(
         should_screenshot: Screenshot | None = None
         should_print_paint: PrintPaint | None = None
         should_suspend: Suspend | None = None
+        should_sleep: Sleep | None = None
 
         do_heal_borders = True
 
@@ -178,7 +182,7 @@ async def app(
         shadow, _ = update_shadow(screen(), shadow)
         compute_layout(shadow, warmup_available)
 
-        def handle_control(control: AnyControl | None) -> None:
+        def handle_control(control: AnyControl | None) -> bool:
             nonlocal should_render
 
             nonlocal should_quit
@@ -186,12 +190,15 @@ async def app(
             nonlocal should_screenshot
             nonlocal should_print_paint
             nonlocal should_suspend
+            nonlocal should_sleep
 
             nonlocal do_heal_borders
 
             match control:
                 case None:
                     pass
+                case StopPropagation():
+                    return True
                 case Quit():
                     should_quit = True
                 case Bell():
@@ -203,9 +210,12 @@ async def app(
                 case Suspend():
                     should_suspend = control
                     should_render = True
+                case Sleep():
+                    should_sleep = control
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+            return False
 
         mouse_position = Position(x=-1, y=-1)
 
@@ -289,6 +299,10 @@ async def app(
                     )
 
                     should_suspend = None
+
+                if should_sleep:
+                    await asyncio_sleep(should_sleep.seconds)
+                    should_sleep = None
 
                 if should_render:
                     start_render = perf_counter_ns()
@@ -400,15 +414,19 @@ async def app(
                         case KeyPressed():
                             for element, _ in reversed(elements_and_layouts):
                                 if element.on_key:
-                                    handle_control(element.on_key(event))
+                                    if handle_control(element.on_key(event)):
+                                        break
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
                             mouse_pos = waxy.Point(x=mouse_position.x, y=mouse_position.y)
                             event_pos = waxy.Point(x=m.absolute.x, y=m.absolute.y)
                             for element, resolved in reversed(elements_and_layouts):
+                                if resolved.clip_rect is not None and not resolved.clip_rect.contains(event_pos):
+                                    continue
                                 # Send mouse events if the current *or previous* position is in the border rect
                                 if resolved.border.contains(mouse_pos) or resolved.border.contains(event_pos):
                                     if element.on_mouse:
-                                        handle_control(element.on_mouse(event))
+                                        if handle_control(element.on_mouse(event)):
+                                            break
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(
