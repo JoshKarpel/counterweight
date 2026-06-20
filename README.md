@@ -3,7 +3,6 @@
 [![Docs](https://img.shields.io/badge/docs-exist-brightgreen)](https://www.counterweight.dev)
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/JoshKarpel/counterweight/main.svg)](https://results.pre-commit.ci/latest/github/JoshKarpel/counterweight/main)
-[![codecov](https://codecov.io/gh/JoshKarpel/counterweight/branch/main/graph/badge.svg?token=2sjP4V0AfY)](https://codecov.io/gh/JoshKarpel/counterweight)
 
 [![GitHub issues](https://img.shields.io/github/issues/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/pulls)
