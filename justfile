@@ -18,8 +18,10 @@ alias w := watch
 [doc('Stage updated files and run pre-commit hooks')]
 pre-commit:
     git add --update
-    uv run pre-commit
+    -uv run pre-commit
+    git add --update
 
+alias pc := pre-commit
 alias p := pre-commit
 
 [doc('Run type checking and tests')]

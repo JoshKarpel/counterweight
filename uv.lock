@@ -225,7 +225,7 @@ requires-dist = [
     { name = "parsy", specifier = ">=2.1" },
     { name = "structlog", specifier = ">=23.1" },
     { name = "typer", specifier = ">=0.9" },
-    { name = "waxy", specifier = ">=0.4.0" },
+    { name = "waxy", specifier = ">=0.5.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1430,14 +1430,14 @@ wheels = [
 
 [[package]]
 name = "waxy"
-version = "0.4.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/54/b2/31b92aa900ddd6f3dd270b586f2751cd72962d985c2059d6f2345c23f5e7/waxy-0.4.0.tar.gz", hash = "sha256:4d7ebfeeb190c2d437833eb33646e775c4ebd7acdaa1bf01d9cc03e682653725", size = 111984, upload-time = "2026-03-01T16:24:11.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/43/95b9bc5b338a2fe1338933b68b208a34e76cb1c553380383bf1ce20152af/waxy-0.5.0.tar.gz", hash = "sha256:d1c771e62dc8a288974e494e36144b35d831ec225832badd676c180f70629b91", size = 112822, upload-time = "2026-04-04T02:35:56.994Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/7a/c8210c7ffb70892861756a87ae1a54b50a224db9255c8b24539fcc4b0360/waxy-0.4.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:e8d696139aacd18aee2000b1400112565cdaa38448d3c9567aa599a0438de4ca", size = 610448, upload-time = "2026-03-01T16:24:01.04Z" },
-    { url = "https://files.pythonhosted.org/packages/b4/ee/1908db86659cde12edfaa12247c1516bab56ac96011faca06f030525c165/waxy-0.4.0-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:cb686c7c853b1b7d68889fcb740e589db549de0615e39444ade223bea5227c3b", size = 683872, upload-time = "2026-03-01T16:24:02.952Z" },
-    { url = "https://files.pythonhosted.org/packages/51/29/4ebb34a8c4cdad898b0b34eccd31557c9d4ff818e58375c96ddf2324d3bf/waxy-0.4.0-cp313-cp313-win_amd64.whl", hash = "sha256:930fca6d47c39aab1d37b35f698464d5cd5294af07bd4e97126eebe178bc7958", size = 476145, upload-time = "2026-03-01T16:24:04.601Z" },
-    { url = "https://files.pythonhosted.org/packages/87/d9/0c5b1152f2834663f876743c2ea69dde839e1047d99fb07ee9279469c932/waxy-0.4.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:18776da8087cb96d31d65ca59a4fd12858fa0db039eadd7555336219e77be287", size = 603548, upload-time = "2026-03-01T16:24:06.494Z" },
-    { url = "https://files.pythonhosted.org/packages/cb/0f/887e6653bec923a5a8bd8b3a11eac0668cbffe48abaed33399211a01fe11/waxy-0.4.0-cp314-cp314-manylinux_2_34_x86_64.whl", hash = "sha256:1fed65dbc39e1f30828ea1b33aca2314ece191426ae28bba85bfad8c9aeb1646", size = 679015, upload-time = "2026-03-01T16:24:08.17Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/95/8e83d912740da1b45331c2279e2ef754913a96774c52dc8fc8cca0db53f9/waxy-0.4.0-cp314-cp314-win_amd64.whl", hash = "sha256:5eade6d2bd06ec92fe4b23bccff34219751bb8ef94e10f9ecb176bacc7052e94", size = 475201, upload-time = "2026-03-01T16:24:09.849Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/14/15bbeffbd14e72cceaaf13942549d8438e05748ecc23737ae03fd2358906/waxy-0.5.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:50a02bafb6806b04fb84933a6506388a37755a8ca01a0fb6db3350f700801704", size = 609948, upload-time = "2026-04-04T02:35:45.59Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/76/b1e901183100c7a8d4473b9dd9d73512d1cce844d661969bf1f7294d4a9c/waxy-0.5.0-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:a99ba05d71b04b96162586520557086003d6f057974e79193cfc65d56e0cf1a5", size = 684635, upload-time = "2026-04-04T02:35:47.784Z" },
+    { url = "https://files.pythonhosted.org/packages/08/19/73a98ad162ff6a846654bbef1cd5bd6c0547aa5369efc0b411ba0c477764/waxy-0.5.0-cp313-cp313-win_amd64.whl", hash = "sha256:522338a824ac96f6d61e3b2577adcf0f4ae18dc832e87a761d44498fa7d6cd06", size = 477066, upload-time = "2026-04-04T02:35:49.556Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/28/e129720a795267b1c31fef65c4865db98c0a88f17afea8bddb260cfff00d/waxy-0.5.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:4be0b28f6ec49cb290de14d9d7dcdfb6b9b3427b0dd7f552f4e570ab94e6fa87", size = 609640, upload-time = "2026-04-04T02:35:51.6Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/02/d22f76802c9f0b2baacbf57ab4f1b8ab5d0ce6cd0b2a59d3c436830b4fe4/waxy-0.5.0-cp314-cp314-manylinux_2_34_x86_64.whl", hash = "sha256:36144b5c78f0366d3416474a6fef350cb2d48e4be55dd3474246194d4cc91c2f", size = 679729, upload-time = "2026-04-04T02:35:53.455Z" },
+    { url = "https://files.pythonhosted.org/packages/89/9f/56d7e635b43a5b2a69926a4755cfac3444129e0024068562c21023a4dd89/waxy-0.5.0-cp314-cp314-win_amd64.whl", hash = "sha256:e9e33b0b088b09a60ab6a35c7cefd57b6f2a9a0f90830ff224f583b5b365b10b", size = 476734, upload-time = "2026-04-04T02:35:55.444Z" },
 ]
