@@ -509,6 +509,31 @@ for w in literal_vals(Style, "text_wrap"):
 
 generated_lines.append("")
 
+# --- Overflow utilities ---
+
+OVERFLOW_MAP = {
+    "Visible": "visible",
+    "Hidden": "hidden",
+    "Clip": "clip",
+    "Scroll": "scroll",
+}
+for name, alias in OVERFLOW_MAP.items():
+    generated_lines.append(
+        f"overflow_{alias} = Style(layout=waxy.Style(overflow_x=waxy.Overflow.{name}, overflow_y=waxy.Overflow.{name}))"
+    )
+
+generated_lines.append("")
+
+for name, alias in OVERFLOW_MAP.items():
+    generated_lines.append(f"overflow_x_{alias} = Style(layout=waxy.Style(overflow_x=waxy.Overflow.{name}))")
+
+generated_lines.append("")
+
+for name, alias in OVERFLOW_MAP.items():
+    generated_lines.append(f"overflow_y_{alias} = Style(layout=waxy.Style(overflow_y=waxy.Overflow.{name}))")
+
+generated_lines.append("")
+
 output = "\n".join(
     [
         *utils_text[: start + 1],
