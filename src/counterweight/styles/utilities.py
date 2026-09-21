@@ -774,6 +774,21 @@ text_wrap_stable = Style(text_wrap="stable")
 text_wrap_pretty = Style(text_wrap="pretty")
 text_wrap_balance = Style(text_wrap="balance")
 
+overflow_visible = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Visible, overflow_y=waxy.Overflow.Visible))
+overflow_hidden = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Hidden, overflow_y=waxy.Overflow.Hidden))
+overflow_clip = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Clip, overflow_y=waxy.Overflow.Clip))
+overflow_scroll = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Scroll, overflow_y=waxy.Overflow.Scroll))
+
+overflow_x_visible = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Visible))
+overflow_x_hidden = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Hidden))
+overflow_x_clip = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Clip))
+overflow_x_scroll = Style(layout=waxy.Style(overflow_x=waxy.Overflow.Scroll))
+
+overflow_y_visible = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Visible))
+overflow_y_hidden = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Hidden))
+overflow_y_clip = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Clip))
+overflow_y_scroll = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Scroll))
+
 # Stop generated
 
 
