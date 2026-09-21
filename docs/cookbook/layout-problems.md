@@ -52,16 +52,22 @@ minimum, allowing the flex algorithm to freely distribute space:
 
 ```python
 # ✗ each pane expands to content width and overflows
-Div(style=row | align_children_stretch, children=[
-    pane_a(),   # has grow(1) but no min_width(0)
-    pane_b(),
-])
+Div(
+    style=row | align_children_stretch,
+    children=[
+        pane_a(),  # has grow(1) but no min_width(0)
+        pane_b(),
+    ],
+)
 
 # ✓ panes share the available width equally
-Div(style=row | align_children_stretch, children=[
-    pane_a(),   # has grow(1) | min_width(0)
-    pane_b(),
-])
+Div(
+    style=row | align_children_stretch,
+    children=[
+        pane_a(),  # has grow(1) | min_width(0)
+        pane_b(),
+    ],
+)
 ```
 
 The full pattern for an equal two-column split:
@@ -100,6 +106,7 @@ the root must declare its own size explicitly.
 @component
 def root() -> Div:
     return Div(style=col | align_children_stretch, children=[...])
+
 
 # ✓ root fills the terminal
 @component
@@ -158,5 +165,5 @@ Use twice as much horizontal padding as vertical to achieve a balanced appearanc
 
 ```python
 # ✓ visually balanced padding
-style=pad_x(2) | pad_y(1)
+style = pad_x(2) | pad_y(1)
 ```
