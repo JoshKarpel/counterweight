@@ -21,13 +21,13 @@ waxy 0.3.0 is already in `pyproject.toml` and installed.
 **Current** `Style` (`styles/styles.py:678`) has nested `StyleFragment` subclasses:
 
 ```python
-class Style(StyleFragment):         # line 678
-    layout: Flex = Flex()           # Flex has direction, position, weight, z, align_self, justify/align_children, gap_children
-    span: Span = Span()             # width/height: int | "auto"
-    margin: Margin = Margin()       # top/bottom/left/right: int + color: Color
-    border: Border | None = None    # kind, style (CellStyle), edges, contract
-    padding: Padding = Padding()    # top/bottom/left/right: int + color: Color
-    content: Content = Content()    # color: Color
+class Style(StyleFragment):  # line 678
+    layout: Flex = Flex()  # Flex has direction, position, weight, z, align_self, justify/align_children, gap_children
+    span: Span = Span()  # width/height: int | "auto"
+    margin: Margin = Margin()  # top/bottom/left/right: int + color: Color
+    border: Border | None = None  # kind, style (CellStyle), edges, contract
+    padding: Padding = Padding()  # top/bottom/left/right: int + color: Color
+    content: Content = Content()  # color: Color
     typography: Typography = Typography()  # style (CellStyle), justify, wrap
 ```
 
@@ -39,22 +39,22 @@ class Style(StyleFragment):
     layout: waxy.Style = waxy.Style()
 
     # Visual — counterweight-only, not passed to taffy
-    z: int = 0                                              # was layout.z
-    margin_color: Color = Color.from_name("black")          # was margin.color
-    padding_color: Color = Color.from_name("black")         # was padding.color
-    content_color: Color = Color.from_name("black")         # was content.color
+    z: int = 0  # was layout.z
+    margin_color: Color = Color.from_name("black")  # was margin.color
+    padding_color: Color = Color.from_name("black")  # was padding.color
+    content_color: Color = Color.from_name("black")  # was content.color
 
     # Border visual (flattened from Border)
-    border_kind: BorderKind | None = None                   # was border.kind; None = no border
-    border_style: CellStyle | None = None                   # was border.style (fg/bg colors)
-    border_contract: int = 0                                # was border.contract
+    border_kind: BorderKind | None = None  # was border.kind; None = no border
+    border_style: CellStyle | None = None  # was border.style (fg/bg colors)
+    border_contract: int = 0  # was border.contract
     # Note: border_edges removed — which edges are active is determined by which
     # waxy.Style.border_* fields are nonzero (read from ResolvedLayout at paint time)
 
     # Typography (flattened from Typography)
-    text_style: CellStyle = CellStyle()                     # was typography.style
+    text_style: CellStyle = CellStyle()  # was typography.style
     text_justify: Literal["left", "center", "right"] = "left"  # was typography.justify
-    text_wrap: Literal["none"] = "none"                     # was typography.wrap; "paragraphs" dropped
+    text_wrap: Literal["none"] = "none"  # was typography.wrap; "paragraphs" dropped
 ```
 
 **`waxy.Style` is a Rust-backed Python class, not a pydantic model.** Pydantic cannot
@@ -132,11 +132,11 @@ Build a `ResolvedLayout` for each node with pre-computed absolute `waxy.Rect`s:
 ```python
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
-    content: waxy.Rect   # absolute rect of content box
-    padding: waxy.Rect   # absolute rect including padding
-    border: waxy.Rect    # absolute rect including border
-    margin: waxy.Rect    # absolute rect including margin
-    order: int           # taffy's computed paint order (from Layout.order)
+    content: waxy.Rect  # absolute rect of content box
+    padding: waxy.Rect  # absolute rect including padding
+    border: waxy.Rect  # absolute rect including border
+    margin: waxy.Rect  # absolute rect including margin
+    order: int  # taffy's computed paint order (from Layout.order)
 ```
 
 We use `waxy.Rect` (not counterweight's `Rect`) for all resolved layout rects.
@@ -365,8 +365,10 @@ submodule imports still resolve correctly.
    Generate all four directions including reverse variants:
    ```python
    DIRECTION_ALIASES = {
-       "Row": "row", "Column": "col",
-       "RowReverse": "row_reverse", "ColumnReverse": "col_reverse",
+       "Row": "row",
+       "Column": "col",
+       "RowReverse": "row_reverse",
+       "ColumnReverse": "col_reverse",
    }
    ```
 
@@ -377,8 +379,11 @@ submodule imports still resolve correctly.
    # OLD: iterated literal_vals(Flex, "justify_children") → "start", "center", etc.
    # NEW: iterate waxy.AlignContent members
    JUSTIFY_MAP = {
-       "Start": "start", "Center": "center", "End": "end",
-       "SpaceBetween": "space_between", "SpaceAround": "space_around",
+       "Start": "start",
+       "Center": "center",
+       "End": "end",
+       "SpaceBetween": "space_between",
+       "SpaceAround": "space_around",
        "SpaceEvenly": "space_evenly",
    }
    for member in waxy.AlignContent:
@@ -389,7 +394,10 @@ submodule imports still resolve correctly.
    # Similarly for align_children (waxy.AlignItems) and align_self (waxy.AlignItems)
    # Also generate justify_items and justify_self (used in grid layout)
    ALIGN_MAP = {
-       "Start": "start", "Center": "center", "End": "end", "Stretch": "stretch",
+       "Start": "start",
+       "Center": "center",
+       "End": "end",
+       "Stretch": "stretch",
    }
    for member in waxy.AlignItems:
        name = ALIGN_MAP.get(member.name)
@@ -435,7 +443,9 @@ submodule imports still resolve correctly.
    ```python
    # NEW (no counterweight equivalent existed):
    WRAP_MAP = {
-       "NoWrap": "no_wrap", "Wrap": "wrap", "WrapReverse": "wrap_reverse",
+       "NoWrap": "no_wrap",
+       "Wrap": "wrap",
+       "WrapReverse": "wrap_reverse",
    }
    for member in waxy.FlexWrap:
        name = WRAP_MAP.get(member.name)
@@ -461,8 +471,10 @@ submodule imports still resolve correctly.
    ```python
    # NEW (no counterweight equivalent existed):
    GRID_FLOW_MAP = {
-       "Row": "row", "Column": "column",
-       "RowDense": "row_dense", "ColumnDense": "column_dense",
+       "Row": "row",
+       "Column": "column",
+       "RowDense": "row_dense",
+       "ColumnDense": "column_dense",
    }
    for member in waxy.GridAutoFlow:
        name = GRID_FLOW_MAP.get(member.name)
@@ -494,9 +506,7 @@ submodule imports still resolve correctly.
    # NEW: just set the waxy border widths for the selected edges
    EDGE_SIDES = ["top", "bottom", "left", "right"]
    for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
-       border_widths = ", ".join(
-           f"border_{side}=waxy.Length(1)" for side in edges
-       )
+       border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
        f"border_{'_'.join(edges)} = Style("
        f"    layout=waxy.Style({border_widths}),"
        f")"
@@ -547,8 +557,16 @@ submodule imports still resolve correctly.
     Center variants use `waxy.Auto()` on both sides (see Open Questions §2):
 
     ```python
-    VERTICAL = {"top": "inset_top=waxy.Length(0)", "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()", "bottom": "inset_bottom=waxy.Length(0)"}
-    HORIZONTAL = {"left": "inset_left=waxy.Length(0)", "center": "inset_left=waxy.Auto(), inset_right=waxy.Auto()", "right": "inset_right=waxy.Length(0)"}
+    VERTICAL = {
+        "top": "inset_top=waxy.Length(0)",
+        "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()",
+        "bottom": "inset_bottom=waxy.Length(0)",
+    }
+    HORIZONTAL = {
+        "left": "inset_left=waxy.Length(0)",
+        "center": "inset_left=waxy.Auto(), inset_right=waxy.Auto()",
+        "right": "inset_right=waxy.Length(0)",
+    }
     ```
 
 12. **Border contract**:
@@ -569,65 +587,86 @@ utilities, they should cover the full commonly-used API surface.
 ```python
 # --- Kept (updated for waxy) ---
 
+
 def relative(x: int = 0, y: int = 0) -> Style:
-    return Style(layout=waxy.Style(
-        position=waxy.Position.Relative,
-        inset_left=waxy.Length(x),
-        inset_top=waxy.Length(y),
-    ))
+    return Style(
+        layout=waxy.Style(
+            position=waxy.Position.Relative,
+            inset_left=waxy.Length(x),
+            inset_top=waxy.Length(y),
+        )
+    )
+
 
 def absolute(x: int = 0, y: int = 0) -> Style:
-    return Style(layout=waxy.Style(
-        position=waxy.Position.Absolute,
-        inset_left=waxy.Length(x),
-        inset_top=waxy.Length(y),
-    ))
+    return Style(
+        layout=waxy.Style(
+            position=waxy.Position.Absolute,
+            inset_left=waxy.Length(x),
+            inset_top=waxy.Length(y),
+        )
+    )
+
 
 def z(z: int = 0) -> Style:
     return Style(z=z)
+
 
 # --- Deleted ---
 # fixed() — Fixed positioning dropped for now
 
 # --- New helpers (replacing Span and filling API gaps) ---
 
+
 def width(n: int) -> Style:
     """Set explicit width. Replaces Span(width=N)."""
     return Style(layout=waxy.Style(size_width=waxy.Length(n)))
+
 
 def height(n: int) -> Style:
     """Set explicit height. Replaces Span(height=N)."""
     return Style(layout=waxy.Style(size_height=waxy.Length(n)))
 
+
 def size(w: int, h: int) -> Style:
     """Set explicit width and height. Replaces Span(width=W, height=H)."""
     return Style(layout=waxy.Style(size_width=waxy.Length(w), size_height=waxy.Length(h)))
 
+
 def min_width(n: int) -> Style:
     return Style(layout=waxy.Style(min_size_width=waxy.Length(n)))
+
 
 def min_height(n: int) -> Style:
     return Style(layout=waxy.Style(min_size_height=waxy.Length(n)))
 
+
 def max_width(n: int) -> Style:
     return Style(layout=waxy.Style(max_size_width=waxy.Length(n)))
+
 
 def max_height(n: int) -> Style:
     return Style(layout=waxy.Style(max_size_height=waxy.Length(n)))
 
+
 def aspect_ratio(ratio: float) -> Style:
     return Style(layout=waxy.Style(aspect_ratio=ratio))
 
+
 # --- Grid helpers ---
+
 
 def grid_template_rows(*tracks: GridTrackValue) -> Style:
     return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
 
+
 def grid_template_columns(*tracks: GridTrackValue) -> Style:
     return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
 
+
 def grid_row(start: GridPlacementValue | None = None, end: GridPlacementValue | None = None) -> Style:
     return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
+
 
 def grid_column(start: GridPlacementValue | None = None, end: GridPlacementValue | None = None) -> Style:
     return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
@@ -657,9 +696,21 @@ def grid_column(start: GridPlacementValue | None = None, end: GridPlacementValue
 ```python
 # OLD:
 from counterweight.styles import (
-    Absolute, Border, BorderEdge, BorderKind, CellStyle,
-    Color, Content, Fixed, Flex, Inset, Margin, Padding,
-    Relative, Style, Typography,
+    Absolute,
+    Border,
+    BorderEdge,
+    BorderKind,
+    CellStyle,
+    Color,
+    Content,
+    Fixed,
+    Flex,
+    Inset,
+    Margin,
+    Padding,
+    Relative,
+    Style,
+    Typography,
 )
 
 # NEW:
@@ -676,16 +727,32 @@ from counterweight.styles import BorderKind, CellStyle, Color, Style
 Current exports (line 1-6):
 ```python
 __all__ = [
-    "Absolute", "Border", "BorderEdge", "BorderKind", "CellStyle",
-    "Color", "Content", "Fixed", "Flex", "Inset", "Margin",
-    "Padding", "Relative", "Span", "Style", "Typography",
+    "Absolute",
+    "Border",
+    "BorderEdge",
+    "BorderKind",
+    "CellStyle",
+    "Color",
+    "Content",
+    "Fixed",
+    "Flex",
+    "Inset",
+    "Margin",
+    "Padding",
+    "Relative",
+    "Span",
+    "Style",
+    "Typography",
 ]
 ```
 
 **New exports** (remove deleted classes, add nothing new — `waxy` types imported directly):
 ```python
 __all__ = [
-    "BorderKind", "CellStyle", "Color", "Style",
+    "BorderKind",
+    "CellStyle",
+    "Color",
+    "Style",
 ]
 ```
 
@@ -709,6 +776,7 @@ __all__ = [
 import waxy
 from counterweight.shadow import ShadowNode
 from counterweight.elements import AnyElement, Text
+
 
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
@@ -760,10 +828,7 @@ def _build_node(
         case Text():
             node_id = tree.new_leaf_with_context(element.style.layout, element)
         case Div():
-            child_ids = [
-                _build_node(tree, child_shadow, node_map)
-                for child_shadow in shadow.children
-            ]
+            child_ids = [_build_node(tree, child_shadow, node_map) for child_shadow in shadow.children]
             node_id = tree.new_with_children(element.style.layout, child_ids)
         case _:
             assert_never(element)
@@ -1070,6 +1135,7 @@ new_paint, border_healing_hints = paint_layout(layout_tree)
 
 # NEW:
 from counterweight.layout import compute_layout as compute_layout_new
+
 elements_and_layouts = compute_layout_new(shadow, w, h)
 new_paint, border_healing_hints = paint_layout(elements_and_layouts)
 ```
@@ -1148,10 +1214,14 @@ Conversions:
 # NEW:
 Style(
     layout=waxy.Style(
-        padding_top=waxy.Length(1), padding_bottom=waxy.Length(1),
-        padding_left=waxy.Length(1), padding_right=waxy.Length(1),
-        border_top=waxy.Length(1), border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1), border_right=waxy.Length(1),
+        padding_top=waxy.Length(1),
+        padding_bottom=waxy.Length(1),
+        padding_left=waxy.Length(1),
+        padding_right=waxy.Length(1),
+        border_top=waxy.Length(1),
+        border_bottom=waxy.Length(1),
+        border_left=waxy.Length(1),
+        border_right=waxy.Length(1),
     ),
     border_kind=border,
 )

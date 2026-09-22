@@ -22,7 +22,7 @@ The size, background color, and other display properties of each area are contro
 The example below shows how the four areas are laid out for a simple `Div` element.
 
 ```python
---8<-- "box_model.py:example"
+--8 < --"box_model.py:example"
 ```
 
 ![Box Model](../assets/box-model.svg)
@@ -44,7 +44,7 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 ### Relative Positioning
 
 ```python
---8<-- "relative_positioning.py:example"
+--8 < --"relative_positioning.py:example"
 ```
 
 ![Relative Positioning](../assets/relative-positioning.svg)
@@ -52,7 +52,7 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 ### Absolute Positioning
 
 ```python
---8<-- "absolute_positioning.py:example"
+--8 < --"absolute_positioning.py:example"
 ```
 
 ![Absolute Positioning](../assets/absolute-positioning.svg)
@@ -60,14 +60,14 @@ The example below shows how the four areas are laid out for a simple `Div` eleme
 #### Controlling Overlapping with `z`
 
 ```python
---8<-- "z.py:example"
+--8 < --"z.py:example"
 ```
 
 ![Z Layers](../assets/z.svg)
 
 
 ```python
---8<-- "absolute_positioning_insets.py:example"
+--8 < --"absolute_positioning_insets.py:example"
 ```
 
 ![Absolute Positioning Insets](../assets/absolute-positioning-insets.svg)
