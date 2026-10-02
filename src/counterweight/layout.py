@@ -21,6 +21,11 @@ class ResolvedLayout:
     border: waxy.Rect
     margin: waxy.Rect
     order: int
+    scroll_container: bool = False
+    content_size: waxy.Size | None = None
+    scroll_offset_x: int = 0
+    scroll_offset_y: int = 0
+    clip_rect: waxy.Rect | None = None
 
 
 # right < left and bottom < top → zero-width/height in the inclusive coordinate system
@@ -104,6 +109,7 @@ def _extract_layout(
     abs_x: float,
     abs_y: float,
     results: list[tuple[AnyElement, ResolvedLayout]],
+    clip_rect: waxy.Rect | None = None,
 ) -> None:
     """Walk tree top-down, accumulating absolute positions.
 
@@ -155,19 +161,42 @@ def _extract_layout(
         bottom=pb - int(layout.padding.bottom),
     )
 
+    element_style = shadow.element.style
+    overflow_x = element_style.layout.overflow_x
+    overflow_y = element_style.layout.overflow_y
+    is_clipping = overflow_x != waxy.Overflow.Visible or overflow_y != waxy.Overflow.Visible
+    is_scroll_container = overflow_x == waxy.Overflow.Scroll or overflow_y == waxy.Overflow.Scroll
+
+    content_size = layout.content_size if is_scroll_container else None
+    scroll_offset_x = element_style.scroll_offset_x if is_scroll_container else 0
+    scroll_offset_y = element_style.scroll_offset_y if is_scroll_container else 0
+
     resolved = ResolvedLayout(
         content=content_rect,
         padding=padding_rect,
         border=border_rect,
         margin=margin_rect,
         order=len(results),
+        scroll_container=is_scroll_container,
+        content_size=content_size,
+        scroll_offset_x=scroll_offset_x,
+        scroll_offset_y=scroll_offset_y,
+        clip_rect=clip_rect,
     )
     results.append((shadow.element, resolved))
 
     shadow.hooks.dims = resolved
 
+    if is_clipping:
+        child_clip = padding_rect if clip_rect is None else clip_rect.intersection(padding_rect)
+    else:
+        child_clip = clip_rect
+
+    child_abs_x = border_abs_x - scroll_offset_x
+    child_abs_y = border_abs_y - scroll_offset_y
+
     for child_node_id in tree.children(node_id):
-        _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
+        _extract_layout(tree, child_node_id, node_map, child_abs_x, child_abs_y, results, child_clip)
 
 
 def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
