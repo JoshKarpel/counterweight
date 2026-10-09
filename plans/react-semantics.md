@@ -4,6 +4,8 @@ This plan covers the places where counterweight's reconciler, hooks, and event d
 diverge from React in ways that make component behavior surprising:
 state and effects outliving their component, effect cleanup ordering, keyed children,
 setter identity, hook-count checks, key and mouse event routing, and context.
+It also adds `use_reducer`, and on top of it an Elm-style app structure
+(one model, a pure `view`, messages in) that shares the same runtime.
 It doesn't cover skipping unchanged components; that is `plans/component-memoization.md`.
 
 ## What already matches React
@@ -63,6 +65,20 @@ and event handlers return controls rather than performing them.
   no way to stop propagation, so two text inputs on screen both receive typing.
 - **No context.** Values needed deep in the tree have to be passed through every component in
   between.
+- **No reducer-shaped state.** State that changes in response to messages has to be written
+  as a hand-rolled `set_state` updater, and there is no way to structure an app as one model
+  with a pure view, which is the shape the Elm architecture (and many ratatui apps) use.
+  A prototype `elm_app(init, update, view)` built as a single root component over
+  `use_state` runs a counter headless (keys `a`, `b`, `q`) and renders:
+
+  ```text
+  models rendered: [0, 0, 1, 2]
+  ```
+
+  The first two are the warm-up and the first visible frame, then one render per message,
+  and `q` quits through a `Quit()` returned from `update`.
+  The prototype calls `update` on the model captured at render time, so two messages
+  handled in one batch both see the same model and one update is lost.
 
 ## Steps
 
@@ -146,7 +162,65 @@ A first render has nothing to compare against and is exempt.
 Tests: a component that conditionally skips its last hook raises; one that conditionally
 adds a hook raises; one that calls the same hooks every render doesn't.
 
-### 7. Route key and mouse events
+### 7. Add `use_reducer`
+
+**Status:** Not started
+
+`use_reducer(reducer, initial_value)` returns the current state and a `dispatch` function,
+where `reducer(state, action)` returns the next state.
+`dispatch` applies the reducer to the _latest_ state, not the state captured at render time,
+so several dispatches in one batch compose.
+Build it on the `UseState` slot and its updater form rather than as a separate slot type,
+and keep `dispatch` stable across renders the way step 4 makes setters stable.
+Like React's, `dispatch` returns nothing; reducers stay pure and don't produce controls.
+
+Add `docs/hooks/use_reducer.md` to the hooks section of `mkdocs.yml`, and a changelog entry.
+
+Tests: two dispatches from one handler both apply; `dispatch` is the same object across
+renders; a reducer that returns an equal state doesn't trigger a render; the initial value
+can be lazy, like `use_state`'s.
+
+### 8. Add an Elm-style app structure
+
+**Status:** Not started
+
+`elm_app(init, update, view)` returns a root component for `app()`.
+`update(msg, model)` returns the next model and an optional command; `view(model, dispatch)`
+returns an element tree whose handlers call `dispatch(msg)`.
+
+A command is one of:
+
+- A control (`Quit()`, `Bell()`, ...). `dispatch` returns it, so a handler written as
+  `on_key=lambda e: dispatch(...)` hands it to the app loop the same way a React-style
+  handler does.
+  This needs the control computed from the latest model inside `dispatch`, so `elm_app`
+  uses the `UseState` updater directly rather than `use_reducer`, whose `dispatch` returns
+  nothing.
+- A coroutine that resolves to a message, for I/O. It runs in the app's `TaskGroup` and
+  its message is dispatched when it finishes.
+
+Two questions to settle before writing this step:
+
+- How a command coroutine reaches the `TaskGroup`. The candidates are a new control that
+  the app loop spawns (handlers already return controls, and the loop owns the group),
+  or a `use_effect` in the root component that drains a queue of pending commands.
+  The control is the smaller change.
+- Where a control goes when a command coroutine's message produces one. No handler is
+  waiting to return it, so it has to go through the event queue.
+
+A view can still contain React-style components, since everything goes through the same
+reconciler. That's useful for widgets with their own presentational state (a text input's
+cursor), which Elm itself handles awkwardly.
+The docs page for `elm_app` states the convention: app state lives in the model,
+and only state no other part of the app reads lives in components.
+
+Add `examples/elm.py` and a docs page for the structure, and a changelog entry.
+
+Tests: the counter above, as a test; `update` returning `Quit()` quits the app;
+a command coroutine's message is dispatched and the next render shows its effect;
+two messages handled in one batch both apply.
+
+### 9. Route key and mouse events
 
 **Status:** Needs design
 
@@ -169,7 +243,7 @@ Questions the design has to answer:
   the first version?
 - Whether to keep a migration path where unfocused apps behave as they do today.
 
-### 8. Add context
+### 10. Add context
 
 **Status:** Not started
 
