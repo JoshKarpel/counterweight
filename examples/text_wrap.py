@@ -96,7 +96,7 @@ def toolbar(
 @component
 def input_pane(content: str) -> Div:
     rects = use_rects()
-    w = int(rects.content.right - rects.content.left + 1)
+    w = rects.content.width
 
     return Div(
         style=grow(1)
@@ -122,7 +122,7 @@ def input_pane(content: str) -> Div:
 @component
 def display_pane(content: str, mode: TextWrap) -> Div:
     rects = use_rects()
-    w = int(rects.content.right - rects.content.left + 1)
+    w = rects.content.width
 
     wrap_style = {
         "none": text_wrap_none,

@@ -60,7 +60,9 @@
   This brings standard CSS flexbox semantics, improved correctness for complex layouts,
   and eliminates the hand-rolled layout engine.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `use_rects` now returns `waxy.Rect` objects instead of the removed `counterweight.geometry.Rect`.
+  `use_rects` now returns `counterweight.geometry.Region` objects instead of the removed `counterweight.geometry.Rect`.
+  A `Region`'s `right` and `bottom` are exclusive (the first column and row outside it),
+  so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
 
 ### Fixed
 
@@ -80,8 +82,8 @@
   The `Style` model is now flat: border, margin, padding, typography, and positioning
   properties are top-level fields rather than nested sub-models.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed;
-  use `waxy.Rect` instead.
+  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed.
+  Use `counterweight.geometry.Region` in place of `Rect`.
 - [#165](https://github.com/JoshKarpel/counterweight/pull/165)
   Dropped support for Python `3.11` and `3.12`.
   Python `3.13` or later is now required.

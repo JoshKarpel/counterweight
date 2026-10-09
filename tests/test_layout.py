@@ -61,7 +61,7 @@ def test_row_collapse_two_siblings_share_edge() -> None:
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.right == layout_b.border.left
+    assert layout_a.border.right - 1 == layout_b.border.left
 
 
 def test_col_collapse_two_siblings_share_edge() -> None:
@@ -71,7 +71,7 @@ def test_col_collapse_two_siblings_share_edge() -> None:
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.bottom == layout_b.border.top
+    assert layout_a.border.bottom - 1 == layout_b.border.top
 
 
 def test_row_collapse_three_siblings_both_seams_share() -> None:
@@ -82,8 +82,8 @@ def test_row_collapse_three_siblings_both_seams_share() -> None:
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.right == layout_b.border.left
-    assert layout_b.border.right == layout_c.border.left
+    assert layout_a.border.right - 1 == layout_b.border.left
+    assert layout_b.border.right - 1 == layout_c.border.left
 
 
 def test_col_collapse_three_siblings_both_seams_share() -> None:
@@ -94,8 +94,8 @@ def test_col_collapse_three_siblings_both_seams_share() -> None:
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.bottom == layout_b.border.top
-    assert layout_b.border.bottom == layout_c.border.top
+    assert layout_a.border.bottom - 1 == layout_b.border.top
+    assert layout_b.border.bottom - 1 == layout_c.border.top
 
 
 def test_row_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
@@ -105,7 +105,7 @@ def test_row_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.right + 1 == layout_b.border.left
+    assert layout_a.border.right == layout_b.border.left
 
 
 def test_col_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
@@ -115,7 +115,7 @@ def test_col_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
 
-    assert layout_a.border.bottom + 1 == layout_b.border.top
+    assert layout_a.border.bottom == layout_b.border.top
 
 
 # ---------------------------------------------------------------------------
@@ -134,8 +134,8 @@ def test_row_collapse_fractional_flex_widths_share_edges() -> None:
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root, w=31)]
 
-    assert layout_a.border.right == layout_b.border.left
-    assert layout_b.border.right == layout_c.border.left
+    assert layout_a.border.right - 1 == layout_b.border.left
+    assert layout_b.border.right - 1 == layout_c.border.left
 
 
 def test_col_collapse_fractional_flex_heights_share_edges() -> None:
@@ -147,8 +147,8 @@ def test_col_collapse_fractional_flex_heights_share_edges() -> None:
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root, h=22)]
 
-    assert layout_a.border.bottom == layout_b.border.top
-    assert layout_b.border.bottom == layout_c.border.top
+    assert layout_a.border.bottom - 1 == layout_b.border.top
+    assert layout_b.border.bottom - 1 == layout_c.border.top
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ def test_fixed_size_border_box_dimensions() -> None:
 
     _, layout_child = [rl for _, rl in _layout(root)]
 
-    assert layout_child.border.right - layout_child.border.left + 1 == 12
-    assert layout_child.border.bottom - layout_child.border.top + 1 == 7
+    assert layout_child.border.width == 12
+    assert layout_child.border.height == 7
 
 
 # ---------------------------------------------------------------------------
@@ -197,8 +197,8 @@ def test_absolute_negative_insets_preserve_size() -> None:
 
     _, layout_child = [rl for _, rl in _layout(root)]
 
-    assert layout_child.border.right - layout_child.border.left + 1 == 5
-    assert layout_child.border.bottom - layout_child.border.top + 1 == 3
+    assert layout_child.border.width == 5
+    assert layout_child.border.height == 3
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +210,8 @@ def test_absolute_negative_insets_preserve_size() -> None:
 
 def test_col_collapse_last_child_bottom_on_screen() -> None:
     # 3 equal-grow rows that together fill a 20-row screen.  The last row's
-    # bottom border must land on row 19 (0-indexed), not row 20 (off-screen).
+    # bottom border must land on row 19 (0-indexed), not row 20 (off-screen),
+    # so its exclusive bottom edge is 20.
     # Uses _layout_screened to match the app's screen-wrapper, which causes
     # taffy to produce a bottom float slightly above 20.0 (e.g. 20.000000048).
     child_a = _shadow(Div(style=border_all | grow(1)))
@@ -221,7 +222,7 @@ def test_col_collapse_last_child_bottom_on_screen() -> None:
     # screen=0, root_div=1, child_a=2, child_b=3, child_c=4
     _, _, _layout_a, _layout_b, layout_c = [rl for _, rl in _layout_screened(root, h=20)]
 
-    assert layout_c.border.bottom == 19
+    assert layout_c.border.bottom == 20
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +253,7 @@ def test_auto_centered_text_has_correct_width() -> None:
     title_layouts = [rl for elem, rl in results if isinstance(elem, Text)]
     assert len(title_layouts) == 1
     layout = title_layouts[0]
-    assert layout.border.right - layout.border.left + 1 == 21
+    assert layout.border.width == 21
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +272,7 @@ def test_space_evenly_col_does_not_inflate_child_height() -> None:
 
     _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=60, h=29)]
 
-    assert layout_b.border.bottom - layout_b.border.top + 1 == 4
+    assert layout_b.border.height == 4
 
 
 def test_space_around_col_does_not_inflate_child_height() -> None:
@@ -283,7 +284,7 @@ def test_space_around_col_does_not_inflate_child_height() -> None:
 
     _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=60, h=31)]
 
-    assert layout_b.border.bottom - layout_b.border.top + 1 == 4
+    assert layout_b.border.height == 4
 
 
 def test_space_evenly_row_does_not_inflate_child_width() -> None:
@@ -295,7 +296,7 @@ def test_space_evenly_row_does_not_inflate_child_width() -> None:
 
     _, _, _layout_a, layout_b = [rl for _, rl in _layout_screened(root, w=29, h=20)]
 
-    assert layout_b.border.right - layout_b.border.left + 1 == 4
+    assert layout_b.border.width == 4
 
 
 def test_text_wrap_stable_measures_correct_height() -> None:
@@ -311,7 +312,7 @@ def test_text_wrap_stable_measures_correct_height() -> None:
     results = _layout(container, w=20, h=20)
     text_layout = next(rl for el, rl in results if isinstance(el, Text))
 
-    assert text_layout.border.bottom - text_layout.border.top + 1 == 2
+    assert text_layout.border.height == 2
 
 
 def test_text_wrap_balance_measures_correct_height() -> None:
@@ -325,7 +326,7 @@ def test_text_wrap_balance_measures_correct_height() -> None:
     results = _layout(container, w=20, h=20)
     text_layout = next(rl for el, rl in results if isinstance(el, Text))
 
-    assert text_layout.border.bottom - text_layout.border.top + 1 == 2
+    assert text_layout.border.height == 2
 
 
 def test_text_wrap_pretty_measures_correct_height() -> None:
@@ -339,4 +340,4 @@ def test_text_wrap_pretty_measures_correct_height() -> None:
     results = _layout(container, w=20, h=20)
     text_layout = next(rl for el, rl in results if isinstance(el, Text))
 
-    assert text_layout.border.bottom - text_layout.border.top + 1 == 2
+    assert text_layout.border.height == 2

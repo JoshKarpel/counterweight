@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, assert_never
 import waxy
 
 from counterweight.elements import AnyElement, CellPaint, Div, Text
+from counterweight.geometry import Region
 from counterweight.styles.styles import TextWrap
 
 if TYPE_CHECKING:
@@ -16,21 +17,20 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
-    content: waxy.Rect
-    padding: waxy.Rect
-    border: waxy.Rect
-    margin: waxy.Rect
+    content: Region
+    padding: Region
+    border: Region
+    margin: Region
     order: int
 
 
-# right < left and bottom < top → zero-width/height in the inclusive coordinate system
-_EMPTY_RECT = waxy.Rect(left=0, right=-1, top=0, bottom=-1)
+_EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)
 
 INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
-    content=_EMPTY_RECT,
-    padding=_EMPTY_RECT,
-    border=_EMPTY_RECT,
-    margin=_EMPTY_RECT,
+    content=_EMPTY_REGION,
+    padding=_EMPTY_REGION,
+    border=_EMPTY_REGION,
+    margin=_EMPTY_REGION,
     order=0,
 )
 
@@ -121,45 +121,44 @@ def _extract_layout(
     border_abs_x = abs_x + layout.location.x
     border_abs_y = abs_y + layout.location.y
 
-    # floor for left/top (round toward -inf) so negative coordinates work.
-    # floor(end) - 1 for right/bottom: always rounds down, so a fractional start
-    # position (e.g. 18.667 from justify_content:space_evenly) doesn't inflate the
-    # element's discrete row/column count when the size is an exact integer (e.g.
-    # start=18.667, size=4.0 → end=22.667 → floor=22 → bb=21, height=4, not 5).
+    # Both edges use floor (round toward -inf), so negative coordinates work, and a
+    # fractional start position (e.g. 18.667 from justify_content:space_evenly) doesn't
+    # inflate the element's cell count when the size is an exact integer (e.g.
+    # start=18.667, size=4.0 → end=22.667 → [18, 22), height 4, not 5).
     # This also correctly handles fractional flex sizes where frac(start)+frac(size)
     # reaches an exact integer boundary (e.g. start=12.667, size=7.333 → end=20.0).
-    bx = math.floor(border_abs_x)
-    by = math.floor(border_abs_y)
-    br = math.floor(border_abs_x + layout.size.width) - 1
-    bb = math.floor(border_abs_y + layout.size.height) - 1
+    bl = math.floor(border_abs_x)
+    bt = math.floor(border_abs_y)
+    br = math.floor(border_abs_x + layout.size.width)
+    bb = math.floor(border_abs_y + layout.size.height)
 
-    border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
+    border_region = Region(left=bl, top=bt, right=br, bottom=bb)
 
-    margin_rect = waxy.Rect(
-        left=bx - int(layout.margin.left),
+    margin_region = Region(
+        left=bl - int(layout.margin.left),
+        top=bt - int(layout.margin.top),
         right=br + int(layout.margin.right),
-        top=by - int(layout.margin.top),
         bottom=bb + int(layout.margin.bottom),
     )
 
-    pl = bx + int(layout.border.left)
-    pt = by + int(layout.border.top)
+    pl = bl + int(layout.border.left)
+    pt = bt + int(layout.border.top)
     pr = br - int(layout.border.right)
     pb = bb - int(layout.border.bottom)
-    padding_rect = waxy.Rect(left=pl, right=pr, top=pt, bottom=pb)
+    padding_region = Region(left=pl, top=pt, right=pr, bottom=pb)
 
-    content_rect = waxy.Rect(
+    content_region = Region(
         left=pl + int(layout.padding.left),
-        right=pr - int(layout.padding.right),
         top=pt + int(layout.padding.top),
+        right=pr - int(layout.padding.right),
         bottom=pb - int(layout.padding.bottom),
     )
 
     resolved = ResolvedLayout(
-        content=content_rect,
-        padding=padding_rect,
-        border=border_rect,
-        margin=margin_rect,
+        content=content_region,
+        padding=padding_region,
+        border=border_region,
+        margin=margin_region,
         order=len(results),
     )
     results.append((shadow.element, resolved))

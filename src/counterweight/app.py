@@ -402,11 +402,9 @@ async def app(
                                 if element.on_key:
                                     handle_control(element.on_key(event))
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            mouse_pos = waxy.Point(x=mouse_position.x, y=mouse_position.y)
-                            event_pos = waxy.Point(x=m.absolute.x, y=m.absolute.y)
                             for element, resolved in reversed(elements_and_layouts):
-                                # Send mouse events if the current *or previous* position is in the border rect
-                                if resolved.border.contains(mouse_pos) or resolved.border.contains(event_pos):
+                                # Send mouse events if the current *or previous* position is in the border region
+                                if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
                                     if element.on_mouse:
                                         handle_control(element.on_mouse(event))
 

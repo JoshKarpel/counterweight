@@ -110,7 +110,7 @@ def glob_input(glob: str) -> Div:
 @component
 def file_list(files: list[Path], selected_idx: int) -> Div:
     rects = use_rects()
-    visible = max(1, int(rects.content.height) + 1)
+    visible = max(1, rects.content.height)
     start_idx = clamp(0, selected_idx - visible // 2, max(0, len(files) - visible))
     return Div(
         style=col | justify_children_start | pad_x(1) | border_lightrounded | grow(1),
