@@ -33,9 +33,9 @@ class Component:
     func: Callable[..., AnyElement]
     args: tuple[object, ...]
     kwargs: dict[str, object]
-    key: str | int | None = None
+    key: str | None = None
 
-    def with_key(self, key: str | int | None) -> Component:
+    def with_key(self, key: str | None) -> Component:
         """
         Returns a copy of this component with the given `key`.
         Across renders, a keyed component continues the sibling that had the same key last render,

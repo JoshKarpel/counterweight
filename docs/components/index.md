@@ -112,8 +112,9 @@ Div(children=[Text(content="Saved!" if saved else ""), editor()])
 
 - Use whatever identifies the item in your data: a database id, a file path, a title if titles are
   unique.
+- Keys are strings, so convert a numeric id with `with_key(str(item.id))`.
 - Don't use the item's index in the list.
-  `with_key(i)` behaves the same as no key at all, because the key follows the position, not the item.
+  `with_key(str(i))` behaves the same as no key at all, because the key follows the position, not the item.
 - A key only has to be unique among siblings, so two separate lists can reuse the same keys.
   Keyed siblings that share a key raise `DuplicateKey`; any number of unkeyed siblings is fine.
 

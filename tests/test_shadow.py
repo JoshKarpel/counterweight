@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import gc
 from asyncio import Queue, Task, TaskGroup, sleep
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from sys import getrecursionlimit
-from weakref import WeakSet
+from weakref import WeakSet, ref
 
 import pytest
 
-from counterweight._context_vars import current_event_queue, current_hook_state, current_use_mouse_listeners
+from counterweight._context_vars import (
+    current_event_queue,
+    current_hook_idx,
+    current_hook_state,
+    current_use_mouse_listeners,
+)
 from counterweight._utils import cancel_tasks, forever
 from counterweight.app import handle_effects
 from counterweight.components import Component, component
@@ -16,7 +22,7 @@ from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution
-from counterweight.shadow import DuplicateKey, ShadowNode, mark_unmounted, update_shadow
+from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
 
 
 @contextmanager
@@ -38,8 +44,6 @@ async def render(
 ) -> tuple[ShadowNode, set[Task[None]]]:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
     shadow, _ = update_shadow(root, previous)
-    if previous is not None:
-        mark_unmounted(previous, shadow)
     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=task_group)
     await sleep(0)
     return shadow, active_effects
@@ -274,7 +278,7 @@ def test_duplicate_sibling_keys_raise() -> None:
     log: list[str] = []
 
     with pytest.raises(DuplicateKey):
-        update_shadow(Div(children=[logs_effect("x", log).with_key(1), logs_effect("y", log).with_key(1)]), None)
+        update_shadow(Div(children=[logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k")]), None)
 
 
 async def test_setter_is_the_same_object_across_renders() -> None:
@@ -339,6 +343,18 @@ def wraps_remembers(setters: dict[str, Setter[str]], seen: dict[str, str]) -> Di
             id="removed-keyed-sibling",
         ),
         pytest.param(
+            lambda s, v: Div(children=[remembers("a", s, v), remembers("b", s, v)]),
+            lambda s, v: Div(children=[remembers("a", s, v)]),
+            "b",
+            id="removed-trailing-unkeyed-child",
+        ),
+        pytest.param(
+            lambda s, v: Div(children=[remembers("a", s, v)]),
+            lambda s, v: Div(children=[wraps_remembers(s, v)]),
+            "a",
+            id="replaced-by-other-component",
+        ),
+        pytest.param(
             lambda s, v: Div(children=[wraps_remembers(s, v)]),
             lambda s, v: Div(children=[Div()]),
             "nested",
@@ -361,6 +377,22 @@ async def test_setter_called_after_unmount_enqueues_nothing(
             setters[name]("set after unmount")
 
     assert queue.empty()
+
+
+def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+    shadow, _ = update_shadow(Div(children=[remembers("a", setters, seen)]), None)
+    state = ref(shadow.children[0].hooks.data[0])
+
+    gc.disable()
+    try:
+        shadow, _ = update_shadow(Div(children=[Div()]), shadow)
+        is_freed = state() is None
+    finally:
+        gc.enable()
+
+    assert is_freed
 
 
 async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
@@ -424,12 +456,15 @@ def raises_on_render(should_raise: bool) -> Text:
 def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
     previous = update_shadow(raises_on_render(False), None)[0] if is_rerender else None
     outer_hooks = Hooks()
-    token = current_hook_state.set(outer_hooks)
+    outer_hook_idx = 5
+    state_token = current_hook_state.set(outer_hooks)
+    idx_token = current_hook_idx.set(outer_hook_idx)
     try:
         with pytest.raises(RenderFailed):
             update_shadow(raises_on_render(True), previous)
-        state_after_raise = current_hook_state.get()
+        context_after_raise = (current_hook_state.get() is outer_hooks, current_hook_idx.get())
     finally:
-        current_hook_state.reset(token)
+        current_hook_idx.reset(idx_token)
+        current_hook_state.reset(state_token)
 
-    assert state_after_raise is outer_hooks
+    assert context_after_raise == (True, outer_hook_idx)

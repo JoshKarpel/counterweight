@@ -45,8 +45,8 @@ async def cancel_tasks[T](tasks: Iterable[Task[T]]) -> None:
 
     The tasks tear down concurrently, so the wait lasts as long as the slowest teardown, not their sum.
     A task that is already done is skipped (for example, an effect that aborted itself by returning).
-    A task that raises during teardown has its exception re-raised,
-    and one that swallows its cancellation and returns raises `RuntimeError`.
+    Every task that raises during teardown, or swallows its cancellation and returns (reported as `RuntimeError`),
+    contributes to a single `BaseExceptionGroup` raised once all of them have finished.
     If the caller is cancelled while waiting, its `CancelledError` propagates and the tasks keep tearing down.
     """
     pending = [task for task in tasks if not task.done()]
@@ -60,12 +60,14 @@ async def cancel_tasks[T](tasks: Iterable[Task[T]]) -> None:
     # Awaiting each task under `suppress(CancelledError)` instead would swallow the caller's cancellation too.
     await wait(pending)
 
-    for task in pending:
-        if task.cancelled():
-            continue
-        if (exception := task.exception()) is not None:
-            raise exception
-        raise RuntimeError("Cancelled task did not end with an exception")
+    exceptions = [teardown_failure(task) for task in pending if not task.cancelled()]
+    if exceptions:
+        raise BaseExceptionGroup("Tasks failed while being cancelled", exceptions)
+
+
+def teardown_failure(task: Task[object]) -> BaseException:
+    """The exception a cancelled task ended with, or a `RuntimeError` if it swallowed its cancellation and returned."""
+    return task.exception() or RuntimeError("Cancelled task did not end with an exception")
 
 
 def flyweight[T](maxsize: int = 2**10) -> Callable[[type[T]], type[T]]:

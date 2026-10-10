@@ -59,7 +59,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import BLANK, Paint, paint_layout, svg
-from counterweight.shadow import ShadowNode, mark_unmounted, update_shadow
+from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
 logger = get_logger()
@@ -292,9 +292,7 @@ async def app(
 
                 if should_render:
                     start_render = perf_counter_ns()
-                    previous_shadow = shadow
-                    shadow, user_code_ns = update_shadow(screen(), previous_shadow)
-                    mark_unmounted(previous_shadow, shadow)
+                    shadow, user_code_ns = update_shadow(screen(), shadow)
                     logger.debug(
                         "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",

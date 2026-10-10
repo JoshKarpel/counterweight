@@ -61,6 +61,11 @@
   raises `InconsistentHookExecution`.
   Skipping a trailing hook used to pass silently, and a skipped `use_effect` kept running.
 
+- **Breaking:** Keyed sibling components that share a key raise `DuplicateKey`.
+
+- **Breaking:** Component keys are strings only; `with_key` no longer accepts an `int`.
+  Convert numeric ids with `str()`.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
@@ -88,12 +93,12 @@
 - Effects that rerun or unmount in a render are cancelled concurrently,
   and all of them finish before any effect starts,
   so an effect's cleanup always finishes before its replacement or a sibling's setup begins.
+  If several of those cleanups raise, all of their exceptions are reported together in one exception group.
   Previously a rerun effect's new task started before the old one was cancelled.
 
 - Keyed sibling components are matched by key across renders rather than by position,
   so reordering, inserting, or removing keyed children keeps each one's state and effects.
   Unkeyed children still match the unkeyed child at the same index.
-  Keyed sibling components that share a key now raise `DuplicateKey`.
 
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly

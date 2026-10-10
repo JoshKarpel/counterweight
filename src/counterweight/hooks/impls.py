@@ -3,6 +3,7 @@ from __future__ import annotations
 from asyncio import Task
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
@@ -21,15 +22,22 @@ class MountStatus:
     is_mounted: bool = True
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, weakref_slot=True)
 class UseState:
     value: object
     mount_status: MountStatus
-    setter: Setter[object] = field(init=False)
+    setter: Setter[object] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
-        # Bound once so every render hands out the same setter, which keeps it safe to put in an effect's deps.
-        self.setter = self.set
+        # Built once so every render hands out the same setter, which keeps it safe to put in an effect's deps.
+        # It holds the state weakly: a bound method would form a cycle, so unmounted state would wait for the cyclic GC.
+        state = ref(self)
+
+        def setter(value: object) -> None:
+            if (live_state := state()) is not None:
+                live_state.set(value)
+
+        self.setter = setter
 
     def set(self, value: object) -> None:
         if not self.mount_status.is_mounted:

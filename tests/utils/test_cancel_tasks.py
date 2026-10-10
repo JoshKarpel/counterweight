@@ -36,29 +36,32 @@ async def test_cancel_tasks_runs_teardowns_concurrently() -> None:
 
 
 async def test_cancel_tasks_propagates_cancellation_of_the_caller() -> None:
+    inner_started = Event()
+    inner_resisting = Event()
+
     async def inner() -> None:
+        inner_started.set()
         try:
             await forever()
         except CancelledError:
             ct = current_task()
             if ct:
                 ct.uncancel()
+            inner_resisting.set()
             await forever()
 
-    # We need sleeps below to make sure that the tasks actually progress to the awaits inside them,
-    # instead of being cancelled before they even start running
-
     inner_task = create_task(inner())
-    await sleep(0.01)
+    await inner_started.wait()
 
     cancel_task = create_task(cancel_tasks([inner_task]))
-    await sleep(0.01)
+    await inner_resisting.wait()
 
     cancel_task.cancel()
-    await sleep(0.01)
 
     with pytest.raises(CancelledError):
         await cancel_task
+
+    await cancel_tasks([inner_task])
 
 
 async def test_cancel_tasks_lets_an_enclosing_timeout_expire() -> None:
@@ -87,34 +90,46 @@ async def test_cancel_tasks_lets_an_enclosing_timeout_expire() -> None:
         await attempt
 
 
-async def test_cancel_tasks_reraises_an_exception_from_teardown() -> None:
-    async def fails_in_teardown() -> None:
-        try:
-            await forever()
-        finally:
-            raise ValueError("teardown failed")
+async def fails_in_teardown(message: str) -> None:
+    try:
+        await forever()
+    finally:
+        raise ValueError(message)
 
-    task = create_task(fails_in_teardown())
+
+async def test_cancel_tasks_reraises_an_exception_from_teardown() -> None:
+    task = create_task(fails_in_teardown("teardown failed"))
     await sleep(0)
 
-    with pytest.raises(ValueError, match="teardown failed"):
+    with pytest.RaisesGroup(pytest.RaisesExc(ValueError, match="teardown failed")):
         await cancel_tasks([task])
 
 
+async def test_cancel_tasks_reraises_every_exception_from_teardown() -> None:
+    tasks = [create_task(fails_in_teardown("first failed")), create_task(fails_in_teardown("second failed"))]
+    await sleep(0)
+
+    with pytest.RaisesGroup(
+        pytest.RaisesExc(ValueError, match="first failed"),
+        pytest.RaisesExc(ValueError, match="second failed"),
+    ):
+        await cancel_tasks(tasks)
+
+
 async def test_cancel_tasks_with_task_that_returns_after_cancellation() -> None:
+    started = Event()
+
     async def t() -> None:
+        started.set()
         try:
             await forever()
         except CancelledError:
             return
 
     task = create_task(t())
+    await started.wait()
 
-    # Let the task progress to the await forever(),
-    # otherwise it gets cancelled before it even starts running
-    await sleep(0.01)
-
-    with pytest.raises(RuntimeError):
+    with pytest.RaisesGroup(RuntimeError):
         await cancel_tasks([task])
 
 
