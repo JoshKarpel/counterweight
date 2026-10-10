@@ -2,8 +2,9 @@
 
 This plan covers the counterweight side of making styles predictable to compose and layout
 easier to reason about and cheaper per frame:
-a cell-grid region type, taking up the waxy `0.7.0` release, one merge rule for every style
-field, borders stored once, utilities for the new sizing keywords, documented layout defaults,
+a cell-grid region type, a gallery of layout examples, taking up the waxy `0.7.0` release,
+one merge rule for every style field, borders stored once, utilities for the new sizing
+keywords, ratatui-style constraint utilities, a guide to choosing between flexbox and grid,
 reading layouts back in one call, memoizing text measurement, and reusing the layout tree
 across frames.
 It doesn't cover component memoization (`plans/component-memoization.md`) or paint performance,
@@ -50,6 +51,20 @@ which leaves hidden nodes out of `absolute_layouts`.
   children grew to fill their parent. Taffy uses CSS defaults (`flex_grow=0`, `flex_shrink=1`,
   row direction, cross-axis stretch, border-box sizing), so children shrink to their content
   unless told otherwise.
+- **Docs teach a wrong default.** `docs/cookbook/layout-problems.md` says taffy doesn't
+  stretch children on the cross axis, and tells users to add `align_children_stretch` to every
+  container. Taffy does stretch by default: two `Style()` children of a 40-wide column both
+  come out 40 wide. The advice has spread into `examples/`, where the utility does nothing.
+- **Sizes follow content.** Ratatui splits an area along one axis by a list of constraints
+  (`Length`, `Percentage`, `Ratio`, `Fill`, `Min`, `Max`), and a child's size never depends
+  on what it draws. Flexbox sizes children from their content, and CSS's automatic minimum
+  size keeps a flex item from shrinking below its min-content width, even when it has a
+  `flex_basis`. In a 40-wide row, two `grow(1)` panes with 30 cells of unwrapped text come out
+  30 and 30, and a pane with `flex_basis=Length(10), flex_shrink=0` and 50 cells of content
+  comes out 50.
+  Grid has the same floor: `1fr` columns overflow the same way, and `minmax(0, 1fr)` is needed.
+  The cookbook's fix is `grow(1) | min_width(0)`, which works only in a `row`; a `col` needs
+  `min_height(0)`, so the same component sized two ways needs two styles.
 - **Sizing keywords out of reach.** waxy `0.6.0` lets `size_width` and `size_height` take
   `MIN_CONTENT`, `MAX_CONTENT`, `FIT_CONTENT`, `FitContent(limit)` and `STRETCH`, but the size
   utilities (`width`, `height`, `size`, `full_width`, `full_height`, `full`) only build
@@ -71,7 +86,7 @@ Each step leaves the test suite passing and is a separate PR.
 
 **Status:** Done
 
-This step runs against the current waxy, before the bump in step 2, so that the bump
+This step runs against the current waxy, before the bump in step 3, so that the bump
 doesn't also have to carry the geometry migration.
 
 Add `Region` to `counterweight/geometry.py`: a frozen, slotted dataclass of integer
@@ -113,7 +128,75 @@ of disjoint, touching and overlapping regions); convert the expectations in
 (`right + 1`, `bottom + 1`), so break the `_extract_layout` arithmetic on purpose once and
 confirm the converted tests fail.
 
-### 2. Take up waxy `0.7.0`
+### 2. Write a layout gallery
+
+Document layout by the effect a user wants, with every technique that achieves it, each shown
+as code beside its screenshot. The tooling exists: each file in `docs/examples/` is a headless
+app whose `Screenshot` autopilot writes an SVG to `docs/assets/`, pages include the code
+between `--8<--` markers, and the `generate-screenshots` pre-commit hook regenerates every
+screenshot on every commit. What's missing is the examples.
+
+This step comes before the waxy bump because the committed screenshots are also a visual
+regression suite. Step 3 takes taffy from 0.9 to 0.14 and step 9 changes rounding, and both
+can move computed layouts; with the gallery in place, every layout they move shows up as a
+changed SVG in that PR. From here on, every step that adds or changes a layout utility updates
+the gallery in the same PR: an unchanged screenshot shows that a rewrite (such as
+`grow(1) | min_width(0)` to `fill(1)`) changed no layout, and a changed one shows the effect.
+
+**Structure.** A "Layout" nav section, one page per kind of effect, absorbing
+`styles/layout.md` and the positioning rework (#314). Each entry names the effect, shows each
+technique as code and a screenshot, and says in one sentence what to notice. Where a technique
+has a well-known failure, show the failure too, as a screenshot: an overflowing row teaches
+more than a paragraph about automatic minimum sizes. Label boxes in-frame with the styles
+that produced them, as `relative_positioning.py` does, so a screenshot reads on its own.
+
+Pages and the effects each covers:
+
+- **How layout sizes things:** layout follows CSS flexbox defaults (`flex_direction` row,
+  `flex_grow` 0, `flex_shrink` 1, `align_items` stretch, border-box sizing), so children take
+  their content size on the main axis and stretch on the cross axis; the automatic minimum
+  size; why the root needs `full`; `Text` doesn't wrap unless `text_wrap` is set.
+- **Splitting space:** equal shares, a fixed sidebar beside a filling pane, ratios, nested
+  splits, each with flexbox and with grid tracks; the overflow when content is wider than a
+  share; percentages plus `gap`.
+- **Sizing one box:** fixed, fit to content, fill the parent, clamped with `min_*` and
+  `max_*`, `aspect_ratio` (and why cells not being square matters there).
+- **Alignment and distribution:** all six `justify_children_*` side by side, the four
+  `align_children_*`, `align_self_*`, and centering a box three ways (flexbox, grid,
+  absolute insets).
+- **Spacing and borders:** `gap` against `margin` against `pad`; `border_collapse`;
+  `border_contract`; borders on some sides only.
+- **Layering:** relative and absolute positioning, insets, `z`, a dialog centered over the
+  app, a badge pinned to a corner.
+- **Grids and wrapping:** dashboard tiles, cells spanning tracks, auto flow, and `flex_wrap`
+  as the flexbox alternative.
+- **Text in layout:** wrapping inside a pane, justification needing a width wider than the
+  text, long unwrapped text in a narrow pane.
+- **App shells:** whole-screen compositions built from the pages above: header, body and
+  footer; sidebar, main pane and status bar; three panes; a dialog over the app.
+
+Fix what the gallery would otherwise repeat:
+
+- Delete the cookbook's "children don't fill their container's width" entry, and rewrite the
+  text-wrapping entry, which blames the same missing stretch. Fold the rest of
+  `cookbook/layout-problems.md` into the gallery pages, as failures shown beside their fixes.
+- Remove `align_children_stretch` where it restates the default (`examples/text_wrap.py`,
+  `examples/suspend.py`, `examples/wordle.py`, `docs/examples/text_wrap.py`,
+  `docs/styles/text-wrapping.md`). The regenerated screenshots must not change.
+
+Tooling:
+
+- Each example ends in about fifteen lines of `__main__` boilerplate that the gallery would
+  copy dozens of times. Move it into a helper module in `docs/examples/` that takes the root
+  component, the asset name and the dimensions. The examples run as scripts, so a sibling
+  module imports without packaging.
+- Size each screenshot to its effect rather than using 80×30 everywhere, so the images stay
+  readable inline.
+- The hook regenerates every screenshot on every commit. Time it before and after the gallery
+  lands, and if it's slow, decide then whether to run it only when `src/` or
+  `docs/examples/` changes.
+
+### 3. Take up waxy `0.7.0`
 
 - Raise the floor to `waxy>=0.7.0` and update `uv.lock`.
 - Remove `compare=False, hash=False` and the comment from `Style.layout`, so layout takes part
@@ -121,19 +204,20 @@ confirm the converted tests fail.
   `waxy.Style` equality also compares which fields were explicitly set,
   so two counterweight `Style`s compare equal only if they also merge identically,
   which is what a cache keyed on styles needs.
-- Key `STYLE_MERGE_CACHE` on `(self, other)` rather than their hashes. Step 3 rewrites
+- Key `STYLE_MERGE_CACHE` on `(self, other)` rather than their hashes. Step 4 rewrites
   merging, so this may be replaced there; it's here so the collision bug doesn't wait on
-  step 3.
+  step 4.
 - With waxy's new `repr`, `Style.__repr__` shows the layout fields that were set, without
   any counterweight change.
 
 The suite and mypy pass unchanged against the waxy `0.6.0` build
-(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 7),
+(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 9),
 so nothing in counterweight depends on the removed `Rect` and `Line` methods
 or misspells a `waxy.Style` keyword (which now raises `TypeError`;
 the utilities are module constants, so importing them constructs every one).
 The bump also takes taffy from 0.9 to 0.14, which fixes layout bugs and can move computed
-layouts, so run the examples and compare them against the previous release before merging.
+layouts. Regenerate the gallery screenshots from step 2 and review every SVG that changed,
+and run the examples in `examples/` against the previous release before merging.
 
 `Style.__hash__` now hashes the `waxy.Style` too. waxy caches that hash after the first call,
 but counterweight's `Style` is a dataclass whose hash is recomputed over all its fields on
@@ -141,7 +225,7 @@ every call, and `Text` and `Div` are hashed for the `paint_text` cache.
 Profile the canvas and dashboard workloads before and after. If hashing shows up, cache the
 hash on `Style` the way `CellStyle` already does (`styles/styles.py:243-255`).
 
-### 3. One merge rule: explicitly set wins
+### 4. One merge rule: explicitly set wins
 
 Give counterweight's own fields the rule waxy uses.
 
@@ -172,7 +256,7 @@ Tests (parametrized over every field of `Style` and `CellStyle`): an explicit de
 overrides a non-default value; an unset field keeps the left side's value; resolving an empty
 style gives the documented defaults.
 
-### 4. Store borders once
+### 5. Store borders once
 
 - Replace the border-width bookkeeping with `border_kind: BorderKind | None` and
   `border_sides: BorderSides`, where `BorderSides` is a fragment of four `bool | Unset`
@@ -195,9 +279,9 @@ Tests: `border_light | border_none` reserves no space and draws nothing;
 `border_light | border_top` reserves and draws only the top edge;
 setting `border_top` through `layout` raises.
 
-### 5. Expose the sizing keywords
+### 6. Expose the sizing keywords
 
-This comes after steps 3 and 4 so the new utilities are written once, under the new merge
+This comes after steps 4 and 5 so the new utilities are written once, under the new merge
 rule, rather than migrated.
 
 Add the keywords for both axes, hand-written beside `full_width` and `full_height`:
@@ -223,16 +307,135 @@ Tests: each utility sets only its own field (`layout.fields_set`); for a wrappin
 of `"hello world"` in a 40-cell column, the four width keywords give widths of 5, 11, 11
 and 40.
 
-### 6. Document the layout defaults
+### 7. Add ratatui-style constraint utilities
 
-Fold this into the positioning docs rework (#314): layout follows CSS flexbox defaults
-(`flex_direction` row, `flex_grow` 0, `flex_shrink` 1, `align_items` stretch, border-box
-sizing), so children take their content size unless given `grow(1)`, and `Text` doesn't wrap
-unless `text_wrap` is set. Show the common terminal patterns (fill the screen, split into
-columns, a sidebar of fixed width, a box that fits its text) as cookbook examples,
-using the sizing keywords from step 5 where they fit.
+Give users ratatui's way of splitting space, as composite utilities set on each child.
+`flex_basis`, `flex_grow` and `flex_shrink` act along the parent's main axis, whichever axis
+that is, so one utility works in both a `row` and a `col`, the way a ratatui constraint
+applies along its `Layout`'s direction:
 
-### 7. Decide on rounding, and read layouts in one call
+| ratatui         | utility            | `flex_basis`       | `flex_grow` | `flex_shrink` |
+| --------------- | ------------------ | ------------------ | ----------- | ------------- |
+| `Length(n)`     | `length(n)`        | `Length(n)`        | 0           | 0             |
+| `Percentage(p)` | `percentage(p)`    | `Percent(p / 100)` | 0           | 0             |
+| `Ratio(a, b)`   | `ratio(a, b)`      | `Percent(a / b)`   | 0           | 0             |
+| `Fill(n)`       | `fill(n: int = 1)` | `Length(0)`        | `n`         | 1             |
+
+Each also sets `overflow_x` and `overflow_y` to `Overflow.Hidden`, which makes the item a
+scroll container, so its automatic minimum size is 0 and its content can't push it wider.
+Probed against waxy `0.4.0`, a 40-wide row of `length(10)`, `fill(1)`, `fill(2)` children
+with 50 cells of content each comes out 10, 10 and 20; the same three children in a 10-tall
+column come out 2, 4 and 4.
+
+Zeroing `min_size_width` and `min_size_height` gives the same split, but it takes the fields
+users set for ratatui's `Min(n)`: `min_width(15) | fill(1)` would drop the minimum, while
+`fill(1) | min_width(15)` would keep it. With `overflow`, both orders keep it.
+The cost is that `Hidden` promises clipping. Paint doesn't clip today, so overflowing
+content draws past the box as it does now; clipping arrives with the scrolling work, and
+these utilities are where it starts to matter. `Overflow.Clip` doesn't help: taffy
+doesn't treat it as a scroll container, so the automatic minimum stays.
+
+`Min(n)` and `Max(n)` don't get utilities, because they constrain one axis and a child doesn't
+know its parent's direction. Write `fill(1) | min_width(n)` or `max_height(n)` instead.
+
+The composites are ordinary `Style`s, so they layer over the flexbox and grid primitives
+rather than replacing them. Because explicitly set fields win when merging, a user can override one
+field of a composite and keep the rest (`fill(1) | shrink(0)`, `length(20) | grow(1)`), and
+anything ratatui can't express (wrapping, alignment, absolute positioning, content sizing,
+two-dimensional grids) stays in the primitives.
+That layering needs each primitive to set exactly one field.
+`grow(n)` sets `flex_basis=Length(0)` beside `flex_grow`, so it's `fill(n)` without the
+overflow. Make it set only `flex_grow`, like `shrink(n)`. Examples move from
+`grow(1) | min_width(0)` (and bare `grow(1)`) to `fill(1)`. Changelog entry under `Changed`.
+
+Add `fr(n)` for grid, the version where the parent holds the constraint list: it returns the
+track value `Minmax(Length(0), Fraction(n))`, so `grid_template_columns(Length(10), fr(1),
+fr(2))` splits space the way `length(10)`, `fill(1)` and `fill(2)` do in a row.
+Bare `Fraction(n)` is `minmax(auto, n fr)`, which carries the same automatic-minimum floor:
+in a 40-wide grid, columns `Length(10), Fraction(1), Fraction(1)` with content 5, 30 and 3
+wide come out 10, 30 and 3, and the last column starts at 40, outside the grid.
+Tracks of `Length(10)`, `Percent(0.25)` and `minmax(0, 1fr)` with 50 cells of content each
+come out 10, 10 and 20.
+
+Also add `center_children` (`align_children_center | justify_children_center`), a pair the
+examples and docs spell out eight times.
+
+Changelog entry under `Added`.
+
+Tests: the row and column splits above, with content larger than the container;
+`min_width(15) | fill(1)` and `fill(1) | min_width(15)` give the same widths;
+`percentage(25)` and `ratio(1, 4)` give the same width; each utility sets only its own
+fields (`layout.fields_set`); `fill(1) | shrink(0)` keeps `fill`'s basis, grow and overflow
+and changes only `flex_shrink`; a grid of `Length(10), fr(1), fr(2)` tracks gives the same
+widths as the flexbox row.
+
+Gallery: rewrite the "Splitting space" page around these utilities. Each split shown with
+`fill` and `length` should render the same as its `fr` grid version.
+
+### 8. Explain how to choose a layout model
+
+The gallery shows _how_ to get each effect; this step adds the page that says _which_
+technique to reach for, and how counterweight's model relates to ratatui's. It opens the
+Layout section and links into the gallery pages for each case.
+
+**Frame the choice as two independent questions.** "Grid is top-down, flexbox is bottom-up"
+is close, but it mixes them:
+
+1. _Where do the constraints live?_ On the parent, as a list (ratatui's `Layout`, grid's
+   track templates), or on each child (flexbox's basis, grow and shrink).
+2. _Can content push back?_ Never in ratatui: it doesn't measure widgets, it hands each one
+   a rectangle to draw into. Flexbox and grid both let content raise sizes by default
+   (content-sized items, `auto` and bare `Fraction` tracks), and both can turn that off
+   (`fill` and `length`, or `Length`, `Percent` and `fr` tracks).
+
+Ratatui is "parent holds the list, content never pushes back". Grid with `fr` tracks has the
+same structure; flexbox with `fill` and `length` gives the same sizing with each child
+holding its own constraint, the habit Tailwind teaches.
+What counterweight adds over ratatui is the other half of question 2: a box can fit its
+text, a wrapped paragraph can take exactly the rows it needs, and a list can grow with its
+items, without the app measuring anything itself.
+
+**Choosing between flexbox and grid.** Cover what each is good at and what it costs:
+
+- **Grid** when the container owns the arrangement: a fixed set of slots known up front
+  (app shells, dashboards), or columns that must line up across rows.
+  It costs locality: a child's size lives on its parent, away from the component, and
+  children fill tracks in order, so an extra child wraps into a new implicit row. In a
+  10-tall grid with two columns and no row template, a third child starts a second row, and
+  the two rows split the height 5 and 5.
+- **Flexbox** when each child owns its size: a variable number of children (lists, toolbars,
+  tags), content-sized items, wrapping, or a component that keeps its size wherever it's
+  placed (a sidebar that's always `length(24)`).
+  It costs alignment across rows: two rows' columns line up only if each child repeats the
+  same size.
+
+Build the same app shell three ways (flexbox with `fill` and `length`, grid with `fr`, and
+flexbox sized by content) and show the screenshots together: the first two match, and the
+third shows what content sizing does to the same tree.
+
+**Where intuitions from ratatui break.** The page is about adjusting a mental model, not
+translating code, so cover the places where thinking in ratatui terms predicts the wrong
+layout:
+
+- _Conflicts._ Ratatui resolves an over-constrained split by priority (`Min`, `Max`,
+  `Length`, `Percentage`, `Ratio`, `Fill`, in that order). Flexbox starts from the basis,
+  distributes free space by grow and shrink, then clamps to the min and max sizes, so
+  `length(30)` twice in a 40-wide row overflows by 20.
+  Show the same over-constrained split in both. Probe ratatui for its side (including
+  whether it ever returns an area outside the parent) rather than describing it from its
+  docs.
+- _Percentages and gaps._ Two `percentage(50)` children in a row with `gap(1)` overflow by
+  one cell, because CSS percentages don't subtract gaps; `fill(1)` gives equal shares.
+- _Leftover space._ With nothing set to fill, ratatui's `Flex::Legacy` gives the excess to
+  the last constraint of lowest priority, while flexbox leaves it empty at the end.
+- _Alignment comes for free._ Ratatui's `Flex` modes appear in counterweight as the
+  `justify_children_*` utilities of the same names, and stretch on the cross axis is the
+  default rather than something to ask for.
+
+The ratatui names come from ratatui `0.30.2`; check them against the current release when
+writing the page.
+
+### 9. Decide on rounding, and read layouts in one call
 
 `_extract_layout` reads `unrounded_layout`, sums each node's position in Python, and floors
 edges itself.
@@ -254,7 +457,8 @@ Experiment: leave rounding on, take each border box's edges from `absolute_layou
 (position, and position plus size, both whole numbers with no floor),
 and run `tests/test_layout.py` along with examples that use `space_evenly` and fractional
 `grow`. `tree.format_tree(root)` dumps the computed tree as a string,
-which shows where the two approaches differ.
+which shows where the two approaches differ, and the gallery screenshots show where any
+difference reaches the screen.
 
 - **If the results match,** switch to taffy's rounding and delete the custom floor
   arithmetic and its comment.
@@ -279,7 +483,7 @@ Tests: the existing `tests/test_layout.py` expectations; a hidden subtree produc
 `ResolvedLayout`; a component hidden after a visible frame reports empty regions from
 `use_rects`. Profile canvas and dashboard before and after.
 
-### 8. Make per-frame layout cheaper
+### 10. Make per-frame layout cheaper
 
 **Measure first.** Split the "Calculated layout" devlog timing (`app.py:307-311`) into
 building the tree, `compute_layout` (including text-measure callbacks), and reading results
