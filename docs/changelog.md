@@ -4,6 +4,9 @@
 
 ### Added
 
+- Documented how components keep their state across renders,
+  and how to use keys to move or reset that state.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
@@ -73,6 +76,11 @@
   and all of them finish before any effect starts,
   so an effect's cleanup always finishes before its replacement or a sibling's setup begins.
   Previously a rerun effect's new task started before the old one was cancelled.
+
+- Keyed sibling components are matched by key across renders rather than by position,
+  so reordering, inserting, or removing keyed children keeps each one's state and effects.
+  Unkeyed children still match the unkeyed child at the same index.
+  Keyed sibling components that share a key now raise `DuplicateKey`.
 
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly

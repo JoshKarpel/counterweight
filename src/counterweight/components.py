@@ -36,4 +36,13 @@ class Component:
     key: str | int | None = None
 
     def with_key(self, key: str | int | None) -> Component:
+        """
+        Returns a copy of this component with the given `key`.
+        Across renders, a keyed component continues the sibling that had the same key last render,
+        wherever it sat, so reordering keyed siblings moves their state and effects with them.
+        An unkeyed component instead continues the unkeyed sibling at the same index.
+        Changing a component's key remounts it with fresh state,
+        and adding or removing a key counts as changing it.
+        Sibling components MUST NOT share a key other than `None`; reconciling them raises `DuplicateKey`.
+        """
         return replace(self, key=key)

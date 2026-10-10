@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from itertools import zip_longest
 from time import perf_counter_ns
 
 from structlog import get_logger
@@ -31,6 +30,10 @@ class ShadowNode:
             stack.extend(reversed(node.children))
 
 
+class DuplicateKey(Exception):
+    """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
+
+
 def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> tuple[ShadowNode, int]:
     """Returns the updated shadow node and the nanoseconds spent in user component functions."""
     user_ns = 0
@@ -56,13 +59,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             element = next_component.func(*next_args, **next_kwargs)
             user_ns += perf_counter_ns() - _start
 
-            children = []
-            for new_child, previous_child in zip_longest(element.children, previous_children):
-                if new_child is None:
-                    continue
-                child_node, child_ns = update_shadow(new_child, previous_child)
-                children.append(child_node)
-                user_ns += child_ns
+            children, children_ns = reconcile_children(element.children, previous_children)
+            user_ns += children_ns
 
             new = ShadowNode(
                 component=next_component,
@@ -90,11 +88,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             element = next_func(*next_args, **next_kwargs)
             user_ns += perf_counter_ns() - _start
 
-            children = []
-            for child in element.children:
-                child_node, child_ns = update_shadow(child, None)
-                children.append(child_node)
-                user_ns += child_ns
+            children, children_ns = reconcile_children(element.children, [])
+            user_ns += children_ns
 
             new = ShadowNode(
                 component=next_component,
@@ -110,13 +105,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             children=previous_children,
             hooks=previous_hooks,
         ):
-            children = []
-            for new_child, previous_child in zip_longest(element.children, previous_children):
-                if new_child is None:
-                    continue
-                child_node, child_ns = update_shadow(new_child, previous_child)
-                children.append(child_node)
-                user_ns += child_ns
+            children, children_ns = reconcile_children(element.children, previous_children)
+            user_ns += children_ns
 
             new = ShadowNode(
                 component=None,
@@ -125,11 +115,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
             )
         case element, None | ShadowNode():
-            children = []
-            for child in element.children:
-                child_node, child_ns = update_shadow(child, None)
-                children.append(child_node)
-                user_ns += child_ns
+            children, children_ns = reconcile_children(element.children, [])
+            user_ns += children_ns
 
             new = ShadowNode(
                 component=None,
@@ -142,3 +129,39 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             raise Exception("Unreachable!")
 
     return new, user_ns
+
+
+def reconcile_children(
+    next_children: Sequence[Component | AnyElement], previous_children: Sequence[ShadowNode]
+) -> tuple[list[ShadowNode], int]:
+    """
+    Pairs each next child with the previous child it continues, as React does:
+    a keyed child with the previous sibling that had the same key, wherever it was,
+    and an unkeyed child with the unkeyed previous sibling at the same index.
+    Returns the reconciled children and the nanoseconds spent in user component functions.
+    """
+    previous_by_key: dict[str | int, ShadowNode] = {}
+    previous_by_index: dict[int, ShadowNode] = {}
+    for index, node in enumerate(previous_children):
+        if node.component is not None and node.component.key is not None:
+            previous_by_key[node.component.key] = node
+        else:
+            previous_by_index[index] = node
+
+    seen_keys: set[str | int] = set()
+    children = []
+    user_ns = 0
+    for index, next_child in enumerate(next_children):
+        if isinstance(next_child, Component) and next_child.key is not None:
+            if next_child.key in seen_keys:
+                raise DuplicateKey(f"Sibling components share the key {next_child.key!r}")
+            seen_keys.add(next_child.key)
+            previous_child = previous_by_key.get(next_child.key)
+        else:
+            previous_child = previous_by_index.get(index)
+
+        child_node, child_ns = update_shadow(next_child, previous_child)
+        children.append(child_node)
+        user_ns += child_ns
+
+    return children, user_ns

@@ -6,6 +6,8 @@ from contextlib import contextmanager
 from sys import getrecursionlimit
 from weakref import WeakSet
 
+import pytest
+
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
 from counterweight._utils import cancel_tasks, forever
 from counterweight.app import handle_effects
@@ -14,7 +16,7 @@ from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
 from counterweight.hooks.impls import Hooks
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
 
 
 @contextmanager
@@ -172,3 +174,102 @@ def test_walk_handles_trees_deeper_than_the_recursion_limit() -> None:
         tree = leaf("link", tree)
 
     assert sum(1 for _ in tree.walk()) == depth + 1
+
+
+@component
+def remembers(name: str, setters: dict[str, Setter[str]], seen: dict[str, str]) -> Text:
+    value, set_value = use_state("initial")
+    setters[name] = set_value
+    seen[name] = value
+    return Text(content=value)
+
+
+async def test_reordered_keyed_children_keep_their_state() -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+
+    with event_queue():
+        async with TaskGroup() as tg:
+            shadow, active = await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, set(), tg
+            )
+            setters["x"]("x was set")
+            setters["y"]("y was set")
+            await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, active, tg
+            )
+
+    assert seen == {"x": "x was set", "y": "y was set"}
+
+
+async def test_reordered_keyed_children_keep_their_effects_running() -> None:
+    log: list[str] = []
+
+    async with TaskGroup() as tg:
+        shadow, active = await render(
+            Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, set(), tg
+        )
+        shadow, active = await render(
+            Div(children=[logs_effect(name, log).with_key(name) for name in ("y", "x")]), shadow, active, tg
+        )
+        log_after_reorder = log.copy()
+        await cancel_tasks(active)
+
+    assert log_after_reorder == ["start x", "start y"]
+
+
+async def test_keyed_children_after_a_removed_keyed_child_keep_their_state() -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+
+    with event_queue():
+        async with TaskGroup() as tg:
+            shadow, active = await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "b", "c")]),
+                None,
+                set(),
+                tg,
+            )
+            setters["c"]("c was set")
+            await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "c")]), shadow, active, tg
+            )
+
+    assert seen["c"] == "c was set"
+
+
+async def test_inserting_a_keyed_child_at_the_front_mounts_only_that_child() -> None:
+    log: list[str] = []
+
+    async with TaskGroup() as tg:
+        shadow, active = await render(
+            Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, set(), tg
+        )
+        shadow, active = await render(
+            Div(children=[logs_effect(name, log).with_key(name) for name in ("w", "x", "y")]), shadow, active, tg
+        )
+        log_after_insert = log.copy()
+        await cancel_tasks(active)
+
+    assert log_after_insert == ["start x", "start y", "start w"]
+
+
+async def test_unkeyed_child_after_a_removed_keyed_sibling_remounts() -> None:
+    log: list[str] = []
+
+    async with TaskGroup() as tg:
+        shadow, active = await render(
+            Div(children=[logs_effect("a", log).with_key("a"), logs_effect("u", log)]), None, set(), tg
+        )
+        shadow, active = await render(Div(children=[logs_effect("u", log)]), shadow, active, tg)
+        log_after_removal = log.copy()
+        await cancel_tasks(active)
+
+    assert log_after_removal.count("start u") == 2
+
+
+def test_duplicate_sibling_keys_raise() -> None:
+    log: list[str] = []
+
+    with pytest.raises(DuplicateKey):
+        update_shadow(Div(children=[logs_effect("x", log).with_key(1), logs_effect("y", log).with_key(1)]), None)

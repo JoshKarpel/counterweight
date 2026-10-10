@@ -132,15 +132,15 @@ before a sibling's rerun starts.
 
 ### 3. Match keyed children by key
 
-**Status:** Not started
+**Status:** Done
 
 Follow React's child reconciliation: put the previous children in a map under their key, or
 under their index in the child list when they have none, and look each new child up by its
 key, or by its own index when it has none.
 An unkeyed child therefore matches exactly what it matches today, the previous child at the
 same index, provided that child was also unkeyed.
-Tag the map entries as key or index, since a key can be an `int` and would otherwise collide
-with an index.
+Keyed and unkeyed children go in separate maps, since a key can be an `int` and would
+otherwise collide with an index.
 Only `Component` carries a key, so elements always match by index.
 A key match with a different `func` still remounts, through the existing guard on the
 reuse arm.
