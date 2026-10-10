@@ -3,12 +3,14 @@
 This plan covers the counterweight side of making styles predictable to compose and layout
 easier to reason about and cheaper per frame:
 a cell-grid region type, taking up the waxy `0.7.0` release, one merge rule for every style
-field, borders stored once, documented layout defaults, reading layouts back in one call,
-memoizing text measurement, and reusing the layout tree across frames.
+field, borders stored once, utilities for the new sizing keywords, documented layout defaults,
+reading layouts back in one call, memoizing text measurement, and reusing the layout tree
+across frames.
 It doesn't cover component memoization (`plans/component-memoization.md`) or paint performance,
 except where layout work touches them.
-It also doesn't cover exposing the layout features taffy 0.10 through 0.14 added
-(sizing keywords like `FIT_CONTENT`, grid template areas, `repeat()`) as utilities.
+It also doesn't cover exposing the grid features taffy 0.10 through 0.14 added
+(grid template areas, `repeat()`) or the `CONTENT` flex basis as utilities;
+nothing in counterweight or its examples needs them yet.
 
 It builds on the waxy plan of the same name (`plans/styling-foundations.md` in the waxy
 repository), released as waxy `0.6.0` ([waxy#49](https://github.com/JoshKarpel/waxy/pull/49)),
@@ -48,6 +50,10 @@ which leaves hidden nodes out of `absolute_layouts`.
   children grew to fill their parent. Taffy uses CSS defaults (`flex_grow=0`, `flex_shrink=1`,
   row direction, cross-axis stretch, border-box sizing), so children shrink to their content
   unless told otherwise.
+- **Sizing keywords out of reach.** waxy `0.6.0` lets `size_width` and `size_height` take
+  `MIN_CONTENT`, `MAX_CONTENT`, `FIT_CONTENT`, `FitContent(limit)` and `STRETCH`, but the size
+  utilities (`width`, `height`, `size`, `full_width`, `full_height`, `full`) only build
+  `Length` and `Percent`, so sizing a box to its content means writing a raw `waxy.Style`.
 - **Layout read back one node at a time.** `_extract_layout` (`layout.py:100`) recurses in
   Python, calling `unrounded_layout` and `children` on every node and snapping edges with its
   own floor arithmetic.
@@ -122,7 +128,7 @@ confirm the converted tests fail.
   any counterweight change.
 
 The suite and mypy pass unchanged against the waxy `0.6.0` build
-(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 6),
+(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 7),
 so nothing in counterweight depends on the removed `Rect` and `Line` methods
 or misspells a `waxy.Style` keyword (which now raises `TypeError`;
 the utilities are module constants, so importing them constructs every one).
@@ -189,15 +195,44 @@ Tests: `border_light | border_none` reserves no space and draws nothing;
 `border_light | border_top` reserves and draws only the top edge;
 setting `border_top` through `layout` raises.
 
-### 5. Document the layout defaults
+### 5. Expose the sizing keywords
+
+This comes after steps 3 and 4 so the new utilities are written once, under the new merge
+rule, rather than migrated.
+
+Add the keywords for both axes, hand-written beside `full_width` and `full_height`:
+
+- `min_content_width`, `max_content_width`, `fit_content_width`, `stretch_width`, and the same
+  four for height.
+  The `_content_` names keep them apart from `min_width` and `max_width`, which already set
+  `min_size_width` and `max_size_width`.
+- Leave out `FitContent(limit)` until something needs it: it has to be a function, and its
+  name would collide with the `fit_content_*` constants.
+- `min_size_*` and `max_size_*` still take only `Length | Percent | Auto`, so `min_width`,
+  `max_width` and their height counterparts don't change.
+
+`full_width` is `Percent(1.0)`, which doesn't account for margins, while `STRETCH` fills the
+space left after them.
+Check whether `full_width | margin_x(1)` overflows its parent in a column layout (where shrink
+doesn't apply to width). If it does, decide whether `full_width`, `full_height` and `full`
+should switch to `STRETCH`; that would be a changelog entry under `Changed`.
+
+Changelog entry under `Added`.
+
+Tests: each utility sets only its own field (`layout.fields_set`); for a wrapping `Text`
+of `"hello world"` in a 40-cell column, the four width keywords give widths of 5, 11, 11
+and 40.
+
+### 6. Document the layout defaults
 
 Fold this into the positioning docs rework (#314): layout follows CSS flexbox defaults
 (`flex_direction` row, `flex_grow` 0, `flex_shrink` 1, `align_items` stretch, border-box
 sizing), so children take their content size unless given `grow(1)`, and `Text` doesn't wrap
 unless `text_wrap` is set. Show the common terminal patterns (fill the screen, split into
-columns, a sidebar of fixed width) as cookbook examples.
+columns, a sidebar of fixed width, a box that fits its text) as cookbook examples,
+using the sizing keywords from step 5 where they fit.
 
-### 6. Decide on rounding, and read layouts in one call
+### 7. Decide on rounding, and read layouts in one call
 
 `_extract_layout` reads `unrounded_layout`, sums each node's position in Python, and floors
 edges itself.
@@ -244,7 +279,7 @@ Tests: the existing `tests/test_layout.py` expectations; a hidden subtree produc
 `ResolvedLayout`; a component hidden after a visible frame reports empty regions from
 `use_rects`. Profile canvas and dashboard before and after.
 
-### 7. Make per-frame layout cheaper
+### 8. Make per-frame layout cheaper
 
 **Measure first.** Split the "Calculated layout" devlog timing (`app.py:307-311`) into
 building the tree, `compute_layout` (including text-measure callbacks), and reading results
