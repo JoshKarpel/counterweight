@@ -7,6 +7,9 @@
 - Documented how components keep their state across renders,
   and how to use keys to move or reset that state.
 
+- Documented that a component must call the same hooks in the same order on every render,
+  and how to move a hook that is only sometimes needed into a child component.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
@@ -53,6 +56,10 @@
 
 - Calling a `use_state` setter after its component has unmounted does nothing,
   instead of updating orphaned state and triggering a render that changes nothing.
+
+- **Breaking:** A component that calls a different number of hooks than on its previous render
+  raises `InconsistentHookExecution`.
+  Skipping a trailing hook used to pass silently, and a skipped `use_effect` kept running.
 
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.

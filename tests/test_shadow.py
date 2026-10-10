@@ -8,14 +8,14 @@ from weakref import WeakSet
 
 import pytest
 
-from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
+from counterweight._context_vars import current_event_queue, current_hook_state, current_use_mouse_listeners
 from counterweight._utils import cancel_tasks, forever
 from counterweight.app import handle_effects
 from counterweight.components import Component, component
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
-from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.shadow import DuplicateKey, ShadowNode, mark_unmounted, update_shadow
 
 
@@ -378,3 +378,58 @@ async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
             setters["x"]("set after move")
 
     assert queue.qsize() == 1
+
+
+@component
+def calls_hooks(hook_count: int) -> Text:
+    for _ in range(hook_count):
+        use_state(0)
+    return Text(content=str(hook_count))
+
+
+@pytest.mark.parametrize(
+    ("first_count", "second_count"),
+    [
+        pytest.param(2, 1, id="skips-last-hook"),
+        pytest.param(1, 2, id="adds-a-hook"),
+    ],
+)
+def test_changing_hook_count_between_renders_raises(first_count: int, second_count: int) -> None:
+    shadow, _ = update_shadow(calls_hooks(first_count), None)
+
+    with pytest.raises(InconsistentHookExecution):
+        update_shadow(calls_hooks(second_count), shadow)
+
+
+def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
+    shadow, _ = update_shadow(calls_hooks(2), None)
+    shadow, _ = update_shadow(calls_hooks(2), shadow)
+
+    assert len(shadow.hooks.data) == 2
+
+
+class RenderFailed(Exception):
+    pass
+
+
+@component
+def raises_on_render(should_raise: bool) -> Text:
+    use_state(0)
+    if should_raise:
+        raise RenderFailed()
+    return Text(content="rendered")
+
+
+@pytest.mark.parametrize("is_rerender", [False, True], ids=["mount", "rerender"])
+def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
+    previous = update_shadow(raises_on_render(False), None)[0] if is_rerender else None
+    outer_hooks = Hooks()
+    token = current_hook_state.set(outer_hooks)
+    try:
+        with pytest.raises(RenderFailed):
+            update_shadow(raises_on_render(True), previous)
+        state_after_raise = current_hook_state.get()
+    finally:
+        current_hook_state.reset(token)
+
+    assert state_after_raise is outer_hooks

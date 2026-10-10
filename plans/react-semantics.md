@@ -186,14 +186,17 @@ Tests: calling a captured setter after its component unmounts enqueues nothing.
 
 ### 6. Raise when the hook count changes between renders
 
-**Status:** Not started
+**Status:** Done
 
 Record `len(hooks.data)` before re-running a component, and raise
 `InconsistentHookExecution` if the hook index afterwards differs from it.
 A first render has nothing to compare against and is exempt.
+Reset the hook context vars in a `finally` around the component call, so a component that
+raises doesn't leave its `Hooks` installed for whatever runs next in that context.
 
 Tests: a component that conditionally skips its last hook raises; one that conditionally
-adds a hook raises; one that calls the same hooks every render doesn't.
+adds a hook raises; one that calls the same hooks every render doesn't;
+the hook context is restored after a component raises, on mount and on rerender.
 
 ### 7. Add `use_reducer`
 
