@@ -11,25 +11,38 @@ from cachetools import LRUCache
 
 from counterweight._utils import flyweight
 
+TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
+
+
+UNSET = sentinel("UNSET")
+
+
+def or_default[T](value: T | UNSET, default: T) -> T:
+    """`value`, or `default` if `value` is `UNSET`."""
+    return default if value is UNSET else value
 
 
 STYLE_MERGE_CACHE: LRUCache[tuple[StyleFragment, StyleFragment], StyleFragment] = LRUCache(maxsize=2**16)
 
 
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
-    # Start with left's values as the baseline.
-    kwargs: dict[str, object] = {f.name: getattr(left, f.name) for f in dataclasses.fields(left) if f.init}  # type: ignore[arg-type]
-    # Override with right's non-default values (right wins where it was explicitly set).
-    for f in dataclasses.fields(right):  # type: ignore[arg-type]
+    """
+    Merge two fragments field by field: `right`'s value wins wherever it isn't `UNSET`,
+    and nested fragments (and `waxy.Style` layouts) merge recursively.
+    """
+    kwargs: dict[str, object] = {}
+    for f in dataclasses.fields(left):  # type: ignore[arg-type]
         if not f.init:
             continue
-        val = getattr(right, f.name)
-        if isinstance(val, StyleFragment):
-            kwargs[f.name] = merge_style_fragments(getattr(left, f.name), val)
-        elif f.default is not dataclasses.MISSING and val != f.default:
-            kwargs[f.name] = val
-        # Fields with default_factory (e.g. layout) keep left's value — Style.__or__ handles layout separately.
+        left_value = getattr(left, f.name)
+        right_value = getattr(right, f.name)
+        if right_value is UNSET:
+            kwargs[f.name] = left_value
+        elif isinstance(right_value, StyleFragment | waxy.Style):
+            kwargs[f.name] = left_value | right_value
+        else:
+            kwargs[f.name] = right_value
     return type(left)(**kwargs)
 
 
@@ -233,13 +246,22 @@ _BLACK = COLORS_BY_NAME["black"]
 @flyweight(maxsize=2**10)
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CellStyle(StyleFragment):
-    foreground: Color = _WHITE
-    background: Color = _BLACK
-    bold: bool = False
-    dim: bool = False
-    italic: bool = False
-    underline: bool = False
-    strikethrough: bool = False
+    """
+    How to draw a cell's character: its colors and attributes.
+
+    Every field starts `UNSET`. Merging with `|` takes the right side's value wherever it is set,
+    including when it is set to the default, so `CellStyle(bold=False)` turns bold off.
+    Unset fields resolve to the defaults in
+    [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
+    """
+
+    foreground: Color | UNSET = UNSET
+    background: Color | UNSET = UNSET
+    bold: bool | UNSET = UNSET
+    dim: bool | UNSET = UNSET
+    italic: bool | UNSET = UNSET
+    underline: bool | UNSET = UNSET
+    strikethrough: bool | UNSET = UNSET
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
 
     def __post_init__(self) -> None:
@@ -256,6 +278,63 @@ class CellStyle(StyleFragment):
 
 
 _DEFAULT_CELL_STYLE = CellStyle()
+
+
+@flyweight(maxsize=2**10)
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ResolvedCellStyle:
+    """A [`CellStyle`][counterweight.styles.CellStyle] with every field filled in, as paint and output read it."""
+
+    foreground: Color
+    background: Color
+    bold: bool
+    dim: bool
+    italic: bool
+    underline: bool
+    strikethrough: bool
+    _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+            ),
+        )
+
+    def __hash__(self) -> int:
+        return self._hash
+
+
+CELL_STYLE_DEFAULTS = ResolvedCellStyle(
+    foreground=_WHITE,
+    background=_BLACK,
+    bold=False,
+    dim=False,
+    italic=False,
+    underline=False,
+    strikethrough=False,
+)
+
+
+@lru_cache(maxsize=2**12)
+def resolve_cell_style(style: CellStyle, defaults: ResolvedCellStyle = CELL_STYLE_DEFAULTS) -> ResolvedCellStyle:
+    """
+    Fill `style`'s unset fields from `defaults`.
+
+    Resolving against a resolved base is the same as merging onto it first:
+    `resolve_cell_style(b, resolve_cell_style(a))` equals `resolve_cell_style(a | b)`.
+    """
+    return ResolvedCellStyle(
+        foreground=or_default(style.foreground, defaults.foreground),
+        background=or_default(style.background, defaults.background),
+        bold=or_default(style.bold, defaults.bold),
+        dim=or_default(style.dim, defaults.dim),
+        italic=or_default(style.italic, defaults.italic),
+        underline=or_default(style.underline, defaults.underline),
+        strikethrough=or_default(style.strikethrough, defaults.strikethrough),
+    )
 
 
 class BorderParts(NamedTuple):
@@ -544,24 +623,77 @@ class JoinedBorderKind(Enum):
 
 @dataclass(frozen=True, kw_only=True)
 class Style(StyleFragment):
+    """
+    How an element is laid out and drawn.
+
+    Every field except `layout` starts `UNSET`, and the nested `border_style` and `text_style`
+    start as empty `CellStyle`s. Merging with `|` takes the right side's value wherever it is set,
+    including when it is set to the default, so `border_light | border_none` has no border.
+    `layout` merges the same way, field by field.
+    Unset fields resolve to the defaults in [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS].
+    """
+
     layout: waxy.Style = field(default_factory=waxy.Style)
 
-    z: int = 0
-    margin_color: Color = _BLACK
-    padding_color: Color = _BLACK
-    content_color: Color = _BLACK
+    z: int | UNSET = UNSET
+    margin_color: Color | UNSET = UNSET
+    padding_color: Color | UNSET = UNSET
+    content_color: Color | UNSET = UNSET
 
-    border_kind: BorderKind | None = None
+    border_kind: BorderKind | UNSET | None = UNSET
     border_style: CellStyle = _DEFAULT_CELL_STYLE
-    border_contract: int = 0
+    border_contract: int | UNSET = UNSET
 
     text_style: CellStyle = _DEFAULT_CELL_STYLE
-    text_justify: Literal["left", "center", "right"] = "left"
-    text_wrap: TextWrap = "none"
+    text_justify: TextJustify | UNSET = UNSET
+    text_wrap: TextWrap | UNSET = UNSET
 
-    def __or__[SS: Style](self: SS, other: SS | None) -> SS:
-        if other is None:
-            return self
-        merged_layout = self.layout | other.layout
-        merged = merge_style_fragments(self, other)
-        return dataclasses.replace(merged, layout=merged_layout)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ResolvedStyle:
+    """The drawing fields of a [`Style`][counterweight.styles.Style], every one filled in, as paint reads them."""
+
+    z: int
+    margin_color: Color
+    padding_color: Color
+    content_color: Color
+
+    border_kind: BorderKind | None
+    border_style: ResolvedCellStyle
+    border_contract: int
+
+    text_style: ResolvedCellStyle
+    text_justify: TextJustify
+    text_wrap: TextWrap
+
+
+STYLE_DEFAULTS = ResolvedStyle(
+    z=0,
+    margin_color=_BLACK,
+    padding_color=_BLACK,
+    content_color=_BLACK,
+    border_kind=None,
+    border_style=CELL_STYLE_DEFAULTS,
+    border_contract=0,
+    text_style=CELL_STYLE_DEFAULTS,
+    text_justify="left",
+    text_wrap="none",
+)
+
+
+@lru_cache(maxsize=2**12)
+def resolve_style(style: Style) -> ResolvedStyle:
+    """Fill `style`'s unset drawing fields from `STYLE_DEFAULTS`."""
+    defaults = STYLE_DEFAULTS
+    return ResolvedStyle(
+        z=or_default(style.z, defaults.z),
+        margin_color=or_default(style.margin_color, defaults.margin_color),
+        padding_color=or_default(style.padding_color, defaults.padding_color),
+        content_color=or_default(style.content_color, defaults.content_color),
+        border_kind=or_default(style.border_kind, defaults.border_kind),
+        border_style=resolve_cell_style(style.border_style, defaults.border_style),
+        border_contract=or_default(style.border_contract, defaults.border_contract),
+        text_style=resolve_cell_style(style.text_style, defaults.text_style),
+        text_justify=or_default(style.text_justify, defaults.text_justify),
+        text_wrap=or_default(style.text_wrap, defaults.text_wrap),
+    )

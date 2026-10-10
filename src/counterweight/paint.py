@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby
 from textwrap import dedent
-from typing import Literal, assert_never
+from typing import assert_never
 from xml.etree.ElementTree import Element, SubElement
 
 from structlog import get_logger
@@ -19,8 +19,12 @@ from counterweight.styles.styles import (
     Color,
     JoinedBorderKind,
     JoinedBorderParts,
-    Style,
+    ResolvedCellStyle,
+    ResolvedStyle,
+    TextJustify,
     TextWrap,
+    resolve_cell_style,
+    resolve_style,
 )
 
 logger = get_logger()
@@ -30,7 +34,7 @@ logger = get_logger()
 @dataclass(slots=True)
 class P:
     char: str
-    style: CellStyle
+    style: ResolvedCellStyle
     z: int
 
     @classmethod
@@ -38,7 +42,7 @@ class P:
     def blank(cls, color: Color, z: int) -> P:
         return cls(
             char=" ",
-            style=CellStyle(background=color),
+            style=resolve_cell_style(CellStyle(background=color)),
             z=z,
         )
 
@@ -72,7 +76,7 @@ def fill_region(region: Region, z: int, color: Color) -> Paint:
 
 @lru_cache(maxsize=2**10)
 def paint_edge(outer: Region, inner: Region, color: Color, z: int) -> Paint:
-    cell_paint = P(char=" ", style=CellStyle(background=color), z=z)
+    cell_paint = P(char=" ", style=resolve_cell_style(CellStyle(background=color)), z=z)
 
     strips = [
         Region(left=outer.left, top=outer.top, right=outer.right, bottom=inner.top),
@@ -85,9 +89,11 @@ def paint_edge(outer: Region, inner: Region, color: Color, z: int) -> Paint:
 
 
 def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]:
-    m = paint_edge(resolved.margin, resolved.border, element.style.margin_color, element.style.z)
-    b, bhh = paint_border(element.style, resolved)
-    t = paint_edge(resolved.padding, resolved.content, element.style.padding_color, element.style.z)
+    style = resolve_style(element.style)
+
+    m = paint_edge(resolved.margin, resolved.border, style.margin_color, style.z)
+    b, bhh = paint_border(style, resolved)
+    t = paint_edge(resolved.padding, resolved.content, style.padding_color, style.z)
 
     box = m | b | t
 
@@ -95,19 +101,19 @@ def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint,
         case Div():
             paint = box
         case Text() as e:
-            paint = box | paint_text(e, resolved.content)
+            paint = box | paint_text(e, style, resolved.content)
         case _:
             assert_never(element)
 
     return (
-        (fill_region(resolved.margin, element.style.z, element.style.content_color) | paint if paint else paint),
+        (fill_region(resolved.margin, style.z, style.content_color) | paint if paint else paint),
         bhh,
-        element.style.z,
+        style.z,
         resolved.order,
     )
 
 
-def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "right", "center"]) -> list[CellPaint]:
+def justify_line(line: list[CellPaint], width: int, justify: TextJustify) -> list[CellPaint]:
     space = width - len(line)
     if space <= 0:
         return line
@@ -126,8 +132,8 @@ def justify_line(line: list[CellPaint], width: int, justify: Literal["left", "ri
 def _paint_text(
     cells: tuple[CellPaint, ...],
     wrap: TextWrap,
-    justify: Literal["left", "right", "center"],
-    text_style: CellStyle,
+    justify: TextJustify,
+    text_style: ResolvedCellStyle,
     z: int,
     region: Region,
 ) -> Paint:
@@ -144,25 +150,23 @@ def _paint_text(
             cell_style = cell.style
 
             if cell_style is not previous_cell_style:
-                merged_style = text_style | cell_style
+                resolved_style = resolve_cell_style(cell_style, text_style)
                 previous_cell_style = cell_style
 
             paint[Position(x, y)] = P(
                 char=cell.char,
-                style=merged_style,  # merged_style will never be unassigned here, since we know previous_cell_style starts as None
+                style=resolved_style,  # resolved_style will never be unassigned here, since we know previous_cell_style starts as None
                 z=z,
             )
 
     return paint
 
 
-def paint_text(text: Text, region: Region) -> Paint:
-    return _paint_text(
-        text.cells, text.style.text_wrap, text.style.text_justify, text.style.text_style, text.style.z, region
-    )
+def paint_text(text: Text, style: ResolvedStyle, region: Region) -> Paint:
+    return _paint_text(text.cells, style.text_wrap, style.text_justify, style.text_style, style.z, region)
 
 
-def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]:
+def paint_border(style: ResolvedStyle, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints]:
     bk = style.border_kind
     if bk is None:
         return {}, {}

@@ -9,7 +9,7 @@ from structlog import get_logger
 
 from counterweight.geometry import Position
 from counterweight.paint import Paint, svg
-from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import ResolvedCellStyle
 
 if TYPE_CHECKING:
     pass
@@ -65,7 +65,7 @@ def move_to(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
-def sgr_from_cell_style(style: CellStyle) -> str:
+def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
     fg_r, fg_g, fg_b = style.foreground
     bg_r, bg_g, bg_b = style.background
 

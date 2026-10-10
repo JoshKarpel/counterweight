@@ -14,12 +14,12 @@ from counterweight.geometry import Position
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.paint import P
-from counterweight.styles.styles import CellStyle, Color
+from counterweight.styles.styles import CellStyle, Color, resolve_cell_style
 
 
 @pytest.fixture
 def frame() -> Frame:
-    red = CellStyle(foreground=Color.from_name("red"))
+    red = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
     return Frame(paint={Position(0, 0): P(char="h", style=red, z=0), Position(1, 0): P(char="i", style=red, z=0)})
 
 

@@ -25,12 +25,12 @@ classifiers = [
     "Operating System :: Unix",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Artistic Software",
     "Topic :: Multimedia :: Graphics :: Presentation",
     "Typing :: Typed",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.15"
 dependencies = [
     "typer>=0.9",
     "structlog>=23.1",
@@ -51,14 +51,12 @@ dev = [
     "pytest-asyncio>=1",
     "pytest-mock>=3",
     "hypothesis>=6.80",
-    "mypy>=1",
+    "mypy>=2.4",
     "types-cachetools>=5.3",
     "mkdocs<2",
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.19.0",
-    "line-profiler>=4.1",
     "ruff>=0.15.4",
-    "scalene>=2.1.4",
 ]
 
 [project.scripts]

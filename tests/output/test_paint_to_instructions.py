@@ -4,14 +4,14 @@ from counterweight.geometry import Position
 from counterweight.output import move_to, paint_to_instructions, sgr_from_cell_style
 from counterweight.paint import P
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import Color
+from counterweight.styles.styles import Color, ResolvedCellStyle, resolve_cell_style
 
-DEFAULT = CellStyle()
-RED_FG = CellStyle(foreground=Color.from_name("red"))
+DEFAULT = resolve_cell_style(CellStyle())
+RED_FG = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
 RESET = "\x1b[0m"
 
 
-def sgr(style: CellStyle) -> str:
+def sgr(style: ResolvedCellStyle) -> str:
     return sgr_from_cell_style(style)
 
 
@@ -19,7 +19,7 @@ def mt(x: int, y: int) -> str:
     return move_to(Position(x, y))
 
 
-def cell(char: str, style: CellStyle = DEFAULT, z: int = 0) -> P:
+def cell(char: str, style: ResolvedCellStyle = DEFAULT, z: int = 0) -> P:
     return P(char=char, style=style, z=z)
 
 

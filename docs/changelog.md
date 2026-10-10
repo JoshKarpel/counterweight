@@ -14,10 +14,6 @@
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
   half-block pixel art in a terminal canvas using `▀` characters.
 
-- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
-  Documented style merging semantics: styles are additive-only, meaning a field equal to its
-  default value is treated as "not set" and does not override a value from the other style.
-
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
@@ -70,6 +66,13 @@
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
   matching on the enum member (`Key.Space`) is unaffected.
 
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Every field of `Style` (except `layout`) and `CellStyle` starts out as the new
+  `counterweight.styles.UNSET` sentinel rather than its default value,
+  so reading a field of a style you built can return `UNSET`.
+  The defaults live in `counterweight.styles.STYLE_DEFAULTS` and `counterweight.styles.CELL_STYLE_DEFAULTS`,
+  and fill unset fields when an element is drawn.
+
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
   from Pydantic models to frozen `dataclass` instances, removing the runtime Pydantic dependency.
@@ -86,6 +89,11 @@
 
 ### Fixed
 
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Merging styles with `|` now lets the right side override the left with a default value:
+  `border_heavy | border_none` has no border kind, `text_justify_center | text_justify_left` justifies left,
+  `z(5) | z(0)` has `z` 0, and `CellStyle(bold=True) | CellStyle(bold=False)` is not bold.
+  Previously a field set to its default was treated as unset and ignored.
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly
   (they were previously reported as mouse presses).
@@ -104,9 +112,10 @@
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed.
   Use `counterweight.geometry.Region` in place of `Rect`.
-- [#165](https://github.com/JoshKarpel/counterweight/pull/165)
-  Dropped support for Python `3.11` and `3.12`.
-  Python `3.13` or later is now required.
+- [#165](https://github.com/JoshKarpel/counterweight/pull/165),
+  [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Dropped support for Python `3.11` through `3.14`.
+  Python `3.15` or later is now required.
 
 ## `0.0.9`
 

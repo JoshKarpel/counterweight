@@ -2,16 +2,11 @@
 import subprocess
 from itertools import combinations
 from pathlib import Path
-from typing import get_args, get_type_hints
+from typing import get_args
 
 from more_itertools import flatten
 
-from counterweight.styles.styles import BorderKind, Style
-
-
-def literal_vals(obj: object, field: str) -> tuple[str, ...]:
-    return get_args(get_type_hints(obj)[field])
-
+from counterweight.styles.styles import BorderKind, TextJustify, TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -507,14 +502,14 @@ generated_lines.append("")
 
 # --- Text justify ---
 
-for j in literal_vals(Style, "text_justify"):
+for j in get_args(TextJustify):
     generated_lines.append(f'text_justify_{j} = Style(text_justify="{j}")')
 
 generated_lines.append("")
 
 # --- Text wrap ---
 
-for w in literal_vals(Style, "text_wrap"):
+for w in get_args(TextWrap):
     generated_lines.append(f'text_wrap_{w} = Style(text_wrap="{w}")')
 
 generated_lines.append("")

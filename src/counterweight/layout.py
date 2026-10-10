@@ -8,7 +8,7 @@ import waxy
 
 from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Region
-from counterweight.styles.styles import TextWrap
+from counterweight.styles.styles import TextWrap, resolve_style
 
 if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode
@@ -95,7 +95,7 @@ def _measure_text(
 
     lines = wrap_cells(
         context.cells,
-        context.style.text_wrap,
+        resolve_style(context.style).text_wrap,
         int(width) if width is not None else None,
     )
 

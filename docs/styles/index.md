@@ -3,13 +3,24 @@
 ## Merging
 
 Styles are merged using the `|` operator: `left | right`.
-The result contains `left`'s values as the baseline, with `right`'s **non-default** values taking precedence.
+Every field starts out unset (the `counterweight.styles.UNSET` sentinel),
+and the result takes `right`'s value for every field `right` sets, and `left`'s value otherwise.
 
-This means style merging is **additive only**: a field that equals its default is treated as "not set" and does not override `left`.
-For example, `CellStyle(bold=True) | CellStyle(bold=False)` produces `CellStyle(bold=True)` because `bold=False` is the default and is therefore not considered an explicit override.
+A field set to its default value is still set, so it overrides `left`.
+`CellStyle(bold=True) | CellStyle(bold=False)` is `CellStyle(bold=False)`,
+`border_heavy | border_none` draws no border,
+and `text_justify_center | text_justify_left` justifies left.
+Utilities set only the fields they are about, so they layer without clearing each other:
+`text_color("red", 500) | text_bg("slate", 900)` is red text on a slate background.
 
-This design keeps style composition predictable — utility constants like `text_bold` can be freely layered without accidentally clearing each other — but it means you cannot use a default value to explicitly clear a previously-set property.
-Structure your components to avoid needing to reset style properties back to their defaults.
+Nested styles merge field by field too:
+`Style(text_style=CellStyle(bold=True)) | Style(text_style=CellStyle(italic=True))`
+is both bold and italic.
+`layout` follows the same rule, field by field.
+
+When an element is drawn, any field still unset takes its default from
+[`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS]
+and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 
 ## API
 
@@ -17,3 +28,5 @@ Structure your components to avoid needing to reset style properties back to the
 
 ::: counterweight.styles.Color
 ::: counterweight.styles.CellStyle
+::: counterweight.styles.STYLE_DEFAULTS
+::: counterweight.styles.CELL_STYLE_DEFAULTS

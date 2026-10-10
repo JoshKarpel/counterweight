@@ -1,5 +1,6 @@
 import waxy
 
+from counterweight.styles import UNSET
 from counterweight.styles.utilities import *
 
 
@@ -96,7 +97,7 @@ def test_border_all() -> None:
     assert border_all.layout.border_bottom == waxy.Length(1)
     assert border_all.layout.border_left == waxy.Length(1)
     assert border_all.layout.border_right == waxy.Length(1)
-    assert border_all.border_kind is None
+    assert border_all.border_kind is UNSET
 
 
 def test_border_sides() -> None:

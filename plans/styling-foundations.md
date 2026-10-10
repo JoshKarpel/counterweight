@@ -6,7 +6,7 @@ a cell-grid region type, a gallery of layout examples, taking up the waxy `0.7.0
 one merge rule for every style field, borders stored once, utilities for the new sizing
 keywords, ratatui-style constraint utilities, a guide to choosing between flexbox and grid,
 reading layouts back in one call, memoizing text measurement, reusing the layout tree
-across frames, and a last pass that makes the gallery read as one document.
+across frames, a pass that makes the gallery read as one document, and profiling the result.
 It doesn't cover component memoization (`plans/component-memoization.md`) or paint performance,
 except where layout work touches them.
 It also doesn't cover exposing the grid features taffy 0.10 through 0.14 added
@@ -243,39 +243,54 @@ reused (step 10).
 
 ### 4. One merge rule: explicitly set wins
 
+**Status:** Done
+
 Give counterweight's own fields the rule waxy uses.
 
-- **Authoring types.** Every field of `Style` and `CellStyle` (except `layout`) defaults to
-  `UNSET`, the only member of a single-member `Unset` enum, so mypy can narrow it. Fields are
-  typed `T | Unset`. `|` takes the right side's value wherever it isn't `UNSET`, recursing into
-  nested fragments (`border_style`, `text_style`). No field's default takes part in merging.
-- **Resolved types.** Paint and output need concrete values. Add `ResolvedStyle` and
-  `ResolvedCellStyle`, frozen dataclasses with concrete types and no defaults, each built by a
-  `resolve` function that fills unset fields from one table of defaults.
+- **Python 3.15.** The step raises `requires-python` to `>=3.15` (CI too) to use the
+  builtin `sentinel` ([PEP 661](https://peps.python.org/pep-0661/)), which needs mypy `>=2.4`
+  to narrow. It also upgrades every locked dependency, since several dev dependencies had no
+  3.15 wheels at their locked versions, and drops Scalene and `line-profiler` (step 12
+  rebuilds profiling on Tachyon).
+- **Authoring types.** Every scalar field of `Style` and `CellStyle` (all but `layout`)
+  defaults to `UNSET = sentinel("UNSET")` and is typed `T | UNSET`. The nested fragments
+  (`border_style`, `text_style`) default to an empty `CellStyle` rather than `UNSET`, since an
+  empty fragment already means "nothing set" and a second spelling of it would make equal
+  merges compare unequal. `|` takes the right side's value wherever it isn't `UNSET`, and merges
+  nested fragments and `layout` recursively, so `Style` no longer overrides `__or__` and its
+  merges go through `STYLE_MERGE_CACHE` like `CellStyle`'s.
+  No field's default takes part in merging.
+- **Resolved types.** `ResolvedStyle` (the drawing fields only; layout reads `Style.layout`)
+  and `ResolvedCellStyle` are frozen dataclasses with concrete types and no defaults.
+  `resolve_style` and `resolve_cell_style` fill unset fields from `STYLE_DEFAULTS` and
+  `CELL_STYLE_DEFAULTS`, which are the one table of defaults and are exported and documented.
   This follows the role split in parse-don't-validate: the type users write carries defaults,
   and the type the renderer reads proves every field is present.
-- **Where resolution happens.** `paint_element` resolves an element's `Style` once, cached
-  on the style, since styles are hashable. Text cells resolve
-  `text_style | cell_style` (`paint.py:156`) into a `ResolvedCellStyle`, and `CellPaint.style`
-  becomes `ResolvedCellStyle`, so `sgr_from_cell_style` (`output.py:65`) and paint diffing only
-  see concrete values.
+- **Where resolution happens.** `paint_element` resolves an element's `Style` through
+  `resolve_style`, an `lru_cache` keyed on the style. `resolve_cell_style` takes the base to
+  fill from, so text cells resolve each chunk's style against the element's resolved
+  `text_style`, which equals resolving `text_style | cell_style`. The painted cell's style
+  (`P.style`) is a `ResolvedCellStyle`, with the `@flyweight` and cached hash `CellStyle` has,
+  so `sgr_from_cell_style` and paint diffing only see concrete values. `_measure_text` reads
+  `text_wrap` through `resolve_style` too.
 
 The cost is two types per style, plus a resolve step that has to stay cached to stay off the
-hot path. Profile canvas and dashboard before and after, and give `ResolvedCellStyle` the same
-`@flyweight` and cached hash `CellStyle` has today.
+hot path; step 12 measures it.
 
 Behavior change for users: setting a field to its default value now overrides it
-(`border_none`, `text_justify_left`, `z(0)`, `CellStyle(bold=False)`). Combinations that only
-set non-default values behave as before. Changelog entry under `Fixed`.
+(`border_none`, `text_justify_left`, `z(0)`, `CellStyle(bold=False)`), and reading a field of
+an authored style can return `UNSET`. Combinations that only set non-default values behave as
+before, and no screenshot changed. Changelog entries under `Fixed`, `Changed` and `Removed`.
 
-Tests (parametrized over every field of `Style` and `CellStyle`): an explicit default
-overrides a non-default value; an unset field keeps the left side's value; resolving an empty
-style gives the documented defaults.
+Tests (parametrized over every field of `Style` and `CellStyle`, with a guard that the
+parametrization covers every field): an explicit default overrides a non-default value; an
+unset field keeps the left side's value; resolving an empty style gives the defaults;
+resolving against a resolved base matches merging first.
 
 ### 5. Store borders once
 
 - Replace the border-width bookkeeping with `border_kind: BorderKind | None` and
-  `border_sides: BorderSides`, where `BorderSides` is a fragment of four `bool | Unset`
+  `border_sides: BorderSides`, where `BorderSides` is a fragment of four `bool | UNSET`
   fields (`top`, `bottom`, `left`, `right`, all resolving to `True`). Because it merges per
   field, `Style(border_sides=BorderSides(top=False))` turns off only the top edge.
 - When building the layout tree, derive the waxy border widths from those two fields:
@@ -591,3 +606,26 @@ and makes it read as one document.
 
 Tests: none new. Every changed text snapshot is reviewed in the diff, and an unchanged one is
 expected wherever only the code changed.
+
+### 12. Profile with Tachyon
+
+Steps 4 to 11 change what paint and layout do every frame without profiling each change on its
+own, and step 4 removed the old Scalene tooling along with the move to Python 3.15.
+Rebuild profiling on Tachyon, the statistical sampling profiler in the 3.15 standard library
+(`python -m profiling.sampling run ...`), then use it to measure the plan.
+
+- **Tooling.** Replace the removed `just profile` recipe with one that runs a file under
+  Tachyon. Rewrite the `cw-profile` skill around it: replace `scripts/analyze_scalene.py`
+  with an analysis of Tachyon's output, keep the devlog analysis, and drop the
+  `scalene-profile.json` entry from `.gitignore`.
+  Check `python -m profiling.sampling run --help` for the output formats it offers
+  rather than assuming one.
+- **Baseline.** The commit before step 4 predates 3.15, so run its `src/` with this
+  plan's environment (a worktree at that commit, on `PYTHONPATH`) rather than its own lockfile.
+- **Compare.** Profile canvas and dashboard on the baseline and at the end of the plan, and
+  record both in `plans/performance-analysis-2026-03-07.md`.
+  Look in particular at what step 4's resolve step and step 5's derived border widths cost
+  per frame, and whether `Style` should cache its hash now that `resolve_style` and the
+  merge cache both hash styles on the paint path.
+
+Fix any regression the comparison finds before calling the plan done.
