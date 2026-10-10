@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Task
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
@@ -13,6 +13,19 @@ from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout
 @dataclass(slots=True)
 class UseState:
     value: object
+    setter: Setter[object] = field(init=False)
+
+    def __post_init__(self) -> None:
+        # Bound once so every render hands out the same setter, which keeps it safe to put in an effect's deps.
+        self.setter = self.set
+
+    def set(self, value: object) -> None:
+        if callable(value):
+            value = value(self.value)
+
+        if self.value != value:  # avoid unnecessary updates
+            self.value = value
+            current_event_queue.get().put_nowait(StateSet())
 
 
 @dataclass(slots=True)
@@ -52,17 +65,9 @@ class Hooks:
             hook = UseState(value=initial_value() if callable(initial_value) else initial_value)
             self.data.append(hook)
 
-        def set_state(value: T | Callable[[T], T]) -> None:
-            if callable(value):
-                value = value(hook.value)  # type: ignore[arg-type]
-
-            if hook.value != value:  # avoid unnecessary updates
-                hook.value = value
-                current_event_queue.get().put_nowait(StateSet())
-
         current_hook_idx.set(current_hook_idx.get() + 1)
 
-        return hook.value, set_state  # type: ignore[return-value]
+        return hook.value, hook.setter  # type: ignore[return-value]
 
     def use_ref[T](self, initial_value: Getter[T] | T) -> Ref[T]:
         try:

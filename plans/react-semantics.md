@@ -156,7 +156,7 @@ sibling remounts, as in React; duplicate sibling keys raise.
 
 ### 4. Make setters stable
 
-**Status:** Not started
+**Status:** Done
 
 Create the setter once, when the `UseState` slot is created, and store it on the slot.
 It already closes over the slot rather than the value, so a stable setter reads and writes

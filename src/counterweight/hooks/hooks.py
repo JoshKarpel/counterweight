@@ -36,6 +36,8 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
             or a function that takes the current value of the state and returns the new value of the state.
             If the value is not equal to the current of the state,
             Counterweight will trigger a render cycle.
+            It is the same object on every render,
+            so it can be left out of an effect's `deps`, and including it never reruns the effect.
     """
     return current_hook_state.get().use_state(initial_value)
 

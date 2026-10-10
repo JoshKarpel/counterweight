@@ -273,3 +273,44 @@ def test_duplicate_sibling_keys_raise() -> None:
 
     with pytest.raises(DuplicateKey):
         update_shadow(Div(children=[logs_effect("x", log).with_key(1), logs_effect("y", log).with_key(1)]), None)
+
+
+async def test_setter_is_the_same_object_across_renders() -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+    setters_by_render: list[Setter[str]] = []
+
+    with event_queue():
+        async with TaskGroup() as tg:
+            shadow, active = await render(remembers("a", setters, seen), None, set(), tg)
+            setters_by_render.append(setters["a"])
+            setters["a"]("a was set")
+            await render(remembers("a", setters, seen), shadow, active, tg)
+            setters_by_render.append(setters["a"])
+
+    assert setters_by_render[0] is setters_by_render[1]
+
+
+async def test_effect_with_setter_in_deps_runs_once_across_renders() -> None:
+    log: list[str] = []
+
+    @component
+    def depends_on_setter(label: str) -> Text:
+        _, set_value = use_state(0)
+
+        async def setup() -> None:
+            log.append("start")
+            await forever()
+
+        use_effect(setup=setup, deps=(set_value,))
+
+        return Text(content=label)
+
+    async with TaskGroup() as tg:
+        shadow, active = await render(depends_on_setter("first"), None, set(), tg)
+        shadow, active = await render(depends_on_setter("second"), shadow, active, tg)
+        shadow, active = await render(depends_on_setter("third"), shadow, active, tg)
+        log_after_renders = log.copy()
+        await cancel_tasks(active)
+
+    assert log_after_renders == ["start"]

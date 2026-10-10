@@ -48,6 +48,9 @@
 
 ### Changed
 
+- The setter returned by `use_state` is the same object on every render of a component,
+  so including it in an effect's `deps` no longer reruns the effect each render.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
