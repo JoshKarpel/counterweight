@@ -75,3 +75,14 @@ a.autorefs-external:hover::after {
   width: 100%;
   height: 100%;
 }
+
+/*
+Roboto Mono, the code font, has no box-drawing characters, so browsers draw them from a fallback font
+of a different width and borders drift away from the text beside them.
+Text screenshots use a system monospace font that has them, as the SVG screenshots do,
+with rows tight enough that vertical borders join up.
+*/
+.md-typeset .screenshot-text code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  line-height: 1.15;
+}

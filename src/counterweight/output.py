@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, TextIO
+from xml.etree.ElementTree import indent as indent_svg
+from xml.etree.ElementTree import tostring
 
 from structlog import get_logger
 
 from counterweight.geometry import Position
-from counterweight.paint import Paint
+from counterweight.paint import Paint, svg
 from counterweight.styles.styles import CellStyle
 
 if TYPE_CHECKING:
@@ -114,3 +117,31 @@ def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
                 row += " "
         rows.append(row)
     return "\n".join(rows)
+
+
+@dataclass(frozen=True, slots=True)
+class Frame:
+    """
+    One rendered frame of the UI, as captured by a [`Screenshot`][counterweight.controls.Screenshot].
+
+    Encode it with [`svg`][counterweight.output.Frame.svg] or [`text`][counterweight.output.Frame.text].
+    """
+
+    paint: Paint
+
+    def svg(self) -> str:
+        """The frame as an SVG image, indented one space per level so that it diffs line by line."""
+        root = svg(self.paint)
+        indent_svg(root, space=" ")
+        return tostring(root, encoding="unicode")
+
+    def text(self, ansi: bool = True) -> str:
+        """
+        The frame as a grid of characters, one line per terminal row, with spaces for empty cells.
+
+        Parameters:
+            ansi: If `True`, include ANSI escape codes for colors and styles,
+                which show when the text is printed to a terminal.
+                If `False`, produce plain characters, useful for layout debugging and tests.
+        """
+        return paint_to_str(self.paint, ansi=ansi)

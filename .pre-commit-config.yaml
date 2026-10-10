@@ -14,9 +14,12 @@ repos:
       - id: debug-statements
       - id: end-of-file-fixer
         exclude_types: [svg]
+        exclude: ^docs/assets/.*\.txt$
       - id: forbid-new-submodules
       - id: mixed-line-ending
       - id: trailing-whitespace
+        # Text screenshots are exact character grids, trailing blanks included.
+        exclude: ^docs/assets/.*\.txt$
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -56,8 +59,8 @@ repos:
       - id: generate-screenshots
         name: generate docs screenshots
         language: system
-        entry: uv run docs/examples/generate-screenshots.sh
-        always_run: true
+        entry: uv run python -m docs.examples.generate_screenshots
+        files: ^(src/|docs/examples/|docs/assets/.*\.svg$|uv\.lock$)
         pass_filenames: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -66,6 +69,8 @@ repos:
       - id: ruff-check
         args: [ --fix, --exit-non-zero-on-fix ]
       - id: ruff-format
+        # Formatting Python fences in markdown rewrites `--8<-- "file.py:section"` snippet lines.
+        types_or: [python, pyi, jupyter]
 
 # TODO: figure out how to get this and snippets to play nicely
 #  - repo: https://github.com/adamchainz/blacken-docs

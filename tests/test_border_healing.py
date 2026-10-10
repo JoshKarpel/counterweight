@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import PrintPaint, Quit
+from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import (
     align_children_center,
@@ -28,7 +28,7 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
         root_fn,
         headless=True,
         dimensions=dimensions,
-        autopilot=[PrintPaint(stream=capture, ansi=False), Quit()],
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
     )
     return capture.getvalue().rstrip("\n")
 
@@ -168,25 +168,25 @@ async def test_doc_example_border_healing() -> None:
 
     assert await _render(root, (60, 20)) == "\n".join(
         [
-            "╔════════════════════════════╦══════════════╦══════════════╗",
-            "║                            ║              ║              ║",
-            "║                            ║              ║              ║",
-            "║                            ║      B1      ║      B2      ║",
-            "║             A1             ║              ║              ║",
-            "║                            ║              ║              ║",
-            "║                            ╠══════╦═══════╬══════╦═══════╣",
-            "║                            ║      ║       ║      ║       ║",
-            "║                            ║      ║       ║      ║       ║",
-            "╠════════════════════════════╣  C1  ║   C2  ║  C3  ║  C4   ║",
-            "║                            ║      ║       ║      ║       ║",
-            "║                            ║      ║       ║      ║       ║",
-            "║                            ╠══════╩══╦════╩════╦═╩═══════╣",
-            "║                            ║         ║         ║         ║",
-            "║             A2             ║         ║         ║         ║",
-            "║                            ║   D1    ║   D2    ║   D3    ║",
-            "║                            ║         ║         ║         ║",
-            "║                            ║         ║         ║         ║",
-            "║                            ║         ║         ║         ║",
-            "╚════════════════════════════╩═════════╩═════════╩═════════╝",
+            "╔═════════════════════════════╦═════════════╦══════════════╗",
+            "║                             ║             ║              ║",
+            "║                             ║             ║              ║",
+            "║                             ║     B1      ║      B2      ║",
+            "║                             ║             ║              ║",
+            "║             A1              ║             ║              ║",
+            "║                             ╠══════╦══════╬═══════╦══════╣",
+            "║                             ║      ║      ║       ║      ║",
+            "║                             ║      ║      ║       ║      ║",
+            "║                             ║      ║      ║       ║      ║",
+            "╠═════════════════════════════╣  C1  ║  C2  ║  C3   ║  C4  ║",
+            "║                             ║      ║      ║       ║      ║",
+            "║                             ║      ║      ║       ║      ║",
+            "║                             ╠══════╩═╦════╩════╦══╩══════╣",
+            "║             A2              ║        ║         ║         ║",
+            "║                             ║        ║         ║         ║",
+            "║                             ║   D1   ║    D2   ║    D3   ║",
+            "║                             ║        ║         ║         ║",
+            "║                             ║        ║         ║         ║",
+            "╚═════════════════════════════╩════════╩═════════╩═════════╝",
         ]
     )

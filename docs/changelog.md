@@ -22,9 +22,13 @@
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
 
-- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  Added a `PrintPaint` autopilot control that prints the current rendered frame as a text grid,
-  useful for debugging layout and rendering output.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added `Screenshot.to_stream`, which prints a screenshot as a text grid
+  (with or without ANSI escape codes), useful for debugging layout and in tests.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added a Layout section to the documentation:
+  a gallery of layout effects, each shown as code beside its screenshot,
+  with every screenshot also available as copyable text.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;
   `margin(n)`, `margin_x(n)`, `margin_y(n)`, `margin_top(n)`, etc.;
@@ -45,6 +49,22 @@
 
 ### Changed
 
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The `*_center` and `*_end` alignment utilities
+  (`justify_children_*`, `align_children_*`, `align_self_*`, `justify_items_*`, `justify_self_*`)
+  use CSS's safe alignment: content too large for its container starts at the start edge
+  instead of overflowing past it.
+  Each has an `*_unsafe` counterpart, such as `justify_children_center_unsafe`,
+  that centers or end-aligns overflowing content anyway.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** a `Screenshot` handler now receives a `counterweight.output.Frame`
+  instead of an SVG `ElementTree`; call `frame.svg()` or `frame.text()` to encode it.
+  `Screenshot.to_file` chooses the encoding from the path's suffix
+  (`.svg` for SVG, `.txt` for text with ANSI escape codes),
+  always indents SVGs, and no longer takes `indent`.
+  Every `Screenshot` requested in the same render cycle now receives the same frame,
+  where previously only the last one ran.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
@@ -60,7 +80,9 @@
   This brings standard CSS flexbox semantics, improved correctness for complex layouts,
   and eliminates the hand-rolled layout engine.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `use_rects` now returns `waxy.Rect` objects instead of the removed `counterweight.geometry.Rect`.
+  `use_rects` now returns `counterweight.geometry.Region` objects instead of the removed `counterweight.geometry.Rect`.
+  A `Region`'s `right` and `bottom` are exclusive (the first column and row outside it),
+  so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
 
 ### Fixed
 
@@ -80,8 +102,8 @@
   The `Style` model is now flat: border, margin, padding, typography, and positioning
   properties are top-level fields rather than nested sub-models.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed;
-  use `waxy.Rect` instead.
+  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed.
+  Use `counterweight.geometry.Region` in place of `Rect`.
 - [#165](https://github.com/JoshKarpel/counterweight/pull/165)
   Dropped support for Python `3.11` and `3.12`.
   Python `3.13` or later is now required.

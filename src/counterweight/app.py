@@ -23,7 +23,6 @@ from counterweight.components import Component, component
 from counterweight.controls import (
     AnyControl,
     Bell,
-    PrintPaint,
     Quit,
     Screenshot,
     Suspend,
@@ -50,14 +49,14 @@ from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
+    Frame,
     paint_to_instructions,
-    paint_to_str,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import BLANK, Paint, paint_layout, svg
+from counterweight.paint import BLANK, Paint, paint_layout
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -70,6 +69,24 @@ def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
 
 def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
+
+
+def screen_element_style(width: int, height: int) -> Style:
+    """
+    The style of the element the app places the root component in:
+    a single grid cell the size of the terminal, which the root stretches to fill.
+    """
+    return Style(
+        # Explicit tracks keep the root's content from widening the cell,
+        # which an implicit auto track would size to the root's min-content.
+        layout=waxy.Style(
+            display=waxy.Display.Grid,
+            size_width=waxy.Length(width),
+            size_height=waxy.Length(height),
+            grid_template_columns=[waxy.Length(width)],
+            grid_template_rows=[waxy.Length(height)],
+        ),
+    )
 
 
 async def app(
@@ -99,20 +116,12 @@ async def app(
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
 
-        ss = Style(
-            layout=waxy.Style(
-                display=waxy.Display.Grid,
-                size_width=waxy.Length(w),
-                size_height=waxy.Length(h),
-            ),
-        )
-
         cp = {Position(x, y): BLANK for x in range(w) for y in range(h)}
 
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
 
-        return ss, cp, w, h
+        return screen_element_style(w, h), cp, w, h
 
     @component
     def screen() -> Div:
@@ -166,8 +175,7 @@ async def app(
 
         should_quit = False
         should_bell = False
-        should_screenshot: Screenshot | None = None
-        should_print_paint: PrintPaint | None = None
+        pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
@@ -183,8 +191,6 @@ async def app(
 
             nonlocal should_quit
             nonlocal should_bell
-            nonlocal should_screenshot
-            nonlocal should_print_paint
             nonlocal should_suspend
 
             nonlocal do_heal_borders
@@ -197,9 +203,7 @@ async def app(
                 case Bell():
                     should_bell = True
                 case Screenshot():
-                    should_screenshot = control
-                case PrintPaint():
-                    should_print_paint = control
+                    pending_screenshots.append(control)
                 case Suspend():
                     should_suspend = control
                     should_render = True
@@ -221,29 +225,27 @@ async def app(
                         output_stream.flush()
                     should_bell = False
 
-                if should_print_paint:
-                    output = paint_to_str(current_paint, ansi=should_print_paint.ansi)
-                    print(output, file=should_print_paint.stream, flush=True)
-                    should_print_paint = None
+                if pending_screenshots:
+                    # A copy, because current_paint is updated in place by later render cycles.
+                    frame = Frame(paint=dict(current_paint))
+                    for screenshot in pending_screenshots:
+                        try:
+                            start_screenshot = perf_counter_ns()
+                            await maybe_await(screenshot.handler(frame))
+                            logger.debug(
+                                "Took screenshot",
+                                handler=screenshot.handler,
+                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                            )
+                        except Exception as ex:
+                            logger.error(
+                                "Error in screenshot handler",
+                                error=repr(ex),
+                                handler=screenshot.handler,
+                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                            )
 
-                if should_screenshot:
-                    try:
-                        start_screenshot = perf_counter_ns()
-                        await maybe_await(should_screenshot.handler(svg(current_paint)))
-                        logger.debug(
-                            "Took screenshot",
-                            handler=should_screenshot.handler,
-                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
-                        )
-                    except Exception as ex:
-                        logger.error(
-                            "Error in screenshot handler",
-                            error=repr(ex),
-                            handler=should_screenshot.handler,
-                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
-                        )
-
-                    should_screenshot = None
+                    pending_screenshots.clear()
 
                 if should_suspend:
                     start_suspend = perf_counter_ns()
@@ -402,11 +404,9 @@ async def app(
                                 if element.on_key:
                                     handle_control(element.on_key(event))
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            mouse_pos = waxy.Point(x=mouse_position.x, y=mouse_position.y)
-                            event_pos = waxy.Point(x=m.absolute.x, y=m.absolute.y)
                             for element, resolved in reversed(elements_and_layouts):
-                                # Send mouse events if the current *or previous* position is in the border rect
-                                if resolved.border.contains(mouse_pos) or resolved.border.contains(event_pos):
+                                # Send mouse events if the current *or previous* position is in the border region
+                                if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
                                     if element.on_mouse:
                                         handle_control(element.on_mouse(event))
 

@@ -359,13 +359,22 @@ generated_lines.append("")
 
 # --- Justify/align utilities ---
 
+# Center and end are CSS's safe alignments: content that doesn't fit starts at the start edge
+# instead of overflowing past it, where the terminal can't show it.
+# The _unsafe variants keep CSS's default, overflowing both edges when centered.
+UNSAFE_MAP = {
+    "Center": "center_unsafe",
+    "End": "end_unsafe",
+}
+
 JUSTIFY_MAP = {
     "Start": "start",
-    "Center": "center",
-    "End": "end",
+    "SafeCenter": "center",
+    "SafeEnd": "end",
     "SpaceBetween": "space_between",
     "SpaceAround": "space_around",
     "SpaceEvenly": "space_evenly",
+    **UNSAFE_MAP,
 }
 for name, alias in JUSTIFY_MAP.items():
     generated_lines.append(
@@ -376,9 +385,10 @@ generated_lines.append("")
 
 ALIGN_MAP = {
     "Start": "start",
-    "Center": "center",
-    "End": "end",
+    "SafeCenter": "center",
+    "SafeEnd": "end",
     "Stretch": "stretch",
+    **UNSAFE_MAP,
 }
 for name, alias in ALIGN_MAP.items():
     generated_lines.append(f"align_children_{alias} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{name}))")

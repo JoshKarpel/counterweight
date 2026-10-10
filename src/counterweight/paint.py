@@ -3,17 +3,16 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, islice
+from itertools import groupby
 from textwrap import dedent
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element, ElementTree, SubElement
+from xml.etree.ElementTree import Element, SubElement
 
-import waxy
 from structlog import get_logger
 
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, CellPaint, Div, Text
-from counterweight.geometry import Position
+from counterweight.geometry import Position, Region
 from counterweight.layout import ResolvedLayout, wrap_cells
 from counterweight.styles.styles import (
     CellStyle,
@@ -67,27 +66,22 @@ def paint_layout(
 
 
 @lru_cache(maxsize=2**10)
-def fill_rect(rect: waxy.Rect, z: int, color: Color) -> Paint:
-    return {Position.from_point(p): P.blank(color=color, z=z) for p in rect.points()}
+def fill_region(region: Region, z: int, color: Color) -> Paint:
+    return {p: P.blank(color=color, z=z) for p in region.positions()}
 
 
 @lru_cache(maxsize=2**10)
-def paint_edge(outer: waxy.Rect, inner: waxy.Rect, color: Color, z: int) -> Paint:
+def paint_edge(outer: Region, inner: Region, color: Color, z: int) -> Paint:
     cell_paint = P(char=" ", style=CellStyle(background=color), z=z)
-    chars: Paint = {}
 
     strips = [
-        waxy.Rect(left=outer.left, right=outer.right, top=outer.top, bottom=inner.top - 1),
-        waxy.Rect(left=outer.left, right=outer.right, top=inner.bottom + 1, bottom=outer.bottom),
-        waxy.Rect(left=outer.left, right=inner.left - 1, top=inner.top, bottom=inner.bottom),
-        waxy.Rect(left=inner.right + 1, right=outer.right, top=inner.top, bottom=inner.bottom),
+        Region(left=outer.left, top=outer.top, right=outer.right, bottom=inner.top),
+        Region(left=outer.left, top=inner.bottom, right=outer.right, bottom=outer.bottom),
+        Region(left=outer.left, top=inner.top, right=inner.left, bottom=inner.bottom),
+        Region(left=inner.right, top=inner.top, right=outer.right, bottom=inner.bottom),
     ]
-    for strip in strips:
-        if strip.top <= strip.bottom and strip.left <= strip.right:
-            for p in strip.points():
-                chars[Position.from_point(p)] = cell_paint
 
-    return chars
+    return {p: cell_paint for strip in strips for p in strip.positions()}
 
 
 def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint, BorderHealingHints, int, int]:
@@ -106,7 +100,7 @@ def paint_element(element: AnyElement, resolved: ResolvedLayout) -> tuple[Paint,
             assert_never(element)
 
     return (
-        (fill_rect(resolved.margin, element.style.z, element.style.content_color) | paint if paint else paint),
+        (fill_region(resolved.margin, element.style.z, element.style.content_color) | paint if paint else paint),
         bhh,
         element.style.z,
         resolved.order,
@@ -135,21 +129,18 @@ def _paint_text(
     justify: Literal["left", "right", "center"],
     text_style: CellStyle,
     z: int,
-    rect: waxy.Rect,
+    region: Region,
 ) -> Paint:
-    # waxy.Rect uses an inclusive coordinate system: width = right - left (one less than the
-    # number of cells).  Adding 1 converts to cell count for slicing and iteration.
-    width = int(rect.width) + 1
-    height = int(rect.height) + 1
+    width = region.width
 
     paint = {}
     lines = wrap_cells(cells=cells, wrap=wrap, width=width)
 
     previous_cell_style = None
 
-    for y, line in enumerate(lines[:height], start=int(rect.top)):
+    for y, line in enumerate(lines[: region.height], start=region.top):
         justified_line = justify_line(line, width, justify)
-        for x, cell in enumerate(justified_line[:width], start=int(rect.left)):
+        for x, cell in enumerate(justified_line[:width], start=region.left):
             cell_style = cell.style
 
             if cell_style is not previous_cell_style:
@@ -165,9 +156,9 @@ def _paint_text(
     return paint
 
 
-def paint_text(text: Text, rect: waxy.Rect) -> Paint:
+def paint_text(text: Text, region: Region) -> Paint:
     return _paint_text(
-        text.cells, text.style.text_wrap, text.style.text_justify, text.style.text_style, text.style.z, rect
+        text.cells, text.style.text_wrap, text.style.text_justify, text.style.text_style, text.style.z, region
     )
 
 
@@ -181,7 +172,7 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
     z = style.z
     contract = style.border_contract
 
-    rect = resolved.border
+    region = resolved.border
 
     draw_left = resolved.padding.left > resolved.border.left
     draw_right = resolved.border.right > resolved.padding.right
@@ -200,31 +191,31 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     if draw_left:
         left_paint = P(char=bv.left, style=cell_style, z=z)
-        for p in islice(rect.left_edge(), contract_top, contract_bottom):
-            chars[Position.from_point(p)] = left_paint
+        for p in tuple(region.left_edge())[contract_top:contract_bottom]:
+            chars[p] = left_paint
 
     if draw_right:
         right_paint = P(char=bv.right, style=cell_style, z=z)
-        for p in islice(rect.right_edge(), contract_top, contract_bottom):
-            chars[Position.from_point(p)] = right_paint
+        for p in tuple(region.right_edge())[contract_top:contract_bottom]:
+            chars[p] = right_paint
 
     if draw_top:
         top_paint = P(char=bv.top, style=cell_style, z=z)
-        for p in islice(rect.top_edge(), contract_left, contract_right):
-            chars[Position.from_point(p)] = top_paint
+        for p in tuple(region.top_edge())[contract_left:contract_right]:
+            chars[p] = top_paint
         if draw_left:
-            chars[Position(x=int(rect.left), y=int(rect.top))] = P(char=bv.left_top, style=cell_style, z=z)
+            chars[region.top_left] = P(char=bv.left_top, style=cell_style, z=z)
         if draw_right:
-            chars[Position(x=int(rect.right), y=int(rect.top))] = P(char=bv.right_top, style=cell_style, z=z)
+            chars[region.top_right] = P(char=bv.right_top, style=cell_style, z=z)
 
     if draw_bottom:
         bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
-        for p in islice(rect.bottom_edge(), contract_left, contract_right):
-            chars[Position.from_point(p)] = bottom_paint
+        for p in tuple(region.bottom_edge())[contract_left:contract_right]:
+            chars[p] = bottom_paint
         if draw_left:
-            chars[Position(x=int(rect.left), y=int(rect.bottom))] = P(char=bv.left_bottom, style=cell_style, z=z)
+            chars[region.bottom_left] = P(char=bv.left_bottom, style=cell_style, z=z)
         if draw_right:
-            chars[Position(x=int(rect.right), y=int(rect.bottom))] = P(char=bv.right_bottom, style=cell_style, z=z)
+            chars[region.bottom_right] = P(char=bv.right_bottom, style=cell_style, z=z)
 
     try:
         jbv = JoinedBorderKind[bk.name].value
@@ -234,19 +225,19 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
         bhh = {}
         if draw_top:
             if draw_left:
-                bhh[Position(x=int(rect.left), y=int(rect.top))] = jbv
+                bhh[region.top_left] = jbv
             if draw_right:
-                bhh[Position(x=int(rect.right), y=int(rect.top))] = jbv
+                bhh[region.top_right] = jbv
         if draw_bottom:
             if draw_left:
-                bhh[Position(x=int(rect.left), y=int(rect.bottom))] = jbv
+                bhh[region.bottom_left] = jbv
             if draw_right:
-                bhh[Position(x=int(rect.right), y=int(rect.bottom))] = jbv
+                bhh[region.bottom_right] = jbv
 
     return chars, bhh
 
 
-def svg(paint: Paint) -> ElementTree:
+def svg(paint: Paint) -> Element:
     max_pos = max(paint.keys())
     w, h = max_pos.x, max_pos.y
 
@@ -358,4 +349,4 @@ def svg(paint: Paint) -> ElementTree:
                     ts.attrib["fill"] = cell.style.foreground.hex
                 ts.text = cell.char
 
-    return ElementTree(element=root)
+    return root

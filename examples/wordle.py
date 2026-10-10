@@ -197,7 +197,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
         message_style |= text_color("red", 700) | border_color("red", 700) | border_double
 
     return Div(
-        style=col | align_children_stretch,
+        style=col,
         children=[
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
@@ -299,7 +299,7 @@ def keyboard(
         return None
 
     return Div(
-        style=row | align_children_stretch | gap(2),
+        style=row | gap(2),
         children=[
             Div(
                 style=col | justify_children_space_between | align_children_start,

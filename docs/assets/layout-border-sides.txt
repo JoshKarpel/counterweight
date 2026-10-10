@@ -1,0 +1,5 @@
+──────────────────────────────  │border_sides(          ┌──────────┐  
+border_sides(                   │  frozenset({"left"})  │border_top│  
+  frozenset({"top", "bottom"})  │)                      └──────────┘  
+)                                                                     
+──────────────────────────────                                        

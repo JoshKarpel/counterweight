@@ -9,7 +9,7 @@ Use the `text_wrap_*` style utilities to control how long text is broken across 
 Counterweight supports four wrap modes, illustrated below with the same paragraph of text:
 
 ```python
---8 < --"text_wrap.py:example"
+--8<-- "text_wrap.py:example"
 ```
 
 ![Text Wrap Comparison](../assets/text-wrap.svg)
@@ -42,31 +42,13 @@ long texts.
 
 ---
 
-## Required Layout Setup
+## Layout
 
-Text wrapping requires the `Text` element to receive a **definite width** from the layout
-engine.
-This happens when its containing column has `align_children_stretch`
-and itself has a constrained width.
-Without a definite width the measure callback receives an unbounded available width and
-returns the text's natural (single-line) size, so no wrapping occurs.
-
-```python
-# ✗ wrapping won't happen — Text has no definite width
-Div(
-    style=col,
-    children=[Text(content="...", style=text_wrap_stable)],
-)
-
-# ✓ Text receives a definite width and wrapping works
-Div(
-    style=col | align_children_stretch,
-    children=[Text(content="...", style=text_wrap_stable)],
-)
-```
-
-See [Text wrapping doesn't happen](../cookbook/layout-problems.md#text-wrapping-doesnt-happen) in the
-Common Layout Problems guide for a fuller explanation and the typical root/pane setup.
+A wrapping `Text` wraps to the width layout gives it.
+In a column that width comes from the column, since children stretch across it by default.
+Side by side in a row, wrapping `Text`s need `min_width(0)` before they will shrink and wrap,
+because their minimum size is their unwrapped width.
+[Text in layout](../layout/text.md) shows both cases.
 
 ---
 

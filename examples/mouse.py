@@ -84,11 +84,7 @@ def tracking_box() -> Text:
         content=canvas(
             20,
             10,
-            (
-                {mouse.absolute - Position.from_point(rects.content.top_left): Color.from_name("red")}
-                if hovered.content
-                else {}
-            ),
+            ({mouse.absolute - rects.content.top_left: Color.from_name("red")} if hovered.content else {}),
         ),
     )
 
@@ -103,7 +99,7 @@ def last_clicked_box() -> Text:
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseUp(absolute=p, button=1):
-                set_clicked(p - Position.from_point(rects.content.top_left))
+                set_clicked(p - rects.content.top_left)
 
     return Text(
         on_mouse=on_mouse,
@@ -129,12 +125,12 @@ def last_dragged_box() -> Text:
     def on_mouse(event: MouseEvent) -> None:
         match event:
             case MouseDown(absolute=a, button=1):
-                set_start(a - Position.from_point(rects.content.top_left))
-                set_end(a - Position.from_point(rects.content.top_left))
+                set_start(a - rects.content.top_left)
+                set_end(a - rects.content.top_left)
             case MouseUp(absolute=a, button=1):
-                set_end(a - Position.from_point(rects.content.top_left))
+                set_end(a - rects.content.top_left)
             case MouseMoved(absolute=a, button=1):
-                set_end(a - Position.from_point(rects.content.top_left))
+                set_end(a - rects.content.top_left)
 
     return Text(
         on_mouse=on_mouse,

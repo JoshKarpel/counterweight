@@ -14,7 +14,7 @@ from counterweight._utils import flyweight
 TextWrap = Literal["none", "stable", "pretty", "balance"]
 
 
-STYLE_MERGE_CACHE: LRUCache[tuple[int, int], StyleFragment] = LRUCache(maxsize=2**16)
+STYLE_MERGE_CACHE: LRUCache[tuple[StyleFragment, StyleFragment], StyleFragment] = LRUCache(maxsize=2**16)
 
 
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
@@ -40,7 +40,7 @@ class StyleFragment:
         if other is None:
             return self
 
-        key = (hash(self), hash(other))
+        key = (self, other)
         try:
             return STYLE_MERGE_CACHE[key]  # type: ignore[return-value]
         except KeyError:
@@ -544,9 +544,7 @@ class JoinedBorderKind(Enum):
 
 @dataclass(frozen=True, kw_only=True)
 class Style(StyleFragment):
-    # layout is excluded from __eq__ and __hash__ because waxy.Style does not support value equality.
-    # Layout merging is handled separately in __or__ via waxy.Style.__or__.
-    layout: waxy.Style = field(default_factory=waxy.Style, compare=False, hash=False)
+    layout: waxy.Style = field(default_factory=waxy.Style)
 
     z: int = 0
     margin_color: Color = _BLACK
