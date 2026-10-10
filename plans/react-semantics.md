@@ -102,12 +102,14 @@ the app loop.
 
 ### 1. Start fresh hooks when a component becomes an element
 
-**Status:** Not started
+**Status:** Done
 
 Restrict the `element, ShadowNode(...)` arm to previous nodes with `component is None`,
-and widen the `element, None` arm to `element, _`.
+and widen the `element, None` arm to `element, None | ShadowNode()`.
 `None` in a `case` is a literal pattern, so without the widening a previous component node
 would skip both element arms and reach `case _: raise Exception("Unreachable!")`.
+The widened arm names both shapes rather than using `_`, so the unreachable case still
+catches an unexpected `previous`.
 The widened arm builds fresh `Hooks` and fresh children, so `handle_effects` sees the old
 effects disappear and cancels them.
 
@@ -137,6 +139,8 @@ under their index in the child list when they have none, and look each new child
 key, or by its own index when it has none.
 An unkeyed child therefore matches exactly what it matches today, the previous child at the
 same index, provided that child was also unkeyed.
+Tag the map entries as key or index, since a key can be an `int` and would otherwise collide
+with an index.
 Only `Component` carries a key, so elements always match by index.
 A key match with a different `func` still remounts, through the existing guard on the
 reuse arm.

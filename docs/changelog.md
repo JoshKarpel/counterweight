@@ -64,6 +64,11 @@
 
 ### Fixed
 
+- A component replaced by a plain element at the same position is now unmounted:
+  its effects are cancelled, and components nested under it start with fresh state.
+  Previously the element inherited the component's hooks, so its effects
+  (including `use_mouse` listeners) kept running.
+
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly
   (they were previously reported as mouse presses).

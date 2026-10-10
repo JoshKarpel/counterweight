@@ -104,6 +104,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             current_hook_idx.reset(reset_current_hook_idx)
             current_hook_state.reset(reset_current_hook_state)
         case element, ShadowNode(
+            component=None,
             children=previous_children,
             hooks=previous_hooks,
         ):
@@ -121,7 +122,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
             )
-        case element, None:
+        case element, None | ShadowNode():
             children = []
             for child in element.children:
                 child_node, child_ns = update_shadow(child, None)
@@ -135,6 +136,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 hooks=Hooks(),
             )
         case _:
+            # Not assert_never: mypy narrows this tuple match unsoundly to tuple[Never, Never], even with an arm missing.
             raise Exception("Unreachable!")
 
     return new, user_ns
