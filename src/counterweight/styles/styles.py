@@ -561,6 +561,9 @@ class Style(StyleFragment):
     text_justify: Literal["left", "center", "right"] = "left"
     text_wrap: TextWrap = "none"
 
+    scroll_offset_x: int = 0
+    scroll_offset_y: int = 0
+
     def __or__[SS: Style](self: SS, other: SS | None) -> SS:
         if other is None:
             return self
