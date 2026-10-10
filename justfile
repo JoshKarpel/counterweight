@@ -30,8 +30,8 @@ test:
 alias t := test
 
 [doc('Serve documentation locally')]
-docs-serve:
-    uv run mkdocs serve
+docs-serve PORT="8000":
+    exec uv run mkdocs serve --dev-addr localhost:{{ PORT }}
 
 alias d := docs-serve
 

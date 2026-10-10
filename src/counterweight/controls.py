@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO, Union
-from xml.etree.ElementTree import ElementTree
-from xml.etree.ElementTree import indent as indent_svg
+from typing import TYPE_CHECKING, TextIO, Union
+
+if TYPE_CHECKING:
+    from counterweight.output import Frame
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,66 +37,72 @@ class Bell(_Control):
     """
 
 
+# How Screenshot.to_file encodes a frame, by the suffix of the path it writes to.
+SCREENSHOT_ENCODINGS: dict[str, Callable[[Frame], str]] = {
+    ".svg": lambda frame: frame.svg(),
+    ".txt": lambda frame: frame.text(ansi=True),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class Screenshot(_Control):
     """
     Take a "screenshot" of the rendered UI,
-    using the given `handler` callback function.
-    The screenshot is passed to the `handler` as an
-    [`ElementTree`][xml.etree.ElementTree.ElementTree]
-    containing an SVG representation of the UI.
+    and pass it to the given `handler` callback function as a [`Frame`][counterweight.output.Frame],
+    which the handler can encode as an SVG image or as text.
 
     The screenshot is taken at the beginning of the next render cycle,
     so all other events that are due to be processed in the current cycle
     will be processed before the screenshot is taken
     (but the screenshot will still be of the UI from *before* the next render occurs!).
+    Every screenshot requested in the same cycle receives the same frame.
     """
 
-    handler: Callable[[ElementTree], Awaitable[None] | None]
+    handler: Callable[[Frame], Awaitable[None] | None]
 
     @classmethod
-    def to_file(cls, path: Path, indent: int | None = None) -> Screenshot:
+    def to_file(cls, path: Path) -> Screenshot:
         """
-        A convenience method for producing a `Screenshot`
-        that writes the resulting SVG to the given `path`.
+        A convenience method for producing a `Screenshot` that writes to the given `path`,
+        encoded according to its suffix:
+        `.svg` for an SVG image, or `.txt` for text with ANSI escape codes for colors and styles.
 
         Parameters:
-            path: The path to write the SVG to.
+            path: The path to write the screenshot to.
                 Parent directories will be created if they do not exist.
-            indent: The number of spaces to indent the SVG by (for readability).
-                If `None`, the SVG will not be indented.
+
+        Raises:
+            ValueError: If the path's suffix is neither `.svg` nor `.txt`.
         """
+        try:
+            encode = SCREENSHOT_ENCODINGS[path.suffix]
+        except KeyError:
+            raise ValueError(
+                f"Can't tell how to encode a screenshot as {path.name!r}: "
+                f"use a path ending in one of {sorted(SCREENSHOT_ENCODINGS)}"
+            ) from None
 
-        def handler(et: ElementTree) -> None:
-            if indent:
-                indent_svg(et, space=" " * indent)
-
+        def handler(frame: Frame) -> None:
             path.parent.mkdir(parents=True, exist_ok=True)
-
-            with path.open("w") as f:
-                et.write(f, encoding="unicode")
+            path.write_text(encode(frame))
 
         return cls(handler=handler)
 
+    @classmethod
+    def to_stream(cls, stream: TextIO | None = None, ansi: bool = True) -> Screenshot:
+        """
+        A convenience method for producing a `Screenshot` that prints the frame as text to the given `stream`.
 
-@dataclass(frozen=True, slots=True)
-class PrintPaint(_Control):
-    """
-    Print the current paint as a text grid to stderr.
+        Parameters:
+            stream: The stream to print to. Defaults to `sys.stderr`.
+            ansi: Whether to include ANSI escape codes for colors and styles.
+        """
+        target = stream if stream is not None else sys.stderr
 
-    Useful for interactive debugging of rendering output.
-    The print occurs at the beginning of the next render cycle.
+        def handler(frame: Frame) -> None:
+            print(frame.text(ansi=ansi), file=target, flush=True)
 
-    Parameters:
-        stream: The stream to print to. Defaults to `sys.stderr`.
-        ansi: If `True`, include ANSI color/style escape codes in the output.
-            Defaults to `True`, which renders colors and styles in the terminal.
-            Set to `False` for a plain character grid (useful for layout debugging
-            or capturing output in logs).
-    """
-
-    stream: TextIO = field(default_factory=lambda: sys.stderr)
-    ansi: bool = True
+        return cls(handler=handler)
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +129,6 @@ AnyControl = Union[
     Quit,
     Bell,
     Screenshot,
-    PrintPaint,
     Suspend,
     ToggleBorderHealing,
 ]

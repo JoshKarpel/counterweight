@@ -1,0 +1,5 @@
+┌──────────────  ┌──────────────────              
+│ top and left   │ top and left                   
+│ sides            sides                          
+                   border_contract(2)             
+                                                  

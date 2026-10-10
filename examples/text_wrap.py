@@ -47,12 +47,12 @@ def root() -> Div:
         return None
 
     return Div(
-        style=col | full | align_children_stretch,
+        style=col | full,
         on_key=on_key,
         children=[
             toolbar(WRAP_MODES[wrap_idx], set_wrap_idx),
             Div(
-                style=row | grow(1) | gap(1) | pad_x(1) | align_children_stretch,
+                style=row | grow(1) | gap(1) | pad_x(1),
                 children=[
                     input_pane(input_text),
                     display_pane(input_text, WRAP_MODES[wrap_idx]),
@@ -72,7 +72,7 @@ def toolbar(
     set_wrap_idx: Callable[[int | Callable[[int], int]], None],
 ) -> Div:
     return Div(
-        style=row | align_children_stretch | pad_x(1) | pad_y(1),
+        style=row | pad_x(1) | pad_y(1),
         children=[
             Text(
                 content="Text Wrap Demo",
@@ -99,13 +99,7 @@ def input_pane(content: str) -> Div:
     w = rects.content.width
 
     return Div(
-        style=grow(1)
-        | min_width(0)
-        | col
-        | align_children_stretch
-        | border_lightrounded
-        | border_color("sky", 600)
-        | pad_x(1),
+        style=grow(1) | min_width(0) | col | border_lightrounded | border_color("sky", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
@@ -132,13 +126,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
     }[mode]
 
     return Div(
-        style=grow(1)
-        | min_width(0)
-        | col
-        | align_children_stretch
-        | border_lightrounded
-        | border_color("violet", 600)
-        | pad_x(1),
+        style=grow(1) | min_width(0) | col | border_lightrounded | border_color("violet", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",

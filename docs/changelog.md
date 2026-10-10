@@ -22,9 +22,13 @@
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
 
-- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  Added a `PrintPaint` autopilot control that prints the current rendered frame as a text grid,
-  useful for debugging layout and rendering output.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added `Screenshot.to_stream`, which prints a screenshot as a text grid
+  (with or without ANSI escape codes), useful for debugging layout and in tests.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added a Layout section to the documentation:
+  a gallery of layout effects, each shown as code beside its screenshot,
+  with every screenshot also available as copyable text.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;
   `margin(n)`, `margin_x(n)`, `margin_y(n)`, `margin_top(n)`, etc.;
@@ -44,6 +48,15 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** a `Screenshot` handler now receives a `counterweight.output.Frame`
+  instead of an SVG `ElementTree`; call `frame.svg()` or `frame.text()` to encode it.
+  `Screenshot.to_file` chooses the encoding from the path's suffix
+  (`.svg` for SVG, `.txt` for text with ANSI escape codes),
+  always indents SVGs, and no longer takes `indent`.
+  Every `Screenshot` requested in the same render cycle now receives the same frame,
+  where previously only the last one ran.
 
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.

@@ -9,6 +9,10 @@ extra_css:
 
 watch:
   - src/
+  - mkdocs_hooks/
+
+hooks:
+  - mkdocs_hooks/screenshot_tabs.py
 
 theme:
   name: material
@@ -112,15 +116,24 @@ nav:
     - input-handling/index.md
     - input-handling/events.md
     - input-handling/controls.md
+  - Layout:
+    - layout/index.md
+    - layout/how-layout-sizes-things.md
+    - layout/splitting-space.md
+    - layout/sizing-one-box.md
+    - layout/alignment.md
+    - layout/spacing-and-borders.md
+    - layout/layering.md
+    - layout/grids-and-wrapping.md
+    - layout/text.md
+    - layout/app-shells.md
   - Styles:
     - styles/index.md
-    - styles/layout.md
     - styles/text-wrapping.md
     - styles/utilities.md
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
-    - cookbook/layout-problems.md
   - utilities.md
   - Under the Hood:
     - under-the-hood/index.md

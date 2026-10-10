@@ -19,7 +19,7 @@ from counterweight.utils import clamp
 @component
 def root() -> Div:
     return Div(
-        style=col | full | align_children_stretch | justify_children_start | pad(1),
+        style=col | full | justify_children_start | pad(1),
         children=[
             Text(content="Suspend Demo", style=text_color("amber", 600) | text_justify_center | pad_bottom(1)),
             Div(

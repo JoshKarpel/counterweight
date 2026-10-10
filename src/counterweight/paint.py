@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import groupby, islice
+from itertools import groupby
 from textwrap import dedent
 from typing import Literal, assert_never
-from xml.etree.ElementTree import Element, ElementTree, SubElement
+from xml.etree.ElementTree import Element, SubElement
 
 from structlog import get_logger
 
@@ -191,17 +191,17 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     if draw_left:
         left_paint = P(char=bv.left, style=cell_style, z=z)
-        for p in islice(region.left_edge(), contract_top, contract_bottom):
+        for p in tuple(region.left_edge())[contract_top:contract_bottom]:
             chars[p] = left_paint
 
     if draw_right:
         right_paint = P(char=bv.right, style=cell_style, z=z)
-        for p in islice(region.right_edge(), contract_top, contract_bottom):
+        for p in tuple(region.right_edge())[contract_top:contract_bottom]:
             chars[p] = right_paint
 
     if draw_top:
         top_paint = P(char=bv.top, style=cell_style, z=z)
-        for p in islice(region.top_edge(), contract_left, contract_right):
+        for p in tuple(region.top_edge())[contract_left:contract_right]:
             chars[p] = top_paint
         if draw_left:
             chars[region.top_left] = P(char=bv.left_top, style=cell_style, z=z)
@@ -210,7 +210,7 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
 
     if draw_bottom:
         bottom_paint = P(char=bv.bottom, style=cell_style, z=z)
-        for p in islice(region.bottom_edge(), contract_left, contract_right):
+        for p in tuple(region.bottom_edge())[contract_left:contract_right]:
             chars[p] = bottom_paint
         if draw_left:
             chars[region.bottom_left] = P(char=bv.left_bottom, style=cell_style, z=z)
@@ -237,7 +237,7 @@ def paint_border(style: Style, resolved: ResolvedLayout) -> tuple[Paint, BorderH
     return chars, bhh
 
 
-def svg(paint: Paint) -> ElementTree:
+def svg(paint: Paint) -> Element:
     max_pos = max(paint.keys())
     w, h = max_pos.x, max_pos.y
 
@@ -349,4 +349,4 @@ def svg(paint: Paint) -> ElementTree:
                     ts.attrib["fill"] = cell.style.foreground.hex
                 ts.text = cell.char
 
-    return ElementTree(element=root)
+    return root

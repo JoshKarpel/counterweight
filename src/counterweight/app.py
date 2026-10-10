@@ -23,7 +23,6 @@ from counterweight.components import Component, component
 from counterweight.controls import (
     AnyControl,
     Bell,
-    PrintPaint,
     Quit,
     Screenshot,
     Suspend,
@@ -50,14 +49,14 @@ from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.logging import configure_logging
 from counterweight.output import (
     CLEAR_SCREEN,
+    Frame,
     paint_to_instructions,
-    paint_to_str,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import BLANK, Paint, paint_layout, svg
+from counterweight.paint import BLANK, Paint, paint_layout
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -166,8 +165,7 @@ async def app(
 
         should_quit = False
         should_bell = False
-        should_screenshot: Screenshot | None = None
-        should_print_paint: PrintPaint | None = None
+        pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
         do_heal_borders = True
@@ -183,8 +181,6 @@ async def app(
 
             nonlocal should_quit
             nonlocal should_bell
-            nonlocal should_screenshot
-            nonlocal should_print_paint
             nonlocal should_suspend
 
             nonlocal do_heal_borders
@@ -197,9 +193,7 @@ async def app(
                 case Bell():
                     should_bell = True
                 case Screenshot():
-                    should_screenshot = control
-                case PrintPaint():
-                    should_print_paint = control
+                    pending_screenshots.append(control)
                 case Suspend():
                     should_suspend = control
                     should_render = True
@@ -221,29 +215,27 @@ async def app(
                         output_stream.flush()
                     should_bell = False
 
-                if should_print_paint:
-                    output = paint_to_str(current_paint, ansi=should_print_paint.ansi)
-                    print(output, file=should_print_paint.stream, flush=True)
-                    should_print_paint = None
+                if pending_screenshots:
+                    # A copy, because current_paint is updated in place by later render cycles.
+                    frame = Frame(paint=dict(current_paint))
+                    for screenshot in pending_screenshots:
+                        try:
+                            start_screenshot = perf_counter_ns()
+                            await maybe_await(screenshot.handler(frame))
+                            logger.debug(
+                                "Took screenshot",
+                                handler=screenshot.handler,
+                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                            )
+                        except Exception as ex:
+                            logger.error(
+                                "Error in screenshot handler",
+                                error=repr(ex),
+                                handler=screenshot.handler,
+                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
+                            )
 
-                if should_screenshot:
-                    try:
-                        start_screenshot = perf_counter_ns()
-                        await maybe_await(should_screenshot.handler(svg(current_paint)))
-                        logger.debug(
-                            "Took screenshot",
-                            handler=should_screenshot.handler,
-                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
-                        )
-                    except Exception as ex:
-                        logger.error(
-                            "Error in screenshot handler",
-                            error=repr(ex),
-                            handler=should_screenshot.handler,
-                            elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
-                        )
-
-                    should_screenshot = None
+                    pending_screenshots.clear()
 
                 if should_suspend:
                     start_suspend = perf_counter_ns()

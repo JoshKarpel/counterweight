@@ -5,8 +5,8 @@ easier to reason about and cheaper per frame:
 a cell-grid region type, a gallery of layout examples, taking up the waxy `0.7.0` release,
 one merge rule for every style field, borders stored once, utilities for the new sizing
 keywords, ratatui-style constraint utilities, a guide to choosing between flexbox and grid,
-reading layouts back in one call, memoizing text measurement, and reusing the layout tree
-across frames.
+reading layouts back in one call, memoizing text measurement, reusing the layout tree
+across frames, and a last pass that makes the gallery read as one document.
 It doesn't cover component memoization (`plans/component-memoization.md`) or paint performance,
 except where layout work touches them.
 It also doesn't cover exposing the grid features taffy 0.10 through 0.14 added
@@ -129,6 +129,8 @@ of disjoint, touching and overlapping regions); convert the expectations in
 confirm the converted tests fail.
 
 ### 2. Write a layout gallery
+
+**Status:** Done
 
 Document layout by the effect a user wants, with every technique that achieves it, each shown
 as code beside its screenshot. The tooling exists: each file in `docs/examples/` is a headless
@@ -268,16 +270,39 @@ style gives the documented defaults.
   win, caching the result per style.
 - Raise `ValueError` if `style.layout.fields_set` contains any `border_*` field, so border
   widths can't be set through `layout` and drift from `border_kind` again.
-- Utilities: `border_<kind>` sets only `border_kind`. The edge utilities (`border_top`,
-  `border_top_left`, ..., `border_all`) and `border_sides(...)` set all four sides, meaning
-  "exactly these sides", which matches the generated combinations. Regenerate with
-  `just codegen` after editing `codegen/generate_utilities.py`.
+- Utilities: `border_<kind>` sets only `border_kind`, so a kind on its own draws all four
+  sides. Two families then choose sides:
+  - `border_off_<side>` (`border_off_top`, `border_off_bottom`, `border_off_left`,
+    `border_off_right`) sets one side to `False` and leaves the others unset, so offs
+    compose in any order: `border_light | border_off_left | border_off_right` draws top and
+    bottom rules.
+  - `border_only_<sides>` replaces the generated edge utilities (`border_top`,
+    `border_top_left`, ...): each sets all four sides, meaning "exactly these sides".
+    `only` says at the call site that the other sides go away, where `border_top` reads as
+    "add the top side", which is the misreading that `border_light | border_top` drawing all
+    four sides shows today. Onlys don't compose (`border_only_top | border_only_left` leaves
+    just the left side), so keep generating every combination.
+    Drop `border_all`, which only restates the default.
+  - `border_sides(...)` stays as the function form of `border_only_<sides>`.
+
+  Regenerate with `just codegen` after editing `codegen/generate_utilities.py`.
+  Changelog entry under `Changed` for the renames and the removal of `border_all`.
 
 `border_contract` and `border_collapse` don't change.
 
 Tests: `border_light | border_none` reserves no space and draws nothing;
-`border_light | border_top` reserves and draws only the top edge;
+`border_light | border_only_top` reserves and draws only the top edge;
+`border_light | border_off_left | border_off_right` and
+`border_light | border_off_right | border_off_left` both draw only top and bottom;
+`border_only_top | border_only_left` draws only the left edge;
 setting `border_top` through `layout` raises.
+
+Gallery: rewrite the "Borders on some sides" section of "Spacing and borders" around
+`border_off_<side>` and `border_only_<sides>`, and drop its `border_light | border_top`
+screenshot, which shows a pitfall this step removes. The `border_contract` example
+(`layout_spacing.py:contract`) and `test_border_contract.py` build their sides with
+`border_sides(frozenset({...}))`; move both to the new utilities, and check that every text
+snapshot outside that section comes out unchanged.
 
 ### 6. Expose the sizing keywords
 
@@ -357,6 +382,19 @@ wide come out 10, 30 and 3, and the last column starts at 40, outside the grid.
 Tracks of `Length(10)`, `Percent(0.25)` and `minmax(0, 1fr)` with 50 cells of content each
 come out 10, 10 and 20.
 
+Make the rest of a grid as short to write as `fr`:
+
+- `grid_template_columns` and `grid_template_rows` accept a plain `int` as a track and convert it
+  to `Length`, so a template reads `grid_template_columns(10, fr(1), fr(2))`, the way `width(10)`
+  takes cells. waxy rejects a bare `int` track (`TypeError`), so every track is wrapped today.
+  Don't add a `length()` track helper instead: `length(n)` is the flexbox `Style` above, and a
+  track-valued name beside it would type-check in a template and fail at runtime.
+- `grid_row` and `grid_column` accept a plain `int` as a grid line, and a new `span(n)` returns
+  `GridSpan(n)`, so a placement reads `grid_row(1, span(3))` instead of
+  `grid_row(waxy.GridLine(1), waxy.GridSpan(3))`.
+- `Percent` tracks stay spelled out: a bare float is ambiguous between a fraction and a
+  percentage, and percentage tracks are rare.
+
 Also add `center_children` (`align_children_center | justify_children_center`), a pair the
 examples and docs spell out eight times.
 
@@ -367,10 +405,31 @@ Tests: the row and column splits above, with content larger than the container;
 `percentage(25)` and `ratio(1, 4)` give the same width; each utility sets only its own
 fields (`layout.fields_set`); `fill(1) | shrink(0)` keeps `fill`'s basis, grow and overflow
 and changes only `flex_shrink`; a grid of `Length(10), fr(1), fr(2)` tracks gives the same
-widths as the flexbox row.
+widths as the flexbox row; an `int` track gives the same widths as the `Length` it stands for;
+`grid_row(1, span(3))` places a child the same as `grid_row(GridLine(1), GridSpan(3))`.
 
 Gallery: rewrite the "Splitting space" page around these utilities. Each split shown with
 `fill` and `length` should render the same as its `fr` grid version.
+Then go back over the gallery and replace the raw waxy values the step 2 examples spell out
+for lack of these utilities (`grep -rn "waxy\." docs/examples docs/layout`):
+
+- `waxy.Length`, `waxy.Fraction` and `waxy.Minmax` tracks and `waxy.GridLine` and
+  `waxy.GridSpan` placements in `layout_splitting.py` and `layout_grids.py` become ints,
+  `fr` and `span`.
+- `layout_grids.py` defines its own `fr = waxy.Fraction(1)`, which would shadow the new
+  utility from `import *`; delete it.
+- The "Content wider than its share" section of "Splitting space" explains
+  `Minmax(Length(0), Fraction(1))` by hand; rewrite it around `fr` versus bare `Fraction`.
+- The "Grids and wrapping" page introduces `fr = waxy.Fraction(1)` and the
+  `waxy.GridSpan(n)` placement; update both to the utilities.
+- The "Percentages and gaps" example in `layout_splitting.py` builds `half` from a raw
+  `waxy.Style(flex_basis=waxy.Percent(0.5))`. `percentage(50)` replaces it, but also sets
+  `flex_shrink` to 0, so the top row, which shows the default shrinking, becomes
+  `percentage(50) | shrink(1)`, and the bottom row needs no `shrink(0)`.
+- Once nothing in the examples needs `waxy`, drop `import waxy` (and the sentence about it)
+  from the shared imports on the Layout index page.
+
+The text snapshots should come out unchanged, which confirms the rewrite moved no layout.
 
 ### 8. Explain how to choose a layout model
 
@@ -523,3 +582,36 @@ changing one `Text` dirties only that node and its ancestors; mounting and unmou
 components leaves no orphaned nodes (`total_node_count` matches the shadow tree);
 a `Text` measured at an effective width it has already been measured at isn't wrapped again.
 Compare canvas and dashboard profiles after each change.
+
+### 11. Make one cohesive pass over the gallery
+
+Steps 3 to 10 each update the gallery for their own change, a section at a time.
+This step reads the whole Layout section start to finish, the way a new user would,
+and makes it read as one document.
+
+- **Use the current utilities everywhere.** Every example uses the shortest utility that now
+  exists (`fill`, `length`, `fr`, `span`, `center_children`, the sizing keywords,
+  `border_off_<side>` and `border_only_<sides>`), and no example spells out a raw `waxy` value
+  that a utility covers. `grep -rn "waxy\." docs/examples docs/layout` should find only what
+  the utilities deliberately leave out.
+- **Revisit the workarounds.** The step 2 examples route around these behaviors rather than
+  showing them. Check each against the current code; where it's fixed, simplify the example,
+  and where it isn't, decide whether the gallery should show it as a failure:
+  - A wrapping `Text` with its own border or padding is measured at its border-box width
+    (taffy passes `_measure_text` a `known.width` that includes them), so it can lose its last
+    line. The examples wrap text only in `Text`s without their own border or padding.
+  - A wrapping `Text`'s minimum size is its unwrapped width, because `_measure_text` measures
+    a min-content query as if the width were unlimited. "Text in layout" shows the
+    `min_width(0)` fix.
+  - Auto margins on an absolutely positioned box resolve against an area one cell too wide
+    and tall, and the box's blank fill paints over its parent's border. The examples center
+    with alignment instead of `margin: auto`.
+  - `content_color` has no visible effect on a `Text`, whose text paints over it with the
+    `text_style` background. The examples color `Text`s with `text_bg`.
+- **Make the pages agree.** One name per concept across pages, cross-links between pages that
+  discuss the same failure, and an order that builds from "How layout sizes things" up to
+  "App shells", with step 8's page opening the section.
+- **Tighten the screenshots.** Size each one to its effect, and label boxes consistently.
+
+Tests: none new. Every changed text snapshot is reviewed in the diff, and an unchanged one is
+expected wherever only the code changed.

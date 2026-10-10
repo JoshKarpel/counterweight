@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import PrintPaint, Quit
+from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import (
     align_children_center,
@@ -28,7 +28,7 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
         root_fn,
         headless=True,
         dimensions=dimensions,
-        autopilot=[PrintPaint(stream=capture, ansi=False), Quit()],
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
     )
     return capture.getvalue().rstrip("\n")
 

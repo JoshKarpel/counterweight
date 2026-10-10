@@ -1,11 +1,12 @@
-# --8<-- [start:example]
-from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, Screenshot, ToggleBorderHealing
+from counterweight.controls import AnyControl, ToggleBorderHealing
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import ScreenshotSpec
+
+# --8<-- [start:example]
 
 container_style = grow(1) | align_self_stretch | border_collapse
 box_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
@@ -54,22 +55,7 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-if __name__ == "__main__":
-    import asyncio
-    from pathlib import Path
-
-    THIS_DIR = Path(__file__).parent
-
-    asyncio.run(
-        app(
-            root,
-            headless=True,
-            dimensions=(60, 20),
-            autopilot=[
-                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-healing-on.svg", indent=1),
-                KeyPressed(key=Key.Space),
-                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-healing-off.svg", indent=1),
-                Quit(),
-            ],
-        )
-    )
+SCREENSHOTS = [
+    ScreenshotSpec(root, "border-healing-on", (60, 20)),
+    ScreenshotSpec(root, "border-healing-off", (60, 20), events=[KeyPressed(key=Key.Space)]),
+]

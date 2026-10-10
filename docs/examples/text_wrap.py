@@ -1,12 +1,10 @@
-# --8<-- [start:example]
-import asyncio
-
-from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.styles import Style, TextWrap
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import ScreenshotSpec
+
+# --8<-- [start:example]
 
 SAMPLE = "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness."
 
@@ -21,7 +19,7 @@ WRAP_STYLE: dict[TextWrap, Style] = {
 @component
 def wrap_pane(mode: TextWrap) -> Div:
     return Div(
-        style=grow(1) | min_width(0) | col | align_children_stretch | border_light | pad_x(1),
+        style=grow(1) | min_width(0) | col | border_light | pad_x(1),
         children=[
             Text(
                 content=f" {mode} ",
@@ -38,10 +36,10 @@ def wrap_pane(mode: TextWrap) -> Div:
 @component
 def root() -> Div:
     return Div(
-        style=col | full | align_children_stretch,
+        style=col | full,
         children=[
             Div(
-                style=row | grow(1) | align_children_stretch,
+                style=row | grow(1),
                 children=[wrap_pane(mode) for mode in WRAP_STYLE],
             ),
         ],
@@ -50,19 +48,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-if __name__ == "__main__":
-    from pathlib import Path
-
-    THIS_DIR = Path(__file__).parent
-
-    asyncio.run(
-        app(
-            root,
-            headless=True,
-            dimensions=(120, 14),
-            autopilot=[
-                Screenshot.to_file(THIS_DIR.parent / "assets" / "text-wrap.svg", indent=1),
-                Quit(),
-            ],
-        )
-    )
+SCREENSHOTS = [ScreenshotSpec(root, "text-wrap", (120, 14))]
