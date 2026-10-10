@@ -1,15 +1,19 @@
 # Plan: Styling Foundations
 
 This plan covers the counterweight side of making styles predictable to compose and layout
-easier to reason about:
-a cell-grid region type, taking up the waxy `0.6.0` release, one merge rule for every style
-field, borders stored once, documented layout defaults, and reusing the layout tree across
-frames.
+easier to reason about and cheaper per frame:
+a cell-grid region type, taking up the waxy `0.7.0` release, one merge rule for every style
+field, borders stored once, documented layout defaults, reading layouts back in one call,
+memoizing text measurement, and reusing the layout tree across frames.
 It doesn't cover component memoization (`plans/component-memoization.md`) or paint performance,
-except where reusing the layout tree touches them.
+except where layout work touches them.
+It also doesn't cover exposing the layout features taffy 0.10 through 0.14 added
+(sizing keywords like `FIT_CONTENT`, grid template areas, `repeat()`) as utilities.
 
-It depends on the waxy plan of the same name (`plans/styling-foundations.md` in the waxy
-repository), which ships first as waxy `0.6.0`.
+It builds on the waxy plan of the same name (`plans/styling-foundations.md` in the waxy
+repository), released as waxy `0.6.0` ([waxy#49](https://github.com/JoshKarpel/waxy/pull/49)),
+and on waxy `0.7.0` ([waxy#50](https://github.com/JoshKarpel/waxy/pull/50)),
+which leaves hidden nodes out of `absolute_layouts`.
 
 ## Problems
 
@@ -44,6 +48,12 @@ repository), which ships first as waxy `0.6.0`.
   children grew to fill their parent. Taffy uses CSS defaults (`flex_grow=0`, `flex_shrink=1`,
   row direction, cross-axis stretch, border-box sizing), so children shrink to their content
   unless told otherwise.
+- **Layout read back one node at a time.** `_extract_layout` (`layout.py:100`) recurses in
+  Python, calling `unrounded_layout` and `children` on every node and snapping edges with its
+  own floor arithmetic.
+- **Text measured many times per frame.** Taffy calls the measure callback about 19 times per
+  text leaf per layout, with about 13 distinct inputs, though `_measure_text` depends on only
+  the text and one effective width.
 - **Layout tree rebuilt every frame** (`layout.py:46`), which discards taffy's layout cache
   (#313).
 
@@ -97,21 +107,33 @@ of disjoint, touching and overlapping regions); convert the expectations in
 (`right + 1`, `bottom + 1`), so break the `_extract_layout` arithmetic on purpose once and
 confirm the converted tests fail.
 
-### 2. Take up waxy `0.6.0`
+### 2. Take up waxy `0.7.0`
 
-- Raise the floor to `waxy>=0.6.0` and update `uv.lock`.
+- Raise the floor to `waxy>=0.7.0` and update `uv.lock`.
 - Remove `compare=False, hash=False` and the comment from `Style.layout`, so layout takes part
   in equality and hashing.
+  `waxy.Style` equality also compares which fields were explicitly set,
+  so two counterweight `Style`s compare equal only if they also merge identically,
+  which is what a cache keyed on styles needs.
 - Key `STYLE_MERGE_CACHE` on `(self, other)` rather than their hashes. Step 3 rewrites
   merging, so this may be replaced there; it's here so the collision bug doesn't wait on
   step 3.
 - With waxy's new `repr`, `Style.__repr__` shows the layout fields that were set, without
   any counterweight change.
 
-`Style.__hash__` now hashes the `waxy.Style` too, and waxy recomputes that hash on every call.
-`Text` and `Div` are hashed for the `paint_text` cache. Profile the canvas and dashboard
-workloads before and after. If hashing shows up, cache the hash on `Style` the way `CellStyle`
-already does (`styles/styles.py:243-255`).
+The suite and mypy pass unchanged against the waxy `0.6.0` build
+(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 6),
+so nothing in counterweight depends on the removed `Rect` and `Line` methods
+or misspells a `waxy.Style` keyword (which now raises `TypeError`;
+the utilities are module constants, so importing them constructs every one).
+The bump also takes taffy from 0.9 to 0.14, which fixes layout bugs and can move computed
+layouts, so run the examples and compare them against the previous release before merging.
+
+`Style.__hash__` now hashes the `waxy.Style` too. waxy caches that hash after the first call,
+but counterweight's `Style` is a dataclass whose hash is recomputed over all its fields on
+every call, and `Text` and `Div` are hashed for the `paint_text` cache.
+Profile the canvas and dashboard workloads before and after. If hashing shows up, cache the
+hash on `Style` the way `CellStyle` already does (`styles/styles.py:243-255`).
 
 ### 3. One merge rule: explicitly set wins
 
@@ -175,27 +197,74 @@ sizing), so children take their content size unless given `grow(1)`, and `Text` 
 unless `text_wrap` is set. Show the common terminal patterns (fill the screen, split into
 columns, a sidebar of fixed width) as cookbook examples.
 
-### 6. Decide on rounding
+### 6. Decide on rounding, and read layouts in one call
 
-`_extract_layout` reads `unrounded_layout` and floors edges itself.
-The comment there (`layout.py:124-130`) explains why, using fractional starts from
+`_extract_layout` reads `unrounded_layout`, sums each node's position in Python, and floors
+edges itself.
+The comment there (`layout.py:124-129`) explains why, using fractional starts from
 `justify_content: space_evenly`.
-Taffy has rounding built in for exactly this problem: it rounds absolute edges, so sizes come
-out as whole cells and siblings tile.
+Taffy has rounding built in for exactly this problem, enabled by default on a `TaffyTree`:
+it rounds absolute edges, so sizes come out as whole cells and siblings tile.
 
-Experiment: enable rounding, read `tree.layout()`, and run `tests/test_layout.py` along with
-examples that use `space_evenly` and fractional `grow`.
-If the results match, switch to taffy's rounding and delete the custom floor arithmetic.
-If they don't, add the differing case as a test that explains why counterweight snaps
-cells itself, and keep the current code.
+waxy's `TaffyTree.absolute_layouts(root)` returns every node in pre-order
+with its absolute position and its `Layout`, honoring the tree's rounding setting.
+It leaves out `display: Nil` nodes and their subtrees, matching what `_extract_layout` skips.
+Don't sum the locations from `tree.layout()` instead:
+taffy 0.14 rounds `location` relative to the parent but `size` against the absolute offset
+([taffy#834](https://github.com/DioxusLabs/taffy/issues/834)),
+so summed rounded locations can leave one-cell gaps or overlaps between siblings.
+`absolute_layouts` rounds the summed unrounded position once, which matches the rounded sizes.
 
-### 7. Reuse the layout tree across frames
+Experiment: leave rounding on, take each border box's edges from `absolute_layouts`
+(position, and position plus size, both whole numbers with no floor),
+and run `tests/test_layout.py` along with examples that use `space_evenly` and fractional
+`grow`. `tree.format_tree(root)` dumps the computed tree as a string,
+which shows where the two approaches differ.
+
+- **If the results match,** switch to taffy's rounding and delete the custom floor
+  arithmetic and its comment.
+- **If they don't,** add the differing case as a test that explains why counterweight snaps
+  cells itself, call `tree.disable_rounding()`, and keep flooring, but over the positions from
+  `absolute_layouts`. Those are summed in `f32` (taffy's own precision) where the current code
+  sums in Python floats, and the two differ by about `1e-7`
+  (3.1000001 against 3.1000002 on a `space_evenly` row),
+  which can flip a floor at an exact integer boundary such as the 12.667 + 7.333 case in the
+  comment. Pin that boundary with a test before switching.
+
+Either way:
+
+- Reset `hooks.dims` to `INITIAL_RESOLVED_LAYOUT` for shadow nodes missing from the result.
+  Today the early return for hidden nodes (`layout.py:118`) comes before `shadow.hooks.dims`
+  is set, so a component that becomes hidden keeps the regions from the last frame it was
+  visible, and `use_rects` and `use_hovered` go on reading them.
+- Bind `layout.margin`, `layout.border` and `layout.padding` to locals before reading their
+  sides, since each property access builds a new `Rect`.
+
+Tests: the existing `tests/test_layout.py` expectations; a hidden subtree produces no
+`ResolvedLayout`; a component hidden after a visible frame reports empty regions from
+`use_rects`. Profile canvas and dashboard before and after.
+
+### 7. Make per-frame layout cheaper
 
 **Measure first.** Split the "Calculated layout" devlog timing (`app.py:307-311`) into
 building the tree, `compute_layout` (including text-measure callbacks), and reading results
 back, and record canvas and dashboard numbers in
-`plans/performance-analysis-2026-03-07.md`. That split decides whether waxy's bulk layout
-readout (waxy plan, item 5b) is worth building.
+`plans/performance-analysis-2026-03-07.md`.
+That tells us how much of each frame the two changes below can recover.
+
+**Memoize text measurement.**
+waxy `0.6.0` already answers exact repeats of `(node, known_size, available_size)` within one
+`compute_layout` call without calling back into Python, but taffy still asks each leaf about 13
+distinct questions per layout, and most differ only in ways `_measure_text` ignores.
+It depends only on the `Text` and one effective width
+(`known.width`, else a definite available width, else none).
+Split the wrapping work into a function of those two, returning the widest line and the line
+count, behind a bounded `functools.lru_cache`, and apply `known.width` and `known.height`
+outside it.
+`Text` is an immutable, hashable value, so the cache needs no invalidation and is shared
+across frames.
+Return `waxy.Size(width, height)` positionally: pyo3 matches keyword arguments by name at
+runtime, so the keyword form costs more on every call.
 
 **Then reuse the tree** (#313):
 
@@ -203,12 +272,15 @@ readout (waxy plan, item 5b) is worth building.
   its `NodeId`.
 - After `update_shadow`, reconcile: create nodes for new shadow nodes, `remove` nodes for
   unmounted ones, and call `set_children` where a node's child ids changed.
-- Call `set_style` on every node every frame. waxy `0.6.0` makes that a no-op for unchanged
-  styles, so taffy keeps its cache for those nodes.
+  Taffy's `remove` detaches a node's children rather than removing them, so remove every
+  unmounted shadow node, not just the root of the unmounted subtree.
+- Call `set_style` on every node every frame. waxy `0.6.0` makes that a no-op when the style's
+  values are unchanged, so taffy keeps its cache for those nodes.
 - Call `set_node_context` only when a `Text` element changed, since taffy always marks the
   node dirty on that call.
 
 Tests: a frame with no changes leaves every node clean (`tree.dirty(node)` is false);
 changing one `Text` dirties only that node and its ancestors; mounting and unmounting
-components leaves no orphaned nodes (`total_node_count` matches the shadow tree).
-Compare canvas and dashboard profiles before and after.
+components leaves no orphaned nodes (`total_node_count` matches the shadow tree);
+a `Text` measured at an effective width it has already been measured at isn't wrapped again.
+Compare canvas and dashboard profiles after each change.
