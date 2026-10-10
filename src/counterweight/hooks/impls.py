@@ -11,8 +11,20 @@ from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout
 
 
 @dataclass(slots=True)
+class MountStatus:
+    """
+    Whether a component instance is still in the tree.
+    One is shared by a `Hooks` and the slots that act on their own after render (like a setter),
+    so unmounting the instance is a single write that every slot sees.
+    """
+
+    is_mounted: bool = True
+
+
+@dataclass(slots=True)
 class UseState:
     value: object
+    mount_status: MountStatus
     setter: Setter[object] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -20,6 +32,9 @@ class UseState:
         self.setter = self.set
 
     def set(self, value: object) -> None:
+        if not self.mount_status.is_mounted:
+            return
+
         if callable(value):
             value = value(self.value)
 
@@ -49,6 +64,7 @@ class InconsistentHookExecution(Exception):
 class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
     dims: ResolvedLayout = field(default=INITIAL_RESOLVED_LAYOUT)
+    mount_status: MountStatus = field(default_factory=MountStatus)
 
     @property
     def effects(self) -> Iterator[UseEffect]:
@@ -62,7 +78,10 @@ class Hooks:
                     f"Expected a {UseState.__name__} hook, but got a {type(hook).__name__} hook instead."
                 )
         except IndexError:
-            hook = UseState(value=initial_value() if callable(initial_value) else initial_value)
+            hook = UseState(
+                value=initial_value() if callable(initial_value) else initial_value,
+                mount_status=self.mount_status,
+            )
             self.data.append(hook)
 
         current_hook_idx.set(current_hook_idx.get() + 1)

@@ -167,16 +167,18 @@ an effect with the setter in its `deps` runs once across several renders.
 
 ### 5. Make a setter called after unmount a no-op
 
-**Status:** Not started
+**Status:** Done
 
-Give `Hooks` an `is_mounted` flag.
+Give `Hooks` a `MountStatus` cell holding an `is_mounted` flag, and share the same cell with
+each `UseState` slot it creates, so the setter can check it without a reference back to the
+`Hooks` that holds the slot.
 After `update_shadow`, set it false on every `Hooks` reachable from the previous tree but not
 from the new one.
 `Hooks` is a mutable dataclass with generated `__eq__`, so it is unhashable; compare the two
 trees by `id()`.
 The app loop currently overwrites `shadow` with the new tree, so it has to hold the previous
 one until the comparison is done.
-`set_state` returns without enqueuing `StateSet` when its `Hooks` is unmounted.
+`set_state` returns without enqueuing `StateSet` when its cell says unmounted.
 
 Do this after step 4, so the stable setter is the one that checks the flag.
 
@@ -209,6 +211,8 @@ current prop.
 So the slot holds both the state and the most recent reducer, and each render replaces the
 reducer.
 That is a dedicated `UseReducer` slot type rather than `UseState`, which holds only a value.
+It shares the component's `MountStatus` like `UseState` does, so `dispatch` after unmount is a
+no-op too.
 
 Add `docs/hooks/use_reducer.md` to the hooks section of `mkdocs.yml`, and a changelog entry.
 

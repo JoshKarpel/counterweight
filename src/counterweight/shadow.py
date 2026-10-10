@@ -131,6 +131,18 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
     return new, user_ns
 
 
+def mark_unmounted(previous: ShadowNode, current: ShadowNode) -> None:
+    """
+    Marks the hooks of every node in `previous` that didn't carry over into `current` as unmounted,
+    so a setter captured by an unmounted component stops triggering renders.
+    Hooks are compared by `id()` because they are mutable, and so unhashable.
+    """
+    current_hook_ids = {id(node.hooks) for node in current.walk()}
+    for node in previous.walk():
+        if id(node.hooks) not in current_hook_ids:
+            node.hooks.mount_status.is_mounted = False
+
+
 def reconcile_children(
     next_children: Sequence[Component | AnyElement], previous_children: Sequence[ShadowNode]
 ) -> tuple[list[ShadowNode], int]:

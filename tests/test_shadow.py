@@ -16,7 +16,7 @@ from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
 from counterweight.hooks.impls import Hooks
-from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
+from counterweight.shadow import DuplicateKey, ShadowNode, mark_unmounted, update_shadow
 
 
 @contextmanager
@@ -38,6 +38,8 @@ async def render(
 ) -> tuple[ShadowNode, set[Task[None]]]:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
     shadow, _ = update_shadow(root, previous)
+    if previous is not None:
+        mark_unmounted(previous, shadow)
     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=task_group)
     await sleep(0)
     return shadow, active_effects
@@ -314,3 +316,65 @@ async def test_effect_with_setter_in_deps_runs_once_across_renders() -> None:
         await cancel_tasks(active)
 
     assert log_after_renders == ["start"]
+
+
+@component
+def wraps_remembers(setters: dict[str, Setter[str]], seen: dict[str, str]) -> Div:
+    return Div(children=[remembers("nested", setters, seen)])
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "name"),
+    [
+        pytest.param(
+            lambda s, v: Div(children=[remembers("a", s, v)]),
+            lambda s, v: Div(children=[Div()]),
+            "a",
+            id="replaced-by-element",
+        ),
+        pytest.param(
+            lambda s, v: Div(children=[remembers("a", s, v).with_key("a"), remembers("b", s, v).with_key("b")]),
+            lambda s, v: Div(children=[remembers("b", s, v).with_key("b")]),
+            "a",
+            id="removed-keyed-sibling",
+        ),
+        pytest.param(
+            lambda s, v: Div(children=[wraps_remembers(s, v)]),
+            lambda s, v: Div(children=[Div()]),
+            "nested",
+            id="nested-under-replaced-component",
+        ),
+    ],
+)
+async def test_setter_called_after_unmount_enqueues_nothing(
+    before: Callable[[dict[str, Setter[str]], dict[str, str]], Div],
+    after: Callable[[dict[str, Setter[str]], dict[str, str]], Div],
+    name: str,
+) -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+
+    with event_queue() as queue:
+        async with TaskGroup() as tg:
+            shadow, active = await render(before(setters, seen), None, set(), tg)
+            await render(after(setters, seen), shadow, active, tg)
+            setters[name]("set after unmount")
+
+    assert queue.empty()
+
+
+async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
+    setters: dict[str, Setter[str]] = {}
+    seen: dict[str, str] = {}
+
+    with event_queue() as queue:
+        async with TaskGroup() as tg:
+            shadow, active = await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, set(), tg
+            )
+            await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, active, tg
+            )
+            setters["x"]("set after move")
+
+    assert queue.qsize() == 1

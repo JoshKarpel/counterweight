@@ -59,7 +59,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import BLANK, Paint, paint_layout, svg
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import ShadowNode, mark_unmounted, update_shadow
 from counterweight.styles import Style
 
 logger = get_logger()
@@ -161,7 +161,6 @@ async def app(
         screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
-        shadow: ShadowNode | None = None
         active_effects: set[Task[None]] = set()
         elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
@@ -176,7 +175,7 @@ async def app(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-        shadow, _ = update_shadow(screen(), shadow)
+        shadow, _ = update_shadow(screen(), None)
         compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
@@ -293,7 +292,9 @@ async def app(
 
                 if should_render:
                     start_render = perf_counter_ns()
-                    shadow, user_code_ns = update_shadow(screen(), shadow)
+                    previous_shadow = shadow
+                    shadow, user_code_ns = update_shadow(screen(), previous_shadow)
+                    mark_unmounted(previous_shadow, shadow)
                     logger.debug(
                         "Updated shadow tree",
                         elapsed_ns=f"{perf_counter_ns() - start_render:_}",

@@ -16,7 +16,8 @@ A component that finds a partner **continues** it:
 it keeps its hooks, so `use_state` returns the stored value and its effects keep running.
 A component that finds no partner **mounts** with fresh hooks,
 and a previous component that nobody paired with **unmounts**:
-its effects are cancelled and its state is discarded.
+its effects are cancelled, its state is discarded,
+and calling one of its `use_state` setters does nothing.
 
 Pairing happens among siblings (the children of one parent),
 and a partner must be the same component function.
