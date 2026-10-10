@@ -29,9 +29,9 @@ test:
 
 alias t := test
 
-[doc('Serve documentation locally')]
+[doc('Serve documentation locally, restarting when the config, a hook, or a screenshot changes')]
 docs-serve PORT="8000":
-    exec uv run mkdocs serve --dev-addr localhost:{{ PORT }}
+    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/
 
 alias d := docs-serve
 

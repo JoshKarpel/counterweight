@@ -2,4 +2,4 @@
 │                                                                    │
 │      Lorem ipsum dolor sit amet, consectetur adipiscing elit.      │
 │                                                                    │
-╰─ Bottom-Left Title ─── Bottom-Center Title ─── Bottom-Right Title ─╯
+╰─ Bottom-Left Title ──── Bottom-Center Title ── Bottom-Right Title ─╯

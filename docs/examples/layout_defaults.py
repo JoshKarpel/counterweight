@@ -39,31 +39,18 @@ def col_defaults() -> Div:
 
 WIDE = "this line is wider than the fifty-column screen it is drawn on"
 
-# --8<-- [start:root-without-full]
+# --8<-- [start:root]
 
 
 @component
-def root_without_full() -> Div:
+def root_fills_screen() -> Div:
     return Div(
         style=col | border_heavy,
         children=[Text(content="root: col | border_heavy"), Text(content=WIDE)],
     )
 
 
-# --8<-- [end:root-without-full]
-
-# --8<-- [start:root-with-full]
-
-
-@component
-def root_with_full() -> Div:
-    return Div(
-        style=col | full | border_heavy,
-        children=[Text(content="root: col | full | border_heavy"), Text(content=WIDE)],
-    )
-
-
-# --8<-- [end:root-with-full]
+# --8<-- [end:root]
 
 LONG = "a line of text much longer than half the row"
 
@@ -116,8 +103,7 @@ def wrapping() -> Div:
 SCREENSHOTS = [
     ScreenshotSpec(row_defaults, "layout-defaults-row", (50, 5)),
     ScreenshotSpec(col_defaults, "layout-defaults-col", (50, 11)),
-    ScreenshotSpec(root_without_full, "layout-root-without-full", (50, 5)),
-    ScreenshotSpec(root_with_full, "layout-root-with-full", (50, 5)),
+    ScreenshotSpec(root_fills_screen, "layout-root", (50, 5)),
     ScreenshotSpec(automatic_minimum, "layout-automatic-minimum", (60, 10)),
     ScreenshotSpec(wrapping, "layout-wrapping", (60, 7)),
 ]

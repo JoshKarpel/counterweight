@@ -51,6 +51,10 @@ the `# Stop generated` marker.
 just codegen
 ```
 
+Don't omit utilities on the grounds that nothing needs them yet: we can't know what users will want.
+When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
+generate every member of it.
+
 ## Docs Screenshots
 
 Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,

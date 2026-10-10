@@ -116,9 +116,9 @@
    <tspan x="11.55em">─</tspan>
    <tspan x="12.10em">─</tspan>
    <tspan x="12.65em">─</tspan>
-   <tspan x="13.20em">┐</tspan>
-   <tspan x="13.75em">┌</tspan>
-   <tspan x="14.30em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">┐</tspan>
+   <tspan x="14.30em">┌</tspan>
    <tspan x="14.85em">─</tspan>
    <tspan x="15.40em">─</tspan>
    <tspan x="15.95em">─</tspan>
@@ -155,9 +155,9 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┐</tspan>
-   <tspan x="36.30em">┌</tspan>
-   <tspan x="36.85em">─</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┐</tspan>
+   <tspan x="36.85em">┌</tspan>
    <tspan x="37.40em">─</tspan>
    <tspan x="37.95em">─</tspan>
    <tspan x="38.50em">─</tspan>
@@ -178,9 +178,9 @@
    <tspan x="6.60em">│</tspan>
    <tspan x="7.15em">│</tspan>
    <tspan x="7.70em">2</tspan>
-   <tspan x="13.20em">│</tspan>
    <tspan x="13.75em">│</tspan>
-   <tspan x="14.30em">3</tspan>
+   <tspan x="14.30em">│</tspan>
+   <tspan x="14.85em">3</tspan>
    <tspan x="20.35em">│</tspan>
    <tspan x="20.90em">┃</tspan>
    <tspan x="22.55em">┃</tspan>
@@ -189,9 +189,9 @@
    <tspan x="29.15em">│</tspan>
    <tspan x="29.70em">│</tspan>
    <tspan x="30.25em">4</tspan>
-   <tspan x="35.75em">│</tspan>
    <tspan x="36.30em">│</tspan>
-   <tspan x="36.85em">7</tspan>
+   <tspan x="36.85em">│</tspan>
+   <tspan x="37.40em">7</tspan>
    <tspan x="42.90em">│</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
@@ -220,9 +220,9 @@
    <tspan x="11.55em">─</tspan>
    <tspan x="12.10em">─</tspan>
    <tspan x="12.65em">─</tspan>
-   <tspan x="13.20em">┘</tspan>
-   <tspan x="13.75em">└</tspan>
-   <tspan x="14.30em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">┘</tspan>
+   <tspan x="14.30em">└</tspan>
    <tspan x="14.85em">─</tspan>
    <tspan x="15.40em">─</tspan>
    <tspan x="15.95em">─</tspan>
@@ -259,9 +259,9 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┘</tspan>
-   <tspan x="36.30em">└</tspan>
-   <tspan x="36.85em">─</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┘</tspan>
+   <tspan x="36.85em">└</tspan>
    <tspan x="37.40em">─</tspan>
    <tspan x="37.95em">─</tspan>
    <tspan x="38.50em">─</tspan>
@@ -300,9 +300,9 @@
    <tspan x="11.55em">─</tspan>
    <tspan x="12.10em">─</tspan>
    <tspan x="12.65em">─</tspan>
-   <tspan x="13.20em">┐</tspan>
-   <tspan x="13.75em">┌</tspan>
-   <tspan x="14.30em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">┐</tspan>
+   <tspan x="14.30em">┌</tspan>
    <tspan x="14.85em">─</tspan>
    <tspan x="15.40em">─</tspan>
    <tspan x="15.95em">─</tspan>
@@ -339,7 +339,8 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┐</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┐</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="5.65em">
@@ -349,9 +350,9 @@
    <tspan x="6.60em">│</tspan>
    <tspan x="7.15em">│</tspan>
    <tspan x="7.70em">5</tspan>
-   <tspan x="13.20em">│</tspan>
    <tspan x="13.75em">│</tspan>
-   <tspan x="14.30em">6</tspan>
+   <tspan x="14.30em">│</tspan>
+   <tspan x="14.85em">6</tspan>
    <tspan x="20.35em">│</tspan>
    <tspan x="20.90em">┃</tspan>
    <tspan x="22.55em">┃</tspan>
@@ -360,7 +361,7 @@
    <tspan x="29.15em">│</tspan>
    <tspan x="29.70em">│</tspan>
    <tspan x="30.25em">5</tspan>
-   <tspan x="35.75em">│</tspan>
+   <tspan x="36.30em">│</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="6.78em">
@@ -388,9 +389,9 @@
    <tspan x="11.55em">─</tspan>
    <tspan x="12.10em">─</tspan>
    <tspan x="12.65em">─</tspan>
-   <tspan x="13.20em">┘</tspan>
-   <tspan x="13.75em">└</tspan>
-   <tspan x="14.30em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">┘</tspan>
+   <tspan x="14.30em">└</tspan>
    <tspan x="14.85em">─</tspan>
    <tspan x="15.40em">─</tspan>
    <tspan x="15.95em">─</tspan>
@@ -427,7 +428,8 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┘</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┘</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="7.91em">
@@ -469,7 +471,8 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┐</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┐</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="9.04em">
@@ -484,7 +487,7 @@
    <tspan x="29.15em">│</tspan>
    <tspan x="29.70em">│</tspan>
    <tspan x="30.25em">6</tspan>
-   <tspan x="35.75em">│</tspan>
+   <tspan x="36.30em">│</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="10.17em">
@@ -526,7 +529,8 @@
    <tspan x="34.10em">─</tspan>
    <tspan x="34.65em">─</tspan>
    <tspan x="35.20em">─</tspan>
-   <tspan x="35.75em">┘</tspan>
+   <tspan x="35.75em">─</tspan>
+   <tspan x="36.30em">┘</tspan>
    <tspan x="43.45em">┃</tspan>
   </tspan>
   <tspan y="11.30em">

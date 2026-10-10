@@ -38,27 +38,18 @@ In a `col`, the axes swap: each child is as tall as its content and as wide as t
 Stretching is the default, so `align_children_stretch` never needs to be written out.
 [Alignment and distribution](alignment.md) shows the alternatives.
 
-## The root needs `full`
+## The root fills the screen
 
-The app places the root component in a grid cell the size of the terminal.
-Without a size of its own, the root fills that cell only while its content fits:
-content wider than the terminal widens the root past the edge of the screen,
-along with everything laid out inside it.
-
-```python
---8<-- "layout_defaults.py:root-without-full"
-```
-
-![A root without full](../assets/layout-root-without-full.svg)
-
-`full` pins the root to the terminal's size, whatever its content.
-The wide line is cut off at the root's border instead.
+The app places the root component in a grid cell the size of the terminal,
+and the root stretches to fill it, whatever its content.
+Content wider than the terminal can't widen the root:
+the wide line is cut off at the root's border.
 
 ```python
---8<-- "layout_defaults.py:root-with-full"
+--8<-- "layout_defaults.py:root"
 ```
 
-![A root with full](../assets/layout-root-with-full.svg)
+![The root filling the screen](../assets/layout-root.svg)
 
 ## Content sets a minimum size
 

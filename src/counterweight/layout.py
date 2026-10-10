@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
@@ -50,8 +49,17 @@ def compute_layout(
 
     tree.compute_layout(root_id, available, measure=_measure_text)
 
+    # Hidden subtrees are absent from absolute_layouts, so their components would otherwise
+    # keep reporting the regions from the last frame they were visible in.
+    for shadow_node in node_map.values():
+        shadow_node.hooks.dims = INITIAL_RESOLVED_LAYOUT
+
     results: list[tuple[AnyElement, ResolvedLayout]] = []
-    _extract_layout(tree, root_id, node_map, abs_x=0.0, abs_y=0.0, results=results)
+    for order, (node_id, position, layout) in enumerate(tree.absolute_layouts(root_id)):
+        visible = node_map[node_id]
+        resolved = _resolve_layout(position, layout, order)
+        visible.hooks.dims = resolved
+        results.append((visible.element, resolved))
 
     return results
 
@@ -97,76 +105,42 @@ def _measure_text(
     )
 
 
-def _extract_layout(
-    tree: waxy.TaffyTree[Text],
-    node_id: waxy.NodeId,
-    node_map: dict[waxy.NodeId, ShadowNode],
-    abs_x: float,
-    abs_y: float,
-    results: list[tuple[AnyElement, ResolvedLayout]],
-) -> None:
-    """Walk tree top-down, accumulating absolute positions.
-
-    abs_x/abs_y is the absolute position of the current node's parent's border box origin,
-    i.e. the origin that taffy's relative ``layout.location`` is measured from.
-    For the root node, pass (0, 0).
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> ResolvedLayout:
     """
-    layout = tree.unrounded_layout(node_id)
-    shadow = node_map[node_id]
+    The cell regions of one node's boxes, from its absolute border-box position.
 
-    # display:nil hides the entire subtree, matching CSS display:none semantics
-    if shadow.element.style.layout.display == waxy.Display.Nil:
-        return
+    Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
+    integral and adjacent boxes share edges without gaps or overlaps.
+    """
+    left = int(position.x)
+    top = int(position.y)
+    border = Region(left=left, top=top, right=left + int(layout.size.width), bottom=top + int(layout.size.height))
 
-    border_abs_x = abs_x + layout.location.x
-    border_abs_y = abs_y + layout.location.y
-
-    # Both edges use floor (round toward -inf), so negative coordinates work, and a
-    # fractional start position (e.g. 18.667 from justify_content:space_evenly) doesn't
-    # inflate the element's cell count when the size is an exact integer (e.g.
-    # start=18.667, size=4.0 → end=22.667 → [18, 22), height 4, not 5).
-    # This also correctly handles fractional flex sizes where frac(start)+frac(size)
-    # reaches an exact integer boundary (e.g. start=12.667, size=7.333 → end=20.0).
-    bl = math.floor(border_abs_x)
-    bt = math.floor(border_abs_y)
-    br = math.floor(border_abs_x + layout.size.width)
-    bb = math.floor(border_abs_y + layout.size.height)
-
-    border_region = Region(left=bl, top=bt, right=br, bottom=bb)
-
-    margin_region = Region(
-        left=bl - int(layout.margin.left),
-        top=bt - int(layout.margin.top),
-        right=br + int(layout.margin.right),
-        bottom=bb + int(layout.margin.bottom),
+    margin_widths = layout.margin
+    margin = Region(
+        left=border.left - int(margin_widths.left),
+        top=border.top - int(margin_widths.top),
+        right=border.right + int(margin_widths.right),
+        bottom=border.bottom + int(margin_widths.bottom),
     )
 
-    pl = bl + int(layout.border.left)
-    pt = bt + int(layout.border.top)
-    pr = br - int(layout.border.right)
-    pb = bb - int(layout.border.bottom)
-    padding_region = Region(left=pl, top=pt, right=pr, bottom=pb)
-
-    content_region = Region(
-        left=pl + int(layout.padding.left),
-        top=pt + int(layout.padding.top),
-        right=pr - int(layout.padding.right),
-        bottom=pb - int(layout.padding.bottom),
+    border_widths = layout.border
+    padding = Region(
+        left=border.left + int(border_widths.left),
+        top=border.top + int(border_widths.top),
+        right=border.right - int(border_widths.right),
+        bottom=border.bottom - int(border_widths.bottom),
     )
 
-    resolved = ResolvedLayout(
-        content=content_region,
-        padding=padding_region,
-        border=border_region,
-        margin=margin_region,
-        order=len(results),
+    padding_widths = layout.padding
+    content = Region(
+        left=padding.left + int(padding_widths.left),
+        top=padding.top + int(padding_widths.top),
+        right=padding.right - int(padding_widths.right),
+        bottom=padding.bottom - int(padding_widths.bottom),
     )
-    results.append((shadow.element, resolved))
 
-    shadow.hooks.dims = resolved
-
-    for child_node_id in tree.children(node_id):
-        _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
+    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
 
 
 def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:

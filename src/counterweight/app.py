@@ -71,6 +71,24 @@ def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
 
 
+def screen_element_style(width: int, height: int) -> Style:
+    """
+    The style of the element the app places the root component in:
+    a single grid cell the size of the terminal, which the root stretches to fill.
+    """
+    return Style(
+        # Explicit tracks keep the root's content from widening the cell,
+        # which an implicit auto track would size to the root's min-content.
+        layout=waxy.Style(
+            display=waxy.Display.Grid,
+            size_width=waxy.Length(width),
+            size_height=waxy.Length(height),
+            grid_template_columns=[waxy.Length(width)],
+            grid_template_rows=[waxy.Length(height)],
+        ),
+    )
+
+
 async def app(
     root: Callable[[], Component],
     output_stream: TextIO = sys.stdout,
@@ -98,20 +116,12 @@ async def app(
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
 
-        ss = Style(
-            layout=waxy.Style(
-                display=waxy.Display.Grid,
-                size_width=waxy.Length(w),
-                size_height=waxy.Length(h),
-            ),
-        )
-
         cp = {Position(x, y): BLANK for x in range(w) for y in range(h)}
 
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
 
-        return ss, cp, w, h
+        return screen_element_style(w, h), cp, w, h
 
     @component
     def screen() -> Div:

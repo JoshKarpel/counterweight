@@ -113,9 +113,34 @@ def center() -> Div:
 
 # --8<-- [end:center]
 
+TALL = "\n".join(f"line {n}" for n in range(1, 13))
+
+# --8<-- [start:overflow]
+
+
+@component
+def overflow() -> Div:
+    return Div(
+        style=row | pad_y(4),
+        children=[
+            Div(
+                style=col | justify | grow(1) | border_light,
+                children=[title(name), Text(content=TALL)],
+            )
+            for name, justify in (
+                ("justify_children_center", justify_children_center),
+                ("justify_children_center_unsafe", justify_children_center_unsafe),
+            )
+        ],
+    )
+
+
+# --8<-- [end:overflow]
+
 SCREENSHOTS = [
     ScreenshotSpec(justify, "layout-justify-children", (50, 30)),
     ScreenshotSpec(align, "layout-align-children", (120, 9)),
     ScreenshotSpec(align_self, "layout-align-self", (80, 9)),
     ScreenshotSpec(center, "layout-center", (50, 9)),
+    ScreenshotSpec(overflow, "layout-center-overflow", (70, 17)),
 ]

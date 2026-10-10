@@ -139,7 +139,7 @@ between `--8<--` markers, and the `generate-screenshots` pre-commit hook regener
 screenshot on every commit. What's missing is the examples.
 
 This step comes before the waxy bump because the committed screenshots are also a visual
-regression suite. Step 3 takes taffy from 0.9 to 0.14 and step 9 changes rounding, and both
+regression suite. Step 3 takes taffy from 0.9 to 0.14 and switches to taffy's rounding, and both
 can move computed layouts; with the gallery in place, every layout they move shows up as a
 changed SVG in that PR. From here on, every step that adds or changes a layout utility updates
 the gallery in the same PR: an unchanged screenshot shows that a rewrite (such as
@@ -157,7 +157,7 @@ Pages and the effects each covers:
 - **How layout sizes things:** layout follows CSS flexbox defaults (`flex_direction` row,
   `flex_grow` 0, `flex_shrink` 1, `align_items` stretch, border-box sizing), so children take
   their content size on the main axis and stretch on the cross axis; the automatic minimum
-  size; why the root needs `full`; `Text` doesn't wrap unless `text_wrap` is set.
+  size; the root filling the screen; `Text` doesn't wrap unless `text_wrap` is set.
 - **Splitting space:** equal shares, a fixed sidebar beside a filling pane, ratios, nested
   splits, each with flexbox and with grid tracks; the overflow when content is wider than a
   share; percentages plus `gap`.
@@ -198,34 +198,48 @@ Tooling:
   lands, and if it's slow, decide then whether to run it only when `src/` or
   `docs/examples/` changes.
 
-### 3. Take up waxy `0.7.0`
+### 3. Take up waxy `0.7.0`, and adopt what it adds
 
-- Raise the floor to `waxy>=0.7.0` and update `uv.lock`.
-- Remove `compare=False, hash=False` and the comment from `Style.layout`, so layout takes part
-  in equality and hashing.
+**Status:** Done
+
+Raise the floor to `waxy>=0.7.0`, and adopt every addition from waxy `0.6.0` and `0.7.0`
+that simplifies code counterweight already has.
+Additions that are new features (the sizing keywords, `fields_set`, grid areas and `repeat()`)
+stay with the steps that expose them, and the `set_style` no-op matters only once the tree is
+reused (step 10).
+
+- **Style equality.** `Style.layout` takes part in equality and hashing.
   `waxy.Style` equality also compares which fields were explicitly set,
-  so two counterweight `Style`s compare equal only if they also merge identically,
-  which is what a cache keyed on styles needs.
-- Key `STYLE_MERGE_CACHE` on `(self, other)` rather than their hashes. Step 4 rewrites
-  merging, so this may be replaced there; it's here so the collision bug doesn't wait on
-  step 4.
-- With waxy's new `repr`, `Style.__repr__` shows the layout fields that were set, without
-  any counterweight change.
-
-The suite and mypy pass unchanged against the waxy `0.6.0` build
-(`0.7.0` only changes `absolute_layouts`, which counterweight doesn't call until step 9),
-so nothing in counterweight depends on the removed `Rect` and `Line` methods
-or misspells a `waxy.Style` keyword (which now raises `TypeError`;
-the utilities are module constants, so importing them constructs every one).
-The bump also takes taffy from 0.9 to 0.14, which fixes layout bugs and can move computed
-layouts. Regenerate the gallery screenshots from step 2 and review every SVG that changed,
-and run the examples in `examples/` against the previous release before merging.
-
-`Style.__hash__` now hashes the `waxy.Style` too. waxy caches that hash after the first call,
-but counterweight's `Style` is a dataclass whose hash is recomputed over all its fields on
-every call, and `Text` and `Div` are hashed for the `paint_text` cache.
-Profile the canvas and dashboard workloads before and after. If hashing shows up, cache the
-hash on `Style` the way `CellStyle` already does (`styles/styles.py:243-255`).
+  so two counterweight `Style`s compare equal only if they also merge identically.
+  `STYLE_MERGE_CACHE` is keyed on `(self, other)` rather than their hashes,
+  so a hash collision can't return another pair's merged style.
+  A direct `hash(Style)` microbenchmark is unchanged, so `Style` doesn't cache its hash;
+  the profiling pass revisits that.
+- **The screen.** taffy 0.14 sizes the screen's implicit `auto` grid track to the root's
+  min-content, so a root with wide or wrapping content grew past the screen, `full` or not,
+  and text stopped wrapping.
+  The screen element (`screen_element_style` in `app.py`) has explicit `Length` tracks,
+  so the root stretches to fill the screen whatever its content, and no longer needs `full`.
+  The gallery's "The root fills the screen" section shows it.
+- **Safe alignment.** With a fixed-size root, centered content taller than the screen
+  overflowed past the top edge (the table example lost its title).
+  The `*_center` and `*_end` alignment utilities use waxy's `Safe*` alignments,
+  and every one has an `*_unsafe` counterpart with CSS's default overflow.
+  "Alignment and distribution" shows both. Changelog entry under `Changed`.
+- **Reading layouts.** `compute_layout` reads every node from `absolute_layouts(root)`
+  with taffy's rounding on, replacing the recursive `_extract_layout` and its floor arithmetic.
+  Don't sum the locations from `tree.layout()` instead:
+  taffy 0.14 rounds `location` relative to the parent but `size` against the absolute offset
+  ([taffy#834](https://github.com/DioxusLabs/taffy/issues/834)),
+  so summed rounded locations can leave one-cell gaps or overlaps between siblings.
+  Taffy's rounding and the old flooring disagree on about a sixth of the nodes in the suite and
+  gallery, always by placing a fractional edge in the neighboring cell; both tile siblings
+  without gaps, and the `space_evenly`, `space_around`, fractional `grow` and auto-centering
+  regression tests pass unchanged. The gallery shows the differences as half-cell ties broken
+  the other way, and `layout-dialog` no longer paints the dialog over the pane's border.
+  `absolute_layouts` leaves out `display: Nil` subtrees, and `compute_layout` resets
+  `hooks.dims` for every node first, so a component that becomes hidden reports empty regions
+  from `use_rects` instead of last frame's.
 
 ### 4. One merge rule: explicitly set wins
 
@@ -409,7 +423,13 @@ widths as the flexbox row; an `int` track gives the same widths as the `Length` 
 `grid_row(1, span(3))` places a child the same as `grid_row(GridLine(1), GridSpan(3))`.
 
 Gallery: rewrite the "Splitting space" page around these utilities. Each split shown with
-`fill` and `length` should render the same as its `fr` grid version.
+`fill` and `length` should render the same as its `fr` grid version, except where the panes
+have borders or padding: a flex item's basis can't go below its own border and padding, so
+flexbox divides only the space left after them, while grid divides the whole track.
+In a 60-wide row, bordered `grow(1)` and `grow(2)` panes come out 21 and 39, and
+`Fraction(1)` and `Fraction(2)` tracks 20 and 40; "Ratios" on that page says so.
+Decide whether `fill` should close that gap (a `box_sizing` change, say) or the page keeps
+explaining it.
 Then go back over the gallery and replace the raw waxy values the step 2 examples spell out
 for lack of these utilities (`grep -rn "waxy\." docs/examples docs/layout`):
 
@@ -496,51 +516,7 @@ writing the page.
 
 ### 9. Decide on rounding, and read layouts in one call
 
-`_extract_layout` reads `unrounded_layout`, sums each node's position in Python, and floors
-edges itself.
-The comment there (`layout.py:124-129`) explains why, using fractional starts from
-`justify_content: space_evenly`.
-Taffy has rounding built in for exactly this problem, enabled by default on a `TaffyTree`:
-it rounds absolute edges, so sizes come out as whole cells and siblings tile.
-
-waxy's `TaffyTree.absolute_layouts(root)` returns every node in pre-order
-with its absolute position and its `Layout`, honoring the tree's rounding setting.
-It leaves out `display: Nil` nodes and their subtrees, matching what `_extract_layout` skips.
-Don't sum the locations from `tree.layout()` instead:
-taffy 0.14 rounds `location` relative to the parent but `size` against the absolute offset
-([taffy#834](https://github.com/DioxusLabs/taffy/issues/834)),
-so summed rounded locations can leave one-cell gaps or overlaps between siblings.
-`absolute_layouts` rounds the summed unrounded position once, which matches the rounded sizes.
-
-Experiment: leave rounding on, take each border box's edges from `absolute_layouts`
-(position, and position plus size, both whole numbers with no floor),
-and run `tests/test_layout.py` along with examples that use `space_evenly` and fractional
-`grow`. `tree.format_tree(root)` dumps the computed tree as a string,
-which shows where the two approaches differ, and the gallery screenshots show where any
-difference reaches the screen.
-
-- **If the results match,** switch to taffy's rounding and delete the custom floor
-  arithmetic and its comment.
-- **If they don't,** add the differing case as a test that explains why counterweight snaps
-  cells itself, call `tree.disable_rounding()`, and keep flooring, but over the positions from
-  `absolute_layouts`. Those are summed in `f32` (taffy's own precision) where the current code
-  sums in Python floats, and the two differ by about `1e-7`
-  (3.1000001 against 3.1000002 on a `space_evenly` row),
-  which can flip a floor at an exact integer boundary such as the 12.667 + 7.333 case in the
-  comment. Pin that boundary with a test before switching.
-
-Either way:
-
-- Reset `hooks.dims` to `INITIAL_RESOLVED_LAYOUT` for shadow nodes missing from the result.
-  Today the early return for hidden nodes (`layout.py:118`) comes before `shadow.hooks.dims`
-  is set, so a component that becomes hidden keeps the regions from the last frame it was
-  visible, and `use_rects` and `use_hovered` go on reading them.
-- Bind `layout.margin`, `layout.border` and `layout.padding` to locals before reading their
-  sides, since each property access builds a new `Rect`.
-
-Tests: the existing `tests/test_layout.py` expectations; a hidden subtree produces no
-`ResolvedLayout`; a component hidden after a visible frame reports empty regions from
-`use_rects`. Profile canvas and dashboard before and after.
+**Status:** Done, as part of step 3.
 
 ### 10. Make per-frame layout cheaper
 

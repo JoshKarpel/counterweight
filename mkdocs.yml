@@ -9,7 +9,6 @@ extra_css:
 
 watch:
   - src/
-  - mkdocs_hooks/
 
 hooks:
   - mkdocs_hooks/screenshot_tabs.py

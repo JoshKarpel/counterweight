@@ -71,6 +71,11 @@ so `1` and `2` give the second pane twice the width of the first.
 
     ![A 1:2 split with grid](../assets/layout-split-ratio-grid.svg)
 
+Flexbox divides only the space left after each pane's own border,
+which a pane can't shrink below,
+so its panes come out a cell away from an exact 1:2 split.
+Grid divides the whole width between the tracks first, and the borders go inside them.
+
 ## Nested splits
 
 With flexbox, a split inside a split is a container inside a container:

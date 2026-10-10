@@ -172,9 +172,6 @@
    <tspan x="4.95em">┃</tspan>
    <tspan x="15.95em">│</tspan>
    <tspan x="16.50em">│</tspan>
-   <tspan x="18.70em">┏</tspan>
-   <tspan x="19.25em">━</tspan>
-   <tspan x="19.80em">┓</tspan>
    <tspan x="20.35em">┏</tspan>
    <tspan x="20.90em">━</tspan>
    <tspan x="21.45em">┓</tspan>
@@ -209,9 +206,9 @@
    <tspan x="17.05em">┏</tspan>
    <tspan x="17.60em">━</tspan>
    <tspan x="18.15em">┓</tspan>
-   <tspan x="18.70em">┃</tspan>
-   <tspan x="19.25em">b</tspan>
-   <tspan x="19.80em">┃</tspan>
+   <tspan x="18.70em">┏</tspan>
+   <tspan x="19.25em">━</tspan>
+   <tspan x="19.80em">┓</tspan>
    <tspan x="20.35em">┃</tspan>
    <tspan x="20.90em">c</tspan>
    <tspan x="21.45em">┃</tspan>
@@ -280,9 +277,9 @@
    <tspan x="17.05em">┗</tspan>
    <tspan x="17.60em">━</tspan>
    <tspan x="18.15em">┛</tspan>
-   <tspan x="18.70em">┗</tspan>
-   <tspan x="19.25em">━</tspan>
-   <tspan x="19.80em">┛</tspan>
+   <tspan x="18.70em">┃</tspan>
+   <tspan x="19.25em">b</tspan>
+   <tspan x="19.80em">┃</tspan>
    <tspan x="20.35em">┃</tspan>
    <tspan x="20.90em">c</tspan>
    <tspan x="21.45em">┃</tspan>
@@ -311,6 +308,9 @@
    <tspan x="0.00em">│</tspan>
    <tspan x="15.95em">│</tspan>
    <tspan x="16.50em">│</tspan>
+   <tspan x="18.70em">┗</tspan>
+   <tspan x="19.25em">━</tspan>
+   <tspan x="19.80em">┛</tspan>
    <tspan x="20.35em">┗</tspan>
    <tspan x="20.90em">━</tspan>
    <tspan x="21.45em">┛</tspan>

@@ -59,3 +59,17 @@ To center a box over other content rather than among it, see
 ```
 
 ![Centering with flexbox and grid](../assets/layout-center.svg)
+
+## Content larger than its container
+
+The `*_center` and `*_end` utilities are CSS's _safe_ alignments:
+content too large for its container starts at the container's start edge
+and overflows only past the end, so its beginning stays on screen.
+Each has an `*_unsafe` counterpart with CSS's default behavior,
+which centers or end-aligns the content anyway and overflows past the start edge too.
+
+```python
+--8<-- "layout_alignment.py:overflow"
+```
+
+![Safe and unsafe centering of content taller than its container](../assets/layout-center-overflow.svg)

@@ -1,29 +1,39 @@
 from __future__ import annotations
 
+import pytest
 import waxy
 
+from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import ResolvedLayout, compute_layout
+from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout, compute_layout
 from counterweight.shadow import ShadowNode
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
     align_children_center,
+    align_children_center_unsafe,
+    align_children_end,
+    align_children_end_unsafe,
     border_all,
     border_collapse,
     border_lightrounded,
     col,
+    display_none,
     grow,
     inset_bottom,
     inset_bottom_center,
     inset_left,
     inset_top,
     justify_children_center,
+    justify_children_center_unsafe,
+    justify_children_end,
+    justify_children_end_unsafe,
     justify_children_space_around,
     justify_children_space_evenly,
     pad,
     position_absolute,
     row,
+    shrink,
     size,
     text_wrap_balance,
     text_wrap_pretty,
@@ -40,11 +50,8 @@ def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement
 
 
 def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
-    """Wrap root in a fixed-size grid container, matching what app.py does."""
-    screen_style = Style(
-        layout=waxy.Style(display=waxy.Display.Grid, size_width=waxy.Length(w), size_height=waxy.Length(h))
-    )
-    screen = _shadow(Div(style=screen_style), children=[root])
+    """Wrap root in the element the app places the root component in."""
+    screen = _shadow(Div(style=screen_element_style(w, h)), children=[root])
     return compute_layout(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
 
 
@@ -120,7 +127,7 @@ def test_col_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
 
 # ---------------------------------------------------------------------------
 # Fractional flex widths: when children don't divide the container evenly,
-# taffy produces fractional unrounded positions. floor/ceil rounding must still
+# taffy produces fractional unrounded positions. Rounding to cells must still
 # produce shared seams under border_collapse.
 # ---------------------------------------------------------------------------
 
@@ -167,8 +174,8 @@ def test_fixed_size_border_box_dimensions() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Absolute positioning with negative insets: left/top edges must use floor,
-# not truncation-toward-zero, so negative coordinates are correct.
+# Absolute positioning with negative insets: negative coordinates must come out
+# exact, without truncation toward zero moving an edge.
 # ---------------------------------------------------------------------------
 
 
@@ -265,7 +272,7 @@ def test_auto_centered_text_has_correct_width() -> None:
 
 def test_space_evenly_col_does_not_inflate_child_height() -> None:
     # H=29, child_a=6, child_b=4: gap=(29-6-4)/3=19/3=6.333...
-    # child_b floats to y=18.667, end=22.667 → floor gives height 4, not 5.
+    # child_b floats to y=18.667, end=22.667 → height must stay 4, not 5.
     child_a = _shadow(Div(style=size(20, 6)))
     child_b = _shadow(Div(style=size(20, 4)))
     root = _shadow(Div(style=col | justify_children_space_evenly), children=[child_a, child_b])
@@ -277,7 +284,7 @@ def test_space_evenly_col_does_not_inflate_child_height() -> None:
 
 def test_space_around_col_does_not_inflate_child_height() -> None:
     # H=31, child_a=6, child_b=4: G=(31-6-4)/2=10.5 per item.
-    # child_b floats to y=21.75, end=25.75 → floor gives height 4, not 5.
+    # child_b floats to y=21.75, end=25.75 → height must stay 4, not 5.
     child_a = _shadow(Div(style=size(20, 6)))
     child_b = _shadow(Div(style=size(20, 4)))
     root = _shadow(Div(style=col | justify_children_space_around), children=[child_a, child_b])
@@ -289,7 +296,7 @@ def test_space_around_col_does_not_inflate_child_height() -> None:
 
 def test_space_evenly_row_does_not_inflate_child_width() -> None:
     # W=29, child_a=6, child_b=4: gap=(29-6-4)/3=19/3=6.333...
-    # child_b floats to x=18.667, end=22.667 → floor gives width 4, not 5.
+    # child_b floats to x=18.667, end=22.667 → width must stay 4, not 5.
     child_a = _shadow(Div(style=size(6, 3)))
     child_b = _shadow(Div(style=size(4, 3)))
     root = _shadow(Div(style=row | justify_children_space_evenly), children=[child_a, child_b])
@@ -341,3 +348,57 @@ def test_text_wrap_pretty_measures_correct_height() -> None:
     text_layout = next(rl for el, rl in results if isinstance(el, Text))
 
     assert text_layout.border.height == 2
+
+
+def test_hidden_subtree_produces_no_resolved_layout() -> None:
+    visible = _shadow(Text(content="visible"))
+    hidden_child = _shadow(Text(content="hidden child"))
+    hidden = _shadow(Div(style=display_none), children=[hidden_child])
+    root = _shadow(Div(style=col), children=[visible, hidden])
+
+    elements = [element for element, _ in _layout(root)]
+
+    assert elements == [root.element, visible.element]
+
+
+def test_node_hidden_after_a_visible_frame_reports_empty_regions() -> None:
+    hooks = Hooks()
+    shown = ShadowNode(component=None, element=Div(style=size(5, 3)), hooks=hooks)
+    _layout(_shadow(Div(style=col), children=[shown]))
+    assert hooks.dims != INITIAL_RESOLVED_LAYOUT
+
+    hidden = ShadowNode(component=None, element=Div(style=size(5, 3) | display_none), hooks=hooks)
+    _layout(_shadow(Div(style=col), children=[hidden]))
+
+    assert hooks.dims == INITIAL_RESOLVED_LAYOUT
+
+
+@pytest.mark.parametrize(
+    "alignment",
+    [justify_children_center, justify_children_end, align_children_center, align_children_end],
+)
+def test_child_larger_than_its_container_starts_at_the_start_edge(alignment: Style) -> None:
+    child = _shadow(Div(style=size(8, 8) | shrink(0)))
+    root = _shadow(Div(style=row | size(5, 5) | alignment), children=[child])
+
+    _, layout_child = [rl for _, rl in _layout(root)]
+
+    assert (layout_child.border.left, layout_child.border.top) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    ("alignment", "start_edge"),
+    [
+        (justify_children_center_unsafe, "left"),
+        (justify_children_end_unsafe, "left"),
+        (align_children_center_unsafe, "top"),
+        (align_children_end_unsafe, "top"),
+    ],
+)
+def test_unsafe_alignment_overflows_child_past_the_start_edge(alignment: Style, start_edge: str) -> None:
+    child = _shadow(Div(style=size(8, 8) | shrink(0)))
+    root = _shadow(Div(style=row | size(5, 5) | alignment), children=[child])
+
+    _, layout_child = [rl for _, rl in _layout(root)]
+
+    assert getattr(layout_child.border, start_edge) < 0

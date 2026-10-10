@@ -1,5 +1,0 @@
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-┃root: col | border_heavy                         
-┃this line is wider than the fifty-column screen i
-┃                                                 
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

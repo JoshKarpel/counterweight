@@ -1,7 +1,9 @@
+from dataclasses import dataclass
+
 import pytest
 import waxy
 
-from counterweight.styles.styles import BorderKind, CellStyle, Color, Style
+from counterweight.styles.styles import BorderKind, CellStyle, Color, Style, StyleFragment
 from counterweight.styles.utilities import border_heavy, inset_left, inset_top, position_absolute, position_relative
 
 
@@ -116,3 +118,30 @@ def test_absolute_merge_with_visual() -> None:
     assert result.layout.inset_left == waxy.Length(3)
     assert result.layout.inset_top == waxy.Length(5)
     assert result.layout.border_top == waxy.Length(1)
+
+
+def test_styles_with_different_layouts_are_not_equal() -> None:
+    assert Style(layout=waxy.Style(flex_grow=1)) != Style(layout=waxy.Style(flex_grow=2))
+
+
+def test_styles_with_equal_layouts_are_equal_and_hash_equal() -> None:
+    left = Style(layout=waxy.Style(flex_grow=3))
+    right = Style(layout=waxy.Style(flex_grow=3))
+
+    assert left == right
+    assert hash(left) == hash(right)
+
+
+@dataclass(frozen=True, slots=True)
+class CollidingFragment(StyleFragment):
+    value: int = 0
+
+    def __hash__(self) -> int:
+        return 7
+
+
+def test_merge_cache_distinguishes_fragments_whose_hashes_collide() -> None:
+    first = CollidingFragment(value=3) | CollidingFragment(value=5)
+    second = CollidingFragment(value=11) | CollidingFragment(value=13)
+
+    assert (first, second) == (CollidingFragment(value=5), CollidingFragment(value=13))

@@ -50,6 +50,13 @@
 ### Changed
 
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The `*_center` and `*_end` alignment utilities
+  (`justify_children_*`, `align_children_*`, `align_self_*`, `justify_items_*`, `justify_self_*`)
+  use CSS's safe alignment: content too large for its container starts at the start edge
+  instead of overflowing past it.
+  Each has an `*_unsafe` counterpart, such as `justify_children_center_unsafe`,
+  that centers or end-aligns overflowing content anyway.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   **Breaking:** a `Screenshot` handler now receives a `counterweight.output.Frame`
   instead of an SVG `ElementTree`; call `frame.svg()` or `frame.text()` to encode it.
   `Screenshot.to_file` chooses the encoding from the path's suffix

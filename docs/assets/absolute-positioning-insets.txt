@@ -10,7 +10,7 @@
 ┃                                                          ┃
 ┃ inset_center_center | margin_left(-2) | margin_top(-4)   ┃
 ┃                                                          ┃
-┃inset_center_left  inset_center_center  inset_center_right┃
+┃inset_center_left   inset_center_center inset_center_right┃
 ┃                                                          ┃
 ┃                                                          ┃
 ┃                                                          ┃
@@ -21,5 +21,5 @@
 ┃                                                          ┃
 ┃                                                          ┃
 ┃                                                          ┃
-┃inset_bottom_left  inset_bottom_center  inset_bottom_right┃
+┃inset_bottom_left   inset_bottom_center inset_bottom_right┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
