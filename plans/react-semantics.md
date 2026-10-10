@@ -119,13 +119,13 @@ component starts with its initial state; a `use_mouse` listener is removed from
 
 ### 2. Cancel stale effects before starting new ones
 
-**Status:** Not started
+**Status:** Done
 
 Split `handle_effects` into two passes over the tree.
 The first decides, per effect, whether it keeps its task or reruns, without creating
 anything.
-Then await cancellation of every active task that isn't kept (reruns and unmounts alike),
-and only then create tasks for the reruns.
+Then cancel every active task that isn't kept (reruns and unmounts alike) concurrently,
+wait for all of them to finish, and only then create tasks for the reruns.
 
 Tests: a rerun effect logs `stop` before the next `start`; an unmounted effect is stopped
 before a sibling's rerun starts.

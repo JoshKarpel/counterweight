@@ -23,10 +23,12 @@ class ShadowNode:
     children: list[ShadowNode] = field(default_factory=list)
 
     def walk(self) -> Iterator[ShadowNode]:
-        yield self
-        for child in self.children:
-            if isinstance(child, ShadowNode):
-                yield from child.walk()
+        """Yields every node in the subtree in pre-order, with an explicit stack so cost is linear in node count."""
+        stack = [self]
+        while stack:
+            node = stack.pop()
+            yield node
+            stack.extend(reversed(node.children))
 
 
 def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> tuple[ShadowNode, int]:

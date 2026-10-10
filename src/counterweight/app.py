@@ -17,7 +17,7 @@ import waxy
 from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
-from counterweight._utils import cancel, drain_queue, maybe_await
+from counterweight._utils import cancel_tasks, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
 from counterweight.controls import (
@@ -45,6 +45,7 @@ from counterweight.events import (
 )
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.layout import ResolvedLayout, compute_layout
 from counterweight.logging import configure_logging
@@ -458,23 +459,28 @@ async def app(
 
 
 async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
-    new_effects: set[Task[None]] = set()
+    reruns: list[UseEffect] = []
+    kept: set[Task[None]] = set()
     for node in shadow.walk():
         for effect in node.hooks.effects:
             if effect.deps != effect.new_deps or effect.new_deps is None:
-                effect.deps = effect.new_deps
-                t = task_group.create_task(effect.setup())
-                new_effects.add(t)
-                effect.task = t
+                reruns.append(effect)
             else:
                 if effect.task is None:
                     raise Exception("Effect task should never be None at this point")
-                new_effects.add(effect.task)
+                kept.add(effect.task)
 
-    for task in active_effects - new_effects:
-        await cancel(task)
+    # Every stale task is cancelled before any rerun starts, so an effect holding something exclusive
+    # (a subscription, a terminal mode) releases it before its replacement or a sibling acquires it.
+    await cancel_tasks(active_effects - kept)
 
-    return new_effects
+    started: set[Task[None]] = set()
+    for effect in reruns:
+        effect.deps = effect.new_deps
+        effect.task = task_group.create_task(effect.setup())
+        started.add(effect.task)
+
+    return kept | started
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:

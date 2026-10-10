@@ -69,6 +69,11 @@
   Previously the element inherited the component's hooks, so its effects
   (including `use_mouse` listeners) kept running.
 
+- Effects that rerun or unmount in a render are cancelled concurrently,
+  and all of them finish before any effect starts,
+  so an effect's cleanup always finishes before its replacement or a sibling's setup begins.
+  Previously a rerun effect's new task started before the old one was cancelled.
+
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly
   (they were previously reported as mouse presses).

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import dataclasses
-from asyncio import CancelledError, Queue, QueueEmpty, Task, current_task, get_event_loop
+from asyncio import Queue, QueueEmpty, Task, get_event_loop, wait
+from collections.abc import Iterable
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
@@ -38,27 +39,32 @@ async def forever() -> None:
     await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
 
 
-async def cancel[T](task: Task[T]) -> None:
-    # Based on https://discuss.python.org/t/asyncio-cancel-a-cancellation-utility-as-a-coroutine-this-time-with-feeling/26304/2
-    if task.done():
-        # If the task has already completed, there's nothing to cancel.
-        # This can happen if, for example, an effect aborts itself by returning,
-        # and then we try to cancel it when reconciling effects.
+async def cancel_tasks[T](tasks: Iterable[Task[T]]) -> None:
+    """
+    Cancel every task, then wait until all of them have finished tearing down.
+
+    The tasks tear down concurrently, so the wait lasts as long as the slowest teardown, not their sum.
+    A task that is already done is skipped (for example, an effect that aborted itself by returning).
+    A task that raises during teardown has its exception re-raised,
+    and one that swallows its cancellation and returns raises `RuntimeError`.
+    If the caller is cancelled while waiting, its `CancelledError` propagates and the tasks keep tearing down.
+    """
+    pending = [task for task in tasks if not task.done()]
+    if not pending:
         return
 
-    task.cancel()
+    for task in pending:
+        task.cancel()
 
-    try:
-        await task
-    except CancelledError:
-        ct = current_task()
-        if ct and ct.cancelling() == 0:
-            # The CancelledError is from the task we cancelled, so this is the normal flow
-            return
-        else:
-            # cancel() is itself being cancelled, propagate the CancelledError
-            raise
-    else:
+    # `wait` never raises the tasks' own `CancelledError`, so any `CancelledError` out of it is aimed at the caller.
+    # Awaiting each task under `suppress(CancelledError)` instead would swallow the caller's cancellation too.
+    await wait(pending)
+
+    for task in pending:
+        if task.cancelled():
+            continue
+        if (exception := task.exception()) is not None:
+            raise exception
         raise RuntimeError("Cancelled task did not end with an exception")
 
 
