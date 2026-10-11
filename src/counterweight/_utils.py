@@ -39,7 +39,7 @@ async def forever() -> None:
     await get_event_loop().create_future()  # This waits forever since the future will never resolve on its own
 
 
-async def cancel_tasks[T](tasks: Iterable[Task[T]]) -> None:
+async def cancel_tasks(tasks: Iterable[Task[object]]) -> None:
     """
     Cancel every task, then wait until all of them have finished tearing down.
 

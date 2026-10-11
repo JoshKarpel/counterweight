@@ -44,8 +44,6 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
     match next, previous:
         case Component(
             func=next_func,
-            args=next_args,
-            kwargs=next_kwargs,
             key=next_key,
         ) as next_component, ShadowNode(
             component=previous_component,
@@ -57,20 +55,12 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             and next_key == previous_component.key
         ):
             previous_hook_count = len(previous_hooks.data)
-            reset_current_hook_idx = current_hook_idx.set(0)
-            reset_current_hook_state = current_hook_state.set(previous_hooks)
-            try:
-                _start = perf_counter_ns()
-                element = next_component.func(*next_args, **next_kwargs)
-                user_ns += perf_counter_ns() - _start
-                hook_count = current_hook_idx.get()
-            finally:
-                current_hook_idx.reset(reset_current_hook_idx)
-                current_hook_state.reset(reset_current_hook_state)
+            element, component_ns, hook_count = call_component(next_component, previous_hooks)
+            user_ns += component_ns
 
             if hook_count != previous_hook_count:
                 raise InconsistentHookExecution(
-                    f"{next_func.__name__} called {hook_count} hooks on this render, "
+                    f"{next_func} called {hook_count} hooks on this render, "
                     f"but {previous_hook_count} on its previous render. "
                     "A component must call the same hooks in the same order on every render."
                 )
@@ -91,17 +81,10 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             #     id=id,
             #     generation=new.generation,
             # )
-        case Component(func=next_func, args=next_args, kwargs=next_kwargs) as next_component, _:
+        case Component() as next_component, _:
             hook_state = Hooks()
-            reset_current_hook_idx = current_hook_idx.set(0)
-            reset_current_hook_state = current_hook_state.set(hook_state)
-            try:
-                _start = perf_counter_ns()
-                element = next_func(*next_args, **next_kwargs)
-                user_ns += perf_counter_ns() - _start
-            finally:
-                current_hook_idx.reset(reset_current_hook_idx)
-                current_hook_state.reset(reset_current_hook_state)
+            element, component_ns, _ = call_component(next_component, hook_state)
+            user_ns += component_ns
 
             children, children_ns = reconcile_children(element.children, [])
             user_ns += children_ns
@@ -147,6 +130,22 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
     return new, user_ns
 
 
+def call_component(next_component: Component, hooks: Hooks) -> tuple[AnyElement, int, int]:
+    """
+    Calls a component function with `hooks` as the current hook state, restoring the outer hook context even if it raises.
+    Returns the element, the nanoseconds spent in the function, and how many hooks it called.
+    """
+    reset_current_hook_idx = current_hook_idx.set(0)
+    reset_current_hook_state = current_hook_state.set(hooks)
+    try:
+        start = perf_counter_ns()
+        element = next_component.func(*next_component.args, **next_component.kwargs)
+        return element, perf_counter_ns() - start, current_hook_idx.get()
+    finally:
+        current_hook_idx.reset(reset_current_hook_idx)
+        current_hook_state.reset(reset_current_hook_state)
+
+
 def unmount(discarded: ShadowNode) -> None:
     """
     Marks every node in a subtree that the new tree discards as unmounted,
@@ -166,6 +165,9 @@ def reconcile_children(
     Previous children that no next child continues are unmounted.
     Returns the reconciled children and the nanoseconds spent in user component functions.
     """
+    if not next_children and not previous_children:
+        return [], 0
+
     previous_by_key: dict[str, ShadowNode] = {}
     previous_by_index: dict[int, ShadowNode] = {}
     for index, node in enumerate(previous_children):
