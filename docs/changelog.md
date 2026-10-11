@@ -131,6 +131,20 @@
   Laying out a frame costs less. An app keeps one layout tree for its lifetime,
   so taffy reuses the layout of every element whose style, text and children are unchanged,
   and a `Text` is wrapped at most once per width it is measured at.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Painting a frame costs less. Elements paint straight into one screen-sized grid of cells,
+  a row at a time, and an element's text and border are cached wherever it moves on the screen.
+  Only the cells that changed since the last frame are written to the terminal,
+  with one cursor move per run of changed cells and a style change only where the style changes.
+  Building a `Position`, `CellStyle` or cell equal to one built recently returns the cached instance.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** `Frame.paint` is a `counterweight.paint.Paint`, a screen-sized grid of cells,
+  rather than a `dict` from `Position` to cell.
+  Index it with a `Position` or an `(x, y)` pair, or read it a row at a time with `rows()`.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The painted cell `counterweight.paint.P` is renamed `Cell`. It is a frozen dataclass of a character
+  and its resolved style, and no longer carries its element's `z`.
+  `counterweight.elements.CellPaint`, a character and its unresolved `CellStyle`, is renamed `StyledChar`.
 
 ### Fixed
 
@@ -139,6 +153,10 @@
   `border_heavy | border_none` has no border kind, `text_justify_center | text_justify_left` justifies left,
   `z(5) | z(0)` has `z` 0, and `CellStyle(bold=True) | CellStyle(bold=False)` is not bold.
   Previously a field set to its default was treated as unset and ignored.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  An element with a `content_color` but no margin, border, padding or text now paints its background.
+  Previously it painted nothing. An element with none of these and no `content_color` still paints nothing,
+  so an undecorated container laid over other elements leaves them visible.
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly
   (they were previously reported as mouse presses).

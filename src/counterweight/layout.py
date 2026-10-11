@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
-from counterweight.elements import AnyElement, CellPaint, Chunk, Div, Text, text_cells
+from counterweight.elements import AnyElement, Chunk, Div, StyledChar, Text, text_cells
 from counterweight.geometry import Region
 from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
@@ -162,7 +162,7 @@ class MeasurableText:
     one effective width, so most questions repeat one already answered.
     """
 
-    cells: tuple[CellPaint, ...]
+    cells: tuple[StyledChar, ...]
     wrap: TextWrap
     sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
     min_content_width: int | UNMEASURED | None = UNMEASURED
@@ -222,7 +222,7 @@ def _measure_text(
     )
 
 
-def _min_content_width(cells: Iterable[CellPaint], wrap: TextWrap) -> int | None:
+def _min_content_width(cells: Iterable[StyledChar], wrap: TextWrap) -> int | None:
     """The widest word in `cells`, or `None` (unlimited) if they don't wrap."""
     if wrap == "none":
         return None
@@ -275,9 +275,9 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> Re
     return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
 
 
-def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
-    paragraphs: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
+def _split_paragraphs(cells: Iterable[StyledChar]) -> list[list[StyledChar]]:
+    paragraphs: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
     for cell in cells:
         if cell.char == "\n":
             paragraphs.append(current)
@@ -289,18 +289,18 @@ def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
 
 
 def _extract_words_and_spaces(
-    paragraph: list[CellPaint],
-) -> tuple[list[list[CellPaint]], list[list[CellPaint]]]:
+    paragraph: list[StyledChar],
+) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
     """Split a paragraph into (words, spaces).
 
     words[i] is a non-space run; spaces[i] is the space run between words[i] and words[i+1].
     Leading and trailing spaces are discarded.
     len(spaces) == len(words) - 1.
     """
-    words: list[list[CellPaint]] = []
-    spaces: list[list[CellPaint]] = []
-    current_word: list[CellPaint] = []
-    current_space: list[CellPaint] = []
+    words: list[list[StyledChar]] = []
+    spaces: list[list[StyledChar]] = []
+    current_word: list[StyledChar] = []
+    current_space: list[StyledChar] = []
 
     for cell in paragraph:
         if cell.char == " ":
@@ -328,17 +328,17 @@ def _extract_words_and_spaces(
 
 
 def _flatten_long_words(
-    words: list[list[CellPaint]],
-    spaces: list[list[CellPaint]],
+    words: list[list[StyledChar]],
+    spaces: list[list[StyledChar]],
     width: int,
-) -> tuple[list[list[CellPaint]], list[list[CellPaint]]]:
+) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
     """Break any word longer than width into width-sized chunks.
 
     Space runs between chunks of the same word become [] (no space between hyphenated chunks).
     Returns (flat_words, flat_spaces) with len(flat_spaces) == len(flat_words) - 1.
     """
-    flat_words: list[list[CellPaint]] = []
-    flat_spaces: list[list[CellPaint]] = []
+    flat_words: list[list[StyledChar]] = []
+    flat_spaces: list[list[StyledChar]] = []
 
     for i, word in enumerate(words):
         if len(word) > width:
@@ -357,15 +357,15 @@ def _flatten_long_words(
     return flat_words, flat_spaces
 
 
-def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _break_long_word(word: list[StyledChar], width: int) -> list[list[StyledChar]]:
     """Break a word that is longer than width into width-sized chunks, hyphenating all but the last."""
     if width <= 1:
         return [word[i : i + width] for i in range(0, len(word), width)]
-    chunks: list[list[CellPaint]] = []
+    chunks: list[list[StyledChar]] = []
     i = 0
     while i < len(word):
         if i + width < len(word):
-            hyphen = CellPaint(char="-", style=word[i + width - 2].style)
+            hyphen = StyledChar(char="-", style=word[i + width - 2].style)
             chunks.append([*word[i : i + width - 1], hyphen])
             i += width - 1
         else:
@@ -374,13 +374,13 @@ def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]
     return chunks
 
 
-def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_greedy(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
 
-    lines: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
-    pending_space: list[CellPaint] = []
+    lines: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
+    pending_space: list[StyledChar] = []
 
     for i, word in enumerate(flat_words):
         if not current:
@@ -398,7 +398,7 @@ def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
     return lines
 
 
-def _greedy_line_count(flat_words: list[list[CellPaint]], flat_spaces: list[list[CellPaint]], width: int) -> int:
+def _greedy_line_count(flat_words: list[list[StyledChar]], flat_spaces: list[list[StyledChar]], width: int) -> int:
     count = 1
     length = 0
     pending_space_len = 0
@@ -418,15 +418,15 @@ def _greedy_line_count(flat_words: list[list[CellPaint]], flat_spaces: list[list
 
 
 def _wrap_at_target(
-    flat_words: list[list[CellPaint]],
-    flat_spaces: list[list[CellPaint]],
+    flat_words: list[list[StyledChar]],
+    flat_spaces: list[list[StyledChar]],
     width: int,
     target: int,
-) -> list[list[CellPaint]]:
+) -> list[list[StyledChar]]:
     """Greedy wrap with long-word breaking, targeting `target` width for line breaks."""
-    lines: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
-    pending_space: list[CellPaint] = []
+    lines: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
+    pending_space: list[StyledChar] = []
 
     for i, word in enumerate(flat_words):
         if not current:
@@ -444,7 +444,7 @@ def _wrap_at_target(
     return lines
 
 
-def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_balance(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
         return [[]]
@@ -468,7 +468,7 @@ def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint
     return _wrap_at_target(flat_words, flat_spaces, width, lo)
 
 
-def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     """DP optimal line-breaking minimizing sum of squared slack on non-last lines."""
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
@@ -520,11 +520,11 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
                 bp[i] = j
 
     # Reconstruct lines.
-    lines: list[list[CellPaint]] = []
+    lines: list[list[StyledChar]] = []
     i = 0
     while i < n:
         j = bp[i]
-        line: list[CellPaint] = []
+        line: list[StyledChar] = []
         for k in range(i, j):
             if k > i:
                 # Insert the actual space run between flat_words[k-1] and flat_words[k].
@@ -538,10 +538,10 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
 
 
 def wrap_cells(
-    cells: Iterable[CellPaint],
+    cells: Iterable[StyledChar],
     wrap: TextWrap,
     width: int | None,
-) -> list[list[CellPaint]]:
+) -> list[list[StyledChar]]:
     if width is not None and width <= 0:
         return []
 
@@ -550,7 +550,7 @@ def wrap_cells(
     if wrap == "none" or width is None:
         return paragraphs
 
-    result: list[list[CellPaint]] = []
+    result: list[list[StyledChar]] = []
     for paragraph in paragraphs:
         if wrap == "stable":
             result.extend(_wrap_greedy(paragraph, width))

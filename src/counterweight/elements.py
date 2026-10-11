@@ -27,7 +27,7 @@ class Chunk:
     style: CellStyle = _DEFAULT_CELL_STYLE
 
     @property
-    def cells(self) -> tuple[CellPaint, ...]:
+    def cells(self) -> tuple[StyledChar, ...]:
         return _chunk_cells(self.content, self.style)
 
     @classmethod
@@ -44,14 +44,14 @@ NEWLINE = Chunk(content="\n")
 
 
 @lru_cache(maxsize=2**12)
-def _chunk_cells(content: str, style: CellStyle) -> tuple[CellPaint, ...]:
-    return tuple(CellPaint(char=char, style=style) for char in content)
+def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledChar, ...]:
+    return tuple(StyledChar(char=char, style=style) for char in content)
 
 
 @lru_cache(maxsize=2**12)
-def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[CellPaint, ...]:
+def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledChar, ...]:
     if isinstance(content, str):
-        return tuple(CellPaint(char=char, style=text_style) for char in content)
+        return tuple(StyledChar(char=char, style=text_style) for char in content)
     else:
         return tuple(cell for chunk in content for cell in chunk.cells)
 
@@ -68,7 +68,7 @@ class Text:
         return ()
 
     @property
-    def cells(self) -> tuple[CellPaint, ...]:
+    def cells(self) -> tuple[StyledChar, ...]:
         content = self.content if isinstance(self.content, str) else tuple(self.content)
         return text_cells(content, self.style.text_style)
 
@@ -83,6 +83,6 @@ from counterweight.components import Component  # noqa: E402, deferred to avoid 
 
 @flyweight(maxsize=2**12)
 @dataclass(slots=True, frozen=True, kw_only=True)
-class CellPaint:
+class StyledChar:
     char: str
     style: CellStyle = _DEFAULT_CELL_STYLE

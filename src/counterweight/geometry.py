@@ -14,14 +14,14 @@ class Position:
     y: int
 
     def __add__(self, other: Position) -> Position:
-        return Position(x=self.x + other.x, y=self.y + other.y)
+        return Position(self.x + other.x, self.y + other.y)
 
     def __sub__(self, other: Position) -> Position:
-        return Position(x=self.x - other.x, y=self.y - other.y)
+        return Position(self.x - other.x, self.y - other.y)
 
     def fill_to(self, other: Position) -> Iterator[Position]:
         return (
-            Position(x=x, y=y)
+            Position(x, y)
             for x, y in product(
                 unordered_range(self.x, other.x),
                 unordered_range(self.y, other.y),
@@ -59,53 +59,53 @@ class Region:
     @property
     def top_left(self) -> Position:
         """The top-left cell of the region."""
-        return Position(x=self.left, y=self.top)
+        return Position(self.left, self.top)
 
     @property
     def top_right(self) -> Position:
         """The top-right cell of the region."""
-        return Position(x=self.right - 1, y=self.top)
+        return Position(self.right - 1, self.top)
 
     @property
     def bottom_left(self) -> Position:
         """The bottom-left cell of the region."""
-        return Position(x=self.left, y=self.bottom - 1)
+        return Position(self.left, self.bottom - 1)
 
     @property
     def bottom_right(self) -> Position:
         """The bottom-right cell of the region."""
-        return Position(x=self.right - 1, y=self.bottom - 1)
+        return Position(self.right - 1, self.bottom - 1)
 
     def contains(self, position: Position) -> bool:
         return self.left <= position.x < self.right and self.top <= position.y < self.bottom
 
     def positions(self) -> Iterator[Position]:
         """Every cell in the region, row by row."""
-        return (Position(x=x, y=y) for y in range(self.top, self.bottom) for x in range(self.left, self.right))
+        return (Position(x, y) for y in range(self.top, self.bottom) for x in range(self.left, self.right))
 
     def top_edge(self) -> Iterator[Position]:
         """The cells along the top row of the region, left to right."""
         if self.is_empty:
             return iter(())
-        return (Position(x=x, y=self.top) for x in range(self.left, self.right))
+        return (Position(x, self.top) for x in range(self.left, self.right))
 
     def bottom_edge(self) -> Iterator[Position]:
         """The cells along the bottom row of the region, left to right."""
         if self.is_empty:
             return iter(())
-        return (Position(x=x, y=self.bottom - 1) for x in range(self.left, self.right))
+        return (Position(x, self.bottom - 1) for x in range(self.left, self.right))
 
     def left_edge(self) -> Iterator[Position]:
         """The cells along the left column of the region, top to bottom."""
         if self.is_empty:
             return iter(())
-        return (Position(x=self.left, y=y) for y in range(self.top, self.bottom))
+        return (Position(self.left, y) for y in range(self.top, self.bottom))
 
     def right_edge(self) -> Iterator[Position]:
         """The cells along the right column of the region, top to bottom."""
         if self.is_empty:
             return iter(())
-        return (Position(x=self.right - 1, y=y) for y in range(self.top, self.bottom))
+        return (Position(self.right - 1, y) for y in range(self.top, self.bottom))
 
     def intersection(self, other: Region) -> Region | None:
         """The cells shared by both regions, or `None` if they share no cells."""

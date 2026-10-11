@@ -55,7 +55,7 @@ from counterweight.output import (
     stop_mouse_tracking,
     stop_output_control,
 )
-from counterweight.paint import BLANK, Paint, paint_layout
+from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -125,10 +125,10 @@ async def render_loop(
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
 
-        cp = {Position(x, y): BLANK for x in range(w) for y in range(h)}
+        cp = Paint.blank(w, h)
 
         if not headless:
-            output_stream.write(CLEAR_SCREEN + paint_to_instructions(paint=cp))
+            output_stream.write(CLEAR_SCREEN + paint_to_instructions(runs_of(cp)))
 
         return screen_element_style(w, h), cp, w, h
 
@@ -236,8 +236,8 @@ async def render_loop(
                     should_bell = False
 
                 if pending_screenshots:
-                    # A copy, because current_paint is updated in place by later render cycles.
-                    frame = Frame(paint=dict(current_paint))
+                    # A copy, so a screenshot handler that changes its frame can't change current_paint.
+                    frame = Frame(paint=current_paint.copy())
                     for screenshot in pending_screenshots:
                         try:
                             await maybe_await(screenshot.handler(frame))
@@ -295,20 +295,24 @@ async def render_loop(
                     elements_and_layouts = layout_tree.compute(shadow, available)
                     logger.debug("Calculated layout")
 
-                    new_paint, border_healing_hints = paint_layout(elements_and_layouts)
+                    new_paint, border_healing_hints = paint_layout(elements_and_layouts, w, h)
                     logger.debug("Generated new paint")
 
                     if do_heal_borders:
                         healing_diff = heal_borders(new_paint, border_healing_hints)
-                        new_paint |= healing_diff
+                        for position, cell in healing_diff.items():
+                            new_paint[position] = cell
                         logger.debug(
                             "Healed borders in new paint",
                             extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
                         )
 
                     diff = diff_paint(new_paint, current_paint)
-                    current_paint |= diff
-                    logger.debug("Diffed new paint from current paint", extra={"diff_cells": len(diff)})
+                    current_paint = new_paint
+                    logger.debug(
+                        "Diffed new paint from current paint",
+                        extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
+                    )
 
                     instructions = paint_to_instructions(diff)
                     logger.debug("Generated instructions from paint diff")
@@ -431,17 +435,3 @@ def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
             )
         case _:
             return root.element
-
-
-def diff_paint(new_paint: Paint, current_paint: Paint) -> Paint:
-    diff = {}
-
-    for pos, current_cell in current_paint.items():
-        new_cell = new_paint.get(pos, BLANK)
-
-        # This looks duplicative, but each of these checks is faster than the next,
-        # but less precise, so we can short-circuit earlier on cheaper operations.
-        if new_cell is not current_cell and new_cell != current_cell:
-            diff[pos] = new_cell
-
-    return diff

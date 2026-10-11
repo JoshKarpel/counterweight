@@ -1,4 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import ClassVar
+
+import pytest
 
 from counterweight._utils import flyweight
 
@@ -11,7 +14,7 @@ class _KW:
 
 
 @flyweight(maxsize=2**8)
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class _Pos:
     x: int
     y: int
@@ -53,7 +56,7 @@ def test_field_values_correct() -> None:
     assert obj.y == 9
 
 
-def test_mutable_dataclass_field_values_correct() -> None:
+def test_positional_dataclass_field_values_correct() -> None:
     obj = _Pos(3, 4)
     assert obj.x == 3
     assert obj.y == 4
@@ -69,3 +72,46 @@ def test_mixed_positional_and_kwargs_interned_with_all_kwargs() -> None:
     a = _Pos(x=1, y=2)
     b = _Pos(1, y=2)
     assert a is b
+
+
+@flyweight(maxsize=2**8)
+@dataclass(frozen=True, slots=True)
+class _Counted:
+    x: int
+    post_inits: ClassVar[list[int]] = []
+
+    def __post_init__(self) -> None:
+        self.post_inits.append(self.x)
+
+
+def test_repeated_construction_skips_post_init() -> None:
+    _Counted(41)
+    _Counted(41)
+    assert _Counted.post_inits.count(41) == 1
+
+
+def test_unknown_kwarg_raises() -> None:
+    with pytest.raises(TypeError):
+        _KW(x=1, z=2)  # type: ignore[call-arg]
+
+
+def test_missing_arg_raises() -> None:
+    with pytest.raises(TypeError):
+        _Pos(1)  # type: ignore[call-arg]
+
+
+def test_instances_have_the_decorated_class_as_their_type() -> None:
+    assert type(_Pos(5, 6)) is _Pos
+
+
+def test_replace_returns_interned_instance() -> None:
+    assert replace(_KW(x=8, y=1), y=2) is _KW(x=8, y=2)
+
+
+def test_unhashable_dataclass_is_rejected() -> None:
+    @dataclass(slots=True)
+    class Mutable:
+        x: int
+
+    with pytest.raises(TypeError, match="unhashable"):
+        flyweight()(Mutable)

@@ -10,17 +10,16 @@ from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
-from counterweight.geometry import Position
 from counterweight.hooks import use_state
 from counterweight.output import Frame
-from counterweight.paint import P
+from counterweight.paint import Cell, Paint
 from counterweight.styles.styles import CellStyle, Color, resolve_cell_style
 
 
 @pytest.fixture
 def frame() -> Frame:
     red = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
-    return Frame(paint={Position(0, 0): P(char="h", style=red, z=0), Position(1, 0): P(char="i", style=red, z=0)})
+    return Frame(paint=Paint(2, 1, [Cell("h", red), Cell("i", red)]))
 
 
 @pytest.mark.parametrize("path_parts", [("screenshot.svg",), ("subdir", "screenshot.svg")])

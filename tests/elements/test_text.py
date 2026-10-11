@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from counterweight.elements import CellPaint, Chunk, Text
+from counterweight.elements import Chunk, StyledChar, Text
 from counterweight.styles import Style
 
 
@@ -21,29 +21,29 @@ def test_texts_have_no_children() -> None:
         (
             " ",
             Style(),
-            (CellPaint(char=" "),),
+            (StyledChar(char=" "),),
         ),
         (
             "f",
             Style(),
-            (CellPaint(char="f"),),
+            (StyledChar(char="f"),),
         ),
         (
             "foo",
             Style(),
-            (CellPaint(char="f"), CellPaint(char="o"), CellPaint(char="o")),
+            (StyledChar(char="f"), StyledChar(char="o"), StyledChar(char="o")),
         ),
         (
             (Chunk(content="f"), Chunk(content="o"), Chunk(content="o")),
             Style(),
-            (CellPaint(char="f"), CellPaint(char="o"), CellPaint(char="o")),
+            (StyledChar(char="f"), StyledChar(char="o"), StyledChar(char="o")),
         ),
     ),
 )
 def test_text_cells(
     content: str | Sequence[Chunk],
     style: Style,
-    expected: tuple[CellPaint],
+    expected: tuple[StyledChar],
 ) -> None:
     assert tuple(Text(content=content, style=style).cells) == expected
 

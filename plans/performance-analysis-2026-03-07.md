@@ -581,3 +581,127 @@ The young generation's count is allocations minus deallocations, and nearly ever
 is freed by reference counting, so the threshold is rarely reached.
 Raising it changed frame times only within noise, so counterweight leaves the collector's settings
 to the app. What Tachyon's `<GC>` frames cover beyond cyclic collection is unexplained.
+
+### Run 11 — all four benchmark workloads, faster interning
+
+**Change:** `@flyweight` returns a slotless subclass whose metaclass's `__call__` is an `lru_cache`
+keyed on the raw call arguments, so constructing an instance equal to a cached one is a single
+C-level cache hit that skips `__new__`, `__init__` and `__post_init__`.
+A miss builds the instance normally and interns it in a second `lru_cache` keyed on the instance
+itself, so every spelling of a call shares one instance; that needs hashable instances, so `P` is frozen.
+The hot `P` and `Position` call sites pass arguments positionally, which is about 50 ns cheaper per hit.
+Profiled with `just profile <workload> <workload>-paintbase` before and `<workload>-intern` after.
+
+Before, `flyweight.__new__`, its key-building genexpr, the re-run dataclass `__init__` and `__hash__`
+were about half of `paint_layout`'s samples on every workload.
+Every call site passed keyword arguments, the slowest path through `__new__`.
+Per construction, on a cache hit:
+
+| Construction | Before | After |
+|---|---|---|
+| `P`, keyword arguments | 988 ns | 180 ns |
+| `P`, positional | 259 ns | 126 ns |
+| `Position`, keyword arguments | 1084 ns | 214 ns |
+| `Position`, positional | 342 ns | 130 ns |
+
+Frame times (unprofiled runs):
+
+| Workload | Median before | Median after | Change | Mean before | Mean after |
+|---|---|---|---|---|---|
+| canvas | 6.02 ms | 3.56 ms | −41% | 6.60 ms | 4.41 ms |
+| top | 26.48 ms | 20.27 ms | −23% | 28.96 ms | 25.72 ms |
+| agent | 3.63 ms | 2.49 ms | −31% | 4.87 ms | 3.74 ms |
+| dashboard | 2.42 ms | 1.61 ms | −33% | 2.77 ms | 2.05 ms |
+
+Paint stage (`paint_layout`), ms per mean frame:
+
+| Workload | Before | After | Change |
+|---|---|---|---|
+| canvas | 4.21 | 1.77 | −58% |
+| top | 12.76 | 7.99 | −37% |
+| agent | 2.77 | 1.41 | −49% |
+| dashboard | 1.49 | 0.70 | −53% |
+
+- `compare` shows `diff_paint` and `paint_to_instructions` growing by up to 39% on `top` and `agent`,
+  but their sample counts are unchanged (`agent` 456 → 469, `top` 931 → 975) and so are their `__eq__` fallbacks,
+  so cells still compare by identity. A stage's ms/frame is its share of the profile times the unprofiled mean
+  frame, and shrinking paint raises every other stage's share faster than the mean frame falls.
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
+- What's left in paint is the representation: a `dict[Position, P]` per element, merged with `|=`,
+  and per-cell construction where whole rows could be filled with one slice assignment.
+
+### Run 12 — all four benchmark workloads, `Paint` as a screen-sized buffer
+
+**Change:** `Paint` is a class holding a row-major `list[Cell]` for the whole screen, rather than a
+`dict[Position, Cell]` built per element and merged with `|=`.
+
+- Elements are sorted by `(z, order)` and paint straight into one buffer, clipped to the screen.
+  A fill is one slice assignment per row; text is one per line.
+- An element's margin edge, border and padding edge are cached as `(Region, Cell)` fills, and its text
+  as rows of cells keyed on the content region's size, not position, so text that moves (everything
+  below `agent`'s streaming message) keeps its cache entry.
+- `Cell` (renamed from `P`) no longer carries `z`: painting in z order makes it redundant,
+  and without it equal-looking cells intern to one instance.
+- `diff_paint` skips a row when the whole row compares equal (in C, identity first), and returns runs
+  of adjacent changed cells. `paint_to_instructions` moves the cursor once per run and writes an SGR
+  sequence only when the style changes, rather than a move, SGR and reset for every cell.
+
+Profiled with `just profile <workload> <workload>-buffer`, compared against `<workload>-paintbase`
+(before run 11). Frame times (unprofiled runs):
+
+| Workload | Median before run 11 | After run 11 | After run 12 | Change overall |
+|---|---|---|---|---|
+| canvas | 6.02 ms | 3.56 ms | 2.51 ms | −58% |
+| top | 26.48 ms | 20.27 ms | 13.36 ms | −50% |
+| agent | 3.63 ms | 2.49 ms | 0.99 ms | −73% |
+| dashboard | 2.42 ms | 1.61 ms | 0.78 ms | −68% |
+
+Stages, ms per mean frame, before run 11 → after run 12:
+
+| Workload | Paint | Diff | Output |
+|---|---|---|---|
+| canvas | 4.21 → 0.94 | 0.50 → 0.38 | 0.20 → 0.14 |
+| top | 12.76 → 2.82 | 1.73 → 0.75 | 1.74 → 0.45 |
+| agent | 2.77 → 0.27 | 0.72 → 0.07 | 0.22 → 0.02 |
+| dashboard | 1.49 → 0.30 | 0.46 → 0.03 | 0.005 → 0.002 |
+
+- Paint is no longer the largest stage on `top`: `update_shadow` (5.3 ms) and layout (4.0 ms) are.
+- What's left of paint is per-element overhead on `top` (hundreds of short `Text`s), and on `canvas`,
+  building text rows on cache misses (every walker moves every frame) and hashing cache keys.
+- The last frame of every workload (`profiles/<name>.txt`) is identical to `<workload>-paintbase`,
+  and so is every docs screenshot.
+
+**Decision: off-screen cells are invisible, including to border healing.** A screen-sized buffer has
+nowhere to keep cells that fall off the screen, so painting clips them, and `heal_borders` sees an
+off-screen neighbor as absent. Before, a border running off the screen could join with an off-screen
+border's characters at the edge. No screenshot or test exercises that case. We may reverse this later;
+doing so means keeping off-screen cells somewhere healing can look at them, for example a buffer
+padded by a margin around the screen.
+
+### Run 13 — does `@flyweight` still pay, after the `Paint` buffer?
+
+**Method:** unprofiled `benchmarks run` with `@flyweight` replaced by the identity decorator for chosen
+classes, patched into `counterweight._utils` before the package imports (its `__init__` applies the
+decorators, so patching after `import counterweight` silently changes nothing). Every configuration's
+last frames are identical to interning on. A first pass ran each configuration once; two runs of the
+same interned code in that pass differed by up to 27% on `top`, so the configurations that moved were
+rerun in three interleaved rounds.
+
+Median frame time, median of three rounds, change against interning on:
+
+| Workload | Interning on | All off | `Cell` off | `CellStyle` off |
+|---|---|---|---|---|
+| canvas | 2.56 ms | +20% | +21% | −3% |
+| top | 12.21 ms | +16% | +7% | +9% |
+| agent | 0.95 ms | +15% | +10% | +3% |
+| dashboard | 0.82 ms | +7% | +3% | +4% |
+
+- `Cell` interning still pays wherever cells change: `diff_paint`'s row comparison and its per-cell
+  fallback short-circuit on identity, and an uninterned cell built this frame never is the one
+  from last frame, so every comparison falls through to the dataclass `__eq__`.
+- `CellStyle` interning pays on `top`. Unverified explanation: hundreds of `Text`s build styles every
+  frame that end up as cache keys (`text_cells`, `resolve_cell_style`), whose lookups short-circuit on identity.
+- Turning off `Position`, `ResolvedCellStyle` or `StyledChar` interning showed no slowdown in the
+  single first pass (every workload within that pass's noise, mostly faster).
+  `Position` has left the hot path entirely: the buffer indexes by integers.
+  Those three are candidates to drop, pending a repeated run to confirm.

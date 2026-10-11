@@ -6,7 +6,7 @@ from functools import lru_cache
 from more_itertools import flatten
 
 from counterweight.geometry import Position
-from counterweight.paint import BorderHealingHints, P, Paint
+from counterweight.paint import BorderHealingHints, Cell, CellMap, Paint
 from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
 
 logger = logging.getLogger(__name__)
@@ -47,16 +47,19 @@ def dither(position: Position) -> tuple[Position, Position, Position, Position]:
 ALL_JOINED_BORDER_KIND_CHARS = set(flatten(k.value for k in JoinedBorderKind))
 
 
-def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
-    overlay: Paint = {}
+def heal_borders(paint: Paint, hints: BorderHealingHints) -> CellMap:
+    overlay: CellMap = {}
     for center_position, parts in hints.items():
-        center = paint[center_position]
+        center = paint.get(center_position)
 
-        if center.char not in ALL_JOINED_BORDER_KIND_CHARS:
+        if center is None or center.char not in ALL_JOINED_BORDER_KIND_CHARS:
             # Even if we got a hint, that cell may have been overwritten by another
             # element (e.g., putting a title over a border using absolute positioning).
             continue
 
+        # Off-screen neighbors are None: a border running off the screen doesn't join borders that aren't drawn.
+        # That's a decision (see run 12 in plans/performance-analysis-2026-03-07.md), not a constraint;
+        # reversing it means keeping off-screen cells around for healing to look at.
         left, right, above, below = map(paint.get, dither(center_position))
 
         # TODO: cell styles and z-levels must match too (i.e., colors)
@@ -69,6 +72,6 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> Paint:
             above=above.char if above else None,
             below=below.char if below else None,
         ):
-            overlay[center_position] = P(char=replaced_char, style=center.style, z=center.z)
+            overlay[center_position] = Cell(replaced_char, center.style)
 
     return overlay
