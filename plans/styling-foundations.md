@@ -498,6 +498,16 @@ layout. "Grids and wrapping"'s auto-flow screenshot widens to fit its longer lab
 
 ### 8. Explain how to choose a layout model
 
+**Status:** Done
+
+The page is written for counterweight users in general, and the ratatui comparison below is
+condensed into one closing "Coming from ratatui?" section rather than framing the whole page.
+It frames the choice around where the sizes are written alone (grid top-down from the parent,
+flexbox bottom-up from each child). Whether content sets a size is decided per child or track
+in either model, so it belongs on the sizing pages rather than here.
+Probing ratatui `0.30.2` showed its default `Flex` is `Start`, which leaves leftover space empty
+as flexbox does; only `Flex::Legacy` hands it to the last constraint.
+
 The gallery shows _how_ to get each effect; this step adds the page that says _which_
 technique to reach for, and how counterweight's model relates to ratatui's. It opens the
 Layout section and links into the gallery pages for each case.

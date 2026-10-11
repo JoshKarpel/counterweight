@@ -20,5 +20,7 @@ for the cases no utility covers.
 
 To run one, pass the component to `counterweight.app.app`.
 
-Start with [How layout sizes things](how-layout-sizes-things.md):
+Start with [Choosing a layout model](choosing-a-layout-model.md),
+which says when to reach for flexbox and when for grid.
+Then read [How layout sizes things](how-layout-sizes-things.md):
 the defaults it describes explain most surprises in the other pages.

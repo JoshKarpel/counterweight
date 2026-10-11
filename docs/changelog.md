@@ -42,7 +42,8 @@
   (with or without ANSI escape codes), useful for debugging layout and in tests.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Added a Layout section to the documentation:
-  a gallery of layout effects, each shown as code beside its screenshot,
+  a guide to choosing between flexbox and grid,
+  and a gallery of layout effects, each shown as code beside its screenshot,
   with every screenshot also available as copyable text.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;

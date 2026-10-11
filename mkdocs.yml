@@ -117,6 +117,7 @@ nav:
     - input-handling/controls.md
   - Layout:
     - layout/index.md
+    - layout/choosing-a-layout-model.md
     - layout/how-layout-sizes-things.md
     - layout/splitting-space.md
     - layout/sizing-one-box.md
