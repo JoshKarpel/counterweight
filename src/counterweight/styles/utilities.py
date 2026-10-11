@@ -708,11 +708,13 @@ border_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.BorderBox))
 
 @lru_cache(maxsize=256)
 def grow(n: float) -> Style:
+    """Take `n` shares of the free space along the parent's main axis (`flex_grow`)."""
     return Style(layout=waxy.Style(flex_grow=float(n)))
 
 
 @lru_cache(maxsize=256)
 def shrink(n: float) -> Style:
+    """Give up `n` shares of the overflow along the parent's main axis when the children don't fit (`flex_shrink`)."""
     return Style(layout=waxy.Style(flex_shrink=float(n)))
 
 
@@ -791,66 +793,79 @@ full = stretch_width | stretch_height
 
 @lru_cache(maxsize=256)
 def inset_top(n: int) -> Style:
+    """Inset a positioned box `n` cells from the top."""
     return Style(layout=waxy.Style(inset_top=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def inset_bottom(n: int) -> Style:
+    """Inset a positioned box `n` cells from the bottom."""
     return Style(layout=waxy.Style(inset_bottom=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def inset_left(n: int) -> Style:
+    """Inset a positioned box `n` cells from the left."""
     return Style(layout=waxy.Style(inset_left=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def inset_right(n: int) -> Style:
+    """Inset a positioned box `n` cells from the right."""
     return Style(layout=waxy.Style(inset_right=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def z(z: int = 0) -> Style:
+    """Draw the box on layer `z`: where boxes overlap, the higher `z` is drawn on top."""
     return Style(z=z)
 
 
 @lru_cache(maxsize=256)
 def width(n: int) -> Style:
+    """Make the box `n` cells wide."""
     return Style(layout=waxy.Style(size_width=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def height(n: int) -> Style:
+    """Make the box `n` cells tall."""
     return Style(layout=waxy.Style(size_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def size(w: int, h: int) -> Style:
+    """Make the box `w` cells wide and `h` cells tall."""
     return Style(layout=waxy.Style(size_width=waxy.Length(w), size_height=waxy.Length(h)))
 
 
 @lru_cache(maxsize=256)
 def min_width(n: int) -> Style:
+    """Keep the box at least `n` cells wide."""
     return Style(layout=waxy.Style(min_size_width=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def min_height(n: int) -> Style:
+    """Keep the box at least `n` cells tall."""
     return Style(layout=waxy.Style(min_size_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def max_width(n: int) -> Style:
+    """Keep the box at most `n` cells wide."""
     return Style(layout=waxy.Style(max_size_width=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def max_height(n: int) -> Style:
+    """Keep the box at most `n` cells tall."""
     return Style(layout=waxy.Style(max_size_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def aspect_ratio(ratio: float) -> Style:
+    """Keep the box's width divided by its height at `ratio`, so either one sets the other."""
     return Style(layout=waxy.Style(aspect_ratio=ratio))
 
 
@@ -864,11 +879,13 @@ def _line(line: waxy.GridPlacementValue | int | None) -> waxy.GridPlacementValue
 
 @lru_cache(maxsize=256)
 def grid_template_rows(*tracks: waxy.GridTrackValue | int) -> Style:
+    """Define the grid's rows, one track each, with an `int` meaning that many cells."""
     return Style(layout=waxy.Style(grid_template_rows=[_track(t) for t in tracks]))
 
 
 @lru_cache(maxsize=256)
 def grid_template_columns(*tracks: waxy.GridTrackValue | int) -> Style:
+    """Define the grid's columns, one track each, with an `int` meaning that many cells."""
     return Style(layout=waxy.Style(grid_template_columns=[_track(t) for t in tracks]))
 
 
@@ -876,6 +893,7 @@ def grid_template_columns(*tracks: waxy.GridTrackValue | int) -> Style:
 def grid_row(
     start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
 ) -> Style:
+    """Place a grid item between row lines `start` and `end`, with an `int` meaning that line."""
     return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=_line(start), end=_line(end))))
 
 
@@ -883,16 +901,19 @@ def grid_row(
 def grid_column(
     start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
 ) -> Style:
+    """Place a grid item between column lines `start` and `end`, with an `int` meaning that line."""
     return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=_line(start), end=_line(end))))
 
 
 @lru_cache(maxsize=256)
 def border_contract(n: int) -> Style:
+    """Stop each border edge `n` cells short at an end next to a side that isn't drawn."""
     return Style(border_contract=n)
 
 
 @lru_cache(maxsize=256)
 def border_sides(sides: frozenset[Side]) -> Style:
+    """Draw the border on exactly the given sides."""
     return Style(
         layout=waxy.Style(
             border_top=waxy.Length(1 if "top" in sides else 0),
@@ -905,36 +926,43 @@ def border_sides(sides: frozenset[Side]) -> Style:
 
 @lru_cache(maxsize=256)
 def margin_top(n: int) -> Style:
+    """Put `n` cells of margin above the box."""
     return Style(layout=waxy.Style(margin_top=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin_bottom(n: int) -> Style:
+    """Put `n` cells of margin below the box."""
     return Style(layout=waxy.Style(margin_bottom=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin_left(n: int) -> Style:
+    """Put `n` cells of margin left of the box."""
     return Style(layout=waxy.Style(margin_left=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin_right(n: int) -> Style:
+    """Put `n` cells of margin right of the box."""
     return Style(layout=waxy.Style(margin_right=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin_x(n: int) -> Style:
+    """Put `n` cells of margin left and right of the box."""
     return Style(layout=waxy.Style(margin_left=waxy.Length(n), margin_right=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin_y(n: int) -> Style:
+    """Put `n` cells of margin above and below the box."""
     return Style(layout=waxy.Style(margin_top=waxy.Length(n), margin_bottom=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def margin(n: int) -> Style:
+    """Put `n` cells of margin on all four sides of the box."""
     return Style(
         layout=waxy.Style(
             margin_top=waxy.Length(n),
@@ -947,21 +975,25 @@ def margin(n: int) -> Style:
 
 @lru_cache(maxsize=256)
 def gap_width(n: int) -> Style:
+    """Put `n` cells between children placed side by side."""
     return Style(layout=waxy.Style(gap_width=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def gap_height(n: int) -> Style:
+    """Put `n` cells between children placed one above another."""
     return Style(layout=waxy.Style(gap_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def gap(n: int) -> Style:
+    """Put `n` cells between children in both directions."""
     return Style(layout=waxy.Style(gap_width=waxy.Length(n), gap_height=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad(n: int) -> Style:
+    """Put `n` cells of padding inside the border on all four sides."""
     return Style(
         layout=waxy.Style(
             padding_top=waxy.Length(n),
@@ -974,64 +1006,77 @@ def pad(n: int) -> Style:
 
 @lru_cache(maxsize=256)
 def pad_x(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the left and right."""
     return Style(layout=waxy.Style(padding_left=waxy.Length(n), padding_right=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad_y(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the top and bottom."""
     return Style(layout=waxy.Style(padding_top=waxy.Length(n), padding_bottom=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad_top(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the top."""
     return Style(layout=waxy.Style(padding_top=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad_bottom(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the bottom."""
     return Style(layout=waxy.Style(padding_bottom=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad_left(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the left."""
     return Style(layout=waxy.Style(padding_left=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def pad_right(n: int) -> Style:
+    """Put `n` cells of padding inside the border on the right."""
     return Style(layout=waxy.Style(padding_right=waxy.Length(n)))
 
 
 @lru_cache(maxsize=256)
 def text_color(color: ColorName, shade: Shade) -> Style:
+    """Color the text with a palette color."""
     return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
 
 
 @lru_cache(maxsize=256)
 def text_bg(color: ColorName, shade: Shade) -> Style:
+    """Color the background behind the text with a palette color."""
     return Style(text_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
 
 
 @lru_cache(maxsize=256)
 def border_color(color: ColorName, shade: Shade) -> Style:
+    """Color the border characters with a palette color."""
     return Style(border_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
 
 
 @lru_cache(maxsize=256)
 def border_bg(color: ColorName, shade: Shade) -> Style:
+    """Color the background behind the border characters with a palette color."""
     return Style(border_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
 
 
 @lru_cache(maxsize=256)
 def margin_color(color: ColorName, shade: Shade) -> Style:
+    """Fill the margin with a palette color."""
     return Style(margin_color=_COLOR_MAP[(color, shade)])
 
 
 @lru_cache(maxsize=256)
 def padding_color(color: ColorName, shade: Shade) -> Style:
+    """Fill the padding with a palette color."""
     return Style(padding_color=_COLOR_MAP[(color, shade)])
 
 
 @lru_cache(maxsize=256)
 def content_color(color: ColorName, shade: Shade) -> Style:
+    """Fill the whole box with a palette color, under any margin, padding and border colors."""
     return Style(content_color=_COLOR_MAP[(color, shade)])
