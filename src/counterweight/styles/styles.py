@@ -22,6 +22,9 @@ def or_default[T](value: T | UNSET, default: T) -> T:
     return default if value is UNSET else value
 
 
+# Keep this a functools.lru_cache: it hashes the key once per lookup, in C, where a Python-level cache
+# such as cachetools' LRUCache hashes and compares the key again on every hit, which dominates a cached merge.
+@lru_cache(maxsize=2**16)
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
     """
     Merge two fragments field by field: `right`'s value wins wherever it isn't `UNSET`,
@@ -42,18 +45,13 @@ def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
     return type(left)(**kwargs)
 
 
-# A C-level lru_cache hashes the key once per lookup, where cachetools' LRUCache hashes and compares it again
-# on every hit to reorder its entries, which was most of the cost of a merge.
-cached_merge = lru_cache(maxsize=2**16)(merge_style_fragments)
-
-
 class StyleFragment:
     __slots__ = ()
 
     def __or__[S: StyleFragment](self: S, other: S | None) -> S:
         if other is None:
             return self
-        return cached_merge(self, other)
+        return merge_style_fragments(self, other)
 
 
 class Color(NamedTuple):
