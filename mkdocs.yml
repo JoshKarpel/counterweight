@@ -96,6 +96,7 @@ extra:
 
 nav:
   - Home: index.md
+  - ecosystem.md
   - changelog.md
   - Components:
     - components/index.md

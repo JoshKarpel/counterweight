@@ -4,6 +4,9 @@
 
 ### Added
 
+- Documented how Counterweight compares with Textual, Ink and Ratatui,
+  and what it doesn't do, in [Ecosystem](ecosystem.md).
+
 - Documented how components keep their state across renders,
   and how to use keys to move or reset that state.
 
