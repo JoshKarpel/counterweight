@@ -6,7 +6,7 @@ import waxy
 from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout, compute_layout
+from counterweight.layout import INITIAL_RESOLVED_LAYOUT, LayoutTree, ResolvedLayout
 from counterweight.shadow import ShadowNode
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
@@ -67,13 +67,13 @@ def _shadow(element: AnyElement, children: list[ShadowNode] | None = None) -> Sh
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
-    return compute_layout(root, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
+    return LayoutTree().compute(root, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
 
 
 def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
     """Wrap root in the element the app places the root component in."""
     screen = _shadow(Div(style=screen_element_style(w, h)), children=[root])
-    return compute_layout(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
+    return LayoutTree().compute(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
 
 
 # ---------------------------------------------------------------------------

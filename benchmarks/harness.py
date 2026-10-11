@@ -11,10 +11,12 @@ so it covers the whole render loop: events, the shadow tree, layout, paint, outp
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """
 
+import asyncio
 import json
 import statistics
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
 from time import perf_counter_ns
@@ -26,7 +28,7 @@ from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot
 from counterweight.elements import Div
 from counterweight.events import AnyEvent, KeyPressed
-from counterweight.hooks import use_state
+from counterweight.hooks import use_effect, use_state
 from counterweight.output import Frame
 
 
@@ -43,6 +45,8 @@ class Runnable(Protocol):
     def dimensions(self) -> tuple[int, int]: ...
 
     def root(self, render_starts: list[int]) -> Callable[[], Component]: ...
+
+    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +80,25 @@ class Workload[M]:
             return replace(self.view(model), on_key=on_key)
 
         return benchmark_root
+
+    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]:
+        """A root component that renders the model and steps it every `frame_interval`, to watch it run by hand."""
+        seconds = frame_interval.total_seconds()
+
+        @component
+        def live_benchmark_root() -> Div:
+            model, set_model = use_state(self.initial)
+
+            async def tick() -> None:
+                while True:
+                    await asyncio.sleep(seconds)
+                    set_model(self.step)
+
+            use_effect(tick, deps=())
+
+            return self.view(model)
+
+        return live_benchmark_root
 
 
 @dataclass(frozen=True, slots=True)

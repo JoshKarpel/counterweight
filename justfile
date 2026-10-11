@@ -64,6 +64,12 @@ profile WORKLOAD NAME=WORKLOAD *ARGS:
     uv run python -m profiling.sampling replay --flamegraph -o profiles/{{ NAME }}.html profiles/{{ NAME }}.bin
     uv run python -m benchmarks report {{ NAME }}
 
+# Binds every interface so a remote machine's HTTPS proxy (such as exe.dev's, which forwards ports 3000-9999) can reach it.
+[doc('Serve the profiles directory (flamegraphs and reports) over HTTP')]
+profiles-serve PORT="8001":
+    @mkdir -p profiles
+    exec uv run python -m http.server {{ PORT }} --bind 0.0.0.0 --directory profiles
+
 [doc('Upgrade all dependencies')]
 upgrade:
     uv lock --upgrade

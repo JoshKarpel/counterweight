@@ -10,6 +10,7 @@ import asyncio
 import subprocess
 import sys
 from collections import Counter
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -20,6 +21,7 @@ from typer import Argument, Option, Typer
 from benchmarks.harness import Timings, run
 from benchmarks.stacks import STARTUP, Summary, parse_collapsed, summarize
 from benchmarks.workloads import WORKLOADS
+from counterweight.app import app
 
 OUTPUT = Option(Path("profiles"), help="Where runs are written and read.")
 
@@ -56,6 +58,22 @@ def run_workload(
     )
     timings.dump(output / f"{name}.json")
     console.print(frames_table({name: timings}))
+
+
+@cli.command()
+def show(
+    workload: str = Argument(help="The workload to show (see `list`)."),
+    fps: float = Option(30, help="Frames to step the workload per second."),
+    fixed_size: bool = Option(False, help="Use the workload's own dimensions rather than the terminal's."),
+) -> None:
+    """Run a workload in this terminal, stepping it on a timer, to see what it draws. Quit with Ctrl-C."""
+    chosen = WORKLOADS[workload]
+    asyncio.run(
+        app(
+            chosen.live_root(timedelta(seconds=1 / fps)),
+            dimensions=chosen.dimensions if fixed_size else None,
+        )
+    )
 
 
 @cli.command()

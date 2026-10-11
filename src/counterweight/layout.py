@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
-from counterweight.elements import AnyElement, CellPaint, Div, Text
+from counterweight.elements import AnyElement, CellPaint, Chunk, Div, Text, text_cells
 from counterweight.geometry import Region
-from counterweight.styles.styles import Style, TextWrap, resolve_style
+from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
 if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode
@@ -35,54 +35,99 @@ INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
 )
 
 
-def compute_layout(
-    shadow: ShadowNode,
-    available: waxy.AvailableSize,
-) -> list[tuple[AnyElement, ResolvedLayout]]:
+# Everything a `Text`'s measured size depends on: its content, its text style, and how it wraps.
+type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
+
+
+@dataclass(eq=False, slots=True)
+class LayoutTree:
     """
-    Build a waxy tree from the shadow tree, compute layout, and return
-    a flat list of (element, resolved_layout) pairs.
+    The layout tree for one app, kept across frames so that taffy keeps the layout it cached
+    for every node whose style, text and children are unchanged.
+
+    Each `ShadowNode` remembers its node in `layout_node`, which `update_shadow` carries over
+    wherever it carries over the node's hooks.
     """
-    tree: waxy.TaffyTree[Text] = waxy.TaffyTree()
-    node_map: dict[waxy.NodeId, ShadowNode] = {}
 
-    root_id = _build_node(tree, shadow, node_map)
+    tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
+    texts: dict[waxy.NodeId, TextSource] = field(default_factory=dict)
+    children: dict[waxy.NodeId, list[waxy.NodeId]] = field(default_factory=dict)
+    shadows: dict[waxy.NodeId, ShadowNode] = field(default_factory=dict)
 
-    tree.compute_layout(root_id, available, measure=_measure_text)
+    def compute(
+        self,
+        shadow: ShadowNode,
+        available: waxy.AvailableSize,
+    ) -> list[tuple[AnyElement, ResolvedLayout]]:
+        """Lay out the shadow tree, and return each visible element with its layout, in paint order."""
+        root = self.update(shadow)
 
-    # Hidden subtrees are absent from absolute_layouts, so their components would otherwise
-    # keep reporting the regions from the last frame they were visible in.
-    for shadow_node in node_map.values():
-        shadow_node.hooks.dims = INITIAL_RESOLVED_LAYOUT
+        self.tree.compute_layout(root, available, measure=_measure_text)
 
-    results: list[tuple[AnyElement, ResolvedLayout]] = []
-    for order, (node_id, position, layout) in enumerate(tree.absolute_layouts(root_id)):
-        visible = node_map[node_id]
-        resolved = _resolve_layout(position, layout, order)
-        visible.hooks.dims = resolved
-        results.append((visible.element, resolved))
+        results: list[tuple[AnyElement, ResolvedLayout]] = []
+        for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
+            visible = self.shadows[node]
+            resolved = _resolve_layout(position, layout, order)
+            visible.hooks.dims = resolved
+            results.append((visible.element, resolved))
 
-    return results
+        return results
 
+    def update(self, shadow: ShadowNode) -> waxy.NodeId:
+        """Make the tree match the shadow tree, and return the root's node."""
+        shadows: dict[waxy.NodeId, ShadowNode] = {}
+        root = self._update_node(shadow, shadows)
 
-def _build_node(
-    tree: waxy.TaffyTree[Text],
-    shadow: ShadowNode,
-    node_map: dict[waxy.NodeId, ShadowNode],
-) -> waxy.NodeId:
-    element = shadow.element
+        # Taffy's remove detaches a node's children rather than removing them,
+        # so every unmounted node is removed, not just the root of an unmounted subtree.
+        for unmounted in self.shadows.keys() - shadows.keys():
+            self.tree.remove(unmounted)
+            self.texts.pop(unmounted, None)
+            self.children.pop(unmounted, None)
 
-    match element:
-        case Text():
-            node_id = tree.new_leaf_with_context(layout_style(element.style), element)
-        case Div():
-            child_ids = [_build_node(tree, child_shadow, node_map) for child_shadow in shadow.children]
-            node_id = tree.new_with_children(layout_style(element.style), child_ids)
-        case _:
-            assert_never(element)
+        self.shadows = shadows
+        return root
 
-    node_map[node_id] = shadow
-    return node_id
+    def _update_node(self, shadow: ShadowNode, shadows: dict[waxy.NodeId, ShadowNode]) -> waxy.NodeId:
+        element = shadow.element
+        style = layout_style(element.style)
+        node = shadow.layout_node
+
+        # set_style keeps the node's cached layout when the style is equal,
+        # but set_node_context and set_children always discard it, so they're called only on a change.
+        match element:
+            case Text():
+                content = element.content if isinstance(element.content, str) else tuple(element.content)
+                source = (content, element.style.text_style, resolve_style(element.style).text_wrap)
+                if node is None:
+                    node = self.tree.new_leaf_with_context(style, MeasurableText.of(source))
+                else:
+                    self.tree.set_style(node, style)
+                    # A Div's children unmount along with it, and taffy's remove detaches them.
+                    self.children.pop(node, None)
+                    if self.texts.get(node) != source:
+                        self.tree.set_node_context(node, MeasurableText.of(source))
+                self.texts[node] = source
+            case Div():
+                child_nodes = [self._update_node(child, shadows) for child in shadow.children]
+                if node is None:
+                    node = self.tree.new_with_children(style, child_nodes)
+                else:
+                    self.tree.set_style(node, style)
+                    if self.texts.pop(node, None) is not None:
+                        self.tree.set_node_context(node, None)
+                    if self.children.get(node) != child_nodes:
+                        self.tree.set_children(node, child_nodes)
+                self.children[node] = child_nodes
+            case _:
+                assert_never(element)
+
+        shadow.layout_node = node
+        # Hidden subtrees are absent from absolute_layouts, so their components would otherwise
+        # keep reporting the regions from the last frame they were visible in.
+        shadow.hooks.dims = INITIAL_RESOLVED_LAYOUT
+        shadows[node] = shadow
+        return node
 
 
 _NO_BORDER = waxy.Style(
@@ -104,38 +149,81 @@ def layout_style(style: Style) -> waxy.Style:
     return style.layout
 
 
+UNMEASURED = sentinel("UNMEASURED")
+
+
+@dataclass(eq=False, slots=True)
+class MeasurableText:
+    """
+    What layout needs to size a `Text`: its cells and how they wrap,
+    with the size they wrap to at each width already asked about.
+
+    Taffy asks a leaf about a dozen distinct questions per layout, but the answer depends only on
+    one effective width, so most questions repeat one already answered.
+    """
+
+    cells: tuple[CellPaint, ...]
+    wrap: TextWrap
+    sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
+    min_content_width: int | UNMEASURED | None = UNMEASURED
+
+    @classmethod
+    def of(cls, source: TextSource) -> MeasurableText:
+        content, text_style, wrap = source
+        return cls(cells=text_cells(content, text_style), wrap=wrap)
+
+    def size_at(self, width: int | None) -> tuple[int, int]:
+        """The widest line and the line count when wrapped at `width` (unlimited if `None`)."""
+        try:
+            return self.sizes[width]
+        except KeyError:
+            lines = wrap_cells(self.cells, self.wrap, width)
+            size = self.sizes[width] = (max((len(line) for line in lines), default=0), len(lines))
+            return size
+
+    def narrowest_width(self) -> int | None:
+        """
+        The narrowest width this text takes without breaking a word, as CSS's `min-content` is for text:
+        its widest word if it wraps, or `None` (unlimited) if it doesn't.
+        """
+        if self.min_content_width is UNMEASURED:
+            self.min_content_width = _min_content_width(self.cells, self.wrap)
+        return self.min_content_width
+
+
 def _measure_text(
     known: waxy.KnownSize,
     available: waxy.AvailableSize,
-    context: Text,
+    context: MeasurableText,
 ) -> waxy.Size:
-    wrap = resolve_style(context.style).text_wrap
+    known_width = known.width
+    known_height = known.height
 
-    width: float | None = known.width
-    if width is None:
+    width: int | None
+    if known_width is not None:
+        width = int(known_width)
+    else:
         match available.width:
             case waxy.Definite(value=value):
-                width = value
+                width = int(value)
             case waxy.MinContent():
-                width = _min_content_width(context.cells, wrap)
+                width = context.narrowest_width()
             case waxy.MaxContent():
-                pass
+                width = None
             case _ as unreachable:
                 assert_never(unreachable)
 
-    lines = wrap_cells(context.cells, wrap, int(width) if width is not None else None)
+    widest, line_count = context.size_at(width)
 
+    # Positional, because pyo3 matches keyword arguments by name on every call, which nearly doubles its cost.
     return waxy.Size(
-        width=known.width if known.width is not None else float(max((len(l) for l in lines), default=0)),
-        height=known.height if known.height is not None else float(len(lines)),
+        known_width if known_width is not None else float(widest),
+        known_height if known_height is not None else float(line_count),
     )
 
 
 def _min_content_width(cells: Iterable[CellPaint], wrap: TextWrap) -> int | None:
-    """
-    The narrowest width a `Text` takes without breaking a word, as CSS's `min-content` is for text:
-    its widest word if it wraps, or `None` (unlimited) if it doesn't.
-    """
+    """The widest word in `cells`, or `None` (unlimited) if they don't wrap."""
     if wrap == "none":
         return None
 
@@ -145,12 +233,16 @@ def _min_content_width(cells: Iterable[CellPaint], wrap: TextWrap) -> int | None
     )
 
 
+@lru_cache(maxsize=2**12)
 def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> ResolvedLayout:
     """
     The cell regions of one node's boxes, from its absolute border-box position.
 
     Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
     integral and adjacent boxes share edges without gaps or overlaps.
+
+    Cached because most nodes keep their position and layout from one frame to the next,
+    and building the regions is most of the cost of reading layouts back.
     """
     left = int(position.x)
     top = int(position.y)

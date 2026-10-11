@@ -518,3 +518,66 @@ column is the robust comparison.
 What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord` (including
 `findCaller`) and without-logging's `parse_record`. The sink task's JSON encoding runs between
 frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.
+
+### Run 10 — all four benchmark workloads, per-frame layout (styling-foundations step 10)
+
+**Changes,** each profiled with `just profile <workload> <workload>-<change>` against the run before it:
+
+1. `memo`: taffy's measure callback reads a `MeasurableText` node context, built once per `Text`
+   per frame, which keeps the `Text`'s cells and its wrapped size at each effective width asked about.
+   Before, every callback recomputed `Text.cells`, whose `lru_cache` hashes the whole content.
+2. `reuse`: `LayoutTree` keeps one `TaffyTree` for the app's lifetime.
+   Each `ShadowNode` keeps its `NodeId` (`update_shadow` carries it over with the hooks),
+   and each frame reconciles the tree: `set_style` on every node (a no-op for an equal style),
+   `set_node_context` only when a `Text`'s content, text style or wrap changed,
+   `set_children` only when a node's children changed, and `remove` for every unmounted node.
+3. `resolve`: `_resolve_layout`, which turns a node's absolute position and `waxy.Layout`
+   into four `Region`s, is an `lru_cache` keyed on `(position, layout, order)`.
+   It isn't in the plan; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
+
+Frame times (unprofiled runs):
+
+| Workload | Median base | memo | reuse | resolve | Mean base | Mean resolve |
+|---|---|---|---|---|---|---|
+| canvas | 9.10 ms | 6.05 ms | 6.22 ms | 6.05 ms | 10.53 ms | 6.60 ms |
+| top | 31.01 ms | 27.96 ms | 28.54 ms | 26.05 ms | 34.44 ms | 28.36 ms |
+| agent | 5.21 ms | 4.44 ms | 3.84 ms | 3.79 ms | 6.49 ms | 4.84 ms |
+| dashboard | 3.27 ms | 2.92 ms | 2.65 ms | 2.56 ms | 3.75 ms | 2.86 ms |
+
+Layout stage (`compute_layout`, then `LayoutTree.compute`), ms per mean frame:
+
+| Workload | base | memo | reuse | resolve |
+|---|---|---|---|---|
+| canvas | 3.92 | 0.86 | 0.80 | 0.73 |
+| top | 10.10 | 7.59 | 7.55 | 4.88 |
+| agent | 1.88 | 0.90 | 0.57 | 0.42 |
+| dashboard | 0.79 | 0.52 | 0.38 | 0.17 |
+
+Where layout's samples went, by what the layout stage called:
+
+| Workload | Run | Build or update tree | Taffy (native) | Measure callbacks | Read back |
+|---|---|---|---|---|---|
+| canvas | base | 0% | 1% | 96% | 3% |
+| canvas | resolve | 63% | 6% | 27% | 4% |
+| top | base | 6% | 16% | 41% | 36% |
+| top | resolve | 51% | 24% | 16% | 9% |
+| agent | base | 3% | 8% | 78% | 10% |
+| agent | resolve | 59% | 10% | 19% | 12% |
+| dashboard | base | 6% | 16% | 53% | 24% |
+| dashboard | resolve | 47% | 26% | 15% | 12% |
+
+- The memo does most of the work everywhere: taffy asks a leaf about a dozen distinct questions
+  per layout, and on `canvas` each one hashed a 1,600-chunk tuple.
+- Reusing the tree pays off where most text is unchanged between frames (`agent` −37%, `dashboard`
+  −26% of layout) and does nothing measurable where every `Text` changes every frame (`canvas`, `top`).
+- What's left is mostly reconciliation: building each changed `Text`'s cells, hashing styles for
+  `layout_style` and `resolve_style`, and, on `top`, samples Tachyon labels `<GC>` (see below).
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
+
+**Garbage collection.** Tachyon attributes 1–3.5% of samples to `<GC>` (`top` most), but
+`gc.callbacks` and `gc.get_stats()` count about two young and one full collection per 500-frame run,
+about 20 ms in all, at the default threshold of 2000 and at 50,000 alike.
+The young generation's count is allocations minus deallocations, and nearly every per-frame object
+is freed by reference counting, so the threshold is rarely reached.
+Raising it changed frame times only within noise, so counterweight leaves the collector's settings
+to the app. What Tachyon's `<GC>` frames cover beyond cyclic collection is unexplained.

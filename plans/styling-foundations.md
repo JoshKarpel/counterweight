@@ -575,6 +575,27 @@ writing the page.
 
 ### 10. Make per-frame layout cheaper
 
+**Status:** Done. Run 10 in `plans/performance-analysis-2026-03-07.md` records each change's effect.
+Layout's share of a mean frame fell from 21–37% to 6–17% across the workloads.
+
+What was built differs from the description below in three ways:
+
+- `Text` isn't a hashable value: `content` can be a `list` (the canvas passes one), and hashing a
+  tuple of chunks is itself the cost to avoid, since `Text.cells`' own `lru_cache` hashed the whole
+  content on every measure call. So rather than a shared `lru_cache` keyed on the `Text`,
+  each leaf's node context is a `MeasurableText` holding its cells and its wrapped size at each
+  effective width. With the tree reused, that context, and so its sizes, lasts as long as the `Text`
+  is unchanged.
+- Each `ShadowNode` keeps its `NodeId` in `layout_node`, which `update_shadow` carries over wherever it
+  carries over the hooks. The `LayoutTree` remembers each node's text source and children, so it calls
+  `set_node_context` and `set_children` only on a change. A node that changes from `Div` to `Text`
+  needs no `set_children([])`: its children unmount in the same frame, and `remove` detaches them.
+- Reading layouts back was a third of `top`'s layout, building `Region`s per node, so
+  `_resolve_layout` is cached on `(position, layout, order)`.
+
+Raising the young generation's GC threshold was also measured, and dropped: nearly every per-frame
+object is freed by reference counting, so collections are rare whatever the threshold.
+
 **Measure first.** Profile every workload with `just profile` (step 12's tooling, built
 first for this step) and record the `layout.py:compute_layout` stage and its callees
 (building the tree, taffy's `compute_layout` with the text-measure callbacks, and reading

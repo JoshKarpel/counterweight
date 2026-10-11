@@ -44,7 +44,7 @@ from counterweight.events import (
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import ResolvedLayout, compute_layout
+from counterweight.layout import LayoutTree, ResolvedLayout
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -192,8 +192,9 @@ async def render_loop(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
+        layout_tree = LayoutTree()
         shadow = update_shadow(screen(), shadow)
-        compute_layout(shadow, warmup_available)
+        layout_tree.compute(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -291,7 +292,7 @@ async def render_loop(
                         width=waxy.Definite(w),
                         height=waxy.Definite(h),
                     )
-                    elements_and_layouts = compute_layout(shadow, available)
+                    elements_and_layouts = layout_tree.compute(shadow, available)
                     logger.debug("Calculated layout")
 
                     new_paint, border_healing_hints = paint_layout(elements_and_layouts)

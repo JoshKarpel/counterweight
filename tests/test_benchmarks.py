@@ -1,3 +1,5 @@
+import io
+from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
 
@@ -7,6 +9,8 @@ from benchmarks import agent, canvas, dashboard, top
 from benchmarks.harness import run
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
 from benchmarks.workloads import WORKLOADS
+from counterweight.app import app
+from counterweight.controls import Quit, Screenshot
 
 
 @pytest.mark.parametrize("name", WORKLOADS)
@@ -15,6 +19,20 @@ async def test_workload_renders_every_frame(name: str, tmp_path: Path) -> None:
 
     assert len(timings.frame_ms) == 4
     assert (tmp_path / "snapshot.txt").read_text().strip()
+
+
+@pytest.mark.parametrize("name", WORKLOADS)
+async def test_live_workload_renders_until_quit(name: str) -> None:
+    capture = io.StringIO()
+
+    await app(
+        WORKLOADS[name].live_root(timedelta(seconds=1)),
+        headless=True,
+        dimensions=WORKLOADS[name].dimensions,
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+    )
+
+    assert capture.getvalue().strip()
 
 
 @pytest.mark.parametrize("module", [agent, canvas, dashboard, top], ids=lambda m: m.__name__)

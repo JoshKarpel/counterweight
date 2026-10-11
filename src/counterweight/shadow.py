@@ -5,6 +5,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import zip_longest
 
+import waxy
+
 from counterweight._context_vars import current_hook_idx, current_hook_state
 from counterweight.components import Component
 from counterweight.elements import AnyElement
@@ -19,6 +21,7 @@ class ShadowNode:
     element: AnyElement
     hooks: Hooks
     children: list[ShadowNode] = field(default_factory=list)
+    layout_node: waxy.NodeId | None = None
 
     def walk(self) -> Iterator[ShadowNode]:
         yield self
@@ -38,6 +41,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             component=previous_component,
             children=previous_children,
             hooks=previous_hooks,
+            layout_node=previous_layout_node,
         ) if (
             previous_component is not None
             and next_func == previous_component.func
@@ -60,6 +64,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 element=element,
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                layout_node=previous_layout_node,
             )
 
             current_hook_idx.reset(reset_current_hook_idx)
@@ -96,6 +101,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
         case element, ShadowNode(
             children=previous_children,
             hooks=previous_hooks,
+            layout_node=previous_layout_node,
         ):
             children = []
             for new_child, previous_child in zip_longest(element.children, previous_children):
@@ -109,6 +115,7 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 element=element,
                 children=children,
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                layout_node=previous_layout_node,
             )
         case element, None:
             children = []

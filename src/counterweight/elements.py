@@ -49,7 +49,7 @@ def _chunk_cells(content: str, style: CellStyle) -> tuple[CellPaint, ...]:
 
 
 @lru_cache(maxsize=2**12)
-def _text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[CellPaint, ...]:
+def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[CellPaint, ...]:
     if isinstance(content, str):
         return tuple(CellPaint(char=char, style=text_style) for char in content)
     else:
@@ -70,7 +70,7 @@ class Text:
     @property
     def cells(self) -> tuple[CellPaint, ...]:
         content = self.content if isinstance(self.content, str) else tuple(self.content)
-        return _text_cells(content, self.style.text_style)
+        return text_cells(content, self.style.text_style)
 
 
 AnyElement = Union[

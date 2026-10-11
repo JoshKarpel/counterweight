@@ -11,7 +11,8 @@ Compare runs against each other, before and after a change, on the same machine.
 
 ## Workloads
 
-Run `uv run python -m benchmarks list` for the workloads and what each stresses.
+Run `uv run python -m benchmarks list` for the workloads and what each stresses,
+and `uv run python -m benchmarks show <workload>` to watch one run live in the terminal.
 Choose by what the change touches: a cache keyed on content does nothing for `canvas`,
 reusing last frame's layout matters most for `dashboard`, and text measurement dominates
 `agent` and `top`.
@@ -26,6 +27,7 @@ just profile top before --frames 300
 The recipe runs the workload twice: once under Tachyon (`--blocking`), and once unprofiled
 for frame times, since blocking sampling slows frames.
 It then writes a flamegraph (`profiles/<name>.html`) and prints the report.
+`just profiles-serve [PORT]` serves `profiles/` over HTTP, to open flamegraphs from another machine.
 `profiles/<name>.txt` is the last frame as plain text: read it to confirm the workload drew
 what you expect before trusting its numbers.
 

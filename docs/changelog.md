@@ -127,6 +127,10 @@
   (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
   to see where a frame's time goes, profile the app with Python's sampling profiler
   (`python -m profiling.sampling run app.py`).
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Laying out a frame costs less. An app keeps one layout tree for its lifetime,
+  so taffy reuses the layout of every element whose style, text and children are unchanged,
+  and a `Text` is wrapped at most once per width it is measured at.
 
 ### Fixed
 
