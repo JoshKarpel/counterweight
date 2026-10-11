@@ -1,10 +1,10 @@
 import asyncio
+import logging
 import random
 from asyncio import sleep
 from itertools import product
 
 from more_itertools import grouper
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -14,7 +14,7 @@ from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 BLACK = Color.from_name("black")
 

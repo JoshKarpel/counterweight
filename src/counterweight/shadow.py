@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import zip_longest
-
-from structlog import get_logger
 
 from counterweight._context_vars import current_hook_idx, current_hook_state
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.hooks.impls import Hooks
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

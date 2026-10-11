@@ -79,7 +79,7 @@ read that to check a layout instead of the SVG.
 
 - **pydantic**: Data validation and settings
 - **typer**: CLI interface
-- **structlog**: Structured logging
+- **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **parsy**: Parser combinators for terminal input
 - **more-itertools**: Extended iteration utilities
 

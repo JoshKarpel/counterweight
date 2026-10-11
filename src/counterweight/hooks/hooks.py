@@ -1,16 +1,15 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import overload
-
-from structlog import get_logger
 
 from counterweight._context_vars import current_hook_state, current_use_mouse_listeners
 from counterweight._utils import forever
 from counterweight.geometry import Position, Region
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @overload

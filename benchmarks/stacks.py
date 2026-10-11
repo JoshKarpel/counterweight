@@ -1,16 +1,20 @@
 """
-Summarizes a Tachyon profile's collapsed stacks: where the render loop's samples go, by stage and by function.
+Summarizes a Tachyon profile's collapsed stacks: where a running app's samples go, by stage and by function.
 
-The stages aren't listed here: a stage is whatever function `counterweight.app.app` called,
-so a stage split out of an existing one (or renamed) shows up without changes here.
+The stages aren't listed here, they come from the stack. A sample inside `counterweight.app.render_loop`
+belongs to whatever function the loop called, so a stage split out of an existing one shows up
+without changes here. A sample in another asyncio task (such as the devlog's sink) belongs to that task,
+and one in the event loop's own machinery (waiting in `select`, scheduling) to the event loop.
+Everything else ran before the event loop started or after it stopped, and is left out.
 """
 
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-OUTSIDE_APP = "(outside app: startup, event loop)"
-APP_ITSELF = "(app itself)"
+STARTUP = "(startup and shutdown)"
+LOOP_ITSELF = "(render_loop itself)"
+EVENT_LOOP = "(event loop: waiting, scheduling)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,10 +31,6 @@ class Frame:
     def label(self) -> str:
         return f"{self.file}:{self.function}" if self.file else self.function
 
-    @property
-    def is_app(self) -> bool:
-        return self.file == "app.py" and self.function == "app"
-
 
 @dataclass(frozen=True, slots=True)
 class Stack:
@@ -41,12 +41,25 @@ class Stack:
 
 
 @dataclass(frozen=True, slots=True)
+class Attribution:
+    """The stage a stack's samples belong to, and the frames below that stage's root."""
+
+    stage: str
+    frames: tuple[Frame, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class Summary:
     total_samples: int
-    app_samples: int
+    running_samples: int
     stages: Counter[str]
     self_samples: Counter[str]
     inclusive_samples: Counter[str]
+
+
+RENDER_LOOP = Frame(file="app.py", function="render_loop")
+TASK_STEP = Frame(file="events.py", function="Handle._run")
+LOOP_ITERATION = Frame(file="base_events.py", function="BaseEventLoop._run_once")
 
 
 def parse_frame(raw: str) -> Frame:
@@ -70,33 +83,47 @@ def parse_collapsed(text: str) -> list[Stack]:
     return stacks
 
 
-def inside_app(stack: Stack) -> tuple[Frame, ...] | None:
-    """The frames `app` called on this stack, outermost first, or `None` if the sample landed outside `app`."""
-    for index, frame in enumerate(stack.frames):
-        if frame.is_app:
-            return stack.frames[index + 1 :]
+def below(frames: tuple[Frame, ...], root: Frame) -> tuple[Frame, ...] | None:
+    """The frames `root` called, outermost first, or `None` if `root` isn't on the stack."""
+    try:
+        return frames[frames.index(root) + 1 :]
+    except ValueError:
+        return None
+
+
+def attribute(stack: Stack) -> Attribution | None:
+    """
+    Which stage a stack belongs to: the render loop's callee, another task's outermost frame,
+    or the event loop itself; `None` for samples from before the event loop started or after it stopped.
+    """
+    if (loop_frames := below(stack.frames, RENDER_LOOP)) is not None:
+        return Attribution(stage=loop_frames[0].label if loop_frames else LOOP_ITSELF, frames=loop_frames)
+    if task_frames := below(stack.frames, TASK_STEP):
+        return Attribution(stage=f"task {task_frames[0].label}", frames=task_frames)
+    if (iteration_frames := below(stack.frames, LOOP_ITERATION)) is not None:
+        return Attribution(stage=EVENT_LOOP, frames=iteration_frames)
     return None
 
 
 def summarize(stacks: Iterable[Stack]) -> Summary:
-    """Count samples by stage over every stack, and by function below `app` on the stacks inside it."""
+    """Count samples by stage, and by function below each stage's root, over every sample taken while the app ran."""
     total = 0
     stages: Counter[str] = Counter()
     self_samples: Counter[str] = Counter()
     inclusive_samples: Counter[str] = Counter()
     for stack in stacks:
         total += stack.samples
-        frames = inside_app(stack)
-        if frames is None:
-            stages[OUTSIDE_APP] += stack.samples
+        attribution = attribute(stack)
+        if attribution is None:
+            stages[STARTUP] += stack.samples
             continue
-        stages[frames[0].label if frames else APP_ITSELF] += stack.samples
+        stages[attribution.stage] += stack.samples
         self_samples[stack.frames[-1].label] += stack.samples
-        for label in {frame.label for frame in frames}:
+        for label in {frame.label for frame in attribution.frames}:
             inclusive_samples[label] += stack.samples
     return Summary(
         total_samples=total,
-        app_samples=total - stages[OUTSIDE_APP],
+        running_samples=total - stages[STARTUP],
         stages=stages,
         self_samples=self_samples,
         inclusive_samples=inclusive_samples,

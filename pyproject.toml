@@ -33,11 +33,12 @@ classifiers = [
 requires-python = ">=3.15"
 dependencies = [
     "typer>=0.9",
-    "structlog>=23.1",
     "parsy>=2.1",
     "more-itertools>=9.1",
     "cachetools>=5.3",
     "waxy>=0.7.0",
+    "without-logging>=0.0.10",
+    "without-streams>=0.0.10",
 ]
 
 [dependency-groups]

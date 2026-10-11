@@ -696,15 +696,18 @@ against the code before step 4.
   (nearly static). The harness times each frame as the interval between root renders.
 - **Tooling.** `just profile WORKLOAD [NAME]` samples a run with Tachyon's `--blocking`, times
   a second unprofiled run, writes a flamegraph, and reports samples by stage (whatever
-  `app` called) and by function; `python -m benchmarks compare` puts two runs side by side.
+  `render_loop` called, or another asyncio task, or the event loop itself) and by function;
+  `python -m benchmarks compare` puts two runs side by side.
   Without `--blocking`, about 40% of samples fail to read, and the losses are biased:
   on `top`, `update_shadow` read as 10% of samples rather than 16.5%, and layout as 35%
   rather than 28%.
   The `cw-profile` skill describes the workflow.
 - **Devlog.** The render loop's devlog messages no longer carry `elapsed_ns` timings, which
   Tachyon's stages replace. The messages stay, so the devlog still shows the loop running.
-  They cost about 1 ms per frame whatever the workload (`BoundLogger.debug`), which is 4% of
-  a `top` frame but 12% of an `agent` frame and 19% of a `dashboard` frame.
+  Through structlog they cost about 1 ms per frame whatever the workload, which was 4% of
+  a `top` frame but 19% of a `dashboard` frame. The devlog now goes through without-logging
+  as one JSON-lines file, rendered by `counterweight devlog` at read time, and costs about
+  0.3 ms per frame (run 9 in `plans/performance-analysis-2026-03-07.md`).
 - **Analysis.** Record each workload's profile in `plans/performance-analysis-2026-03-07.md`.
   Look in particular at what step 4's resolve step and step 5's derived border widths cost
   per frame, and whether `Style` should cache its hash now that `resolve_style` and the

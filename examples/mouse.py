@@ -1,8 +1,8 @@
 import asyncio
+import logging
 from functools import lru_cache
 
 from more_itertools import intersperse
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -12,7 +12,7 @@ from counterweight.geometry import Position
 from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 BLACK = Color.from_name("black")

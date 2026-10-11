@@ -18,7 +18,7 @@ from rich.table import Table
 from typer import Argument, Option, Typer
 
 from benchmarks.harness import Timings, run
-from benchmarks.stacks import OUTSIDE_APP, Summary, parse_collapsed, summarize
+from benchmarks.stacks import STARTUP, Summary, parse_collapsed, summarize
 from benchmarks.workloads import WORKLOADS
 
 OUTPUT = Option(Path("profiles"), help="Where runs are written and read.")
@@ -74,9 +74,9 @@ def report(
     summary = summarize(parse_collapsed(collapsed_stacks(profile)))
     console.print(stages_table({name: (timings, summary)}))
     for title, counter in (("Self", summary.self_samples), ("Inclusive", summary.inclusive_samples)):
-        table = Table("Function", "Samples", "% of app", title=f"{title} samples below app")
+        table = Table("Function", "Samples", "% of running", title=f"{title} samples while running")
         for label, samples in counter.most_common(top):
-            table.add_row(label, str(samples), percent(samples, summary.app_samples))
+            table.add_row(label, str(samples), percent(samples, summary.running_samples))
         console.print(table)
 
 
@@ -131,14 +131,14 @@ def frames_table(runs: dict[str, Timings]) -> Table:
 
 def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> Table:
     """
-    Each stage's share of the samples inside `app`, and that share of the mean frame time.
+    Each stage's share of the samples taken while the app ran, and that share of the mean frame time.
     Every frame does the same work in every run, so the per-frame times compare across runs.
     """
     stages: Counter[str] = Counter()
     for _, summary in runs.values():
-        stages.update({stage: samples for stage, samples in summary.stages.items() if stage != OUTSIDE_APP})
+        stages.update({stage: samples for stage, samples in summary.stages.items() if stage != STARTUP})
 
-    table = Table("Stage (callee of app)", title="Stages: share of samples inside app, and of the mean frame")
+    table = Table("Stage", title="Stages: share of samples while running, and of the mean frame")
     for name in runs:
         table.add_column(f"{name} %", justify="right")
         table.add_column(f"{name} ms/frame", justify="right")
@@ -149,7 +149,7 @@ def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> Table:
         cells = []
         per_frame = []
         for timings, summary in runs.values():
-            share = summary.stages[stage] / summary.app_samples
+            share = summary.stages[stage] / summary.running_samples
             per_frame.append(share * timings.mean_ms)
             cells += [f"{share:.1%}", ms(per_frame[-1])]
         if len(runs) == 2:

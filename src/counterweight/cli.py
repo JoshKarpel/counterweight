@@ -36,13 +36,13 @@ def version() -> None:
 @cli.command()
 def devlog(
     last: int | None = Option(default=None, help="Print the last N log messages and exit."),
-    json: bool = Option(default=False, help="Read from the JSON-lines log (use with --last)."),
+    json: bool = Option(default=False, help="Print the raw JSON lines instead of rendering them."),
 ) -> None:
     """Tail the developer log file."""
     if last is not None:
-        last_devlog(last, json=json)
+        last_devlog(last, raw=json)
     else:
-        tail_devlog(json=json)
+        tail_devlog(raw=json)
 
 
 @cli.command()

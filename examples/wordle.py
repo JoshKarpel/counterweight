@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import zlib
 from collections.abc import Callable
 from datetime import datetime
@@ -7,7 +8,6 @@ from string import ascii_letters, ascii_uppercase
 from typing import Literal
 
 from more_itertools import padded
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -19,7 +19,7 @@ from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 blank = " " * 5
 
@@ -72,13 +72,13 @@ def root() -> Div:
 
         def play_today() -> None:
             s = today_solution()
-            logger.debug("Starting play", solution=s)
+            logger.debug("Starting play", extra={"solution": s})
             set_solution(s)
             set_playing(True)
 
         def play_random() -> None:
             s = choice(SOLUTION_WORDS)
-            logger.debug("Starting play", solution=s)
+            logger.debug("Starting play", extra={"solution": s})
             set_solution(s)
             set_playing(True)
 

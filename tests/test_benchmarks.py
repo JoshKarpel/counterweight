@@ -5,7 +5,7 @@ import pytest
 
 from benchmarks import agent, canvas, dashboard, top
 from benchmarks.harness import run
-from benchmarks.stacks import APP_ITSELF, OUTSIDE_APP, Frame, parse_collapsed, parse_frame, summarize
+from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
 from benchmarks.workloads import WORKLOADS
 
 
@@ -40,23 +40,27 @@ def test_parse_frame_keeps_artificial_frames_as_bare_functions() -> None:
 
 COLLAPSED = """\
 tid:7;<frozen runpy>:_run_module_as_main:201;__main__.py:<module>:9 3
-tid:7;runners.py:run:195;app.py:app:296;layout.py:compute_layout:40;layout.py:_measure_text:80 5
-tid:7;runners.py:run:195;app.py:app:296;layout.py:compute_layout:41 2
-tid:7;runners.py:run:195;app.py:app:300;paint.py:paint_layout:60;<GC> 7
-tid:7;runners.py:run:195;app.py:app:310 11
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:40;layout.py:_measure_text:80 5
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:41 2
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:300;paint.py:paint_layout:60;<GC> 7
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:310 11
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;capture.py:run_sink:120;renderers.py:render:80 13
+tid:7;base_events.py:BaseEventLoop._run_once:2001;selectors.py:EpollSelector.select:452 17
 """
 
 
-def test_summary_attributes_samples_to_the_function_app_called() -> None:
+def test_summary_attributes_samples_to_the_function_render_loop_called() -> None:
     summary = summarize(parse_collapsed(COLLAPSED))
 
     assert summary.stages == {
-        OUTSIDE_APP: 3,
+        STARTUP: 3,
         "layout.py:compute_layout": 7,
         "paint.py:paint_layout": 7,
-        APP_ITSELF: 11,
+        LOOP_ITSELF: 11,
+        "task capture.py:run_sink": 13,
+        EVENT_LOOP: 17,
     }
-    assert (summary.total_samples, summary.app_samples) == (28, 25)
+    assert (summary.total_samples, summary.running_samples) == (58, 55)
 
 
 def test_summary_counts_self_samples_on_the_innermost_frame() -> None:
@@ -66,11 +70,13 @@ def test_summary_counts_self_samples_on_the_innermost_frame() -> None:
         "layout.py:_measure_text": 5,
         "layout.py:compute_layout": 2,
         "<GC>": 7,
-        "app.py:app": 11,
+        "app.py:render_loop": 11,
+        "renderers.py:render": 13,
+        "selectors.py:EpollSelector.select": 17,
     }
 
 
-def test_summary_counts_inclusive_samples_only_below_app() -> None:
+def test_summary_counts_inclusive_samples_only_below_each_stage_root() -> None:
     summary = summarize(parse_collapsed(COLLAPSED))
 
     assert summary.inclusive_samples == {
@@ -78,4 +84,7 @@ def test_summary_counts_inclusive_samples_only_below_app() -> None:
         "layout.py:_measure_text": 5,
         "paint.py:paint_layout": 7,
         "<GC>": 7,
+        "capture.py:run_sink": 13,
+        "renderers.py:render": 13,
+        "selectors.py:EpollSelector.select": 17,
     }

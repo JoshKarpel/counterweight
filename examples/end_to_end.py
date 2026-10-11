@@ -1,8 +1,7 @@
 import asyncio
+import logging
 from datetime import datetime
 from itertools import cycle
-
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -21,7 +20,7 @@ from counterweight.styles.utilities import (
     text_color,
 )
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @component

@@ -1,8 +1,7 @@
 import asyncio
+import logging
 from textwrap import dedent
 from time import monotonic
-
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -12,7 +11,7 @@ from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @component

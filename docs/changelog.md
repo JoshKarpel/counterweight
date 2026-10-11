@@ -118,6 +118,15 @@
   `use_rects` now returns `counterweight.geometry.Region` objects instead of the removed `counterweight.geometry.Rect`.
   A `Region`'s `right` and `bottom` are exclusive (the first column and row outside it),
   so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** counterweight logs through the standard library's `logging`, and no longer depends on
+  or configures structlog. While an app runs, every log record at every level, including an app's own
+  (`logging.getLogger(__name__).debug("...", extra={...})`), is written to the devlog off the render loop
+  by [without-logging](https://www.without.help/without-logging/).
+  The devlog is a single JSON-lines file, which `counterweight devlog` renders for reading
+  (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
+  to see where a frame's time goes, profile the app with Python's sampling profiler
+  (`python -m profiling.sampling run app.py`).
 
 ### Fixed
 
@@ -148,10 +157,6 @@
   [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Dropped support for Python `3.11` through `3.14`.
   Python `3.15` or later is now required.
-- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
-  The render loop's devlog messages no longer carry `elapsed_ns` timings.
-  To see where a frame's time goes, profile the app with Python's sampling profiler
-  (`python -m profiling.sampling run app.py`).
 
 ## `0.0.9`
 

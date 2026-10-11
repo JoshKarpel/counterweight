@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TextIO
 from xml.etree.ElementTree import indent as indent_svg
 from xml.etree.ElementTree import tostring
-
-from structlog import get_logger
 
 from counterweight.geometry import Position
 from counterweight.paint import Paint, svg
@@ -31,7 +30,7 @@ CLEAR_SCREEN = "\x1b[2J"
 
 BELL = "\x07"
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def start_output_control(stream: TextIO) -> None:  # pragma: untestable

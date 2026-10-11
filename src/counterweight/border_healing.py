@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 
 from more_itertools import flatten
-from structlog import get_logger
 
 from counterweight.geometry import Position
 from counterweight.paint import BorderHealingHints, P, Paint
 from counterweight.styles.styles import JoinedBorderKind, JoinedBorderParts
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=2**12)

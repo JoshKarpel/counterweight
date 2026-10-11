@@ -492,3 +492,29 @@ Now that `__hash__` is an explicit method in `styles.py`, Scalene surfaces it at
 though the new version is *faster* (just `return self._hash`). The old generated version was
 computing `hash((Color, Color, bool, bool, bool, bool, bool))` on every `StyleFragment.__or__`
 call, including cache hits, which is the majority of calls in a hot render loop.
+
+### Run 9 — all four benchmark workloads, devlog through without-logging
+
+**Change:** the devlog moves from structlog (bridged through stdlib `logging`, rendered twice,
+once per file, synchronously in every log call) to without-logging: stdlib `logging` records,
+parsed in the caller, encoded once as JSON by a sink task, and written by a dedicated thread.
+`counterweight devlog` renders the human view at read time.
+
+Measured with `just profile <workload> <workload>-structlog` on a worktree at the parent commit,
+then `just profile <workload> <workload>-without`. Frame times are from the unprofiled runs;
+logging cost is the profile's share of logging samples times the mean frame time.
+
+| Workload | Mean frame before | Mean frame after | Change | Logging before | Logging after (emit + sink) |
+|---|---|---|---|---|---|
+| canvas | 10.58 ms | 10.16 ms | −4.0% | 0.99 ms | 0.29 + 0.05 = 0.34 ms |
+| top | 33.89 ms | 31.58 ms | −6.8% | 1.07 ms | 0.30 + 0.04 = 0.34 ms |
+| agent | 7.36 ms | 7.14 ms | −3.0% | 0.92 ms | 0.26 + 0.06 = 0.32 ms |
+| dashboard | 4.47 ms | 3.50 ms | −21.6% | 0.80 ms | 0.18 + 0.10 = 0.27 ms |
+
+Logging falls by about two thirds on every workload. `top`'s frame time fell by more than its
+whole logging cost, so part of its change is run-to-run noise on the shared VM; the logging
+column is the robust comparison.
+
+What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord` (including
+`findCaller`) and without-logging's `parse_record`. The sink task's JSON encoding runs between
+frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.

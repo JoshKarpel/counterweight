@@ -36,12 +36,17 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
 `uv run python -m benchmarks report <name>` prints:
 
 - **Frame times**: median, mean, P95 and max of the interval between root renders,
-  which covers the whole loop (events, shadow tree, layout, paint, output, effects).
-- **Stages**: samples by the function `counterweight.app.app` called, and that share of
-  the mean frame time. Stages come from the call stack, so splitting a stage into named
-  functions inside `app` is how to get a finer breakdown.
+  which covers the whole loop (events, shadow tree, layout, paint, output, effects)
+  and anything else the event loop ran in between, such as the devlog's sink task.
+- **Stages**: samples by the function `counterweight.app.render_loop` called, by other asyncio
+  task (`task ...`, such as without-logging's `capture.<locals>.run_sink`), and in the event
+  loop itself, with each stage's share of the mean frame time.
+  Stages come from the call stack, so splitting a stage into named functions inside
+  `render_loop` is how to get a finer breakdown.
   `harness.py:...on_key` is the workload's own `step`, not framework time.
-- **Self and inclusive samples** per function below `app`.
+  Work moved off the render loop onto another task still costs frame time in these
+  saturated runs; it only comes for free in an app with idle time between frames.
+- **Self and inclusive samples** per function below each stage's root.
   Collapsed stacks name files by basename, so `styles.py:...` could be any `styles.py`.
   `<string>:__create_fn__...` frames are dataclass-generated methods (`__init__`, `__hash__`,
   `__eq__`); `<GC>` is garbage collection.

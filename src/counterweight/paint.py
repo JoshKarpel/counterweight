@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
@@ -7,8 +8,6 @@ from itertools import groupby
 from textwrap import dedent
 from typing import assert_never
 from xml.etree.ElementTree import Element, SubElement
-
-from structlog import get_logger
 
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, CellPaint, Div, Text
@@ -27,7 +26,7 @@ from counterweight.styles.styles import (
     resolve_style,
 )
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @flyweight(maxsize=2**14)

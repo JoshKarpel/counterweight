@@ -58,6 +58,7 @@ alias dl := devlog
 # times come from a second, unprofiled run, which overwrites the profiled run's.
 [doc('Run a benchmark workload under Tachyon, then time it unprofiled and report on both')]
 profile WORKLOAD NAME=WORKLOAD *ARGS:
+    @mkdir -p profiles
     uv run python -m profiling.sampling run --blocking --binary -o profiles/{{ NAME }}.bin -m benchmarks run {{ WORKLOAD }} --name {{ NAME }} {{ ARGS }}
     uv run python -m benchmarks run {{ WORKLOAD }} --name {{ NAME }} {{ ARGS }}
     uv run python -m profiling.sampling replay --flamegraph -o profiles/{{ NAME }}.html profiles/{{ NAME }}.bin

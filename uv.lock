@@ -218,9 +218,10 @@ dependencies = [
     { name = "cachetools" },
     { name = "more-itertools" },
     { name = "parsy" },
-    { name = "structlog" },
     { name = "typer" },
     { name = "waxy" },
+    { name = "without-logging" },
+    { name = "without-streams" },
 ]
 
 [package.dev-dependencies]
@@ -247,9 +248,10 @@ requires-dist = [
     { name = "cachetools", specifier = ">=5.3" },
     { name = "more-itertools", specifier = ">=9.1" },
     { name = "parsy", specifier = ">=2.1" },
-    { name = "structlog", specifier = ">=23.1" },
     { name = "typer", specifier = ">=0.9" },
     { name = "waxy", specifier = ">=0.7.0" },
+    { name = "without-logging", specifier = ">=0.0.10" },
+    { name = "without-streams", specifier = ">=0.0.10" },
 ]
 
 [package.metadata.requires-dev]
@@ -1031,15 +1033,6 @@ wheels = [
 ]
 
 [[package]]
-name = "structlog"
-version = "26.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5e/89/b4a0bcfdf4f71a3dea31379f095929613d7e4528a0996bca6aa964cd0dca/structlog-26.1.0.tar.gz", hash = "sha256:f63a716cbd1b1291cf7661de7794b455acfa4c43c5bcf1630e6ad5ddc1adb3b7", size = 1459881, upload-time = "2026-06-06T07:33:39.348Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl", hash = "sha256:e081a26d6c373e6d201eca24eede26d8ffab07f88f477822e679183428d3d91e", size = 73764, upload-time = "2026-06-06T07:33:38.046Z" },
-]
-
-[[package]]
 name = "typer"
 version = "0.27.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1149,4 +1142,37 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/75/ae318b263946fd4f2a1de9e0fca4567d6863cfc8ced0ac6fe8a25f5aa05d/waxy-0.7.0-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:6819876359dc5fc9ec8e5ca579a037a53ee594151aa053af29fd1b2ede8393fe", size = 693994, upload-time = "2026-10-10T20:15:34.051Z" },
     { url = "https://files.pythonhosted.org/packages/76/8f/0af7f0be9e3be650006c7bbd27c7c1c260dada3f48ac78b521b97246e3a0/waxy-0.7.0-cp315-cp315-manylinux_2_34_x86_64.whl", hash = "sha256:8cb56796932b4a83c4f18e8b4d72097219310ede9bc9af6281bbbcdd06fb47a4", size = 768600, upload-time = "2026-10-10T20:15:35.66Z" },
     { url = "https://files.pythonhosted.org/packages/57/3f/4153e174462bfcb7e9ad843bd64f7825f7d6c7b6ddb2b66a31af06edd04a/waxy-0.7.0-cp315-cp315-win_amd64.whl", hash = "sha256:3db1b60184564456c96c2b648fd12f0e42b4129a31cf18834ff5a00822666539", size = 647392, upload-time = "2026-10-10T20:15:37.701Z" },
+]
+
+[[package]]
+name = "without-async"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/f9/92390a601c0d0a51ca77b9c6d587562ff98b088a3f4f98f074e8d006d3d3/without_async-0.0.10.tar.gz", hash = "sha256:83b25c319ba83d5918707b7cd681f940f10ae2cef4fcc1738ec1243e26b40167", size = 6688, upload-time = "2026-10-04T05:16:03.141Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/ae/2d7853780b0dd22fa2005c038772dae85b006baa8cf96171d877f84b7197/without_async-0.0.10-py3-none-any.whl", hash = "sha256:f821f178974ab5de1e34a4e791084b93f9942897628be522fa54c5e0c5876ba6", size = 8438, upload-time = "2026-10-04T05:15:48.072Z" },
+]
+
+[[package]]
+name = "without-logging"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "without-streams" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/e8/72a5a72b8c439980296ed99b944368bbc9b31a24ecd71e2755878e4a3d0b/without_logging-0.0.10.tar.gz", hash = "sha256:15c8cb346b267a75749da5c166d1d762a6c607236b38a1c7072f7b91988c6684", size = 12848, upload-time = "2026-10-04T05:16:11.489Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/50/febb9401ad60997f54d1633faa36408523df57d87c93c0005772dd91cd12/without_logging-0.0.10-py3-none-any.whl", hash = "sha256:fbeabdf30dc39c91fa182b3b20e6cccdca5aa77e94a812af7379818d122adf23", size = 16354, upload-time = "2026-10-04T05:15:59.414Z" },
+]
+
+[[package]]
+name = "without-streams"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "without-async" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/7f/87c31bb7459101167c620f7e3bce666fcc2d37edce6b207e33561b78873b/without_streams-0.0.10.tar.gz", hash = "sha256:d7912d1732cefd4daabc1b6628cab343e25d1ce29788092153dce6c1746d849e", size = 14150, upload-time = "2026-10-04T05:16:12.327Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/be/f70ffcd4afec4a9efc208d0634bc6c0775f49ca77f56c3bd84d1f0f23ec9/without_streams-0.0.10-py3-none-any.whl", hash = "sha256:12434adb97fe76a2b6c274e9e6329090a521fb55f251525df9cd85d4e42fe0c9", size = 15866, upload-time = "2026-10-04T05:16:00.275Z" },
 ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import shutil
 import sys
 from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
@@ -13,7 +14,6 @@ from typing import Iterable, TextIO
 from weakref import WeakSet
 
 import waxy
-from structlog import get_logger
 
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
 from counterweight._utils import cancel, drain_queue, maybe_await
@@ -45,7 +45,7 @@ from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.layout import ResolvedLayout, compute_layout
-from counterweight.logging import configure_logging
+from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
@@ -59,7 +59,7 @@ from counterweight.paint import BLANK, Paint, paint_layout
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
@@ -110,8 +110,18 @@ async def app(
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
     """
-    configure_logging()
+    async with devlog():
+        await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot)
 
+
+async def render_loop(
+    root: Callable[[], Component],
+    output_stream: TextIO,
+    input_stream: TextIO,
+    headless: bool,
+    dimensions: tuple[int, int] | None,
+    autopilot: Iterable[AnyEvent | AnyControl],
+) -> None:
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
 
@@ -230,24 +240,16 @@ async def app(
                     for screenshot in pending_screenshots:
                         try:
                             await maybe_await(screenshot.handler(frame))
-                            logger.debug(
-                                "Took screenshot",
-                                handler=screenshot.handler,
-                            )
+                            logger.debug("Took screenshot", extra={"handler": screenshot.handler})
                         except Exception as ex:
                             logger.error(
-                                "Error in screenshot handler",
-                                error=repr(ex),
-                                handler=screenshot.handler,
+                                "Error in screenshot handler", extra={"error": repr(ex), "handler": screenshot.handler}
                             )
 
                     pending_screenshots.clear()
 
                 if should_suspend:
-                    logger.debug(
-                        "Suspending application",
-                        handler=should_suspend.handler,
-                    )
+                    logger.debug("Suspending application", extra={"handler": should_suspend.handler})
 
                     if not headless:
                         stop_mouse_tracking(stream=output_stream)
@@ -264,9 +266,7 @@ async def app(
                         await maybe_await(should_suspend.handler())
                     except Exception as ex:
                         logger.error(
-                            "Error in suspend handler",
-                            handler=should_suspend.handler,
-                            error=repr(ex),
+                            "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}
                         )
 
                     if not headless:
@@ -279,10 +279,7 @@ async def app(
 
                     screen_style, current_paint, w, h = handle_screen_size_change()
 
-                    logger.debug(
-                        "Resuming application",
-                        handler=should_suspend.handler,
-                    )
+                    logger.debug("Resuming application", extra={"handler": should_suspend.handler})
 
                     should_suspend = None
 
@@ -305,13 +302,12 @@ async def app(
                         new_paint |= healing_diff
                         logger.debug(
                             "Healed borders in new paint",
-                            hint_cells=len(border_healing_hints),
-                            diff_cells=len(healing_diff),
+                            extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
                         )
 
                     diff = diff_paint(new_paint, current_paint)
                     current_paint |= diff
-                    logger.debug("Diffed new paint from current paint", diff_cells=len(diff))
+                    logger.debug("Diffed new paint from current paint", extra={"diff_cells": len(diff)})
 
                     instructions = paint_to_instructions(diff)
                     logger.debug("Generated instructions from paint diff")
@@ -320,12 +316,11 @@ async def app(
                         output_stream.write(instructions)
                         output_stream.flush()
                         logger.debug(
-                            "Wrote and flushed instructions to output stream",
-                            bytes=f"{len(instructions):_}",
+                            "Wrote and flushed instructions to output stream", extra={"bytes": f"{len(instructions):_}"}
                         )
 
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
-                    logger.debug("Reconciled effects", num_active_effects=len(active_effects))
+                    logger.debug("Reconciled effects", extra={"num_active_effects": len(active_effects)})
 
                     should_render = False
 
@@ -337,7 +332,7 @@ async def app(
                         await event_queue.put(Dummy())  # Force a render cycle when the autopilot emits a control
                     else:  # i.e., an event
                         await event_queue.put(ap)
-                    logger.debug("Handled autopilot command", command=ap)
+                    logger.debug("Handled autopilot command", extra={"command": ap})
 
                 # Goal: wait for an event, then process all pending events, and any events created by those events,
                 # until there are no more events immediately available in the queue.
@@ -391,7 +386,7 @@ async def app(
 
                     num_events_handled += 1
 
-                logger.debug("Handled events", num_events=num_events_handled)
+                logger.debug("Handled events", extra={"num_events": num_events_handled})
 
     except (KeyboardInterrupt, CancelledError) as ex:
         logger.debug(f"Caught {ex!r}")
