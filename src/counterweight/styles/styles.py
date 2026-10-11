@@ -7,7 +7,6 @@ from functools import lru_cache
 from typing import Literal, NamedTuple
 
 import waxy
-from cachetools import LRUCache
 
 from counterweight._utils import flyweight
 
@@ -21,9 +20,6 @@ UNSET = sentinel("UNSET")
 def or_default[T](value: T | UNSET, default: T) -> T:
     """`value`, or `default` if `value` is `UNSET`."""
     return default if value is UNSET else value
-
-
-STYLE_MERGE_CACHE: LRUCache[tuple[StyleFragment, StyleFragment], StyleFragment] = LRUCache(maxsize=2**16)
 
 
 def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
@@ -46,20 +42,18 @@ def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
     return type(left)(**kwargs)
 
 
+# A C-level lru_cache hashes the key once per lookup, where cachetools' LRUCache hashes and compares it again
+# on every hit to reorder its entries, which was most of the cost of a merge.
+cached_merge = lru_cache(maxsize=2**16)(merge_style_fragments)
+
+
 class StyleFragment:
     __slots__ = ()
 
     def __or__[S: StyleFragment](self: S, other: S | None) -> S:
         if other is None:
             return self
-
-        key = (self, other)
-        try:
-            return STYLE_MERGE_CACHE[key]  # type: ignore[return-value]
-        except KeyError:
-            merged = merge_style_fragments(self, other)
-            STYLE_MERGE_CACHE[key] = merged
-            return merged
+        return cached_merge(self, other)
 
 
 class Color(NamedTuple):
@@ -658,6 +652,8 @@ class Style(StyleFragment):
     text_justify: TextJustify | UNSET = UNSET
     text_wrap: TextWrap | UNSET = UNSET
 
+    _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+
     def __post_init__(self) -> None:
         for name in sorted(self.layout.fields_set & LAYOUT_BORDER_FIELDS):
             width = getattr(self.layout, name)
@@ -666,6 +662,28 @@ class Style(StyleFragment):
                     f"Style.layout sets {name} to {width!r}, "
                     f"but a border side is one cell, so its width must be Length(0) or Length(1)"
                 )
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (
+                    self.layout,
+                    self.z,
+                    self.margin_color,
+                    self.padding_color,
+                    self.content_color,
+                    self.border_kind,
+                    self.border_style,
+                    self.border_contract,
+                    self.text_style,
+                    self.text_justify,
+                    self.text_wrap,
+                )
+            ),
+        )
+
+    def __hash__(self) -> int:
+        return self._hash
 
 
 _EMPTY_STYLE = Style()

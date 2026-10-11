@@ -742,3 +742,62 @@ Output bytes over 100 frames with `ResolvedCellStyle` interning off:
 - `StyledChar` interning stays: `agent` is slower with it off in all three rounds.
   Unverified explanation: `justify_line` builds its padding with `StyledChar(char=" ")`,
   which interning turns into a cache hit.
+
+### Run 15 — what styles cost per frame (styling-foundations step 12)
+
+**Question:** what step 4's resolve step and step 5's derived border widths cost per frame,
+and whether `Style` should cache its hash, now that `resolve_style`, `layout_style` and the merge cache
+all hash styles on every frame.
+
+**Where styles went, before any change** (`<workload>-s12base`, share of running samples):
+
+- `resolve_style`, `resolve_cell_style` and `layout_style` are `lru_cache` hits on every workload;
+  their bodies run on misses only, at most 0.5% of samples.
+  What they cost is hashing the `Style` key: on `top`, the dataclass-generated `__hash__` called from
+  `_update_node` (`layout_style`, and `resolve_style` for a `Text`'s wrap) is 1.6%, and from `paint_layout` 0.7%.
+  So step 5's derived border widths cost one key hash per element per frame, and nothing else.
+- Merging was the real cost. `StyleFragment.__or__` was 18.3% of `top`'s samples, 5.4% of `dashboard`'s:
+  `top` merges four styles per cell of every process row, every frame.
+  The merge cache was a cachetools `LRUCache`, whose `__getitem__` and `__touch` are Python and hash and
+  compare the `(left, right)` key again on every hit, and `Style`'s generated `__hash__` recomputes
+  a tuple of its eleven fields every call, about 225 ns.
+- On `canvas`, the generated `__hash__` is 12% of samples, but it hashes text content
+  (`Text.cells`, `MeasurableText.of`, `text_lines`' key), not styles.
+
+**Changes,** each profiled with `just profile <workload> <workload>-<change>` against the run before it:
+
+1. `lru`: the merge cache is a `functools.lru_cache` around `merge_style_fragments`, which hashes the key once
+   per lookup, in C. counterweight no longer depends on cachetools.
+2. `hash`: `Style` computes its hash once, in `__post_init__`, as `CellStyle` and `ResolvedCellStyle` already do.
+
+Per operation (`timeit`, best of five):
+
+| Operation | Before | `lru` | `hash` |
+|---|---|---|---|
+| `hash(Style)` | 227 ns | 227 ns | 56 ns |
+| `a \| b`, cache hit, `b` the cached instance | 746 ns | 504 ns | 155 ns |
+| `a \| b`, cache hit, `b` equal but distinct | 2166 ns | 983 ns | 564 ns |
+| `Style(text_style=CellStyle(...))` | 1512 ns | 1512 ns | 2348 ns |
+
+Median frame time, median of three interleaved rounds of unprofiled `benchmarks run`,
+each configuration importing counterweight from its own copy of `src` (`PYTHONPATH`):
+
+| Workload | Before | `lru` | `lru` and `hash` |
+|---|---|---|---|
+| canvas | 2.45 ms | −2% | −1% |
+| top | 12.18 ms | −7% | −15% |
+| agent | 0.95 ms | +3% | −4% |
+| dashboard | 0.80 ms | −6% | −10% |
+
+On `top` the rounds don't overlap: 11.92–12.55 ms before, 10.24–10.66 ms after both changes.
+`canvas` and `agent` are within the round-to-round spread; neither merges many styles per frame.
+
+- On `top`, `StyleFragment.__or__` falls from 18.3% to 5.9% of samples, and `Style.__post_init__`
+  rises from 1.5% to 4.3%: `top` builds fresh `Style`s every frame (`Style()`, `Style(text_style=...)`),
+  and each now pays for its hash when built rather than when first hashed. Every one of them is hashed
+  by a merge in the same frame, so the up-front hash is never wasted there.
+- What's left of merging on `top` is the generated `__eq__` (3.5% of samples): a freshly built `Style`
+  equal to last frame's is a cache hit only after comparing every field, including the `waxy.Style`.
+  Interning `Style` with `@flyweight` would make those hits identity checks, at the cost of a lookup on
+  every construction; that's untested.
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.

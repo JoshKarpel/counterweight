@@ -222,6 +222,15 @@ def test_style_explicit_default_overrides_non_default(name: str, non_default: St
 
 
 @pytest.mark.parametrize(("name", "non_default", "explicit_default"), STYLE_FIELD_CASES)
+def test_style_hash_depends_on_field(name: str, non_default: Style, explicit_default: Style) -> None:
+    assert hash(non_default) != hash(Style())
+
+
+def test_style_hash_depends_on_layout() -> None:
+    assert hash(Style(layout=waxy.Style(flex_grow=1))) != hash(Style(layout=waxy.Style(flex_grow=2)))
+
+
+@pytest.mark.parametrize(("name", "non_default", "explicit_default"), STYLE_FIELD_CASES)
 def test_style_unset_field_keeps_left_value(name: str, non_default: Style, explicit_default: Style) -> None:
     resolved = getattr(resolve_style(non_default | Style()), name)
 

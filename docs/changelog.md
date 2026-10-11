@@ -136,7 +136,10 @@
   a row at a time, and an element's text and border are cached wherever it moves on the screen.
   Only the cells that changed since the last frame are written to the terminal,
   with one cursor move per run of changed cells and a style change only where the style changes.
-  Building a `Position`, `CellStyle` or cell equal to one built recently returns the cached instance.
+  Building a `CellStyle` or cell equal to one built recently returns the cached instance.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Merging styles with `|` costs less: a `Style` computes its hash once, when it's built,
+  and merges are cached with `functools.lru_cache`. counterweight no longer depends on cachetools.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   **Breaking:** `Frame.paint` is a `counterweight.paint.Paint`, a screen-sized grid of cells,
   rather than a `dict` from `Position` to cell.

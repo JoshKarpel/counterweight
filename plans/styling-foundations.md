@@ -701,7 +701,12 @@ expected wherever only the code changed.
 
 ### 12. Profile with Tachyon
 
-**Status:** Tooling done, before step 10, so that step can be measured; the analysis is open.
+**Status:** Done. The tooling was built before step 10, so that step could be measured.
+Run 15 in `plans/performance-analysis-2026-03-07.md` answers the analysis below:
+the resolve step and the derived border widths are `lru_cache` hits that cost one key hash each,
+and merging styles was the real cost (18% of `top`'s samples). The merge cache moved from cachetools
+to `functools.lru_cache`, and `Style` caches its hash, which together take 15% off a `top` frame
+and regress no workload.
 
 Steps 4 to 11 change what paint and layout do every frame without profiling each change on its
 own, and step 4 removed the old Scalene tooling along with the move to Python 3.15.
