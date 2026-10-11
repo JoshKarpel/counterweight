@@ -47,12 +47,12 @@ def root() -> Div:
         return None
 
     return Div(
-        style=col | full | align_children_stretch,
+        style=col | full,
         on_key=on_key,
         children=[
             toolbar(WRAP_MODES[wrap_idx], set_wrap_idx),
             Div(
-                style=row | grow(1) | gap(1) | pad_x(1) | align_children_stretch,
+                style=row | fill(1) | gap(1) | pad_x(1),
                 children=[
                     input_pane(input_text),
                     display_pane(input_text, WRAP_MODES[wrap_idx]),
@@ -72,11 +72,11 @@ def toolbar(
     set_wrap_idx: Callable[[int | Callable[[int], int]], None],
 ) -> Div:
     return Div(
-        style=row | align_children_stretch | pad_x(1) | pad_y(1),
+        style=row | pad_x(1) | pad_y(1),
         children=[
             Text(
                 content="Text Wrap Demo",
-                style=grow(1) | min_width(0) | text_color("amber", 400),
+                style=fill(1) | text_color("amber", 400),
             ),
             Div(
                 style=row | justify_children_space_evenly,
@@ -96,16 +96,10 @@ def toolbar(
 @component
 def input_pane(content: str) -> Div:
     rects = use_rects()
-    w = int(rects.content.right - rects.content.left + 1)
+    w = rects.content.width
 
     return Div(
-        style=grow(1)
-        | min_width(0)
-        | col
-        | align_children_stretch
-        | border_lightrounded
-        | border_color("sky", 600)
-        | pad_x(1),
+        style=fill(1) | col | border | border_lightrounded | border_color("sky", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
@@ -113,7 +107,7 @@ def input_pane(content: str) -> Div:
             ),
             Text(
                 content=content,
-                style=grow(1) | text_wrap_stable | text_color("sky", 200),
+                style=fill(1) | text_wrap_stable | text_color("sky", 200),
             ),
         ],
     )
@@ -122,7 +116,7 @@ def input_pane(content: str) -> Div:
 @component
 def display_pane(content: str, mode: TextWrap) -> Div:
     rects = use_rects()
-    w = int(rects.content.right - rects.content.left + 1)
+    w = rects.content.width
 
     wrap_style = {
         "none": text_wrap_none,
@@ -132,13 +126,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
     }[mode]
 
     return Div(
-        style=grow(1)
-        | min_width(0)
-        | col
-        | align_children_stretch
-        | border_lightrounded
-        | border_color("violet", 600)
-        | pad_x(1),
+        style=fill(1) | col | border | border_lightrounded | border_color("violet", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
@@ -146,7 +134,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
             ),
             Text(
                 content=content or " ",
-                style=grow(1) | wrap_style | text_color("violet", 200),
+                style=fill(1) | wrap_style | text_color("violet", 200),
             ),
         ],
     )
@@ -162,11 +150,11 @@ def mode_button(label: str, active: bool, on_click: Callable[[], None]) -> Text:
                 on_click()
 
     if active:
-        style = border_heavy | border_color("violet", 400) | text_color("violet", 100)
+        style = border | border_heavy | border_color("violet", 400) | text_color("violet", 100)
     elif hovered.border:
-        style = border_light | border_color("slate", 400) | text_color("slate", 200)
+        style = border | border_color("slate", 400) | text_color("slate", 200)
     else:
-        style = border_light | border_color("slate", 700) | text_color("slate", 500)
+        style = border | border_color("slate", 700) | text_color("slate", 500)
 
     return Text(
         content=f" {label} ",

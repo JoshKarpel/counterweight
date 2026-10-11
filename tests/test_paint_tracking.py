@@ -8,7 +8,7 @@ These cover the cases relevant to the dirty-region refactor:
   - content addition (element appears; positions fill in)
   - terminal resize (current_paint reset; full re-render)
 
-All tests use headless autopilot with PrintPaint(ansi=False) to capture
+All tests use headless autopilot with Screenshot.to_stream(ansi=False) to capture
 the plain-text grid written to current_paint.
 """
 
@@ -19,7 +19,7 @@ from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import PrintPaint, Quit
+from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, TerminalResized
 from counterweight.hooks import use_state
@@ -32,7 +32,7 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
         root_fn,
         headless=True,
         dimensions=dimensions,
-        autopilot=[PrintPaint(stream=capture, ansi=False), Quit()],
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
     )
     return capture.getvalue().rstrip("\n")
 
@@ -45,9 +45,9 @@ async def _two_frames(root_fn: Callable[[], Component], dimensions: tuple[int, i
         headless=True,
         dimensions=dimensions,
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             KeyPressed(key="n"),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
     )
@@ -100,7 +100,7 @@ async def test_ansi_background_is_explicit_black() -> None:
         root,
         headless=True,
         dimensions=(2, 1),
-        autopilot=[PrintPaint(stream=capture, ansi=True), Quit()],
+        autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
     )
     output = capture.getvalue()
     # Every position should carry the black background escape
@@ -119,7 +119,7 @@ async def test_ansi_uncovered_area_has_explicit_black_background() -> None:
         root,
         headless=True,
         dimensions=(2, 1),
-        autopilot=[PrintPaint(stream=capture, ansi=True), Quit()],
+        autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
     )
     output = capture.getvalue()
     # Both the "X" cell and the blank cell to its right should set a background
@@ -139,9 +139,9 @@ async def test_ansi_after_resize_new_area_has_explicit_black_background() -> Non
         headless=True,
         dimensions=(1, 1),
         autopilot=[
-            PrintPaint(stream=c1, ansi=True),
+            Screenshot.to_stream(c1, ansi=True),
             TerminalResized(dimensions=(2, 1)),
-            PrintPaint(stream=c2, ansi=True),
+            Screenshot.to_stream(c2, ansi=True),
             Quit(),
         ],
     )
@@ -313,9 +313,9 @@ async def test_resize_rerenders_content_correctly() -> None:
         headless=True,
         dimensions=(10, 1),
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             TerminalResized(),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
     )
@@ -336,9 +336,9 @@ async def test_resize_with_new_dimensions() -> None:
         headless=True,
         dimensions=(5, 1),
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             TerminalResized(dimensions=(8, 1)),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
     )
@@ -359,9 +359,9 @@ async def test_resize_to_larger_new_area_is_spaces() -> None:
         headless=True,
         dimensions=(5, 1),
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             TerminalResized(dimensions=(5, 3)),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
     )
@@ -385,9 +385,9 @@ async def test_resize_to_smaller_no_stale_rows() -> None:
         headless=True,
         dimensions=(5, 3),
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             TerminalResized(dimensions=(5, 1)),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
     )
@@ -413,11 +413,11 @@ async def test_resize_clears_stale_content() -> None:
         headless=True,
         dimensions=(10, 1),
         autopilot=[
-            PrintPaint(stream=c1, ansi=False),
+            Screenshot.to_stream(c1, ansi=False),
             KeyPressed(key="n"),
-            PrintPaint(stream=c2, ansi=False),
+            Screenshot.to_stream(c2, ansi=False),
             TerminalResized(),
-            PrintPaint(stream=c3, ansi=False),
+            Screenshot.to_stream(c3, ansi=False),
             Quit(),
         ],
     )

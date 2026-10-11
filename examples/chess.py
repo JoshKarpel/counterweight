@@ -1,9 +1,8 @@
 import asyncio
+import logging
 from enum import Enum, StrEnum
 from pathlib import Path
 from typing import NamedTuple
-
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -14,7 +13,7 @@ from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 class Player(StrEnum):
@@ -118,10 +117,10 @@ def board() -> Div:
                 )
 
     return Div(
-        style=col | justify_children_center | align_children_center,
+        style=col | center_children,
         children=[
             Div(
-                style=row | justify_children_center | align_children_center,
+                style=row | center_children,
                 children=r,
             )
             for r in rows

@@ -553,31 +553,41 @@ row_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.RowRever
 col_reverse = Style(layout=waxy.Style(flex_direction=waxy.FlexDirection.ColumnReverse))
 
 justify_children_start = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Start))
-justify_children_center = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Center))
-justify_children_end = Style(layout=waxy.Style(justify_content=waxy.AlignContent.End))
+justify_children_center = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SafeCenter))
+justify_children_end = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SafeEnd))
 justify_children_space_between = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceBetween))
 justify_children_space_around = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceAround))
 justify_children_space_evenly = Style(layout=waxy.Style(justify_content=waxy.AlignContent.SpaceEvenly))
+justify_children_center_unsafe = Style(layout=waxy.Style(justify_content=waxy.AlignContent.Center))
+justify_children_end_unsafe = Style(layout=waxy.Style(justify_content=waxy.AlignContent.End))
 
 align_children_start = Style(layout=waxy.Style(align_items=waxy.AlignItems.Start))
-align_children_center = Style(layout=waxy.Style(align_items=waxy.AlignItems.Center))
-align_children_end = Style(layout=waxy.Style(align_items=waxy.AlignItems.End))
+align_children_center = Style(layout=waxy.Style(align_items=waxy.AlignItems.SafeCenter))
+align_children_end = Style(layout=waxy.Style(align_items=waxy.AlignItems.SafeEnd))
 align_children_stretch = Style(layout=waxy.Style(align_items=waxy.AlignItems.Stretch))
+align_children_center_unsafe = Style(layout=waxy.Style(align_items=waxy.AlignItems.Center))
+align_children_end_unsafe = Style(layout=waxy.Style(align_items=waxy.AlignItems.End))
 
 align_self_start = Style(layout=waxy.Style(align_self=waxy.AlignItems.Start))
-align_self_center = Style(layout=waxy.Style(align_self=waxy.AlignItems.Center))
-align_self_end = Style(layout=waxy.Style(align_self=waxy.AlignItems.End))
+align_self_center = Style(layout=waxy.Style(align_self=waxy.AlignItems.SafeCenter))
+align_self_end = Style(layout=waxy.Style(align_self=waxy.AlignItems.SafeEnd))
 align_self_stretch = Style(layout=waxy.Style(align_self=waxy.AlignItems.Stretch))
+align_self_center_unsafe = Style(layout=waxy.Style(align_self=waxy.AlignItems.Center))
+align_self_end_unsafe = Style(layout=waxy.Style(align_self=waxy.AlignItems.End))
 
 justify_items_start = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Start))
-justify_items_center = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Center))
-justify_items_end = Style(layout=waxy.Style(justify_items=waxy.AlignItems.End))
+justify_items_center = Style(layout=waxy.Style(justify_items=waxy.AlignItems.SafeCenter))
+justify_items_end = Style(layout=waxy.Style(justify_items=waxy.AlignItems.SafeEnd))
 justify_items_stretch = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Stretch))
+justify_items_center_unsafe = Style(layout=waxy.Style(justify_items=waxy.AlignItems.Center))
+justify_items_end_unsafe = Style(layout=waxy.Style(justify_items=waxy.AlignItems.End))
 
 justify_self_start = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Start))
-justify_self_center = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Center))
-justify_self_end = Style(layout=waxy.Style(justify_self=waxy.AlignItems.End))
+justify_self_center = Style(layout=waxy.Style(justify_self=waxy.AlignItems.SafeCenter))
+justify_self_end = Style(layout=waxy.Style(justify_self=waxy.AlignItems.SafeEnd))
 justify_self_stretch = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Stretch))
+justify_self_center_unsafe = Style(layout=waxy.Style(justify_self=waxy.AlignItems.Center))
+justify_self_end_unsafe = Style(layout=waxy.Style(justify_self=waxy.AlignItems.End))
 
 
 flex_no_wrap = Style(layout=waxy.Style(flex_wrap=waxy.FlexWrap.NoWrap))
@@ -595,133 +605,41 @@ grid_auto_flow_row_dense = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoF
 grid_auto_flow_column_dense = Style(layout=waxy.Style(grid_auto_flow=waxy.GridAutoFlow.ColumnDense))
 
 border_none = Style(border_kind=None)
-border_light = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.Light,
-)
-border_lightrounded = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.LightRounded,
-)
-border_lightangled = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.LightAngled,
-)
-border_heavy = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.Heavy,
-)
-border_double = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.Double,
-)
-border_thick = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.Thick,
-)
-border_mcgugan = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.McGugan,
-)
-border_lightshade = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.LightShade,
-)
-border_mediumshade = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.MediumShade,
-)
-border_heavyshade = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.HeavyShade,
-)
-border_star = Style(
-    layout=waxy.Style(
-        border_top=waxy.Length(1),
-        border_bottom=waxy.Length(1),
-        border_left=waxy.Length(1),
-        border_right=waxy.Length(1),
-    ),
-    border_kind=BorderKind.Star,
-)
+border_light = Style(border_kind=BorderKind.Light)
+border_lightrounded = Style(border_kind=BorderKind.LightRounded)
+border_lightangled = Style(border_kind=BorderKind.LightAngled)
+border_heavy = Style(border_kind=BorderKind.Heavy)
+border_double = Style(border_kind=BorderKind.Double)
+border_thick = Style(border_kind=BorderKind.Thick)
+border_mcgugan = Style(border_kind=BorderKind.McGugan)
+border_lightshade = Style(border_kind=BorderKind.LightShade)
+border_mediumshade = Style(border_kind=BorderKind.MediumShade)
+border_heavyshade = Style(border_kind=BorderKind.HeavyShade)
+border_star = Style(border_kind=BorderKind.Star)
 
-border_top = Style(layout=waxy.Style(border_top=waxy.Length(1)))
-border_bottom = Style(layout=waxy.Style(border_bottom=waxy.Length(1)))
-border_left = Style(layout=waxy.Style(border_left=waxy.Length(1)))
-border_right = Style(layout=waxy.Style(border_right=waxy.Length(1)))
-border_top_bottom = Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1)))
-border_top_left = Style(layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1)))
-border_top_right = Style(layout=waxy.Style(border_top=waxy.Length(1), border_right=waxy.Length(1)))
-border_bottom_left = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1)))
-border_bottom_right = Style(layout=waxy.Style(border_bottom=waxy.Length(1), border_right=waxy.Length(1)))
-border_left_right = Style(layout=waxy.Style(border_left=waxy.Length(1), border_right=waxy.Length(1)))
-border_top_bottom_left = Style(
-    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1))
-)
-border_top_bottom_right = Style(
-    layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_right=waxy.Length(1))
-)
-border_top_left_right = Style(
-    layout=waxy.Style(border_top=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
-)
-border_bottom_left_right = Style(
-    layout=waxy.Style(border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1))
-)
-border_all = Style(
+border = Style(
     layout=waxy.Style(
         border_top=waxy.Length(1), border_bottom=waxy.Length(1), border_left=waxy.Length(1), border_right=waxy.Length(1)
     )
 )
+border_top = Style(layout=waxy.Style(border_top=waxy.Length(1)))
+border_bottom = Style(layout=waxy.Style(border_bottom=waxy.Length(1)))
+border_left = Style(layout=waxy.Style(border_left=waxy.Length(1)))
+border_right = Style(layout=waxy.Style(border_right=waxy.Length(1)))
+border_x = Style(layout=waxy.Style(border_left=waxy.Length(1), border_right=waxy.Length(1)))
+border_y = Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1)))
+
+border_0 = Style(
+    layout=waxy.Style(
+        border_top=waxy.Length(0), border_bottom=waxy.Length(0), border_left=waxy.Length(0), border_right=waxy.Length(0)
+    )
+)
+border_top_0 = Style(layout=waxy.Style(border_top=waxy.Length(0)))
+border_bottom_0 = Style(layout=waxy.Style(border_bottom=waxy.Length(0)))
+border_left_0 = Style(layout=waxy.Style(border_left=waxy.Length(0)))
+border_right_0 = Style(layout=waxy.Style(border_right=waxy.Length(0)))
+border_x_0 = Style(layout=waxy.Style(border_left=waxy.Length(0), border_right=waxy.Length(0)))
+border_y_0 = Style(layout=waxy.Style(border_top=waxy.Length(0), border_bottom=waxy.Length(0)))
 
 inset_top_left = Style(
     layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Length(0), inset_left=waxy.Length(0))
@@ -790,7 +708,7 @@ border_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.BorderBox))
 
 @lru_cache(maxsize=256)
 def grow(n: float) -> Style:
-    return Style(layout=waxy.Style(flex_grow=float(n), flex_basis=waxy.Length(0)))
+    return Style(layout=waxy.Style(flex_grow=float(n)))
 
 
 @lru_cache(maxsize=256)
@@ -798,9 +716,77 @@ def shrink(n: float) -> Style:
     return Style(layout=waxy.Style(flex_shrink=float(n)))
 
 
-full_width = Style(layout=waxy.Style(size_width=waxy.Percent(1.0)))
-full_height = Style(layout=waxy.Style(size_height=waxy.Percent(1.0)))
-full = Style(layout=waxy.Style(size_width=waxy.Percent(1.0), size_height=waxy.Percent(1.0)))
+def _constraint(basis: waxy.Length | waxy.Percent, grow: float, shrink: float) -> Style:
+    # Hidden overflow makes the item a scroll container, whose automatic minimum size is 0,
+    # so content can't push it past its constraint.
+    # Zeroing min_size_* would do the same, but would clobber (or be clobbered by) min_width and min_height.
+    return Style(
+        layout=waxy.Style(
+            flex_basis=basis,
+            flex_grow=grow,
+            flex_shrink=shrink,
+            overflow_x=waxy.Overflow.Hidden,
+            overflow_y=waxy.Overflow.Hidden,
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def length(n: int) -> Style:
+    """Take exactly `n` cells along the parent's main axis, whatever the content (ratatui's `Length`)."""
+    return _constraint(waxy.Length(n), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def percentage(p: float) -> Style:
+    """Take `p` percent of the parent's main axis, whatever the content (ratatui's `Percentage`)."""
+    return _constraint(waxy.Percent(p / 100), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def ratio(numerator: int, denominator: int) -> Style:
+    """Take `numerator / denominator` of the parent's main axis, whatever the content (ratatui's `Ratio`)."""
+    return _constraint(waxy.Percent(numerator / denominator), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def fill(n: float = 1) -> Style:
+    """Share the parent's free main-axis space in proportion to `n`, whatever the content (ratatui's `Fill`)."""
+    return _constraint(waxy.Length(0), grow=float(n), shrink=1)
+
+
+@lru_cache(maxsize=256)
+def fr(n: float = 1) -> waxy.Minmax:
+    """
+    A grid track taking `n` shares of the free space, whatever the content (`minmax(0, n fr)`).
+
+    A bare `waxy.Fraction(n)` is `minmax(auto, n fr)`, which content can push wider.
+    """
+    return waxy.Minmax(waxy.Length(0), waxy.Fraction(n))
+
+
+@lru_cache(maxsize=256)
+def span(n: int) -> waxy.GridSpan:
+    """A grid placement spanning `n` tracks, for `grid_row` and `grid_column`."""
+    return waxy.GridSpan(n)
+
+
+center_children = align_children_center | justify_children_center
+
+
+min_content_width = Style(layout=waxy.Style(size_width=waxy.MIN_CONTENT))
+max_content_width = Style(layout=waxy.Style(size_width=waxy.MAX_CONTENT))
+fit_content_width = Style(layout=waxy.Style(size_width=waxy.FIT_CONTENT))
+stretch_width = Style(layout=waxy.Style(size_width=waxy.STRETCH))
+
+min_content_height = Style(layout=waxy.Style(size_height=waxy.MIN_CONTENT))
+max_content_height = Style(layout=waxy.Style(size_height=waxy.MAX_CONTENT))
+fit_content_height = Style(layout=waxy.Style(size_height=waxy.FIT_CONTENT))
+stretch_height = Style(layout=waxy.Style(size_height=waxy.STRETCH))
+
+full_width = stretch_width
+full_height = stretch_height
+full = stretch_width | stretch_height
 
 
 @lru_cache(maxsize=256)
@@ -868,24 +854,36 @@ def aspect_ratio(ratio: float) -> Style:
     return Style(layout=waxy.Style(aspect_ratio=ratio))
 
 
-@lru_cache(maxsize=256)
-def grid_template_rows(*tracks: waxy.GridTrackValue) -> Style:
-    return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
+def _track(track: waxy.GridTrackValue | int) -> waxy.GridTrackValue:
+    return waxy.Length(track) if isinstance(track, int) else track
+
+
+def _line(line: waxy.GridPlacementValue | int | None) -> waxy.GridPlacementValue | None:
+    return waxy.GridLine(line) if isinstance(line, int) else line
 
 
 @lru_cache(maxsize=256)
-def grid_template_columns(*tracks: waxy.GridTrackValue) -> Style:
-    return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
+def grid_template_rows(*tracks: waxy.GridTrackValue | int) -> Style:
+    return Style(layout=waxy.Style(grid_template_rows=[_track(t) for t in tracks]))
 
 
 @lru_cache(maxsize=256)
-def grid_row(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
-    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
+def grid_template_columns(*tracks: waxy.GridTrackValue | int) -> Style:
+    return Style(layout=waxy.Style(grid_template_columns=[_track(t) for t in tracks]))
 
 
 @lru_cache(maxsize=256)
-def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
-    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
+def grid_row(
+    start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
+) -> Style:
+    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=_line(start), end=_line(end))))
+
+
+@lru_cache(maxsize=256)
+def grid_column(
+    start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
+) -> Style:
+    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=_line(start), end=_line(end))))
 
 
 @lru_cache(maxsize=256)

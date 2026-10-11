@@ -15,29 +15,49 @@
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
   minimizes ragged lines). The default remains `text_wrap_none` (no wrapping).
   Words longer than the available width are broken with a hyphen.
+  A wrapping `Text`'s minimum size is its widest word, so wrapping `Text`s side by side
+  in a row shrink to share it.
 
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
   half-block pixel art in a terminal canvas using `▀` characters.
 
-- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
-  Documented style merging semantics: styles are additive-only, meaning a field equal to its
-  default value is treated as "not set" and does not override a value from the other style.
-
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
 
-- [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  Added a `PrintPaint` autopilot control that prints the current rendered frame as a text grid,
-  useful for debugging layout and rendering output.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added `counterweight.styles.merge`, which merges any number of `Style`s left to right,
+  as an alternative to chaining `|`: `merge(a, b, c)` is `a | b | c`.
+  It skips `None` arguments wherever they appear.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added the sizing keyword utilities `min_content_width`, `max_content_width`,
+  `fit_content_width` and `stretch_width`, and their `_height` counterparts,
+  which size a box from its content or fill the space available after its margins.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added the constraint utilities `length(n)`, `percentage(p)`, `ratio(a, b)` and `fill(n)`,
+  which split space along the parent's main axis the way ratatui's constraints of the same names do:
+  a child takes its share whatever its content, in a `row` or a `col`.
+  For grid, `fr(n)` is a track of `n` shares that content can't widen (`minmax(0, n fr)`),
+  and `span(n)` places a child across `n` tracks.
+  `grid_template_columns` and `grid_template_rows` accept a plain `int` as a track of that many cells,
+  and `grid_row` and `grid_column` accept one as a grid line.
+  `center_children` centers children on both axes.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added `Screenshot.to_stream`, which prints a screenshot as a text grid
+  (with or without ANSI escape codes), useful for debugging layout and in tests.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added a Layout section to the documentation:
+  a guide to choosing between flexbox and grid,
+  and a gallery of layout effects, each shown as code beside its screenshot,
+  with every screenshot also available as copyable text.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;
   `margin(n)`, `margin_x(n)`, `margin_y(n)`, `margin_top(n)`, etc.;
   `gap(n)`, `gap_width(n)`, `gap_height(n)`;
-  `size(w, h)`, `grow(n)`;
+  `size(w, h)`, `grow(n)` (which sets only `flex_grow`);
   `inset_top(n)`, `inset_bottom(n)`, `inset_left(n)`, `inset_right(n)`;
-  `full`, `full_width`, `full_height`.
+  `full`, `full_width`, `full_height`, which fill the parent after the box's margins.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New style utilities `position_absolute` and `position_relative` replace the old
   `absolute(x, y)`, `relative(x, y)`, and `fixed(x, y)` helpers.
@@ -50,6 +70,22 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The `*_center` and `*_end` alignment utilities
+  (`justify_children_*`, `align_children_*`, `align_self_*`, `justify_items_*`, `justify_self_*`)
+  use CSS's safe alignment: content too large for its container starts at the start edge
+  instead of overflowing past it.
+  Each has an `*_unsafe` counterpart, such as `justify_children_center_unsafe`,
+  that centers or end-aligns overflowing content anyway.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** a `Screenshot` handler now receives a `counterweight.output.Frame`
+  instead of an SVG `ElementTree`; call `frame.svg()` or `frame.text()` to encode it.
+  `Screenshot.to_file` chooses the encoding from the path's suffix
+  (`.svg` for SVG, `.txt` for text with ANSI escape codes),
+  always indents SVGs, and no longer takes `indent`.
+  Every `Screenshot` requested in the same render cycle now receives the same frame,
+  where previously only the last one ran.
 
 - The setter returned by `use_state` is the same object on every render of a component,
   so including it in an effect's `deps` no longer reruns the effect each render.
@@ -71,6 +107,25 @@
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
   matching on the enum member (`Key.Space`) is unaffected.
 
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** borders work as they do in Tailwind.
+  A border side is drawn where its width in `Style.layout` is 1, and `border_kind` only chooses the characters.
+  `border_kind` defaults to `BorderKind.Light`, so the new `border` utility alone draws a light border,
+  and the `border_<kind>` utilities no longer reserve space or draw anything on their own:
+  write `border | border_heavy` where you wrote `border_heavy`.
+  `border_top`, `border_bottom`, `border_left` and `border_right` set one side, the new `border_x` and `border_y`
+  set a pair, and each has a new `_0` form (`border_0`, `border_top_0`, ...) that clears its sides.
+  A `border_kind` of `None` (`border_none`) removes the border along with the space reserved for it.
+  A border width in `Style.layout` other than `Length(0)` or `Length(1)` raises `ValueError`.
+  `border_all` and the edge combinations such as `border_top_left` are removed:
+  use `border`, or compose sides as in `border_top | border_left`.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Every field of `Style` (except `layout`) and `CellStyle` starts out as the new
+  `counterweight.styles.UNSET` sentinel rather than its default value,
+  so reading a field of a style you built can return `UNSET`.
+  The defaults live in `counterweight.styles.STYLE_DEFAULTS` and `counterweight.styles.CELL_STYLE_DEFAULTS`,
+  and fill unset fields when an element is drawn.
+
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
   from Pydantic models to frozen `dataclass` instances, removing the runtime Pydantic dependency.
@@ -81,9 +136,51 @@
   This brings standard CSS flexbox semantics, improved correctness for complex layouts,
   and eliminates the hand-rolled layout engine.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `use_rects` now returns `waxy.Rect` objects instead of the removed `counterweight.geometry.Rect`.
+  `use_rects` now returns `counterweight.geometry.Region` objects instead of the removed `counterweight.geometry.Rect`.
+  A `Region`'s `right` and `bottom` are exclusive (the first column and row outside it),
+  so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** counterweight logs through the standard library's `logging`, and no longer depends on
+  or configures structlog. While an app runs, every log record at every level, including an app's own
+  (`logging.getLogger(__name__).debug("...", extra={...})`), is written to the devlog off the render loop
+  by [without-logging](https://www.without.help/without-logging/).
+  The devlog is a single JSON-lines file, which `counterweight devlog` renders for reading
+  (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
+  to see where a frame's time goes, profile the app with Python's sampling profiler
+  (`python -m profiling.sampling run app.py`).
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Laying out a frame costs less. An app keeps one layout tree for its lifetime,
+  so taffy reuses the layout of every element whose style, text and children are unchanged,
+  and a `Text` is wrapped at most once per width it is measured at.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Painting a frame costs less. Elements paint straight into one screen-sized grid of cells,
+  a row at a time, and an element's text and border are cached wherever it moves on the screen.
+  Only the cells that changed since the last frame are written to the terminal,
+  with one cursor move per run of changed cells and a style change only where the style changes.
+  Building a `CellStyle` or cell equal to one built recently returns the cached instance.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Merging styles with `|` costs less: a `Style` computes its hash once, when it's built,
+  and merges are cached with `functools.lru_cache`. counterweight no longer depends on cachetools.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** `Frame.paint` is a `counterweight.paint.Paint`, a screen-sized grid of cells,
+  rather than a `dict` from `Position` to cell.
+  Index it with a `Position` or an `(x, y)` pair, or read it a row at a time with `rows()`.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The painted cell `counterweight.paint.P` is renamed `Cell`. It is a frozen dataclass of a character
+  and its resolved style, and no longer carries its element's `z`.
+  `counterweight.elements.CellPaint`, a character and its unresolved `CellStyle`, is renamed `StyledChar`.
 
 ### Fixed
+
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Merging styles with `|` now lets the right side override the left with a default value:
+  `border_heavy | border_none` has no border kind, `text_justify_center | text_justify_left` justifies left,
+  `z(5) | z(0)` has `z` 0, and `CellStyle(bold=True) | CellStyle(bold=False)` is not bold.
+  Previously a field set to its default was treated as unset and ignored.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  An element with a `content_color` but no margin, border, padding or text now paints its background.
+  Previously it painted nothing. An element with none of these and no `content_color` still paints nothing,
+  so an undecorated container laid over other elements leaves them visible.
 
 - A component replaced by a plain element at the same position is now unmounted:
   its effects are cancelled, and components nested under it start with fresh state.
@@ -116,11 +213,12 @@
   The `Style` model is now flat: border, margin, padding, typography, and positioning
   properties are top-level fields rather than nested sub-models.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed;
-  use `waxy.Rect` instead.
-- [#165](https://github.com/JoshKarpel/counterweight/pull/165)
-  Dropped support for Python `3.11` and `3.12`.
-  Python `3.13` or later is now required.
+  `counterweight.geometry.Rect` and `counterweight.geometry.Edge` have been removed.
+  Use `counterweight.geometry.Region` in place of `Rect`.
+- [#165](https://github.com/JoshKarpel/counterweight/pull/165),
+  [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Dropped support for Python `3.11` through `3.14`.
+  Python `3.15` or later is now required.
 
 ## `0.0.9`
 

@@ -27,7 +27,7 @@ Here we make a new `Style` for a `rose_200`-colored heavy border on the top and 
 ```python
 from counterweight.styles.utilities import *
 
-border_heavy_top_bottom_rose_200 = border_heavy | border_color("rose", 200) | border_top_bottom
+border_heavy_top_bottom_rose_200 = border_y | border_heavy | border_color("rose", 200)
 ```
 
 Actually giving a name to the new style is optional.
@@ -43,13 +43,13 @@ from counterweight.elements import Text
 def my_component() -> Text:
     return Text(
         content="Hello, world!",
-        style=border_heavy | border_color("rose", 200) | border_top_bottom,
+        style=border_y | border_heavy | border_color("rose", 200),
     )
 ```
 
 !!! tip "Performance Considerations"
 
-    If you have an expression like `border_heavy | border_color("rose", 200) | border_top_bottom` in your component,
+    If you have an expression like `border_y | border_heavy | border_color("rose", 200)` in your component,
     it will be evaluated every time the component is rendered.
     Merging styles with `|` does take some time, though it is aggressively cached inside the framework.
     If you find that this is causing performance issues,

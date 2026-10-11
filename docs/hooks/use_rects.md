@@ -4,6 +4,7 @@
 
 ::: counterweight.hooks.use_rects
 ::: counterweight.hooks.Rects
+::: counterweight.geometry.Region
 
 !!! tip "Use `use_hovered` for detecting hover state"
 

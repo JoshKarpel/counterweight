@@ -1,10 +1,10 @@
 import asyncio
+import logging
 import random
 from asyncio import sleep
 from itertools import product
 
 from more_itertools import grouper
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -14,7 +14,7 @@ from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 BLACK = Color.from_name("black")
 
@@ -47,7 +47,7 @@ def root() -> Div:
         children=[
             header(),
             Div(
-                style=col | align_children_center | justify_children_center,
+                style=col | center_children,
                 children=[
                     Div(
                         style=row | align_children_center | justify_children_space_evenly,
@@ -128,7 +128,7 @@ def random_walkers() -> Text:
             height=h,
             cells=dict(zip(walkers, colors)),
         ),
-        style=border_heavy | border_color("slate", 400),
+        style=border | border_heavy | border_color("slate", 400),
     )
 
 

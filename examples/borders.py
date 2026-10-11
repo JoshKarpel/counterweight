@@ -1,8 +1,8 @@
 import asyncio
+import logging
 from itertools import combinations
 
 from more_itertools import flatten
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -12,7 +12,7 @@ from counterweight.hooks import use_ref, use_state
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 ALL_SIDES: list[Side] = ["top", "bottom", "left", "right"]
 BORDER_KINDS: list[BorderKind] = list(BorderKind)
@@ -43,13 +43,13 @@ def root() -> Div:
                 border_side_idx.current = (border_side_idx.current - 1) % len(SIDE_COMBOS)
                 set_active_sides(frozenset(SIDE_COMBOS[border_side_idx.current]))
 
-    logger.debug("Rendering", border_kind=border_kind, active_sides=active_sides)
+    logger.debug("Rendering", extra={"border_kind": border_kind, "active_sides": active_sides})
 
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
         children=[
             Div(
-                style=border_heavy,
+                style=border | border_heavy,
                 children=[
                     Text(
                         content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(active_sides))}",
@@ -62,7 +62,7 @@ def root() -> Div:
             ),
             Text(
                 content="k/K  cycle border kind\ne/E  cycle active edges",
-                style=border_color("slate", 400) | text_color("slate", 200) | border_lightrounded | pad_x(2),
+                style=border_color("slate", 400) | text_color("slate", 200) | border | border_lightrounded | pad_x(2),
             ),
         ],
         on_key=on_key,

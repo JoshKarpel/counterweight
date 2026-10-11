@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
-from counterweight.elements import AnyElement, CellPaint, Div, Text
-from counterweight.styles.styles import TextWrap
+from counterweight.elements import AnyElement, Chunk, Div, StyledChar, Text, text_cells
+from counterweight.geometry import Region
+from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
 if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode
@@ -16,163 +17,267 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedLayout:
-    content: waxy.Rect
-    padding: waxy.Rect
-    border: waxy.Rect
-    margin: waxy.Rect
+    content: Region
+    padding: Region
+    border: Region
+    margin: Region
     order: int
 
 
-# right < left and bottom < top → zero-width/height in the inclusive coordinate system
-_EMPTY_RECT = waxy.Rect(left=0, right=-1, top=0, bottom=-1)
+_EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)
 
 INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
-    content=_EMPTY_RECT,
-    padding=_EMPTY_RECT,
-    border=_EMPTY_RECT,
-    margin=_EMPTY_RECT,
+    content=_EMPTY_REGION,
+    padding=_EMPTY_REGION,
+    border=_EMPTY_REGION,
+    margin=_EMPTY_REGION,
     order=0,
 )
 
 
-def compute_layout(
-    shadow: ShadowNode,
-    available: waxy.AvailableSize,
-) -> list[tuple[AnyElement, ResolvedLayout]]:
+# Everything a `Text`'s measured size depends on: its content, its text style, and how it wraps.
+type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
+
+
+@dataclass(eq=False, slots=True)
+class LayoutTree:
     """
-    Build a waxy tree from the shadow tree, compute layout, and return
-    a flat list of (element, resolved_layout) pairs.
+    The layout tree for one app, kept across frames so that taffy keeps the layout it cached
+    for every node whose style, text and children are unchanged.
+
+    Each `ShadowNode` remembers its node in `layout_node`, which `update_shadow` carries over
+    wherever it carries over the node's hooks.
     """
-    tree: waxy.TaffyTree[Text] = waxy.TaffyTree()
-    node_map: dict[waxy.NodeId, ShadowNode] = {}
 
-    root_id = _build_node(tree, shadow, node_map)
+    tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
+    texts: dict[waxy.NodeId, TextSource] = field(default_factory=dict)
+    children: dict[waxy.NodeId, list[waxy.NodeId]] = field(default_factory=dict)
+    shadows: dict[waxy.NodeId, ShadowNode] = field(default_factory=dict)
 
-    tree.compute_layout(root_id, available, measure=_measure_text)
+    def compute(
+        self,
+        shadow: ShadowNode,
+        available: waxy.AvailableSize,
+    ) -> list[tuple[AnyElement, ResolvedLayout]]:
+        """Lay out the shadow tree, and return each visible element with its layout, in paint order."""
+        root = self.update(shadow)
 
-    results: list[tuple[AnyElement, ResolvedLayout]] = []
-    _extract_layout(tree, root_id, node_map, abs_x=0.0, abs_y=0.0, results=results)
+        self.tree.compute_layout(root, available, measure=_measure_text)
 
-    return results
+        results: list[tuple[AnyElement, ResolvedLayout]] = []
+        for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
+            visible = self.shadows[node]
+            resolved = _resolve_layout(position, layout, order)
+            visible.hooks.dims = resolved
+            results.append((visible.element, resolved))
+
+        return results
+
+    def update(self, shadow: ShadowNode) -> waxy.NodeId:
+        """Make the tree match the shadow tree, and return the root's node."""
+        shadows: dict[waxy.NodeId, ShadowNode] = {}
+        root = self._update_node(shadow, shadows)
+
+        # Taffy's remove detaches a node's children rather than removing them,
+        # so every unmounted node is removed, not just the root of an unmounted subtree.
+        for unmounted in self.shadows.keys() - shadows.keys():
+            self.tree.remove(unmounted)
+            self.texts.pop(unmounted, None)
+            self.children.pop(unmounted, None)
+
+        self.shadows = shadows
+        return root
+
+    def _update_node(self, shadow: ShadowNode, shadows: dict[waxy.NodeId, ShadowNode]) -> waxy.NodeId:
+        element = shadow.element
+        style = layout_style(element.style)
+        node = shadow.layout_node
+
+        # set_style keeps the node's cached layout when the style is equal,
+        # but set_node_context and set_children always discard it, so they're called only on a change.
+        match element:
+            case Text():
+                content = element.content if isinstance(element.content, str) else tuple(element.content)
+                source = (content, element.style.text_style, resolve_style(element.style).text_wrap)
+                if node is None:
+                    node = self.tree.new_leaf_with_context(style, MeasurableText.of(source))
+                else:
+                    self.tree.set_style(node, style)
+                    # A Div's children unmount along with it, and taffy's remove detaches them.
+                    self.children.pop(node, None)
+                    if self.texts.get(node) != source:
+                        self.tree.set_node_context(node, MeasurableText.of(source))
+                self.texts[node] = source
+            case Div():
+                child_nodes = [self._update_node(child, shadows) for child in shadow.children]
+                if node is None:
+                    node = self.tree.new_with_children(style, child_nodes)
+                else:
+                    self.tree.set_style(node, style)
+                    if self.texts.pop(node, None) is not None:
+                        self.tree.set_node_context(node, None)
+                    if self.children.get(node) != child_nodes:
+                        self.tree.set_children(node, child_nodes)
+                self.children[node] = child_nodes
+            case _:
+                assert_never(element)
+
+        shadow.layout_node = node
+        # Hidden subtrees are absent from absolute_layouts, so their components would otherwise
+        # keep reporting the regions from the last frame they were visible in.
+        shadow.hooks.dims = INITIAL_RESOLVED_LAYOUT
+        shadows[node] = shadow
+        return node
 
 
-def _build_node(
-    tree: waxy.TaffyTree[Text],
-    shadow: ShadowNode,
-    node_map: dict[waxy.NodeId, ShadowNode],
-) -> waxy.NodeId:
-    element = shadow.element
+_NO_BORDER = waxy.Style(
+    border_top=waxy.Length(0),
+    border_bottom=waxy.Length(0),
+    border_left=waxy.Length(0),
+    border_right=waxy.Length(0),
+)
 
-    match element:
-        case Text():
-            node_id = tree.new_leaf_with_context(element.style.layout, element)
-        case Div():
-            child_ids = [_build_node(tree, child_shadow, node_map) for child_shadow in shadow.children]
-            node_id = tree.new_with_children(element.style.layout, child_ids)
-        case _:
-            assert_never(element)
 
-    node_map[node_id] = shadow
-    return node_id
+@lru_cache(maxsize=2**12)
+def layout_style(style: Style) -> waxy.Style:
+    """
+    The waxy style an element is laid out with: its `layout`, without border widths
+    when its `border_kind` is `None`, as CSS's `border-style: none` makes border widths compute to 0.
+    """
+    if resolve_style(style).border_kind is None:
+        return style.layout | _NO_BORDER
+    return style.layout
+
+
+UNMEASURED = sentinel("UNMEASURED")
+
+
+@dataclass(eq=False, slots=True)
+class MeasurableText:
+    """
+    What layout needs to size a `Text`: its cells and how they wrap,
+    with the size they wrap to at each width already asked about.
+
+    Taffy asks a leaf about a dozen distinct questions per layout, but the answer depends only on
+    one effective width, so most questions repeat one already answered.
+    """
+
+    cells: tuple[StyledChar, ...]
+    wrap: TextWrap
+    sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
+    min_content_width: int | UNMEASURED | None = UNMEASURED
+
+    @classmethod
+    def of(cls, source: TextSource) -> MeasurableText:
+        content, text_style, wrap = source
+        return cls(cells=text_cells(content, text_style), wrap=wrap)
+
+    def size_at(self, width: int | None) -> tuple[int, int]:
+        """The widest line and the line count when wrapped at `width` (unlimited if `None`)."""
+        try:
+            return self.sizes[width]
+        except KeyError:
+            lines = wrap_cells(self.cells, self.wrap, width)
+            size = self.sizes[width] = (max((len(line) for line in lines), default=0), len(lines))
+            return size
+
+    def narrowest_width(self) -> int | None:
+        """
+        The narrowest width this text takes without breaking a word, as CSS's `min-content` is for text:
+        its widest word if it wraps, or `None` (unlimited) if it doesn't.
+        """
+        if self.min_content_width is UNMEASURED:
+            self.min_content_width = _min_content_width(self.cells, self.wrap)
+        return self.min_content_width
 
 
 def _measure_text(
     known: waxy.KnownSize,
     available: waxy.AvailableSize,
-    context: Text,
+    context: MeasurableText,
 ) -> waxy.Size:
-    width: float | None = known.width
-    if width is None and isinstance(available.width, waxy.Definite):
-        width = available.width.value
+    known_width = known.width
+    known_height = known.height
 
-    lines = wrap_cells(
-        context.cells,
-        context.style.text_wrap,
-        int(width) if width is not None else None,
-    )
+    width: int | None
+    if known_width is not None:
+        width = int(known_width)
+    else:
+        match available.width:
+            case waxy.Definite(value=value):
+                width = int(value)
+            case waxy.MinContent():
+                width = context.narrowest_width()
+            case waxy.MaxContent():
+                width = None
+            case _ as unreachable:
+                assert_never(unreachable)
 
+    widest, line_count = context.size_at(width)
+
+    # Positional, because pyo3 matches keyword arguments by name on every call, which nearly doubles its cost.
     return waxy.Size(
-        width=known.width if known.width is not None else float(max((len(l) for l in lines), default=0)),
-        height=known.height if known.height is not None else float(len(lines)),
+        known_width if known_width is not None else float(widest),
+        known_height if known_height is not None else float(line_count),
     )
 
 
-def _extract_layout(
-    tree: waxy.TaffyTree[Text],
-    node_id: waxy.NodeId,
-    node_map: dict[waxy.NodeId, ShadowNode],
-    abs_x: float,
-    abs_y: float,
-    results: list[tuple[AnyElement, ResolvedLayout]],
-) -> None:
-    """Walk tree top-down, accumulating absolute positions.
+def _min_content_width(cells: Iterable[StyledChar], wrap: TextWrap) -> int | None:
+    """The widest word in `cells`, or `None` (unlimited) if they don't wrap."""
+    if wrap == "none":
+        return None
 
-    abs_x/abs_y is the absolute position of the current node's parent's border box origin,
-    i.e. the origin that taffy's relative ``layout.location`` is measured from.
-    For the root node, pass (0, 0).
+    return max(
+        (len(word) for paragraph in _split_paragraphs(cells) for word in _extract_words_and_spaces(paragraph)[0]),
+        default=None,
+    )
+
+
+@lru_cache(maxsize=2**12)
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> ResolvedLayout:
     """
-    layout = tree.unrounded_layout(node_id)
-    shadow = node_map[node_id]
+    The cell regions of one node's boxes, from its absolute border-box position.
 
-    # display:nil hides the entire subtree, matching CSS display:none semantics
-    if shadow.element.style.layout.display == waxy.Display.Nil:
-        return
+    Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
+    integral and adjacent boxes share edges without gaps or overlaps.
 
-    border_abs_x = abs_x + layout.location.x
-    border_abs_y = abs_y + layout.location.y
+    Cached because most nodes keep their position and layout from one frame to the next,
+    and building the regions is most of the cost of reading layouts back.
+    """
+    left = int(position.x)
+    top = int(position.y)
+    border = Region(left=left, top=top, right=left + int(layout.size.width), bottom=top + int(layout.size.height))
 
-    # floor for left/top (round toward -inf) so negative coordinates work.
-    # floor(end) - 1 for right/bottom: always rounds down, so a fractional start
-    # position (e.g. 18.667 from justify_content:space_evenly) doesn't inflate the
-    # element's discrete row/column count when the size is an exact integer (e.g.
-    # start=18.667, size=4.0 → end=22.667 → floor=22 → bb=21, height=4, not 5).
-    # This also correctly handles fractional flex sizes where frac(start)+frac(size)
-    # reaches an exact integer boundary (e.g. start=12.667, size=7.333 → end=20.0).
-    bx = math.floor(border_abs_x)
-    by = math.floor(border_abs_y)
-    br = math.floor(border_abs_x + layout.size.width) - 1
-    bb = math.floor(border_abs_y + layout.size.height) - 1
-
-    border_rect = waxy.Rect(left=bx, right=br, top=by, bottom=bb)
-
-    margin_rect = waxy.Rect(
-        left=bx - int(layout.margin.left),
-        right=br + int(layout.margin.right),
-        top=by - int(layout.margin.top),
-        bottom=bb + int(layout.margin.bottom),
+    margin_widths = layout.margin
+    margin = Region(
+        left=border.left - int(margin_widths.left),
+        top=border.top - int(margin_widths.top),
+        right=border.right + int(margin_widths.right),
+        bottom=border.bottom + int(margin_widths.bottom),
     )
 
-    pl = bx + int(layout.border.left)
-    pt = by + int(layout.border.top)
-    pr = br - int(layout.border.right)
-    pb = bb - int(layout.border.bottom)
-    padding_rect = waxy.Rect(left=pl, right=pr, top=pt, bottom=pb)
-
-    content_rect = waxy.Rect(
-        left=pl + int(layout.padding.left),
-        right=pr - int(layout.padding.right),
-        top=pt + int(layout.padding.top),
-        bottom=pb - int(layout.padding.bottom),
+    border_widths = layout.border
+    padding = Region(
+        left=border.left + int(border_widths.left),
+        top=border.top + int(border_widths.top),
+        right=border.right - int(border_widths.right),
+        bottom=border.bottom - int(border_widths.bottom),
     )
 
-    resolved = ResolvedLayout(
-        content=content_rect,
-        padding=padding_rect,
-        border=border_rect,
-        margin=margin_rect,
-        order=len(results),
+    padding_widths = layout.padding
+    content = Region(
+        left=padding.left + int(padding_widths.left),
+        top=padding.top + int(padding_widths.top),
+        right=padding.right - int(padding_widths.right),
+        bottom=padding.bottom - int(padding_widths.bottom),
     )
-    results.append((shadow.element, resolved))
 
-    shadow.hooks.dims = resolved
-
-    for child_node_id in tree.children(node_id):
-        _extract_layout(tree, child_node_id, node_map, border_abs_x, border_abs_y, results)
+    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
 
 
-def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
-    paragraphs: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
+def _split_paragraphs(cells: Iterable[StyledChar]) -> list[list[StyledChar]]:
+    paragraphs: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
     for cell in cells:
         if cell.char == "\n":
             paragraphs.append(current)
@@ -184,18 +289,18 @@ def _split_paragraphs(cells: Iterable[CellPaint]) -> list[list[CellPaint]]:
 
 
 def _extract_words_and_spaces(
-    paragraph: list[CellPaint],
-) -> tuple[list[list[CellPaint]], list[list[CellPaint]]]:
+    paragraph: list[StyledChar],
+) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
     """Split a paragraph into (words, spaces).
 
     words[i] is a non-space run; spaces[i] is the space run between words[i] and words[i+1].
     Leading and trailing spaces are discarded.
     len(spaces) == len(words) - 1.
     """
-    words: list[list[CellPaint]] = []
-    spaces: list[list[CellPaint]] = []
-    current_word: list[CellPaint] = []
-    current_space: list[CellPaint] = []
+    words: list[list[StyledChar]] = []
+    spaces: list[list[StyledChar]] = []
+    current_word: list[StyledChar] = []
+    current_space: list[StyledChar] = []
 
     for cell in paragraph:
         if cell.char == " ":
@@ -223,17 +328,17 @@ def _extract_words_and_spaces(
 
 
 def _flatten_long_words(
-    words: list[list[CellPaint]],
-    spaces: list[list[CellPaint]],
+    words: list[list[StyledChar]],
+    spaces: list[list[StyledChar]],
     width: int,
-) -> tuple[list[list[CellPaint]], list[list[CellPaint]]]:
+) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
     """Break any word longer than width into width-sized chunks.
 
     Space runs between chunks of the same word become [] (no space between hyphenated chunks).
     Returns (flat_words, flat_spaces) with len(flat_spaces) == len(flat_words) - 1.
     """
-    flat_words: list[list[CellPaint]] = []
-    flat_spaces: list[list[CellPaint]] = []
+    flat_words: list[list[StyledChar]] = []
+    flat_spaces: list[list[StyledChar]] = []
 
     for i, word in enumerate(words):
         if len(word) > width:
@@ -252,15 +357,15 @@ def _flatten_long_words(
     return flat_words, flat_spaces
 
 
-def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _break_long_word(word: list[StyledChar], width: int) -> list[list[StyledChar]]:
     """Break a word that is longer than width into width-sized chunks, hyphenating all but the last."""
     if width <= 1:
         return [word[i : i + width] for i in range(0, len(word), width)]
-    chunks: list[list[CellPaint]] = []
+    chunks: list[list[StyledChar]] = []
     i = 0
     while i < len(word):
         if i + width < len(word):
-            hyphen = CellPaint(char="-", style=word[i + width - 2].style)
+            hyphen = StyledChar(char="-", style=word[i + width - 2].style)
             chunks.append([*word[i : i + width - 1], hyphen])
             i += width - 1
         else:
@@ -269,13 +374,13 @@ def _break_long_word(word: list[CellPaint], width: int) -> list[list[CellPaint]]
     return chunks
 
 
-def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_greedy(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
 
-    lines: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
-    pending_space: list[CellPaint] = []
+    lines: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
+    pending_space: list[StyledChar] = []
 
     for i, word in enumerate(flat_words):
         if not current:
@@ -293,7 +398,7 @@ def _wrap_greedy(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
     return lines
 
 
-def _greedy_line_count(flat_words: list[list[CellPaint]], flat_spaces: list[list[CellPaint]], width: int) -> int:
+def _greedy_line_count(flat_words: list[list[StyledChar]], flat_spaces: list[list[StyledChar]], width: int) -> int:
     count = 1
     length = 0
     pending_space_len = 0
@@ -313,15 +418,15 @@ def _greedy_line_count(flat_words: list[list[CellPaint]], flat_spaces: list[list
 
 
 def _wrap_at_target(
-    flat_words: list[list[CellPaint]],
-    flat_spaces: list[list[CellPaint]],
+    flat_words: list[list[StyledChar]],
+    flat_spaces: list[list[StyledChar]],
     width: int,
     target: int,
-) -> list[list[CellPaint]]:
+) -> list[list[StyledChar]]:
     """Greedy wrap with long-word breaking, targeting `target` width for line breaks."""
-    lines: list[list[CellPaint]] = []
-    current: list[CellPaint] = []
-    pending_space: list[CellPaint] = []
+    lines: list[list[StyledChar]] = []
+    current: list[StyledChar] = []
+    pending_space: list[StyledChar] = []
 
     for i, word in enumerate(flat_words):
         if not current:
@@ -339,7 +444,7 @@ def _wrap_at_target(
     return lines
 
 
-def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_balance(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
         return [[]]
@@ -363,7 +468,7 @@ def _wrap_balance(paragraph: list[CellPaint], width: int) -> list[list[CellPaint
     return _wrap_at_target(flat_words, flat_spaces, width, lo)
 
 
-def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]]:
+def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
     """DP optimal line-breaking minimizing sum of squared slack on non-last lines."""
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
@@ -415,11 +520,11 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
                 bp[i] = j
 
     # Reconstruct lines.
-    lines: list[list[CellPaint]] = []
+    lines: list[list[StyledChar]] = []
     i = 0
     while i < n:
         j = bp[i]
-        line: list[CellPaint] = []
+        line: list[StyledChar] = []
         for k in range(i, j):
             if k > i:
                 # Insert the actual space run between flat_words[k-1] and flat_words[k].
@@ -433,10 +538,10 @@ def _wrap_pretty(paragraph: list[CellPaint], width: int) -> list[list[CellPaint]
 
 
 def wrap_cells(
-    cells: Iterable[CellPaint],
+    cells: Iterable[StyledChar],
     wrap: TextWrap,
     width: int | None,
-) -> list[list[CellPaint]]:
+) -> list[list[StyledChar]]:
     if width is not None and width <= 0:
         return []
 
@@ -445,7 +550,7 @@ def wrap_cells(
     if wrap == "none" or width is None:
         return paragraphs
 
-    result: list[list[CellPaint]] = []
+    result: list[list[StyledChar]] = []
     for paragraph in paragraphs:
         if wrap == "stable":
             result.extend(_wrap_greedy(paragraph, width))

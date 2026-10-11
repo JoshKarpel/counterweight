@@ -2,6 +2,7 @@ import pytest
 
 from counterweight.output import sgr_from_cell_style
 from counterweight.styles import CellStyle
+from counterweight.styles.styles import resolve_cell_style
 
 
 @pytest.mark.parametrize(
@@ -16,4 +17,4 @@ from counterweight.styles import CellStyle
     ),
 )
 def test_examples(style: CellStyle, expected: str) -> None:
-    assert sgr_from_cell_style(style) == expected
+    assert sgr_from_cell_style(resolve_cell_style(style)) == expected

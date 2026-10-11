@@ -492,3 +492,312 @@ Now that `__hash__` is an explicit method in `styles.py`, Scalene surfaces it at
 though the new version is *faster* (just `return self._hash`). The old generated version was
 computing `hash((Color, Color, bool, bool, bool, bool, bool))` on every `StyleFragment.__or__`
 call, including cache hits, which is the majority of calls in a hot render loop.
+
+### Run 9 — all four benchmark workloads, devlog through without-logging
+
+**Change:** the devlog moves from structlog (bridged through stdlib `logging`, rendered twice,
+once per file, synchronously in every log call) to without-logging: stdlib `logging` records,
+parsed in the caller, encoded once as JSON by a sink task, and written by a dedicated thread.
+`counterweight devlog` renders the human view at read time.
+
+Measured with `just profile <workload> <workload>-structlog` on a worktree at the parent commit,
+then `just profile <workload> <workload>-without`. Frame times are from the unprofiled runs;
+logging cost is the profile's share of logging samples times the mean frame time.
+
+| Workload | Mean frame before | Mean frame after | Change | Logging before | Logging after (emit + sink) |
+|---|---|---|---|---|---|
+| canvas | 10.58 ms | 10.16 ms | −4.0% | 0.99 ms | 0.29 + 0.05 = 0.34 ms |
+| top | 33.89 ms | 31.58 ms | −6.8% | 1.07 ms | 0.30 + 0.04 = 0.34 ms |
+| agent | 7.36 ms | 7.14 ms | −3.0% | 0.92 ms | 0.26 + 0.06 = 0.32 ms |
+| dashboard | 4.47 ms | 3.50 ms | −21.6% | 0.80 ms | 0.18 + 0.10 = 0.27 ms |
+
+Logging falls by about two thirds on every workload. `top`'s frame time fell by more than its
+whole logging cost, so part of its change is run-to-run noise on the shared VM; the logging
+column is the robust comparison.
+
+What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord` (including
+`findCaller`) and without-logging's `parse_record`. The sink task's JSON encoding runs between
+frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.
+
+### Run 10 — all four benchmark workloads, per-frame layout (styling-foundations step 10)
+
+**Changes,** each profiled with `just profile <workload> <workload>-<change>` against the run before it:
+
+1. `memo`: taffy's measure callback reads a `MeasurableText` node context, built once per `Text`
+   per frame, which keeps the `Text`'s cells and its wrapped size at each effective width asked about.
+   Before, every callback recomputed `Text.cells`, whose `lru_cache` hashes the whole content.
+2. `reuse`: `LayoutTree` keeps one `TaffyTree` for the app's lifetime.
+   Each `ShadowNode` keeps its `NodeId` (`update_shadow` carries it over with the hooks),
+   and each frame reconciles the tree: `set_style` on every node (a no-op for an equal style),
+   `set_node_context` only when a `Text`'s content, text style or wrap changed,
+   `set_children` only when a node's children changed, and `remove` for every unmounted node.
+3. `resolve`: `_resolve_layout`, which turns a node's absolute position and `waxy.Layout`
+   into four `Region`s, is an `lru_cache` keyed on `(position, layout, order)`.
+   It isn't in the plan; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
+
+Frame times (unprofiled runs):
+
+| Workload | Median base | memo | reuse | resolve | Mean base | Mean resolve |
+|---|---|---|---|---|---|---|
+| canvas | 9.10 ms | 6.05 ms | 6.22 ms | 6.05 ms | 10.53 ms | 6.60 ms |
+| top | 31.01 ms | 27.96 ms | 28.54 ms | 26.05 ms | 34.44 ms | 28.36 ms |
+| agent | 5.21 ms | 4.44 ms | 3.84 ms | 3.79 ms | 6.49 ms | 4.84 ms |
+| dashboard | 3.27 ms | 2.92 ms | 2.65 ms | 2.56 ms | 3.75 ms | 2.86 ms |
+
+Layout stage (`compute_layout`, then `LayoutTree.compute`), ms per mean frame:
+
+| Workload | base | memo | reuse | resolve |
+|---|---|---|---|---|
+| canvas | 3.92 | 0.86 | 0.80 | 0.73 |
+| top | 10.10 | 7.59 | 7.55 | 4.88 |
+| agent | 1.88 | 0.90 | 0.57 | 0.42 |
+| dashboard | 0.79 | 0.52 | 0.38 | 0.17 |
+
+Where layout's samples went, by what the layout stage called:
+
+| Workload | Run | Build or update tree | Taffy (native) | Measure callbacks | Read back |
+|---|---|---|---|---|---|
+| canvas | base | 0% | 1% | 96% | 3% |
+| canvas | resolve | 63% | 6% | 27% | 4% |
+| top | base | 6% | 16% | 41% | 36% |
+| top | resolve | 51% | 24% | 16% | 9% |
+| agent | base | 3% | 8% | 78% | 10% |
+| agent | resolve | 59% | 10% | 19% | 12% |
+| dashboard | base | 6% | 16% | 53% | 24% |
+| dashboard | resolve | 47% | 26% | 15% | 12% |
+
+- The memo does most of the work everywhere: taffy asks a leaf about a dozen distinct questions
+  per layout, and on `canvas` each one hashed a 1,600-chunk tuple.
+- Reusing the tree pays off where most text is unchanged between frames (`agent` −37%, `dashboard`
+  −26% of layout) and does nothing measurable where every `Text` changes every frame (`canvas`, `top`).
+- What's left is mostly reconciliation: building each changed `Text`'s cells, hashing styles for
+  `layout_style` and `resolve_style`, and, on `top`, samples Tachyon labels `<GC>` (see below).
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
+
+**Garbage collection.** Tachyon attributes 1–3.5% of samples to `<GC>` (`top` most), but
+`gc.callbacks` and `gc.get_stats()` count about two young and one full collection per 500-frame run,
+about 20 ms in all, at the default threshold of 2000 and at 50,000 alike.
+The young generation's count is allocations minus deallocations, and nearly every per-frame object
+is freed by reference counting, so the threshold is rarely reached.
+Raising it changed frame times only within noise, so counterweight leaves the collector's settings
+to the app. What Tachyon's `<GC>` frames cover beyond cyclic collection is unexplained.
+
+### Run 11 — all four benchmark workloads, faster interning
+
+**Change:** `@flyweight` returns a slotless subclass whose metaclass's `__call__` is an `lru_cache`
+keyed on the raw call arguments, so constructing an instance equal to a cached one is a single
+C-level cache hit that skips `__new__`, `__init__` and `__post_init__`.
+A miss builds the instance normally and interns it in a second `lru_cache` keyed on the instance
+itself, so every spelling of a call shares one instance; that needs hashable instances, so `P` is frozen.
+The hot `P` and `Position` call sites pass arguments positionally, which is about 50 ns cheaper per hit.
+Profiled with `just profile <workload> <workload>-paintbase` before and `<workload>-intern` after.
+
+Before, `flyweight.__new__`, its key-building genexpr, the re-run dataclass `__init__` and `__hash__`
+were about half of `paint_layout`'s samples on every workload.
+Every call site passed keyword arguments, the slowest path through `__new__`.
+Per construction, on a cache hit:
+
+| Construction | Before | After |
+|---|---|---|
+| `P`, keyword arguments | 988 ns | 180 ns |
+| `P`, positional | 259 ns | 126 ns |
+| `Position`, keyword arguments | 1084 ns | 214 ns |
+| `Position`, positional | 342 ns | 130 ns |
+
+Frame times (unprofiled runs):
+
+| Workload | Median before | Median after | Change | Mean before | Mean after |
+|---|---|---|---|---|---|
+| canvas | 6.02 ms | 3.56 ms | −41% | 6.60 ms | 4.41 ms |
+| top | 26.48 ms | 20.27 ms | −23% | 28.96 ms | 25.72 ms |
+| agent | 3.63 ms | 2.49 ms | −31% | 4.87 ms | 3.74 ms |
+| dashboard | 2.42 ms | 1.61 ms | −33% | 2.77 ms | 2.05 ms |
+
+Paint stage (`paint_layout`), ms per mean frame:
+
+| Workload | Before | After | Change |
+|---|---|---|---|
+| canvas | 4.21 | 1.77 | −58% |
+| top | 12.76 | 7.99 | −37% |
+| agent | 2.77 | 1.41 | −49% |
+| dashboard | 1.49 | 0.70 | −53% |
+
+- `compare` shows `diff_paint` and `paint_to_instructions` growing by up to 39% on `top` and `agent`,
+  but their sample counts are unchanged (`agent` 456 → 469, `top` 931 → 975) and so are their `__eq__` fallbacks,
+  so cells still compare by identity. A stage's ms/frame is its share of the profile times the unprofiled mean
+  frame, and shrinking paint raises every other stage's share faster than the mean frame falls.
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
+- What's left in paint is the representation: a `dict[Position, P]` per element, merged with `|=`,
+  and per-cell construction where whole rows could be filled with one slice assignment.
+
+### Run 12 — all four benchmark workloads, `Paint` as a screen-sized buffer
+
+**Change:** `Paint` is a class holding a row-major `list[Cell]` for the whole screen, rather than a
+`dict[Position, Cell]` built per element and merged with `|=`.
+
+- Elements are sorted by `(z, order)` and paint straight into one buffer, clipped to the screen.
+  A fill is one slice assignment per row; text is one per line.
+- An element's margin edge, border and padding edge are cached as `(Region, Cell)` fills, and its text
+  as rows of cells keyed on the content region's size, not position, so text that moves (everything
+  below `agent`'s streaming message) keeps its cache entry.
+- `Cell` (renamed from `P`) no longer carries `z`: painting in z order makes it redundant,
+  and without it equal-looking cells intern to one instance.
+- `diff_paint` skips a row when the whole row compares equal (in C, identity first), and returns runs
+  of adjacent changed cells. `paint_to_instructions` moves the cursor once per run and writes an SGR
+  sequence only when the style changes, rather than a move, SGR and reset for every cell.
+
+Profiled with `just profile <workload> <workload>-buffer`, compared against `<workload>-paintbase`
+(before run 11). Frame times (unprofiled runs):
+
+| Workload | Median before run 11 | After run 11 | After run 12 | Change overall |
+|---|---|---|---|---|
+| canvas | 6.02 ms | 3.56 ms | 2.51 ms | −58% |
+| top | 26.48 ms | 20.27 ms | 13.36 ms | −50% |
+| agent | 3.63 ms | 2.49 ms | 0.99 ms | −73% |
+| dashboard | 2.42 ms | 1.61 ms | 0.78 ms | −68% |
+
+Stages, ms per mean frame, before run 11 → after run 12:
+
+| Workload | Paint | Diff | Output |
+|---|---|---|---|
+| canvas | 4.21 → 0.94 | 0.50 → 0.38 | 0.20 → 0.14 |
+| top | 12.76 → 2.82 | 1.73 → 0.75 | 1.74 → 0.45 |
+| agent | 2.77 → 0.27 | 0.72 → 0.07 | 0.22 → 0.02 |
+| dashboard | 1.49 → 0.30 | 0.46 → 0.03 | 0.005 → 0.002 |
+
+- Paint is no longer the largest stage on `top`: `update_shadow` (5.3 ms) and layout (4.0 ms) are.
+- What's left of paint is per-element overhead on `top` (hundreds of short `Text`s), and on `canvas`,
+  building text rows on cache misses (every walker moves every frame) and hashing cache keys.
+- The last frame of every workload (`profiles/<name>.txt`) is identical to `<workload>-paintbase`,
+  and so is every docs screenshot.
+
+**Decision: off-screen cells are invisible, including to border healing.** A screen-sized buffer has
+nowhere to keep cells that fall off the screen, so painting clips them, and `heal_borders` sees an
+off-screen neighbor as absent. Before, a border running off the screen could join with an off-screen
+border's characters at the edge. No screenshot or test exercises that case. We may reverse this later;
+doing so means keeping off-screen cells somewhere healing can look at them, for example a buffer
+padded by a margin around the screen.
+
+### Run 13 — does `@flyweight` still pay, after the `Paint` buffer?
+
+**Method:** unprofiled `benchmarks run` with `@flyweight` replaced by the identity decorator for chosen
+classes, patched into `counterweight._utils` before the package imports (its `__init__` applies the
+decorators, so patching after `import counterweight` silently changes nothing). Every configuration's
+last frames are identical to interning on. A first pass ran each configuration once; two runs of the
+same interned code in that pass differed by up to 27% on `top`, so the configurations that moved were
+rerun in three interleaved rounds.
+
+Median frame time, median of three rounds, change against interning on:
+
+| Workload | Interning on | All off | `Cell` off | `CellStyle` off |
+|---|---|---|---|---|
+| canvas | 2.56 ms | +20% | +21% | −3% |
+| top | 12.21 ms | +16% | +7% | +9% |
+| agent | 0.95 ms | +15% | +10% | +3% |
+| dashboard | 0.82 ms | +7% | +3% | +4% |
+
+- `Cell` interning still pays wherever cells change: `diff_paint`'s row comparison and its per-cell
+  fallback short-circuit on identity, and an uninterned cell built this frame never is the one
+  from last frame, so every comparison falls through to the dataclass `__eq__`.
+- `CellStyle` interning pays on `top`. Unverified explanation: hundreds of `Text`s build styles every
+  frame that end up as cache keys (`text_cells`, `resolve_cell_style`), whose lookups short-circuit on identity.
+- Turning off `Position`, `ResolvedCellStyle` or `StyledChar` interning showed no slowdown in the
+  single first pass (every workload within that pass's noise, mostly faster).
+  `Position` has left the hot path entirely: the buffer indexes by integers.
+  Those three are candidates to drop, pending a repeated run to confirm.
+
+### Run 14 — confirming run 13's candidates: `Position`, `ResolvedCellStyle`, `StyledChar`
+
+**Method:** as in run 13, three interleaved rounds of unprofiled `benchmarks run` (500 frames),
+with each candidate's interning off alone and all three off together.
+Every configuration's last frames are identical to interning on.
+Output bytes are counted separately (100 frames, wrapping `paint_to_instructions`),
+because headless runs build the instructions but never write them, so frame time can't show their size.
+
+Median frame time, median of three rounds, change against interning on:
+
+| Workload | Interning on | `Position` off | `ResolvedCellStyle` off | `StyledChar` off | All three off |
+|---|---|---|---|---|---|
+| canvas | 2.41 ms | +4% | +9% | +0% | +2% |
+| top | 12.99 ms | −4% | −0% | −1% | −1% |
+| agent | 0.91 ms | +5% | +5% | +10% | +11% |
+| dashboard | 0.79 ms | +3% | +0% | +2% | +3% |
+
+The spread between rounds of the same configuration is up to 8% (`top`, interning on: 12.19–13.18 ms).
+
+Output bytes over 100 frames with `ResolvedCellStyle` interning off:
+
+| Workload | On | Off |
+|---|---|---|
+| canvas | 737,784 | 737,784 |
+| top | 1,380,087 | 2,056,441 (+49%) |
+| agent | 42,165 | 95,318 (+126%) |
+| dashboard | 9,031 | 9,031 |
+
+- `Position` interning is dropped: every workload is within the round-to-round spread.
+- `ResolvedCellStyle` interning stays. `paint_to_instructions` starts a new SGR sequence when a cell's
+  style isn't the same object as the previous cell's, so equal styles that aren't one instance
+  re-send their SGR sequence. Comparing with `!=` after the identity check would make the output
+  independent of interning, at the cost of an `__eq__` call wherever the style really changes.
+- `StyledChar` interning stays: `agent` is slower with it off in all three rounds.
+  Unverified explanation: `justify_line` builds its padding with `StyledChar(char=" ")`,
+  which interning turns into a cache hit.
+
+### Run 15 — what styles cost per frame (styling-foundations step 12)
+
+**Question:** what step 4's resolve step and step 5's derived border widths cost per frame,
+and whether `Style` should cache its hash, now that `resolve_style`, `layout_style` and the merge cache
+all hash styles on every frame.
+
+**Where styles went, before any change** (`<workload>-s12base`, share of running samples):
+
+- `resolve_style`, `resolve_cell_style` and `layout_style` are `lru_cache` hits on every workload;
+  their bodies run on misses only, at most 0.5% of samples.
+  What they cost is hashing the `Style` key: on `top`, the dataclass-generated `__hash__` called from
+  `_update_node` (`layout_style`, and `resolve_style` for a `Text`'s wrap) is 1.6%, and from `paint_layout` 0.7%.
+  So step 5's derived border widths cost one key hash per element per frame, and nothing else.
+- Merging was the real cost. `StyleFragment.__or__` was 18.3% of `top`'s samples, 5.4% of `dashboard`'s:
+  `top` merges four styles per cell of every process row, every frame.
+  The merge cache was a cachetools `LRUCache`, whose `__getitem__` and `__touch` are Python and hash and
+  compare the `(left, right)` key again on every hit, and `Style`'s generated `__hash__` recomputes
+  a tuple of its eleven fields every call, about 225 ns.
+- On `canvas`, the generated `__hash__` is 12% of samples, but it hashes text content
+  (`Text.cells`, `MeasurableText.of`, `text_lines`' key), not styles.
+
+**Changes,** each profiled with `just profile <workload> <workload>-<change>` against the run before it:
+
+1. `lru`: the merge cache is a `functools.lru_cache` around `merge_style_fragments`, which hashes the key once
+   per lookup, in C. counterweight no longer depends on cachetools.
+2. `hash`: `Style` computes its hash once, in `__post_init__`, as `CellStyle` and `ResolvedCellStyle` already do.
+
+Per operation (`timeit`, best of five):
+
+| Operation | Before | `lru` | `hash` |
+|---|---|---|---|
+| `hash(Style)` | 227 ns | 227 ns | 56 ns |
+| `a \| b`, cache hit, `b` the cached instance | 746 ns | 504 ns | 155 ns |
+| `a \| b`, cache hit, `b` equal but distinct | 2166 ns | 983 ns | 564 ns |
+| `Style(text_style=CellStyle(...))` | 1512 ns | 1512 ns | 2348 ns |
+
+Median frame time, median of three interleaved rounds of unprofiled `benchmarks run`,
+each configuration importing counterweight from its own copy of `src` (`PYTHONPATH`):
+
+| Workload | Before | `lru` | `lru` and `hash` |
+|---|---|---|---|
+| canvas | 2.45 ms | −2% | −1% |
+| top | 12.18 ms | −7% | −15% |
+| agent | 0.95 ms | +3% | −4% |
+| dashboard | 0.80 ms | −6% | −10% |
+
+On `top` the rounds don't overlap: 11.92–12.55 ms before, 10.24–10.66 ms after both changes.
+`canvas` and `agent` are within the round-to-round spread; neither merges many styles per frame.
+
+- On `top`, `StyleFragment.__or__` falls from 18.3% to 5.9% of samples, and `Style.__post_init__`
+  rises from 1.5% to 4.3%: `top` builds fresh `Style`s every frame (`Style()`, `Style(text_style=...)`),
+  and each now pays for its hash when built rather than when first hashed. Every one of them is hashed
+  by a merge in the same frame, so the up-front hash is never wasted there.
+- What's left of merging on `top` is the generated `__eq__` (3.5% of samples): a freshly built `Style`
+  equal to last frame's is a cache hit only after comparing every field, including the `waxy.Style`.
+  Interning `Style` with `@flyweight` would make those hits identity checks, at the cost of a lookup on
+  every construction; that's untested.
+- The last frame of every workload (`profiles/<name>.txt`) is identical before and after.

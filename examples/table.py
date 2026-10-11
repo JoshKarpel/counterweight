@@ -1,9 +1,8 @@
 import asyncio
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-
-from structlog import get_logger
 
 from counterweight.app import app
 from counterweight.components import component
@@ -13,7 +12,7 @@ from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -87,7 +86,7 @@ def root() -> Div:
     sorted_peaks = tuple(sorted(PEAKS, key=sort_key, reverse=not sort_asc))
 
     return Div(
-        style=col | align_children_center | justify_children_center,
+        style=col | center_children,
         on_key=on_key,
         children=[
             Text(
@@ -130,7 +129,7 @@ def header_cell(label: str, col_width: int, col_idx: int, sort_col: int, sort_as
     indicator = (" ↑" if sort_asc else " ↓") if col_idx == sort_col else ""
     return Text(
         content=f"{label}{indicator}",
-        style=content_box | border_light | width(col_width) | pad_x(1) | text_color("amber", 300) | text_bold,
+        style=content_box | border | width(col_width) | pad_x(1) | text_color("amber", 300) | text_bold,
     )
 
 
@@ -151,7 +150,7 @@ def data_cell(value: str, col_width: int, selected: bool) -> Text:
         content=value,
         style=(
             content_box
-            | border_light
+            | border
             | width(col_width)
             | pad_x(1)
             | (text_bold | text_color("sky", 200) if selected else text_color("slate", 300))

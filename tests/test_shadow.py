@@ -43,7 +43,7 @@ async def render(
     task_group: TaskGroup,
 ) -> tuple[ShadowNode, set[Task[None]]]:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
-    shadow, _ = update_shadow(root, previous)
+    shadow = update_shadow(root, previous)
     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=task_group)
     await sleep(0)
     return shadow, active_effects
@@ -382,12 +382,12 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
-    shadow, _ = update_shadow(Div(children=[remembers("a", setters, seen)]), None)
+    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None)
     state = ref(shadow.children[0].hooks.data[0])
 
     gc.disable()
     try:
-        shadow, _ = update_shadow(Div(children=[Div()]), shadow)
+        shadow = update_shadow(Div(children=[Div()]), shadow)
         is_freed = state() is None
     finally:
         gc.enable()
@@ -427,15 +427,15 @@ def calls_hooks(hook_count: int) -> Text:
     ],
 )
 def test_changing_hook_count_between_renders_raises(first_count: int, second_count: int) -> None:
-    shadow, _ = update_shadow(calls_hooks(first_count), None)
+    shadow = update_shadow(calls_hooks(first_count), None)
 
     with pytest.raises(InconsistentHookExecution):
         update_shadow(calls_hooks(second_count), shadow)
 
 
 def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
-    shadow, _ = update_shadow(calls_hooks(2), None)
-    shadow, _ = update_shadow(calls_hooks(2), shadow)
+    shadow = update_shadow(calls_hooks(2), None)
+    shadow = update_shadow(calls_hooks(2), shadow)
 
     assert len(shadow.hooks.data) == 2
 
@@ -454,7 +454,7 @@ def raises_on_render(should_raise: bool) -> Text:
 
 @pytest.mark.parametrize("is_rerender", [False, True], ids=["mount", "rerender"])
 def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
-    previous = update_shadow(raises_on_render(False), None)[0] if is_rerender else None
+    previous = update_shadow(raises_on_render(False), None) if is_rerender else None
     outer_hooks = Hooks()
     outer_hook_idx = 5
     state_token = current_hook_state.set(outer_hooks)

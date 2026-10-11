@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import dataclasses
 from asyncio import Queue, QueueEmpty, Task, get_event_loop, wait
 from collections.abc import Iterable
 from functools import lru_cache
 from inspect import isawaitable
 from math import ceil, floor
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 
 
 async def drain_queue[T](queue: Queue[T]) -> list[T]:
@@ -72,34 +71,41 @@ def teardown_failure(task: Task[object]) -> BaseException:
 
 def flyweight[T](maxsize: int = 2**10) -> Callable[[type[T]], type[T]]:
     """
-    Class decorator that interns instances of a dataclass by their field values.
-    Repeated construction with the same arguments returns the same object.
+    Class decorator that interns instances of a frozen dataclass by value,
+    so constructing equal values returns the same object while it stays cached.
+    Painting relies on this to compare cells by identity before falling back to equality.
+
+    The decorator returns a slotless subclass whose metaclass caches `__call__` on the raw call arguments,
+    so repeating a call is one cache hit in C that skips `__new__`, `__init__` and `__post_init__`.
+    On a miss, the instance is built normally (so bad arguments raise as usual),
+    then interned by its own equality and hash, so `C(1, 2)`, `C(1, y=2)` and `C(x=1, y=2)`
+    share one instance even though each spelling has its own entry in the first cache.
     """
 
     def decorator(cls: type[T]) -> type[T]:
-        fields = dataclasses.fields(cls)  # type: ignore[arg-type]
-        field_names = tuple(f.name for f in fields)
-        field_defaults = {f.name: f.default for f in fields if f.default is not dataclasses.MISSING}
+        if cls.__hash__ is None:
+            raise TypeError(
+                f"@flyweight needs hashable instances, but {cls.__qualname__} is unhashable (make it frozen)"
+            )
+
+        construct: Callable[..., T] = type(cls).__call__
 
         @lru_cache(maxsize=maxsize)
-        def _new(*args: Any) -> T:
-            return object.__new__(cls)
+        def canonical(instance: T) -> T:
+            return instance
 
-        def __new__(klass: type[T], *args: Any, **kwargs: Any) -> T:
-            if not kwargs:
-                key = args
-            elif not args:
-                key = tuple(kwargs.get(name, field_defaults.get(name, dataclasses.MISSING)) for name in field_names)
-            else:
-                # Mixed positional + keyword: fill positional slots first, then kwargs
-                key_list: list[Any] = list(args) + [dataclasses.MISSING] * (len(field_names) - len(args))
-                for i, name in enumerate(field_names[len(args) :], start=len(args)):
-                    key_list[i] = kwargs.get(name, field_defaults.get(name, dataclasses.MISSING))
-                key = tuple(key_list)
-            return _new(*key)
+        def by_arguments(klass: type[T], *args: object, **kwargs: object) -> T:
+            return canonical(construct(klass, *args, **kwargs))
 
-        cls.__new__ = __new__  # type: ignore[method-assign, assignment]
-        return cls
+        metaclass = type(
+            f"Flyweight{cls.__name__}Meta", (type(cls),), {"__call__": lru_cache(maxsize=maxsize)(by_arguments)}
+        )
+        interned: type[T] = metaclass(
+            cls.__name__,
+            (cls,),
+            {"__slots__": (), "__module__": cls.__module__, "__qualname__": cls.__qualname__, "__doc__": cls.__doc__},
+        )
+        return interned
 
     return decorator
 

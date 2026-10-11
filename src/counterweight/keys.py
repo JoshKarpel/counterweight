@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping
 from enum import Enum
 from string import printable
 
 from parsy import Parser, char_from, generate, match_item
-from structlog import get_logger
 
 from counterweight.events import (
     AnyEvent,
@@ -18,7 +18,7 @@ from counterweight.events import (
 )
 from counterweight.geometry import Position
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 class Key(str, Enum):

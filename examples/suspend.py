@@ -19,7 +19,7 @@ from counterweight.utils import clamp
 @component
 def root() -> Div:
     return Div(
-        style=col | full | align_children_stretch | justify_children_start | pad(1),
+        style=col | full | justify_children_start | pad(1),
         children=[
             Text(content="Suspend Demo", style=text_color("amber", 600) | text_justify_center | pad_bottom(1)),
             Div(
@@ -87,7 +87,7 @@ def picker() -> Div:
         return None
 
     return Div(
-        style=col | grow(1) | justify_children_start | border_collapse,
+        style=col | fill(1) | justify_children_start | border_collapse,
         on_key=on_key,
         children=[
             glob_input(glob=glob),
@@ -101,8 +101,8 @@ def glob_input(glob: str) -> Div:
     return Div(
         style=row | align_self_stretch | border_collapse,
         children=[
-            Text(style=content_box | border_light | pad_x(1), content="glob"),
-            Text(style=content_box | border_light | pad_x(1) | grow(1), content=glob),
+            Text(style=content_box | border | pad_x(1), content="glob"),
+            Text(style=content_box | border | pad_x(1) | fill(1), content=glob),
         ],
     )
 
@@ -110,10 +110,10 @@ def glob_input(glob: str) -> Div:
 @component
 def file_list(files: list[Path], selected_idx: int) -> Div:
     rects = use_rects()
-    visible = max(1, int(rects.content.height) + 1)
+    visible = max(1, rects.content.height)
     start_idx = clamp(0, selected_idx - visible // 2, max(0, len(files) - visible))
     return Div(
-        style=col | justify_children_start | pad_x(1) | border_lightrounded | grow(1),
+        style=col | justify_children_start | pad_x(1) | border | border_lightrounded | fill(1),
         children=[
             Text(
                 style=text_color("cyan", 300) if idx == selected_idx else default,

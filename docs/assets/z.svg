@@ -1,40 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16.50em" height="16.95em">
+<svg xmlns="http://www.w3.org/2000/svg" width="13.20em" height="12.43em">
  <style>svg {
   dominant-baseline: hanging;
   font-size: 1rem;
 }
 </style>
  <g shape-rendering="crispEdges">
-  <rect x="0.00em" y="0.00em" width="16.50em" height="16.95em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="13.20em" height="12.43em" fill="#000000" />
   <rect x="0.00em" y="0.00em" width="5.50em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="0.00em" width="11.00em" height="1.13em" fill="#000000" />
+  <rect x="5.50em" y="0.00em" width="7.70em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="1.13em" width="0.55em" height="1.13em" fill="#dc2626" />
   <rect x="0.55em" y="1.13em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="4.95em" y="1.13em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="1.13em" width="11.00em" height="1.13em" fill="#000000" />
+  <rect x="5.50em" y="1.13em" width="7.70em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="2.26em" width="0.55em" height="1.13em" fill="#dc2626" />
   <rect x="0.55em" y="2.26em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="4.95em" y="2.26em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="5.50em" y="2.26em" width="11.00em" height="1.13em" fill="#000000" />
+  <rect x="5.50em" y="2.26em" width="7.70em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="3.39em" width="0.55em" height="1.13em" fill="#dc2626" />
   <rect x="0.55em" y="3.39em" width="1.65em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="3.39em" width="4.95em" height="1.13em" fill="#0d9488" />
   <rect x="7.15em" y="3.39em" width="5.50em" height="1.13em" fill="#d97706" />
-  <rect x="12.65em" y="3.39em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="3.39em" width="0.55em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="4.52em" width="2.20em" height="1.13em" fill="#dc2626" />
   <rect x="2.20em" y="4.52em" width="0.55em" height="1.13em" fill="#0d9488" />
   <rect x="2.75em" y="4.52em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="7.15em" y="4.52em" width="0.55em" height="1.13em" fill="#d97706" />
   <rect x="7.70em" y="4.52em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="12.10em" y="4.52em" width="0.55em" height="1.13em" fill="#d97706" />
-  <rect x="12.65em" y="4.52em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="4.52em" width="0.55em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="5.65em" width="2.20em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="5.65em" width="0.55em" height="1.13em" fill="#0d9488" />
   <rect x="2.75em" y="5.65em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="7.15em" y="5.65em" width="0.55em" height="1.13em" fill="#d97706" />
   <rect x="7.70em" y="5.65em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="12.10em" y="5.65em" width="0.55em" height="1.13em" fill="#d97706" />
-  <rect x="12.65em" y="5.65em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="5.65em" width="0.55em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="6.78em" width="2.20em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="6.78em" width="0.55em" height="1.13em" fill="#0d9488" />
   <rect x="2.75em" y="6.78em" width="0.55em" height="1.13em" fill="#000000" />
@@ -42,30 +42,26 @@
   <rect x="7.15em" y="6.78em" width="0.55em" height="1.13em" fill="#d97706" />
   <rect x="7.70em" y="6.78em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="12.10em" y="6.78em" width="0.55em" height="1.13em" fill="#d97706" />
-  <rect x="12.65em" y="6.78em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="6.78em" width="0.55em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="7.91em" width="2.20em" height="1.13em" fill="#000000" />
   <rect x="2.20em" y="7.91em" width="1.10em" height="1.13em" fill="#0d9488" />
   <rect x="3.30em" y="7.91em" width="0.55em" height="1.13em" fill="#9333ea" />
   <rect x="3.85em" y="7.91em" width="3.30em" height="1.13em" fill="#000000" />
   <rect x="7.15em" y="7.91em" width="5.50em" height="1.13em" fill="#d97706" />
-  <rect x="12.65em" y="7.91em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="7.91em" width="0.55em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="9.04em" width="3.30em" height="1.13em" fill="#000000" />
   <rect x="3.30em" y="9.04em" width="0.55em" height="1.13em" fill="#9333ea" />
   <rect x="3.85em" y="9.04em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="8.25em" y="9.04em" width="0.55em" height="1.13em" fill="#9333ea" />
-  <rect x="8.80em" y="9.04em" width="7.70em" height="1.13em" fill="#000000" />
+  <rect x="8.80em" y="9.04em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="10.17em" width="3.30em" height="1.13em" fill="#000000" />
   <rect x="3.30em" y="10.17em" width="0.55em" height="1.13em" fill="#9333ea" />
   <rect x="3.85em" y="10.17em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="8.25em" y="10.17em" width="0.55em" height="1.13em" fill="#9333ea" />
-  <rect x="8.80em" y="10.17em" width="7.70em" height="1.13em" fill="#000000" />
+  <rect x="8.80em" y="10.17em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="11.30em" width="3.30em" height="1.13em" fill="#000000" />
   <rect x="3.30em" y="11.30em" width="5.50em" height="1.13em" fill="#9333ea" />
-  <rect x="8.80em" y="11.30em" width="7.70em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="12.43em" width="16.50em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="13.56em" width="16.50em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="14.69em" width="16.50em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="15.82em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="8.80em" y="11.30em" width="4.40em" height="1.13em" fill="#000000" />
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em" />
@@ -161,9 +157,5 @@
    <tspan x="7.70em">╯</tspan>
   </tspan>
   <tspan y="11.30em" />
-  <tspan y="12.43em" />
-  <tspan y="13.56em" />
-  <tspan y="14.69em" />
-  <tspan y="15.82em" />
  </text>
 </svg>

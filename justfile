@@ -29,9 +29,9 @@ test:
 
 alias t := test
 
-[doc('Serve documentation locally')]
-docs-serve:
-    uv run mkdocs serve
+[doc('Serve documentation locally, restarting when the config, a hook, or a screenshot changes')]
+docs-serve PORT="8000":
+    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/
 
 alias d := docs-serve
 
@@ -40,10 +40,6 @@ docs-build:
     uv run mkdocs build --strict
 
 alias db := docs-build
-
-[doc('Profile a Python file with scalene')]
-profile FILE:
-    uv run scalene run --cpu-only --profile-all {{ FILE }}
 
 [doc('Regenerate style utility constants from codegen/generate_utilities.py')]
 codegen:
@@ -56,6 +52,23 @@ devlog *ARGS:
     @uv run counterweight devlog {{ ARGS }}
 
 alias dl := devlog
+
+# Without --blocking, Tachyon fails to read about 40% of samples, and not uniformly: it undercounts
+# the shadow tree update and overcounts layout. --blocking slows frames by about 20%, so the frame
+# times come from a second, unprofiled run, which overwrites the profiled run's.
+[doc('Run a benchmark workload under Tachyon, then time it unprofiled and report on both')]
+profile WORKLOAD NAME=WORKLOAD *ARGS:
+    @mkdir -p profiles
+    uv run python -m profiling.sampling run --blocking --binary -o profiles/{{ NAME }}.bin -m benchmarks run {{ WORKLOAD }} --name {{ NAME }} {{ ARGS }}
+    uv run python -m benchmarks run {{ WORKLOAD }} --name {{ NAME }} {{ ARGS }}
+    uv run python -m profiling.sampling replay --flamegraph -o profiles/{{ NAME }}.html profiles/{{ NAME }}.bin
+    uv run python -m benchmarks report {{ NAME }}
+
+# Binds every interface so a remote machine's HTTPS proxy (such as exe.dev's, which forwards ports 3000-9999) can reach it.
+[doc('Serve the profiles directory (flamegraphs and reports) over HTTP')]
+profiles-serve PORT="8001":
+    @mkdir -p profiles
+    exec uv run python -m http.server {{ PORT }} --bind 0.0.0.0 --directory profiles
 
 [doc('Upgrade all dependencies')]
 upgrade:

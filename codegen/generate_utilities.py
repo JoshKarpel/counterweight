@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 import subprocess
-from itertools import combinations
 from pathlib import Path
-from typing import get_args, get_type_hints
+from typing import get_args
 
-from more_itertools import flatten
-
-from counterweight.styles.styles import BorderKind, Style
-
-
-def literal_vals(obj: object, field: str) -> tuple[str, ...]:
-    return get_args(get_type_hints(obj)[field])
-
+from counterweight.styles.styles import BorderKind, TextJustify, TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -359,13 +351,22 @@ generated_lines.append("")
 
 # --- Justify/align utilities ---
 
+# Center and end are CSS's safe alignments: content that doesn't fit starts at the start edge
+# instead of overflowing past it, where the terminal can't show it.
+# The _unsafe variants keep CSS's default, overflowing both edges when centered.
+UNSAFE_MAP = {
+    "Center": "center_unsafe",
+    "End": "end_unsafe",
+}
+
 JUSTIFY_MAP = {
     "Start": "start",
-    "Center": "center",
-    "End": "end",
+    "SafeCenter": "center",
+    "SafeEnd": "end",
     "SpaceBetween": "space_between",
     "SpaceAround": "space_around",
     "SpaceEvenly": "space_evenly",
+    **UNSAFE_MAP,
 }
 for name, alias in JUSTIFY_MAP.items():
     generated_lines.append(
@@ -376,9 +377,10 @@ generated_lines.append("")
 
 ALIGN_MAP = {
     "Start": "start",
-    "Center": "center",
-    "End": "end",
+    "SafeCenter": "center",
+    "SafeEnd": "end",
     "Stretch": "stretch",
+    **UNSAFE_MAP,
 }
 for name, alias in ALIGN_MAP.items():
     generated_lines.append(f"align_children_{alias} = Style(layout=waxy.Style(align_items=waxy.AlignItems.{name}))")
@@ -448,32 +450,27 @@ generated_lines.append("")
 
 generated_lines.append("border_none = Style(border_kind=None)")
 for b in BorderKind:
-    generated_lines.append(
-        f"border_{b.name.lower()} = Style(\n"
-        f"    layout=waxy.Style(\n"
-        f"        border_top=waxy.Length(1), border_bottom=waxy.Length(1),\n"
-        f"        border_left=waxy.Length(1), border_right=waxy.Length(1),\n"
-        f"    ),\n"
-        f"    border_kind=BorderKind.{b.name},\n"
-        f")"
-    )
+    generated_lines.append(f"border_{b.name.lower()} = Style(border_kind=BorderKind.{b.name})")
 
 generated_lines.append("")
 
-# --- Border edge selection utilities ---
+# --- Border width utilities ---
 
-EDGE_SIDES = ["top", "bottom", "left", "right"]
-for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
-    border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
-    generated_lines.append(f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))")
-
-generated_lines.append(
-    "border_all = Style(layout=waxy.Style("
-    "border_top=waxy.Length(1), border_bottom=waxy.Length(1), "
-    "border_left=waxy.Length(1), border_right=waxy.Length(1)))"
-)
-
-generated_lines.append("")
+# As in Tailwind, a side is drawn where its width is 1, and the border kind only picks the characters.
+BORDER_WIDTH_TARGETS = {
+    "": ["top", "bottom", "left", "right"],
+    "_top": ["top"],
+    "_bottom": ["bottom"],
+    "_left": ["left"],
+    "_right": ["right"],
+    "_x": ["left", "right"],
+    "_y": ["top", "bottom"],
+}
+for width, width_suffix in ((1, ""), (0, "_0")):
+    for target_suffix, sides in BORDER_WIDTH_TARGETS.items():
+        widths = ", ".join(f"border_{side}=waxy.Length({width})" for side in sides)
+        generated_lines.append(f"border{target_suffix}{width_suffix} = Style(layout=waxy.Style({widths}))")
+    generated_lines.append("")
 
 # --- Inset utilities (absolute positioning anchors) ---
 
@@ -497,14 +494,14 @@ generated_lines.append("")
 
 # --- Text justify ---
 
-for j in literal_vals(Style, "text_justify"):
+for j in get_args(TextJustify):
     generated_lines.append(f'text_justify_{j} = Style(text_justify="{j}")')
 
 generated_lines.append("")
 
 # --- Text wrap ---
 
-for w in literal_vals(Style, "text_wrap"):
+for w in get_args(TextWrap):
     generated_lines.append(f'text_wrap_{w} = Style(text_wrap="{w}")')
 
 generated_lines.append("")

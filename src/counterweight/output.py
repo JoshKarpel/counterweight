@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Iterable
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING, TextIO
-
-from structlog import get_logger
+from xml.etree.ElementTree import indent as indent_svg
+from xml.etree.ElementTree import tostring
 
 from counterweight.geometry import Position
-from counterweight.paint import Paint
-from counterweight.styles.styles import CellStyle
+from counterweight.paint import Paint, Run, svg
+from counterweight.styles.styles import ResolvedCellStyle
 
 if TYPE_CHECKING:
     pass
@@ -26,9 +30,11 @@ UNSET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003l\x1b[?1006l"
 
 CLEAR_SCREEN = "\x1b[2J"
 
+RESET_STYLE = "\x1b[0m"
+
 BELL = "\x07"
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def start_output_control(stream: TextIO) -> None:  # pragma: untestable
@@ -62,7 +68,8 @@ def move_to(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
-def sgr_from_cell_style(style: CellStyle) -> str:
+@lru_cache(maxsize=2**10)
+def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
     fg_r, fg_g, fg_b = style.foreground
     bg_r, bg_g, bg_b = style.background
 
@@ -86,31 +93,66 @@ def sgr_from_cell_style(style: CellStyle) -> str:
     return sgr
 
 
-def paint_to_instructions(paint: Paint) -> str:
-    return "".join(f"{move_to(pos)}{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for pos, cell in paint.items())
+def paint_to_instructions(runs: Iterable[Run]) -> str:
+    """
+    Terminal instructions that draw `runs`: one cursor move per run,
+    and a style change only where a cell's style differs from the cell drawn before it.
+
+    Every run must stay within one row of the screen, since each cell advances the cursor one column.
+    """
+    parts = []
+    style = None
+    for x, y, cells in runs:
+        parts.append(move_to(Position(x, y)))
+        for cell in cells:
+            # The SGR sequence only turns attributes like bold on, so a change of style resets first.
+            if cell.style is not style:
+                style = cell.style
+                parts.append(RESET_STYLE)
+                parts.append(sgr_from_cell_style(style))
+            parts.append(cell.char)
+    if parts:
+        parts.append(RESET_STYLE)
+    return "".join(parts)
 
 
 def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
-    """Render a Paint as a 2D character grid (spaces for empty cells).
+    """Render a Paint as a 2D character grid.
 
     Parameters:
         ansi: If `True`, include ANSI color/style escape codes in the output.
             If `False`, produce a plain character grid.
     """
-    if not paint:
-        return ""
-    min_x = min(p.x for p in paint)
-    max_x = max(p.x for p in paint)
-    min_y = min(p.y for p in paint)
-    max_y = max(p.y for p in paint)
-    rows = []
-    for y in range(min_y, max_y + 1):
-        row = ""
-        for x in range(min_x, max_x + 1):
-            cell = paint.get(Position(x, y))
-            if cell:
-                row += f"{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" if ansi else cell.char
-            else:
-                row += " "
-        rows.append(row)
-    return "\n".join(rows)
+    if ansi:
+        return "\n".join(
+            "".join(f"{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for cell in row) for row in paint.rows()
+        )
+    return "\n".join("".join(cell.char for cell in row) for row in paint.rows())
+
+
+@dataclass(frozen=True, slots=True)
+class Frame:
+    """
+    One rendered frame of the UI, as captured by a [`Screenshot`][counterweight.controls.Screenshot].
+
+    Encode it with [`svg`][counterweight.output.Frame.svg] or [`text`][counterweight.output.Frame.text].
+    """
+
+    paint: Paint
+
+    def svg(self) -> str:
+        """The frame as an SVG image, indented one space per level so that it diffs line by line."""
+        root = svg(self.paint)
+        indent_svg(root, space=" ")
+        return tostring(root, encoding="unicode")
+
+    def text(self, ansi: bool = True) -> str:
+        """
+        The frame as a grid of characters, one line per terminal row, with spaces for empty cells.
+
+        Parameters:
+            ansi: If `True`, include ANSI escape codes for colors and styles,
+                which show when the text is printed to a terminal.
+                If `False`, produce plain characters, useful for layout debugging and tests.
+        """
+        return paint_to_str(self.paint, ansi=ansi)

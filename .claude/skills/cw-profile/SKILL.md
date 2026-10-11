@@ -1,60 +1,75 @@
 ---
 name: cw-profile
-description: Performance profiling workflow for the counterweight project. Use when profiling the app, analyzing render cycle timings, reading the devlog, interpreting Scalene CPU profiles, investigating performance regressions, or comparing results across runs. Covers running the profiler, parsing results, and writing findings to the performance plan.
+description: Performance profiling workflow for the counterweight project. Use when profiling the render loop, benchmarking a change, finding hotspots, investigating a performance regression, or comparing before and after runs. Covers the benchmark workloads in `benchmarks/`, profiling them with Tachyon (Python's sampling profiler), reading the report, and comparing runs.
 ---
 
 # Counterweight Performance Profiling
 
-Two complementary tools: **Scalene** (line-level CPU profiler) and the **structured devlog** (per-event render cycle timings). Use both together for a complete picture.
+The `benchmarks/` package holds deterministic workloads that run headless at a fixed size
+for a fixed number of frames, so two runs of a workload do the same work frame for frame.
+Compare runs against each other, before and after a change, on the same machine.
 
-## Workflow
+## Workloads
 
-### 1. Run a profiling session
+Run `uv run python -m benchmarks list` for the workloads and what each stresses,
+and `uv run python -m benchmarks show <workload>` to watch one run live in the terminal.
+Choose by what the change touches: a cache keyed on content does nothing for `canvas`,
+reusing last frame's layout matters most for `dashboard`, and text measurement dominates
+`agent` and `top`.
 
-```bash
-just profile profiling/canvas.py     # high-churn: all content changes every frame
-just profile profiling/dashboard.py  # mostly-static: one frame counter changes, rest cached
-```
-
-Both run for up to 60 seconds under Scalene, then print a reduced CLI summary. The full profile is saved to `scalene-profile.json` in the project root.
-
-- **canvas.py** — adversarial for caches: 4 random-walker canvases, ~1,800 cells changing every frame. Stresses raw paint throughput. Optimizations that rely on temporal locality (lru_cache, memoization) show no benefit here.
-- **dashboard.py** — representative of typical apps: 12 static metric cards + 1 live frame counter. Most Text elements are stable between frames, so paint_text and paint_edge caches hit heavily. Use this to validate cache-based optimizations.
-
-### 2. Analyze the devlog
-
-The devlog is cleared each time the app starts. After a session:
+## Profile a run
 
 ```bash
-uv run python3 .claude/skills/cw-profile/scripts/analyze_devlog.py --last 500
+just profile top                  # writes profiles/top.{bin,json,txt,html}
+just profile top before --frames 300
 ```
 
-This fetches recent entries via `just devlog --json --last N`, computes mean/median/P95/max for each render sub-step, and shows `%cycle` so you can see where time is going at a glance.
+The recipe runs the workload twice: once under Tachyon (`--blocking`), and once unprofiled
+for frame times, since blocking sampling slows frames.
+It then writes a flamegraph (`profiles/<name>.html`) and prints the report.
+`just profiles-serve [PORT]` serves `profiles/` over HTTP, to open flamegraphs from another machine.
+`profiles/<name>.txt` is the last frame as plain text: read it to confirm the workload drew
+what you expect before trusting its numbers.
 
-Key events and what they mean:
-- **Updated shadow tree** — running user component functions + framework reconciliation
-- **— user_code** — time inside user `@component` functions only
-- **— framework overhead** — reconciliation, hook bookkeeping (should be <0.1ms)
-- **Calculated layout** — waxy/taffy flex layout computation
-- **Generated new paint** — `paint_layout()` traversal, cell allocation
-- **Healed borders** — border-joining fixup pass; `hint_cells` is how many cells were checked
-- **Diffed new paint** — cell-by-cell comparison; `diff_cells` is how many changed
-- **Generated instructions** — ANSI escape string construction
-- **Wrote and flushed** — actual bytes sent to the terminal; `bytes` field shows size
-- **Completed render cycle** — wall time for the full cycle; median → FPS (1000/median)
+For frame times alone, without a profile: `uv run python -m benchmarks run top`.
 
-### 3. Analyze the Scalene profile
+## Read the report
+
+`uv run python -m benchmarks report <name>` prints:
+
+- **Frame times**: median, mean, P95 and max of the interval between root renders,
+  which covers the whole loop (events, shadow tree, layout, paint, output, effects)
+  and anything else the event loop ran in between, such as the devlog's sink task.
+- **Stages**: samples by the function `counterweight.app.render_loop` called, by other asyncio
+  task (`task ...`, such as without-logging's `capture.<locals>.run_sink`), and in the event
+  loop itself, with each stage's share of the mean frame time.
+  Stages come from the call stack, so splitting a stage into named functions inside
+  `render_loop` is how to get a finer breakdown.
+  `harness.py:...on_key` is the workload's own `step`, not framework time.
+  Work moved off the render loop onto another task still costs frame time in these
+  saturated runs; it only comes for free in an app with idle time between frames.
+- **Self and inclusive samples** per function below each stage's root.
+  Collapsed stacks name files by basename, so `styles.py:...` could be any `styles.py`.
+  `<string>:__create_fn__...` frames are dataclass-generated methods (`__init__`, `__hash__`,
+  `__eq__`); `<GC>` is garbage collection.
+
+## Compare runs
 
 ```bash
-uv run python3 .claude/skills/cw-profile/scripts/analyze_scalene.py
+just profile top before
+# make the change
+just profile top after
+uv run python -m benchmarks compare before after
 ```
 
-Shows the hottest lines in counterweight source files with their CPU%. Use `--top N` and `--min-pct X` to adjust. The profile must exist at `scalene-profile.json` (produced by step 1).
+`compare` shows both runs' frame times and, when both were profiled, each stage's
+ms/frame with the change between them. Repeat a run when a change is within a few percent:
+frame times on a shared machine vary run to run.
 
-### 4. Record results
+For a visual diff, `uv run python -m profiling.sampling replay --diff-flamegraph
+profiles/before.bin -o profiles/diff.html profiles/after.bin`.
 
-Add a new run section to `plans/performance-analysis-2026-03-07.md` with the raw table from `analyze_devlog.py` and any notable Scalene hotspots. Note what changed since the previous run and whether it was an improvement or regression.
+## Record results
 
-## Fixes
-
-_(none yet)_
+Add a section to `plans/performance-analysis-2026-03-07.md` with the `compare` tables
+and the hotspots that moved, saying what changed between the runs.

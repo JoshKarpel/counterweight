@@ -51,6 +51,20 @@ the `# Stop generated` marker.
 just codegen
 ```
 
+Don't omit utilities on the grounds that nothing needs them yet: we can't know what users will want.
+When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
+generate every member of it.
+
+## Docs Screenshots
+
+Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,
+and pages include its code between `--8<--` snippet markers.
+Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`
+(the pre-commit hook runs it too).
+Every `docs/assets/<name>.svg` has a plain-text twin, `<name>.txt`:
+read that to check a layout instead of the SVG.
+`mkdocs_hooks/screenshot_tabs.py` shows both in the built docs.
+
 ## Project Structure
 
 - **src/counterweight/**: Main framework code
@@ -58,13 +72,14 @@ just codegen
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
 - **tests/**: Test suites organized by module
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile` (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies
 
 - **pydantic**: Data validation and settings
 - **typer**: CLI interface
-- **structlog**: Structured logging
+- **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **parsy**: Parser combinators for terminal input
 - **more-itertools**: Extended iteration utilities
 

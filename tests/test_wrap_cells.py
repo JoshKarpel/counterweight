@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import pytest
 
-from counterweight.elements import CellPaint
+from counterweight.elements import StyledChar
 from counterweight.layout import wrap_cells
 from counterweight.styles.styles import CellStyle, TextWrap
 
 
-def cells(text: str) -> list[CellPaint]:
-    return [CellPaint(char=c) for c in text]
+def cells(text: str) -> list[StyledChar]:
+    return [StyledChar(char=c) for c in text]
 
 
-def text(line: list[CellPaint]) -> str:
+def text(line: list[StyledChar]) -> str:
     return "".join(c.char for c in line)
 
 
-def lines_text(ls: list[list[CellPaint]]) -> list[str]:
+def lines_text(ls: list[list[StyledChar]]) -> list[str]:
     return [text(l) for l in ls]
 
 
@@ -96,7 +96,7 @@ def test_stable_all_spaces() -> None:
 
 def test_stable_preserves_cell_style() -> None:
     style = CellStyle(bold=True)
-    styled_cells = [CellPaint(char=c, style=style) for c in "hello world"]
+    styled_cells = [StyledChar(char=c, style=style) for c in "hello world"]
     result = wrap_cells(styled_cells, "stable", 8)
     for line in result:
         for cell in line:

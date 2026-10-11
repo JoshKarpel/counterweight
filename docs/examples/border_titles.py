@@ -1,9 +1,9 @@
-# --8<-- [start:example]
-from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import ScreenshotSpec
+
+# --8<-- [start:example]
 
 
 @component
@@ -12,7 +12,7 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=row | grow(1) | justify_children_center | align_children_center | border_lightrounded | pad(1),
+                style=row | fill(1) | center_children | border | border_lightrounded | pad(1),
                 children=[
                     Text(
                         style=position_absolute | inset_left(1) | inset_top(-1),
@@ -49,20 +49,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-if __name__ == "__main__":
-    import asyncio
-    from pathlib import Path
-
-    THIS_DIR = Path(__file__).parent
-
-    asyncio.run(
-        app(
-            root,
-            headless=True,
-            dimensions=(70, 5),
-            autopilot=[
-                Screenshot.to_file(THIS_DIR.parent / "assets" / "border-titles.svg", indent=1),
-                Quit(),
-            ],
-        )
-    )
+SCREENSHOTS = [ScreenshotSpec(root, "border-titles", (70, 5))]

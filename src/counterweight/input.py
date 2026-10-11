@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import selectors
 import termios
@@ -7,15 +8,12 @@ from collections.abc import Callable
 from copy import deepcopy
 from selectors import DefaultSelector
 from threading import Event
-from time import perf_counter_ns
 from typing import TextIO
-
-from structlog import get_logger
 
 from counterweight.events import AnyEvent
 from counterweight.keys import vt_inputs
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def read_keys(
@@ -39,7 +37,6 @@ def read_keys(
         if not selector.select(timeout=1 / 60):
             continue
 
-        start_parsing = perf_counter_ns()
         bytes = os.read(stream.fileno(), 2**10)
 
         if not bytes:
@@ -51,19 +48,9 @@ def read_keys(
             for i in inputs:
                 put_event(i)
 
-            logger.debug(
-                "Parsed user input",
-                inputs=inputs,
-                bytes=bytes,
-                elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
-            )
+            logger.debug("Parsed user input", extra={"inputs": inputs, "bytes": bytes})
         except Exception as e:
-            logger.error(
-                "Failed to parse input",
-                error=repr(e),
-                bytes=bytes,
-                elapsed_ns=f"{perf_counter_ns() - start_parsing:_}",
-            )
+            logger.error("Failed to parse input", extra={"error": repr(e), "bytes": bytes})
 
 
 LFLAG = 3
