@@ -575,10 +575,10 @@ writing the page.
 
 ### 10. Make per-frame layout cheaper
 
-**Measure first.** Split the "Calculated layout" devlog timing (`app.py:307-311`) into
-building the tree, `compute_layout` (including text-measure callbacks), and reading results
-back, and record canvas and dashboard numbers in
-`plans/performance-analysis-2026-03-07.md`.
+**Measure first.** Profile every workload with `just profile` (step 12's tooling, built
+first for this step) and record the `layout.py:compute_layout` stage and its callees
+(building the tree, taffy's `compute_layout` with the text-measure callbacks, and reading
+results back) in `plans/performance-analysis-2026-03-07.md`.
 That tells us how much of each frame the two changes below can recover.
 
 **Memoize text measurement.**
@@ -612,7 +612,8 @@ Tests: a frame with no changes leaves every node clean (`tree.dirty(node)` is fa
 changing one `Text` dirties only that node and its ancestors; mounting and unmounting
 components leaves no orphaned nodes (`total_node_count` matches the shadow tree);
 a `Text` measured at an effective width it has already been measured at isn't wrapped again.
-Compare canvas and dashboard profiles after each change.
+Compare every workload's profile against the one before each change
+(`uv run python -m benchmarks compare`).
 
 ### 11. Make one cohesive pass over the gallery
 
@@ -679,21 +680,32 @@ expected wherever only the code changed.
 
 ### 12. Profile with Tachyon
 
+**Status:** Tooling done, before step 10, so that step can be measured; the analysis is open.
+
 Steps 4 to 11 change what paint and layout do every frame without profiling each change on its
 own, and step 4 removed the old Scalene tooling along with the move to Python 3.15.
-Rebuild profiling on Tachyon, the statistical sampling profiler in the 3.15 standard library
-(`python -m profiling.sampling run ...`), then use it to measure the plan.
+Profiling is rebuilt on Tachyon, the statistical sampling profiler in the 3.15 standard library
+(`python -m profiling.sampling`). Comparisons are run against run within this plan, not
+against the code before step 4.
 
-- **Tooling.** Replace the removed `just profile` recipe with one that runs a file under
-  Tachyon. Rewrite the `cw-profile` skill around it: replace `scripts/analyze_scalene.py`
-  with an analysis of Tachyon's output, keep the devlog analysis, and drop the
-  `scalene-profile.json` entry from `.gitignore`.
-  Check `python -m profiling.sampling run --help` for the output formats it offers
-  rather than assuming one.
-- **Baseline.** The commit before step 4 predates 3.15, so run its `src/` with this
-  plan's environment (a worktree at that commit, on `PYTHONPATH`) rather than its own lockfile.
-- **Compare.** Profile canvas and dashboard on the baseline and at the end of the plan, and
-  record both in `plans/performance-analysis-2026-03-07.md`.
+- **Workloads.** `benchmarks/` holds four deterministic workloads, each a pure model stepped
+  once per frame by autopilot key presses and run headless at a fixed size:
+  `canvas` (every cell changes), `top` (an htop clone: hundreds of short changing numbers
+  in a grid and rows), `agent` (a coding-agent transcript whose newest message streams in,
+  reflowing wrapped text; a starting point for profiling scrolling later) and `dashboard`
+  (nearly static). The harness times each frame as the interval between root renders.
+- **Tooling.** `just profile WORKLOAD [NAME]` samples a run with Tachyon's `--blocking`, times
+  a second unprofiled run, writes a flamegraph, and reports samples by stage (whatever
+  `app` called) and by function; `python -m benchmarks compare` puts two runs side by side.
+  Without `--blocking`, about 40% of samples fail to read, and the losses are biased:
+  on `top`, `update_shadow` read as 10% of samples rather than 16.5%, and layout as 35%
+  rather than 28%.
+  The `cw-profile` skill describes the workflow.
+- **Devlog.** The render loop's devlog messages no longer carry `elapsed_ns` timings, which
+  Tachyon's stages replace. The messages stay, so the devlog still shows the loop running.
+  They cost about 1 ms per frame whatever the workload (`BoundLogger.debug`), which is 4% of
+  a `top` frame but 12% of an `agent` frame and 19% of a `dashboard` frame.
+- **Analysis.** Record each workload's profile in `plans/performance-analysis-2026-03-07.md`.
   Look in particular at what step 4's resolve step and step 5's derived border widths cost
   per frame, and whether `Style` should cache its hash now that `resolve_style` and the
   merge cache both hash styles on the paint path.

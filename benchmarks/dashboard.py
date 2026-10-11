@@ -1,0 +1,122 @@
+"""
+Mostly static: a grid of bordered metric cards that never change, and one frame counter that changes every frame.
+
+Nearly everything is identical from frame to frame, so this measures the fixed cost of a frame:
+work that caches, or reuse of last frame's layout, could skip.
+"""
+
+from dataclasses import dataclass
+
+from benchmarks.harness import Workload
+from counterweight.components import component
+from counterweight.elements import Chunk, Div, Text
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.utilities import (
+    amber_400,
+    border,
+    border_collapse,
+    border_color,
+    col,
+    cyan_400,
+    fill,
+    justify_children_space_between,
+    pad,
+    row,
+    slate_100,
+    slate_400,
+    text_justify_center,
+)
+
+METRICS = (
+    ("CPU usage", "23.4%"),
+    ("Memory", "1.21 GB"),
+    ("Disk read", "44.8 MB/s"),
+    ("Disk write", "12.1 MB/s"),
+    ("Net in", "8.33 MB/s"),
+    ("Net out", "2.17 MB/s"),
+    ("Requests/s", "8,421"),
+    ("Error rate", "0.02%"),
+    ("P50 latency", "18 ms"),
+    ("P99 latency", "142 ms"),
+    ("Uptime", "14d 6h 22m"),
+    ("Active conns", "1,047"),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class Model:
+    tick: int
+
+
+def initial() -> Model:
+    return Model(tick=0)
+
+
+def step(model: Model) -> Model:
+    return Model(tick=model.tick + 1)
+
+
+def view(model: Model) -> Div:
+    return Div(
+        style=col | pad(1),
+        children=[
+            header(),
+            Div(style=row | justify_children_space_between, children=[status(), frame_counter(model.tick)]),
+            Div(
+                style=fill(1) | col | border_collapse,
+                children=[
+                    Div(
+                        style=fill(1) | row | border_collapse,
+                        children=[metric_card(label, value) for label, value in METRICS[:6]],
+                    ),
+                    Div(
+                        style=fill(1) | row | border_collapse,
+                        children=[metric_card(label, value) for label, value in METRICS[6:]],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@component
+def header() -> Text:
+    return Text(
+        content=[
+            Chunk(content="System", style=CellStyle(foreground=amber_400, bold=True)),
+            Chunk.space(),
+            Chunk(content="Dashboard", style=CellStyle(foreground=cyan_400, bold=True)),
+        ],
+        style=text_justify_center,
+    )
+
+
+@component
+def status() -> Text:
+    return Text(content=[Chunk(content="All systems normal", style=CellStyle(foreground=slate_400))])
+
+
+@component
+def frame_counter(tick: int) -> Text:
+    return Text(content=[Chunk(content=f"Frame: {tick:,}", style=CellStyle(foreground=slate_400))])
+
+
+@component
+def metric_card(label: str, value: str) -> Div:
+    return Div(
+        style=fill(1) | col | border | border_color("slate", 700) | pad(1),
+        children=[
+            Text(content=[Chunk(content=label, style=CellStyle(foreground=slate_400))]),
+            Text(content=[Chunk(content=value, style=CellStyle(foreground=slate_100, bold=True))]),
+        ],
+    )
+
+
+WORKLOAD = Workload(
+    name="dashboard",
+    description=__doc__ or "",
+    initial=initial,
+    step=step,
+    view=view,
+    dimensions=(120, 30),
+)

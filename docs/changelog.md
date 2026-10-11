@@ -148,6 +148,10 @@
   [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Dropped support for Python `3.11` through `3.14`.
   Python `3.15` or later is now required.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  The render loop's devlog messages no longer carry `elapsed_ns` timings.
+  To see where a frame's time goes, profile the app with Python's sampling profiler
+  (`python -m profiling.sampling run app.py`).
 
 ## `0.0.9`
 

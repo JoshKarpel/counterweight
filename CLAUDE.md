@@ -72,6 +72,7 @@ read that to check a layout instead of the SVG.
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
 - **tests/**: Test suites organized by module
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile` (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies

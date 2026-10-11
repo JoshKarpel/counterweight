@@ -9,7 +9,6 @@ from collections.abc import Callable
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
-from time import perf_counter_ns
 from typing import Iterable, TextIO
 from weakref import WeakSet
 
@@ -183,7 +182,7 @@ async def app(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-        shadow, _ = update_shadow(screen(), shadow)
+        shadow = update_shadow(screen(), shadow)
         compute_layout(shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
@@ -230,25 +229,21 @@ async def app(
                     frame = Frame(paint=dict(current_paint))
                     for screenshot in pending_screenshots:
                         try:
-                            start_screenshot = perf_counter_ns()
                             await maybe_await(screenshot.handler(frame))
                             logger.debug(
                                 "Took screenshot",
                                 handler=screenshot.handler,
-                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
                             )
                         except Exception as ex:
                             logger.error(
                                 "Error in screenshot handler",
                                 error=repr(ex),
                                 handler=screenshot.handler,
-                                elapsed_ns=f"{perf_counter_ns() - start_screenshot:_}",
                             )
 
                     pending_screenshots.clear()
 
                 if should_suspend:
-                    start_suspend = perf_counter_ns()
                     logger.debug(
                         "Suspending application",
                         handler=should_suspend.handler,
@@ -287,86 +282,54 @@ async def app(
                     logger.debug(
                         "Resuming application",
                         handler=should_suspend.handler,
-                        elapsed_ns=f"{perf_counter_ns() - start_suspend:_}",
                     )
 
                     should_suspend = None
 
                 if should_render:
-                    start_render = perf_counter_ns()
-                    shadow, user_code_ns = update_shadow(screen(), shadow)
-                    logger.debug(
-                        "Updated shadow tree",
-                        elapsed_ns=f"{perf_counter_ns() - start_render:_}",
-                        user_code_ns=f"{user_code_ns:_}",
-                    )
+                    shadow = update_shadow(screen(), shadow)
+                    logger.debug("Updated shadow tree")
 
-                    start_layout = perf_counter_ns()
                     available = waxy.AvailableSize(
                         width=waxy.Definite(w),
                         height=waxy.Definite(h),
                     )
                     elements_and_layouts = compute_layout(shadow, available)
-                    logger.debug(
-                        "Calculated layout",
-                        elapsed_ns=f"{perf_counter_ns() - start_layout:_}",
-                    )
+                    logger.debug("Calculated layout")
 
-                    start_paint = perf_counter_ns()
                     new_paint, border_healing_hints = paint_layout(elements_and_layouts)
-                    logger.debug(
-                        "Generated new paint",
-                        elapsed_ns=f"{perf_counter_ns() - start_paint:_}",
-                    )
+                    logger.debug("Generated new paint")
 
                     if do_heal_borders:
-                        start_border_heal = perf_counter_ns()
                         healing_diff = heal_borders(new_paint, border_healing_hints)
                         new_paint |= healing_diff
                         logger.debug(
                             "Healed borders in new paint",
-                            elapsed_ns=f"{perf_counter_ns() - start_border_heal:_}",
                             hint_cells=len(border_healing_hints),
                             diff_cells=len(healing_diff),
                         )
 
-                    start_diff = perf_counter_ns()
                     diff = diff_paint(new_paint, current_paint)
                     current_paint |= diff
-                    logger.debug(
-                        "Diffed new paint from current paint",
-                        elapsed_ns=f"{perf_counter_ns() - start_diff:_}",
-                        diff_cells=len(diff),
-                    )
+                    logger.debug("Diffed new paint from current paint", diff_cells=len(diff))
 
-                    start_instructions = perf_counter_ns()
                     instructions = paint_to_instructions(diff)
-                    logger.debug(
-                        "Generated instructions from paint diff",
-                        elapsed_ns=f"{perf_counter_ns() - start_instructions:_}",
-                    )
+                    logger.debug("Generated instructions from paint diff")
 
                     if not headless:
-                        start_write = perf_counter_ns()
                         output_stream.write(instructions)
                         output_stream.flush()
                         logger.debug(
                             "Wrote and flushed instructions to output stream",
-                            elapsed_ns=f"{perf_counter_ns() - start_write:_}",
                             bytes=f"{len(instructions):_}",
                         )
 
-                    start_effects = perf_counter_ns()
                     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
-                    logger.debug(
-                        "Reconciled effects",
-                        elapsed_ns=f"{perf_counter_ns() - start_effects:_}",
-                        num_active_effects=len(active_effects),
-                    )
+                    logger.debug("Reconciled effects", num_active_effects=len(active_effects))
 
                     should_render = False
 
-                    logger.debug("Completed render cycle", elapsed_ns=f"{perf_counter_ns() - start_render:_}")
+                    logger.debug("Completed render cycle")
 
                 if ap is not None:
                     if isinstance(ap, _Control):
@@ -387,10 +350,7 @@ async def app(
                 num_events_handled = 0
                 events = deque(await drain_queue(event_queue))
 
-                start_event_handling = perf_counter_ns()
                 while events:
-                    # start_handle_event = perf_counter_ns()
-
                     event = events.popleft()
 
                     match event:
@@ -431,17 +391,7 @@ async def app(
 
                     num_events_handled += 1
 
-                    # logger.debug(
-                    #     "Handled event",
-                    #     event_obj=event,
-                    #     elapsed_ns=f"{perf_counter_ns() - start_handle_event:_}",
-                    # )
-
-                logger.debug(
-                    "Handled events",
-                    num_events=num_events_handled,
-                    elapsed_ns=f"{perf_counter_ns() - start_event_handling:_}",
-                )
+                logger.debug("Handled events", num_events=num_events_handled)
 
     except (KeyboardInterrupt, CancelledError) as ex:
         logger.debug(f"Caught {ex!r}")

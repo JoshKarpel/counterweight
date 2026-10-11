@@ -185,5 +185,6 @@ Not in scope. Useful for stabilizing computed values and callbacks passed as arg
 
 1. `just test` — all existing tests pass
 2. Write `tests/test_memo.py` with the cases listed above
-3. Run `profiling/dashboard.py` — observe `Updated shadow tree` time decrease (12 metric_cards should be skipped, only the frame counter component re-renders)
-4. Run `profiling/canvas.py` — verify no regression (canvas components are not memoized)
+3. `just profile dashboard` before and after, then `uv run python -m benchmarks compare`:
+   the `update_shadow` stage should shrink (12 `metric_card`s should be skipped, only the frame counter re-renders)
+4. The same for `canvas`, to verify no regression (canvas components are not memoized)

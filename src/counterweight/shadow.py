@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import zip_longest
-from time import perf_counter_ns
 
 from structlog import get_logger
 
@@ -29,9 +28,7 @@ class ShadowNode:
                 yield from child.walk()
 
 
-def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> tuple[ShadowNode, int]:
-    """Returns the updated shadow node and the nanoseconds spent in user component functions."""
-    user_ns = 0
+def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
     match next, previous:
         case Component(
             func=next_func,
@@ -50,17 +47,14 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             reset_current_hook_idx = current_hook_idx.set(0)
             reset_current_hook_state = current_hook_state.set(previous_hooks)
 
-            _start = perf_counter_ns()
             element = next_component.func(*next_args, **next_kwargs)
-            user_ns += perf_counter_ns() - _start
 
             children = []
             for new_child, previous_child in zip_longest(element.children, previous_children):
                 if new_child is None:
                     continue
-                child_node, child_ns = update_shadow(new_child, previous_child)
+                child_node = update_shadow(new_child, previous_child)
                 children.append(child_node)
-                user_ns += child_ns
 
             new = ShadowNode(
                 component=next_component,
@@ -84,15 +78,12 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             hook_state = Hooks()
             reset_current_hook_state = current_hook_state.set(hook_state)
 
-            _start = perf_counter_ns()
             element = next_func(*next_args, **next_kwargs)
-            user_ns += perf_counter_ns() - _start
 
             children = []
             for child in element.children:
-                child_node, child_ns = update_shadow(child, None)
+                child_node = update_shadow(child, None)
                 children.append(child_node)
-                user_ns += child_ns
 
             new = ShadowNode(
                 component=next_component,
@@ -111,9 +102,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             for new_child, previous_child in zip_longest(element.children, previous_children):
                 if new_child is None:
                     continue
-                child_node, child_ns = update_shadow(new_child, previous_child)
+                child_node = update_shadow(new_child, previous_child)
                 children.append(child_node)
-                user_ns += child_ns
 
             new = ShadowNode(
                 component=None,
@@ -124,9 +114,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
         case element, None:
             children = []
             for child in element.children:
-                child_node, child_ns = update_shadow(child, None)
+                child_node = update_shadow(child, None)
                 children.append(child_node)
-                user_ns += child_ns
 
             new = ShadowNode(
                 component=None,
@@ -137,4 +126,4 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
         case _:
             raise Exception("Unreachable!")
 
-    return new, user_ns
+    return new
