@@ -4,6 +4,12 @@
 
 ### Added
 
+- Documented how components keep their state across renders,
+  and how to use keys to move or reset that state.
+
+- Documented that a component must call the same hooks in the same order on every render,
+  and how to move a hook that is only sometimes needed into a child component.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
@@ -80,6 +86,21 @@
   always indents SVGs, and no longer takes `indent`.
   Every `Screenshot` requested in the same render cycle now receives the same frame,
   where previously only the last one ran.
+
+- The setter returned by `use_state` is the same object on every render of a component,
+  so including it in an effect's `deps` no longer reruns the effect each render.
+
+- Calling a `use_state` setter after its component has unmounted does nothing,
+  instead of updating orphaned state and triggering a render that changes nothing.
+
+- **Breaking:** A component that calls a different number of hooks than on its previous render
+  raises `InconsistentHookExecution`.
+  Skipping a trailing hook used to pass silently, and a skipped `use_effect` kept running.
+
+- **Breaking:** Keyed sibling components that share a key raise `DuplicateKey`.
+
+- **Breaking:** Component keys are strings only; `with_key` no longer accepts an `int`.
+  Convert numeric ids with `str()`.
 
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   **Breaking:** `Key.Space` now has the string value `" "` instead of `"space"`.
@@ -160,6 +181,22 @@
   An element with a `content_color` but no margin, border, padding or text now paints its background.
   Previously it painted nothing. An element with none of these and no `content_color` still paints nothing,
   so an undecorated container laid over other elements leaves them visible.
+
+- A component replaced by a plain element at the same position is now unmounted:
+  its effects are cancelled, and components nested under it start with fresh state.
+  Previously the element inherited the component's hooks, so its effects
+  (including `use_mouse` listeners) kept running.
+
+- Effects that rerun or unmount in a render are cancelled concurrently,
+  and all of them finish before any effect starts,
+  so an effect's cleanup always finishes before its replacement or a sibling's setup begins.
+  If several of those cleanups raise, all of their exceptions are reported together in one exception group.
+  Previously a rerun effect's new task started before the old one was cancelled.
+
+- Keyed sibling components are matched by key across renders rather than by position,
+  so reordering, inserting, or removing keyed children keeps each one's state and effects.
+  Unkeyed children still match the unkeyed child at the same index.
+
 - [#125](https://github.com/JoshKarpel/counterweight/pull/125)
   Mouse wheel scroll events are now captured correctly
   (they were previously reported as mouse presses).

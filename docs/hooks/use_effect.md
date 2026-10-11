@@ -21,3 +21,8 @@ Effects are canceled by the framework when one of the following conditions is me
     before the next render cycle starts.
     Assuming that you do not mess with the cancellation yourself from inside the effect setup function,
     the effect will definitely stop running before the next frame is rendered.
+
+    Within a render, every effect that is being cancelled is cancelled concurrently,
+    and all of them finish before any effect's `setup` function starts,
+    so an effect that holds something exclusive (a subscription, a terminal mode)
+    releases it before its own re-run or a sibling's effect can acquire it.

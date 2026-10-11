@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from itertools import zip_longest
+from itertools import chain
 
 import waxy
 
 from counterweight._context_vars import current_hook_idx, current_hook_state
 from counterweight.components import Component
 from counterweight.elements import AnyElement
-from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 
 logger = logging.getLogger(__name__)
 
@@ -24,18 +24,23 @@ class ShadowNode:
     layout_node: waxy.NodeId | None = None
 
     def walk(self) -> Iterator[ShadowNode]:
-        yield self
-        for child in self.children:
-            if isinstance(child, ShadowNode):
-                yield from child.walk()
+        """Yields every node in the subtree in pre-order, with an explicit stack so cost is linear in node count."""
+        stack = [self]
+        while stack:
+            node = stack.pop()
+            yield node
+            stack.extend(reversed(node.children))
+
+
+class DuplicateKey(Exception):
+    """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
 
 
 def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> ShadowNode:
+    """Returns the updated shadow node, marking every previous node that the new tree doesn't continue as unmounted."""
     match next, previous:
         case Component(
             func=next_func,
-            args=next_args,
-            kwargs=next_kwargs,
             key=next_key,
         ) as next_component, ShadowNode(
             component=previous_component,
@@ -47,17 +52,17 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
             and next_func == previous_component.func
             and next_key == previous_component.key
         ):
-            reset_current_hook_idx = current_hook_idx.set(0)
-            reset_current_hook_state = current_hook_state.set(previous_hooks)
+            previous_hook_count = len(previous_hooks.data)
+            element, hook_count = call_component(next_component, previous_hooks)
 
-            element = next_component.func(*next_args, **next_kwargs)
+            if hook_count != previous_hook_count:
+                raise InconsistentHookExecution(
+                    f"{next_func} called {hook_count} hooks on this render, "
+                    f"but {previous_hook_count} on its previous render. "
+                    "A component must call the same hooks in the same order on every render."
+                )
 
-            children = []
-            for new_child, previous_child in zip_longest(element.children, previous_children):
-                if new_child is None:
-                    continue
-                child_node = update_shadow(new_child, previous_child)
-                children.append(child_node)
+            children = reconcile_children(element.children, previous_children)
 
             new = ShadowNode(
                 component=next_component,
@@ -67,27 +72,17 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 layout_node=previous_layout_node,
             )
 
-            current_hook_idx.reset(reset_current_hook_idx)
-            current_hook_state.reset(reset_current_hook_state)
-
             # logger.debug(
             #     "Updated shadow node",
             #     type="component",
             #     id=id,
             #     generation=new.generation,
             # )
-        case Component(func=next_func, args=next_args, kwargs=next_kwargs) as next_component, _:
-            reset_current_hook_idx = current_hook_idx.set(0)
-
+        case Component() as next_component, _:
             hook_state = Hooks()
-            reset_current_hook_state = current_hook_state.set(hook_state)
+            element, _ = call_component(next_component, hook_state)
 
-            element = next_func(*next_args, **next_kwargs)
-
-            children = []
-            for child in element.children:
-                child_node = update_shadow(child, None)
-                children.append(child_node)
+            children = reconcile_children(element.children, [])
 
             new = ShadowNode(
                 component=next_component,
@@ -95,20 +90,13 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 children=children,
                 hooks=hook_state,
             )
-
-            current_hook_idx.reset(reset_current_hook_idx)
-            current_hook_state.reset(reset_current_hook_state)
         case element, ShadowNode(
+            component=None,
             children=previous_children,
             hooks=previous_hooks,
             layout_node=previous_layout_node,
         ):
-            children = []
-            for new_child, previous_child in zip_longest(element.children, previous_children):
-                if new_child is None:
-                    continue
-                child_node = update_shadow(new_child, previous_child)
-                children.append(child_node)
+            children = reconcile_children(element.children, previous_children)
 
             new = ShadowNode(
                 component=None,
@@ -117,11 +105,8 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 hooks=previous_hooks,  # the hooks are mutable and carry through renders
                 layout_node=previous_layout_node,
             )
-        case element, None:
-            children = []
-            for child in element.children:
-                child_node = update_shadow(child, None)
-                children.append(child_node)
+        case element, None | ShadowNode():
+            children = reconcile_children(element.children, [])
 
             new = ShadowNode(
                 component=None,
@@ -130,6 +115,74 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None) -> 
                 hooks=Hooks(),
             )
         case _:
+            # Not assert_never: mypy narrows this tuple match unsoundly to tuple[Never, Never], even with an arm missing.
             raise Exception("Unreachable!")
 
+    # A previous node is continued exactly when its hooks carry over.
+    if previous is not None and new.hooks is not previous.hooks:
+        unmount(previous)
+
     return new
+
+
+def call_component(next_component: Component, hooks: Hooks) -> tuple[AnyElement, int]:
+    """
+    Calls a component function with `hooks` as the current hook state, restoring the outer hook context even if it raises.
+    Returns the element and how many hooks it called.
+    """
+    reset_current_hook_idx = current_hook_idx.set(0)
+    reset_current_hook_state = current_hook_state.set(hooks)
+    try:
+        element = next_component.func(*next_component.args, **next_component.kwargs)
+        return element, current_hook_idx.get()
+    finally:
+        current_hook_idx.reset(reset_current_hook_idx)
+        current_hook_state.reset(reset_current_hook_state)
+
+
+def unmount(discarded: ShadowNode) -> None:
+    """
+    Marks every node in a subtree that the new tree discards as unmounted,
+    so a setter captured by an unmounted component stops triggering renders.
+    """
+    for node in discarded.walk():
+        node.hooks.mount_status.is_mounted = False
+
+
+def reconcile_children(
+    next_children: Sequence[Component | AnyElement], previous_children: Sequence[ShadowNode]
+) -> list[ShadowNode]:
+    """
+    Pairs each next child with the previous child it continues, as React does:
+    a keyed child with the previous sibling that had the same key, wherever it was,
+    and an unkeyed child with the unkeyed previous sibling at the same index.
+    Previous children that no next child continues are unmounted.
+    """
+    if not next_children and not previous_children:
+        return []
+
+    previous_by_key: dict[str, ShadowNode] = {}
+    previous_by_index: dict[int, ShadowNode] = {}
+    for index, node in enumerate(previous_children):
+        if node.component is not None and node.component.key is not None:
+            previous_by_key[node.component.key] = node
+        else:
+            previous_by_index[index] = node
+
+    seen_keys: set[str] = set()
+    children = []
+    for index, next_child in enumerate(next_children):
+        if isinstance(next_child, Component) and next_child.key is not None:
+            if next_child.key in seen_keys:
+                raise DuplicateKey(f"Sibling components share the key {next_child.key!r}")
+            seen_keys.add(next_child.key)
+            previous_child = previous_by_key.pop(next_child.key, None)
+        else:
+            previous_child = previous_by_index.pop(index, None)
+
+        children.append(update_shadow(next_child, previous_child))
+
+    for unmatched in chain(previous_by_key.values(), previous_by_index.values()):
+        unmount(unmatched)
+
+    return children

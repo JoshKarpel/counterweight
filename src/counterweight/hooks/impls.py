@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from asyncio import Task
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass, field
+from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
@@ -11,8 +12,43 @@ from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout
 
 
 @dataclass(slots=True)
+class MountStatus:
+    """
+    Whether a component instance is still in the tree.
+    One is shared by a `Hooks` and the slots that act on their own after render (like a setter),
+    so unmounting the instance is a single write that every slot sees.
+    """
+
+    is_mounted: bool = True
+
+
+@dataclass(slots=True, weakref_slot=True)
 class UseState:
     value: object
+    mount_status: MountStatus
+    setter: Setter[object] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        # Built once so every render hands out the same setter, which keeps it safe to put in an effect's deps.
+        # It holds the state weakly: a bound method would form a cycle, so unmounted state would wait for the cyclic GC.
+        state = ref(self)
+
+        def setter(value: object) -> None:
+            if (live_state := state()) is not None:
+                live_state.set(value)
+
+        self.setter = setter
+
+    def set(self, value: object) -> None:
+        if not self.mount_status.is_mounted:
+            return
+
+        if callable(value):
+            value = value(self.value)
+
+        if self.value != value:  # avoid unnecessary updates
+            self.value = value
+            current_event_queue.get().put_nowait(StateSet())
 
 
 @dataclass(slots=True)
@@ -36,6 +72,7 @@ class InconsistentHookExecution(Exception):
 class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
     dims: ResolvedLayout = field(default=INITIAL_RESOLVED_LAYOUT)
+    mount_status: MountStatus = field(default_factory=MountStatus)
 
     @property
     def effects(self) -> Iterator[UseEffect]:
@@ -49,20 +86,15 @@ class Hooks:
                     f"Expected a {UseState.__name__} hook, but got a {type(hook).__name__} hook instead."
                 )
         except IndexError:
-            hook = UseState(value=initial_value() if callable(initial_value) else initial_value)
+            hook = UseState(
+                value=initial_value() if callable(initial_value) else initial_value,
+                mount_status=self.mount_status,
+            )
             self.data.append(hook)
-
-        def set_state(value: T | Callable[[T], T]) -> None:
-            if callable(value):
-                value = value(hook.value)  # type: ignore[arg-type]
-
-            if hook.value != value:  # avoid unnecessary updates
-                hook.value = value
-                current_event_queue.get().put_nowait(StateSet())
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
-        return hook.value, set_state  # type: ignore[return-value]
+        return hook.value, hook.setter  # type: ignore[return-value]
 
     def use_ref[T](self, initial_value: Getter[T] | T) -> Ref[T]:
         try:
