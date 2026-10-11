@@ -130,7 +130,7 @@ def header_cell(label: str, col_width: int, col_idx: int, sort_col: int, sort_as
     indicator = (" ↑" if sort_asc else " ↓") if col_idx == sort_col else ""
     return Text(
         content=f"{label}{indicator}",
-        style=content_box | border_light | width(col_width) | pad_x(1) | text_color("amber", 300) | text_bold,
+        style=content_box | border | width(col_width) | pad_x(1) | text_color("amber", 300) | text_bold,
     )
 
 
@@ -151,7 +151,7 @@ def data_cell(value: str, col_width: int, selected: bool) -> Text:
         content=value,
         style=(
             content_box
-            | border_light
+            | border
             | width(col_width)
             | pad_x(1)
             | (text_bold | text_color("sky", 200) if selected else text_color("slate", 300))

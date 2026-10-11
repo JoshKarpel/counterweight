@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
-from itertools import combinations
 from pathlib import Path
 from typing import get_args
-
-from more_itertools import flatten
 
 from counterweight.styles.styles import BorderKind, TextJustify, TextWrap
 
@@ -453,32 +450,27 @@ generated_lines.append("")
 
 generated_lines.append("border_none = Style(border_kind=None)")
 for b in BorderKind:
-    generated_lines.append(
-        f"border_{b.name.lower()} = Style(\n"
-        f"    layout=waxy.Style(\n"
-        f"        border_top=waxy.Length(1), border_bottom=waxy.Length(1),\n"
-        f"        border_left=waxy.Length(1), border_right=waxy.Length(1),\n"
-        f"    ),\n"
-        f"    border_kind=BorderKind.{b.name},\n"
-        f")"
-    )
+    generated_lines.append(f"border_{b.name.lower()} = Style(border_kind=BorderKind.{b.name})")
 
 generated_lines.append("")
 
-# --- Border edge selection utilities ---
+# --- Border width utilities ---
 
-EDGE_SIDES = ["top", "bottom", "left", "right"]
-for edges in flatten(combinations(EDGE_SIDES, r) for r in range(1, 4)):
-    border_widths = ", ".join(f"border_{side}=waxy.Length(1)" for side in edges)
-    generated_lines.append(f"border_{'_'.join(edges)} = Style(layout=waxy.Style({border_widths}))")
-
-generated_lines.append(
-    "border_all = Style(layout=waxy.Style("
-    "border_top=waxy.Length(1), border_bottom=waxy.Length(1), "
-    "border_left=waxy.Length(1), border_right=waxy.Length(1)))"
-)
-
-generated_lines.append("")
+# As in Tailwind, a side is drawn where its width is 1, and the border kind only picks the characters.
+BORDER_WIDTH_TARGETS = {
+    "": ["top", "bottom", "left", "right"],
+    "_top": ["top"],
+    "_bottom": ["bottom"],
+    "_left": ["left"],
+    "_right": ["right"],
+    "_x": ["left", "right"],
+    "_y": ["top", "bottom"],
+}
+for width, width_suffix in ((1, ""), (0, "_0")):
+    for target_suffix, sides in BORDER_WIDTH_TARGETS.items():
+        widths = ", ".join(f"border_{side}=waxy.Length({width})" for side in sides)
+        generated_lines.append(f"border{target_suffix}{width_suffix} = Style(layout=waxy.Style({widths}))")
+    generated_lines.append("")
 
 # --- Inset utilities (absolute positioning anchors) ---
 

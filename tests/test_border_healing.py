@@ -10,9 +10,9 @@ from counterweight.elements import Div, Text
 from counterweight.styles.utilities import (
     align_children_center,
     align_self_stretch,
+    border,
     border_collapse,
     border_double,
-    border_light,
     col,
     grow,
     justify_children_center,
@@ -44,8 +44,8 @@ async def test_row_collapse_two_siblings_heals_seam() -> None:
         return Div(
             style=row | border_collapse,
             children=[
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
             ],
         )
 
@@ -64,9 +64,9 @@ async def test_row_collapse_three_siblings_heals_both_seams() -> None:
         return Div(
             style=row | border_collapse,
             children=[
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
             ],
         )
 
@@ -90,8 +90,8 @@ async def test_col_collapse_two_siblings_heals_seam() -> None:
         return Div(
             style=col | border_collapse,
             children=[
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
             ],
         )
 
@@ -112,9 +112,9 @@ async def test_col_collapse_three_siblings_heals_both_seams() -> None:
         return Div(
             style=col | border_collapse,
             children=[
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
-                Div(style=border_light | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
+                Div(style=border | size(5, 3)),
             ],
         )
 
@@ -144,7 +144,7 @@ async def test_doc_example_border_healing() -> None:
     def root() -> Div:
         def box(label: str) -> Div:
             return Div(
-                style=box_style | border_double,
+                style=box_style | border | border_double,
                 children=[Text(content=label, style=text_justify_center)],
             )
 

@@ -1,6 +1,6 @@
 import waxy
 
-from counterweight.styles import UNSET
+from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import *
 
 
@@ -92,20 +92,42 @@ def test_inset_bottom_right() -> None:
     assert inset_bottom_right.layout.inset_right == waxy.Length(0)
 
 
-def test_border_all() -> None:
-    assert border_all.layout.border_top == waxy.Length(1)
-    assert border_all.layout.border_bottom == waxy.Length(1)
-    assert border_all.layout.border_left == waxy.Length(1)
-    assert border_all.layout.border_right == waxy.Length(1)
-    assert border_all.border_kind is UNSET
+def test_border_kind_sets_only_border_kind() -> None:
+    assert border_heavy == Style(border_kind=BorderKind.Heavy)
+
+
+def test_border_sets_every_side() -> None:
+    assert border == Style(
+        layout=waxy.Style(
+            border_top=waxy.Length(1),
+            border_bottom=waxy.Length(1),
+            border_left=waxy.Length(1),
+            border_right=waxy.Length(1),
+        )
+    )
+
+
+def test_border_side_sets_only_its_side() -> None:
+    assert border_left == Style(layout=waxy.Style(border_left=waxy.Length(1)))
+
+
+def test_border_side_zero_sets_only_its_side() -> None:
+    assert border_left_0 == Style(layout=waxy.Style(border_left=waxy.Length(0)))
+
+
+def test_border_axis_sets_its_pair_of_sides() -> None:
+    assert border_y == Style(layout=waxy.Style(border_top=waxy.Length(1), border_bottom=waxy.Length(1)))
 
 
 def test_border_sides() -> None:
-    result = border_sides(frozenset({"top", "left"}))
-    assert result.layout.border_top == waxy.Length(1)
-    assert result.layout.border_bottom == waxy.Length(0)
-    assert result.layout.border_left == waxy.Length(1)
-    assert result.layout.border_right == waxy.Length(0)
+    assert border_sides(frozenset({"top", "left"})) == Style(
+        layout=waxy.Style(
+            border_top=waxy.Length(1),
+            border_bottom=waxy.Length(0),
+            border_left=waxy.Length(1),
+            border_right=waxy.Length(0),
+        )
+    )
 
 
 def test_margin_top() -> None:

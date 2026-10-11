@@ -11,12 +11,12 @@ def relative() -> Div:
     return Div(
         style=row | align_children_start | gap(3) | full,
         children=[
-            Text(style=border_light, content="first"),
+            Text(style=border, content="first"),
             Text(
-                style=position_relative | inset_top(2) | inset_left(2) | border_heavy,
+                style=position_relative | inset_top(2) | inset_left(2) | border | border_heavy,
                 content="position_relative\ninset_top(2)\ninset_left(2)",
             ),
-            Text(style=border_light, content="third"),
+            Text(style=border, content="third"),
         ],
     )
 
@@ -29,11 +29,11 @@ def relative() -> Div:
 @component
 def absolute() -> Div:
     return Div(
-        style=col | full | border_light,
+        style=col | full | border,
         children=[
             Text(content="first, in flow"),
             Text(
-                style=position_absolute | inset_top(2) | inset_left(10) | border_heavy,
+                style=position_absolute | inset_top(2) | inset_left(10) | border | border_heavy,
                 content="position_absolute\ninset_top(2)\ninset_left(10)",
             ),
             Text(content="second, in flow"),
@@ -61,16 +61,16 @@ def dialog() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=border_light, content="header"),
+            Text(style=border, content="header"),
             Text(
-                style=grow(1) | border_light | text_wrap_stable,
+                style=grow(1) | border | text_wrap_stable,
                 content="The app's content stays where it is, and the dialog draws over it. " * 4,
             ),
             Div(
                 style=overlay,
                 children=[
                     Text(
-                        style=border_double | pad_x(2) | pad_y(1),
+                        style=border | border_double | pad_x(2) | pad_y(1),
                         content="a dialog centered over the app",
                     ),
                 ],
@@ -90,7 +90,7 @@ def badge() -> Div:
         style=row | align_children_start | gap(2) | full,
         children=[
             Div(
-                style=border_light | pad_x(1),
+                style=border | pad_x(1),
                 children=[
                     Text(content="inbox"),
                     Text(
@@ -100,7 +100,7 @@ def badge() -> Div:
                 ],
             ),
             Div(
-                style=border_light | pad_x(1),
+                style=border | pad_x(1),
                 children=[
                     Text(content="alerts"),
                     Text(

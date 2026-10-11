@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
 from counterweight.elements import AnyElement, CellPaint, Div, Text
 from counterweight.geometry import Region
-from counterweight.styles.styles import TextWrap, resolve_style
+from counterweight.styles.styles import Style, TextWrap, resolve_style
 
 if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode
@@ -73,15 +74,34 @@ def _build_node(
 
     match element:
         case Text():
-            node_id = tree.new_leaf_with_context(element.style.layout, element)
+            node_id = tree.new_leaf_with_context(layout_style(element.style), element)
         case Div():
             child_ids = [_build_node(tree, child_shadow, node_map) for child_shadow in shadow.children]
-            node_id = tree.new_with_children(element.style.layout, child_ids)
+            node_id = tree.new_with_children(layout_style(element.style), child_ids)
         case _:
             assert_never(element)
 
     node_map[node_id] = shadow
     return node_id
+
+
+_NO_BORDER = waxy.Style(
+    border_top=waxy.Length(0),
+    border_bottom=waxy.Length(0),
+    border_left=waxy.Length(0),
+    border_right=waxy.Length(0),
+)
+
+
+@lru_cache(maxsize=2**12)
+def layout_style(style: Style) -> waxy.Style:
+    """
+    The waxy style an element is laid out with: its `layout`, without border widths
+    when its `border_kind` is `None`, as CSS's `border-style: none` makes border widths compute to 0.
+    """
+    if resolve_style(style).border_kind is None:
+        return style.layout | _NO_BORDER
+    return style.layout
 
 
 def _measure_text(

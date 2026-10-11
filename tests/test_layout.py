@@ -14,7 +14,7 @@ from counterweight.styles.utilities import (
     align_children_center_unsafe,
     align_children_end,
     align_children_end_unsafe,
-    border_all,
+    border,
     border_collapse,
     border_lightrounded,
     col,
@@ -62,8 +62,8 @@ def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[A
 
 
 def test_row_collapse_two_siblings_share_edge() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=row | border_collapse), children=[child_a, child_b])
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
@@ -72,8 +72,8 @@ def test_row_collapse_two_siblings_share_edge() -> None:
 
 
 def test_col_collapse_two_siblings_share_edge() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b])
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
@@ -82,9 +82,9 @@ def test_col_collapse_two_siblings_share_edge() -> None:
 
 
 def test_row_collapse_three_siblings_both_seams_share() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
-    child_c = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
+    child_c = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=row | border_collapse), children=[child_a, child_b, child_c])
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root)]
@@ -94,9 +94,9 @@ def test_row_collapse_three_siblings_both_seams_share() -> None:
 
 
 def test_col_collapse_three_siblings_both_seams_share() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
-    child_c = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
+    child_c = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b, child_c])
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root)]
@@ -106,8 +106,8 @@ def test_col_collapse_three_siblings_both_seams_share() -> None:
 
 
 def test_row_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=row), children=[child_a, child_b])
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
@@ -116,8 +116,8 @@ def test_row_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
 
 
 def test_col_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
-    child_a = _shadow(Div(style=border_all | size(10, 5)))
-    child_b = _shadow(Div(style=border_all | size(10, 5)))
+    child_a = _shadow(Div(style=border | size(10, 5)))
+    child_b = _shadow(Div(style=border | size(10, 5)))
     root = _shadow(Div(style=col), children=[child_a, child_b])
 
     _, layout_a, layout_b = [rl for _, rl in _layout(root)]
@@ -134,9 +134,9 @@ def test_col_no_collapse_siblings_are_adjacent_not_overlapping() -> None:
 
 def test_row_collapse_fractional_flex_widths_share_edges() -> None:
     # 31px / 3 = 10.333... → fractional unrounded positions
-    child_a = _shadow(Div(style=border_all | grow(1)))
-    child_b = _shadow(Div(style=border_all | grow(1)))
-    child_c = _shadow(Div(style=border_all | grow(1)))
+    child_a = _shadow(Div(style=border | grow(1)))
+    child_b = _shadow(Div(style=border | grow(1)))
+    child_c = _shadow(Div(style=border | grow(1)))
     root = _shadow(Div(style=row | border_collapse), children=[child_a, child_b, child_c])
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root, w=31)]
@@ -147,9 +147,9 @@ def test_row_collapse_fractional_flex_widths_share_edges() -> None:
 
 def test_col_collapse_fractional_flex_heights_share_edges() -> None:
     # 21px / 3 = 7.0 → no fractions, but 22px / 3 = 7.333...
-    child_a = _shadow(Div(style=border_all | grow(1)))
-    child_b = _shadow(Div(style=border_all | grow(1)))
-    child_c = _shadow(Div(style=border_all | grow(1)))
+    child_a = _shadow(Div(style=border | grow(1)))
+    child_b = _shadow(Div(style=border | grow(1)))
+    child_c = _shadow(Div(style=border | grow(1)))
     root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b, child_c])
 
     _, layout_a, layout_b, layout_c = [rl for _, rl in _layout(root, h=22)]
@@ -164,7 +164,7 @@ def test_col_collapse_fractional_flex_heights_share_edges() -> None:
 
 
 def test_fixed_size_border_box_dimensions() -> None:
-    child = _shadow(Div(style=border_all | size(12, 7)))
+    child = _shadow(Div(style=border | size(12, 7)))
     root = _shadow(Div(style=row), children=[child])
 
     _, layout_child = [rl for _, rl in _layout(root)]
@@ -180,7 +180,7 @@ def test_fixed_size_border_box_dimensions() -> None:
 
 
 def test_absolute_negative_inset_left() -> None:
-    child = _shadow(Div(style=border_all | size(5, 3) | position_absolute | inset_left(-2)))
+    child = _shadow(Div(style=border | size(5, 3) | position_absolute | inset_left(-2)))
     root = _shadow(Div(style=size(20, 10)), children=[child])
 
     _, layout_child = [rl for _, rl in _layout(root)]
@@ -189,7 +189,7 @@ def test_absolute_negative_inset_left() -> None:
 
 
 def test_absolute_negative_inset_top() -> None:
-    child = _shadow(Div(style=border_all | size(5, 3) | position_absolute | inset_top(-1)))
+    child = _shadow(Div(style=border | size(5, 3) | position_absolute | inset_top(-1)))
     root = _shadow(Div(style=size(20, 10)), children=[child])
 
     _, layout_child = [rl for _, rl in _layout(root)]
@@ -199,7 +199,7 @@ def test_absolute_negative_inset_top() -> None:
 
 def test_absolute_negative_insets_preserve_size() -> None:
     # Shifting via insets should not change the element's width or height.
-    child = _shadow(Div(style=border_all | size(5, 3) | position_absolute | inset_left(-3) | inset_top(-2)))
+    child = _shadow(Div(style=border | size(5, 3) | position_absolute | inset_left(-3) | inset_top(-2)))
     root = _shadow(Div(style=size(20, 10)), children=[child])
 
     _, layout_child = [rl for _, rl in _layout(root)]
@@ -221,9 +221,9 @@ def test_col_collapse_last_child_bottom_on_screen() -> None:
     # so its exclusive bottom edge is 20.
     # Uses _layout_screened to match the app's screen-wrapper, which causes
     # taffy to produce a bottom float slightly above 20.0 (e.g. 20.000000048).
-    child_a = _shadow(Div(style=border_all | grow(1)))
-    child_b = _shadow(Div(style=border_all | grow(1)))
-    child_c = _shadow(Div(style=border_all | grow(1)))
+    child_a = _shadow(Div(style=border | grow(1)))
+    child_b = _shadow(Div(style=border | grow(1)))
+    child_c = _shadow(Div(style=border | grow(1)))
     root = _shadow(Div(style=col | border_collapse), children=[child_a, child_b, child_c])
 
     # screen=0, root_div=1, child_a=2, child_b=3, child_c=4
@@ -251,7 +251,15 @@ def test_auto_centered_text_has_correct_width() -> None:
         hooks=Hooks(),
     )
     container_shadow = _shadow(
-        Div(style=row | grow(1) | justify_children_center | align_children_center | border_lightrounded | pad(1)),
+        Div(
+            style=row
+            | grow(1)
+            | justify_children_center
+            | align_children_center
+            | border
+            | border_lightrounded
+            | pad(1)
+        ),
         children=[title_shadow],
     )
     root = _shadow(Div(style=col), children=[container_shadow])

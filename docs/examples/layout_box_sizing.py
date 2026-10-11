@@ -11,9 +11,9 @@ def fixed() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=size(24, 4) | border_light, content="size(24, 4)"),
-            Text(style=width(36) | border_light, content="width(36)"),
-            Text(style=height(4) | border_light, content="height(4)"),
+            Text(style=size(24, 4) | border, content="size(24, 4)"),
+            Text(style=width(36) | border, content="width(36)"),
+            Text(style=height(4) | border, content="height(4)"),
         ],
     )
 
@@ -28,8 +28,8 @@ def fit() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=border_light, content="stretched by its col"),
-            Text(style=align_self_start | border_light, content="align_self_start"),
+            Text(style=border, content="stretched by its col"),
+            Text(style=align_self_start | border, content="align_self_start"),
         ],
     )
 
@@ -44,11 +44,11 @@ def fill() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=border_light, content="content height"),
-            Text(style=grow(1) | border_light, content="grow(1): the rest of the col"),
+            Text(style=border, content="content height"),
+            Text(style=grow(1) | border, content="grow(1): the rest of the col"),
             Div(
                 style=row,
-                children=[Text(style=full_width | border_light, content="full_width: the whole row")],
+                children=[Text(style=full_width | border, content="full_width: the whole row")],
             ),
         ],
     )
@@ -67,15 +67,15 @@ def clamped() -> Div:
             Div(
                 style=row,
                 children=[
-                    Text(style=grow(1) | max_width(20) | border_light, content="grow(1)\nmax_width(20)"),
-                    Text(style=grow(1) | border_light, content="grow(1)"),
+                    Text(style=grow(1) | max_width(20) | border, content="grow(1)\nmax_width(20)"),
+                    Text(style=grow(1) | border, content="grow(1)"),
                 ],
             ),
             Div(
-                style=row | width(40) | border_heavy,
+                style=row | width(40) | border | border_heavy,
                 children=[
-                    Text(style=width(30) | min_width(24) | border_light, content="width(30)\nmin_width(24)"),
-                    Text(style=width(30) | border_light, content="width(30)"),
+                    Text(style=width(30) | min_width(24) | border, content="width(30)\nmin_width(24)"),
+                    Text(style=width(30) | border, content="width(30)"),
                 ],
             ),
         ],
@@ -92,8 +92,8 @@ def aspect() -> Div:
     return Div(
         style=row | align_children_start | full,
         children=[
-            Text(style=width(18) | aspect_ratio(1) | border_light, content="width(18)\naspect_ratio(1)"),
-            Text(style=width(18) | aspect_ratio(2) | border_light, content="width(18)\naspect_ratio(2)"),
+            Text(style=width(18) | aspect_ratio(1) | border, content="width(18)\naspect_ratio(1)"),
+            Text(style=width(18) | aspect_ratio(2) | border, content="width(18)\naspect_ratio(2)"),
         ],
     )
 
@@ -108,8 +108,8 @@ def box_sizing() -> Div:
     return Div(
         style=col | align_children_start | full,
         children=[
-            Text(style=width(24) | pad_x(2) | border_light, content="width(24)"),
-            Text(style=content_box | width(24) | pad_x(2) | border_light, content="content_box | width(24)"),
+            Text(style=width(24) | pad_x(2) | border, content="width(24)"),
+            Text(style=content_box | width(24) | pad_x(2) | border, content="content_box | width(24)"),
         ],
     )
 

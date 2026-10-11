@@ -12,10 +12,18 @@ from counterweight.styles.styles import (
     Color,
     Style,
     StyleFragment,
+    merge,
     resolve_cell_style,
     resolve_style,
 )
-from counterweight.styles.utilities import border_heavy, inset_left, inset_top, position_absolute, position_relative
+from counterweight.styles.utilities import (
+    border,
+    border_heavy,
+    inset_left,
+    inset_top,
+    position_absolute,
+    position_relative,
+)
 
 
 @pytest.mark.parametrize(
@@ -113,7 +121,7 @@ def test_layout_merges_left_non_default_retained() -> None:
 
 def test_layout_merge_with_visual() -> None:
     """Layout fields merge independently from visual fields."""
-    result = position_relative | inset_left(3) | inset_top(5) | border_heavy
+    result = position_relative | inset_left(3) | inset_top(5) | border | border_heavy
     assert result.border_kind == BorderKind.Heavy
     assert result.layout.position == waxy.Position.Relative
     assert result.layout.inset_left == waxy.Length(3)
@@ -122,7 +130,7 @@ def test_layout_merge_with_visual() -> None:
 
 
 def test_absolute_merge_with_visual() -> None:
-    result = position_absolute | inset_left(3) | inset_top(5) | border_heavy
+    result = position_absolute | inset_left(3) | inset_top(5) | border | border_heavy
     assert result.border_kind == BorderKind.Heavy
     assert result.layout.position == waxy.Position.Absolute
     assert result.layout.inset_left == waxy.Length(3)
@@ -251,3 +259,38 @@ def test_resolving_against_resolved_base_matches_merging_first() -> None:
     overlay = CellStyle(background=BLUE, bold=False)
 
     assert resolve_cell_style(overlay, resolve_cell_style(base)) == resolve_cell_style(base | overlay)
+
+
+BOLD = Style(text_style=CellStyle(bold=True))
+HEAVY = Style(border_kind=BorderKind.Heavy)
+CENTERED = Style(text_justify="center")
+
+
+def test_merge_matches_chained_or() -> None:
+    assert merge(BOLD, HEAVY, CENTERED) == BOLD | HEAVY | CENTERED
+
+
+def test_merge_later_style_wins() -> None:
+    assert merge(Style(z=3), Style(z=7)).z == 7
+
+
+@pytest.mark.parametrize(
+    "styles",
+    [
+        (None, BOLD, HEAVY),
+        (BOLD, None, HEAVY),
+        (BOLD, HEAVY, None),
+        (None, BOLD, None, None, HEAVY, None),
+    ],
+)
+def test_merge_skips_none_anywhere(styles: tuple[Style | None, ...]) -> None:
+    assert merge(*styles) == BOLD | HEAVY
+
+
+@pytest.mark.parametrize("styles", [(), (None,), (None, None)])
+def test_merge_of_nothing_is_empty_style(styles: tuple[None, ...]) -> None:
+    assert merge(*styles) == Style()
+
+
+def test_merge_of_one_style_is_that_style() -> None:
+    assert merge(HEAVY) == HEAVY

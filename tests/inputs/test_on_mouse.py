@@ -4,7 +4,7 @@ from counterweight.controls import Quit
 from counterweight.elements import Div
 from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseScrolledDown, MouseScrolledUp, MouseUp
 from counterweight.geometry import Position
-from counterweight.styles.utilities import border_light, size
+from counterweight.styles.utilities import border, size
 
 
 async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> None:
@@ -14,7 +14,7 @@ async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> No
     def root() -> Div:
         return Div(
             on_mouse=recorder.append,
-            style=border_light | size(3, 3),
+            style=border | size(3, 3),
         )
 
     events: list[tuple[MouseEvent, bool]] = [

@@ -19,7 +19,7 @@ WRAP_STYLE: dict[TextWrap, Style] = {
 @component
 def wrap_pane(mode: TextWrap) -> Div:
     return Div(
-        style=grow(1) | min_width(0) | col | border_light | pad_x(1),
+        style=grow(1) | min_width(0) | col | border | pad_x(1),
         children=[
             Text(
                 content=f" {mode} ",

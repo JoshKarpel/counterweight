@@ -49,7 +49,7 @@ def root() -> Div:
         style=col | align_children_center | justify_children_space_evenly,
         children=[
             Div(
-                style=border_heavy,
+                style=border | border_heavy,
                 children=[
                     Text(
                         content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(active_sides))}",
@@ -62,7 +62,7 @@ def root() -> Div:
             ),
             Text(
                 content="k/K  cycle border kind\ne/E  cycle active edges",
-                style=border_color("slate", 400) | text_color("slate", 200) | border_lightrounded | pad_x(2),
+                style=border_color("slate", 400) | text_color("slate", 200) | border | border_lightrounded | pad_x(2),
             ),
         ],
         on_key=on_key,

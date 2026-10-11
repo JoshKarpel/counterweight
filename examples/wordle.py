@@ -122,7 +122,7 @@ def root() -> Div:
         )
 
 
-button_style = pad_x(1) | border_lightrounded
+button_style = pad_x(1) | border | border_lightrounded
 
 
 @component
@@ -181,7 +181,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
-    message_style = text_justify_center | pad_x(2) | border_light
+    message_style = text_justify_center | pad_x(2) | border
 
     if state == "playing":
         if len(guess) == 5 and guess not in GUESSABLE_WORDS:
@@ -191,10 +191,10 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
             message = f"Guess {len(submitted) + 1} of {MAX_SUBMITS}"
     elif state == "win":
         message = f"You won! The word was {solution}"
-        message_style |= text_color("green", 600) | border_color("green", 600) | border_double
+        message_style |= text_color("green", 600) | border_color("green", 600) | border | border_double
     elif state == "loss":
         message = f"You lost! The word was {solution}"
-        message_style |= text_color("red", 700) | border_color("red", 700) | border_double
+        message_style |= text_color("red", 700) | border_color("red", 700) | border | border_double
 
     return Div(
         style=col,
@@ -224,9 +224,9 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
     children = []
     for guess_letter, solution_letter in zip(padded(guess, fillvalue=" ", n=5), solution):
         style = {
-            "submitted": border_double,
-            "current": border_heavy,
-            "pending": border_double,
+            "submitted": border | border_double,
+            "current": border | border_heavy,
+            "pending": border | border_double,
         }[type]
 
         if type == "submitted":
@@ -346,7 +346,7 @@ def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyCont
 
     return Text(
         content=letter,
-        style=style | pad_x(1) | pad_y(0) | (border_double if hovered.border else border_heavy),
+        style=style | pad_x(1) | pad_y(0) | (border | border_double if hovered.border else border | border_heavy),
         on_mouse=on_mouse,
     )
 

@@ -10,7 +10,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseDown, MouseMoved, MouseUp, TerminalResized
 from counterweight.geometry import Position
 from counterweight.styles.styles import Style
-from counterweight.styles.utilities import border_light, col, full, text_wrap_stable
+from counterweight.styles.utilities import border, col, full, text_wrap_stable
 
 
 async def test_headless_autopilot_events_with_empty_app() -> None:
@@ -47,7 +47,7 @@ async def render_text(root: Callable[[], Component], dimensions: tuple[int, int]
 async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -> None:
     @component
     def root() -> Div:
-        return Div(style=root_style | border_light, children=[Text(content="wider than the screen")])
+        return Div(style=root_style | border, children=[Text(content="wider than the screen")])
 
     assert await render_text(root, (10, 3)) == [
         "┌────────┐",

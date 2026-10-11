@@ -17,6 +17,7 @@ def root() -> Div:
                 | padding_color("orange", 500)
                 | pad_x(2)
                 | pad_y(1)
+                | border
                 | border_lightrounded
                 | border_bg("blue", 500)
                 | margin_color("red", 500)

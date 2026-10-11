@@ -1,5 +1,5 @@
-──────────────────────────────  │border_sides(          ┌──────────┐  
-border_sides(                   │  frozenset({"left"})  │border_top│  
-  frozenset({"top", "bottom"})  │)                      └──────────┘  
-)                                                                     
-──────────────────────────────                                        
+────────  ┌─────────────  ┌────────────────  ┌──────────────┐         
+border_y  │border_top     │border            │border_right_0│         
+────────  │| border_left  │| border_right_0  │| border      │         
+                          └────────────────  └──────────────┘         
+                                                                      

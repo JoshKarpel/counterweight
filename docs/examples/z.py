@@ -16,6 +16,7 @@ def root() -> Div:
                 | position_absolute
                 | inset_left(6)
                 | inset_top(6)
+                | border
                 | border_lightrounded
                 | margin(1)
                 | margin_color("purple", 600),
@@ -26,6 +27,7 @@ def root() -> Div:
                 | position_absolute
                 | inset_left(4)
                 | inset_top(3)
+                | border
                 | border_lightrounded
                 | margin(1)
                 | margin_color("teal", 600),
@@ -36,6 +38,7 @@ def root() -> Div:
                 | position_absolute
                 | inset_left(0)
                 | inset_top(0)
+                | border
                 | border_lightrounded
                 | margin(1)
                 | margin_color("red", 600),
@@ -46,6 +49,7 @@ def root() -> Div:
                 | position_absolute
                 | inset_left(13)
                 | inset_top(3)
+                | border
                 | border_lightrounded
                 | margin(1)
                 | margin_color("amber", 600),

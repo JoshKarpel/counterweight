@@ -128,7 +128,7 @@ def random_walkers() -> Text:
             height=h,
             cells=dict(zip(walkers, colors)),
         ),
-        style=border_heavy | border_color("slate", 400),
+        style=border | border_heavy | border_color("slate", 400),
     )
 
 

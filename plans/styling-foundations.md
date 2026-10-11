@@ -289,49 +289,54 @@ resolving against a resolved base matches merging first.
 
 ### 5. Store borders once
 
-- Replace the border-width bookkeeping with `border_kind: BorderKind | None` and
-  `border_sides: BorderSides`, where `BorderSides` is a fragment of four `bool | UNSET`
-  fields (`top`, `bottom`, `left`, `right`, all resolving to `True`). Because it merges per
-  field, `Style(border_sides=BorderSides(top=False))` turns off only the top edge.
-- When building the layout tree, derive the waxy border widths from those two fields:
-  1 for each side that's on when `border_kind` isn't `None`, else 0.
-  Apply them as `style.layout | waxy.Style(border_top=..., ...)` so the derived widths always
-  win, caching the result per style.
-- Raise `ValueError` if `style.layout.fields_set` contains any `border_*` field, so border
-  widths can't be set through `layout` and drift from `border_kind` again.
-- Utilities: `border_<kind>` sets only `border_kind`, so a kind on its own draws all four
-  sides. Two families then choose sides:
-  - `border_off_<side>` (`border_off_top`, `border_off_bottom`, `border_off_left`,
-    `border_off_right`) sets one side to `False` and leaves the others unset, so offs
-    compose in any order: `border_light | border_off_left | border_off_right` draws top and
-    bottom rules.
-  - `border_only_<sides>` replaces the generated edge utilities (`border_top`,
-    `border_top_left`, ...): each sets all four sides, meaning "exactly these sides".
-    `only` says at the call site that the other sides go away, where `border_top` reads as
-    "add the top side", which is the misreading that `border_light | border_top` drawing all
-    four sides shows today. Onlys don't compose (`border_only_top | border_only_left` leaves
-    just the left side), so keep generating every combination.
-    Drop `border_all`, which only restates the default.
-  - `border_sides(...)` stays as the function form of `border_only_<sides>`.
+**Status:** Done
+
+Borders follow Tailwind's model: the widths in `Style.layout` are the only record of which sides
+exist, and `border_kind` only chooses the characters, the way Tailwind's `border` sets
+`border-width` and `border-solid` or `border-double` sets `border-style`.
+Ranked goals: borders use waxy's own fields rather than a parallel counterweight type;
+then each fact is stored once; then a bare kind keeps drawing all four sides.
+The model gives up the last one, so every border needs a width utility.
+
+- `border_kind` defaults to `BorderKind.Light` in `STYLE_DEFAULTS`, as Tailwind's preflight sets
+  `border: 0 solid` on every element, so `border` alone draws a light border.
+- A `border_kind` of `None` makes every border width 0 when building the layout tree,
+  as CSS's `border-style: none` makes border widths compute to 0.
+  `layout_style` applies it as `style.layout | waxy.Style(border_top=Length(0), ...)`,
+  cached per style, so `border | border_none` reserves no space.
+- Each side is one cell, so `Style.__post_init__` raises `ValueError` for a border width
+  in `layout` other than `Length(0)` or `Length(1)`, including `Percent` and `Auto`.
+  Nothing defines what a wider border draws in its inner cells and corners,
+  and border healing assumes single-cell edges.
+- `paint_border` keeps drawing an edge where layout reserved space for it, which is now exact:
+  layout's widths are the source of truth.
+- Utilities: `border_<kind>` sets only `border_kind`, so a kind on its own draws nothing.
+  Width utilities set sides, each with a `_0` form that clears them:
+  `border` and `border_0` (all four), `border_top`, `border_bottom`, `border_left`,
+  `border_right`, `border_x` and `border_y`.
+  Sides start at 0, so `border_top | border_left` draws just those two, and the generated
+  edge combinations (`border_top_left`, ...) and `border_all` go away.
+  `border_sides(...)` stays, setting all four widths from a set of side names.
+  Unlike Tailwind, whose stylesheet order makes `border-t-0 border` and `border border-t-0`
+  equivalent, `|` is ordered: `border_right_0 | border` draws all four sides.
 
   Regenerate with `just codegen` after editing `codegen/generate_utilities.py`.
-  Changelog entry under `Changed` for the renames and the removal of `border_all`.
+  Changelog entry under `Changed`.
 
 `border_contract` and `border_collapse` don't change.
 
-Tests: `border_light | border_none` reserves no space and draws nothing;
-`border_light | border_only_top` reserves and draws only the top edge;
-`border_light | border_off_left | border_off_right` and
-`border_light | border_off_right | border_off_left` both draw only top and bottom;
-`border_only_top | border_only_left` draws only the left edge;
-setting `border_top` through `layout` raises.
+Tests: `border` draws all four sides in the default kind; `border | border_heavy` changes only
+the characters; `border_heavy` alone reserves and draws nothing; `border | border_none` reserves
+no space and draws nothing; `border_top` and `border_top | border_left` draw only those sides;
+`border | border_left_0 | border_right_0` draws only top and bottom; `border_right_0 | border`
+draws all four; widths of `Length(0)` and `Length(1)` are allowed and `Length(2)` and
+`Percent(0.5)` raise.
 
-Gallery: rewrite the "Borders on some sides" section of "Spacing and borders" around
-`border_off_<side>` and `border_only_<sides>`, and drop its `border_light | border_top`
-screenshot, which shows a pitfall this step removes. The `border_contract` example
-(`layout_spacing.py:contract`) and `test_border_contract.py` build their sides with
-`border_sides(frozenset({...}))`; move both to the new utilities, and check that every text
-snapshot outside that section comes out unchanged.
+Gallery: rewrite the "Borders on some sides" section of "Spacing and borders" around the width
+utilities, including the ordered-merge case. Every call site that relied on a kind to reserve
+space gains `border`: `border_light` becomes `border`, and `border_heavy` becomes
+`border | border_heavy`. Every text snapshot outside that section should come out unchanged
+apart from labels that spell out the styles.
 
 ### 6. Expose the sizing keywords
 
@@ -582,7 +587,7 @@ and makes it read as one document.
 
 - **Use the current utilities everywhere.** Every example uses the shortest utility that now
   exists (`fill`, `length`, `fr`, `span`, `center_children`, the sizing keywords,
-  `border_off_<side>` and `border_only_<sides>`), and no example spells out a raw `waxy` value
+  `border_x`, `border_top_0` and the other border width utilities), and no example spells out a raw `waxy` value
   that a utility covers. `grep -rn "waxy\." docs/examples docs/layout` should find only what
   the utilities deliberately leave out.
 - **Revisit the workarounds.** The step 2 examples route around these behaviors rather than

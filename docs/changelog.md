@@ -19,6 +19,10 @@
 
 
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added `counterweight.styles.merge`, which merges any number of `Style`s left to right,
+  as an alternative to chaining `|`: `merge(a, b, c)` is `a | b | c`.
+  It skips `None` arguments wherever they appear.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Added `Screenshot.to_stream`, which prints a screenshot as a text grid
   (with or without ANSI escape codes), useful for debugging layout and in tests.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
@@ -66,6 +70,18 @@
   Code that matched on the string value (e.g. `event.key == "space"`) must be updated;
   matching on the enum member (`Key.Space`) is unaffected.
 
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  **Breaking:** borders work as they do in Tailwind.
+  A border side is drawn where its width in `Style.layout` is 1, and `border_kind` only chooses the characters.
+  `border_kind` defaults to `BorderKind.Light`, so the new `border` utility alone draws a light border,
+  and the `border_<kind>` utilities no longer reserve space or draw anything on their own:
+  write `border | border_heavy` where you wrote `border_heavy`.
+  `border_top`, `border_bottom`, `border_left` and `border_right` set one side, the new `border_x` and `border_y`
+  set a pair, and each has a new `_0` form (`border_0`, `border_top_0`, ...) that clears its sides.
+  A `border_kind` of `None` (`border_none`) removes the border along with the space reserved for it.
+  A border width in `Style.layout` other than `Length(0)` or `Length(1)` raises `ValueError`.
+  `border_all` and the edge combinations such as `border_top_left` are removed:
+  use `border`, or compose sides as in `border_top | border_left`.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Every field of `Style` (except `layout`) and `CellStyle` starts out as the new
   `counterweight.styles.UNSET` sentinel rather than its default value,

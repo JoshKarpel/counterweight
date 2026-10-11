@@ -8,13 +8,23 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div
-from counterweight.styles.utilities import Side, border_contract, border_light, border_sides, size
+from counterweight.styles import Style
+from counterweight.styles.utilities import (
+    border,
+    border_bottom,
+    border_contract,
+    border_left,
+    border_right,
+    border_top,
+    border_x,
+    size,
+)
 
 
-async def render_box(sides: frozenset[Side], contract: int) -> str:
+async def render_box(sides: Style, contract: int) -> str:
     @component
     def root() -> Div:
-        return Div(style=border_light | border_sides(sides) | border_contract(contract) | size(7, 4))
+        return Div(style=sides | border_contract(contract) | size(7, 4))
 
     capture = io.StringIO()
     await app(root, headless=True, dimensions=(7, 4), autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()])
@@ -25,7 +35,7 @@ async def render_box(sides: frozenset[Side], contract: int) -> str:
     ("sides", "contract", "expected"),
     [
         (
-            frozenset({"top", "left"}),
+            border_top | border_left,
             2,
             [
                 "┌────  ",
@@ -35,7 +45,7 @@ async def render_box(sides: frozenset[Side], contract: int) -> str:
             ],
         ),
         (
-            frozenset({"bottom", "right"}),
+            border_bottom | border_right,
             1,
             [
                 "       ",
@@ -45,7 +55,7 @@ async def render_box(sides: frozenset[Side], contract: int) -> str:
             ],
         ),
         (
-            frozenset({"left", "right"}),
+            border_x,
             1,
             [
                 "       ",
@@ -55,7 +65,7 @@ async def render_box(sides: frozenset[Side], contract: int) -> str:
             ],
         ),
         (
-            frozenset({"top", "bottom", "left", "right"}),
+            border,
             3,
             [
                 "┌─────┐",
@@ -67,6 +77,6 @@ async def render_box(sides: frozenset[Side], contract: int) -> str:
     ],
 )
 async def test_border_contract_shortens_edges_next_to_missing_sides(
-    sides: frozenset[Side], contract: int, expected: list[str]
+    sides: Style, contract: int, expected: list[str]
 ) -> None:
     assert await render_box(sides, contract) == "\n".join(expected)

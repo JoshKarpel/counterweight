@@ -14,7 +14,7 @@ box_style = grow(1) | align_self_stretch | justify_children_center | align_child
 
 def box(s: str) -> Div:
     return Div(
-        style=box_style | border_double,
+        style=box_style | border | border_double,
         children=[
             Text(
                 style=text_justify_center | text_color("cyan", 500),

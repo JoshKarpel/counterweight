@@ -12,19 +12,19 @@ def gap_margin_pad() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | gap(2) | border_heavy,
-                children=[Text(style=border_light, content=f"gap(2) on the row {n}") for n in range(2)],
+                style=row | gap(2) | border | border_heavy,
+                children=[Text(style=border, content=f"gap(2) on the row {n}") for n in range(2)],
             ),
             Div(
-                style=row | border_heavy,
+                style=row | border | border_heavy,
                 children=[
-                    Text(style=margin_x(1) | margin_color("red", 600) | border_light, content=f"margin_x(1) {n}")
+                    Text(style=margin_x(1) | margin_color("red", 600) | border, content=f"margin_x(1) {n}")
                     for n in range(2)
                 ],
             ),
             Div(
-                style=row | pad_x(2) | padding_color("blue", 600) | border_heavy,
-                children=[Text(style=border_light, content=f"pad_x(2) on the row {n}") for n in range(2)],
+                style=row | pad_x(2) | padding_color("blue", 600) | border | border_heavy,
+                children=[Text(style=border, content=f"pad_x(2) on the row {n}") for n in range(2)],
             ),
         ],
     )
@@ -42,11 +42,11 @@ def collapse() -> Div:
         children=[
             Div(
                 style=row,
-                children=[Text(style=border_light, content="side by side") for _ in range(3)],
+                children=[Text(style=border, content="side by side") for _ in range(3)],
             ),
             Div(
                 style=row | border_collapse,
-                children=[Text(style=border_light, content="border_collapse") for _ in range(3)],
+                children=[Text(style=border, content="border_collapse") for _ in range(3)],
             ),
         ],
     )
@@ -62,15 +62,10 @@ def sides() -> Div:
     return Div(
         style=row | align_children_start | gap(2) | full,
         children=[
-            Text(
-                style=border_light | border_sides(frozenset({"top", "bottom"})),
-                content='border_sides(\n  frozenset({"top", "bottom"})\n)',
-            ),
-            Text(
-                style=border_light | border_sides(frozenset({"left"})),
-                content='border_sides(\n  frozenset({"left"})\n)',
-            ),
-            Text(style=border_light | border_top, content="border_top"),
+            Text(style=border_y, content="border_y"),
+            Text(style=border_top | border_left, content="border_top\n| border_left"),
+            Text(style=border | border_right_0, content="border\n| border_right_0"),
+            Text(style=border_right_0 | border, content="border_right_0\n| border"),
         ],
     )
 
@@ -86,11 +81,11 @@ def contract() -> Div:
         style=row | align_children_start | gap(2) | full,
         children=[
             Text(
-                style=border_light | border_sides(frozenset({"top", "left"})) | pad_x(1),
+                style=border_top | border_left | pad_x(1),
                 content="top and left\nsides",
             ),
             Text(
-                style=border_light | border_sides(frozenset({"top", "left"})) | border_contract(2) | pad_x(1),
+                style=border_top | border_left | border_contract(2) | pad_x(1),
                 content="top and left\nsides\nborder_contract(2)",
             ),
         ],

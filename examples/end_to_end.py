@@ -12,7 +12,7 @@ from counterweight.hooks import Setter, use_effect, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
-    border_all,
+    border,
     border_color,
     border_lightrounded,
     col,
@@ -31,7 +31,7 @@ def toggle() -> Div:
     def advance_border() -> BorderKind:
         return next(border_cycle_ref.current)
 
-    border, set_border = use_state(advance_border)
+    border_kind, set_border_kind = use_state(advance_border)
 
     border_color_ref = use_ref(cycle([border_color("lime", 700), border_color("amber", 700), border_color("sky", 700)]))
 
@@ -47,7 +47,7 @@ def toggle() -> Div:
             case Key.Tab:
                 set_toggled(not toggled)
             case Key.F1:
-                set_border(advance_border())
+                set_border_kind(advance_border())
             case Key.F2:
                 set_border_color_style(advance_border_color())
 
@@ -57,11 +57,11 @@ def toggle() -> Div:
                 children=[
                     Text(
                         content="End-to-End Demo",
-                        style=border_color_style | pad(1) | border_all | Style(border_kind=border),
+                        style=border_color_style | pad(1) | border | Style(border_kind=border_kind),
                     ),
                     time() if toggled else textpad(),
                 ],
-                style=row | border_lightrounded,
+                style=row | border | border_lightrounded,
             ),
         ],
         style=col,
@@ -82,7 +82,7 @@ def time() -> Text:
 
     return Text(
         content=f"{now:%Y-%m-%d %H:%M:%S}",
-        style=text_color("rose", 500) | border_color("teal", 600) | pad(1) | border_lightrounded,
+        style=text_color("rose", 500) | border_color("teal", 600) | pad(1) | border | border_lightrounded,
     )
 
 
@@ -104,7 +104,7 @@ def textpad() -> Text:
 
     return Text(
         content=content,
-        style=text_color("teal", 600) | border_color("rose", 500) | pad(1) | border_lightrounded,
+        style=text_color("teal", 600) | border_color("rose", 500) | pad(1) | border | border_lightrounded,
         on_key=on_key,
     )
 

@@ -69,8 +69,8 @@ def header() -> Text:
     )
 
 
-canvas_style = border_light
-hover_style = border_heavy | border_color("amber", 600)
+canvas_style = border
+hover_style = border | border_heavy | border_color("amber", 600)
 
 
 @component

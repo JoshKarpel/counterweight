@@ -11,8 +11,8 @@ def header_body_footer() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=border_heavy | text_justify_center, content="header"),
-            Text(style=grow(1) | min_height(0) | border_light, content="body: grow(1) | min_height(0)"),
+            Text(style=border | border_heavy | text_justify_center, content="header"),
+            Text(style=grow(1) | min_height(0) | border, content="body: grow(1) | min_height(0)"),
             Text(style=text_bg("slate", 700), content=" footer: one row, no border"),
         ],
     )
@@ -31,8 +31,8 @@ def sidebar_status() -> Div:
             Div(
                 style=row | grow(1) | min_height(0),
                 children=[
-                    Text(style=width(20) | border_light, content="sidebar: width(20)"),
-                    Text(style=grow(1) | min_width(0) | border_light, content="main: grow(1) | min_width(0)"),
+                    Text(style=width(20) | border, content="sidebar: width(20)"),
+                    Text(style=grow(1) | min_width(0) | border, content="main: grow(1) | min_width(0)"),
                 ],
             ),
             Text(style=text_bg("slate", 700), content=" status bar"),
@@ -50,15 +50,15 @@ def three_panes() -> Div:
     return Div(
         style=row | full | border_collapse,
         children=[
-            Text(style=width(20) | border_light, content="files: width(20)"),
+            Text(style=width(20) | border, content="files: width(20)"),
             Div(
                 style=col | grow(1) | min_width(0) | border_collapse,
                 children=[
-                    Text(style=grow(2) | min_height(0) | border_light, content="editor: grow(2)"),
-                    Text(style=grow(1) | min_height(0) | border_light, content="terminal: grow(1)"),
+                    Text(style=grow(2) | min_height(0) | border, content="editor: grow(2)"),
+                    Text(style=grow(1) | min_height(0) | border, content="terminal: grow(1)"),
                 ],
             ),
-            Text(style=width(20) | border_light, content="outline: width(20)"),
+            Text(style=width(20) | border, content="outline: width(20)"),
         ],
     )
 

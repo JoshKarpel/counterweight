@@ -6,6 +6,7 @@ from counterweight.styles.styles import (
     CellStyle,
     Color,
     Style,
+    merge,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "CellStyle",
     "Color",
     "Style",
+    "merge",
 ]

@@ -621,6 +621,10 @@ class JoinedBorderKind(Enum):
         return f"JoinedBorderKind.{self.name}"
 
 
+LAYOUT_BORDER_FIELDS = frozenset({"border_top", "border_bottom", "border_left", "border_right"})
+BORDER_WIDTHS = (waxy.Length(0), waxy.Length(1))
+
+
 @dataclass(frozen=True, kw_only=True)
 class Style(StyleFragment):
     """
@@ -628,9 +632,15 @@ class Style(StyleFragment):
 
     Every field except `layout` starts `UNSET`, and the nested `border_style` and `text_style`
     start as empty `CellStyle`s. Merging with `|` takes the right side's value wherever it is set,
-    including when it is set to the default, so `border_light | border_none` has no border.
+    including when it is set to the default, so `border | border_none` has no border.
     `layout` merges the same way, field by field.
     Unset fields resolve to the defaults in [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS].
+
+    A border side is drawn where its width in `layout` (`border_top`, ...) is 1,
+    and `border_kind` chooses the characters it's drawn with.
+    A `border_kind` of `None` removes the border, along with the space reserved for it.
+    Each side is one cell, so a `Style` whose `layout` sets a border width other than
+    `Length(0)` or `Length(1)` raises `ValueError`.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)
@@ -647,6 +657,32 @@ class Style(StyleFragment):
     text_style: CellStyle = _DEFAULT_CELL_STYLE
     text_justify: TextJustify | UNSET = UNSET
     text_wrap: TextWrap | UNSET = UNSET
+
+    def __post_init__(self) -> None:
+        for name in sorted(self.layout.fields_set & LAYOUT_BORDER_FIELDS):
+            width = getattr(self.layout, name)
+            if width not in BORDER_WIDTHS:
+                raise ValueError(
+                    f"Style.layout sets {name} to {width!r}, "
+                    f"but a border side is one cell, so its width must be Length(0) or Length(1)"
+                )
+
+
+_EMPTY_STYLE = Style()
+
+
+def merge(*styles: Style | None) -> Style:
+    """
+    Merge styles left to right, the same as chaining them with `|`.
+
+    Later styles win wherever they set a field, and `None`s are skipped wherever they appear,
+    so a conditional style can be passed as `hover_style if hovered else None`.
+    With no styles, or only `None`s, the result is an empty `Style()`.
+    """
+    merged = _EMPTY_STYLE
+    for style in styles:
+        merged = merged | style
+    return merged
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -672,7 +708,7 @@ STYLE_DEFAULTS = ResolvedStyle(
     margin_color=_BLACK,
     padding_color=_BLACK,
     content_color=_BLACK,
-    border_kind=None,
+    border_kind=BorderKind.Light,
     border_style=CELL_STYLE_DEFAULTS,
     border_contract=0,
     text_style=CELL_STYLE_DEFAULTS,

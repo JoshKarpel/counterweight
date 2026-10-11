@@ -14,9 +14,9 @@ def equal_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=grow(1) | min_width(0) | border_light, content="grow(1) | min_width(0)"),
-            Text(style=grow(1) | min_width(0) | border_light, content="grow(1) | min_width(0)"),
-            Text(style=grow(1) | min_width(0) | border_light, content="grow(1) | min_width(0)"),
+            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
+            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
+            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
         ],
     )
 
@@ -31,9 +31,9 @@ def equal_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1), waxy.Fraction(1)) | full,
         children=[
-            Text(style=border_light, content="Fraction(1)"),
-            Text(style=border_light, content="Fraction(1)"),
-            Text(style=border_light, content="Fraction(1)"),
+            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="Fraction(1)"),
         ],
     )
 
@@ -48,8 +48,8 @@ def sidebar_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=width(20) | border_light, content="width(20)"),
-            Text(style=grow(1) | min_width(0) | border_light, content="grow(1) | min_width(0)"),
+            Text(style=width(20) | border, content="width(20)"),
+            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
         ],
     )
 
@@ -64,8 +64,8 @@ def sidebar_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(waxy.Length(20), waxy.Fraction(1)) | full,
         children=[
-            Text(style=border_light, content="Length(20)"),
-            Text(style=border_light, content="Fraction(1)"),
+            Text(style=border, content="Length(20)"),
+            Text(style=border, content="Fraction(1)"),
         ],
     )
 
@@ -80,8 +80,8 @@ def ratio_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=grow(1) | min_width(0) | border_light, content="grow(1)"),
-            Text(style=grow(2) | min_width(0) | border_light, content="grow(2)"),
+            Text(style=grow(1) | min_width(0) | border, content="grow(1)"),
+            Text(style=grow(2) | min_width(0) | border, content="grow(2)"),
         ],
     )
 
@@ -96,8 +96,8 @@ def ratio_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(2)) | full,
         children=[
-            Text(style=border_light, content="Fraction(1)"),
-            Text(style=border_light, content="Fraction(2)"),
+            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="Fraction(2)"),
         ],
     )
 
@@ -112,12 +112,12 @@ def nested_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=width(20) | border_light, content="width(20)"),
+            Text(style=width(20) | border, content="width(20)"),
             Div(
                 style=col | grow(1) | min_width(0),
                 children=[
-                    Text(style=grow(1) | min_height(0) | border_light, content="grow(1) | min_height(0)"),
-                    Text(style=grow(1) | min_height(0) | border_light, content="grow(1) | min_height(0)"),
+                    Text(style=grow(1) | min_height(0) | border, content="grow(1) | min_height(0)"),
+                    Text(style=grow(1) | min_height(0) | border, content="grow(1) | min_height(0)"),
                 ],
             ),
         ],
@@ -138,11 +138,11 @@ def nested_grid() -> Div:
         | full,
         children=[
             Text(
-                style=grid_row(waxy.GridLine(1), waxy.GridSpan(2)) | border_light,
+                style=grid_row(waxy.GridLine(1), waxy.GridSpan(2)) | border,
                 content="grid_row(\n  GridLine(1),\n  GridSpan(2),\n)",
             ),
-            Text(style=border_light, content="Fraction(1)"),
-            Text(style=border_light, content="Fraction(1)"),
+            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="Fraction(1)"),
         ],
     )
 
@@ -160,10 +160,10 @@ def overflow_grid() -> Div:
         style=col | full,
         children=[
             Div(
-                style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1)) | border_heavy,
+                style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1)) | border | border_heavy,
                 children=[
-                    Text(style=border_light, content=LONG),
-                    Text(style=border_light, content=LONG),
+                    Text(style=border, content=LONG),
+                    Text(style=border, content=LONG),
                 ],
             ),
             Div(
@@ -172,10 +172,11 @@ def overflow_grid() -> Div:
                     waxy.Minmax(waxy.Length(0), waxy.Fraction(1)),
                     waxy.Minmax(waxy.Length(0), waxy.Fraction(1)),
                 )
+                | border
                 | border_heavy,
                 children=[
-                    Text(style=border_light, content=LONG),
-                    Text(style=border_light, content=LONG),
+                    Text(style=border, content=LONG),
+                    Text(style=border, content=LONG),
                 ],
             ),
         ],
@@ -195,17 +196,17 @@ def percent_gap() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | gap(2) | border_heavy,
+                style=row | gap(2) | border | border_heavy,
                 children=[
-                    Text(style=half | border_light, content="half"),
-                    Text(style=half | border_light, content="half"),
+                    Text(style=half | border, content="half"),
+                    Text(style=half | border, content="half"),
                 ],
             ),
             Div(
-                style=row | gap(2) | border_heavy,
+                style=row | gap(2) | border | border_heavy,
                 children=[
-                    Text(style=half | shrink(0) | border_light, content="half | shrink(0)"),
-                    Text(style=half | shrink(0) | border_light, content="half | shrink(0)"),
+                    Text(style=half | shrink(0) | border, content="half | shrink(0)"),
+                    Text(style=half | shrink(0) | border, content="half | shrink(0)"),
                 ],
             ),
         ],

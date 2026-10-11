@@ -13,9 +13,9 @@ def wrap_in_pane() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=width(16) | border_light, content="sidebar"),
+            Text(style=width(16) | border, content="sidebar"),
             Div(
-                style=col | grow(1) | min_width(0) | border_light | pad_x(1),
+                style=col | grow(1) | min_width(0) | border | pad_x(1),
                 children=[Text(style=text_wrap_stable, content=PARAGRAPH)],
             ),
         ],
@@ -33,14 +33,14 @@ def wrap_in_row() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | gap(2) | border_heavy,
+                style=row | gap(2) | border | border_heavy,
                 children=[
                     Text(style=text_wrap_stable | text_bg("blue", 900), content=PARAGRAPH),
                     Text(style=text_wrap_stable | text_bg("green", 900), content=PARAGRAPH),
                 ],
             ),
             Div(
-                style=row | gap(2) | border_heavy,
+                style=row | gap(2) | border | border_heavy,
                 children=[
                     Text(style=text_wrap_stable | min_width(0) | text_bg("blue", 900), content=PARAGRAPH),
                     Text(style=text_wrap_stable | min_width(0) | text_bg("green", 900), content=PARAGRAPH),
@@ -60,13 +60,13 @@ def justify() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=text_justify_center | border_light, content="text_justify_center, stretched"),
+            Text(style=text_justify_center | border, content="text_justify_center, stretched"),
             Text(
-                style=text_justify_center | align_self_start | border_light,
+                style=text_justify_center | align_self_start | border,
                 content="text_justify_center | align_self_start",
             ),
             Div(
-                style=col | border_light,
+                style=col | border,
                 children=[
                     Text(
                         style=text_justify_center | text_wrap_balance,
@@ -90,12 +90,12 @@ def narrow() -> Div:
         style=row | gap(2) | full,
         children=[
             Div(
-                style=col | width(20) | border_heavy,
-                children=[Text(style=border_light, content="unwrapped text in a col")],
+                style=col | width(20) | border | border_heavy,
+                children=[Text(style=border, content="unwrapped text in a col")],
             ),
             Div(
-                style=row | width(20) | border_heavy,
-                children=[Text(style=border_light, content="unwrapped text in a row")],
+                style=row | width(20) | border | border_heavy,
+                children=[Text(style=border, content="unwrapped text in a row")],
             ),
         ],
     )

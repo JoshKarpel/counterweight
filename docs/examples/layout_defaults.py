@@ -11,9 +11,9 @@ def row_defaults() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=border_light, content="one"),
-            Text(style=border_light, content="two two"),
-            Text(style=border_light, content="three three three"),
+            Text(style=border, content="one"),
+            Text(style=border, content="two two"),
+            Text(style=border, content="three three three"),
         ],
     )
 
@@ -28,9 +28,9 @@ def col_defaults() -> Div:
     return Div(
         style=col | full,
         children=[
-            Text(style=border_light, content="one"),
-            Text(style=border_light, content="two two"),
-            Text(style=border_light, content="three three three"),
+            Text(style=border, content="one"),
+            Text(style=border, content="two two"),
+            Text(style=border, content="three three three"),
         ],
     )
 
@@ -45,8 +45,8 @@ WIDE = "this line is wider than the fifty-column screen it is drawn on"
 @component
 def root_fills_screen() -> Div:
     return Div(
-        style=col | border_heavy,
-        children=[Text(content="root: col | border_heavy"), Text(content=WIDE)],
+        style=col | border | border_heavy,
+        children=[Text(content="root: col | border | border_heavy"), Text(content=WIDE)],
     )
 
 
@@ -63,17 +63,17 @@ def automatic_minimum() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | border_heavy,
+                style=row | border | border_heavy,
                 children=[
-                    Text(style=grow(1) | border_light, content=LONG),
-                    Text(style=grow(1) | border_light, content=LONG),
+                    Text(style=grow(1) | border, content=LONG),
+                    Text(style=grow(1) | border, content=LONG),
                 ],
             ),
             Div(
-                style=row | border_heavy,
+                style=row | border | border_heavy,
                 children=[
-                    Text(style=grow(1) | min_width(0) | border_light, content=LONG),
-                    Text(style=grow(1) | min_width(0) | border_light, content=LONG),
+                    Text(style=grow(1) | min_width(0) | border, content=LONG),
+                    Text(style=grow(1) | min_width(0) | border, content=LONG),
                 ],
             ),
         ],
@@ -92,8 +92,8 @@ def wrapping() -> Div:
     return Div(
         style=row | full,
         children=[
-            Div(style=col | width(24) | border_light, children=[Text(content=PARAGRAPH)]),
-            Div(style=col | width(24) | border_light, children=[Text(style=text_wrap_stable, content=PARAGRAPH)]),
+            Div(style=col | width(24) | border, children=[Text(content=PARAGRAPH)]),
+            Div(style=col | width(24) | border, children=[Text(style=text_wrap_stable, content=PARAGRAPH)]),
         ],
     )
 

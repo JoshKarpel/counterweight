@@ -99,7 +99,7 @@ def input_pane(content: str) -> Div:
     w = rects.content.width
 
     return Div(
-        style=grow(1) | min_width(0) | col | border_lightrounded | border_color("sky", 600) | pad_x(1),
+        style=grow(1) | min_width(0) | col | border | border_lightrounded | border_color("sky", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
@@ -126,7 +126,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
     }[mode]
 
     return Div(
-        style=grow(1) | min_width(0) | col | border_lightrounded | border_color("violet", 600) | pad_x(1),
+        style=grow(1) | min_width(0) | col | border | border_lightrounded | border_color("violet", 600) | pad_x(1),
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
@@ -150,11 +150,11 @@ def mode_button(label: str, active: bool, on_click: Callable[[], None]) -> Text:
                 on_click()
 
     if active:
-        style = border_heavy | border_color("violet", 400) | text_color("violet", 100)
+        style = border | border_heavy | border_color("violet", 400) | text_color("violet", 100)
     elif hovered.border:
-        style = border_light | border_color("slate", 400) | text_color("slate", 200)
+        style = border | border_color("slate", 400) | text_color("slate", 200)
     else:
-        style = border_light | border_color("slate", 700) | text_color("slate", 500)
+        style = border | border_color("slate", 700) | text_color("slate", 500)
 
     return Text(
         content=f" {label} ",

@@ -60,10 +60,22 @@ joins them with the right junction characters.
 
 ## Borders on some sides
 
-A border kind such as `border_light` reserves and draws all four sides.
-To draw only some sides, follow it with `border_sides`, which sets every side, on or off.
-The edge utilities such as `border_top` only turn sides _on_,
-so after `border_light`, which already turned all four on, they change nothing.
+Borders work as they do in Tailwind.
+A side is drawn where its border width is 1, and layout reserves a cell for it.
+`border` sets all four sides, `border_top`, `border_bottom`, `border_left` and `border_right`
+set one, and `border_x` and `border_y` set a pair.
+Each has a `_0` form, such as `border_right_0`, that takes its sides away.
+Sides start at 0, so `border_top | border_left` draws just those two.
+
+Merging is ordered, as it is for every style: the right side wins.
+`border | border_right_0` leaves the right side off,
+but `border_right_0 | border` turns it back on.
+
+The border kind only chooses the characters, and defaults to `BorderKind.Light`,
+so `border` alone draws a light border and `border | border_heavy` a heavy one.
+A kind with no widths draws nothing.
+`border_none` removes the border along with its space.
+`border_sides` sets all four sides at once from a set of side names.
 
 ```python
 --8<-- "layout_spacing.py:sides"

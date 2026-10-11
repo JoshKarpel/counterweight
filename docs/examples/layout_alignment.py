@@ -21,12 +21,12 @@ def justify() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | justify | border_light,
+                style=row | justify | border,
                 children=[
                     title(name),
-                    Text(style=border_heavy, content="a"),
-                    Text(style=border_heavy, content="bb"),
-                    Text(style=border_heavy, content="ccc"),
+                    Text(style=border | border_heavy, content="a"),
+                    Text(style=border | border_heavy, content="bb"),
+                    Text(style=border | border_heavy, content="ccc"),
                 ],
             )
             for name, justify in (
@@ -52,12 +52,12 @@ def align() -> Div:
         style=row | full,
         children=[
             Div(
-                style=row | align | grow(1) | min_width(0) | border_light,
+                style=row | align | grow(1) | min_width(0) | border,
                 children=[
                     title(name),
-                    Text(style=border_heavy, content="a"),
-                    Text(style=border_heavy, content="b\nb"),
-                    Text(style=border_heavy, content="c\nc\nc"),
+                    Text(style=border | border_heavy, content="a"),
+                    Text(style=border | border_heavy, content="b\nb"),
+                    Text(style=border | border_heavy, content="c\nc\nc"),
                 ],
             )
             for name, align in (
@@ -78,13 +78,13 @@ def align() -> Div:
 @component
 def align_self() -> Div:
     return Div(
-        style=row | align_children_start | gap(1) | full | border_light,
+        style=row | align_children_start | gap(1) | full | border,
         children=[
             title("row | align_children_start"),
-            Text(style=border_heavy, content="no align_self"),
-            Text(style=align_self_center | border_heavy, content="align_self_center"),
-            Text(style=align_self_end | border_heavy, content="align_self_end"),
-            Text(style=align_self_stretch | border_heavy, content="align_self_stretch"),
+            Text(style=border | border_heavy, content="no align_self"),
+            Text(style=align_self_center | border | border_heavy, content="align_self_center"),
+            Text(style=align_self_end | border | border_heavy, content="align_self_end"),
+            Text(style=align_self_stretch | border | border_heavy, content="align_self_stretch"),
         ],
     )
 
@@ -100,12 +100,12 @@ def center() -> Div:
         style=row | full,
         children=[
             Div(
-                style=row | align_children_center | justify_children_center | grow(1) | border_light,
-                children=[title("flexbox"), Text(style=border_heavy, content="centered")],
+                style=row | align_children_center | justify_children_center | grow(1) | border,
+                children=[title("flexbox"), Text(style=border | border_heavy, content="centered")],
             ),
             Div(
-                style=display_grid | align_children_center | justify_items_center | grow(1) | border_light,
-                children=[title("grid"), Text(style=border_heavy, content="centered")],
+                style=display_grid | align_children_center | justify_items_center | grow(1) | border,
+                children=[title("grid"), Text(style=border | border_heavy, content="centered")],
             ),
         ],
     )
@@ -124,7 +124,7 @@ def overflow() -> Div:
         style=row | pad_y(4),
         children=[
             Div(
-                style=col | justify | grow(1) | border_light,
+                style=col | justify | grow(1) | border,
                 children=[title(name), Text(content=TALL)],
             )
             for name, justify in (
