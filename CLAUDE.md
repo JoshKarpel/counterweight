@@ -55,6 +55,11 @@ Don't omit utilities on the grounds that nothing needs them yet: we can't know w
 When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
 generate every member of it.
 
+`docs/styles/utilities.md` lists every public utility through `<!-- utilities: <glob> ... -->` markers,
+which `mkdocs_hooks/utility_tables.py` renders from the module.
+The docs build fails until each new utility, generated or hand-written, matches exactly one marker,
+and hand-written utility functions need a docstring to describe them there.
+
 ## Docs Screenshots
 
 Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,

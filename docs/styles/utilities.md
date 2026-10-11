@@ -11,8 +11,9 @@ We recommend a `*` import for ease of use:
 from counterweight.styles.utilities import *
 ```
 
-Each utility is a pre-defined `Style` specifying just a small set of properties.
-Many utilities are functional (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`) and accept a numeric argument.
+Each utility is a `Style` that sets just a small set of properties.
+Some are constants (e.g., `border_heavy`, `justify_children_center`),
+and the rest are functions that return one (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`).
 Color utilities take a color name and shade as arguments.
 For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200:
 ```python
@@ -56,3 +57,102 @@ def my_component() -> Text:
     you should create the style just once,
     ideally outside your component (i.e., at module scope),
     so that it runs only once.
+
+## Reference
+
+Each table below is built from the utilities module when the docs are built.
+The constants' tables list every field each one sets.
+Fields not listed are left unset, so merging the utility into another style leaves them alone
+(see [Merging](index.md#merging)).
+The functions' tables give their signatures, since what they set depends on their arguments.
+
+`default` is the empty style, a starting point that sets nothing.
+
+<!-- utilities: default -->
+
+### Colors
+
+The color utilities draw from [Tailwind's color palette](https://tailwindcss.com/docs/colors):
+a `ColorName` such as `"rose"` and a `Shade` from `50` (lightest) to `950` (darkest).
+`text_white` and `text_black` are outside the palette.
+
+<!-- utilities: text_white text_black text_color text_bg border_color border_bg margin_color padding_color content_color -->
+
+#### Palette
+
+Every palette color is also a `Color` constant named `<color>_<shade>`, such as `rose_200`,
+for style fields that take a `Color` directly.
+Hover over a swatch to see its name and hex code.
+
+<!-- utilities-palette -->
+
+### Direction and wrapping
+
+These set the flexbox main axis, and whether children wrap onto more lines when they don't fit.
+See [Choosing a layout model](../layout/choosing-a-layout-model.md)
+and [Wrapping without a grid](../layout/grids-and-wrapping.md#wrapping-without-a-grid).
+
+<!-- utilities: row row_reverse col col_reverse flex_* -->
+
+### Splitting space
+
+These size children along their parent's main axis.
+See [Splitting space](../layout/splitting-space.md).
+
+<!-- utilities: grow shrink length percentage ratio fill -->
+
+### Alignment
+
+`justify_children_*` distributes children along the main axis, `align_children_*` places them on the cross axis,
+and `align_self_*` overrides that for one child.
+`justify_items_*` and `justify_self_*` place grid items within their cells along the row.
+The `center` and `end` forms are safe: content that doesn't fit overflows past the end edge only.
+The `_unsafe` forms overflow both edges.
+See [Alignment and distribution](../layout/alignment.md).
+
+<!-- utilities: justify_children_* align_children_* align_self_* justify_items_* justify_self_* center_children -->
+
+### Sizing
+
+See [Sizing one box](../layout/sizing-one-box.md).
+
+<!-- utilities: width height size min_width min_height max_width max_height aspect_ratio min_content_* max_content_* fit_content_* stretch_* full full_width full_height border_box content_box -->
+
+### Spacing
+
+See [Gap, margin and padding](../layout/spacing-and-borders.md#gap-margin-and-padding).
+
+<!-- utilities: margin margin_x margin_y margin_top margin_bottom margin_left margin_right gap gap_width gap_height pad pad_* -->
+
+### Borders
+
+A side is drawn where its border width is 1, and each width utility has a `_0` form that takes its sides away.
+See [Borders on some sides](../layout/spacing-and-borders.md#borders-on-some-sides).
+
+<!-- utilities: border border_top border_bottom border_left border_right border_x border_y border_0 border_*_0 border_sides border_collapse border_contract -->
+
+#### Border kinds
+
+The border kind only chooses the characters, and draws nothing without a border width.
+`border_none` removes the border along with its space.
+
+<!-- utilities: border_none border_light border_heavy border_double border_thick border_lightrounded border_lightangled border_lightshade border_mediumshade border_heavyshade border_star border_mcgugan -->
+
+### Display and grids
+
+`display_none` hides a box and everything in it: they take no space and aren't drawn.
+See [Grids and wrapping](../layout/grids-and-wrapping.md) for the grid utilities.
+
+<!-- utilities: display_* grid_* fr span -->
+
+### Positioning and layering
+
+See [Layering](../layout/layering.md).
+
+<!-- utilities: position_* inset_* z -->
+
+### Text
+
+See [Text wrapping](text-wrapping.md) and [Text in layout](../layout/text.md).
+
+<!-- utilities: text_justify_* text_wrap_* -->

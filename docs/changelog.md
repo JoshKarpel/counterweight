@@ -10,6 +10,10 @@
 - Documented that a component must call the same hooks in the same order on every render,
   and how to move a hook that is only sometimes needed into a child component.
 
+- Documented every style utility on the [utilities page](styles/utilities.md),
+  grouped by family: what each constant sets, each function's signature,
+  and the color palette.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
