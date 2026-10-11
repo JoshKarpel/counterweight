@@ -4,10 +4,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from itertools import product
 
-from counterweight._utils import flyweight, unordered_range
+from counterweight._utils import unordered_range
 
 
-@flyweight(maxsize=2**14)
 @dataclass(frozen=True, slots=True, order=True)
 class Position:
     x: int

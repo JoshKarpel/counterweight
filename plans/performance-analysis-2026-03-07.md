@@ -705,3 +705,40 @@ Median frame time, median of three rounds, change against interning on:
   single first pass (every workload within that pass's noise, mostly faster).
   `Position` has left the hot path entirely: the buffer indexes by integers.
   Those three are candidates to drop, pending a repeated run to confirm.
+
+### Run 14 — confirming run 13's candidates: `Position`, `ResolvedCellStyle`, `StyledChar`
+
+**Method:** as in run 13, three interleaved rounds of unprofiled `benchmarks run` (500 frames),
+with each candidate's interning off alone and all three off together.
+Every configuration's last frames are identical to interning on.
+Output bytes are counted separately (100 frames, wrapping `paint_to_instructions`),
+because headless runs build the instructions but never write them, so frame time can't show their size.
+
+Median frame time, median of three rounds, change against interning on:
+
+| Workload | Interning on | `Position` off | `ResolvedCellStyle` off | `StyledChar` off | All three off |
+|---|---|---|---|---|---|
+| canvas | 2.41 ms | +4% | +9% | +0% | +2% |
+| top | 12.99 ms | −4% | −0% | −1% | −1% |
+| agent | 0.91 ms | +5% | +5% | +10% | +11% |
+| dashboard | 0.79 ms | +3% | +0% | +2% | +3% |
+
+The spread between rounds of the same configuration is up to 8% (`top`, interning on: 12.19–13.18 ms).
+
+Output bytes over 100 frames with `ResolvedCellStyle` interning off:
+
+| Workload | On | Off |
+|---|---|---|
+| canvas | 737,784 | 737,784 |
+| top | 1,380,087 | 2,056,441 (+49%) |
+| agent | 42,165 | 95,318 (+126%) |
+| dashboard | 9,031 | 9,031 |
+
+- `Position` interning is dropped: every workload is within the round-to-round spread.
+- `ResolvedCellStyle` interning stays. `paint_to_instructions` starts a new SGR sequence when a cell's
+  style isn't the same object as the previous cell's, so equal styles that aren't one instance
+  re-send their SGR sequence. Comparing with `!=` after the identity check would make the output
+  independent of interning, at the cost of an `__eq__` call wherever the style really changes.
+- `StyledChar` interning stays: `agent` is slower with it off in all three rounds.
+  Unverified explanation: `justify_line` builds its padding with `StyledChar(char=" ")`,
+  which interning turns into a cache hit.
