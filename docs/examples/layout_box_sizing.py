@@ -36,6 +36,33 @@ def fit() -> Div:
 
 # --8<-- [end:fit]
 
+# --8<-- [start:content-keywords]
+
+
+@component
+def content_keywords() -> Div:
+    keywords = {
+        "min_content_width": min_content_width,
+        "max_content_width": max_content_width,
+        "fit_content_width": fit_content_width,
+        "stretch_width": stretch_width,
+    }
+    return Div(
+        style=col | full,
+        children=[
+            Div(
+                style=row,
+                children=[
+                    Div(style=keyword | border, children=[Text(style=text_wrap_stable, content=f"{name} sizes this")])
+                ],
+            )
+            for name, keyword in keywords.items()
+        ],
+    )
+
+
+# --8<-- [end:content-keywords]
+
 # --8<-- [start:fill]
 
 
@@ -119,6 +146,7 @@ def box_sizing() -> Div:
 SCREENSHOTS = [
     ScreenshotSpec(fixed, "layout-size-fixed", (50, 11)),
     ScreenshotSpec(fit, "layout-size-fit", (50, 6)),
+    ScreenshotSpec(content_keywords, "layout-size-content-keywords", (40, 12)),
     ScreenshotSpec(fill, "layout-size-fill", (50, 10)),
     ScreenshotSpec(clamped, "layout-size-clamped", (60, 10)),
     ScreenshotSpec(aspect, "layout-size-aspect-ratio", (50, 18)),

@@ -1,3 +1,4 @@
+import pytest
 import waxy
 
 from counterweight.styles import BorderKind, Style
@@ -190,14 +191,22 @@ def test_pad_right() -> None:
     assert result.layout.padding_right == waxy.Length(1)
 
 
-def test_full_width() -> None:
-    assert full_width.layout.size_width == waxy.Percent(1.0)
-
-
-def test_full_height() -> None:
-    assert full_height.layout.size_height == waxy.Percent(1.0)
-
-
-def test_full() -> None:
-    assert full.layout.size_width == waxy.Percent(1.0)
-    assert full.layout.size_height == waxy.Percent(1.0)
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (min_content_width, {"size_width": waxy.MIN_CONTENT}),
+        (max_content_width, {"size_width": waxy.MAX_CONTENT}),
+        (fit_content_width, {"size_width": waxy.FIT_CONTENT}),
+        (stretch_width, {"size_width": waxy.STRETCH}),
+        (min_content_height, {"size_height": waxy.MIN_CONTENT}),
+        (max_content_height, {"size_height": waxy.MAX_CONTENT}),
+        (fit_content_height, {"size_height": waxy.FIT_CONTENT}),
+        (stretch_height, {"size_height": waxy.STRETCH}),
+        (full_width, {"size_width": waxy.STRETCH}),
+        (full_height, {"size_height": waxy.STRETCH}),
+        (full, {"size_width": waxy.STRETCH, "size_height": waxy.STRETCH}),
+    ],
+)
+def test_sizing_keyword_utility_sets_only_its_own_fields(utility: Style, expected: dict[str, object]) -> None:
+    assert utility.layout.fields_set == expected.keys()
+    assert {field: getattr(utility.layout, field) for field in expected} == expected

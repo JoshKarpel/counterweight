@@ -28,10 +28,35 @@ Across it, a box stretches unless its alignment says otherwise:
 
 ![Fitting content](../assets/layout-size-fit.svg)
 
+## Sizing keywords
+
+The sizing keywords set a box's width or height from its content, whichever axis it is on:
+
+- `min_content_width` is as narrow as the content goes without breaking a word:
+  for wrapping text, its widest word.
+- `max_content_width` is as wide as the content is unwrapped.
+- `fit_content_width` is the max-content width, capped at the space available
+  (but never below the min-content width), as a wrapping paragraph is in CSS.
+  It differs from `max_content_width` only when the content doesn't fit.
+- `stretch_width` fills the space available, after the box's margins.
+
+Each has a `_height` counterpart.
+In a `col`, taffy measures a box's height before applying a width keyword,
+so wrapping text with `min_content_width` keeps the height it would have had stretched,
+and its last lines are cut off.
+In a `row` or a grid, the keywords size wrapping text correctly.
+
+```python
+--8<-- "layout_box_sizing.py:content-keywords"
+```
+
+![Sizing keywords](../assets/layout-size-content-keywords.svg)
+
 ## Fill the parent
 
 `grow(1)` fills the free space along the main axis, after the other children take theirs.
-`full_width` and `full_height` set a size of 100% of the parent, whatever the other children need.
+`full_width` and `full_height` (the same as `stretch_width` and `stretch_height`) fill the parent,
+after the box's margins, whatever the other children need.
 
 ```python
 --8<-- "layout_box_sizing.py:fill"

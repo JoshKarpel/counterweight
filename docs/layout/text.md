@@ -19,11 +19,10 @@ and wraps to fit it, taking as many rows as it needs.
 
 ## Wrapping beside other text
 
-Wrapping `Text`s side by side in a row don't wrap on their own.
+Wrapping `Text`s side by side in a row shrink to share it, and each wraps to its share.
 A flex item can't shrink below its minimum size,
-and a `Text`'s minimum size is the width of its content _unwrapped_,
-so in the top row below the first `Text` takes its whole line and pushes the second off the screen.
-`min_width(0)` lets them shrink and share the row, and then each wraps to its share.
+and a wrapping `Text`'s minimum size is the width of its widest word,
+so neither needs anything set to give up the space its unwrapped line would take.
 
 ```python
 --8<-- "layout_text.py:wrap-in-row"

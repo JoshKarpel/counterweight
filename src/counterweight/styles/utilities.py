@@ -716,9 +716,19 @@ def shrink(n: float) -> Style:
     return Style(layout=waxy.Style(flex_shrink=float(n)))
 
 
-full_width = Style(layout=waxy.Style(size_width=waxy.Percent(1.0)))
-full_height = Style(layout=waxy.Style(size_height=waxy.Percent(1.0)))
-full = Style(layout=waxy.Style(size_width=waxy.Percent(1.0), size_height=waxy.Percent(1.0)))
+min_content_width = Style(layout=waxy.Style(size_width=waxy.MIN_CONTENT))
+max_content_width = Style(layout=waxy.Style(size_width=waxy.MAX_CONTENT))
+fit_content_width = Style(layout=waxy.Style(size_width=waxy.FIT_CONTENT))
+stretch_width = Style(layout=waxy.Style(size_width=waxy.STRETCH))
+
+min_content_height = Style(layout=waxy.Style(size_height=waxy.MIN_CONTENT))
+max_content_height = Style(layout=waxy.Style(size_height=waxy.MAX_CONTENT))
+fit_content_height = Style(layout=waxy.Style(size_height=waxy.FIT_CONTENT))
+stretch_height = Style(layout=waxy.Style(size_height=waxy.STRETCH))
+
+full_width = stretch_width
+full_height = stretch_height
+full = stretch_width | stretch_height
 
 
 @lru_cache(maxsize=256)

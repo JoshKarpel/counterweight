@@ -13,8 +13,6 @@ repos:
       - id: check-json
       - id: debug-statements
       - id: end-of-file-fixer
-        exclude_types: [svg]
-        exclude: ^docs/assets/.*\.txt$
       - id: forbid-new-submodules
       - id: mixed-line-ending
       - id: trailing-whitespace

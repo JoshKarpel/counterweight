@@ -46,8 +46,7 @@ long texts.
 
 A wrapping `Text` wraps to the width layout gives it.
 In a column that width comes from the column, since children stretch across it by default.
-Side by side in a row, wrapping `Text`s need `min_width(0)` before they will shrink and wrap,
-because their minimum size is their unwrapped width.
+Side by side in a row, wrapping `Text`s shrink to share it, down to the width of their widest word.
 [Text in layout](../layout/text.md) shows both cases.
 
 ---

@@ -48,8 +48,8 @@ async def render(spec: ScreenshotSpec) -> None:
 
 def write_files(spec: ScreenshotSpec, frame: Frame) -> None:
     """Write the frame as SVG, and as plain text to copy from in the docs and to diff readably."""
-    spec.svg_path.write_text(frame.svg())
-    spec.text_path.write_text(frame.text(ansi=False))
+    spec.svg_path.write_text(frame.svg() + "\n")
+    spec.text_path.write_text(frame.text(ansi=False) + "\n")
 
 
 def check_assets(specs: list[ScreenshotSpec], all_modules: bool) -> None:

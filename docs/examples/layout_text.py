@@ -15,7 +15,7 @@ def wrap_in_pane() -> Div:
         children=[
             Text(style=width(16) | border, content="sidebar"),
             Div(
-                style=col | grow(1) | min_width(0) | border | pad_x(1),
+                style=col | grow(1) | border | pad_x(1),
                 children=[Text(style=text_wrap_stable, content=PARAGRAPH)],
             ),
         ],
@@ -30,22 +30,10 @@ def wrap_in_pane() -> Div:
 @component
 def wrap_in_row() -> Div:
     return Div(
-        style=col | full,
+        style=row | gap(2) | border | border_heavy,
         children=[
-            Div(
-                style=row | gap(2) | border | border_heavy,
-                children=[
-                    Text(style=text_wrap_stable | text_bg("blue", 900), content=PARAGRAPH),
-                    Text(style=text_wrap_stable | text_bg("green", 900), content=PARAGRAPH),
-                ],
-            ),
-            Div(
-                style=row | gap(2) | border | border_heavy,
-                children=[
-                    Text(style=text_wrap_stable | min_width(0) | text_bg("blue", 900), content=PARAGRAPH),
-                    Text(style=text_wrap_stable | min_width(0) | text_bg("green", 900), content=PARAGRAPH),
-                ],
-            ),
+            Text(style=text_wrap_stable | text_bg("blue", 900), content=PARAGRAPH),
+            Text(style=text_wrap_stable | text_bg("green", 900), content=PARAGRAPH),
         ],
     )
 
@@ -105,7 +93,7 @@ def narrow() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(wrap_in_pane, "layout-text-wrap-in-pane", (60, 7)),
-    ScreenshotSpec(wrap_in_row, "layout-text-wrap-in-row", (60, 8)),
+    ScreenshotSpec(wrap_in_row, "layout-text-wrap-in-row", (60, 5)),
     ScreenshotSpec(justify, "layout-text-justify", (50, 11)),
     ScreenshotSpec(narrow, "layout-text-narrow", (60, 5)),
 ]

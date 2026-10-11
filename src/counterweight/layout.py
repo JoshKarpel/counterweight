@@ -109,19 +109,39 @@ def _measure_text(
     available: waxy.AvailableSize,
     context: Text,
 ) -> waxy.Size:
-    width: float | None = known.width
-    if width is None and isinstance(available.width, waxy.Definite):
-        width = available.width.value
+    wrap = resolve_style(context.style).text_wrap
 
-    lines = wrap_cells(
-        context.cells,
-        resolve_style(context.style).text_wrap,
-        int(width) if width is not None else None,
-    )
+    width: float | None = known.width
+    if width is None:
+        match available.width:
+            case waxy.Definite(value=value):
+                width = value
+            case waxy.MinContent():
+                width = _min_content_width(context.cells, wrap)
+            case waxy.MaxContent():
+                pass
+            case _ as unreachable:
+                assert_never(unreachable)
+
+    lines = wrap_cells(context.cells, wrap, int(width) if width is not None else None)
 
     return waxy.Size(
         width=known.width if known.width is not None else float(max((len(l) for l in lines), default=0)),
         height=known.height if known.height is not None else float(len(lines)),
+    )
+
+
+def _min_content_width(cells: Iterable[CellPaint], wrap: TextWrap) -> int | None:
+    """
+    The narrowest width a `Text` takes without breaking a word, as CSS's `min-content` is for text:
+    its widest word if it wraps, or `None` (unlimited) if it doesn't.
+    """
+    if wrap == "none":
+        return None
+
+    return max(
+        (len(word) for paragraph in _split_paragraphs(cells) for word in _extract_words_and_spaces(paragraph)[0]),
+        default=None,
     )
 
 

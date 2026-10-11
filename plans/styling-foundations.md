@@ -340,6 +340,8 @@ apart from labels that spell out the styles.
 
 ### 6. Expose the sizing keywords
 
+**Status:** Done
+
 This comes after steps 4 and 5 so the new utilities are written once, under the new merge
 rule, rather than migrated.
 
@@ -354,17 +356,29 @@ Add the keywords for both axes, hand-written beside `full_width` and `full_heigh
 - `min_size_*` and `max_size_*` still take only `Length | Percent | Auto`, so `min_width`,
   `max_width` and their height counterparts don't change.
 
-`full_width` is `Percent(1.0)`, which doesn't account for margins, while `STRETCH` fills the
-space left after them.
-Check whether `full_width | margin_x(1)` overflows its parent in a column layout (where shrink
-doesn't apply to width). If it does, decide whether `full_width`, `full_height` and `full`
-should switch to `STRETCH`; that would be a changelog entry under `Changed`.
+`full_width`, `full_height` and `full` are `STRETCH`, so `full_width` is `stretch_width`.
+As `Percent(1.0)`, `full_width | margin_x(1)` overflowed a 40-wide column by two cells
+(shrink doesn't apply across the main axis); `STRETCH` fills the space left after the margins,
+and in every other case probed (siblings on the main axis, indefinite parents, grid items,
+padded parents) it gives the same layout as `Percent(1.0)`. No screenshot changed.
+Neither the `full_*` utilities nor text wrapping has shipped, so the changelog folds these
+properties into their existing `Added` entries rather than adding `Changed` or `Fixed` ones.
 
-Changelog entry under `Added`.
+`min_content_width` needs a wrapping `Text`'s min-content width, which `_measure_text`
+measured as if the width were unlimited. It now measures a `MinContent` query at the
+`Text`'s widest word (or unlimited, for `text_wrap_none`). That also fixes the automatic
+minimum size: wrapping `Text`s side by side in a row shrink and share it without
+`min_width(0)`, so "Text in layout" shows that instead of the failure.
+
+In a flex `col`, taffy measures a child's height at the stretched width before applying a
+width keyword, and doesn't measure again: wrapping `"hello world"` with `min_content_width`
+in a 40-wide column comes out 5 wide and 1 tall. Grid and block parents give 5 by 2.
+"Sizing one box" demonstrates the keywords in rows and names the limitation.
 
 Tests: each utility sets only its own field (`layout.fields_set`); for a wrapping `Text`
 of `"hello world"` in a 40-cell column, the four width keywords give widths of 5, 11, 11
-and 40.
+and 40; wrapping `Text`s share a row narrower than either unwrapped; `full_width` and
+`full_height` with margins fit inside their parent.
 
 ### 7. Add ratatui-style constraint utilities
 
@@ -596,9 +610,39 @@ and makes it read as one document.
   - A wrapping `Text` with its own border or padding is measured at its border-box width
     (taffy passes `_measure_text` a `known.width` that includes them), so it can lose its last
     line. The examples wrap text only in `Text`s without their own border or padding.
-  - A wrapping `Text`'s minimum size is its unwrapped width, because `_measure_text` measures
-    a min-content query as if the width were unlimited. "Text in layout" shows the
-    `min_width(0)` fix.
+  - A width keyword on wrapping text in a flex `col` keeps the height measured at the
+    stretched width. "Sizing one box" demonstrates the keywords in rows for this reason,
+    and its "Sizing keywords" section states the limitation.
+    In a 30-wide `col`, a wrapping `Text` of the 44-cell
+    `"The quick brown fox jumps over the lazy dog."` comes out:
+
+    | width keyword       | flex `col` | grid or block parent |
+    | ------------------- | ---------- | -------------------- |
+    | `min_content_width` | 5 × 2      | 5 × 9                |
+    | `max_content_width` | 44 × 2     | 44 × 1               |
+    | `fit_content_width` | 30 × 2     | 30 × 2               |
+
+    So `min_content_width` cuts off lines, and `max_content_width` adds blank rows whenever
+    the content is wider than the column. `fit_content_width` is never affected:
+    its width differs from the stretched width only when the content fits on one line
+    at both widths.
+    Putting the keyword on a `Div` around the `Text` doesn't help: with `min_content_width`
+    the `Div` comes out 5 × 2 and the `Text` inside it 5 × 9, overflowing it.
+    Tracing `_measure_text` for `min_content_width` on `"hello world"` in a 40-wide `col`
+    shows the order of calls: height at `known.width=40`,
+    then width under `MinContent` with `known.height=1`, then nothing more,
+    so the final height is never measured at the final width.
+    It isn't established whether taffy or waxy is at fault: the keywords arrived with
+    waxy `0.6.0`. Leads, in order:
+    1. Read how waxy passes `MIN_CONTENT` and friends to taffy: as taffy's own
+       `Dimension` values, or resolved in waxy before taffy sees them.
+    2. Reproduce in pure waxy, with a Python measure function that wraps at the given
+       width and no counterweight, to rule out `_measure_text`.
+    3. If it reproduces, check taffy's flexbox for where it resolves a cross-axis size
+       keyword relative to computing the flex base size, and whether a newer taffy
+       changes it; file it upstream (waxy or taffy, depending on lead 1).
+    Once it's fixed, move the "Sizing keywords" example into a `col` and drop the
+    limitation from the page.
   - Auto margins on an absolutely positioned box resolve against an area one cell too wide
     and tall, and the box's blank fill paints over its parent's border. The examples center
     with alignment instead of `margin: auto`.

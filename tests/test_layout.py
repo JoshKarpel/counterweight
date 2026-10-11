@@ -19,7 +19,11 @@ from counterweight.styles.utilities import (
     border_lightrounded,
     col,
     display_none,
+    fit_content_width,
+    full_height,
+    full_width,
     grow,
+    height,
     inset_bottom,
     inset_bottom_center,
     inset_left,
@@ -30,14 +34,20 @@ from counterweight.styles.utilities import (
     justify_children_end_unsafe,
     justify_children_space_around,
     justify_children_space_evenly,
+    margin_x,
+    margin_y,
+    max_content_width,
+    min_content_width,
     pad,
     position_absolute,
     row,
     shrink,
     size,
+    stretch_width,
     text_wrap_balance,
     text_wrap_pretty,
     text_wrap_stable,
+    width,
 )
 
 
@@ -410,3 +420,39 @@ def test_unsafe_alignment_overflows_child_past_the_start_edge(alignment: Style, 
     _, layout_child = [rl for _, rl in _layout(root)]
 
     assert getattr(layout_child.border, start_edge) < 0
+
+
+@pytest.mark.parametrize(
+    ("keyword", "expected_width"),
+    [(min_content_width, 5), (max_content_width, 11), (fit_content_width, 11), (stretch_width, 40)],
+)
+def test_width_keyword_sizes_wrapping_text_in_a_column(keyword: Style, expected_width: int) -> None:
+    text = _shadow(Text(content="hello world", style=text_wrap_stable | keyword))
+    root = _shadow(Div(style=col | width(40)), children=[text])
+
+    _, layout_text = [rl for _, rl in _layout(root)]
+
+    assert layout_text.border.width == expected_width
+
+
+def test_wrapping_texts_share_a_row_too_narrow_for_either_unwrapped() -> None:
+    first = _shadow(Text(content="hello world", style=text_wrap_stable))
+    second = _shadow(Text(content="lorem ipsum", style=text_wrap_stable))
+    root = _shadow(Div(style=row | width(12)), children=[first, second])
+
+    _, layout_first, layout_second = [rl for _, rl in _layout(root)]
+
+    assert (layout_first.border.width, layout_first.border.height) == (6, 2)
+    assert (layout_second.border.left, layout_second.border.right) == (6, 12)
+
+
+@pytest.mark.parametrize(
+    ("parent", "child"),
+    [(col | width(40), full_width | margin_x(3) | height(1)), (row | height(10), full_height | margin_y(3) | width(1))],
+)
+def test_full_size_fits_inside_its_parent_after_margins(parent: Style, child: Style) -> None:
+    root = _shadow(Div(style=parent), children=[_shadow(Div(style=child))])
+
+    layout_root, layout_child = [rl for _, rl in _layout(root)]
+
+    assert layout_child.margin == layout_root.content

@@ -55,7 +55,8 @@ the wide line is cut off at the root's border.
 
 A flex item can't shrink below its content's minimum size,
 which CSS calls the automatic minimum size.
-For a `Text` that doesn't wrap, that minimum is the whole line.
+For a `Text` that doesn't wrap, that minimum is the whole line;
+for one that wraps, it's the widest word.
 In the top row below, two `grow(1)` children with long lines can't take half the row each,
 so they overflow it.
 

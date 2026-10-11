@@ -9,6 +9,8 @@
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
   minimizes ragged lines). The default remains `text_wrap_none` (no wrapping).
   Words longer than the available width are broken with a hyphen.
+  A wrapping `Text`'s minimum size is its widest word, so wrapping `Text`s side by side
+  in a row shrink to share it.
 
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
@@ -23,6 +25,10 @@
   as an alternative to chaining `|`: `merge(a, b, c)` is `a | b | c`.
   It skips `None` arguments wherever they appear.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added the sizing keyword utilities `min_content_width`, `max_content_width`,
+  `fit_content_width` and `stretch_width`, and their `_height` counterparts,
+  which size a box from its content or fill the space available after its margins.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Added `Screenshot.to_stream`, which prints a screenshot as a text grid
   (with or without ANSI escape codes), useful for debugging layout and in tests.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
@@ -35,7 +41,7 @@
   `gap(n)`, `gap_width(n)`, `gap_height(n)`;
   `size(w, h)`, `grow(n)`;
   `inset_top(n)`, `inset_bottom(n)`, `inset_left(n)`, `inset_right(n)`;
-  `full`, `full_width`, `full_height`.
+  `full`, `full_width`, `full_height`, which fill the parent after the box's margins.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   New style utilities `position_absolute` and `position_relative` replace the old
   `absolute(x, y)`, `relative(x, y)`, and `fixed(x, y)` helpers.
