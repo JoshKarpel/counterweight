@@ -52,7 +52,7 @@ def align() -> Div:
         style=row | full,
         children=[
             Div(
-                style=row | align | grow(1) | min_width(0) | border,
+                style=row | align | fill(1) | border,
                 children=[
                     title(name),
                     Text(style=border | border_heavy, content="a"),
@@ -100,11 +100,11 @@ def center() -> Div:
         style=row | full,
         children=[
             Div(
-                style=row | align_children_center | justify_children_center | grow(1) | border,
+                style=row | center_children | fill(1) | border,
                 children=[title("flexbox"), Text(style=border | border_heavy, content="centered")],
             ),
             Div(
-                style=display_grid | align_children_center | justify_items_center | grow(1) | border,
+                style=display_grid | align_children_center | justify_items_center | fill(1) | border,
                 children=[title("grid"), Text(style=border | border_heavy, content="centered")],
             ),
         ],
@@ -124,7 +124,7 @@ def overflow() -> Div:
         style=row | pad_y(4),
         children=[
             Div(
-                style=col | justify | grow(1) | border,
+                style=col | justify | fill(1) | border,
                 children=[title(name), Text(content=TALL)],
             )
             for name, justify in (

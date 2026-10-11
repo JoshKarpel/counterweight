@@ -210,3 +210,92 @@ def test_pad_right() -> None:
 def test_sizing_keyword_utility_sets_only_its_own_fields(utility: Style, expected: dict[str, object]) -> None:
     assert utility.layout.fields_set == expected.keys()
     assert {field: getattr(utility.layout, field) for field in expected} == expected
+
+
+HIDDEN = waxy.Overflow.Hidden
+
+
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (grow(3), {"flex_grow": 3.0}),
+        (shrink(3), {"flex_shrink": 3.0}),
+        (
+            length(7),
+            {
+                "flex_basis": waxy.Length(7),
+                "flex_grow": 0.0,
+                "flex_shrink": 0.0,
+                "overflow_x": HIDDEN,
+                "overflow_y": HIDDEN,
+            },
+        ),
+        (
+            percentage(30),
+            {
+                "flex_basis": waxy.Percent(0.3),
+                "flex_grow": 0.0,
+                "flex_shrink": 0.0,
+                "overflow_x": HIDDEN,
+                "overflow_y": HIDDEN,
+            },
+        ),
+        (
+            ratio(2, 5),
+            {
+                "flex_basis": waxy.Percent(0.4),
+                "flex_grow": 0.0,
+                "flex_shrink": 0.0,
+                "overflow_x": HIDDEN,
+                "overflow_y": HIDDEN,
+            },
+        ),
+        (
+            fill(3),
+            {
+                "flex_basis": waxy.Length(0),
+                "flex_grow": 3.0,
+                "flex_shrink": 1.0,
+                "overflow_x": HIDDEN,
+                "overflow_y": HIDDEN,
+            },
+        ),
+        (
+            center_children,
+            {"align_items": waxy.AlignItems.SafeCenter, "justify_content": waxy.AlignContent.SafeCenter},
+        ),
+    ],
+)
+def test_constraint_utility_sets_only_its_own_fields(utility: Style, expected: dict[str, object]) -> None:
+    assert utility.layout.fields_set == expected.keys()
+    assert {field: getattr(utility.layout, field) for field in expected} == expected
+
+
+def test_fill_defaults_to_one_share() -> None:
+    assert fill() == fill(1)
+
+
+def test_overriding_one_field_of_a_constraint_keeps_the_rest() -> None:
+    assert (fill(2) | shrink(0)).layout == waxy.Style(
+        flex_basis=waxy.Length(0),
+        flex_grow=2.0,
+        flex_shrink=0.0,
+        overflow_x=HIDDEN,
+        overflow_y=HIDDEN,
+    )
+
+
+def test_fr_is_a_track_with_no_content_minimum() -> None:
+    assert fr(3) == waxy.Minmax(waxy.Length(0), waxy.Fraction(3))
+
+
+def test_span_is_a_grid_span() -> None:
+    assert span(3) == waxy.GridSpan(3)
+
+
+def test_int_track_stands_for_length() -> None:
+    assert grid_template_columns(7, fr(2)) == grid_template_columns(waxy.Length(7), fr(2))
+
+
+def test_int_grid_line_stands_for_grid_line() -> None:
+    assert grid_row(2, span(3)) == grid_row(waxy.GridLine(2), waxy.GridSpan(3))

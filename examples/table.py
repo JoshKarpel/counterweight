@@ -87,7 +87,7 @@ def root() -> Div:
     sorted_peaks = tuple(sorted(PEAKS, key=sort_key, reverse=not sort_asc))
 
     return Div(
-        style=col | align_children_center | justify_children_center,
+        style=col | center_children,
         on_key=on_key,
         children=[
             Text(

@@ -29,6 +29,15 @@
   `fit_content_width` and `stretch_width`, and their `_height` counterparts,
   which size a box from its content or fill the space available after its margins.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
+  Added the constraint utilities `length(n)`, `percentage(p)`, `ratio(a, b)` and `fill(n)`,
+  which split space along the parent's main axis the way ratatui's constraints of the same names do:
+  a child takes its share whatever its content, in a `row` or a `col`.
+  For grid, `fr(n)` is a track of `n` shares that content can't widen (`minmax(0, n fr)`),
+  and `span(n)` places a child across `n` tracks.
+  `grid_template_columns` and `grid_template_rows` accept a plain `int` as a track of that many cells,
+  and `grid_row` and `grid_column` accept one as a grid line.
+  `center_children` centers children on both axes.
+- [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Added `Screenshot.to_stream`, which prints a screenshot as a text grid
   (with or without ANSI escape codes), useful for debugging layout and in tests.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
@@ -39,7 +48,7 @@
   New functional style utilities: `pad(n)`, `pad_x(n)`, `pad_y(n)`, `pad_top(n)`, etc.;
   `margin(n)`, `margin_x(n)`, `margin_y(n)`, `margin_top(n)`, etc.;
   `gap(n)`, `gap_width(n)`, `gap_height(n)`;
-  `size(w, h)`, `grow(n)`;
+  `size(w, h)`, `grow(n)` (which sets only `flex_grow`);
   `inset_top(n)`, `inset_bottom(n)`, `inset_left(n)`, `inset_right(n)`;
   `full`, `full_width`, `full_height`, which fill the parent after the box's margins.
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)

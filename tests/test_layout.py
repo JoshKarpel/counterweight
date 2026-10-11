@@ -18,10 +18,16 @@ from counterweight.styles.utilities import (
     border_collapse,
     border_lightrounded,
     col,
+    display_grid,
     display_none,
+    fill,
     fit_content_width,
+    fr,
     full_height,
     full_width,
+    grid_row,
+    grid_template_columns,
+    grid_template_rows,
     grow,
     height,
     inset_bottom,
@@ -34,15 +40,20 @@ from counterweight.styles.utilities import (
     justify_children_end_unsafe,
     justify_children_space_around,
     justify_children_space_evenly,
+    length,
     margin_x,
     margin_y,
     max_content_width,
     min_content_width,
+    min_width,
     pad,
+    percentage,
     position_absolute,
+    ratio,
     row,
     shrink,
     size,
+    span,
     stretch_width,
     text_wrap_balance,
     text_wrap_pretty,
@@ -456,3 +467,71 @@ def test_full_size_fits_inside_its_parent_after_margins(parent: Style, child: St
     layout_root, layout_child = [rl for _, rl in _layout(root)]
 
     assert layout_child.margin == layout_root.content
+
+
+WIDE = "x" * 50
+
+
+def _boxes_with_wide_content(*styles: Style) -> list[ShadowNode]:
+    return [_shadow(Div(style=style), children=[_shadow(Text(content=WIDE))]) for style in styles]
+
+
+def _border_widths(root: ShadowNode) -> list[int]:
+    return [layout.border.width for _, layout in _layout(root)[1::2]]
+
+
+def test_constraints_split_a_row_whatever_the_content() -> None:
+    root = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(length(10), fill(1), fill(2)))
+
+    assert _border_widths(root) == [10, 10, 20]
+
+
+def test_constraints_split_a_column_whatever_the_content() -> None:
+    tall = "x\n" * 50
+    children = [_shadow(Div(style=s), children=[_shadow(Text(content=tall))]) for s in (length(2), fill(1), fill(2))]
+    root = _shadow(Div(style=col | height(10)), children=children)
+
+    assert [layout.border.height for _, layout in _layout(root)[1::2]] == [2, 3, 5]
+
+
+def test_min_width_holds_whichever_side_of_fill_it_is_merged_on() -> None:
+    before = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(min_width(15) | fill(1), fill(3)))
+    after = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(fill(1) | min_width(15), fill(3)))
+
+    assert _border_widths(before) == _border_widths(after) == [15, 25]
+
+
+def test_percentage_and_ratio_give_the_same_width() -> None:
+    by_percentage = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(percentage(25), fill(1)))
+    by_ratio = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(ratio(1, 4), fill(1)))
+
+    assert _border_widths(by_percentage) == _border_widths(by_ratio) == [10, 30]
+
+
+def test_fr_tracks_split_a_grid_like_constraints_split_a_row() -> None:
+    root = _shadow(
+        Div(style=display_grid | width(40) | grid_template_columns(10, fr(1), fr(2))),
+        children=_boxes_with_wide_content(Style(), Style(), Style()),
+    )
+
+    assert [layout.border.width for _, layout in _layout(root)[1::2]] == [10, 10, 20]
+
+
+def test_int_track_gives_the_same_widths_as_length() -> None:
+    def widths(template: Style) -> list[int]:
+        root = _shadow(
+            Div(style=display_grid | width(40) | template), children=_boxes_with_wide_content(Style(), Style())
+        )
+        return [layout.border.width for _, layout in _layout(root)[1::2]]
+
+    assert widths(grid_template_columns(7, fr(1))) == widths(grid_template_columns(waxy.Length(7), fr(1))) == [7, 33]
+
+
+def test_int_grid_line_and_span_place_a_child_like_their_waxy_values() -> None:
+    def placed(placement: Style) -> ResolvedLayout:
+        child = _shadow(Div(style=placement))
+        root = _shadow(Div(style=display_grid | size(40, 12) | grid_template_rows(3, 3, 3, 3)), children=[child])
+        return _layout(root)[1][1]
+
+    assert placed(grid_row(2, span(3))) == placed(grid_row(waxy.GridLine(2), waxy.GridSpan(3)))
+    assert placed(grid_row(2, span(3))).border.height == 9

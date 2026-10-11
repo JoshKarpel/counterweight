@@ -118,10 +118,10 @@ def board() -> Div:
                 )
 
     return Div(
-        style=col | justify_children_center | align_children_center,
+        style=col | center_children,
         children=[
             Div(
-                style=row | justify_children_center | align_children_center,
+                style=row | center_children,
                 children=r,
             )
             for r in rows

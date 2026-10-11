@@ -8,8 +8,8 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]
 
-container_style = grow(1) | align_self_stretch | border_collapse
-box_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
+container_style = fill(1) | align_self_stretch | border_collapse
+box_style = fill(1) | align_self_stretch | center_children
 
 
 def box(s: str) -> Div:

@@ -708,12 +708,70 @@ border_box = Style(layout=waxy.Style(box_sizing=waxy.BoxSizing.BorderBox))
 
 @lru_cache(maxsize=256)
 def grow(n: float) -> Style:
-    return Style(layout=waxy.Style(flex_grow=float(n), flex_basis=waxy.Length(0)))
+    return Style(layout=waxy.Style(flex_grow=float(n)))
 
 
 @lru_cache(maxsize=256)
 def shrink(n: float) -> Style:
     return Style(layout=waxy.Style(flex_shrink=float(n)))
+
+
+def _constraint(basis: waxy.Length | waxy.Percent, grow: float, shrink: float) -> Style:
+    # Hidden overflow makes the item a scroll container, whose automatic minimum size is 0,
+    # so content can't push it past its constraint.
+    # Zeroing min_size_* would do the same, but would clobber (or be clobbered by) min_width and min_height.
+    return Style(
+        layout=waxy.Style(
+            flex_basis=basis,
+            flex_grow=grow,
+            flex_shrink=shrink,
+            overflow_x=waxy.Overflow.Hidden,
+            overflow_y=waxy.Overflow.Hidden,
+        )
+    )
+
+
+@lru_cache(maxsize=256)
+def length(n: int) -> Style:
+    """Take exactly `n` cells along the parent's main axis, whatever the content (ratatui's `Length`)."""
+    return _constraint(waxy.Length(n), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def percentage(p: float) -> Style:
+    """Take `p` percent of the parent's main axis, whatever the content (ratatui's `Percentage`)."""
+    return _constraint(waxy.Percent(p / 100), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def ratio(numerator: int, denominator: int) -> Style:
+    """Take `numerator / denominator` of the parent's main axis, whatever the content (ratatui's `Ratio`)."""
+    return _constraint(waxy.Percent(numerator / denominator), grow=0, shrink=0)
+
+
+@lru_cache(maxsize=256)
+def fill(n: float = 1) -> Style:
+    """Share the parent's free main-axis space in proportion to `n`, whatever the content (ratatui's `Fill`)."""
+    return _constraint(waxy.Length(0), grow=float(n), shrink=1)
+
+
+@lru_cache(maxsize=256)
+def fr(n: float = 1) -> waxy.Minmax:
+    """
+    A grid track taking `n` shares of the free space, whatever the content (`minmax(0, n fr)`).
+
+    A bare `waxy.Fraction(n)` is `minmax(auto, n fr)`, which content can push wider.
+    """
+    return waxy.Minmax(waxy.Length(0), waxy.Fraction(n))
+
+
+@lru_cache(maxsize=256)
+def span(n: int) -> waxy.GridSpan:
+    """A grid placement spanning `n` tracks, for `grid_row` and `grid_column`."""
+    return waxy.GridSpan(n)
+
+
+center_children = align_children_center | justify_children_center
 
 
 min_content_width = Style(layout=waxy.Style(size_width=waxy.MIN_CONTENT))
@@ -796,24 +854,36 @@ def aspect_ratio(ratio: float) -> Style:
     return Style(layout=waxy.Style(aspect_ratio=ratio))
 
 
-@lru_cache(maxsize=256)
-def grid_template_rows(*tracks: waxy.GridTrackValue) -> Style:
-    return Style(layout=waxy.Style(grid_template_rows=list(tracks)))
+def _track(track: waxy.GridTrackValue | int) -> waxy.GridTrackValue:
+    return waxy.Length(track) if isinstance(track, int) else track
+
+
+def _line(line: waxy.GridPlacementValue | int | None) -> waxy.GridPlacementValue | None:
+    return waxy.GridLine(line) if isinstance(line, int) else line
 
 
 @lru_cache(maxsize=256)
-def grid_template_columns(*tracks: waxy.GridTrackValue) -> Style:
-    return Style(layout=waxy.Style(grid_template_columns=list(tracks)))
+def grid_template_rows(*tracks: waxy.GridTrackValue | int) -> Style:
+    return Style(layout=waxy.Style(grid_template_rows=[_track(t) for t in tracks]))
 
 
 @lru_cache(maxsize=256)
-def grid_row(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
-    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=start, end=end)))
+def grid_template_columns(*tracks: waxy.GridTrackValue | int) -> Style:
+    return Style(layout=waxy.Style(grid_template_columns=[_track(t) for t in tracks]))
 
 
 @lru_cache(maxsize=256)
-def grid_column(start: waxy.GridPlacementValue | None = None, end: waxy.GridPlacementValue | None = None) -> Style:
-    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=start, end=end)))
+def grid_row(
+    start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
+) -> Style:
+    return Style(layout=waxy.Style(grid_row=waxy.GridPlacement(start=_line(start), end=_line(end))))
+
+
+@lru_cache(maxsize=256)
+def grid_column(
+    start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None
+) -> Style:
+    return Style(layout=waxy.Style(grid_column=waxy.GridPlacement(start=_line(start), end=_line(end))))
 
 
 @lru_cache(maxsize=256)

@@ -382,6 +382,8 @@ and 40; wrapping `Text`s share a row narrower than either unwrapped; `full_width
 
 ### 7. Add ratatui-style constraint utilities
 
+**Status:** Done
+
 Give users ratatui's way of splitting space, as composite utilities set on each child.
 `flex_basis`, `flex_grow` and `flex_shrink` act along the parent's main axis, whichever axis
 that is, so one utility works in both a `row` and a `col`, the way a ratatui constraint
@@ -392,13 +394,13 @@ applies along its `Layout`'s direction:
 | `Length(n)`     | `length(n)`        | `Length(n)`        | 0           | 0             |
 | `Percentage(p)` | `percentage(p)`    | `Percent(p / 100)` | 0           | 0             |
 | `Ratio(a, b)`   | `ratio(a, b)`      | `Percent(a / b)`   | 0           | 0             |
-| `Fill(n)`       | `fill(n: int = 1)` | `Length(0)`        | `n`         | 1             |
+| `Fill(n)`       | `fill(n = 1)`      | `Length(0)`        | `n`         | 1             |
 
 Each also sets `overflow_x` and `overflow_y` to `Overflow.Hidden`, which makes the item a
 scroll container, so its automatic minimum size is 0 and its content can't push it wider.
-Probed against waxy `0.4.0`, a 40-wide row of `length(10)`, `fill(1)`, `fill(2)` children
-with 50 cells of content each comes out 10, 10 and 20; the same three children in a 10-tall
-column come out 2, 4 and 4.
+A 40-wide row of `length(10)`, `fill(1)`, `fill(2)` children with 50 cells of content each
+comes out 10, 10 and 20; `length(2)`, `fill(1)`, `fill(2)` in a 10-tall column come out
+2, 3 and 5.
 
 Zeroing `min_size_width` and `min_size_height` gives the same split, but it takes the fields
 users set for ratatui's `Min(n)`: `min_width(15) | fill(1)` would drop the minimum, while
@@ -419,7 +421,10 @@ two-dimensional grids) stays in the primitives.
 That layering needs each primitive to set exactly one field.
 `grow(n)` sets `flex_basis=Length(0)` beside `flex_grow`, so it's `fill(n)` without the
 overflow. Make it set only `flex_grow`, like `shrink(n)`. Examples move from
-`grow(1) | min_width(0)` (and bare `grow(1)`) to `fill(1)`. Changelog entry under `Changed`.
+`grow(1) | min_width(0)` (and bare `grow(1)`) to `fill(1)`.
+`grow` hasn't shipped in a release, so the changelog states its behavior in its `Added` entry
+rather than adding a `Changed` one.
+`fill` and `fr` take a `float`, like `grow` and `shrink`, since fractional factors are valid.
 
 Add `fr(n)` for grid, the version where the parent holds the constraint list: it returns the
 track value `Minmax(Length(0), Fraction(n))`, so `grid_template_columns(Length(10), fr(1),
@@ -444,7 +449,7 @@ Make the rest of a grid as short to write as `fr`:
   percentage, and percentage tracks are rare.
 
 Also add `center_children` (`align_children_center | justify_children_center`), a pair the
-examples and docs spell out eight times.
+examples and docs spelled out eleven times.
 
 Changelog entry under `Added`.
 
@@ -460,10 +465,12 @@ Gallery: rewrite the "Splitting space" page around these utilities. Each split s
 `fill` and `length` should render the same as its `fr` grid version, except where the panes
 have borders or padding: a flex item's basis can't go below its own border and padding, so
 flexbox divides only the space left after them, while grid divides the whole track.
-In a 60-wide row, bordered `grow(1)` and `grow(2)` panes come out 21 and 39, and
-`Fraction(1)` and `Fraction(2)` tracks 20 and 40; "Ratios" on that page says so.
-Decide whether `fill` should close that gap (a `box_sizing` change, say) or the page keeps
-explaining it.
+In a 60-wide row, bordered `fill(1)` and `fill(2)` panes come out 21 and 39, and
+`fr(1)` and `fr(2)` tracks 20 and 40.
+`fill` can't close that gap: it comes from flexbox clamping each basis to the item's own
+border and padding, so `content_box` panes come out 21 and 39 as well.
+`ratio(1, 3)` and `ratio(2, 3)` come out 20 and 40, so "Ratios" explains the gap and shows
+`ratio` as a third tab.
 Then go back over the gallery and replace the raw waxy values the step 2 examples spell out
 for lack of these utilities (`grep -rn "waxy\." docs/examples docs/layout`):
 
@@ -472,6 +479,7 @@ for lack of these utilities (`grep -rn "waxy\." docs/examples docs/layout`):
   `fr` and `span`.
 - `layout_grids.py` defines its own `fr = waxy.Fraction(1)`, which would shadow the new
   utility from `import *`; delete it.
+  `layout_box_sizing.py` has a component named `fill` for the same reason; rename it.
 - The "Content wider than its share" section of "Splitting space" explains
   `Minmax(Length(0), Fraction(1))` by hand; rewrite it around `fr` versus bare `Fraction`.
 - The "Grids and wrapping" page introduces `fr = waxy.Fraction(1)` and the
@@ -482,8 +490,11 @@ for lack of these utilities (`grep -rn "waxy\." docs/examples docs/layout`):
   `percentage(50) | shrink(1)`, and the bottom row needs no `shrink(0)`.
 - Once nothing in the examples needs `waxy`, drop `import waxy` (and the sentence about it)
   from the shared imports on the Layout index page.
+  The bare `waxy.Fraction` failure in "Content wider than its share" still needs it,
+  so the import stays; `Style` is no longer used, so its import goes.
 
-The text snapshots should come out unchanged, which confirms the rewrite moved no layout.
+The text snapshots come out unchanged apart from labels, which confirms the rewrite moved no
+layout. "Grids and wrapping"'s auto-flow screenshot widens to fit its longer labels.
 
 ### 8. Explain how to choose a layout model
 

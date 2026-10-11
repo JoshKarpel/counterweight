@@ -54,7 +54,7 @@ In a `row` or a grid, the keywords size wrapping text correctly.
 
 ## Fill the parent
 
-`grow(1)` fills the free space along the main axis, after the other children take theirs.
+`fill(1)` fills the free space along the main axis, after the other children take theirs.
 `full_width` and `full_height` (the same as `stretch_width` and `stretch_height`) fill the parent,
 after the box's margins, whatever the other children need.
 

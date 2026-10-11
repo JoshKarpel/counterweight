@@ -308,7 +308,7 @@ def keyboard(
                 ],
             ),
             Div(
-                style=col | justify_children_center | align_children_center,
+                style=col | center_children,
                 children=[
                     Div(
                         style=row | align_children_center | gap(1),

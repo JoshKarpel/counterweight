@@ -3,7 +3,7 @@
 `display_grid` lays a container's children out in rows and columns at once.
 The container lists its tracks with `grid_template_columns` and `grid_template_rows`,
 and each child fills the next free cell, or the cells it asks for.
-The examples on this page share one track size, `fr = waxy.Fraction(1)`.
+The examples on this page size every track with `fr(1)`, one share of the grid's free space.
 
 ## Dashboard tiles
 
@@ -18,7 +18,7 @@ Equal tracks on both axes give a grid of equal tiles, and `gap` separates them.
 ## Cells spanning tracks
 
 `grid_column` and `grid_row` place a child by grid line, counted from 1,
-and `waxy.GridSpan(n)` stretches it across `n` tracks.
+and `span(n)` stretches it across `n` tracks.
 Children without a placement fill the cells that are left, in order.
 
 Place a spanning child on both axes, as both are here.

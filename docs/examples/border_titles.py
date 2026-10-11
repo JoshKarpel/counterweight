@@ -12,13 +12,7 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=row
-                | grow(1)
-                | justify_children_center
-                | align_children_center
-                | border
-                | border_lightrounded
-                | pad(1),
+                style=row | fill(1) | center_children | border | border_lightrounded | pad(1),
                 children=[
                     Text(
                         style=position_absolute | inset_left(1) | inset_top(-1),

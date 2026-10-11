@@ -12,7 +12,7 @@ def root() -> Div:
         style=col,
         children=[
             Div(
-                style=grow(1)
+                style=fill(1)
                 | content_color("green", 500)
                 | padding_color("orange", 500)
                 | pad_x(2)

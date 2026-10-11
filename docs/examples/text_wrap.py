@@ -19,7 +19,7 @@ WRAP_STYLE: dict[TextWrap, Style] = {
 @component
 def wrap_pane(mode: TextWrap) -> Div:
     return Div(
-        style=grow(1) | min_width(0) | col | border | pad_x(1),
+        style=fill(1) | col | border | pad_x(1),
         children=[
             Text(
                 content=f" {mode} ",
@@ -27,7 +27,7 @@ def wrap_pane(mode: TextWrap) -> Div:
             ),
             Text(
                 content=SAMPLE,
-                style=grow(1) | WRAP_STYLE[mode],
+                style=fill(1) | WRAP_STYLE[mode],
             ),
         ],
     )
@@ -39,7 +39,7 @@ def root() -> Div:
         style=col | full,
         children=[
             Div(
-                style=row | grow(1),
+                style=row | fill(1),
                 children=[wrap_pane(mode) for mode in WRAP_STYLE],
             ),
         ],

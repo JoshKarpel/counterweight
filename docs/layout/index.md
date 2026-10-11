@@ -12,12 +12,11 @@ import waxy
 
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.styles import Style
 from counterweight.styles.utilities import *
 ```
 
-`waxy` provides the values that styles are built from, such as `waxy.Fraction` for grid tracks,
-for the cases no utility covers yet.
+`waxy` provides the values that styles are built from,
+for the cases no utility covers.
 
 To run one, pass the component to `counterweight.app.app`.
 

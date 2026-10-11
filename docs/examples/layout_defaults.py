@@ -72,8 +72,8 @@ def automatic_minimum() -> Div:
             Div(
                 style=row | border | border_heavy,
                 children=[
-                    Text(style=grow(1) | min_width(0) | border, content=LONG),
-                    Text(style=grow(1) | min_width(0) | border, content=LONG),
+                    Text(style=fill(1) | border, content=LONG),
+                    Text(style=fill(1) | border, content=LONG),
                 ],
             ),
         ],

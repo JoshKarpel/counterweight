@@ -67,12 +67,12 @@ def content_keywords() -> Div:
 
 
 @component
-def fill() -> Div:
+def filling() -> Div:
     return Div(
         style=col | full,
         children=[
             Text(style=border, content="content height"),
-            Text(style=grow(1) | border, content="grow(1): the rest of the col"),
+            Text(style=fill(1) | border, content="fill(1): the rest of the col"),
             Div(
                 style=row,
                 children=[Text(style=full_width | border, content="full_width: the whole row")],
@@ -94,8 +94,8 @@ def clamped() -> Div:
             Div(
                 style=row,
                 children=[
-                    Text(style=grow(1) | max_width(20) | border, content="grow(1)\nmax_width(20)"),
-                    Text(style=grow(1) | border, content="grow(1)"),
+                    Text(style=fill(1) | max_width(20) | border, content="fill(1)\nmax_width(20)"),
+                    Text(style=fill(1) | border, content="fill(1)"),
                 ],
             ),
             Div(
@@ -147,7 +147,7 @@ SCREENSHOTS = [
     ScreenshotSpec(fixed, "layout-size-fixed", (50, 11)),
     ScreenshotSpec(fit, "layout-size-fit", (50, 6)),
     ScreenshotSpec(content_keywords, "layout-size-content-keywords", (40, 12)),
-    ScreenshotSpec(fill, "layout-size-fill", (50, 10)),
+    ScreenshotSpec(filling, "layout-size-fill", (50, 10)),
     ScreenshotSpec(clamped, "layout-size-clamped", (60, 10)),
     ScreenshotSpec(aspect, "layout-size-aspect-ratio", (50, 18)),
     ScreenshotSpec(box_sizing, "layout-size-box-sizing", (50, 6)),

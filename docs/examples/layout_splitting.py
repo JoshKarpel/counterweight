@@ -2,7 +2,6 @@ import waxy
 
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -14,9 +13,9 @@ def equal_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
-            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
-            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
+            Text(style=fill(1) | border, content="fill(1)"),
+            Text(style=fill(1) | border, content="fill(1)"),
+            Text(style=fill(1) | border, content="fill(1)"),
         ],
     )
 
@@ -29,11 +28,11 @@ def equal_flex() -> Div:
 @component
 def equal_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1), waxy.Fraction(1)) | full,
+        style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | full,
         children=[
-            Text(style=border, content="Fraction(1)"),
-            Text(style=border, content="Fraction(1)"),
-            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="fr(1)"),
+            Text(style=border, content="fr(1)"),
+            Text(style=border, content="fr(1)"),
         ],
     )
 
@@ -48,8 +47,8 @@ def sidebar_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=width(20) | border, content="width(20)"),
-            Text(style=grow(1) | min_width(0) | border, content="grow(1) | min_width(0)"),
+            Text(style=length(20) | border, content="length(20)"),
+            Text(style=fill(1) | border, content="fill(1)"),
         ],
     )
 
@@ -62,10 +61,10 @@ def sidebar_flex() -> Div:
 @component
 def sidebar_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(waxy.Length(20), waxy.Fraction(1)) | full,
+        style=display_grid | grid_template_columns(20, fr(1)) | full,
         children=[
-            Text(style=border, content="Length(20)"),
-            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="20"),
+            Text(style=border, content="fr(1)"),
         ],
     )
 
@@ -80,13 +79,29 @@ def ratio_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=grow(1) | min_width(0) | border, content="grow(1)"),
-            Text(style=grow(2) | min_width(0) | border, content="grow(2)"),
+            Text(style=fill(1) | border, content="fill(1)"),
+            Text(style=fill(2) | border, content="fill(2)"),
         ],
     )
 
 
 # --8<-- [end:ratio-flex]
+
+# --8<-- [start:ratio-exact]
+
+
+@component
+def ratio_exact() -> Div:
+    return Div(
+        style=row | full,
+        children=[
+            Text(style=ratio(1, 3) | border, content="ratio(1, 3)"),
+            Text(style=ratio(2, 3) | border, content="ratio(2, 3)"),
+        ],
+    )
+
+
+# --8<-- [end:ratio-exact]
 
 # --8<-- [start:ratio-grid]
 
@@ -94,10 +109,10 @@ def ratio_flex() -> Div:
 @component
 def ratio_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(2)) | full,
+        style=display_grid | grid_template_columns(fr(1), fr(2)) | full,
         children=[
-            Text(style=border, content="Fraction(1)"),
-            Text(style=border, content="Fraction(2)"),
+            Text(style=border, content="fr(1)"),
+            Text(style=border, content="fr(2)"),
         ],
     )
 
@@ -112,12 +127,12 @@ def nested_flex() -> Div:
     return Div(
         style=row | full,
         children=[
-            Text(style=width(20) | border, content="width(20)"),
+            Text(style=length(20) | border, content="length(20)"),
             Div(
-                style=col | grow(1) | min_width(0),
+                style=col | fill(1),
                 children=[
-                    Text(style=grow(1) | min_height(0) | border, content="grow(1) | min_height(0)"),
-                    Text(style=grow(1) | min_height(0) | border, content="grow(1) | min_height(0)"),
+                    Text(style=fill(1) | border, content="fill(1)"),
+                    Text(style=fill(1) | border, content="fill(1)"),
                 ],
             ),
         ],
@@ -132,17 +147,14 @@ def nested_flex() -> Div:
 @component
 def nested_grid() -> Div:
     return Div(
-        style=display_grid
-        | grid_template_columns(waxy.Length(20), waxy.Fraction(1))
-        | grid_template_rows(waxy.Fraction(1), waxy.Fraction(1))
-        | full,
+        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), fr(1)) | full,
         children=[
             Text(
-                style=grid_row(waxy.GridLine(1), waxy.GridSpan(2)) | border,
-                content="grid_row(\n  GridLine(1),\n  GridSpan(2),\n)",
+                style=grid_row(1, span(2)) | border,
+                content="grid_row(\n  1, span(2),\n)",
             ),
-            Text(style=border, content="Fraction(1)"),
-            Text(style=border, content="Fraction(1)"),
+            Text(style=border, content="fr(1)"),
+            Text(style=border, content="fr(1)"),
         ],
     )
 
@@ -167,13 +179,7 @@ def overflow_grid() -> Div:
                 ],
             ),
             Div(
-                style=display_grid
-                | grid_template_columns(
-                    waxy.Minmax(waxy.Length(0), waxy.Fraction(1)),
-                    waxy.Minmax(waxy.Length(0), waxy.Fraction(1)),
-                )
-                | border
-                | border_heavy,
+                style=display_grid | grid_template_columns(fr(1), fr(1)) | border | border_heavy,
                 children=[
                     Text(style=border, content=LONG),
                     Text(style=border, content=LONG),
@@ -184,8 +190,6 @@ def overflow_grid() -> Div:
 
 
 # --8<-- [end:overflow-grid]
-
-half = Style(layout=waxy.Style(flex_basis=waxy.Percent(0.5)))
 
 # --8<-- [start:percent-gap]
 
@@ -198,15 +202,15 @@ def percent_gap() -> Div:
             Div(
                 style=row | gap(2) | border | border_heavy,
                 children=[
-                    Text(style=half | border, content="half"),
-                    Text(style=half | border, content="half"),
+                    Text(style=percentage(50) | shrink(1) | border, content="percentage(50) | shrink(1)"),
+                    Text(style=percentage(50) | shrink(1) | border, content="percentage(50) | shrink(1)"),
                 ],
             ),
             Div(
                 style=row | gap(2) | border | border_heavy,
                 children=[
-                    Text(style=half | shrink(0) | border, content="half | shrink(0)"),
-                    Text(style=half | shrink(0) | border, content="half | shrink(0)"),
+                    Text(style=percentage(50) | border, content="percentage(50)"),
+                    Text(style=percentage(50) | border, content="percentage(50)"),
                 ],
             ),
         ],
@@ -222,6 +226,7 @@ SCREENSHOTS = [
     ScreenshotSpec(sidebar_grid, "layout-split-sidebar-grid", (60, 3)),
     ScreenshotSpec(ratio_flex, "layout-split-ratio-flex", (60, 3)),
     ScreenshotSpec(ratio_grid, "layout-split-ratio-grid", (60, 3)),
+    ScreenshotSpec(ratio_exact, "layout-split-ratio-exact", (60, 3)),
     ScreenshotSpec(nested_flex, "layout-split-nested-flex", (60, 8)),
     ScreenshotSpec(nested_grid, "layout-split-nested-grid", (60, 8)),
     ScreenshotSpec(overflow_grid, "layout-split-overflow-grid", (60, 10)),

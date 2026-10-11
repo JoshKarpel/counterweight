@@ -8,14 +8,13 @@ from counterweight.components import Component, component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import (
-    align_children_center,
     align_self_stretch,
     border,
     border_collapse,
     border_double,
+    center_children,
     col,
-    grow,
-    justify_children_center,
+    fill,
     row,
     size,
     text_justify_center,
@@ -137,8 +136,8 @@ async def test_col_collapse_three_siblings_heals_both_seams() -> None:
 
 
 async def test_doc_example_border_healing() -> None:
-    container_style = grow(1) | align_self_stretch | border_collapse
-    box_style = grow(1) | align_self_stretch | justify_children_center | align_children_center
+    container_style = fill(1) | align_self_stretch | border_collapse
+    box_style = fill(1) | align_self_stretch | center_children
 
     @component
     def root() -> Div:

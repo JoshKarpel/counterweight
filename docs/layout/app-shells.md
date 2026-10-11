@@ -2,8 +2,7 @@
 
 These whole-screen layouts combine the techniques from the other pages.
 Each is a `full` root split with flexbox:
-fixed parts take a size or their content's size, and the part that fills takes `grow(1)`
-with a zero minimum on the axis it grows along
+fixed parts take a size or their content's size, and the part that fills takes `fill(1)`
 (see [Splitting space](splitting-space.md) for the same splits with grid).
 
 ## Header, body and footer

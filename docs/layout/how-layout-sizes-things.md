@@ -60,9 +60,11 @@ for one that wraps, it's the widest word.
 In the top row below, two `grow(1)` children with long lines can't take half the row each,
 so they overflow it.
 
-`min_width(0)` replaces the automatic minimum with zero,
+`fill(1)` has no automatic minimum,
 so in the bottom row the same two children split the row evenly, and their text is cut off instead.
-In a `col`, the same fix is `min_height(0)`.
+It hides the child's overflow, and CSS gives a box that hides its overflow
+a minimum size of zero.
+`min_width(0)` (or `min_height(0)` in a `col`) has the same effect on its own axis.
 
 ```python
 --8<-- "layout_defaults.py:automatic-minimum"

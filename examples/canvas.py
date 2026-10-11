@@ -47,7 +47,7 @@ def root() -> Div:
         children=[
             header(),
             Div(
-                style=col | align_children_center | justify_children_center,
+                style=col | center_children,
                 children=[
                     Div(
                         style=row | align_children_center | justify_children_space_evenly,

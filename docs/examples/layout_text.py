@@ -15,7 +15,7 @@ def wrap_in_pane() -> Div:
         children=[
             Text(style=width(16) | border, content="sidebar"),
             Div(
-                style=col | grow(1) | border | pad_x(1),
+                style=col | fill(1) | border | pad_x(1),
                 children=[Text(style=text_wrap_stable, content=PARAGRAPH)],
             ),
         ],

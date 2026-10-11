@@ -1,5 +1,3 @@
-import waxy
-
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -7,13 +5,15 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:tiles]
 
-fr = waxy.Fraction(1)
-
 
 @component
 def tiles() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(fr, fr, fr) | grid_template_rows(fr, fr) | gap(1) | full,
+        style=display_grid
+        | grid_template_columns(fr(1), fr(1), fr(1))
+        | grid_template_rows(fr(1), fr(1))
+        | gap(1)
+        | full,
         children=[Text(style=border, content=f"tile {n}") for n in range(1, 7)],
     )
 
@@ -26,21 +26,18 @@ def tiles() -> Div:
 @component
 def spans() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(fr, fr, fr) | grid_template_rows(fr, fr, fr) | full,
+        style=display_grid
+        | grid_template_columns(fr(1), fr(1), fr(1))
+        | grid_template_rows(fr(1), fr(1), fr(1))
+        | full,
         children=[
             Text(
-                style=grid_row(waxy.GridLine(1))
-                | grid_column(waxy.GridLine(1), waxy.GridSpan(2))
-                | border
-                | border_heavy,
-                content="grid_row(GridLine(1))\ngrid_column(GridLine(1), GridSpan(2))",
+                style=grid_row(1) | grid_column(1, span(2)) | border | border_heavy,
+                content="grid_row(1)\ngrid_column(1, span(2))",
             ),
             Text(
-                style=grid_row(waxy.GridLine(1), waxy.GridSpan(3))
-                | grid_column(waxy.GridLine(3))
-                | border
-                | border_heavy,
-                content="grid_row(\n  GridLine(1),\n  GridSpan(3),\n)\ngrid_column(\n  GridLine(3),\n)",
+                style=grid_row(1, span(3)) | grid_column(3) | border | border_heavy,
+                content="grid_row(\n  1, span(3),\n)\ngrid_column(3)",
             ),
             Text(style=border, content="auto"),
             Text(style=border, content="auto"),
@@ -61,21 +58,23 @@ def auto_flow() -> Div:
         style=row | gap(2) | full,
         children=[
             Div(
-                style=display_grid | grid_template_columns(fr, fr, fr) | grow(1) | border | border_heavy,
+                style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | fill(1) | border | border_heavy,
                 children=[
-                    Text(content=" grid_template_columns(fr, fr, fr) ", style=position_absolute | inset_top(-1)),
+                    Text(
+                        content=" grid_template_columns(fr(1), fr(1), fr(1)) ", style=position_absolute | inset_top(-1)
+                    ),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
                 ],
             ),
             Div(
                 style=display_grid
-                | grid_template_rows(fr, fr, fr)
+                | grid_template_rows(fr(1), fr(1), fr(1))
                 | grid_auto_flow_column
-                | grow(1)
+                | fill(1)
                 | border
                 | border_heavy,
                 children=[
-                    Text(content=" grid_template_rows(fr, fr, fr) ", style=position_absolute | inset_top(-1)),
+                    Text(content=" grid_template_rows(fr(1), fr(1), fr(1)) ", style=position_absolute | inset_top(-1)),
                     Text(content=" grid_auto_flow_column ", style=position_absolute | inset_bottom(-1)),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
                 ],
@@ -104,6 +103,6 @@ def wrap() -> Div:
 SCREENSHOTS = [
     ScreenshotSpec(tiles, "layout-grid-tiles", (60, 12)),
     ScreenshotSpec(spans, "layout-grid-spans", (60, 12)),
-    ScreenshotSpec(auto_flow, "layout-grid-auto-flow", (80, 11)),
+    ScreenshotSpec(auto_flow, "layout-grid-auto-flow", (96, 11)),
     ScreenshotSpec(wrap, "layout-flex-wrap", (50, 9)),
 ]

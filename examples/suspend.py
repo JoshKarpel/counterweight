@@ -87,7 +87,7 @@ def picker() -> Div:
         return None
 
     return Div(
-        style=col | grow(1) | justify_children_start | border_collapse,
+        style=col | fill(1) | justify_children_start | border_collapse,
         on_key=on_key,
         children=[
             glob_input(glob=glob),
@@ -102,7 +102,7 @@ def glob_input(glob: str) -> Div:
         style=row | align_self_stretch | border_collapse,
         children=[
             Text(style=content_box | border | pad_x(1), content="glob"),
-            Text(style=content_box | border | pad_x(1) | grow(1), content=glob),
+            Text(style=content_box | border | pad_x(1) | fill(1), content=glob),
         ],
     )
 
@@ -113,7 +113,7 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
     visible = max(1, rects.content.height)
     start_idx = clamp(0, selected_idx - visible // 2, max(0, len(files) - visible))
     return Div(
-        style=col | justify_children_start | pad_x(1) | border | border_lightrounded | grow(1),
+        style=col | justify_children_start | pad_x(1) | border | border_lightrounded | fill(1),
         children=[
             Text(
                 style=text_color("cyan", 300) if idx == selected_idx else default,
