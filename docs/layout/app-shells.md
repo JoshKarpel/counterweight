@@ -1,9 +1,11 @@
 # App Shells
 
 These whole-screen layouts combine the techniques from the other pages.
-Each is a `full` root split with flexbox:
-fixed parts take a size or their content's size, and the part that fills takes `fill(1)`
-(see [Splitting space](splitting-space.md) for the same splits with grid).
+Each root [fills the screen](how-layout-sizes-things.md#the-root-fills-the-screen)
+and is split with flexbox:
+fixed parts take a `length` or their content's size, and the part that fills takes `fill(1)`.
+[Splitting space](splitting-space.md) shows the same splits with grid,
+and [Choosing a layout model](choosing-a-layout-model.md) builds a whole shell both ways.
 
 ## Header, body and footer
 
@@ -17,7 +19,7 @@ The header and footer take their content's height, and the body takes the rest.
 
 ## Sidebar, main pane and status bar
 
-A row that grows inside a column holds the sidebar and the main pane,
+A row that fills the rest of a column holds the sidebar and the main pane,
 and the status bar takes one row below them.
 
 ```python

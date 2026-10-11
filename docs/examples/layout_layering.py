@@ -9,7 +9,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def relative() -> Div:
     return Div(
-        style=row | align_children_start | gap(3) | full,
+        style=row | align_children_start | gap(3),
         children=[
             Text(style=border, content="first"),
             Text(
@@ -29,7 +29,7 @@ def relative() -> Div:
 @component
 def absolute() -> Div:
     return Div(
-        style=col | full | border,
+        style=col | border,
         children=[
             Text(content="first, in flow"),
             Text(
@@ -51,7 +51,7 @@ overlay = position_absolute | inset_top(0) | inset_bottom(0) | inset_left(0) | i
 @component
 def dialog() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Text(style=border, content="header"),
             Text(
@@ -79,7 +79,7 @@ def dialog() -> Div:
 @component
 def badge() -> Div:
     return Div(
-        style=row | align_children_start | gap(2) | full,
+        style=row | align_children_start | gap(2),
         children=[
             Div(
                 style=border | pad_x(1),
@@ -108,8 +108,8 @@ def badge() -> Div:
 # --8<-- [end:badge]
 
 SCREENSHOTS = [
-    ScreenshotSpec(relative, "layout-relative", (50, 7)),
+    ScreenshotSpec(relative, "layout-relative", (39, 7)),
     ScreenshotSpec(absolute, "layout-absolute", (50, 9)),
     ScreenshotSpec(dialog, "layout-dialog", (60, 12)),
-    ScreenshotSpec(badge, "layout-badge", (40, 3)),
+    ScreenshotSpec(badge, "layout-badge", (21, 3)),
 ]

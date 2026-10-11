@@ -9,9 +9,9 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def header_body_footer() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
-            Text(style=border | border_heavy | text_justify_center, content="header"),
+            Text(style=border | border_heavy | text_justify_center, content="header: content height"),
             Text(style=fill(1) | border, content="body: fill(1)"),
             Text(style=text_bg("slate", 700), content=" footer: one row, no border"),
         ],
@@ -26,16 +26,16 @@ def header_body_footer() -> Div:
 @component
 def sidebar_status() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | fill(1),
                 children=[
-                    Text(style=width(20) | border, content="sidebar: width(20)"),
+                    Text(style=length(20) | border, content="sidebar:\nlength(20)"),
                     Text(style=fill(1) | border, content="main: fill(1)"),
                 ],
             ),
-            Text(style=text_bg("slate", 700), content=" status bar"),
+            Text(style=text_bg("slate", 700), content=" status bar: one row, no border"),
         ],
     )
 
@@ -48,9 +48,9 @@ def sidebar_status() -> Div:
 @component
 def three_panes() -> Div:
     return Div(
-        style=row | full | border_collapse,
+        style=row | border_collapse,
         children=[
-            Text(style=width(20) | border, content="files: width(20)"),
+            Text(style=length(20) | border, content="files:\nlength(20)"),
             Div(
                 style=col | fill(1) | border_collapse,
                 children=[
@@ -58,7 +58,7 @@ def three_panes() -> Div:
                     Text(style=fill(1) | border, content="terminal: fill(1)"),
                 ],
             ),
-            Text(style=width(20) | border, content="outline: width(20)"),
+            Text(style=length(20) | border, content="outline:\nlength(20)"),
         ],
     )
 

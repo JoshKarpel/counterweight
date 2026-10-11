@@ -1,5 +1,4 @@
-────────  ┌─────────────  ┌────────────────  ┌──────────────┐         
-border_y  │border_top     │border            │border_right_0│         
-────────  │| border_left  │| border_right_0  │| border      │         
-                          └────────────────  └──────────────┘         
-                                                                      
+────────  ┌─────────────  ┌────────────────  ┌──────────────┐
+border_y  │border_top     │border            │border_right_0│
+────────  │| border_left  │| border_right_0  │| border      │
+                          └────────────────  └──────────────┘

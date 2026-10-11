@@ -9,7 +9,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def gap_margin_pad() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | gap(2) | border | border_heavy,
@@ -38,7 +38,7 @@ def gap_margin_pad() -> Div:
 @component
 def collapse() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row,
@@ -60,7 +60,7 @@ def collapse() -> Div:
 @component
 def sides() -> Div:
     return Div(
-        style=row | align_children_start | gap(2) | full,
+        style=row | align_children_start | gap(2),
         children=[
             Text(style=border_y, content="border_y"),
             Text(style=border_top | border_left, content="border_top\n| border_left"),
@@ -78,7 +78,7 @@ def sides() -> Div:
 @component
 def contract() -> Div:
     return Div(
-        style=row | align_children_start | gap(2) | full,
+        style=row | align_children_start | gap(2),
         children=[
             Text(
                 style=border_top | border_left | pad_x(1),
@@ -96,7 +96,7 @@ def contract() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(gap_margin_pad, "layout-gap-margin-pad", (60, 15)),
-    ScreenshotSpec(collapse, "layout-border-collapse", (60, 6)),
-    ScreenshotSpec(sides, "layout-border-sides", (70, 5)),
-    ScreenshotSpec(contract, "layout-border-contract", (50, 5)),
+    ScreenshotSpec(collapse, "layout-border-collapse", (49, 6)),
+    ScreenshotSpec(sides, "layout-border-sides", (61, 4)),
+    ScreenshotSpec(contract, "layout-border-contract", (37, 4)),
 ]

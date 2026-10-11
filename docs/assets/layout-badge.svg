@@ -1,16 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="22.00em" height="3.39em">
+<svg xmlns="http://www.w3.org/2000/svg" width="11.55em" height="3.39em">
  <style>svg {
   dominant-baseline: hanging;
   font-size: 1rem;
 }
 </style>
  <g shape-rendering="crispEdges">
-  <rect x="0.00em" y="0.00em" width="22.00em" height="3.39em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="11.55em" height="3.39em" fill="#000000" />
   <rect x="0.00em" y="0.00em" width="11.00em" height="1.13em" fill="#000000" />
   <rect x="11.00em" y="0.00em" width="0.55em" height="1.13em" fill="#dc2626" />
-  <rect x="11.55em" y="0.00em" width="10.45em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="1.13em" width="22.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="2.26em" width="22.00em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="1.13em" width="11.55em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="2.26em" width="11.55em" height="1.13em" fill="#000000" />
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em">

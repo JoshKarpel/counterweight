@@ -1,6 +1,6 @@
 ┌──────────────────┬────────────────────────────────────────┬──────────────────┐
-│files: width(20)  │editor: fill(2)                         │outline: width(20)│
-│                  │                                        │                  │
+│files:            │editor: fill(2)                         │outline:          │
+│length(20)        │                                        │length(20)        │
 │                  │                                        │                  │
 │                  │                                        │                  │
 │                  │                                        │                  │

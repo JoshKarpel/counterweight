@@ -638,6 +638,41 @@ Compare every workload's profile against the one before each change
 
 ### 11. Make one cohesive pass over the gallery
 
+**Status:** Done.
+No example spelled out a raw `waxy` value apart from the bare `waxy.Fraction` failure.
+Roots no longer set `full`, since the root fills the screen without it; no screenshot changed.
+Fixed panes in splits use `length` rather than `width`, and the grid centering example
+uses `center_children`, which centers the tracks and renders the same.
+The four workarounds, checked against the current code:
+
+- Wrapping `Text`s with their own border or padding wrap at their content width in a `col`,
+  a `row` and a grid, so the examples that wrapped a `Text` in a bordered `Div` for this
+  now border the `Text`.
+- The width keywords in a flex `col` still behave as the table below shows.
+  Lead 2 reproduces it in pure waxy, with a Python measure function and no counterweight,
+  giving the same six sizes, so `_measure_text` is ruled out.
+  Lead 1: waxy passes `MIN_CONTENT` and the others to taffy as taffy's own `Dimension`
+  keywords, so the fault is taffy's.
+  The trace shows taffy does measure the text at the final width (5 wide, 9 tall),
+  but keeps the height from the measure at the stretched width.
+  `align_self_start` on the item doesn't avoid it, so the gallery has no workaround to offer:
+  "Sizing keywords" shows the `col` failure as its own screenshot beside the `row` version.
+  Lead 3 is still open: the flex base size is computed in `determine_flex_base_size`
+  (`taffy-0.14.0/src/compute/flexbox.rs:806`); find where it skips the cross-axis keyword,
+  check a newer taffy, and file upstream with taffy.
+- Absolutely positioned auto margins reproduce in pure waxy: a 10 × 3 box with auto margins
+  and insets of 0, in a 30 × 9 parent with a one-cell border, lands at (11, 4) rather than
+  (10, 3), so its margin box is two cells too wide and tall and covers the parent's
+  right and bottom border.
+  No utility sets an auto margin, so the gallery keeps centering with alignment and doesn't
+  show the failure.
+- `content_color` still has no visible effect on a `Text`: `text_lines` pads every line to the
+  content box in the `text_style` background, which paints over it.
+  That's paint behavior rather than layout, so the gallery keeps coloring `Text`s with `text_bg`.
+
+Screenshots with blank margins are trimmed to their content,
+and the content keywords screenshot, which was clipping its last row, is a row taller.
+
 Steps 3 to 10 each update the gallery for their own change, a section at a time.
 This step reads the whole Layout section start to finish, the way a new user would,
 and makes it read as one document.

@@ -11,9 +11,9 @@ PARAGRAPH = "The quick brown fox jumps over the lazy dog, and then naps in the a
 @component
 def wrap_in_pane() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
-            Text(style=width(16) | border, content="sidebar"),
+            Text(style=length(16) | border, content="length(16)"),
             Div(
                 style=col | fill(1) | border | pad_x(1),
                 children=[Text(style=text_wrap_stable, content=PARAGRAPH)],
@@ -32,8 +32,8 @@ def wrap_in_row() -> Div:
     return Div(
         style=row | gap(2) | border | border_heavy,
         children=[
-            Text(style=text_wrap_stable | text_bg("blue", 900), content=PARAGRAPH),
-            Text(style=text_wrap_stable | text_bg("green", 900), content=PARAGRAPH),
+            Text(style=text_wrap_stable | border, content=PARAGRAPH),
+            Text(style=text_wrap_stable | border, content=PARAGRAPH),
         ],
     )
 
@@ -46,22 +46,17 @@ def wrap_in_row() -> Div:
 @component
 def justify() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Text(style=text_justify_center | border, content="text_justify_center, stretched"),
             Text(
                 style=text_justify_center | align_self_start | border,
                 content="text_justify_center | align_self_start",
             ),
-            Div(
-                style=col | border,
-                children=[
-                    Text(
-                        style=text_justify_center | text_wrap_balance,
-                        content="text_justify_center | text_wrap_balance centers each line of a paragraph "
-                        "within the width of the box",
-                    ),
-                ],
+            Text(
+                style=text_justify_center | text_wrap_balance | border,
+                content="text_justify_center | text_wrap_balance centers each line of a paragraph "
+                "within the width of the box",
             ),
         ],
     )
@@ -75,7 +70,7 @@ def justify() -> Div:
 @component
 def narrow() -> Div:
     return Div(
-        style=row | gap(2) | full,
+        style=row | gap(2),
         children=[
             Div(
                 style=col | width(20) | border | border_heavy,
@@ -93,7 +88,7 @@ def narrow() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(wrap_in_pane, "layout-text-wrap-in-pane", (60, 7)),
-    ScreenshotSpec(wrap_in_row, "layout-text-wrap-in-row", (60, 5)),
+    ScreenshotSpec(wrap_in_row, "layout-text-wrap-in-row", (60, 8)),
     ScreenshotSpec(justify, "layout-text-justify", (50, 11)),
-    ScreenshotSpec(narrow, "layout-text-narrow", (60, 5)),
+    ScreenshotSpec(narrow, "layout-text-narrow", (48, 5)),
 ]

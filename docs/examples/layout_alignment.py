@@ -18,7 +18,7 @@ def title(content: str) -> Text:
 @component
 def justify() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | justify | border,
@@ -49,7 +49,7 @@ def justify() -> Div:
 @component
 def align() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Div(
                 style=row | align | fill(1) | border,
@@ -78,7 +78,7 @@ def align() -> Div:
 @component
 def align_self() -> Div:
     return Div(
-        style=row | align_children_start | gap(1) | full | border,
+        style=row | align_children_start | gap(1) | border,
         children=[
             title("row | align_children_start"),
             Text(style=border | border_heavy, content="no align_self"),
@@ -97,14 +97,14 @@ def align_self() -> Div:
 @component
 def center() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Div(
                 style=row | center_children | fill(1) | border,
                 children=[title("flexbox"), Text(style=border | border_heavy, content="centered")],
             ),
             Div(
-                style=display_grid | align_children_center | justify_items_center | fill(1) | border,
+                style=display_grid | center_children | fill(1) | border,
                 children=[title("grid"), Text(style=border | border_heavy, content="centered")],
             ),
         ],

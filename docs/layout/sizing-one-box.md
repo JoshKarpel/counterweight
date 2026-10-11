@@ -1,7 +1,7 @@
 # Sizing One Box
 
-A box's size comes from its parent unless it sets its own:
-along the parent's main axis it takes its content size, and across it it stretches
+A box that doesn't set its own size takes its content size along its parent's main axis,
+and stretches across it
 (see [How layout sizes things](how-layout-sizes-things.md)).
 The utilities on this page override either.
 
@@ -41,16 +41,27 @@ The sizing keywords set a box's width or height from its content, whichever axis
 - `stretch_width` fills the space available, after the box's margins.
 
 Each has a `_height` counterpart.
-In a `col`, taffy measures a box's height before applying a width keyword,
-so wrapping text with `min_content_width` keeps the height it would have had stretched,
-and its last lines are cut off.
-In a `row` or a grid, the keywords size wrapping text correctly.
+Here each box is the only child of a `row`:
 
 ```python
 --8<-- "layout_box_sizing.py:content-keywords"
 ```
 
 ![Sizing keywords](../assets/layout-size-content-keywords.svg)
+
+In a `col`, a width keyword doesn't size wrapping text correctly:
+taffy measures the box's height at the column's full width, before applying the keyword,
+and doesn't measure it again.
+Below, `min_content_width` keeps the one row its text takes at full width,
+so `sizes this` is cut off.
+A `max_content_width` box wider than the column keeps extra rows for the same reason.
+Put the box in a `row`, as above, or in a grid.
+
+```python
+--8<-- "layout_box_sizing.py:content-keywords-col"
+```
+
+![Sizing keywords in a column](../assets/layout-size-content-keywords-col.svg)
 
 ## Fill the parent
 

@@ -9,7 +9,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def row_defaults() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=border, content="one"),
             Text(style=border, content="two two"),
@@ -26,7 +26,7 @@ def row_defaults() -> Div:
 @component
 def col_defaults() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Text(style=border, content="one"),
             Text(style=border, content="two two"),
@@ -60,7 +60,7 @@ LONG = "a line of text much longer than half the row"
 @component
 def automatic_minimum() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | border | border_heavy,
@@ -90,10 +90,10 @@ PARAGRAPH = "Text stays on one line unless its style sets a wrap mode, however n
 @component
 def wrapping() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
-            Div(style=col | width(24) | border, children=[Text(content=PARAGRAPH)]),
-            Div(style=col | width(24) | border, children=[Text(style=text_wrap_stable, content=PARAGRAPH)]),
+            Text(style=width(24) | border, content=PARAGRAPH),
+            Text(style=width(24) | border | text_wrap_stable, content=PARAGRAPH),
         ],
     )
 
@@ -105,5 +105,5 @@ SCREENSHOTS = [
     ScreenshotSpec(col_defaults, "layout-defaults-col", (50, 11)),
     ScreenshotSpec(root_fills_screen, "layout-root", (50, 5)),
     ScreenshotSpec(automatic_minimum, "layout-automatic-minimum", (60, 10)),
-    ScreenshotSpec(wrapping, "layout-wrapping", (60, 7)),
+    ScreenshotSpec(wrapping, "layout-wrapping", (48, 7)),
 ]

@@ -36,7 +36,7 @@ def wrap_pane(mode: TextWrap) -> Div:
 @component
 def root() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | fill(1),

@@ -11,7 +11,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def equal_flex() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
@@ -28,7 +28,7 @@ def equal_flex() -> Div:
 @component
 def equal_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | full,
+        style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)),
         children=[
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
@@ -45,7 +45,7 @@ def equal_grid() -> Div:
 @component
 def sidebar_flex() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=length(20) | border, content="length(20)"),
             Text(style=fill(1) | border, content="fill(1)"),
@@ -61,7 +61,7 @@ def sidebar_flex() -> Div:
 @component
 def sidebar_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(20, fr(1)) | full,
+        style=display_grid | grid_template_columns(20, fr(1)),
         children=[
             Text(style=border, content="20"),
             Text(style=border, content="fr(1)"),
@@ -77,7 +77,7 @@ def sidebar_grid() -> Div:
 @component
 def ratio_flex() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(2) | border, content="fill(2)"),
@@ -93,7 +93,7 @@ def ratio_flex() -> Div:
 @component
 def ratio_exact() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=ratio(1, 3) | border, content="ratio(1, 3)"),
             Text(style=ratio(2, 3) | border, content="ratio(2, 3)"),
@@ -109,7 +109,7 @@ def ratio_exact() -> Div:
 @component
 def ratio_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(fr(1), fr(2)) | full,
+        style=display_grid | grid_template_columns(fr(1), fr(2)),
         children=[
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(2)"),
@@ -125,7 +125,7 @@ def ratio_grid() -> Div:
 @component
 def nested_flex() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=length(20) | border, content="length(20)"),
             Div(
@@ -147,7 +147,7 @@ def nested_flex() -> Div:
 @component
 def nested_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), fr(1)) | full,
+        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), fr(1)),
         children=[
             Text(
                 style=grid_row(1, span(2)) | border,
@@ -169,7 +169,7 @@ LONG = "a line of text much longer than half the grid"
 @component
 def overflow_grid() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1)) | border | border_heavy,
@@ -197,7 +197,7 @@ def overflow_grid() -> Div:
 @component
 def percent_gap() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | gap(2) | border | border_heavy,

@@ -1,5 +1,5 @@
 ┌──────────────┐┌──────────────────────────────────────────┐
-│sidebar       ││ The quick brown fox jumps over the lazy  │
+│length(16)    ││ The quick brown fox jumps over the lazy  │
 │              ││ dog, and then naps in the afternoon sun. │
 │              ││                                          │
 │              ││                                          │

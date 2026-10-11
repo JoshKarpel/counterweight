@@ -20,8 +20,9 @@ and wraps to fit it, taking as many rows as it needs.
 ## Wrapping beside other text
 
 Wrapping `Text`s side by side in a row shrink to share it, and each wraps to its share.
-A flex item can't shrink below its minimum size,
-and a wrapping `Text`'s minimum size is the width of its widest word,
+A flex item can't shrink below its
+[automatic minimum size](how-layout-sizes-things.md#content-sets-a-minimum-size),
+and a wrapping `Text`'s is the width of its widest word,
 so neither needs anything set to give up the space its unwrapped line would take.
 
 ```python
@@ -34,7 +35,8 @@ so neither needs anything set to give up the space its unwrapped line would take
 
 `text_justify_center` and `text_justify_right` align each line within the `Text`'s own width.
 A `Text` stretched across its parent has room to move its lines,
-but one sized to its content, like the `align_self_start` one below, has none.
+but one [sized to its content](sizing-one-box.md#fit-to-content),
+like the `align_self_start` one below, has none.
 With a wrap mode, each line is aligned separately.
 
 ```python
@@ -47,8 +49,9 @@ With a wrap mode, each line is aligned separately.
 
 In a `col`, a `Text` is stretched to the column's width, however long its content,
 and the content is cut off at the `Text`'s edge.
-In a `row`, a `Text` is as wide as its content, so it overflows the row's border.
-Give it `min_width(0)` to keep it inside the row,
+In a `row`, a `Text` can't shrink below its content's width, so it overflows the row's border.
+Give it `min_width(0)` to keep it inside the row
+(see [Content sets a minimum size](how-layout-sizes-things.md#content-sets-a-minimum-size)),
 or a wrap mode to break its lines instead.
 
 ```python

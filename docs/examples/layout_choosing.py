@@ -9,7 +9,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def shell_flex() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | fill(1),
@@ -31,7 +31,7 @@ def shell_flex() -> Div:
 @component
 def shell_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1) | full,
+        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1),
         children=[
             Text(style=border, content="sidebar:\n20"),
             Text(style=border, content="main:\nfr(1)"),
@@ -48,7 +48,7 @@ def shell_grid() -> Div:
 @component
 def mixed() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1) | full,
+        style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1),
         children=[
             Div(
                 style=col | border,
@@ -74,7 +74,7 @@ def mixed() -> Div:
 @component
 def extra_child_grid() -> Div:
     return Div(
-        style=display_grid | grid_template_columns(fr(1), fr(1)) | full,
+        style=display_grid | grid_template_columns(fr(1), fr(1)),
         children=[
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
@@ -91,7 +91,7 @@ def extra_child_grid() -> Div:
 @component
 def extra_child_flex() -> Div:
     return Div(
-        style=row | full,
+        style=row,
         children=[
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
@@ -108,7 +108,7 @@ def extra_child_flex() -> Div:
 @component
 def conflict() -> Div:
     return Div(
-        style=col | full,
+        style=col,
         children=[
             Div(
                 style=row | width(42) | border | border_heavy,
@@ -136,5 +136,5 @@ SCREENSHOTS = [
     ScreenshotSpec(mixed, "layout-choosing-mixed", (60, 8)),
     ScreenshotSpec(extra_child_grid, "layout-choosing-extra-child-grid", (45, 6)),
     ScreenshotSpec(extra_child_flex, "layout-choosing-extra-child-flex", (45, 6)),
-    ScreenshotSpec(conflict, "layout-choosing-conflict", (64, 11)),
+    ScreenshotSpec(conflict, "layout-choosing-conflict", (61, 11)),
 ]

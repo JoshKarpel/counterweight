@@ -48,10 +48,10 @@ the others keep each child at its content size and place it.
 
 ## Centering a box
 
-With flexbox, center on both axes with `center_children`,
+Center a box on both axes with `center_children`,
 which is `justify_children_center | align_children_center`.
-With grid, a lone child's cell fills the container,
-so center it within its cell with `justify_items_center` and `align_children_center`.
+It works in a grid too: there it centers the grid's tracks,
+and a grid with no template sizes its one track to fit its lone child.
 To center a box over other content rather than among it, see
 [A dialog centered over the app](layering.md#a-dialog-centered-over-the-app).
 

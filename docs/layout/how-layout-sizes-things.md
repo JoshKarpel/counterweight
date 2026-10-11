@@ -72,11 +72,15 @@ a minimum size of zero.
 
 ![The automatic minimum size](../assets/layout-automatic-minimum.svg)
 
+Grid tracks have the same floor;
+[Content wider than its share](splitting-space.md#content-wider-than-its-share) shows it and its fix.
+
 ## Text doesn't wrap unless asked to
 
 A `Text` renders each line of its content on one row, and cuts it off at the edge of its box.
 Setting a wrap mode such as `text_wrap_stable` breaks lines to fit the box's width instead.
-[Text wrapping](../styles/text-wrapping.md) compares the wrap modes.
+[Text in layout](text.md) shows how wrapping text sizes itself,
+and [Text wrapping](../styles/text-wrapping.md) compares the wrap modes.
 
 ```python
 --8<-- "layout_defaults.py:wrapping"
