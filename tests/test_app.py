@@ -1,6 +1,7 @@
 import io
 from asyncio import wait_for
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -50,6 +51,32 @@ async def render_text(root: Callable[[], Component], dimensions: tuple[int, int]
         check_purity=True,
     )
     return capture.getvalue().rstrip("\n").split("\n")
+
+
+@component
+def greeting(name: str, times: int) -> Text:
+    return Text(content=" ".join([f"hi {name}"] * times))
+
+
+async def test_app_calls_root_with_given_args() -> None:
+    capture = io.StringIO()
+    await app(
+        greeting,
+        "bob",
+        2,
+        headless=True,
+        dimensions=(13, 1),
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
+    )
+
+    assert capture.getvalue().rstrip("\n") == "hi bob hi bob"
+
+
+if TYPE_CHECKING:
+    _ = app(greeting, "bob")  # type: ignore[arg-type]
+    _ = app(greeting, 2, "bob")  # type: ignore[arg-type]
+    _ = app(greeting, "bob", 2, 3)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("root_style", [col, col | full])

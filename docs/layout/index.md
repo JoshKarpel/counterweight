@@ -18,7 +18,8 @@ from counterweight.styles.utilities import *
 `waxy` provides the values that styles are built from,
 for the cases no utility covers.
 
-To run one, pass the component to `counterweight.app.app`.
+To run one, pass the component to `counterweight.app.app`,
+followed by any positional arguments it takes.
 
 Start with [Choosing a layout model](choosing-a-layout-model.md),
 which says when to reach for flexbox and when for grid.
