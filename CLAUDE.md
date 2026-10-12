@@ -7,6 +7,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Counterweight is an experimental text user interface (TUI) framework for Python, inspired by React and Tailwind CSS.
 It builds declarative TUI applications using a component-based architecture with hooks for state management and styles for visual presentation.
 
+## Public API Scope
+
+Counterweight is a framework, so the people who need a feature are its users,
+and the examples, docs, and tests in this repository are only a sample of what they'll build.
+"Nothing here needs it yet" is not a reason to omit or defer public API.
+When a feature fits the design and is cheap to build, test, and document,
+build it with the change that makes it obvious:
+every variant in a family of utilities,
+or an option that browsers or React offer beside the one a change adds.
+Defer only what is expensive, or what has several plausible designs and no way yet to choose between them,
+and say which of those it is.
+
+This applies to the API users call, not to internal structure:
+don't add abstractions to the implementation ahead of a change that needs them.
+
 ## Architecture
 
 The framework follows a React-like architecture:
@@ -51,9 +66,8 @@ the `# Stop generated` marker.
 just codegen
 ```
 
-Don't omit utilities on the grounds that nothing needs them yet: we can't know what users will want.
 When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
-generate every member of it.
+generate every member of it (see [Public API Scope](#public-api-scope)).
 
 `docs/styles/utilities.md` lists every public utility through `<!-- utilities: <glob> ... -->` markers,
 which `mkdocs_hooks/utility_tables.py` renders from the module.

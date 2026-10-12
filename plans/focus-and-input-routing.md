@@ -132,7 +132,8 @@ That is the deliberate override case (a focused list claiming `Down` from a scro
 and focus already removes the common case of two _siblings_ both acting.
 The docs should recommend returning `()` (or the controls) from every case that does something.
 
-There is no capture phase. Nothing in the examples or the issues needs one.
+There is no capture phase, which waits on its own design (#405):
+whether it's a second handler field or a phase on the receiver, and how it meets press capture.
 
 ### What a handler receives
 
@@ -146,6 +147,7 @@ class Receiver:
     is_target: bool
     focus_handle: FocusHandle | None
     is_focused: bool
+    subtree: Subtree
 
     def relative(self, position: Position) -> Position: ...
 ```
@@ -157,6 +159,10 @@ class Receiver:
   For a key it's the same as `is_target`, except when nothing is focused:
   the root is then the target, and no receiver has `is_focused`.
   For a mouse event it tells a text input whether a click is the one that focuses it.
+- `subtree`: an opaque `Subtree` naming the receiving element and its descendants,
+  so a handler can move focus without leaving them (see [Key targets and focus](#key-targets-and-focus)).
+  Every element is a shadow node with its own key, plain elements included,
+  so any receiver can name its subtree, whether or not a component returned its element.
 - `relative(position)`: `position` relative to the top-left of the receiving element's content box,
   as in `receiver.relative(event.absolute)` for a mouse event.
   It's computed from `rects`, so it's a method rather than a field that only mouse events would fill.
@@ -166,6 +172,7 @@ so a parent sees its own rects, not its child's.
 `on_click` uses `rects` to tell a release inside the element from one outside,
 since press capture delivers both;
 `focus_receiver_on_press` uses `focus_handle` to name the element to focus;
+`tab_focus` uses `subtree` to keep focus inside the element it's attached to;
 a text input uses `relative` to place its cursor;
 a scroll container pages by its own height.
 A handler that doesn't need the receiver still takes it, and ignores it.
@@ -213,7 +220,7 @@ such as `lambda event, _: Quit()`.
 
 `Receiver` lives in `events.py`, beside `InputEvent`.
 `Rects` moves from `counterweight.hooks` to `counterweight.geometry`, re-exported from `counterweight.hooks`,
-and `FocusHandle` is defined outside the hooks package too,
+and `FocusHandle` and `Subtree` are defined outside the hooks package too,
 since `events.py` can't import from the hooks package, which imports `events.py`.
 
 ### No built-in behavior
@@ -237,9 +244,13 @@ A non-selectable element doesn't opt out of selection; it just doesn't have `sel
 The library handlers are pure functions from an event and a receiver to a response,
 testable without running an app:
 
-- `tab_focus` returns `FocusNext()` for Tab and `FocusPrevious()` for Shift+Tab.
-  An app puts it on its root, which is last on every key's bubble path,
+- `tab_focus` returns `FocusNext(within=receiver.subtree)` for Tab
+  and `FocusPrevious(within=receiver.subtree)` for Shift+Tab,
+  so Tab cycles through the focusables inside the element it's attached to.
+  An app puts it on its root, whose subtree holds every focusable,
+  and which is last on every key's bubble path,
   so a focused component that wants Tab (indenting in a text area) claims it with `()` first.
+  A modal traps Tab by putting it on its own element too (see [Key targets and focus](#key-targets-and-focus)).
 - `focus_receiver_on_press` returns `FocusOn(receiver.focus_handle)` for a `MouseDown`,
   focusing the component whose element received the press.
   It raises if `focus_handle` is `None`, which means it's attached to an element that isn't focusable:
@@ -247,10 +258,8 @@ testable without running an app:
   or the handler is on an inner element rather than the component's top-level one.
   It stops the event, so of nested focusables, the nearest to the pointer takes focus.
 - `focus_on_press(handle)` returns `FocusOn(handle)` for a `MouseDown`,
-  so a press on one element can focus another component.
-  It takes a `FocusHandle`, not `FocusHandle | None`,
-  so a handle that might not exist yet (one a child passes up after its first render, as in step 4)
-  fails type checking rather than silently meaning something else.
+  so a press on one element can focus another component,
+  such as a label focusing the input beside it, with a handle its parent created (see below).
 - `clear_focus` returns `ClearFocus()` for a `MouseDown`.
   It's how a click blurs: on the root for presses nothing below it claimed,
   and composed into a non-focusable element's own press handler for the presses it claims.
@@ -369,7 +378,12 @@ and the Ink rules cited below are only about how focus moves.
 A component becomes focusable by calling a hook:
 
 ```python
-def use_focus(auto_focus: bool = False) -> Focus: ...
+def use_focus(
+    auto_focus: bool = False,
+    handle: FocusHandle | None = None,
+    is_focusable: bool = True,
+    in_focus_order: bool = True,
+) -> Focus: ...
 
 @dataclass(frozen=True, slots=True)
 class Focus:
@@ -385,23 +399,82 @@ so a component that handles keys puts its handler on its top-level element.
 Calling `use_focus` twice in one component raises,
 since both calls would name the same node.
 
-`handle` is an opaque `FocusHandle`, created once per component instance,
-so a control can name the component, and it is safe to put in an effect's deps.
+`handle` is an opaque `FocusHandle` that a control uses to name the component.
+It's an identity token, not a wrapper around the component's key,
+so it can exist before the component it names has mounted.
+`use_focus` creates one on its first run and keeps it for the component's lifetime,
+unless the caller passes one in, which is how a component focuses another one it renders:
+
+```python
+@component
+def labelled_input(label: str) -> Div:
+    input_handle, _ = use_state(FocusHandle)
+    return Div(
+        children=[
+            Text(content=label, on_input=focus_on_press(input_handle)),
+            text_input(focus_handle=input_handle),
+        ],
+    )
+```
+
+The parent has the handle from its first render, and passes it down like any other prop,
+so a child that can be focused from outside takes a `FocusHandle | None` parameter
+and forwards it to `use_focus`.
+A handle is safe to put in an effect's deps, since it never changes for a mounted component:
+`use_focus` raises if the handle passed to it differs from the one it was given on its first run,
+which catches a parent that builds a `FocusHandle()` inline on every render
+instead of keeping one in `use_state`.
+Two mounted components given the same handle also raise, when the routing table is built,
+as sibling components that share a key do (`DuplicateKey`).
+Ink names focusables with a string `id` that must be unique among them,
+which is a namespace that two unrelated components can collide in;
+a token is unique by construction, and only code it was handed can name it.
+
+Two parameters take a mounted, visible component partly or wholly out of focus,
+each mirroring a browser attribute:
+
+- **`is_focusable=False`** makes it unfocusable, as `disabled` does,
+  for a field that's disabled until another is filled in (Ink's `isActive`).
+  Nothing can focus it, and if it's focused, it loses focus.
+  An unfocusable component still receives the mouse events routed to it,
+  so its press handler still claims a press, and the `FocusOn` that `focus_receiver_on_press` returns does nothing.
+- **`in_focus_order=False`** takes it out of the focus order only, as `tabindex="-1"` does,
+  for a component that should take focus when clicked or named, but isn't a Tab stop,
+  such as a read-only panel whose keys scroll it.
+  `FocusNext` and `FocusPrevious` skip it, while `FocusOn`, `auto_focus`, and a press still focus it,
+  and it keeps focus once it has it.
+
+Either way, the component keeps its handle and its place in tree order,
+so it returns to the focus order where it was when the parameter flips back.
+`in_focus_order` only matters for a focusable component,
+since an unfocusable one is out of the focus order already.
+They're parameters rather than a skipped `use_focus` call,
+because hooks' fixed call order doesn't allow a conditional call,
+and because a component that stopped calling `use_focus` would lose its handle.
 
 Focus moves only through controls, `auto_focus`, and the focused component going away:
 
-- **`FocusNext()` and `FocusPrevious()`** move to the next or previous visible focusable node in tree order,
-  wrapping at the ends; from nothing focused, they go to the first or the last.
+- **`FocusNext(within)` and `FocusPrevious(within)`** move to the next or previous visible node in the focus order,
+  in tree order inside the `Subtree` `within`, wrapping at its ends;
+  from nothing focused, or from focus outside the subtree, they go to its first or its last.
+  From a focused component that's out of the focus order, they move from its place in tree order,
+  as browsers do from a focused `tabindex="-1"` element.
+  `within` defaults to `None`, meaning the whole tree, for code with no receiver to name a subtree from
+  (an effect sending a control through `use_send_control`).
+  They do nothing if the subtree has unmounted or holds no visible node in the focus order.
 - **`FocusOn(handle)`** focuses that component.
-  It does nothing if the component has unmounted or is hidden, as a `use_state` setter does after unmount.
+  It does nothing if the component hasn't mounted yet, has unmounted, is hidden, or is unfocusable,
+  as a `use_state` setter does after unmount.
 - **`ClearFocus()`** clears focus, so keys go to the root, which isn't focused.
-- **`auto_focus=True`** takes focus when the component mounts visible and nothing is focused.
+- **`auto_focus=True`** takes focus when the component mounts visible and focusable and nothing is focused.
   When several mount in the same render, the first in tree order wins (Ink's rule).
-- **Unmounting or hiding the focused component clears focus**,
+  A component that mounts unfocusable doesn't take focus when it becomes focusable later.
+- **Unmounting, hiding, or making the focused component unfocusable clears focus**,
   and an `auto_focus` component mounted in the same render can take it.
-  Ink and the browser both do this.
+  Ink does this for all three, and the browser does it for unmounted, hidden, and disabled elements.
   Moving to the next focusable instead would send keys to a component the user never chose,
   possibly one that just shifted into the departed one's place.
+  Making a component focusable again doesn't focus it.
 
 No key or click has a built-in effect on focus.
 An app that wants Escape to clear focus, as Ink's does, binds it to `ClearFocus()`.
@@ -415,18 +488,46 @@ Each of those elements composes `clear_focus` in alongside its press handler
 (`each(on_click(send), clear_focus)`), which keeps the blur visible at the call site
 of every element that causes it.
 
+Scoped movement is what a group of focusables needs to steer focus among its own members,
+without holding a handle for each:
+
+- A form moves to its next field on Enter
+  by returning `FocusNext(within=receiver.subtree)` from its top-level element's handler,
+  which the focused field's Enter bubbles to.
+- A modal traps Tab by putting `tab_focus` on its top-level element.
+  Tab from a focused field inside it bubbles to the modal before the root,
+  and cycles only through the modal's focusables.
+  The handler that opens the modal returns `ClearFocus()` alongside its state change,
+  and the modal's first field uses `auto_focus=True`,
+  so it takes focus in the render that mounts the modal, since nothing is focused then.
+  Returning focus to the opener when the modal closes is a `FocusOn`
+  with a handle that the component rendering both creates and passes to each.
+
+Scoping keeps Tab inside a modal, but nothing else is blocked:
+a click behind the modal still lands,
+and if focus clears while the modal is open (its focused field unmounts),
+keys go to the root, whose `tab_focus` can move focus behind the modal.
+Making the content behind a modal inert is out of scope.
+
 Focus is held by the render loop as the focused node's `NodeKey`, or `None`,
 the same identity press capture and the routing table use (see below).
-A `FocusHandle` wraps its component's `NodeKey`, so `FocusOn(handle)` names a key with no lookup,
-and a focused key missing from the current routing table means the component unmounted or is hidden,
-the same check press capture makes.
-The `UseFocus` slot records only that the component is focusable, its `auto_focus`, and its handle;
+A focused key missing from the current routing table's focusable keys
+means the component unmounted, is hidden, or is unfocusable.
+The routing table maps each visible focusable's `FocusHandle` to its key,
+so `FocusOn(handle)` resolves its handle there, and a miss means there's nothing to focus.
+The check for a handle shared by two components covers unfocusable ones too.
+A `Subtree` wraps its element's `NodeKey`,
+and scoped movement keeps the focusables that are that node or have it on their ancestor path in the table.
+The `UseFocus` slot records only that the component called `use_focus`, and the arguments it passed;
 it doesn't store whether the component is focused.
 `use_focus` reads that during render by comparing its own key with the focused key,
 which `update_shadow` takes as an input the way it takes `layouts`.
 After each render, the warmup render included, the loop reconciles focus against the new routing table:
 it clears focus if the focused key isn't among the table's focusable keys, and applies `auto_focus`.
-The table's focusable keys are the visible nodes whose last run called `use_focus`, in tree order.
+The table's focusable keys are the visible nodes whose last run called `use_focus` with `is_focusable=True`,
+in tree order, each marked with its `in_focus_order`.
+The focus order is the marked ones;
+movement keeps the others in the list so it can start from a focused one's place.
 Visible means laid out this render:
 `Layouts.by_key` holds only visible nodes, since waxy's `absolute_layouts` omits hidden subtrees (`layout.py:232`).
 A focus change adds the old and new keys to `dirty` and triggers a render,
@@ -448,7 +549,7 @@ because the component won't exist until the render; that is the same batching ev
 already has.
 
 The routing table (each visible node's ancestor path and rects, the paint order for hit-testing,
-and the focus order) is built once per render,
+the focus order, and each focusable's key by its handle) is built once per render,
 in a pure function over the shadow tree and the layouts, not per event.
 It keys nodes by `ShadowNode.key`.
 `update_shadow` builds a new `ShadowNode` for every node on the path to a component that re-ran (`shadow.py:222`),
@@ -567,16 +668,39 @@ Per event, walking an ancestor path costs no more than today's flat list.
 
 **Status:** Not started
 
-Add the `UseFocus` slot, the hook, the focused key as an input to `update_shadow`, `Focus`, `FocusHandle`,
+Add the `UseFocus` slot, the hook with its `handle`, `is_focusable`, and `in_focus_order` parameters,
+the focused key as an input to `update_shadow`, `Focus`, `FocusHandle`, `Subtree`,
 and the `FocusNext`, `FocusPrevious`, `FocusOn`, and `ClearFocus` controls,
-the focus order in the routing table, the focus reconciliation after each render,
+the focus order and the handle-to-key map in the routing table, the focus reconciliation after each render,
 and key routing through the same bubbling dispatch.
-`Receiver` gains `focus_handle` and `is_focused`, for mouse events as well as keys.
+`Receiver` gains `focus_handle`, `is_focused`, and `subtree`, for mouse events as well as keys.
 Add `tab_focus`, `focus_receiver_on_press`, `focus_on_press`, and `clear_focus` to `counterweight.handlers`.
 Add `docs/hooks/use_focus.md` to the hooks section of `mkdocs.yml`,
 the controls to `docs/input-handling/controls.md`, and the new handlers to their page.
 The docs gain a note that a component's key handler goes on its top-level element,
 and that a deep component's global shortcut goes on the root.
+
+`docs/examples/focus_form.py` is the `use_focus` page's example, and exercises every way focus moves.
+It's an order form whose fields are focusable components that take keys rather than text,
+since the text input is #391's:
+a size cycled with Left and Right, a quantity stepped with Up and Down, a gift wrap toggle flipped with Space,
+and a wrapping paper cycled with Left and Right, which is drawn dimmed and passes `is_focusable=False`
+while gift wrap is off.
+Below the fields, a help panel pages through tips with Left and Right,
+and passes `in_focus_order=False` with `focus_receiver_on_press`, so a press focuses it but Enter and Tab never stop on it.
+The first field uses `auto_focus=True`.
+The form's element returns `FocusNext(within=receiver.subtree)` for Enter,
+and each field's label focuses it with `focus_on_press` and a handle the form keeps in `use_state(FocusHandle)`.
+The submit button claims Enter for itself and opens a confirmation modal,
+returning `ClearFocus()` so the modal's auto-focused Cancel button takes focus.
+The modal traps Tab with `tab_focus` on its element,
+and closing it returns focus to the submit button through a handle the form passes to both.
+Its `SCREENSHOTS` show the first field focused at startup, the second after Enter,
+gift wrap after a press on its label,
+the submit button after Enter skips the unfocusable wrapping paper and the help panel,
+the modal open with Cancel focused after another Enter,
+focus wrapped back to Cancel after two Tabs, still inside the modal,
+and the help panel focused after a press on it, showing its second tip after Right.
 
 The examples that put key handlers below the root move to focus:
 `stopwatch.py` drops its `selected` prop and its root's `Tab`/`Shift+Tab` bindings
@@ -619,6 +743,35 @@ a focus change re-renders so `is_focused` is current;
 calling `use_focus` twice in one component raises;
 with `tab_focus` on the root, a focused handler returning `()` for Tab keeps focus where it is;
 with `focus_receiver_on_press` on nested focusables, a click focuses the innermost.
+Scoped movement:
+`FocusNext(within=...)` and `FocusPrevious(within=...)` move only among the focusables in the subtree,
+and wrap at its ends;
+from focus outside the subtree, they go to its first or last focusable;
+a subtree whose element is itself focusable includes it;
+a scoped move does nothing for a subtree that has unmounted or holds no visible node in the focus order;
+with `tab_focus` on both the root and an element below it, Tab from a focusable inside that element
+cycles within it, and Tab from one outside it moves through the whole tree;
+a parent and child on one bubble path receive different `subtree`s, each naming its own element.
+Parent-created handles:
+`FocusOn(handle)` focuses a child given that handle, including from the parent's first render;
+`FocusOn(handle)` does nothing for a handle no mounted component was given;
+`use_focus` returns the handle it was given as `Focus.handle`;
+passing a different handle on a later render raises;
+two mounted components given one handle raise, including when one is unfocusable.
+Unfocusable components:
+`FocusNext()` and `FocusPrevious()` skip an unfocusable component;
+`FocusOn(handle)` does nothing for an unfocusable component;
+`auto_focus` doesn't focus a component that mounts unfocusable, nor when it becomes focusable later;
+making the focused component unfocusable clears focus;
+making a component focusable again returns it to its place in the focus order without focusing it;
+a component keeps its handle across the change;
+a press on an unfocusable component with `focus_receiver_on_press` is claimed and leaves focus where it was.
+Components out of the focus order:
+`FocusNext()` and `FocusPrevious()` skip a component with `in_focus_order=False`;
+`FocusOn(handle)`, `auto_focus`, and a press with `focus_receiver_on_press` each focus it;
+taking the focused component out of the focus order leaves it focused;
+from a focused component out of the focus order, `FocusNext()` and `FocusPrevious()` move to its neighbors in tree order;
+`in_focus_order=False` changes nothing for an unfocusable component.
 The library handlers themselves are tested by calling them directly,
 including `focus_receiver_on_press` raising for a `MouseDown` whose receiver's `focus_handle` is `None`,
 `focus_on_press(handle)` focusing `handle` whatever the receiver's `focus_handle`,
@@ -626,28 +779,8 @@ and `clear_focus` returning `ClearFocus()` for a `MouseDown` and `None` for anyt
 
 Profile the same render-heavy workload again, since reconciliation adds a pass per render.
 
-### 4. Focus a component from outside it
-
-**Status:** Needs design
-
-`FocusOn(handle)` focuses any component whose handle the caller has,
-but only the component itself gets its handle from `use_focus`.
-A parent that moves focus among its children (a form's "next field", a modal trapping Tab)
-needs a way to get theirs, and the two shapes trade differently:
-
-- The child passes its handle up through a callback prop.
-  Nothing new is needed, but the parent learns the handle only after the child's first render.
-- The parent creates a handle and passes it down, and `use_focus` accepts it, like a React ref.
-  The parent has it from the start, at the cost of a second way to call `use_focus`,
-  and a handle that no longer wraps its component's key, since the child's key doesn't exist yet:
-  the loop would need a map from such handles to keys, filled in as the children mount.
-
-No example or dependent issue needs this yet, so it waits for one.
-The same goes for a way to make a component conditionally unfocusable
-(Ink's `isActive`), which hooks' fixed call order requires as a parameter rather than a skipped call.
-
 ## Not in scope
 
-- **A capture phase.** Add it when a handler needs to see events before its descendants.
-- **Focus traps** (keeping Tab inside a modal). A modal does it with its own Tab handler and `FocusOn`,
-  once step 4 gives it its children's handles.
+- **A capture phase** (#405), which has several plausible API shapes and an interaction with press capture to design.
+- **Inert content behind a modal.** Scoped `tab_focus` keeps Tab inside a modal,
+  but clicks and focus recovery can still reach what's behind it.
