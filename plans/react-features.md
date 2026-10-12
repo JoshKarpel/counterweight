@@ -9,7 +9,6 @@ needs from the runtime, so the plan ends that thread with a cookbook recipe for 
 rather than a library API.
 It builds on `plans/fix-react-semantics.md`, which fixed the reconciler and hooks divergences
 (stable setters, keyed children, setters that no-op after unmount, hook-count checks).
-It doesn't cover skipping unchanged components; that is `plans/component-memoization.md`.
 
 ## Problems
 
@@ -179,13 +178,17 @@ A provider component and a `use_context` hook.
 immutable mapping of context values for the duration of its children's reconciliation, and
 `use_context` reads from it.
 
-This interacts with `plans/component-memoization.md`: a skipped subtree won't see a changed
-context value, so a provider whose value changed has to mark its consumers dirty.
-Whichever of the two lands second handles that.
+`update_shadow` skips components that don't have to re-run, so a consumer whose parent didn't
+re-run won't see a changed context value on its own: a provider whose value changed has to mark
+its consumers dirty.
+The reconciler also visits a provider without re-running it when a dirty node is below it,
+so the `ContextVar` is set whenever it reconciles a provider's children,
+not only when the provider re-runs.
 
 Tests: a consumer reads the nearest provider's value; a nested provider shadows an outer one;
 a consumer with no provider gets the context's default; changing the provided value
-re-renders the consumer.
+re-renders the consumer, including one below a `memo` component;
+a consumer that re-runs for its own state change, while its provider doesn't, reads the provider's value.
 
 ## Not in scope
 

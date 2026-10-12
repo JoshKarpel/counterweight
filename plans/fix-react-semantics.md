@@ -6,7 +6,6 @@ state and effects outliving their component, effect cleanup ordering, keyed chil
 setter identity, and hook-count checks.
 New features (reducers, event routing, context, and what an Elm-style structure needs from
 the runtime) are in `plans/react-features.md`.
-It doesn't cover skipping unchanged components; that is `plans/component-memoization.md`.
 
 ## What already matches React
 
@@ -172,7 +171,5 @@ the hook context is restored after a component raises, on mount and on rerender.
 - **Error boundaries.** An exception in an effect fails the `TaskGroup` and stops the app,
   and the `finally` in `app()` restores the terminal on the way out. That loud failure is the
   intended behavior; rendering fallback UI over a broken component would hide it.
-- **Re-rendering only from the changed component.** Covered by
-  `plans/component-memoization.md`.
 - **Concurrent rendering, transitions, and Suspense.** A terminal UI has no use for
   interruptible renders.

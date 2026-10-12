@@ -281,7 +281,7 @@ it's a broadcast of the pointer's state, not a routed event.
 
 The target of a key event is the **focused** node, or the root component's node when nothing is focused.
 That is the node of the component passed to `app()`,
-not the `screen` element the app wraps it in (`app.py:137`), which has no handler and no ancestors.
+not the `screen` element the app wraps it in (`app.py:164`), which has no handler and no ancestors.
 "Nothing focused" therefore means "the root is focused":
 handlers on the root and only the root receive keys,
 with no broadcast fallback for apps that never call `use_focus`.
@@ -344,7 +344,7 @@ After each render, the warmup render included, the loop reconciles it against th
 it collects the focusable slots of visible nodes in tree order,
 clears focus if its slot is no longer among them, and applies `auto_focus`.
 Visible means laid out this render:
-`absolute_layouts` omits hidden subtrees (`layout.py:127`).
+`Layouts.by_key` holds only visible nodes, since waxy's `absolute_layouts` omits hidden subtrees (`layout.py:232`).
 A focus change sets `is_focused` on the old and new slots and triggers a render,
 the way a `use_state` setter does, so `is_focused` reads correctly in the next render.
 
@@ -366,15 +366,14 @@ already has.
 The routing table (each visible node's ancestor path and rects, the paint order for hit-testing,
 and the focus order) is built once per render,
 in a pure function over the shadow tree and the layouts, not per event.
-It keys nodes by `ShadowNode.layout_node`.
-`update_shadow` builds a new `ShadowNode` on every render (`shadow.py:67`),
+It keys nodes by `ShadowNode.key`.
+`update_shadow` builds a new `ShadowNode` for every node on the path to a component that re-ran (`shadow.py:213`),
 so a node object can't name the same element from one render to the next,
-but its `layout_node` carries over for as long as the element does.
-It is a hashable `waxy.NodeId` that isn't reused after removal,
-and `LayoutTree.shadows` already maps it to the current node.
-Press capture holds a `layout_node` for the same reason:
+but its key, which its `Hooks` carry, lasts as long as the element does and is never reused.
+`ShadowTree.parents` and `Layouts.by_key` are already keyed by it.
+Press capture holds a key for the same reason:
 a drag re-renders on every move, and a captured node object would call the previous render's handler.
-A captured `layout_node` missing from the current table means the node unmounted.
+A captured key missing from the current table means the node unmounted.
 
 ### How the dependents fit
 
@@ -438,9 +437,9 @@ Add tuple responses, the routing table, the bubbling dispatch, hit-testing, pres
 and the routed mouse event types, with `Rects` moved to `counterweight.geometry`.
 Add `counterweight.handlers` with `first`, `each`, and `on_click`,
 and a `docs/input-handling/handlers.md` page for it in `mkdocs.yml`.
-`LayoutTree.compute` returns shadow nodes with their layouts instead of bare elements,
-so the loop can go from a hit to an ancestor path; painting keeps taking elements.
-Its docstring, which says it returns paint order, is corrected to tree order.
+`Layouts.in_paint_order` carries each node's key alongside its element,
+so the loop can go from a hit to an ancestor path through `ShadowTree.parents`; painting keeps taking elements.
+It is renamed for tree order, which is what it holds, since `paint_layout` does the paint-order sort.
 Existing handlers that return a control keep working,
 and `docs/input-handling/controls.md` describes returning a tuple of controls, `()` included.
 Keys keep going to every handler in this step, unrouted:
