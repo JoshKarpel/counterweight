@@ -7,6 +7,7 @@ work that caches, or reuse of last frame's layout, could skip.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from functools import partial
 
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
@@ -57,12 +58,8 @@ def step(model: Model) -> Model:
     return Model(tick=model.tick + 1)
 
 
-def view(model: Model) -> Div:
-    return layout(frame_counter(model.tick), metric_card)
-
-
-def memo_view(model: Model) -> Div:
-    return layout(frame_counter(model.tick), memo_metric_card)
+def view(model: Model, card_component: Callable[[str, str], Component]) -> Div:
+    return layout(frame_counter(model.tick), card_component)
 
 
 def layout(counter: Component, card_component: Callable[[str, str], Component]) -> Div:
@@ -137,7 +134,7 @@ WORKLOAD = Workload(
     description=__doc__ or "",
     initial=initial,
     step=step,
-    view=view,
+    view=partial(view, card_component=metric_card),
     dimensions=(120, 30),
 )
 
@@ -150,5 +147,5 @@ MEMO_WORKLOAD = replace(
 The cards' arguments never change, so every card is reused every frame and only the root and the frame counter re-run:
 compared with `dashboard`, this measures what skipping unchanged components saves.
 """,
-    view=memo_view,
+    view=partial(view, card_component=memo_metric_card),
 )

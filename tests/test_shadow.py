@@ -1,58 +1,26 @@
 from __future__ import annotations
 
 import gc
-from asyncio import Queue, Task, TaskGroup, sleep
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from asyncio import TaskGroup
+from collections.abc import Callable
 from sys import getrecursionlimit
 from weakref import WeakSet, ref
 
 import pytest
 
 from counterweight._context_vars import (
-    current_event_queue,
     current_hook_idx,
     current_hook_state,
     current_use_mouse_listeners,
 )
 from counterweight._utils import cancel_tasks, forever
-from counterweight.app import handle_effects
-from counterweight.components import Component, component
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent
+from counterweight.components import component
+from counterweight.elements import Div, Text
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
-
-
-@contextmanager
-def event_queue() -> Iterator[Queue[AnyEvent]]:
-    """Gives setters a queue to enqueue `StateSet` into, as the app loop would."""
-    queue: Queue[AnyEvent] = Queue()
-    token = current_event_queue.set(queue)
-    try:
-        yield queue
-    finally:
-        current_event_queue.reset(token)
-
-
-async def render(
-    root: Component | AnyElement,
-    previous: ShadowNode | None,
-    task_group: TaskGroup,
-    dirty: frozenset[NodeKey] = frozenset(),
-) -> ShadowNode:
-    """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
-    update = update_shadow(root, previous, NO_LAYOUTS, dirty)
-    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
-    await sleep(0)
-    return update.tree
-
-
-def effect_tasks(shadow: ShadowNode) -> list[Task[None]]:
-    """The tasks of every effect in the tree, to cancel before the test's task group exits."""
-    return [effect.task for node in shadow.walk() for effect in node.hooks.effects if effect.task is not None]
+from tests.rendering import effect_tasks, render, state_sets
 
 
 @component
@@ -134,7 +102,7 @@ async def test_component_nested_under_replaced_component_starts_with_initial_sta
     def wrapper() -> Div:
         return Div(children=[counter()])
 
-    with event_queue():
+    with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(Div(children=[wrapper()]), None, tg)
             setters[-1](7)
@@ -198,7 +166,7 @@ async def test_reordered_keyed_children_keep_their_state() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
 
-    with event_queue():
+    with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(
                 Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg
@@ -228,7 +196,7 @@ async def test_keyed_children_after_a_removed_keyed_child_keep_their_state() -> 
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
 
-    with event_queue():
+    with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(
                 Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "b", "c")]),
@@ -283,7 +251,7 @@ async def test_setter_is_the_same_object_across_renders() -> None:
     seen: dict[str, str] = {}
     setters_by_render: list[Setter[str]] = []
 
-    with event_queue():
+    with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(remembers("a", setters, seen), None, tg)
             setters_by_render.append(setters["a"])
@@ -367,7 +335,7 @@ async def test_setter_called_after_unmount_enqueues_nothing(
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
 
-    with event_queue() as queue:
+    with state_sets() as queue:
         async with TaskGroup() as tg:
             shadow = await render(before(setters, seen), None, tg)
             await render(after(setters, seen), shadow, tg)
@@ -396,7 +364,7 @@ async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
 
-    with event_queue() as queue:
+    with state_sets() as queue:
         async with TaskGroup() as tg:
             shadow = await render(
                 Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg

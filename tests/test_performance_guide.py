@@ -12,40 +12,19 @@ from dataclasses import dataclass, replace
 
 import pytest
 
-from counterweight._context_vars import current_event_queue
 from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed, StateSet
+from counterweight.events import AnyEvent, KeyPressed
 from counterweight.hooks import Setter, use_memo, use_ref, use_state
-from counterweight.hooks.impls import InconsistentHookExecution, NodeKey, StaleMemo, UseState
+from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
-
-
-@contextmanager
-def state_sets() -> Iterator[Queue[AnyEvent]]:
-    queue: Queue[AnyEvent] = Queue()
-    token = current_event_queue.set(queue)
-    try:
-        yield queue
-    finally:
-        current_event_queue.reset(token)
-
-
-def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
-    keys: set[NodeKey] = set()
-    while not queue.empty():
-        match queue.get_nowait():
-            case StateSet(key=key):
-                keys.add(key)
-            case _:
-                pass
-    return frozenset(keys)
+from tests.rendering import state_set_keys, state_sets
 
 
 @dataclass(slots=True)

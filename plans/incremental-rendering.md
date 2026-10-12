@@ -170,11 +170,13 @@ hidden-subtree tests assert on `Layouts.by_key` instead of `hooks.dims`.
 
 **Record what changed, as a value.** `set_state` enqueues `StateSet(key=...)` with its
 node's key. The render loop collects each frame's keys into a `frozenset[NodeKey]`, and a pure
-function walks the previous tree once and returns the keys on a path from the root to any
-dirty node:
+function walks the previous tree once and returns the dirty nodes' keys,
+and the keys on a path from the root to any dirty node:
 
 ```python
-def dirty_paths(tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> frozenset[NodeKey]: ...
+def dirty_paths(
+    tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts
+) -> tuple[frozenset[NodeKey], frozenset[NodeKey]]: ...
 ```
 
 It writes no flags onto nodes.

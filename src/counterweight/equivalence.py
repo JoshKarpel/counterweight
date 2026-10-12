@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
 from functools import partial
-from types import CellType, FunctionType
+from types import CellType, FunctionType, MethodType
 from typing import TYPE_CHECKING, TypeIs
 
 if TYPE_CHECKING:
@@ -23,6 +23,7 @@ def equivalent(a: object, b: object) -> bool:
     and functions by what they would do when called:
     two functions are equivalent when they share a `__code__` object,
     have equivalent defaults, and their closure cells hold equivalent values,
+    two bound methods when their functions and the objects they're bound to are equivalent,
     and two `functools.partial`s when their `func`, `args` and `keywords` are equivalent.
     Tuples, lists, dicts and dataclasses are compared item by item by the same rule,
     so a handler anywhere inside an element is compared as a handler.
@@ -56,6 +57,10 @@ def equivalent_within(a: object, b: object, comparing: set[tuple[int, int]]) -> 
                 and equivalent_within(a.__defaults__, b.__defaults__, comparing)
                 and equivalent_within(a.__kwdefaults__, b.__kwdefaults__, comparing)
                 and equivalent_within(cells(a.__closure__), cells(b.__closure__), comparing)
+            )
+        case MethodType(), MethodType():
+            return equivalent_within(a.__func__, b.__func__, comparing) and equivalent_within(
+                a.__self__, b.__self__, comparing
             )
         case partial(), partial():
             return (

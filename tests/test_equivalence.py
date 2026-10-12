@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 
 import pytest
@@ -62,6 +63,17 @@ def target(first: object, second: object) -> None:
     return None
 
 
+@dataclass(frozen=True, slots=True)
+class Holder:
+    value: object
+
+    def handle(self) -> object:
+        return self.value
+
+    def other(self) -> object:
+        return self.value
+
+
 @pytest.mark.parametrize(
     ("a", "b"),
     [
@@ -77,6 +89,7 @@ def target(first: object, second: object) -> None:
             id="closures-capturing-equivalent-closures",
         ),
         pytest.param(partial(target, "x", second="y"), partial(target, "x", second="y"), id="partials"),
+        pytest.param(Holder("x").handle, Holder("x").handle, id="methods-bound-to-equal-objects"),
         pytest.param(
             Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
             Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
@@ -107,6 +120,8 @@ def test_equivalent(a: object, b: object) -> None:
             id="closures-capturing-different-closures",
         ),
         pytest.param(partial(target, "x", second="y"), partial(target, "x", second="z"), id="partials"),
+        pytest.param(Holder("x").handle, Holder("y").handle, id="methods-bound-to-different-objects"),
+        pytest.param(Holder("x").handle, Holder("x").other, id="different-methods"),
         pytest.param(
             Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
             Div(children=[Text(content="x", on_key=key_handler_capturing("y"))]),

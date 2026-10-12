@@ -1,27 +1,26 @@
 from __future__ import annotations
 
-from asyncio import Event, Queue, Task, TaskGroup, create_task, sleep, wait_for
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from asyncio import Event, Queue, TaskGroup, create_task, wait_for
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight._context_vars import current_event_queue
 from counterweight._utils import cancel_tasks, forever
-from counterweight.app import app, handle_effects
+from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed, StateSet, TerminalResized
+from counterweight.events import AnyEvent, KeyPressed, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
 from counterweight.shadow import ImpureComponent, ShadowNode, dirty_paths, is_dirty, update_shadow
+from tests.rendering import effect_tasks, render, state_set_keys, state_sets
 
 type Shape = tuple[tuple[str, Shape], ...]
 
@@ -42,33 +41,12 @@ def counted(name: str, children: Shape, calls: Calls) -> Div:
     return Div(children=[counted(child, grandchildren, calls) for child, grandchildren in children])
 
 
-@contextmanager
-def state_sets() -> Iterator[Queue[AnyEvent]]:
-    queue: Queue[AnyEvent] = Queue()
-    token = current_event_queue.set(queue)
-    try:
-        yield queue
-    finally:
-        current_event_queue.reset(token)
-
-
 def set_state(calls: Calls, queue: Queue[AnyEvent], *names: str) -> frozenset[NodeKey]:
     """Steps each named component's state, and returns the keys the render loop would collect from the queue."""
     for name in names:
         calls.setters[name](lambda count: count + 1)
 
     return state_set_keys(queue)
-
-
-def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
-    keys: set[NodeKey] = set()
-    while not queue.empty():
-        match queue.get_nowait():
-            case StateSet(key=key):
-                keys.add(key)
-            case _:
-                pass
-    return frozenset(keys)
 
 
 def rerun(
@@ -157,22 +135,6 @@ def starts_every_render(log: list[str]) -> Text:
     return Text(content="effect")
 
 
-async def render_with_effects(
-    root: Component | AnyElement,
-    previous: ShadowNode | None,
-    task_group: TaskGroup,
-    dirty: frozenset[NodeKey] = frozenset(),
-) -> ShadowNode:
-    update = update_shadow(root, previous, NO_LAYOUTS, dirty)
-    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
-    await sleep(0)
-    return update.tree
-
-
-def effect_tasks(shadow: ShadowNode) -> list[Task[None]]:
-    return [effect.task for node in shadow.walk() for effect in node.hooks.effects if effect.task is not None]
-
-
 async def test_effect_without_deps_of_a_reused_component_does_not_rerun() -> None:
     log: list[str] = []
     calls = Calls()
@@ -180,8 +142,8 @@ async def test_effect_without_deps_of_a_reused_component_does_not_rerun() -> Non
 
     with state_sets() as queue:
         async with TaskGroup() as tg:
-            shadow = await render_with_effects(root, None, tg)
-            shadow = await render_with_effects(root, shadow, tg, set_state(calls, queue, "sibling"))
+            shadow = await render(root, None, tg)
+            shadow = await render(root, shadow, tg, set_state(calls, queue, "sibling"))
             log_after_sibling_rerun = log.copy()
             await cancel_tasks(effect_tasks(shadow))
 
@@ -214,9 +176,9 @@ async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() 
 
     with state_sets() as queue:
         async with TaskGroup() as tg:
-            shadow = await render_with_effects(root, None, tg)
+            shadow = await render(root, None, tg)
             setters["shows"](False)
-            await render_with_effects(root, shadow, tg, state_set_keys(queue))
+            await render(root, shadow, tg, state_set_keys(queue))
 
     assert log == ["stop"]
 
@@ -256,6 +218,29 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     update_shadow(root, previous, layouts)
 
     assert calls.names == expected
+
+
+@component
+def measures_until_set(calls: Calls) -> Div:
+    is_measuring, set_is_measuring = use_state(True)
+    calls.setters["measures_until_set"] = lambda _: set_is_measuring(False)
+    if is_measuring:
+        use_rects()
+    calls.names.append("measures_until_set")
+    return Div()
+
+
+def test_component_that_stops_calling_use_rects_does_not_rerun_when_its_layout_moves() -> None:
+    calls = Calls()
+    root = measures_until_set(calls)
+    with state_sets() as queue:
+        first = update_shadow(root, None, NO_LAYOUTS).tree
+        second = update_shadow(root, first, NO_LAYOUTS, set_state(calls, queue, "measures_until_set")).tree
+    calls.names.clear()
+
+    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.key: MOVED}))
+
+    assert calls.names == []
 
 
 @pytest.mark.parametrize("memo", [False, True], ids=["plain", "memo"])
@@ -348,7 +333,18 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
         node.key for node in tree.walk() if any(is_dirty(below, dirty, NO_LAYOUTS) for below in node.walk())
     )
 
-    assert dirty_paths(tree, dirty, NO_LAYOUTS) == brute_force
+    _, paths = dirty_paths(tree, dirty, NO_LAYOUTS)
+
+    assert paths == brute_force
+
+
+@given(tree_and_dirty=dirty_trees())
+def test_dirty_paths_reports_each_dirty_node(tree_and_dirty: tuple[ShadowNode, frozenset[NodeKey]]) -> None:
+    tree, dirty = tree_and_dirty
+
+    dirty_nodes, _ = dirty_paths(tree, dirty, NO_LAYOUTS)
+
+    assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NO_LAYOUTS))
 
 
 @component

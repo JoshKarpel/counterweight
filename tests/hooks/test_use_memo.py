@@ -1,40 +1,17 @@
 from __future__ import annotations
 
-from asyncio import Queue
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 
 import pytest
 
-from counterweight._context_vars import current_event_queue
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
-from counterweight.events import AnyEvent, KeyPressed, StateSet
+from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_memo, use_state
-from counterweight.hooks.impls import NodeKey, StaleMemo, UseMemo
+from counterweight.hooks.impls import StaleMemo, UseMemo
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import ShadowNode, update_shadow
-
-
-@contextmanager
-def state_sets() -> Iterator[Queue[AnyEvent]]:
-    queue: Queue[AnyEvent] = Queue()
-    token = current_event_queue.set(queue)
-    try:
-        yield queue
-    finally:
-        current_event_queue.reset(token)
-
-
-def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
-    keys: set[NodeKey] = set()
-    while not queue.empty():
-        match queue.get_nowait():
-            case StateSet(key=key):
-                keys.add(key)
-            case _:
-                pass
-    return frozenset(keys)
+from tests.rendering import state_set_keys, state_sets
 
 
 def render_after_each(root: Component, steps: list[Callable[[], None]], check_purity: bool = False) -> list[ShadowNode]:

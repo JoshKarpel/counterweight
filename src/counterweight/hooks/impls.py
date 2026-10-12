@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from asyncio import Task
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from copy import copy
+from dataclasses import dataclass, field, replace
 from itertools import count
 from typing import TYPE_CHECKING, NewType
 from weakref import ref
@@ -108,6 +109,15 @@ class Hooks:
     @property
     def effects(self) -> Iterator[UseEffect]:
         return (hook for hook in self.data if isinstance(hook, UseEffect))
+
+    def detached(self) -> Hooks:
+        """
+        A copy to call the node's component against without changing anything the node keeps.
+        Every hook that writes to itself during a render is copied:
+        `use_effect` records its arguments on its hook, and `use_memo` recomputes into its hook when its deps changed.
+        The others are shared, so handlers built from them compare equal to the node's own.
+        """
+        return replace(self, data=[copy(hook) if isinstance(hook, UseEffect | UseMemo) else hook for hook in self.data])
 
     def use_state[T](self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:

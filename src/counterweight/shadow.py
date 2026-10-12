@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator, Sequence
-from copy import copy
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from itertools import chain
 
 from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts, current_purity_checked
@@ -11,7 +10,7 @@ from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseEffect, UseMemo
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
 from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
@@ -69,8 +68,14 @@ def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> b
     return node.key in dirty or (node.hooks.rects is not None and node.hooks.rects != rects_in(layouts, node.key))
 
 
-def dirty_paths(tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> frozenset[NodeKey]:
-    """The keys of every dirty node in `tree` (see `is_dirty`) and of all their ancestors."""
+def dirty_paths(
+    tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts
+) -> tuple[frozenset[NodeKey], frozenset[NodeKey]]:
+    """
+    The keys of every dirty node in `tree` (see `is_dirty`),
+    and the paths to them: those keys and the keys of all their ancestors.
+    """
+    dirty_nodes: set[NodeKey] = set()
     paths: set[NodeKey] = set()
     parents: dict[NodeKey, NodeKey] = {}
     stack = [tree]
@@ -83,12 +88,13 @@ def dirty_paths(tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -
         if not is_dirty(node, dirty, layouts):
             continue
 
+        dirty_nodes.add(node.key)
         key: NodeKey | None = node.key
         while key is not None and key not in paths:
             paths.add(key)
             key = parents.get(key)
 
-    return frozenset(paths)
+    return frozenset(dirty_nodes), frozenset(paths)
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +102,7 @@ class Reconciliation:
     """What one `update_shadow` call reads, and the hooks it collects as it goes."""
 
     layouts: Layouts
-    dirty: frozenset[NodeKey]
+    dirty_nodes: frozenset[NodeKey]
     paths: frozenset[NodeKey]
     check_purity: bool
     ran: list[Hooks] = field(default_factory=list)
@@ -120,9 +126,16 @@ def update_shadow(
     With `check_purity`, every component that doesn't re-run is also called, and raises `ImpureComponent`
     if what it returns isn't equivalent to the element it kept (see `check_is_pure`).
     """
-    paths = frozenset() if previous is None else dirty_paths(previous, dirty, layouts)
-    reconciliation = Reconciliation(layouts=layouts, dirty=dirty, paths=paths, check_purity=check_purity)
+    dirty_nodes, paths = (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts)
+    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=dirty_nodes, paths=paths, check_purity=check_purity)
     tree = update_node(next, previous, reconciliation)
+
+    if check_purity:
+        ran = {hooks.key for hooks in reconciliation.ran}
+        for node in tree.walk():
+            if node.key not in ran:
+                check_is_pure(node, layouts)
+
     return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
 
 
@@ -146,22 +159,7 @@ def update_node(
             and next_func == previous_component.func
             and next_key == previous_component.key
         ):
-            is_continued = continues(next_component, previous_component)
-            if is_continued and previous_node.key not in reconciliation.paths:
-                new = previous_node
-                if reconciliation.check_purity:
-                    for node in new.walk():
-                        check_is_pure(node, reconciliation.layouts)
-            elif is_continued and not is_dirty(previous_node, reconciliation.dirty, reconciliation.layouts):
-                if reconciliation.check_purity:
-                    check_is_pure(previous_node, reconciliation.layouts)
-                new = ShadowNode(
-                    component=previous_component,
-                    element=previous_element,
-                    children=reconcile_children(previous_element.children, previous_children, reconciliation),
-                    hooks=previous_hooks,
-                )
-            else:
+            if not continues(next_component, previous_component) or previous_node.key in reconciliation.dirty_nodes:
                 previous_hook_count = len(previous_hooks.data)
                 element, hook_count = call_component(
                     next_component, previous_hooks, reconciliation.layouts, reconciliation.check_purity
@@ -180,6 +178,15 @@ def update_node(
                     element=element,
                     children=reconcile_children(element.children, previous_children, reconciliation),
                     hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                )
+            elif previous_node.key not in reconciliation.paths:
+                new = previous_node
+            else:
+                new = ShadowNode(
+                    component=previous_component,
+                    element=previous_element,
+                    children=reconcile_children(previous_element.children, previous_children, reconciliation),
+                    hooks=previous_hooks,
                 )
         case Component() as next_component, _:
             hook_state = Hooks()
@@ -200,9 +207,6 @@ def update_node(
         ) as previous_node:
             if element is previous_element and previous_node.key not in reconciliation.paths:
                 new = previous_node
-                if reconciliation.check_purity:
-                    for node in new.walk():
-                        check_is_pure(node, reconciliation.layouts)
             else:
                 new = ShadowNode(
                     component=None,
@@ -239,20 +243,14 @@ def continues(next: Component, previous: Component) -> bool:
 
 def check_is_pure(node: ShadowNode, layouts: Layouts) -> None:
     """
-    Calls a reused node's component again, against a copy of its hooks, and raises `ImpureComponent`
+    Calls a reused node's component again, against its `Hooks.detached` hooks, and raises `ImpureComponent`
     if the element it returns isn't `equivalent` to the one the node kept.
-    The copy's effects and memos are copies too, since `use_effect` records its arguments on the hook it's given
-    and `use_memo` recomputes into its hook when its deps changed,
-    so the check schedules no effects and changes no hook the node keeps.
     It compares child components without calling them; each reused child is checked on its own node.
     """
     if node.component is None:
         return
 
-    hooks = replace(
-        node.hooks, data=[copy(hook) if isinstance(hook, UseEffect | UseMemo) else hook for hook in node.hooks.data]
-    )
-    element, _ = call_component(node.component, hooks, layouts, check_purity=True)
+    element, _ = call_component(node.component, node.hooks.detached(), layouts, check_purity=True)
     if not equivalent(element, node.element):
         raise ImpureComponent(
             f"{node.component.func.__qualname__} returned a different element when called again "
@@ -273,6 +271,8 @@ def call_component(component: Component, hooks: Hooks, layouts: Layouts, check_p
     reset_current_hook_state = current_hook_state.set(hooks)
     reset_current_layouts = current_layouts.set(layouts)
     reset_current_purity_checked = current_purity_checked.set(component if check_purity else None)
+    # use_rects isn't positional, so a run that stops calling it must stop the node re-running when its layout moves.
+    hooks.rects = None
     try:
         element = component.func(*component.args, **component.kwargs)
         return element, current_hook_idx.get()

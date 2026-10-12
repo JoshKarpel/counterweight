@@ -125,7 +125,7 @@ async def app(
     async with devlog():
         try:
             await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity)
-        except ExceptionGroup as group:
+        except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
             # and keeps callers from catching it by its own type.
             if len(group.exceptions) != 1:
@@ -147,7 +147,7 @@ async def render_loop(
     autopilot: Iterable[AnyEvent | AnyControl],
     check_purity: bool,
 ) -> None:
-    def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
+    def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
 
         cp = Paint.blank(w, h)
@@ -155,7 +155,7 @@ async def render_loop(
         if not headless:
             output_stream.write(CLEAR_SCREEN + paint_to_instructions(runs_of(cp)))
 
-        return screen_element_style(w, h), cp, w, h
+        return screen(screen_element_style(w, h)), cp, w, h
 
     @component
     def screen(style: Style) -> Div:
@@ -200,7 +200,7 @@ async def render_loop(
             )
             key_thread.start()
 
-        screen_style, current_paint, w, h = handle_screen_size_change()
+        root_component, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
         dirty: set[NodeKey] = set()
@@ -216,7 +216,6 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        root_component = screen(screen_style)
         shadow = update_shadow(root_component, None, NO_LAYOUTS).tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
 
@@ -309,8 +308,7 @@ async def render_loop(
 
                         allow_key_thread.set()
 
-                    screen_style, current_paint, w, h = handle_screen_size_change()
-                    root_component = screen(screen_style)
+                    root_component, current_paint, w, h = handle_screen_size_change()
                     rerun_everything()
 
                     logger.debug("Resuming application", extra={"handler": should_suspend.handler})
@@ -394,8 +392,7 @@ async def render_loop(
                             dirty.add(key)
                         case TerminalResized(dimensions=override):
                             should_render = True
-                            screen_style, current_paint, w, h = handle_screen_size_change(override)
-                            root_component = screen(screen_style)
+                            root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed():
                             for element, _ in reversed(layouts.in_paint_order):
