@@ -4,10 +4,11 @@ import logging
 from dataclasses import dataclass
 from typing import overload
 
-from counterweight._context_vars import current_hook_state, current_use_mouse_listeners
+from counterweight._context_vars import current_hook_state, current_layouts, current_use_mouse_listeners
 from counterweight._utils import forever
 from counterweight.geometry import Position, Region
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.layout import INITIAL_RESOLVED_LAYOUT
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,8 @@ def use_rects() -> Rects:
             In the initial render, the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
     """
-    dims = current_hook_state.get().dims
+    # A node absent from the previous frame's layouts was hidden or not yet mounted.
+    dims = current_layouts.get().by_key.get(current_hook_state.get().key, INITIAL_RESOLVED_LAYOUT)
 
     return Rects(
         content=dims.content,

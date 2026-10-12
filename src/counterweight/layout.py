@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import TYPE_CHECKING, assert_never
@@ -12,6 +12,7 @@ from counterweight.geometry import Region
 from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
 if TYPE_CHECKING:
+    from counterweight.hooks.impls import NodeKey
     from counterweight.shadow import ShadowNode
 
 
@@ -39,95 +40,212 @@ INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
 type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
 
 
+def text_source(text: Text) -> TextSource:
+    """Everything `text`'s measured size depends on, normalized so that equal sources compare equal."""
+    content = text.content if isinstance(text.content, str) else tuple(text.content)
+    return content, text.style.text_style, resolve_style(text.style).text_wrap
+
+
+@dataclass(frozen=True, slots=True)
+class CreateLeaf:
+    key: NodeKey
+    style: waxy.Style
+    text: TextSource
+
+
+@dataclass(frozen=True, slots=True)
+class CreateContainer:
+    key: NodeKey
+    style: waxy.Style
+    children: tuple[NodeKey, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SetStyle:
+    key: NodeKey
+    style: waxy.Style
+
+
+@dataclass(frozen=True, slots=True)
+class SetText:
+    key: NodeKey
+    text: TextSource
+
+
+@dataclass(frozen=True, slots=True)
+class ClearText:
+    key: NodeKey
+
+
+@dataclass(frozen=True, slots=True)
+class SetChildren:
+    key: NodeKey
+    children: tuple[NodeKey, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Remove:
+    key: NodeKey
+
+
+type LayoutChange = CreateLeaf | CreateContainer | SetStyle | SetText | ClearText | SetChildren | Remove
+
+
+def layout_changes(previous: ShadowNode | None, next: ShadowNode) -> list[LayoutChange]:
+    """
+    The changes that make a layout tree built from `previous` match `next`,
+    pairing nodes by key as `update_shadow` paired them.
+
+    Children come before their parents, so a parent's children exist when it's created or given them,
+    and removals come last. Every node of an unmounted subtree is removed, not just its root,
+    because taffy's remove detaches a node's children rather than removing them.
+    """
+    changes: list[LayoutChange] = []
+    removals: list[LayoutChange] = []
+
+    if previous is not None and previous.key != next.key:
+        removals.extend(_removals(previous))
+        previous = None
+
+    _reconcile(previous, next, changes, removals)
+
+    changes.extend(removals)
+    return changes
+
+
+def _reconcile(
+    previous: ShadowNode | None,
+    next: ShadowNode,
+    changes: list[LayoutChange],
+    removals: list[LayoutChange],
+) -> None:
+    """Appends the changes for `next`'s subtree, given the previous node it continues, if any."""
+    key = next.key
+    element = next.element
+    style = layout_style(element.style)
+
+    # Taffy discards a node's cached layout when its text or children are set, even to equal values,
+    # so each is set only when it changed.
+    match element:
+        case Text():
+            source = text_source(element)
+            if previous is None:
+                changes.append(CreateLeaf(key=key, style=style, text=source))
+                return
+
+            _append_style_change(previous, key, style, changes)
+            match previous.element:
+                case Text() as previous_text:
+                    if text_source(previous_text) != source:
+                        changes.append(SetText(key=key, text=source))
+                case Div():
+                    for child in previous.children:
+                        removals.extend(_removals(child))
+                    changes.append(SetText(key=key, text=source))
+                case _ as unreachable:
+                    assert_never(unreachable)
+        case Div():
+            previous_children = {} if previous is None else {child.key: child for child in previous.children}
+            for child in next.children:
+                _reconcile(previous_children.pop(child.key, None), child, changes, removals)
+            for unmounted in previous_children.values():
+                removals.extend(_removals(unmounted))
+
+            child_keys = tuple(child.key for child in next.children)
+            if previous is None:
+                changes.append(CreateContainer(key=key, style=style, children=child_keys))
+                return
+
+            _append_style_change(previous, key, style, changes)
+            match previous.element:
+                case Text():
+                    changes.append(ClearText(key=key))
+                    changes.append(SetChildren(key=key, children=child_keys))
+                case Div():
+                    if tuple(child.key for child in previous.children) != child_keys:
+                        changes.append(SetChildren(key=key, children=child_keys))
+                case _ as unreachable:
+                    assert_never(unreachable)
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
+def _append_style_change(previous: ShadowNode, key: NodeKey, style: waxy.Style, changes: list[LayoutChange]) -> None:
+    previous_style = layout_style(previous.element.style)
+    if previous_style is not style and previous_style != style:
+        changes.append(SetStyle(key=key, style=style))
+
+
+def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
+    return (Remove(key=node.key) for node in unmounted.walk())
+
+
+@dataclass(frozen=True, slots=True)
+class Layouts:
+    """One frame's layouts: each visible element's, in paint order, and each visible node's, by key."""
+
+    in_paint_order: tuple[tuple[AnyElement, ResolvedLayout], ...]
+    by_key: Mapping[NodeKey, ResolvedLayout]
+
+
+NO_LAYOUTS = Layouts(in_paint_order=(), by_key={})
+
+
 @dataclass(eq=False, slots=True)
 class LayoutTree:
     """
     The layout tree for one app, kept across frames so that taffy keeps the layout it cached
     for every node whose style, text and children are unchanged.
-
-    Each `ShadowNode` remembers its node in `layout_node`, which `update_shadow` carries over
-    wherever it carries over the node's hooks.
+    Only `apply` and `compute` read or write its taffy nodes.
     """
 
     tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
-    texts: dict[waxy.NodeId, TextSource] = field(default_factory=dict)
-    children: dict[waxy.NodeId, list[waxy.NodeId]] = field(default_factory=dict)
-    shadows: dict[waxy.NodeId, ShadowNode] = field(default_factory=dict)
+    nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
 
     def compute(
         self,
+        changes: Iterable[LayoutChange],
         shadow: ShadowNode,
         available: waxy.AvailableSize,
-    ) -> list[tuple[AnyElement, ResolvedLayout]]:
-        """Lay out the shadow tree, and return each visible element with its layout, in paint order."""
-        root = self.update(shadow)
+    ) -> Layouts:
+        """Apply `changes`, which make the tree match `shadow`, then lay it out."""
+        self.apply(changes)
 
+        root = self.nodes[shadow.key]
         self.tree.compute_layout(root, available, measure=_measure_text)
 
-        results: list[tuple[AnyElement, ResolvedLayout]] = []
+        shadows = {self.nodes[node.key]: node for node in shadow.walk()}
+        in_paint_order: list[tuple[AnyElement, ResolvedLayout]] = []
+        by_key: dict[NodeKey, ResolvedLayout] = {}
         for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
-            visible = self.shadows[node]
+            visible = shadows[node]
             resolved = _resolve_layout(position, layout, order)
-            visible.hooks.dims = resolved
-            results.append((visible.element, resolved))
+            in_paint_order.append((visible.element, resolved))
+            by_key[visible.key] = resolved
 
-        return results
+        return Layouts(in_paint_order=tuple(in_paint_order), by_key=by_key)
 
-    def update(self, shadow: ShadowNode) -> waxy.NodeId:
-        """Make the tree match the shadow tree, and return the root's node."""
-        shadows: dict[waxy.NodeId, ShadowNode] = {}
-        root = self._update_node(shadow, shadows)
-
-        # Taffy's remove detaches a node's children rather than removing them,
-        # so every unmounted node is removed, not just the root of an unmounted subtree.
-        for unmounted in self.shadows.keys() - shadows.keys():
-            self.tree.remove(unmounted)
-            self.texts.pop(unmounted, None)
-            self.children.pop(unmounted, None)
-
-        self.shadows = shadows
-        return root
-
-    def _update_node(self, shadow: ShadowNode, shadows: dict[waxy.NodeId, ShadowNode]) -> waxy.NodeId:
-        element = shadow.element
-        style = layout_style(element.style)
-        node = shadow.layout_node
-
-        # set_style keeps the node's cached layout when the style is equal,
-        # but set_node_context and set_children always discard it, so they're called only on a change.
-        match element:
-            case Text():
-                content = element.content if isinstance(element.content, str) else tuple(element.content)
-                source = (content, element.style.text_style, resolve_style(element.style).text_wrap)
-                if node is None:
-                    node = self.tree.new_leaf_with_context(style, MeasurableText.of(source))
-                else:
-                    self.tree.set_style(node, style)
-                    # A Div's children unmount along with it, and taffy's remove detaches them.
-                    self.children.pop(node, None)
-                    if self.texts.get(node) != source:
-                        self.tree.set_node_context(node, MeasurableText.of(source))
-                self.texts[node] = source
-            case Div():
-                child_nodes = [self._update_node(child, shadows) for child in shadow.children]
-                if node is None:
-                    node = self.tree.new_with_children(style, child_nodes)
-                else:
-                    self.tree.set_style(node, style)
-                    if self.texts.pop(node, None) is not None:
-                        self.tree.set_node_context(node, None)
-                    if self.children.get(node) != child_nodes:
-                        self.tree.set_children(node, child_nodes)
-                self.children[node] = child_nodes
-            case _:
-                assert_never(element)
-
-        shadow.layout_node = node
-        # Hidden subtrees are absent from absolute_layouts, so their components would otherwise
-        # keep reporting the regions from the last frame they were visible in.
-        shadow.hooks.dims = INITIAL_RESOLVED_LAYOUT
-        shadows[node] = shadow
-        return node
+    def apply(self, changes: Iterable[LayoutChange]) -> None:
+        nodes = self.nodes
+        tree = self.tree
+        for change in changes:
+            match change:
+                case CreateLeaf(key=key, style=style, text=text):
+                    nodes[key] = tree.new_leaf_with_context(style, MeasurableText.of(text))
+                case CreateContainer(key=key, style=style, children=children):
+                    nodes[key] = tree.new_with_children(style, [nodes[child] for child in children])
+                case SetStyle(key=key, style=style):
+                    tree.set_style(nodes[key], style)
+                case SetText(key=key, text=text):
+                    tree.set_node_context(nodes[key], MeasurableText.of(text))
+                case ClearText(key=key):
+                    tree.set_node_context(nodes[key], None)
+                case SetChildren(key=key, children=children):
+                    tree.set_children(nodes[key], [nodes[child] for child in children])
+                case Remove(key=key):
+                    tree.remove(nodes.pop(key))
+                case _ as unreachable:
+                    assert_never(unreachable)
 
 
 _NO_BORDER = waxy.Style(

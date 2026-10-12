@@ -22,6 +22,7 @@ from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution
+from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
 
 
@@ -43,7 +44,7 @@ async def render(
     task_group: TaskGroup,
 ) -> tuple[ShadowNode, set[Task[None]]]:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
-    shadow = update_shadow(root, previous)
+    shadow = update_shadow(root, previous, NO_LAYOUTS)
     active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=task_group)
     await sleep(0)
     return shadow, active_effects
@@ -162,7 +163,7 @@ async def test_use_mouse_listener_removed_when_component_replaced_by_element() -
 
 
 def leaf(name: str, *children: ShadowNode) -> ShadowNode:
-    return ShadowNode(component=None, element=Text(content=name), hooks=Hooks(), children=list(children))
+    return ShadowNode(component=None, element=Text(content=name), hooks=Hooks(), children=children)
 
 
 def test_walk_yields_nodes_in_pre_order() -> None:
@@ -278,7 +279,9 @@ def test_duplicate_sibling_keys_raise() -> None:
     log: list[str] = []
 
     with pytest.raises(DuplicateKey):
-        update_shadow(Div(children=[logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k")]), None)
+        update_shadow(
+            Div(children=[logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k")]), None, NO_LAYOUTS
+        )
 
 
 async def test_setter_is_the_same_object_across_renders() -> None:
@@ -382,12 +385,12 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
-    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None)
+    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None, NO_LAYOUTS)
     state = ref(shadow.children[0].hooks.data[0])
 
     gc.disable()
     try:
-        shadow = update_shadow(Div(children=[Div()]), shadow)
+        shadow = update_shadow(Div(children=[Div()]), shadow, NO_LAYOUTS)
         is_freed = state() is None
     finally:
         gc.enable()
@@ -427,15 +430,15 @@ def calls_hooks(hook_count: int) -> Text:
     ],
 )
 def test_changing_hook_count_between_renders_raises(first_count: int, second_count: int) -> None:
-    shadow = update_shadow(calls_hooks(first_count), None)
+    shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS)
 
     with pytest.raises(InconsistentHookExecution):
-        update_shadow(calls_hooks(second_count), shadow)
+        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS)
 
 
 def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
-    shadow = update_shadow(calls_hooks(2), None)
-    shadow = update_shadow(calls_hooks(2), shadow)
+    shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS)
+    shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS)
 
     assert len(shadow.hooks.data) == 2
 
@@ -454,14 +457,14 @@ def raises_on_render(should_raise: bool) -> Text:
 
 @pytest.mark.parametrize("is_rerender", [False, True], ids=["mount", "rerender"])
 def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
-    previous = update_shadow(raises_on_render(False), None) if is_rerender else None
+    previous = update_shadow(raises_on_render(False), None, NO_LAYOUTS) if is_rerender else None
     outer_hooks = Hooks()
     outer_hook_idx = 5
     state_token = current_hook_state.set(outer_hooks)
     idx_token = current_hook_idx.set(outer_hook_idx)
     try:
         with pytest.raises(RenderFailed):
-            update_shadow(raises_on_render(True), previous)
+            update_shadow(raises_on_render(True), previous, NO_LAYOUTS)
         context_after_raise = (current_hook_state.get() is outer_hooks, current_hook_idx.get())
     finally:
         current_hook_idx.reset(idx_token)

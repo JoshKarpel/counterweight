@@ -3,12 +3,22 @@ from __future__ import annotations
 from asyncio import Task
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from itertools import count
+from typing import NewType
 from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, ResolvedLayout
+
+# Identifies one mounted node across frames, for as long as its hooks carry over.
+NodeKey = NewType("NodeKey", int)
+
+_node_keys = count()
+
+
+def _next_node_key() -> NodeKey:
+    return NodeKey(next(_node_keys))
 
 
 @dataclass(slots=True)
@@ -26,6 +36,7 @@ class MountStatus:
 class UseState:
     value: object
     mount_status: MountStatus
+    node_key: NodeKey
     setter: Setter[object] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -71,8 +82,8 @@ class InconsistentHookExecution(Exception):
 @dataclass(slots=True)
 class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
-    dims: ResolvedLayout = field(default=INITIAL_RESOLVED_LAYOUT)
     mount_status: MountStatus = field(default_factory=MountStatus)
+    key: NodeKey = field(default_factory=_next_node_key)
 
     @property
     def effects(self) -> Iterator[UseEffect]:
@@ -89,6 +100,7 @@ class Hooks:
             hook = UseState(
                 value=initial_value() if callable(initial_value) else initial_value,
                 mount_status=self.mount_status,
+                node_key=self.key,
             )
             self.data.append(hook)
 

@@ -45,7 +45,7 @@ from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.hooks.impls import UseEffect
 from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import LayoutTree, ResolvedLayout
+from counterweight.layout import NO_LAYOUTS, LayoutTree, layout_changes
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -180,7 +180,6 @@ async def render_loop(
 
         should_render = True
         active_effects: set[Task[None]] = set()
-        elements_and_layouts: list[tuple[AnyElement, ResolvedLayout]] = []
 
         should_quit = False
         should_bell = False
@@ -193,8 +192,8 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(screen(), None)
-        layout_tree.compute(shadow, warmup_available)
+        shadow = update_shadow(screen(), None, NO_LAYOUTS)
+        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -285,17 +284,17 @@ async def render_loop(
                     should_suspend = None
 
                 if should_render:
-                    shadow = update_shadow(screen(), shadow)
+                    previous_shadow, shadow = shadow, update_shadow(screen(), shadow, layouts)
                     logger.debug("Updated shadow tree")
 
                     available = waxy.AvailableSize(
                         width=waxy.Definite(w),
                         height=waxy.Definite(h),
                     )
-                    elements_and_layouts = layout_tree.compute(shadow, available)
+                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
                     logger.debug("Calculated layout")
 
-                    new_paint, border_healing_hints = paint_layout(elements_and_layouts, w, h)
+                    new_paint, border_healing_hints = paint_layout(layouts.in_paint_order, w, h)
                     logger.debug("Generated new paint")
 
                     if do_heal_borders:
@@ -360,11 +359,11 @@ async def render_loop(
                             should_render = True
                             screen_style, current_paint, w, h = handle_screen_size_change(override)
                         case KeyPressed():
-                            for element, _ in reversed(elements_and_layouts):
+                            for element, _ in reversed(layouts.in_paint_order):
                                 if element.on_key:
                                     handle_control(element.on_key(event))
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            for element, resolved in reversed(elements_and_layouts):
+                            for element, resolved in reversed(layouts.in_paint_order):
                                 # Send mouse events if the current *or previous* position is in the border region
                                 if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
                                     if element.on_mouse:
