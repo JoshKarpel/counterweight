@@ -12,13 +12,13 @@ though all three depend on it and the design is checked against them below.
 
 ## Problems
 
-- **Every key reaches every handler.** `render_loop` (`app.py:362`) calls each element's `on_key`
+- **Every key reaches every handler.** `render_loop` (`app.py:401`) calls each element's `on_key`
   in reverse tree order. Two components that both handle arrow keys both act on every arrow key,
   so apps thread "which one is active" through shared state.
   `examples/stopwatch.py` does exactly this: each `stopwatch` takes a `selected` prop
   and its `on_key` ignores keys unless it's selected.
 - **Every mouse event reaches every element under the pointer.**
-  `app.py:366` calls `on_mouse` on each element whose border contains the current _or previous_
+  `app.py:405` calls `on_mouse` on each element whose border contains the current _or previous_
   position, so overlapping elements (a child and every ancestor, or absolutely positioned siblings)
   all act on one click, with no way for the innermost to claim it.
 - **There is no way to stop an event.** A handler's return value is at most one control,
@@ -45,6 +45,11 @@ on_input: Callable[[InputEvent], InputResponse] | None = None
 `InputEvent` is the union of the routed event types described below.
 Both aliases are `Union` assignments like `MouseEvent` and `AnyEvent` in `events.py`,
 rather than PEP 695 `type` statements, which `isinstance` can't take.
+That keeps `InputEvent` usable with `isinstance`, but not `InputResponse`:
+`isinstance(response, InputResponse)` raises `TypeError` for `None`, `()`, and anything else that isn't a control,
+because the union contains the parameterized `tuple[AnyControl, ...]`,
+and it passes for a control only because the check stops at the first member that matches.
+Dispatch checks a response by hand instead: `None`, an `AnyControl`, or a `tuple` whose every item is an `AnyControl`.
 `TerminalResized` and `StateSet` aren't in it and never reach a handler.
 A later `Pasted` event (#391) joins the union and routes like a key.
 
@@ -128,8 +133,9 @@ Each handler receives the event with the routing context of its own element atta
 - For mouse events, `relative`: the pointer's position relative to the top-left of the receiving element's content box.
 - `focus_handle`: the receiving element's `FocusHandle` if its component called `use_focus`, or `None`.
 - `is_focused`: whether the receiving element is the focused node.
-  For a key it's the same as `is_target`;
-  for a mouse event it tells a text input whether a click is the one that focuses it.
+  For a key it's the same as `is_target`, except when nothing is focused:
+  the root is then the target, and no copy has `is_focused`.
+  For a mouse event it tells a text input whether a click is the one that focuses it.
 
 Each element on the path receives its own copy, so a parent sees its own rects, not its child's.
 `on_click` uses `rects` to tell a release inside the element from one outside,
@@ -261,17 +267,22 @@ so hit-testing shares that sort key with painting,
 and an element raised with `z` takes clicks from a later sibling it covers.
 Hidden elements have no layout, so they're never hit.
 
-While a button is held, from `MouseDown` to `MouseUp`, every mouse event targets
-the node that received the `MouseDown`, wherever the pointer is.
+While a button is held, from `MouseDown` to `MouseUp`, the press's own events
+(each `MouseMoved` with a button held, and the `MouseUp`) target the node that received the `MouseDown`,
+wherever the pointer is.
 This is the implicit pointer grab that X11, Win32, and DOM pointer capture all provide.
 It replaces today's "current or previous position" rule,
 which exists so a drag keeps reaching its element for one more event after the pointer leaves it,
 but loses the drag entirely when the pointer outruns a render
 (the TODO in `examples/mouse.py`'s `draggable_text`).
+Wheel events aren't part of a press, so they always target the element under the pointer,
+and a wheel turned mid-drag scrolls the container it's over.
 If the captured node unmounts mid-press, the remaining events of that press route by hit-testing.
-A `MouseDown` that arrives while a press is captured ends the capture and hit-tests afresh,
-so a release the terminal never reported (focus switched away mid-drag)
-holds the capture only until the next press.
+
+A release the terminal never reported (focus switched away mid-drag) mustn't leave the capture stuck.
+Any-motion tracking reports the held button with every move,
+so a `MouseMoved` with no button held ends the capture, as does a `MouseDown`,
+and either one hit-tests afresh.
 
 An element no longer sees the move that leaves it.
 `use_hovered` already covers hover state from `use_mouse`, which is unchanged:
@@ -282,9 +293,9 @@ it's a broadcast of the pointer's state, not a routed event.
 The target of a key event is the **focused** node, or the root component's node when nothing is focused.
 That is the node of the component passed to `app()`,
 not the `screen` element the app wraps it in (`app.py:164`), which has no handler and no ancestors.
-"Nothing focused" therefore means "the root is focused":
-handlers on the root and only the root receive keys,
-with no broadcast fallback for apps that never call `use_focus`.
+With nothing focused, handlers on the root and only the root receive keys,
+though the root isn't focused, so its copy of a key has `is_target=True` and `is_focused=False`.
+There is no broadcast fallback for apps that never call `use_focus`.
 A fallback would be a second routing mode whose interaction with the first
 every app with one focusable component would have to reason about.
 
@@ -314,7 +325,7 @@ so a component that handles keys puts its handler on its top-level element.
 Calling `use_focus` twice in one component raises,
 since both calls would name the same node.
 
-`handle` is an opaque `FocusHandle`, created once per component instance and compared by identity,
+`handle` is an opaque `FocusHandle`, created once per component instance,
 so a control can name the component, and it is safe to put in an effect's deps.
 
 Focus moves only through controls, `auto_focus`, and the focused component going away:
@@ -323,7 +334,7 @@ Focus moves only through controls, `auto_focus`, and the focused component going
   wrapping at the ends; from nothing focused, they go to the first or the last.
 - **`FocusOn(handle)`** focuses that component.
   It does nothing if the component has unmounted or is hidden, as a `use_state` setter does after unmount.
-- **`ClearFocus()`** clears focus, so keys go to the root.
+- **`ClearFocus()`** clears focus, so keys go to the root, which isn't focused.
 - **`auto_focus=True`** takes focus when the component mounts visible and nothing is focused.
   When several mount in the same render, the first in tree order wins (Ink's rule).
 - **Unmounting or hiding the focused component clears focus**,
@@ -335,17 +346,30 @@ Focus moves only through controls, `auto_focus`, and the focused component going
 No key or click has a built-in effect on focus.
 An app that wants Escape to clear focus, as Ink's does, binds it to `ClearFocus()`.
 One that wants a click outside every focusable to blur, as browsers do,
-puts a handler on its root that returns `ClearFocus()` for a `MouseDown`:
-`focus_on_press` stops every press that lands on a focusable, so the root sees only the others.
+puts a handler on its root that returns `ClearFocus()` for a `MouseDown`,
+which sees only the presses nothing below it claimed.
+`focus_on_press` claims every press that lands on a focusable, which is the point,
+but `on_click` and `select_text` claim presses on non-focusable elements too,
+so a click on a non-focusable button or a selectable message would keep focus where it was.
+Each of those elements composes the same `ClearFocus()` handler in alongside its press handler
+(`each(on_click(send), clear_focus)`), which keeps the blur visible at the call site
+of every element that causes it.
 
-Focus is held by the render loop as a reference to the focused component's `UseFocus` hook slot,
-which lives as long as the component instance does.
-After each render, the warmup render included, the loop reconciles it against the new tree:
-it collects the focusable slots of visible nodes in tree order,
-clears focus if its slot is no longer among them, and applies `auto_focus`.
+Focus is held by the render loop as the focused node's `NodeKey`, or `None`,
+the same identity press capture and the routing table use (see below).
+A `FocusHandle` wraps its component's `NodeKey`, so `FocusOn(handle)` names a key with no lookup,
+and a focused key missing from the current routing table means the component unmounted or is hidden,
+the same check press capture makes.
+The `UseFocus` slot records only that the component is focusable, its `auto_focus`, and its handle;
+it doesn't store whether the component is focused.
+`use_focus` reads that during render by comparing its own key with the focused key,
+which `update_shadow` takes as an input the way it takes `layouts`.
+After each render, the warmup render included, the loop reconciles focus against the new routing table:
+it clears focus if the focused key isn't among the table's focusable keys, and applies `auto_focus`.
+The table's focusable keys are the visible nodes whose last run called `use_focus`, in tree order.
 Visible means laid out this render:
 `Layouts.by_key` holds only visible nodes, since waxy's `absolute_layouts` omits hidden subtrees (`layout.py:232`).
-A focus change sets `is_focused` on the old and new slots and triggers a render,
+A focus change adds the old and new keys to `dirty` and triggers a render,
 the way a `use_state` setter does, so `is_focused` reads correctly in the next render.
 
 Because the warmup render reconciles too, an `auto_focus` component present at startup
@@ -367,7 +391,7 @@ The routing table (each visible node's ancestor path and rects, the paint order 
 and the focus order) is built once per render,
 in a pure function over the shadow tree and the layouts, not per event.
 It keys nodes by `ShadowNode.key`.
-`update_shadow` builds a new `ShadowNode` for every node on the path to a component that re-ran (`shadow.py:213`),
+`update_shadow` builds a new `ShadowNode` for every node on the path to a component that re-ran (`shadow.py:222`),
 so a node object can't name the same element from one render to the next,
 but its key, which its `Hooks` carry, lasts as long as the element does and is never reused.
 `ShadowTree.parents` and `Layouts.by_key` are already keyed by it.
@@ -408,7 +432,7 @@ A captured key missing from the current table means the node unmounted.
 
 Each step leaves the test suite passing and is a separate PR.
 Each updates `docs/input-handling/events.md`, the changelog,
-and every example, doc example, test, and `benchmarks/harness.py` call site it breaks.
+and every example, doc example, benchmark workload, and test it breaks.
 
 ### 1. Replace `on_key` and `on_mouse` with `on_input`
 
@@ -454,14 +478,16 @@ an event on a child reaches its parent's handler;
 `()` from the child keeps it from the parent;
 a single control from the child is applied and keeps it from the parent;
 a tuple of two controls applies both, in order, and stops the event;
-a handler returning a list raises;
+a handler returning a list raises, and so does one returning a tuple containing something that isn't a control;
 the parent's copy of a bubbled event carries the parent's rects and `is_target=False`;
 `relative` is the pointer's position from the receiving element's content box;
 a drag whose `MouseMoved` lands outside the element still reaches it until `MouseUp`,
 including when each move re-renders the element;
 after `MouseUp`, an event outside the element doesn't reach it;
 if the pressed node unmounts mid-drag, later events route by position;
-a `MouseDown` during a capture routes by position.
+a wheel event during a capture routes by position, and the capture continues;
+a `MouseDown` during a capture routes by position;
+a `MouseMoved` with no button held during a capture routes by position and ends the capture.
 The "previous position" case in `test_on_mouse.py` is replaced by the capture tests.
 The library handlers are pure, so their tests call them directly:
 `first` stops at the first response that isn't `None`, `()` included, and returns `None` when none respond;
@@ -477,7 +503,7 @@ Per event, walking an ancestor path costs no more than today's flat list.
 
 **Status:** Not started
 
-Add the `UseFocus` slot, the hook, `Focus`, `FocusHandle`,
+Add the `UseFocus` slot, the hook, the focused key as an input to `update_shadow`, `Focus`, `FocusHandle`,
 and the `FocusNext`, `FocusPrevious`, `FocusOn`, and `ClearFocus` controls,
 the focus order in the routing table, the focus reconciliation after each render,
 and key routing through the same bubbling dispatch, with `RoutedKeyPressed`.
@@ -495,6 +521,12 @@ for `use_focus` on each stopwatch and `tab_focus` on the root;
 and its root keeps swapping `textpad` and `time` on `Tab`, which has no built-in meaning;
 `suspend.py`'s `picker` and `wordle.py`'s `play` use `auto_focus=True`
 with their handler on the component's top-level element.
+So do two that a broken example wouldn't reveal:
+`docs/examples/performance_process_table.py`'s `process_table`,
+whose screenshot's `Down` would otherwise stop moving the selection,
+and `benchmarks/dashboard_local.py`'s `key_frame_counter`,
+which would otherwise stop counting frames and diverge from `dashboard`'s last frame.
+The counter keeps falling through to `None`, so each key still bubbles to the root that times it.
 
 `tests/controls/test_screenshot.py`'s
 `test_screenshots_requested_in_one_cycle_receive_the_same_frame` gets two screenshots into one cycle
@@ -502,7 +534,8 @@ by having two sibling handlers act on one key, which is what this step removes.
 Its root handler returns both `Screenshot`s as a tuple instead.
 
 Tests:
-with nothing focused, only the root component's handler receives a key;
+with nothing focused, only the root component's handler receives a key,
+and its copy has `is_target=True` and `is_focused=False`;
 a key reaches the focused node, then its ancestors, and not its siblings;
 the focused node's copy of a key has `is_target=True` and `is_focused=True`, and its ancestors' copies don't;
 a focusable element's copy of an event carries its component's `handle` as `focus_handle`,
@@ -539,7 +572,9 @@ needs a way to get theirs, and the two shapes trade differently:
 - The child passes its handle up through a callback prop.
   Nothing new is needed, but the parent learns the handle only after the child's first render.
 - The parent creates a handle and passes it down, and `use_focus` accepts it, like a React ref.
-  The parent has it from the start, at the cost of a second way to call `use_focus`.
+  The parent has it from the start, at the cost of a second way to call `use_focus`,
+  and a handle that no longer wraps its component's key, since the child's key doesn't exist yet:
+  the loop would need a map from such handles to keys, filled in as the children mount.
 
 No example or dependent issue needs this yet, so it waits for one.
 The same goes for a way to make a component conditionally unfocusable

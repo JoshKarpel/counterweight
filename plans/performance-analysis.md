@@ -41,8 +41,11 @@ component functions running. This changes the priority of memoization vs. other 
 
 The opportunities this analysis found, numbered as the runs below cite them:
 
-- **#1 Skip layout when the tree is unchanged.** Done by incremental layout:
-  `LayoutTree` keeps taffy's tree across frames and applies only the `layout_changes` (run 18).
+- **#1 Skip layout when the tree is unchanged.** Partly done.
+  `LayoutTree` keeps taffy's tree across frames, so taffy reuses its cached layout for unchanged nodes (run 10),
+  and only the `layout_changes` are applied to it (run 18).
+  `LayoutTree.compute` still calls `compute_layout` and reads every node's layout back on every frame,
+  even with no changes: 0.12 ms of `dashboard-local`'s 0.73 ms mean frame, where only one counter changes (run 18).
 - **#2 Memoize stable component subtrees.** Done: `update_shadow` re-runs only the components that have to,
   and `@component(memo=True)` skips one whose arguments are unchanged (run 18).
 - **#3 Incremental paint for `Text` nodes.** Done in user code, in `counterweight.utils.canvas` (run 3).
@@ -404,7 +407,7 @@ What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord`
 `findCaller`) and without-logging's `parse_record`. The sink task's JSON encoding runs between
 frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.
 
-### Run 10 — all four benchmark workloads, per-frame layout (styling-foundations step 10)
+### Run 10 — all four benchmark workloads, per-frame layout (PR #385)
 
 **Date:** 2026-10-10
 
@@ -420,7 +423,7 @@ frames, so in an app with idle time it costs nothing per frame; these saturated 
    `set_children` only when a node's children changed, and `remove` for every unmounted node.
 3. `resolve`: `_resolve_layout`, which turns a node's absolute position and `waxy.Layout`
    into four `Region`s, is an `lru_cache` keyed on `(position, layout, order)`.
-   It isn't in the plan; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
+   It wasn't planned; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
 
 Frame times (unprofiled runs):
 
@@ -638,11 +641,12 @@ Output bytes over 100 frames with `ResolvedCellStyle` interning off:
   Unverified explanation: `justify_line` builds its padding with `StyledChar(char=" ")`,
   which interning turns into a cache hit.
 
-### Run 15 — what styles cost per frame (styling-foundations step 12)
+### Run 15 — what styles cost per frame (PR #385)
 
 **Date:** 2026-10-11
 
-**Question:** what step 4's resolve step and step 5's derived border widths cost per frame,
+**Question:** what resolving authored styles to concrete ones (`resolve_style`, `resolve_cell_style`)
+and deriving border widths from `border_kind` (`layout_style`) cost per frame,
 and whether `Style` should cache its hash, now that `resolve_style`, `layout_style` and the merge cache
 all hash styles on every frame.
 
@@ -652,7 +656,7 @@ all hash styles on every frame.
   their bodies run on misses only, at most 0.5% of samples.
   What they cost is hashing the `Style` key: on `top`, the dataclass-generated `__hash__` called from
   `_update_node` (`layout_style`, and `resolve_style` for a `Text`'s wrap) is 1.6%, and from `paint_layout` 0.7%.
-  So step 5's derived border widths cost one key hash per element per frame, and nothing else.
+  So the derived border widths cost one key hash per element per frame, and nothing else.
 - Merging was the real cost. `StyleFragment.__or__` was 18.3% of `top`'s samples, 5.4% of `dashboard`'s:
   `top` merges four styles per cell of every process row, every frame.
   The merge cache was a cachetools `LRUCache`, whose `__getitem__` and `__touch` are Python and hash and
@@ -699,7 +703,7 @@ On `top` the rounds don't overlap: 11.92–12.55 ms before, 10.24–10.66 ms aft
   every construction; that's untested.
 - The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
 
-### Run 16 — output independent of interning (incremental-rendering step 1)
+### Run 16 — output independent of interning (PR #394)
 
 **Date:** 2026-10-12
 
@@ -745,7 +749,7 @@ with the range across rounds:
 - The last frame of every workload (`profiles/<name>.txt`) and every docs screenshot is identical
   before and after.
 
-### Run 17 — frames timed from the key handler, and `dashboard-local` (incremental-rendering step 2)
+### Run 17 — frames timed from the key handler, and `dashboard-local` (PR #394)
 
 **Date:** 2026-10-12
 
@@ -775,17 +779,17 @@ Median frame time, median of three rounds, with the range across rounds:
 - `dashboard-local` does the same work as `dashboard` while every component re-runs every frame,
   and measures the same. Its column is the baseline for skipping unchanged components.
 
-### Run 18 — incremental rendering, and interning revisited (incremental-rendering steps 3 to 8)
+### Run 18 — incremental rendering, and interning revisited (PR #394)
 
 **Date:** 2026-10-12
 
-**Change:** steps 3 to 7 of the incremental rendering plan (PR #394): per-node state in the shadow tree,
+**Change:** the rest of PR #394's incremental rendering: per-node state in the shadow tree,
 layout reconciled by the pure `layout_changes`, re-running only components whose state, arguments or
 rectangles changed, `@component(memo=True)`, `use_memo`, and no layout reconciliation for reused subtrees.
 
-**Method:** the baseline is step 2's `src` and `benchmarks` (`f0d40df`), run from their own directory
+**Method:** the baseline is run 17's `src` and `benchmarks` (`f0d40df`), run from their own directory
 against the same environment (`PYTHONPATH`), so both sides time frames from key presses.
-Steps 1 and 2 change nothing observable, so the baseline is the code from before the restructuring.
+Runs 16 and 17 change no frame, so the baseline is the code from before the restructuring.
 Five interleaved rounds of unprofiled `benchmarks run` (500 frames), baseline and `HEAD` alternating per workload.
 Profiles are `<workload>-s8base` and `<workload>-s8`. The `-memo` workloads exist only on `HEAD`.
 Every round's last frame is identical between the baseline and `HEAD`, between each `-memo` workload and its twin,
@@ -802,7 +806,7 @@ Median frame time, median of five rounds, with the range across rounds:
 | dashboard-local | 0.74 ms (0.71–0.76) | 0.60 ms (0.58–0.63) | −19% | | |
 
 Stages, ms per mean frame (one profiled run each, so read them as shares of a frame rather than as frame times).
-Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, it's `layout_changes`:
+In the baseline, layout reconciliation ran inside `LayoutTree.compute`; on `HEAD`, it's `layout_changes`:
 
 | Run | Mean frame | `update_shadow` | `layout_changes` | `LayoutTree.compute` | `paint_layout` | `diff_paint` | `Logger.debug` |
 |---|---|---|---|---|---|---|---|
@@ -820,14 +824,14 @@ Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, 
 | dashboard-local, baseline | 0.84 | 0.17 | | 0.09 | 0.28 | 0.02 | 0.15 |
 | dashboard-local | 0.73 | 0.04 | 0.02 | 0.12 | 0.29 | 0.02 | 0.12 |
 
-- **`dashboard-local`** does what the plan expected: `update_shadow` falls by three quarters and `layout_changes`
+- **`dashboard-local`** does what the change was for: `update_shadow` falls by three quarters and `layout_changes`
   is 0.02 ms, since only the frame counter re-runs. What's left of the frame is the whole-tree passes that call
   no user code: taffy's traversal and reading layouts back (`LayoutTree.compute`), paint, diff, and logging.
-- **The `-memo` workloads** differ as the plan predicted. `dashboard-memo` reuses every card and cuts
+- **The `-memo` workloads** differ as their designs predict. `dashboard-memo` reuses every card and cuts
   `update_shadow` by more than half. `agent-memo` re-runs only the streaming message. `top-memo` saves nothing,
   since its unkeyed rows reorder every frame and memo misses.
 - **`canvas` and `top`** are within the round-to-round spread of the baseline: their per-frame work dwarfs
-  the bookkeeping steps 3 to 7 added.
+  the bookkeeping the change added.
 - **`agent` and `dashboard`** are not: 0.08–0.09 ms per frame slower, with ranges that barely overlap.
   Profiles of 3,000 frames on each side (`<workload>-s8base-long`, `<workload>-s8-long`) put the extra samples
   in `update_shadow` and layout at +17% on `agent` and +18% on `dashboard`, spread across per-node bookkeeping
