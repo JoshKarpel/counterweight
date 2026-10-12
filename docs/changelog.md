@@ -4,6 +4,15 @@
 
 ### Added
 
+- [#400](https://github.com/JoshKarpel/counterweight/issues/400)
+  Added [`use_clock`](hooks/use_clock.md), which gives a component the time
+  (the wall-clock time, and how long since the app started and since the component mounted)
+  while it stays pure: it re-runs when its next tick starts, ticks follow the wall clock,
+  and components reading it in the same frame see the same time.
+  `app` takes a `clock` to read the time from, such as a `frozen_clock` for tests and screenshots,
+  and the `AdvanceClock` control moves it forward.
+  The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,

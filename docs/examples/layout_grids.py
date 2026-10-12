@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -103,3 +107,8 @@ SCREENSHOTS = [
     ScreenshotSpec(auto_flow(), "layout-grid-auto-flow", (100, 11)),
     ScreenshotSpec(wrap(), "layout-flex-wrap", (50, 9)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (tiles, spans, auto_flow, wrap)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else tiles()))

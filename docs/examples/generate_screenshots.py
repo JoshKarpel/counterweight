@@ -14,14 +14,19 @@ import pkgutil
 import subprocess
 import sys
 from collections import Counter
+from datetime import UTC, datetime
 
 import docs.examples
 from counterweight.app import app
+from counterweight.clock import frozen_clock
 from counterweight.controls import Quit, Screenshot
 from counterweight.output import Frame
 from docs.examples.screenshot_spec import ASSETS, ScreenshotSpec
 
 NOT_EXAMPLES = {"generate_screenshots", "screenshot_spec"}
+
+# Every screenshot is taken at this time, so a screenshot of a clock doesn't change with each run.
+SCREENSHOT_TIME = datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC)
 
 
 def example_modules() -> list[str]:
@@ -37,13 +42,17 @@ def screenshots(module_name: str) -> list[ScreenshotSpec]:
 
 
 async def render(spec: ScreenshotSpec) -> None:
-    """Run the example headless, checking its components are pure, and write its screenshot as SVG and as plain text."""
+    """
+    Run the example headless at `SCREENSHOT_TIME`, checking its components are pure,
+    and write its screenshot as SVG and as plain text.
+    """
     await app(
         spec.root,
         headless=True,
         dimensions=spec.dimensions,
         autopilot=[*spec.events, Screenshot(handler=functools.partial(write_files, spec)), Quit()],
         check_purity=True,
+        clock=frozen_clock(SCREENSHOT_TIME),
     )
 
 

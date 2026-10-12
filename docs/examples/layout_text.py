@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -92,3 +96,8 @@ SCREENSHOTS = [
     ScreenshotSpec(justify(), "layout-text-justify", (50, 11)),
     ScreenshotSpec(narrow(), "layout-text-narrow", (48, 5)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (wrap_in_pane, wrap_in_row, justify, narrow)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else wrap_in_pane()))

@@ -101,18 +101,18 @@ def press(node: ShadowNode, key: str) -> None:
         ),
         pytest.param(
             performance_state_moved_down.dashboard(),
-            performance_state_moved_down.uptime,
-            ["uptime"],
+            performance_state_moved_down.note,
+            ["note"],
             id="state-moved-down",
         ),
     ],
 )
-def test_the_uptime_ticking_reruns_the_component_holding_it_and_everything_it_returns(
+def test_typing_a_note_reruns_the_component_holding_it_and_everything_it_returns(
     root: Component, holder: Callable[[], Component], expected: list[str]
 ) -> None:
     with renders() as r:
         tree = r.render(root).tree.root
-        setter_of(find(tree, holder))(1)
+        setter_of(find(tree, holder))("d")
 
         assert ran(r.render(root)) == expected
 

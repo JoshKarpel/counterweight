@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -169,3 +173,11 @@ SCREENSHOTS = [
     ScreenshotSpec(aspect(), "layout-size-aspect-ratio", (36, 18)),
     ScreenshotSpec(box_sizing(), "layout-size-box-sizing", (30, 6)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {
+        root.__name__: root
+        for root in (fixed, fit, content_keywords, content_keywords_col, filling, clamped, aspect, box_sizing)
+    }
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else fixed()))

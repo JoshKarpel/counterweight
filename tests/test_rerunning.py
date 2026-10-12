@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from asyncio import Event, Queue, TaskGroup, create_task, wait_for
 from collections.abc import Callable
+from copy import copy
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 import pytest
 from hypothesis import given
@@ -10,6 +12,7 @@ from hypothesis import strategies as st
 
 from counterweight._utils import cancel_tasks, forever
 from counterweight.app import app
+from counterweight.clock import BEGINNING
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
@@ -17,7 +20,7 @@ from counterweight.events import AnyEvent, KeyPressed, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseRef
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseClock, UseRef
 from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
 from tests.rendering import effect_tasks, render, state_set_keys, state_sets
@@ -301,12 +304,16 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
 
 @st.composite
 def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
-    """A tree of nodes, some with state set and some whose `use_rects` result has moved, and the set keys."""
+    """
+    A tree of nodes, some with state set, some whose `use_rects` result has moved,
+    and some whose `use_clock` is due at `NOW`, and the set keys.
+    """
     shape = draw(st.recursive(st.just(()), lambda children: st.lists(children, max_size=3).map(tuple), max_leaves=12))
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
         hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED_RECTS]))
+        hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,
             element=Text(content=""),
@@ -321,6 +328,9 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
 
 MOVED_RECTS = Rects(content=MOVED.content, padding=MOVED.padding, border=MOVED.border, margin=MOVED.margin)
+NOW = BEGINNING + timedelta(seconds=90)
+DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=BEGINNING)
+NOT_DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=NOW)
 
 
 @given(tree_and_dirty=dirty_trees())
@@ -330,10 +340,10 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
     tree, dirty = tree_and_dirty
 
     brute_force = frozenset(
-        node.key for node in tree.walk() if any(is_dirty(below, dirty, NO_LAYOUTS) for below in node.walk())
+        node.key for node in tree.walk() if any(is_dirty(below, dirty, NO_LAYOUTS, NOW) for below in node.walk())
     )
 
-    _, paths = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS)
+    _, paths = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS, NOW)
 
     assert paths == brute_force
 
@@ -342,9 +352,9 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
 def test_dirty_paths_reports_each_dirty_node(tree_and_dirty: tuple[ShadowNode, frozenset[NodeKey]]) -> None:
     tree, dirty = tree_and_dirty
 
-    dirty_nodes, _ = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS)
+    dirty_nodes, _ = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS, NOW)
 
-    assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NO_LAYOUTS))
+    assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NO_LAYOUTS, NOW))
 
 
 @given(tree_and_dirty=dirty_trees())

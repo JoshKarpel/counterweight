@@ -2,7 +2,7 @@ import asyncio
 import logging
 import zlib
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, timedelta
 from random import choice
 from string import ascii_letters, ascii_uppercase
 from typing import Literal
@@ -14,7 +14,7 @@ from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseEvent, MouseUp
-from counterweight.hooks import Setter, use_state
+from counterweight.hooks import Setter, use_clock, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -41,14 +41,14 @@ GUESSABLE_WORDS = set(
 MAX_SUBMITS = 6
 
 
-def today_solution() -> str:
-    days_since_epoch = (datetime.now() - datetime(1970, 1, 1)).days
-    return SOLUTION_WORDS[days_since_epoch % len(SOLUTION_WORDS)]
+def daily_solution(day: date) -> str:
+    return SOLUTION_WORDS[(day - date(1970, 1, 1)).days % len(SOLUTION_WORDS)]
 
 
 @component
 def root() -> Div:
     playing, set_playing = use_state(False)
+    today = use_clock(timedelta(days=1)).now.date()
 
     def stop_playing() -> None:
         return set_playing(False)
@@ -71,7 +71,7 @@ def root() -> Div:
     else:
 
         def play_today() -> None:
-            s = today_solution()
+            s = daily_solution(today)
             logger.debug("Starting play", extra={"solution": s})
             set_solution(s)
             set_playing(True)
@@ -101,7 +101,7 @@ def root() -> Div:
                     style=col | align_children_center | gap(2) | margin_top(4),
                     children=[
                         menu_button(
-                            content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
+                            content=f"[F1] Play Daily ({today:%Y-%m-%d})",
                             hover_style=text_color("indigo", 500) | border_color("indigo", 500),
                             on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
                         ),

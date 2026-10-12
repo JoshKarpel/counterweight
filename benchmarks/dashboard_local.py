@@ -5,7 +5,6 @@ Nothing above the counter holds state, so only the counter's state changes each 
 compared with `dashboard`, this measures what skipping the components whose state didn't change saves.
 """
 
-import asyncio
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from time import perf_counter_ns
@@ -15,7 +14,7 @@ from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
-from counterweight.hooks import use_effect, use_state
+from counterweight.hooks import use_clock, use_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,17 +52,7 @@ def key_frame_counter() -> Text:
 
 @component
 def timed_frame_counter(frame_interval: timedelta) -> Text:
-    tick, set_tick = use_state(0)
-    seconds = frame_interval.total_seconds()
-
-    async def advance() -> None:
-        while True:
-            await asyncio.sleep(seconds)
-            set_tick(lambda previous: previous + 1)
-
-    use_effect(advance, deps=())
-
-    return frame_text(tick)
+    return frame_text(use_clock(frame_interval).since_mount // frame_interval)
 
 
 WORKLOAD = LocalDashboard(
