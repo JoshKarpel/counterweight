@@ -43,7 +43,7 @@ def agent_progress() -> Component:
 
 SCREENSHOTS = [
     ScreenshotSpec(
-        agent_progress,
+        agent_progress(),
         "spinner",
         (40, 3),
         events=[AdvanceClock(by=timedelta(seconds=4, milliseconds=160))],
@@ -52,4 +52,4 @@ SCREENSHOTS = [
 
 
 if __name__ == "__main__":
-    asyncio.run(app(agent_progress))
+    asyncio.run(app(agent_progress()))

@@ -99,13 +99,13 @@ def contract() -> Div:
 # --8<-- [end:contract]
 
 SCREENSHOTS = [
-    ScreenshotSpec(gap_margin_pad, "layout-gap-margin-pad", (60, 15)),
-    ScreenshotSpec(collapse, "layout-border-collapse", (49, 6)),
-    ScreenshotSpec(sides, "layout-border-sides", (61, 4)),
-    ScreenshotSpec(contract, "layout-border-contract", (37, 4)),
+    ScreenshotSpec(gap_margin_pad(), "layout-gap-margin-pad", (60, 15)),
+    ScreenshotSpec(collapse(), "layout-border-collapse", (49, 6)),
+    ScreenshotSpec(sides(), "layout-border-sides", (61, 4)),
+    ScreenshotSpec(contract(), "layout-border-contract", (37, 4)),
 ]
 
 
 if __name__ == "__main__":
     roots = {root.__name__: root for root in (gap_margin_pad, collapse, sides, contract)}
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else gap_margin_pad))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else gap_margin_pad()))

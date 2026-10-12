@@ -74,8 +74,8 @@ def root() -> Div:
     return Div(style=pad(1), children=[process_table(PROCESSES)])
 
 
-SCREENSHOTS = [ScreenshotSpec(root, "performance-process-table", (32, 7), events=(KeyPressed(key=Key.Down),))]
+SCREENSHOTS = [ScreenshotSpec(root(), "performance-process-table", (32, 7), events=(KeyPressed(key=Key.Down),))]
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

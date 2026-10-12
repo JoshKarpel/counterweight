@@ -159,4 +159,4 @@ def data_cell(value: str, col_width: int, selected: bool) -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

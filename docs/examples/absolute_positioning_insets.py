@@ -73,8 +73,8 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "absolute-positioning-insets", (60, 25))]
+SCREENSHOTS = [ScreenshotSpec(root(), "absolute-positioning-insets", (60, 25))]
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

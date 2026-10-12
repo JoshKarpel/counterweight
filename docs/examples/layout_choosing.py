@@ -135,12 +135,12 @@ def conflict() -> Div:
 # --8<-- [end:conflict]
 
 SCREENSHOTS = [
-    ScreenshotSpec(shell_flex, "layout-choosing-shell-flex", (60, 8)),
-    ScreenshotSpec(shell_grid, "layout-choosing-shell-grid", (60, 8)),
-    ScreenshotSpec(mixed, "layout-choosing-mixed", (60, 8)),
-    ScreenshotSpec(extra_child_grid, "layout-choosing-extra-child-grid", (45, 6)),
-    ScreenshotSpec(extra_child_flex, "layout-choosing-extra-child-flex", (45, 6)),
-    ScreenshotSpec(conflict, "layout-choosing-conflict", (61, 11)),
+    ScreenshotSpec(shell_flex(), "layout-choosing-shell-flex", (60, 8)),
+    ScreenshotSpec(shell_grid(), "layout-choosing-shell-grid", (60, 8)),
+    ScreenshotSpec(mixed(), "layout-choosing-mixed", (60, 8)),
+    ScreenshotSpec(extra_child_grid(), "layout-choosing-extra-child-grid", (45, 6)),
+    ScreenshotSpec(extra_child_flex(), "layout-choosing-extra-child-flex", (45, 6)),
+    ScreenshotSpec(conflict(), "layout-choosing-conflict", (61, 11)),
 ]
 
 
@@ -148,4 +148,4 @@ if __name__ == "__main__":
     roots = {
         root.__name__: root for root in (shell_flex, shell_grid, mixed, extra_child_grid, extra_child_flex, conflict)
     }
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else shell_flex))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else shell_flex()))

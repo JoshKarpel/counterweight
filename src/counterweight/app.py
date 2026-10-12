@@ -93,7 +93,7 @@ def screen_element_style(width: int, height: int) -> Style:
 
 
 async def app(
-    root: Callable[[], Component],
+    root: Component,
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
     headless: bool = False,
@@ -104,7 +104,8 @@ async def app(
 ) -> None:
     """
     Parameters:
-        root: The root [component][counterweight.components.component] of the application.
+        root: The root [component][counterweight.components.component] of the application, already called
+            with its arguments, such as `app(root(path))`.
         output_stream: The stream to which the application will write its output.
         input_stream: The stream from which the application will read its input.
         headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
@@ -150,7 +151,7 @@ async def app(
 
 
 async def render_loop(
-    root: Callable[[], Component],
+    root: Component,
     output_stream: TextIO,
     input_stream: TextIO,
     headless: bool,
@@ -171,7 +172,7 @@ async def render_loop(
 
     @component
     def screen(style: Style) -> Div:
-        return Div(children=(root(),), style=style)
+        return Div(children=(root,), style=style)
 
     logger.info("Application starting...")
 

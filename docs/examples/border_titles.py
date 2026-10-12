@@ -52,8 +52,8 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "border-titles", (70, 5))]
+SCREENSHOTS = [ScreenshotSpec(root(), "border-titles", (70, 5))]
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

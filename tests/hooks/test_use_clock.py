@@ -213,7 +213,7 @@ async def test_advancing_a_frozen_clock_rerenders_the_components_reading_it() ->
         frames.append(frame.text(ansi=False).strip())
 
     await app(
-        lambda: clock_text(timedelta(seconds=1)),
+        clock_text(timedelta(seconds=1)),
         headless=True,
         dimensions=(50, 1),
         autopilot=[
@@ -244,7 +244,7 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
             ticked_three_times.set()
         return Text(content="")
 
-    task = create_task(app(recorder, headless=True, dimensions=(20, 1), clock=system_clock))
+    task = create_task(app(recorder(), headless=True, dimensions=(20, 1), clock=system_clock))
     try:
         await wait_for(ticked_three_times.wait(), timeout=5)
     finally:

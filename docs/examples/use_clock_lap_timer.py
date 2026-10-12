@@ -43,7 +43,7 @@ def lap_timer() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(
-        lap_timer,
+        lap_timer(),
         "use-clock-lap-timer",
         (20, 1),
         events=[
@@ -56,4 +56,4 @@ SCREENSHOTS = [
 
 
 if __name__ == "__main__":
-    asyncio.run(app(lap_timer))
+    asyncio.run(app(lap_timer()))

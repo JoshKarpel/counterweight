@@ -112,13 +112,13 @@ def badge() -> Div:
 # --8<-- [end:badge]
 
 SCREENSHOTS = [
-    ScreenshotSpec(relative, "layout-relative", (39, 7)),
-    ScreenshotSpec(absolute, "layout-absolute", (50, 9)),
-    ScreenshotSpec(dialog, "layout-dialog", (60, 12)),
-    ScreenshotSpec(badge, "layout-badge", (21, 3)),
+    ScreenshotSpec(relative(), "layout-relative", (39, 7)),
+    ScreenshotSpec(absolute(), "layout-absolute", (50, 9)),
+    ScreenshotSpec(dialog(), "layout-dialog", (60, 12)),
+    ScreenshotSpec(badge(), "layout-badge", (21, 3)),
 ]
 
 
 if __name__ == "__main__":
     roots = {root.__name__: root for root in (relative, absolute, dialog, badge)}
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else relative))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else relative()))

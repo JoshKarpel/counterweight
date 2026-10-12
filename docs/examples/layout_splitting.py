@@ -224,17 +224,17 @@ def percent_gap() -> Div:
 # --8<-- [end:percent-gap]
 
 SCREENSHOTS = [
-    ScreenshotSpec(equal_flex, "layout-split-equal-flex", (75, 3)),
-    ScreenshotSpec(equal_grid, "layout-split-equal-grid", (75, 3)),
-    ScreenshotSpec(sidebar_flex, "layout-split-sidebar-flex", (60, 3)),
-    ScreenshotSpec(sidebar_grid, "layout-split-sidebar-grid", (60, 3)),
-    ScreenshotSpec(ratio_flex, "layout-split-ratio-flex", (60, 3)),
-    ScreenshotSpec(ratio_grid, "layout-split-ratio-grid", (60, 3)),
-    ScreenshotSpec(ratio_exact, "layout-split-ratio-exact", (60, 3)),
-    ScreenshotSpec(nested_flex, "layout-split-nested-flex", (60, 8)),
-    ScreenshotSpec(nested_grid, "layout-split-nested-grid", (60, 8)),
-    ScreenshotSpec(overflow_grid, "layout-split-overflow-grid", (60, 10)),
-    ScreenshotSpec(percent_gap, "layout-split-percent-gap", (60, 10)),
+    ScreenshotSpec(equal_flex(), "layout-split-equal-flex", (75, 3)),
+    ScreenshotSpec(equal_grid(), "layout-split-equal-grid", (75, 3)),
+    ScreenshotSpec(sidebar_flex(), "layout-split-sidebar-flex", (60, 3)),
+    ScreenshotSpec(sidebar_grid(), "layout-split-sidebar-grid", (60, 3)),
+    ScreenshotSpec(ratio_flex(), "layout-split-ratio-flex", (60, 3)),
+    ScreenshotSpec(ratio_grid(), "layout-split-ratio-grid", (60, 3)),
+    ScreenshotSpec(ratio_exact(), "layout-split-ratio-exact", (60, 3)),
+    ScreenshotSpec(nested_flex(), "layout-split-nested-flex", (60, 8)),
+    ScreenshotSpec(nested_grid(), "layout-split-nested-grid", (60, 8)),
+    ScreenshotSpec(overflow_grid(), "layout-split-overflow-grid", (60, 10)),
+    ScreenshotSpec(percent_gap(), "layout-split-percent-gap", (60, 10)),
 ]
 
 
@@ -255,4 +255,4 @@ if __name__ == "__main__":
             percent_gap,
         )
     }
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else equal_flex))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else equal_flex()))

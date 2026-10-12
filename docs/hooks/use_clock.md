@@ -99,7 +99,7 @@ so a test or a screenshot doesn't depend on when it runs or how long it takes:
 ```python
 async def test_the_lap_timer_counts_from_the_last_lap() -> None:
     await app(
-        lap_timer,
+        lap_timer(),
         headless=True,
         clock=frozen_clock(datetime(2026, 3, 14, 15, 9, 26)),
         autopilot=[

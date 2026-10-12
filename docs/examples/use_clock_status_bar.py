@@ -37,7 +37,7 @@ def status_bar() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(
-        status_bar,
+        status_bar(),
         "use-clock-status-bar",
         (40, 3),
         events=[AdvanceClock(by=timedelta(hours=1, minutes=2, seconds=5))],
@@ -46,4 +46,4 @@ SCREENSHOTS = [
 
 
 if __name__ == "__main__":
-    asyncio.run(app(status_bar))
+    asyncio.run(app(status_bar()))

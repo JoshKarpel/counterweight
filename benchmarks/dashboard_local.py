@@ -5,14 +5,13 @@ Nothing above the counter holds state, so only the counter's state changes each 
 compared with `dashboard`, this measures what skipping the components whose state didn't change saves.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from time import perf_counter_ns
 
 from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text, layout, metric_card
-from counterweight.components import Component, component
+from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_clock, use_state
@@ -26,26 +25,19 @@ class LocalDashboard:
     description: str
     dimensions: tuple[int, int]
 
-    def root(self, key_press_times: list[int]) -> Callable[[], Component]:
+    @component
+    def root(self, key_press_times: list[int]) -> Div:
         """A root component whose key handler only appends the time to `key_press_times`; the counter steps itself."""
 
-        @component
-        def dashboard_local_root() -> Div:
-            def on_key(_: KeyPressed) -> None:
-                key_press_times.append(perf_counter_ns())
+        def on_key(_: KeyPressed) -> None:
+            key_press_times.append(perf_counter_ns())
 
-            return replace(layout(key_frame_counter(), metric_card), on_key=on_key)
+        return replace(layout(key_frame_counter(), metric_card), on_key=on_key)
 
-        return dashboard_local_root
-
-    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]:
+    @component
+    def live_root(self, frame_interval: timedelta) -> Div:
         """A root component whose counter steps itself every `frame_interval`."""
-
-        @component
-        def live_dashboard_local_root() -> Div:
-            return layout(timed_frame_counter(frame_interval), metric_card)
-
-        return live_dashboard_local_root
+        return layout(timed_frame_counter(frame_interval), metric_card)
 
 
 @component

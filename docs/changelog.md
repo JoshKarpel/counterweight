@@ -107,6 +107,10 @@
 
 ### Changed
 
+- [#271](https://github.com/JoshKarpel/counterweight/issues/271)
+  `app` takes the root component already called, as `app(root())` rather than `app(root)`,
+  so a root component can take arguments like any other: `app(root(Path(sys.argv[1])))`.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   An error raised while the app runs, in a component, a handler or an effect,
   propagates out of `app` as itself rather than wrapped in an `ExceptionGroup`,

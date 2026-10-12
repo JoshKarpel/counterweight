@@ -38,7 +38,7 @@ def dashboard() -> Div:
 
 SCREENSHOTS = [
     ScreenshotSpec(
-        dashboard,
+        dashboard(),
         "performance-dashboard",
         (80, 5),
         events=[KeyPressed(key=key) for key in "disk is busy"],
@@ -47,4 +47,4 @@ SCREENSHOTS = [
 
 
 if __name__ == "__main__":
-    asyncio.run(app(dashboard))
+    asyncio.run(app(dashboard()))

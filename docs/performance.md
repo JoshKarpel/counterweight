@@ -322,7 +322,7 @@ Pass `check_purity=True` to `app` in tests, and drive the app with an autopilot:
 ```python
 async def test_process_table_is_pure() -> None:
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(32, 7),
         autopilot=[KeyPressed(key=Key.Down), KeyPressed(key=Key.Down), KeyPressed(key=Key.Up), Quit()],

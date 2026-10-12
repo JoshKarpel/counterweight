@@ -15,7 +15,6 @@ the plain-text grid written to current_paint.
 from __future__ import annotations
 
 import io
-from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
@@ -26,10 +25,10 @@ from counterweight.hooks import use_state
 from counterweight.styles.utilities import col, size
 
 
-async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> str:
+async def _render(root: Component, dimensions: tuple[int, int]) -> str:
     capture = io.StringIO()
     await app(
-        root_fn,
+        root,
         headless=True,
         dimensions=dimensions,
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
@@ -38,11 +37,11 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
     return capture.getvalue().rstrip("\n")
 
 
-async def _two_frames(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> tuple[str, str]:
+async def _two_frames(root: Component, dimensions: tuple[int, int]) -> tuple[str, str]:
     """Capture paint before and after a single key press."""
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root_fn,
+        root,
         headless=True,
         dimensions=dimensions,
         autopilot=[
@@ -66,7 +65,7 @@ async def test_initial_render_shows_text() -> None:
     def root() -> Div:
         return Div(children=[Text(content="Hello")])
 
-    assert await _render(root, (10, 1)) == "Hello     "
+    assert await _render(root(), (10, 1)) == "Hello     "
 
 
 async def test_initial_render_empty_screen_is_all_spaces() -> None:
@@ -74,7 +73,7 @@ async def test_initial_render_empty_screen_is_all_spaces() -> None:
     def root() -> Div:
         return Div()
 
-    assert await _render(root, (5, 3)) == "\n".join(["     ", "     ", "     "])
+    assert await _render(root(), (5, 3)) == "\n".join(["     ", "     ", "     "])
 
 
 async def test_initial_render_uncovered_rows_are_spaces() -> None:
@@ -87,7 +86,7 @@ async def test_initial_render_uncovered_rows_are_spaces() -> None:
             children=[Text(content="Hello")],
         )
 
-    assert await _render(root, (5, 3)) == "\n".join(["Hello", "     ", "     "])
+    assert await _render(root(), (5, 3)) == "\n".join(["Hello", "     ", "     "])
 
 
 async def test_ansi_background_is_explicit_black() -> None:
@@ -99,7 +98,7 @@ async def test_ansi_background_is_explicit_black() -> None:
 
     capture = io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(2, 1),
         autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
@@ -119,7 +118,7 @@ async def test_ansi_uncovered_area_has_explicit_black_background() -> None:
 
     capture = io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(2, 1),
         autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
@@ -139,7 +138,7 @@ async def test_ansi_after_resize_new_area_has_explicit_black_background() -> Non
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(1, 1),
         autopilot=[
@@ -167,7 +166,7 @@ async def test_initial_render_multiline() -> None:
             ],
         )
 
-    assert await _render(root, (6, 2)) == "\n".join(["Hello ", "World "])
+    assert await _render(root(), (6, 2)) == "\n".join(["Hello ", "World "])
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +184,7 @@ async def test_replacement_new_text_appears() -> None:
 
         return Div(on_key=on_key, children=[Text(content=text)])
 
-    before, after = await _two_frames(root, (10, 1))
+    before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
     assert after == "World     "
 
@@ -202,7 +201,7 @@ async def test_replacement_shorter_text_pads_with_spaces() -> None:
 
         return Div(on_key=on_key, children=[Text(content=text)])
 
-    before, after = await _two_frames(root, (10, 1))
+    before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
     assert after == "Hi        "
 
@@ -217,7 +216,7 @@ async def test_replacement_longer_text_fills_space() -> None:
 
         return Div(on_key=on_key, children=[Text(content=text)])
 
-    before, after = await _two_frames(root, (10, 1))
+    before, after = await _two_frames(root(), (10, 1))
     assert before == "Hi        "
     assert after == "Hello     "
 
@@ -238,7 +237,7 @@ async def test_removal_positions_become_spaces() -> None:
         children = [Text(content="Hello")] if visible else []
         return Div(on_key=on_key, children=children)
 
-    before, after = await _two_frames(root, (10, 1))
+    before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
     assert after == "          "
 
@@ -256,7 +255,7 @@ async def test_removal_of_second_row_becomes_spaces() -> None:
             children.append(Text(content="Line 2"))
         return Div(style=col | size(6, 2), on_key=on_key, children=children)
 
-    before, after = await _two_frames(root, (6, 2))
+    before, after = await _two_frames(root(), (6, 2))
     assert before == "\n".join(["Line 1", "Line 2"])
     assert after == "\n".join(["Line 1", "      "])
 
@@ -277,7 +276,7 @@ async def test_addition_positions_fill_in() -> None:
         children = [Text(content="Hello")] if visible else []
         return Div(on_key=on_key, children=children)
 
-    before, after = await _two_frames(root, (10, 1))
+    before, after = await _two_frames(root(), (10, 1))
     assert before == "          "
     assert after == "Hello     "
 
@@ -295,7 +294,7 @@ async def test_addition_of_second_row_fills_in() -> None:
             children.append(Text(content="Line 2"))
         return Div(style=col | size(6, 2), on_key=on_key, children=children)
 
-    before, after = await _two_frames(root, (6, 2))
+    before, after = await _two_frames(root(), (6, 2))
     assert before == "\n".join(["Line 1", "      "])
     assert after == "\n".join(["Line 1", "Line 2"])
 
@@ -314,7 +313,7 @@ async def test_resize_rerenders_content_correctly() -> None:
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(10, 1),
         autopilot=[
@@ -338,7 +337,7 @@ async def test_resize_with_new_dimensions() -> None:
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(5, 1),
         autopilot=[
@@ -362,7 +361,7 @@ async def test_resize_to_larger_new_area_is_spaces() -> None:
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(5, 1),
         autopilot=[
@@ -389,7 +388,7 @@ async def test_resize_to_smaller_no_stale_rows() -> None:
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(5, 3),
         autopilot=[
@@ -418,7 +417,7 @@ async def test_resize_clears_stale_content() -> None:
 
     c1, c2, c3 = io.StringIO(), io.StringIO(), io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(10, 1),
         autopilot=[

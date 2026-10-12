@@ -142,14 +142,14 @@ def overflow() -> Div:
 # --8<-- [end:overflow]
 
 SCREENSHOTS = [
-    ScreenshotSpec(justify, "layout-justify-children", (50, 30)),
-    ScreenshotSpec(align, "layout-align-children", (120, 9)),
-    ScreenshotSpec(align_self, "layout-align-self", (80, 9)),
-    ScreenshotSpec(center, "layout-center", (50, 9)),
-    ScreenshotSpec(overflow, "layout-center-overflow", (70, 17)),
+    ScreenshotSpec(justify(), "layout-justify-children", (50, 30)),
+    ScreenshotSpec(align(), "layout-align-children", (120, 9)),
+    ScreenshotSpec(align_self(), "layout-align-self", (80, 9)),
+    ScreenshotSpec(center(), "layout-center", (50, 9)),
+    ScreenshotSpec(overflow(), "layout-center-overflow", (70, 17)),
 ]
 
 
 if __name__ == "__main__":
     roots = {root.__name__: root for root in (justify, align, align_self, center, overflow)}
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else justify))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else justify()))

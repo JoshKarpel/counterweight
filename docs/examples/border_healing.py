@@ -59,10 +59,10 @@ def root() -> Div:
 # --8<-- [end:example]
 
 SCREENSHOTS = [
-    ScreenshotSpec(root, "border-healing-on", (60, 20)),
-    ScreenshotSpec(root, "border-healing-off", (60, 20), events=[KeyPressed(key=Key.Space)]),
+    ScreenshotSpec(root(), "border-healing-on", (60, 20)),
+    ScreenshotSpec(root(), "border-healing-off", (60, 20), events=[KeyPressed(key=Key.Space)]),
 ]
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

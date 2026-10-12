@@ -102,13 +102,13 @@ def wrap() -> Div:
 # --8<-- [end:wrap]
 
 SCREENSHOTS = [
-    ScreenshotSpec(tiles, "layout-grid-tiles", (60, 12)),
-    ScreenshotSpec(spans, "layout-grid-spans", (60, 12)),
-    ScreenshotSpec(auto_flow, "layout-grid-auto-flow", (100, 11)),
-    ScreenshotSpec(wrap, "layout-flex-wrap", (50, 9)),
+    ScreenshotSpec(tiles(), "layout-grid-tiles", (60, 12)),
+    ScreenshotSpec(spans(), "layout-grid-spans", (60, 12)),
+    ScreenshotSpec(auto_flow(), "layout-grid-auto-flow", (100, 11)),
+    ScreenshotSpec(wrap(), "layout-flex-wrap", (50, 9)),
 ]
 
 
 if __name__ == "__main__":
     roots = {root.__name__: root for root in (tiles, spans, auto_flow, wrap)}
-    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else tiles))
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else tiles()))
