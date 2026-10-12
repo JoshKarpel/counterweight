@@ -5,7 +5,7 @@ one retained tree that owns every piece of per-node state, reconciliation as a p
 whose output is applied to taffy in one place, re-running only the components whose state or
 arguments changed, and letting the unchanged subtrees that produces skip layout work by identity.
 It doesn't cover moving the cell buffer into native code, painting only dirty regions,
-throttling the frame rate, or `use_memo`/`use_callback` hooks; see [Out of scope](#out-of-scope).
+throttling the frame rate, or a `use_callback` hook; see [Out of scope](#out-of-scope).
 
 ## Goals, ranked
 
@@ -56,7 +56,7 @@ The problems, concretely:
 - **Output size depends on interning.** `paint_to_instructions` starts a new SGR sequence
   whenever a cell's style is a different object from the previous cell's (`output.py:109`),
   so equal styles that are separate instances re-send their SGR sequence.
-  Run 14 in `plans/performance-analysis-2026-03-07.md` measured output growing by 49% on
+  Run 14 in `plans/performance-analysis.md` measured output growing by 49% on
   `top` and 126% on `agent` with `ResolvedCellStyle` interning off.
 - **The benchmarks can't show skipped work.** The workloads already compose `@component`
   functions that take slices of the model (`metric_card`, `process_row`, `message_view`),
@@ -102,7 +102,7 @@ model isn't held by the root. Its last frame must equal `dashboard`'s, which che
 the same thing.
 
 Until step 4 it exercises the same code as `dashboard`; record its frame times now, so steps
-4 to 6 have a baseline. The `memo` variants wait for step 5, which adds `memo`.
+4 to 7 have a baseline. The `memo` variants wait for step 5, which adds `memo`.
 
 ### 3. Own all per-node state in the shadow tree, and reconcile layout as a pure function
 
@@ -230,29 +230,128 @@ not after every frame.
 - A resize re-runs every component.
 - `dirty_paths` matches a brute-force walk, as a property test.
 
+Docs: `docs/ecosystem.md`'s comparison with Ink stops saying Counterweight renders every
+component on every render.
+
 ### 5. Add `@component(memo=True)`
 
-A `memo` component whose `Component` isn't the previous one is treated as if it were when its
-arguments equal last frame's (`is` first, then `==`), so step 4's rules then reuse it, pass
-through it to a dirty descendant, or re-run it because its own key is in `dirty`.
-`Component` gains a `memo: bool` field, and `component` accepts `memo` as a keyword argument.
+A `memo` component whose `Component` isn't the previous one is treated as if it were when it
+equals last frame's, so step 4's rules then reuse it, pass through it to a dirty descendant,
+or re-run it because its own key is in `dirty`:
+
+```python
+same = next is previous.component or (next.memo and next == previous.component)
+```
+
+`Component`'s generated `__eq__` already compares `func`, `args`, `kwargs` and `key`, and tuple
+and dict equality check each element by identity before `==`, so no comparison function is
+needed. `Component` gains `memo: bool = field(default=False, compare=False)`: it's a property
+of `func`, which is already compared.
+
+**The decorator.** `component` takes both forms, `@component` and `@component(memo=True)`,
+through two `typing.overload` signatures, with `func` positional-only so `memo` must be passed
+by keyword. A scratch probe confirmed that mypy keeps the wrapped signature through both forms
+and still rejects wrong arguments and a non-element return. Pin that in a type-level test:
+`assert_type` on a decorated function in each form, and the rejected calls under
+`if TYPE_CHECKING:` with exact `# type: ignore[code]` markers.
 
 Memoization stays opt-in, as React's does:
 
-- Comparing arguments costs more than re-running a cheap component.
+- Comparing arguments costs more than re-running a cheap component, and `==` on a large
+  argument walks all of it unless its elements are shared by identity.
 - A lambda passed as an argument is a new object every render, so it never compares equal.
 - A `memo` component that reads anything besides its arguments and its own hooks
   (a module-level value, or an object it is passed and that is mutated) goes stale silently.
 
+**Checking reuse.** `app` gains `check_reuse: bool = False`, after React's `StrictMode`
+double render. When it's on, every component that step 4 or this step reuses is also called,
+and the element it returns is compared with the reused one; a difference raises
+`StaleReuse`, naming the component.
+
+Handlers (`on_key`, `on_mouse`) can't be compared with `==`, because a re-run builds new
+closures that never equal the old ones, and they can't be skipped either: a handler the
+component builds can capture a value it read while rendering, such as a module-level
+setting, and that capture is exactly the staleness the check is for.
+So two handlers count as the same when they share a `__code__` object, have equal
+`__defaults__`, and their closure cells hold the same values (`is`, then `==`), comparing a
+captured function by the same rule and a `functools.partial` by its `func`, `args` and
+`keywords`. A pair already being compared counts as the same, so a closure that refers to
+itself terminates. Every other callable compares with `==`.
+A handler passed in as an argument needs nothing extra: a new one fails the argument
+comparison, so the component re-runs instead of being reused, and the same one is called
+as itself at event time. A scratch probe confirmed the rule: a re-run with nothing changed
+compares equal, and a re-run after the captured setting changed doesn't.
+
+Child `Component`s compare by their own `__eq__`, not by expanding them, so each reused
+descendant gets its own check. The extra call runs against a copy of the component's hooks
+whose `UseEffect`s are copies, since `use_effect` overwrites `setup` and `new_deps` on the
+hook it's given. It schedules no effects, and the copy is discarded.
+The test suite, the docs screenshot generator and the benchmarks' last-frame tests run with
+it on. It doesn't catch a component that mutates a `Ref` while rendering.
+
 Add `dashboard-memo`, `top-memo` and `agent-memo`: the same model, step and view as their
 twins, with the per-item components (`metric_card`, `process_row`, `message_view`) declared
 `memo`. Each one's last frame must equal its twin's. `canvas` gets none, since its one large
-component changes every frame.
+component changes every frame. Expect the three to differ:
+
+- `metric_card` reads the constant `METRICS`, so every card is reused every frame.
+- `message_view` is unkeyed, but messages are appended, so earlier ones keep their index and
+  only the streaming one re-runs.
+- `process_row` is unkeyed over `busiest`, which is re-sorted every frame, so whenever the order
+  changes each index compares against a different process and memo misses.
+  Keying rows by pid fixes the pairing but not `selected`, which is computed from the index.
+  A memo component in a list that reorders needs keys.
 
 Tests: a `memo` component with equal arguments is reused, with changed arguments re-runs,
-and with its own state changed re-runs.
+and with its own state changed re-runs. With `check_reuse` on, a `memo` component that
+reads a module-level value changed between frames raises `StaleReuse`, a reused component
+with an inline `on_key` lambda doesn't, one whose `on_key` captured that value does, and the
+check's call leaves the component's effect hooks unchanged.
 
-### 6. Skip layout work for reused subtrees
+Docs: a `memo` section in `docs/components/index.md`, and `docs/ecosystem.md`'s comparison
+with Ink stops saying Counterweight has no `memo`.
+
+### 6. Add `use_memo`
+
+`memo=True` covers per-item components, but some reuse it can't express: an expensive value
+derived from arguments (a sort or a filter), a large unchanging part of a component next to a
+part that changes, and a handler that has to stay the same object so a `memo` child it's
+passed to can hit.
+
+```python
+def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T: ...
+```
+
+`Hooks.use_memo` stores a `UseMemo` hook holding the value and its deps, calls `compute` on
+the first render and whenever `deps != previous deps` (the comparison `handle_effects` makes),
+and otherwise returns the stored value. Unlike `use_effect`'s, `deps` can't be `None`:
+recomputing every render is what not calling the hook does. `deps=()` computes once.
+`compute` runs during render, not after it.
+
+It composes with step 4 with no new rule. A cached element returned from a component is the
+previous element, so `next is previous.element` reuses its subtree, and a cached `Component`
+is reused by identity whether or not it's `memo`. Memoizing per item can't be done from the
+parent, since hooks can't be called in a loop: a changed item count already raises
+`InconsistentHookExecution`, and an unchanged count with reordered items pairs each slot with
+a different item. Per-item caching goes in the item's component, as `use_memo` or `memo=True`.
+A stable handler is `use_memo(lambda: handler, deps)`, so there's no `use_callback`.
+
+**`check_reuse` covers it.** On a hit, `compute` also runs and its result is compared with
+the stored value by step 5's comparison, handlers included, and a difference raises
+`StaleMemo`, naming the component and the hook's index. That catches the two bugs `memo=True`
+can't have: a dependency left out of `deps`, and a cached handler that captured state that
+has since changed.
+
+Tests: equal deps return the same object, changed deps recompute, `deps=()` computes once,
+and a component returning a cached element doesn't re-run the components below it.
+With `check_reuse` on, a `compute` that reads a value missing from `deps` raises
+`StaleMemo`, and so does a cached handler that captured state missing from `deps`, while a
+cached handler with complete deps doesn't. No workload gets a variant: none of them derives
+an expensive value that survives from one frame to the next.
+
+Docs: `docs/hooks/use_memo.md`, in the hooks nav after `use_ref`.
+
+### 7. Skip layout work for reused subtrees
 
 Since step 4 reuses whole subtrees as the same objects, `layout_changes` can return no changes
 for a subtree when `next is previous`, without descending into it. Reconciling layout then
@@ -268,10 +367,10 @@ Leave the rest alone and measure first:
 - Paint still repaints the whole buffer and diffs it, as ratatui does. Text and border caches
   are keyed by value.
 
-### 7. Profile, and revisit interning
+### 8. Profile, and revisit interning
 
 Profile every workload with `just profile`, against a run from before step 1, and record a
-new run in `plans/performance-analysis-2026-03-07.md`.
+new run in `plans/performance-analysis.md`.
 
 - **The original four workloads** hold their model in the root and declare no `memo`, so
   nothing below the root is skipped and they measure overhead: the `dirty_paths` walk,
@@ -286,13 +385,50 @@ Then rerun run 13's interning sweep (each of `Cell`, `CellStyle`, `StyledChar` o
 workload. Reused subtrees construct fewer values per frame, so interning may stop paying
 where it paid before; drop any `@flyweight` that's within the spread on every workload.
 
+### 9. Write a performance guide
+
+Add `docs/performance.md`, after the Cookbook in the nav, for a user whose app feels slow.
+It's written last so it can describe what steps 4 to 6 shipped and what step 8 measured,
+without quoting frame times. Each section is a question:
+
+1. **Where does my frame's time go?** Profile with Python's sampling profiler
+   (`python -m profiling.sampling run app.py`) and read the devlog.
+2. **Which components run in a frame?** Step 4's three outcomes (re-run, pass through,
+   reuse), drawn as the `dashboard` trees: a component re-runs when its own state changed or
+   its parent re-ran. Moving state down to the component that uses it, as `dashboard-local`
+   does, is the first fix, and needs no new API.
+3. **How do I skip a component whose arguments didn't change?** `memo=True`, with
+   `process_row` as the example, and why a list that reorders needs keys.
+4. **How do I cache a value?** `use_memo` for derived values, unchanging subtrees and stable
+   handlers, and why per-item caching goes in the item's component.
+5. **What goes wrong?** Each failure mode as wrong code, its symptom, and its fix:
+   - `memo=True`: a callback argument (always misses), an argument mutated in place (stale),
+     a hidden input such as a module-level setting (stale), an unkeyed list that reorders
+     (misses), a large argument rebuilt every frame (slow hits).
+   - `use_memo`: a missing dependency (stale), a cached handler that captured state (stale
+     behavior; prefer a functional update such as `set_sort_column(next_column)`), a dependency
+     that's new every render (always misses), a hook in a loop (raises), caching something
+     cheap (costs more than it saves).
+   - A table of both, with which failures `check_reuse` catches.
+6. **How do I catch stale output?** `check_reuse` in tests, what it compares, and what
+   gets past it (a `Ref` mutated while rendering).
+
+Runnable examples live in `docs/examples/` and are included with `--8<--` markers, as the other
+pages' are. Wrong code is shown in inline fences, since it can't render correctly by design,
+but each failure mode the page claims has a test that demonstrates it: a call count for a miss,
+and `StaleReuse` or `StaleMemo` for staleness. A change that stops a failure mode from failing
+then breaks a test rather than leaving the page wrong.
+
 ## What this costs
 
 - **More concepts.** `NodeKey`, `LayoutChange`, `Layouts` and `dirty_paths` are new names for a
   reader to learn, and the render loop passes one more value from frame to frame.
 - **Reuse can hide bugs that full re-renders mask.** A component that depends on something
   outside its arguments and hooks renders correctly today because it re-runs every frame.
-  After step 4 it can go stale. `memo` widens that to the component's arguments.
+  After step 4 it can go stale. `memo` widens that to the component's arguments, and
+  `use_memo` adds dependency lists that can be incomplete.
+  `check_reuse` (steps 5 and 6) turns most of that staleness into an error during tests,
+  at the cost of one more call per reused component or cached value when it's on.
 - **Elements are trusted not to change after they're returned.** `Div.children` accepts any
   `Sequence`, lists included, and step 4 reuses elements by identity, so code that mutates a
   returned element's children list changes a reused subtree without re-rendering it.
@@ -304,11 +440,12 @@ where it paid before; drop any `@flyweight` that's within the spread on every wo
 
 - **A native cell buffer.** Moving fill, diff and output into Rust would compare cells by
   value cheaply and remove the need for `Cell` interning. Revisit if paint is the largest stage
-  after step 7.
+  after step 8.
 - **Rendering from dirty components upward**, as React does, instead of walking from the root.
-  The walk from the root costs one pass over the tree; revisit if step 7 shows it.
+  The walk from the root costs one pass over the tree; revisit if step 8 shows it.
 - **Painting only dirty regions**, as Textual and browsers do. Full repaint and diff is simpler
   and cheap now.
 - **Frame rate throttling**, as Ink's `maxFps`. Bursts of events already coalesce into one
   frame when the event queue is drained.
-- **`use_memo` and `use_callback`.** Add them if `memo` components need stable callbacks.
+- **`use_callback`.** `use_memo(lambda: handler, deps)` returns a stable handler; add a
+  dedicated hook only if that reads badly in practice.

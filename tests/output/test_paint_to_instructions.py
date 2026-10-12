@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from copy import copy
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -38,6 +39,23 @@ def test_run_moves_once_and_sets_style_once() -> None:
 def test_style_change_mid_run_resets_then_sets_style() -> None:
     assert paint_to_instructions([(0, 0, [A, R])]) == (
         f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A{RESET_STYLE}{sgr_from_cell_style(RED_FG)}R{RESET_STYLE}"
+    )
+
+
+def with_uninterned_style(cell: Cell) -> Cell:
+    """A copy of `cell` whose style equals its own but is a different object, which interning would never produce."""
+    uninterned = copy(cell)
+    object.__setattr__(uninterned, "style", copy(cell.style))
+    return uninterned
+
+
+def test_equal_styles_that_are_different_objects_set_style_once() -> None:
+    b = with_uninterned_style(B)
+    assert b.style is not A.style
+
+    assert (
+        paint_to_instructions([(0, 0, [A, b])])
+        == f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}AB{RESET_STYLE}"
     )
 
 

@@ -58,7 +58,7 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> CellMap:
             continue
 
         # Off-screen neighbors are None: a border running off the screen doesn't join borders that aren't drawn.
-        # That's a decision (see run 12 in plans/performance-analysis-2026-03-07.md), not a constraint;
+        # That's a decision (see run 12 in plans/performance-analysis.md), not a constraint;
         # reversing it means keeping off-screen cells around for healing to look at.
         left, right, above, below = map(paint.get, dither(center_position))
 

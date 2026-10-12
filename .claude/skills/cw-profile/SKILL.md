@@ -71,5 +71,6 @@ profiles/before.bin -o profiles/diff.html profiles/after.bin`.
 
 ## Record results
 
-Add a section to `plans/performance-analysis-2026-03-07.md` with the `compare` tables
-and the hotspots that moved, saying what changed between the runs.
+Add a section to `plans/performance-analysis.md`, numbered after the last run and with a
+`**Date:**` line under its heading, with the `compare` tables and the hotspots that moved,
+saying what changed between the runs.

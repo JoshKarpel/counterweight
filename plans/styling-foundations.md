@@ -575,7 +575,7 @@ writing the page.
 
 ### 10. Make per-frame layout cheaper
 
-**Status:** Done. Run 10 in `plans/performance-analysis-2026-03-07.md` records each change's effect.
+**Status:** Done. Run 10 in `plans/performance-analysis.md` records each change's effect.
 Layout's share of a mean frame fell from 21–37% to 6–17% across the workloads.
 
 What was built differs from the description below in three ways:
@@ -599,7 +599,7 @@ object is freed by reference counting, so collections are rare whatever the thre
 **Measure first.** Profile every workload with `just profile` (step 12's tooling, built
 first for this step) and record the `layout.py:compute_layout` stage and its callees
 (building the tree, taffy's `compute_layout` with the text-measure callbacks, and reading
-results back) in `plans/performance-analysis-2026-03-07.md`.
+results back) in `plans/performance-analysis.md`.
 That tells us how much of each frame the two changes below can recover.
 
 **Memoize text measurement.**
@@ -737,7 +737,7 @@ expected wherever only the code changed.
 ### 12. Profile with Tachyon
 
 **Status:** Done. The tooling was built before step 10, so that step could be measured.
-Run 15 in `plans/performance-analysis-2026-03-07.md` answers the analysis below:
+Run 15 in `plans/performance-analysis.md` answers the analysis below:
 the resolve step and the derived border widths are `lru_cache` hits that cost one key hash each,
 and merging styles was the real cost (18% of `top`'s samples). The merge cache moved from cachetools
 to `functools.lru_cache`, and `Style` caches its hash, which together take 15% off a `top` frame
@@ -768,8 +768,8 @@ against the code before step 4.
   Through structlog they cost about 1 ms per frame whatever the workload, which was 4% of
   a `top` frame but 19% of a `dashboard` frame. The devlog now goes through without-logging
   as one JSON-lines file, rendered by `counterweight devlog` at read time, and costs about
-  0.3 ms per frame (run 9 in `plans/performance-analysis-2026-03-07.md`).
-- **Analysis.** Record each workload's profile in `plans/performance-analysis-2026-03-07.md`.
+  0.3 ms per frame (run 9 in `plans/performance-analysis.md`).
+- **Analysis.** Record each workload's profile in `plans/performance-analysis.md`.
   Look in particular at what step 4's resolve step and step 5's derived border widths cost
   per frame, and whether `Style` should cache its hash now that `resolve_style` and the
   merge cache both hash styles on the paint path.

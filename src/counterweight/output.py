@@ -106,7 +106,8 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
         parts.append(move_to(Position(x, y)))
         for cell in cells:
             # The SGR sequence only turns attributes like bold on, so a change of style resets first.
-            if cell.style is not style:
+            # Identity is the fast path; equality keeps the output from depending on styles being interned.
+            if cell.style is not style and cell.style != style:
                 style = cell.style
                 parts.append(RESET_STYLE)
                 parts.append(sgr_from_cell_style(style))
