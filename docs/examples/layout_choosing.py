@@ -131,10 +131,10 @@ def conflict() -> Div:
 # --8<-- [end:conflict]
 
 SCREENSHOTS = [
-    ScreenshotSpec(shell_flex, "layout-choosing-shell-flex", (60, 8)),
-    ScreenshotSpec(shell_grid, "layout-choosing-shell-grid", (60, 8)),
-    ScreenshotSpec(mixed, "layout-choosing-mixed", (60, 8)),
-    ScreenshotSpec(extra_child_grid, "layout-choosing-extra-child-grid", (45, 6)),
-    ScreenshotSpec(extra_child_flex, "layout-choosing-extra-child-flex", (45, 6)),
-    ScreenshotSpec(conflict, "layout-choosing-conflict", (61, 11)),
+    ScreenshotSpec(shell_flex(), "layout-choosing-shell-flex", (60, 8)),
+    ScreenshotSpec(shell_grid(), "layout-choosing-shell-grid", (60, 8)),
+    ScreenshotSpec(mixed(), "layout-choosing-mixed", (60, 8)),
+    ScreenshotSpec(extra_child_grid(), "layout-choosing-extra-child-grid", (45, 6)),
+    ScreenshotSpec(extra_child_flex(), "layout-choosing-extra-child-flex", (45, 6)),
+    ScreenshotSpec(conflict(), "layout-choosing-conflict", (61, 11)),
 ]

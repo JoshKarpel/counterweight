@@ -61,4 +61,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "z", (24, 11))]
+SCREENSHOTS = [ScreenshotSpec(root(), "z", (24, 11))]

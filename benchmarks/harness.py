@@ -46,9 +46,9 @@ class Runnable(Protocol):
     @property
     def dimensions(self) -> tuple[int, int]: ...
 
-    def root(self, key_press_times: list[int]) -> Callable[[], Component]: ...
+    def root(self, key_press_times: list[int]) -> Component: ...
 
-    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]: ...
+    def live_root(self, frame_interval: timedelta) -> Component: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,42 +65,34 @@ class Workload[M]:
     view: Callable[[M], Div]
     dimensions: tuple[int, int]
 
-    def root(self, key_press_times: list[int]) -> Callable[[], Component]:
+    @component
+    def root(self, key_press_times: list[int]) -> Div:
         """
         A root component that renders the model, with a key handler on the view's root that steps it
         and appends the time to `key_press_times`.
         """
+        model, set_model = use_state(self.initial)
 
-        @component
-        def benchmark_root() -> Div:
-            model, set_model = use_state(self.initial)
+        def on_key(_: KeyPressed) -> None:
+            key_press_times.append(perf_counter_ns())
+            set_model(self.step)
 
-            def on_key(_: KeyPressed) -> None:
-                key_press_times.append(perf_counter_ns())
-                set_model(self.step)
+        return replace(self.view(model), on_key=on_key)
 
-            return replace(self.view(model), on_key=on_key)
-
-        return benchmark_root
-
-    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]:
+    @component
+    def live_root(self, frame_interval: timedelta) -> Div:
         """A root component that renders the model and steps it every `frame_interval`, to watch it run by hand."""
+        model, set_model = use_state(self.initial)
         seconds = frame_interval.total_seconds()
 
-        @component
-        def live_benchmark_root() -> Div:
-            model, set_model = use_state(self.initial)
+        async def tick() -> None:
+            while True:
+                await asyncio.sleep(seconds)
+                set_model(self.step)
 
-            async def tick() -> None:
-                while True:
-                    await asyncio.sleep(seconds)
-                    set_model(self.step)
+        use_effect(tick, deps=())
 
-            use_effect(tick, deps=())
-
-            return self.view(model)
-
-        return live_benchmark_root
+        return self.view(model)
 
 
 @dataclass(frozen=True, slots=True)

@@ -77,7 +77,7 @@ async def test_screenshots_requested_in_one_cycle_receive_the_same_frame() -> No
             ]
         )
 
-    await app(root, headless=True, dimensions=(5, 2), autopilot=[KeyPressed(key="x"), Quit()], check_purity=True)
+    await app(root(), headless=True, dimensions=(5, 2), autopilot=[KeyPressed(key="x"), Quit()], check_purity=True)
 
     assert len(frames) == 2
     assert frames[0] is frames[1]
@@ -96,7 +96,7 @@ async def test_frame_does_not_change_after_later_renders() -> None:
         return Div(children=[Text(content=content, on_key=on_key)])
 
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(10, 1),
         autopilot=[Screenshot(handler=frames.append), KeyPressed(key="x"), Screenshot(handler=frames.append), Quit()],

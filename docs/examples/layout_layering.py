@@ -108,8 +108,8 @@ def badge() -> Div:
 # --8<-- [end:badge]
 
 SCREENSHOTS = [
-    ScreenshotSpec(relative, "layout-relative", (39, 7)),
-    ScreenshotSpec(absolute, "layout-absolute", (50, 9)),
-    ScreenshotSpec(dialog, "layout-dialog", (60, 12)),
-    ScreenshotSpec(badge, "layout-badge", (21, 3)),
+    ScreenshotSpec(relative(), "layout-relative", (39, 7)),
+    ScreenshotSpec(absolute(), "layout-absolute", (50, 9)),
+    ScreenshotSpec(dialog(), "layout-dialog", (60, 12)),
+    ScreenshotSpec(badge(), "layout-badge", (21, 3)),
 ]

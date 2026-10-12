@@ -66,7 +66,7 @@ def three_panes() -> Div:
 # --8<-- [end:three-panes]
 
 SCREENSHOTS = [
-    ScreenshotSpec(header_body_footer, "layout-shell-header-body-footer", (60, 10)),
-    ScreenshotSpec(sidebar_status, "layout-shell-sidebar-status", (60, 10)),
-    ScreenshotSpec(three_panes, "layout-shell-three-panes", (80, 14)),
+    ScreenshotSpec(header_body_footer(), "layout-shell-header-body-footer", (60, 10)),
+    ScreenshotSpec(sidebar_status(), "layout-shell-sidebar-status", (60, 10)),
+    ScreenshotSpec(three_panes(), "layout-shell-three-panes", (80, 14)),
 ]

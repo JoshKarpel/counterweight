@@ -31,7 +31,7 @@ async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> No
     ]
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(
             *(event for event, _ in events),

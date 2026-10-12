@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
@@ -21,10 +20,10 @@ from counterweight.styles.utilities import (
 )
 
 
-async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int]) -> str:
+async def _render(root: Component, dimensions: tuple[int, int]) -> str:
     capture = io.StringIO()
     await app(
-        root_fn,
+        root,
         headless=True,
         dimensions=dimensions,
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
@@ -49,7 +48,7 @@ async def test_row_collapse_two_siblings_heals_seam() -> None:
             ],
         )
 
-    assert await _render(root, (9, 3)) == "\n".join(
+    assert await _render(root(), (9, 3)) == "\n".join(
         [
             "┌───┬───┐",
             "│   │   │",
@@ -70,7 +69,7 @@ async def test_row_collapse_three_siblings_heals_both_seams() -> None:
             ],
         )
 
-    assert await _render(root, (13, 3)) == "\n".join(
+    assert await _render(root(), (13, 3)) == "\n".join(
         [
             "┌───┬───┬───┐",
             "│   │   │   │",
@@ -95,7 +94,7 @@ async def test_col_collapse_two_siblings_heals_seam() -> None:
             ],
         )
 
-    assert await _render(root, (5, 5)) == "\n".join(
+    assert await _render(root(), (5, 5)) == "\n".join(
         [
             "┌───┐",
             "│   │",
@@ -118,7 +117,7 @@ async def test_col_collapse_three_siblings_heals_both_seams() -> None:
             ],
         )
 
-    assert await _render(root, (5, 7)) == "\n".join(
+    assert await _render(root(), (5, 7)) == "\n".join(
         [
             "┌───┐",
             "│   │",
@@ -166,7 +165,7 @@ async def test_doc_example_border_healing() -> None:
             ],
         )
 
-    assert await _render(root, (60, 20)) == "\n".join(
+    assert await _render(root(), (60, 20)) == "\n".join(
         [
             "╔═════════════════════════════╦═════════════╦══════════════╗",
             "║                             ║             ║              ║",
