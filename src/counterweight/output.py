@@ -98,7 +98,8 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
     Terminal instructions that draw `runs`: one cursor move per run,
     and a style change only where a cell's style differs from the cell drawn before it.
 
-    Every run must stay within one row of the screen, since each cell advances the cursor one column.
+    Every run must stay within one row of the screen, since each cell advances the cursor one column:
+    a two-cell-wide cluster advances it two, and its continuation cell, whose `grapheme` is empty, writes nothing.
     """
     parts = []
     style = None
@@ -110,7 +111,7 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
                 style = cell.style
                 parts.append(RESET_STYLE)
                 parts.append(sgr_from_cell_style(style))
-            parts.append(cell.char)
+            parts.append(cell.grapheme)
     if parts:
         parts.append(RESET_STYLE)
     return "".join(parts)
@@ -125,9 +126,9 @@ def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
     """
     if ansi:
         return "\n".join(
-            "".join(f"{sgr_from_cell_style(cell.style)}{cell.char}\x1b[0m" for cell in row) for row in paint.rows()
+            "".join(f"{sgr_from_cell_style(cell.style)}{cell.grapheme}\x1b[0m" for cell in row) for row in paint.rows()
         )
-    return "\n".join("".join(cell.char for cell in row) for row in paint.rows())
+    return "\n".join("".join(cell.grapheme for cell in row) for row in paint.rows())
 
 
 @dataclass(frozen=True, slots=True)

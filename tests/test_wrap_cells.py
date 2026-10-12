@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import pytest
 
-from counterweight.elements import StyledChar
-from counterweight.layout import wrap_cells
+from counterweight.elements import StyledGrapheme, text_cells
+from counterweight.layout import MeasurableText, wrap_cells
 from counterweight.styles.styles import CellStyle, TextWrap
 
 
-def cells(text: str) -> list[StyledChar]:
-    return [StyledChar(char=c) for c in text]
+def cells(text: str) -> list[StyledGrapheme]:
+    return list(text_cells(text, CellStyle()))
 
 
-def text(line: list[StyledChar]) -> str:
-    return "".join(c.char for c in line)
+def text(line: list[StyledGrapheme]) -> str:
+    return "".join(c.grapheme for c in line)
 
 
-def lines_text(ls: list[list[StyledChar]]) -> list[str]:
+def lines_text(ls: list[list[StyledGrapheme]]) -> list[str]:
     return [text(l) for l in ls]
 
 
@@ -96,7 +96,7 @@ def test_stable_all_spaces() -> None:
 
 def test_stable_preserves_cell_style() -> None:
     style = CellStyle(bold=True)
-    styled_cells = [StyledChar(char=c, style=style) for c in "hello world"]
+    styled_cells = [StyledGrapheme(grapheme=c, style=style) for c in "hello world"]
     result = wrap_cells(styled_cells, "stable", 8)
     for line in result:
         for cell in line:
@@ -195,3 +195,59 @@ def test_multiple_spaces_preserved_within_line_dropped_at_break(mode: TextWrap) 
     result = wrap_cells(cells("aa   bb   cc"), mode, 9)
     assert lines_text(result)[0] == "aa   bb"
     assert lines_text(result)[-1] == "cc"
+
+
+# ---------------------------------------------------------------------------
+# Wide characters
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+def test_wraps_wide_words_by_their_width(mode: TextWrap) -> None:
+    result = wrap_cells(cells("日本 語ab 日本語"), mode, 7)
+    assert lines_text(result) == ["日本", "語ab", "日本語"]
+
+
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+def test_long_word_breaks_between_wide_clusters(mode: TextWrap) -> None:
+    result = wrap_cells(cells("日本語日本語"), mode, 5)
+    assert lines_text(result) == ["日本-", "語日-", "本語"]
+
+
+def test_long_word_hyphenates_before_a_wide_cluster_that_does_not_fit() -> None:
+    result = wrap_cells(cells("ab日c"), "stable", 3)
+    assert lines_text(result) == ["ab-", "日c"]
+
+
+def test_long_word_keeps_multi_code_point_clusters_whole() -> None:
+    result = wrap_cells(cells("e\N{COMBINING ACUTE ACCENT}" * 3), "stable", 2)
+    assert lines_text(result) == ["e\N{COMBINING ACUTE ACCENT}-", "e\N{COMBINING ACUTE ACCENT}" * 2]
+
+
+def test_wide_cluster_too_wide_to_share_a_line_with_a_hyphen_gets_its_own() -> None:
+    result = wrap_cells(cells("日本"), "stable", 2)
+    assert lines_text(result) == ["日", "本"]
+
+
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+def test_wide_clusters_wider_than_the_width_each_get_a_line(mode: TextWrap) -> None:
+    result = wrap_cells(cells("日本 a"), mode, 1)
+    assert lines_text(result) == ["日", "本", "a"]
+
+
+def test_crlf_separates_paragraphs() -> None:
+    result = wrap_cells(cells("hi\r\nthere"), "none", None)
+    assert lines_text(result) == ["hi", "there"]
+
+
+@pytest.mark.parametrize(("width", "expected"), [(None, (13, 1)), (7, (6, 2))])
+def test_measured_size_counts_wide_clusters_as_two_cells(width: int | None, expected: tuple[int, int]) -> None:
+    assert MeasurableText(cells=tuple(cells("日本語 ab日本")), wrap="stable").size_at(width) == expected
+
+
+def test_narrowest_width_is_the_widest_word_in_cells() -> None:
+    assert MeasurableText(cells=tuple(cells("ab 日本語 abcde")), wrap="stable").narrowest_width() == 6
+
+
+def test_zero_width_clusters_take_no_width() -> None:
+    assert MeasurableText(cells=tuple(cells("a\N{ZERO WIDTH SPACE}b")), wrap="none").size_at(None) == (2, 1)

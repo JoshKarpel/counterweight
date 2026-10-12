@@ -6,6 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from counterweight.geometry import Position
+from counterweight.graphemes import grapheme_width
 from counterweight.output import RESET_STYLE, move_to, paint_to_instructions, sgr_from_cell_style
 from counterweight.paint import Cell, Paint, diff_paint, runs_of
 from counterweight.styles import CellStyle
@@ -54,6 +55,9 @@ def apply(instructions: str, screen: list[list[tuple[str, str]]]) -> None:
     """
     Run `instructions` on `screen`, a grid of (char, active SGR) pairs, the way a terminal would,
     for the subset of escape sequences that `paint_to_instructions` emits.
+
+    A wide character fills its own column and the next, which holds `""`, and drawing over either half
+    of one erases the other half to a space, as terminals do. Every character here is one code point.
     """
     x = y = 0
     sgr = ""
@@ -64,25 +68,55 @@ def apply(instructions: str, screen: list[list[tuple[str, str]]]) -> None:
         elif escape is not None:
             sgr = "" if escape == RESET_STYLE else sgr + escape
         else:
-            screen[y][x] = (char, sgr)
-            x += 1
+            line = screen[y]
+            width = grapheme_width(char)
+            for covered in range(x, x + width):
+                erase_other_half(line, covered)
+            line[x] = (char, sgr)
+            if width == 2:
+                line[x + 1] = ("", sgr)
+            x += width
+
+
+def erase_other_half(line: list[tuple[str, str]], x: int) -> None:
+    char, _ = line[x]
+    if not char:
+        line[x - 1] = (" ", line[x - 1][1])
+    elif grapheme_width(char) == 2:
+        line[x + 1] = (" ", line[x + 1][1])
 
 
 def appearance(paint: Paint) -> list[list[tuple[str, str]]]:
-    return [[(cell.char, sgr_from_cell_style(cell.style)) for cell in row] for row in paint.rows()]
+    return [[(cell.grapheme, sgr_from_cell_style(cell.style)) for cell in row] for row in paint.rows()]
 
 
-cells = st.sampled_from([A, B, R, Cell("A", BOLD), Cell(" ", BOLD), Cell(" ", DEFAULT)])
+narrow_cells = st.sampled_from([A, B, R, Cell("A", BOLD), Cell(" ", BOLD), Cell(" ", DEFAULT)])
+wide_cells = st.sampled_from([Cell("日", DEFAULT), Cell("本", DEFAULT), Cell("日", RED_FG)])
+
+
+@st.composite
+def paint_rows(draw: st.DrawFn, width: int) -> list[Cell]:
+    """A row of `width` cells, where each wide cell is followed by its continuation."""
+    row: list[Cell] = []
+    while len(row) < width:
+        if len(row) + 2 <= width and draw(st.booleans()):
+            wide = draw(wide_cells)
+            row += [wide, Cell("", wide.style)]
+        else:
+            row.append(draw(narrow_cells))
+    return row
+
+
+@st.composite
+def paints(draw: st.DrawFn, width: int, height: int) -> Paint:
+    return Paint(width, height, [cell for _ in range(height) for cell in draw(paint_rows(width))])
 
 
 @st.composite
 def paint_pairs(draw: st.DrawFn) -> tuple[Paint, Paint]:
     width = draw(st.integers(min_value=1, max_value=6))
     height = draw(st.integers(min_value=1, max_value=4))
-    size = width * height
-    current = draw(st.lists(cells, min_size=size, max_size=size))
-    new = draw(st.lists(cells, min_size=size, max_size=size))
-    return Paint(width, height, current), Paint(width, height, new)
+    return draw(paints(width, height)), draw(paints(width, height))
 
 
 @given(paint_pairs())

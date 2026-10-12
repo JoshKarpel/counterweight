@@ -38,6 +38,7 @@ dependencies = [
     "waxy>=0.7.0",
     "without-logging>=0.0.10",
     "without-streams>=0.0.10",
+    "wcwidth>=0.8",
 ]
 
 [dependency-groups]
@@ -66,6 +67,10 @@ Homepage = "https://github.com/JoshKarpel/counterweight"
 Repository = "https://github.com/JoshKarpel/counterweight"
 Documentation = "https://www.counterweight.dev"
 "Bug Tracker" = "https://github.com/JoshKarpel/counterweight/issues"
+
+[tool.uv]
+exclude-newer = "7 days"
+exclude-newer-package = { waxy = false }  # our own layout engine, which counterweight tracks closely
 
 [tool.pytest.ini_options]
 addopts = ["--strict-markers", "-Werror"]

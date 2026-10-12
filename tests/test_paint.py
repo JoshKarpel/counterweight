@@ -3,25 +3,35 @@ from __future__ import annotations
 from copy import copy
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
 from counterweight.geometry import Position, Region
+from counterweight.graphemes import grapheme_width
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, diff_paint
+from counterweight.paint import BLANK, Cell, Paint, diff_paint, text_lines
 from counterweight.styles import Style
 from counterweight.styles.styles import CellStyle, Color, resolve_cell_style
-from counterweight.styles.utilities import inset_left, inset_top, position_absolute, size, z
+from counterweight.styles.utilities import border, border_light, inset_left, inset_top, position_absolute, size, z
 
 RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
+BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
 X = Cell("x", RED)
 Y = Cell("y", RED)
+WIDE = Cell("日", BLUE)
+CONTINUATION = Cell("", BLUE)
 
 
 def grid(paint: Paint) -> list[str]:
-    return ["".join("." if cell is BLANK else cell.char for cell in row) for row in paint.rows()]
+    """Each row of `paint`, with `.` for a blank cell and `·` for a continuation cell."""
+    return [
+        "".join("." if cell is BLANK else "·" if cell.is_continuation else cell.grapheme for cell in row)
+        for row in paint.rows()
+    ]
 
 
 def test_blank_paint_is_all_blank() -> None:
@@ -83,6 +93,84 @@ def test_write_row_clips_to_screen(x: int, y: int, expected: list[str]) -> None:
     assert grid(paint) == expected
 
 
+@pytest.mark.parametrize(
+    ("x", "expected"),
+    [
+        (1, [".x日·"]),
+        (-2, [" ..."]),
+        (2, ["..x "]),
+    ],
+    ids=["inside", "clips-left-half", "clips-right-half"],
+)
+def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen(x: int, expected: list[str]) -> None:
+    paint = Paint.blank(4, 1)
+    paint.write_row(x, 0, (X, WIDE, CONTINUATION))
+    assert grid(paint) == expected
+
+
+@pytest.mark.parametrize(("x", "other_half"), [(1, 2), (2, 1)], ids=["over-left-half", "over-right-half"])
+def test_writing_over_half_a_wide_cluster_erases_the_other_half_in_its_style(x: int, other_half: int) -> None:
+    paint = Paint.blank(4, 1)
+    paint.write_row(1, 0, (WIDE, CONTINUATION))
+    paint[x, 0] = X
+    assert paint[x, 0] is X
+    assert paint[other_half, 0] == Cell(" ", BLUE)
+
+
+def test_fill_over_half_of_wide_clusters_erases_their_other_halves() -> None:
+    paint = Paint.blank(6, 2)
+    for y in range(2):
+        paint.write_row(0, y, (WIDE, CONTINUATION, WIDE, CONTINUATION, WIDE, CONTINUATION))
+    paint.fill(Region(left=1, top=0, right=3, bottom=1), X)
+    assert grid(paint) == [" xx 日·", "日·日·日·"]
+
+
+paint_rows = st.lists(st.sampled_from([(X,), (Y,), (WIDE, CONTINUATION)]), max_size=5).map(
+    lambda pieces: tuple(cell for piece in pieces for cell in piece)
+)
+paint_writes = st.one_of(
+    st.tuples(st.just("row"), st.integers(-3, 6), st.integers(0, 1), paint_rows),
+    st.tuples(st.just("fill"), st.integers(-1, 6), st.integers(0, 1), st.integers(0, 3)),
+    st.tuples(st.just("set"), st.integers(0, 4), st.integers(0, 1), st.just(())),
+)
+
+
+@given(st.lists(paint_writes, max_size=8))
+def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
+    writes: list[tuple[str, int, int, object]],
+) -> None:
+    paint = Paint.blank(5, 2)
+    for kind, x, y, extra in writes:
+        if kind == "row":
+            assert isinstance(extra, tuple)
+            paint.write_row(x, y, extra)
+        elif kind == "fill":
+            assert isinstance(extra, int)
+            paint.fill(Region(left=x, top=y, right=x + extra, bottom=y + 1), Y)
+        else:
+            paint[x, y] = X
+
+    for row in paint.rows():
+        for left, right in zip([BLANK, *row], [*row, BLANK]):
+            assert (grapheme_width(left.grapheme) == 2 if left.grapheme else False) == right.is_continuation
+
+
+@pytest.mark.parametrize(
+    ("width", "expected"),
+    [(5, "日·本· "), (4, "日·本·"), (3, "日· ")],
+)
+def test_text_lines_never_split_a_wide_cluster_at_the_right_edge(width: int, expected: str) -> None:
+    (line,) = text_lines(Text(content="日本").cells, "none", "left", resolve_cell_style(CellStyle()), width, 1)
+    assert "".join(cell.grapheme or "·" for cell in line) == expected
+
+
+def test_text_lines_draw_no_cell_for_a_zero_width_cluster() -> None:
+    (line,) = text_lines(
+        Text(content="a\N{ZERO WIDTH SPACE}b").cells, "none", "left", resolve_cell_style(CellStyle()), 3, 1
+    )
+    assert "".join(cell.grapheme for cell in line) == "ab "
+
+
 def test_diff_of_identical_paints_is_empty() -> None:
     paint = Paint.blank(4, 3)
     paint[1, 1] = X
@@ -140,14 +228,14 @@ def test_items_pairs_cells_with_positions_row_by_row() -> None:
     ]
 
 
-async def render(root: Div) -> Paint:
+async def render(root: Div, dimensions: tuple[int, int] = (6, 2)) -> Paint:
     frames: list[Frame] = []
 
     @component
     def screen() -> Div:
         return root
 
-    await app(screen, headless=True, dimensions=(6, 2), autopilot=[Screenshot(handler=frames.append), Quit()])
+    await app(screen, headless=True, dimensions=dimensions, autopilot=[Screenshot(handler=frames.append), Quit()])
     return frames[0].paint
 
 
@@ -171,4 +259,13 @@ async def test_undecorated_element_over_another_leaves_it_visible() -> None:
         )
     )
 
-    assert "".join(cell.char for cell in next(paint.rows())) == "under "
+    assert "".join(cell.grapheme for cell in next(paint.rows())) == "under "
+
+
+async def test_wide_characters_take_two_cells_each() -> None:
+    paint = await render(
+        Div(style=border | border_light | size(10, 3), children=[Text(content="日本語ab")]),
+        dimensions=(10, 3),
+    )
+
+    assert grid(paint) == ["┌────────┐", "│日·本·語·ab│", "└────────┘"]
