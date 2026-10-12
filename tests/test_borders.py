@@ -27,7 +27,13 @@ async def render_box(style: Style) -> str:
         return Div(style=style, children=[Text(content="ab")])
 
     capture = io.StringIO()
-    await app(root, headless=True, dimensions=(6, 4), autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()])
+    await app(
+        root,
+        headless=True,
+        dimensions=(6, 4),
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
+    )
     return capture.getvalue().rstrip("\n")
 
 

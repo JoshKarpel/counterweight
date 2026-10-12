@@ -28,6 +28,7 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
         headless=True,
         dimensions=dimensions,
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
     )
     return capture.getvalue().rstrip("\n")
 

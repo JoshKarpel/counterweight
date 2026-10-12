@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 import waxy
 
 from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, LayoutTree, ResolvedLayout
-from counterweight.shadow import ShadowNode
+from counterweight.layout import Layouts, LayoutTree, ResolvedLayout, layout_changes
+from counterweight.shadow import ShadowNode, ShadowTree
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
     align_children_center,
@@ -62,18 +64,24 @@ from counterweight.styles.utilities import (
 )
 
 
-def _shadow(element: AnyElement, children: list[ShadowNode] | None = None) -> ShadowNode:
-    return ShadowNode(component=None, element=element, hooks=Hooks(), children=children or [])
+def _shadow(element: AnyElement, children: Sequence[ShadowNode] = ()) -> ShadowNode:
+    return ShadowNode(component=None, element=element, hooks=Hooks(), children=tuple(children))
 
 
-def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
-    return LayoutTree().compute(root, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
+def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
+    available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
+    shadow = ShadowTree(root=root)
+    return LayoutTree().compute(layout_changes(None, shadow), shadow, available)
 
 
-def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> list[tuple[AnyElement, ResolvedLayout]]:
+def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+    return _layouts(root, w, h).in_paint_order
+
+
+def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
     """Wrap root in the element the app places the root component in."""
     screen = _shadow(Div(style=screen_element_style(w, h)), children=[root])
-    return LayoutTree().compute(screen, waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h)))
+    return _layout(screen, w, h)
 
 
 # ---------------------------------------------------------------------------
@@ -390,16 +398,13 @@ def test_hidden_subtree_produces_no_resolved_layout() -> None:
     assert elements == [root.element, visible.element]
 
 
-def test_node_hidden_after_a_visible_frame_reports_empty_regions() -> None:
-    hooks = Hooks()
-    shown = ShadowNode(component=None, element=Div(style=size(5, 3)), hooks=hooks)
-    _layout(_shadow(Div(style=col), children=[shown]))
-    assert hooks.dims != INITIAL_RESOLVED_LAYOUT
+def test_hidden_subtree_has_no_layout_by_key() -> None:
+    visible = _shadow(Text(content="visible"))
+    hidden_child = _shadow(Text(content="hidden child"))
+    hidden = _shadow(Div(style=display_none), children=[hidden_child])
+    root = _shadow(Div(style=col), children=[visible, hidden])
 
-    hidden = ShadowNode(component=None, element=Div(style=size(5, 3) | display_none), hooks=hooks)
-    _layout(_shadow(Div(style=col), children=[hidden]))
-
-    assert hooks.dims == INITIAL_RESOLVED_LAYOUT
+    assert _layouts(root).by_key.keys() == {root.key, visible.key}
 
 
 @pytest.mark.parametrize(

@@ -235,7 +235,13 @@ async def render(root: Div, dimensions: tuple[int, int] = (6, 2)) -> Paint:
     def screen() -> Div:
         return root
 
-    await app(screen, headless=True, dimensions=dimensions, autopilot=[Screenshot(handler=frames.append), Quit()])
+    await app(
+        screen,
+        headless=True,
+        dimensions=dimensions,
+        autopilot=[Screenshot(handler=frames.append), Quit()],
+        check_purity=True,
+    )
     return frames[0].paint
 
 

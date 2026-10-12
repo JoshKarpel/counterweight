@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby
@@ -188,7 +188,7 @@ Run = tuple[int, int, list[Cell]]  # cells to draw left to right from (x, y)
 
 
 def paint_layout(
-    elements: list[tuple[AnyElement, ResolvedLayout]],
+    elements: Iterable[tuple[AnyElement, ResolvedLayout]],
     width: int,
     height: int,
 ) -> tuple[Paint, BorderHealingHints]:
