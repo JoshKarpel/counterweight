@@ -79,8 +79,10 @@ or a framework that many apps already depend on.
 Ink is React itself, rendering to the terminal.
 Its README lists Claude Code, Gemini CLI and GitHub Copilot CLI among the tools built with it.
 If you know Ink, you know most of Counterweight:
-components, `use_state`, `use_effect`, `use_ref` and keys all follow React's rules
+components, `use_state`, `use_effect`, `use_ref`, keys and `memo` all follow React's rules
 (see [Components](components/index.md)).
+Both render only the components whose state changed and the components they return,
+skipping `memo` components whose arguments are unchanged.
 
 The main reason to choose Counterweight over Ink is Python.
 A Counterweight app runs in the same process as the Python libraries it presents,
@@ -96,9 +98,6 @@ Beyond the language:
 - Counterweight has mouse input, through `on_mouse` handlers and the
   [`use_mouse`](hooks/use_mouse.md) and [`use_hovered`](hooks/use_hovered.md) hooks.
   Ink has none.
-- Both render only the components whose state changed and their descendants,
-  but React also skips `memo` components whose props are unchanged.
-  Counterweight has no `memo`.
 
 Ink renders inline by default, below the shell prompt, and its `<Static>` component
 writes output that stays in the terminal's scrollback.

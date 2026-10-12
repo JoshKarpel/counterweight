@@ -5,5 +5,14 @@ from benchmarks.harness import Runnable
 
 WORKLOADS: dict[str, Runnable] = {
     workload.name: workload
-    for workload in (canvas.WORKLOAD, top.WORKLOAD, agent.WORKLOAD, dashboard.WORKLOAD, dashboard_local.WORKLOAD)
+    for workload in (
+        canvas.WORKLOAD,
+        top.WORKLOAD,
+        top.MEMO_WORKLOAD,
+        agent.WORKLOAD,
+        agent.MEMO_WORKLOAD,
+        dashboard.WORKLOAD,
+        dashboard.MEMO_WORKLOAD,
+        dashboard_local.WORKLOAD,
+    )
 }

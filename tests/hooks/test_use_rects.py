@@ -34,7 +34,13 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
 
         return Div(children=[measured(is_hidden, recorded)], on_key=on_key)
 
-    await app(root, headless=True, dimensions=(20, 10), autopilot=(KeyPressed(key="h"), KeyPressed(key="x"), Quit()))
+    await app(
+        root,
+        headless=True,
+        dimensions=(20, 10),
+        autopilot=(KeyPressed(key="h"), KeyPressed(key="x"), Quit()),
+        check_purity=True,
+    )
 
     # The warmup render, the first painted frame, the frame that hides it, and the frame after.
     assert [rects.border for rects in recorded] == [EMPTY, VISIBLE, VISIBLE, EMPTY]

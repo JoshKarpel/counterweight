@@ -30,6 +30,7 @@ async def test_use_state() -> None:
             KeyPressed(key="f"),
             Quit(),
         ),
+        check_purity=True,
     )
 
     assert recorder == [0, 0, 1]

@@ -12,7 +12,7 @@ from datetime import timedelta
 from time import perf_counter_ns
 
 from benchmarks.dashboard import WORKLOAD as DASHBOARD
-from benchmarks.dashboard import frame_text, layout
+from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
@@ -35,7 +35,7 @@ class LocalDashboard:
             def on_key(_: KeyPressed) -> None:
                 key_press_times.append(perf_counter_ns())
 
-            return replace(layout(key_frame_counter()), on_key=on_key)
+            return replace(layout(key_frame_counter(), metric_card), on_key=on_key)
 
         return dashboard_local_root
 
@@ -44,7 +44,7 @@ class LocalDashboard:
 
         @component
         def live_dashboard_local_root() -> Div:
-            return layout(timed_frame_counter(frame_interval))
+            return layout(timed_frame_counter(frame_interval), metric_card)
 
         return live_dashboard_local_root
 

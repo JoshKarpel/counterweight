@@ -147,7 +147,13 @@ async def render(root: Div) -> Paint:
     def screen() -> Div:
         return root
 
-    await app(screen, headless=True, dimensions=(6, 2), autopilot=[Screenshot(handler=frames.append), Quit()])
+    await app(
+        screen,
+        headless=True,
+        dimensions=(6, 2),
+        autopilot=[Screenshot(handler=frames.append), Quit()],
+        check_purity=True,
+    )
     return frames[0].paint
 
 

@@ -37,12 +37,13 @@ def screenshots(module_name: str) -> list[ScreenshotSpec]:
 
 
 async def render(spec: ScreenshotSpec) -> None:
-    """Run the example headless and write its screenshot as SVG and as plain text."""
+    """Run the example headless, checking its components are pure, and write its screenshot as SVG and as plain text."""
     await app(
         spec.root,
         headless=True,
         dimensions=spec.dimensions,
         autopilot=[*spec.events, Screenshot(handler=functools.partial(write_files, spec)), Quit()],
+        check_purity=True,
     )
 
 

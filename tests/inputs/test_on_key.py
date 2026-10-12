@@ -23,6 +23,7 @@ async def test_on_key() -> None:
             KeyPressed(key="f"),
             Quit(),
         ),
+        check_purity=True,
     )
 
     assert recorder == [

@@ -4,6 +4,12 @@
 
 ### Added
 
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
+  and passes it arguments equal to the previous render's,
+  and `check_purity` on `app`, which raises `ImpureComponent` when a component a render didn't re-run
+  would have returned something different, because it depends on more than its arguments and hooks.
+
 - Documented how Counterweight compares with Textual, Ink and Ratatui,
   and what it doesn't do, in [Ecosystem](ecosystem.md).
 
@@ -73,6 +79,13 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  An error raised while the app runs, in a component, a handler or an effect,
+  propagates out of `app` as itself rather than wrapped in an `ExceptionGroup`,
+  after the terminal is restored, so its traceback ends at the line that raised it
+  and callers can catch it by its own type.
+  Errors raised at the same moment from more than one effect are still grouped.
 
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   A render calls only the components whose state changed and the components they return,

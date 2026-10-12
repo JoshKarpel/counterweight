@@ -248,6 +248,12 @@ and dict equality check each element by identity before `==`, so no comparison f
 needed. `Component` gains `memo: bool = field(default=False, compare=False)`: it's a property
 of `func`, which is already compared.
 
+**Whole-tree renders mark every node dirty.** Step 4 forced them by building a new root
+`Component`, which a `memo` component below an unchanged parent would compare equal through,
+so the first painted frame would reuse it and never start its effects.
+Instead the render loop adds every key in the previous tree to `dirty`, which re-runs every
+component through step 4's first rule, and builds a new root only when `screen_style` changes.
+
 **The decorator.** `component` takes both forms, `@component` and `@component(memo=True)`,
 through two `typing.overload` signatures, with `func` positional-only so `memo` must be passed
 by keyword. A scratch probe confirmed that mypy keeps the wrapped signature through both forms
@@ -263,10 +269,12 @@ Memoization stays opt-in, as React's does:
 - A `memo` component that reads anything besides its arguments and its own hooks
   (a module-level value, or an object it is passed and that is mutated) goes stale silently.
 
-**Checking reuse.** `app` gains `check_reuse: bool = False`, after React's `StrictMode`
-double render. When it's on, every component that step 4 or this step reuses is also called,
-and the element it returns is compared with the reused one; a difference raises
-`StaleReuse`, naming the component.
+**Checking purity.** `app` gains `check_purity: bool = False`. When it's on, every component
+that step 4 or this step reuses is also called, and the element it returns is compared with the
+reused one; a difference raises `ImpureComponent`, naming the component.
+It's named for the rule a user breaks (React's docs call it keeping components pure) rather
+than for reuse, which is an internal mechanism, or after React's `StrictMode`, which calls
+every component twice without comparing, and whose name reads as a setting for production.
 
 Handlers (`on_key`, `on_mouse`) can't be compared with `==`, because a re-run builds new
 closures that never equal the old ones, and they can't be skipped either: a handler the
@@ -282,8 +290,9 @@ comparison, so the component re-runs instead of being reused, and the same one i
 as itself at event time. A scratch probe confirmed the rule: a re-run with nothing changed
 compares equal, and a re-run after the captured setting changed doesn't.
 
-Child `Component`s compare by their own `__eq__`, not by expanding them, so each reused
-descendant gets its own check. The extra call runs against a copy of the component's hooks
+Child `Component`s compare field by field under the same rule, not by expanding them, so each
+reused descendant gets its own check. Their own `__eq__` would fail a component that passes a
+child an inline lambda, which a re-run rebuilds. The extra call runs against a copy of the component's hooks
 whose `UseEffect`s are copies, since `use_effect` overwrites `setup` and `new_deps` on the
 hook it's given. It schedules no effects, and the copy is discarded.
 The test suite, the docs screenshot generator and the benchmarks' last-frame tests run with
@@ -303,8 +312,8 @@ component changes every frame. Expect the three to differ:
   A memo component in a list that reorders needs keys.
 
 Tests: a `memo` component with equal arguments is reused, with changed arguments re-runs,
-and with its own state changed re-runs. With `check_reuse` on, a `memo` component that
-reads a module-level value changed between frames raises `StaleReuse`, a reused component
+and with its own state changed re-runs. With `check_purity` on, a `memo` component that
+reads a module-level value changed between frames raises `ImpureComponent`, a reused component
 with an inline `on_key` lambda doesn't, one whose `on_key` captured that value does, and the
 check's call leaves the component's effect hooks unchanged.
 
@@ -336,7 +345,7 @@ parent, since hooks can't be called in a loop: a changed item count already rais
 a different item. Per-item caching goes in the item's component, as `use_memo` or `memo=True`.
 A stable handler is `use_memo(lambda: handler, deps)`, so there's no `use_callback`.
 
-**`check_reuse` covers it.** On a hit, `compute` also runs and its result is compared with
+**`check_purity` covers it.** On a hit, `compute` also runs and its result is compared with
 the stored value by step 5's comparison, handlers included, and a difference raises
 `StaleMemo`, naming the component and the hook's index. That catches the two bugs `memo=True`
 can't have: a dependency left out of `deps`, and a cached handler that captured state that
@@ -344,7 +353,7 @@ has since changed.
 
 Tests: equal deps return the same object, changed deps recompute, `deps=()` computes once,
 and a component returning a cached element doesn't re-run the components below it.
-With `check_reuse` on, a `compute` that reads a value missing from `deps` raises
+With `check_purity` on, a `compute` that reads a value missing from `deps` raises
 `StaleMemo`, and so does a cached handler that captured state missing from `deps`, while a
 cached handler with complete deps doesn't. No workload gets a variant: none of them derives
 an expensive value that survives from one frame to the next.
@@ -409,14 +418,14 @@ without quoting frame times. Each section is a question:
      behavior; prefer a functional update such as `set_sort_column(next_column)`), a dependency
      that's new every render (always misses), a hook in a loop (raises), caching something
      cheap (costs more than it saves).
-   - A table of both, with which failures `check_reuse` catches.
-6. **How do I catch stale output?** `check_reuse` in tests, what it compares, and what
+   - A table of both, with which failures `check_purity` catches.
+6. **How do I catch stale output?** `check_purity` in tests, what it compares, and what
    gets past it (a `Ref` mutated while rendering).
 
 Runnable examples live in `docs/examples/` and are included with `--8<--` markers, as the other
 pages' are. Wrong code is shown in inline fences, since it can't render correctly by design,
 but each failure mode the page claims has a test that demonstrates it: a call count for a miss,
-and `StaleReuse` or `StaleMemo` for staleness. A change that stops a failure mode from failing
+and `ImpureComponent` or `StaleMemo` for staleness. A change that stops a failure mode from failing
 then breaks a test rather than leaving the page wrong.
 
 ## What this costs
@@ -427,7 +436,7 @@ then breaks a test rather than leaving the page wrong.
   outside its arguments and hooks renders correctly today because it re-runs every frame.
   After step 4 it can go stale. `memo` widens that to the component's arguments, and
   `use_memo` adds dependency lists that can be incomplete.
-  `check_reuse` (steps 5 and 6) turns most of that staleness into an error during tests,
+  `check_purity` (steps 5 and 6) turns most of that staleness into an error during tests,
   at the cost of one more call per reused component or cached value when it's on.
 - **Elements are trusted not to change after they're returned.** `Div.children` accepts any
   `Sequence`, lists included, and step 4 reuses elements by identity, so code that mutates a

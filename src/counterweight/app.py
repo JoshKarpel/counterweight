@@ -96,6 +96,7 @@ async def app(
     headless: bool = False,
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AnyEvent | AnyControl] = (),
+    check_purity: bool = False,
 ) -> None:
     """
     Parameters:
@@ -110,9 +111,29 @@ async def app(
             This is primarily useful for testing or generating screenshots programmatically.
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
+        check_purity: If `True`, check that components are pure: that their output depends only on their arguments
+            and their hooks. A render keeps the previous output of every component it doesn't re-run
+            (because its state didn't change and its parent didn't re-run, or because it's a `memo` component
+            whose arguments didn't change), so an impure one goes stale.
+            With this on, each of those components is also called, and if the element it returns differs
+            from the one kept, the application raises `ImpureComponent`, naming the component.
+            Handlers are compared by their code and the values they captured, since a re-run builds new ones.
+            The extra call costs as much as a re-run, so turn it on in tests rather than in production.
     """
     async with devlog():
-        await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot)
+        try:
+            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity)
+        except ExceptionGroup as group:
+            # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
+            # and keeps callers from catching it by its own type.
+            if len(group.exceptions) != 1:
+                raise
+            error = group.exceptions[0]
+        else:
+            return
+
+        # Raised outside the except block, so the group doesn't become the error's __context__.
+        raise error
 
 
 async def render_loop(
@@ -122,6 +143,7 @@ async def render_loop(
     headless: bool,
     dimensions: tuple[int, int] | None,
     autopilot: Iterable[AnyEvent | AnyControl],
+    check_purity: bool,
 ) -> None:
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Style, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
@@ -192,12 +214,16 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(screen(screen_style), None, NO_LAYOUTS).tree
+        root_component = screen(screen_style)
+        shadow = update_shadow(root_component, None, NO_LAYOUTS).tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
 
-        # A new root component re-runs every component below it. The warmup started no effects,
-        # so the first painted frame has to re-run every component to start them.
-        root_component = screen(screen_style)
+        def rerun_everything() -> None:
+            """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
+            dirty.update(node.key for node in shadow.walk())
+
+        # The warmup started no effects, so the first painted frame has to re-run every component to start them.
+        rerun_everything()
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -283,13 +309,14 @@ async def render_loop(
 
                     screen_style, current_paint, w, h = handle_screen_size_change()
                     root_component = screen(screen_style)
+                    rerun_everything()
 
                     logger.debug("Resuming application", extra={"handler": should_suspend.handler})
 
                     should_suspend = None
 
                 if should_render:
-                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty))
+                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity)
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
@@ -367,6 +394,7 @@ async def render_loop(
                             should_render = True
                             screen_style, current_paint, w, h = handle_screen_size_change(override)
                             root_component = screen(screen_style)
+                            rerun_everything()
                         case KeyPressed():
                             for element, _ in reversed(layouts.in_paint_order):
                                 if element.on_key:

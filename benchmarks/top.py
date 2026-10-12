@@ -6,10 +6,12 @@ are re-measured, laid out and painted each frame in a grid-and-rows layout.
 """
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, replace
+from functools import partial
 
 from benchmarks.harness import Workload
-from counterweight.components import component
+from counterweight.components import Component, component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.styles.styles import CellStyle, Style
 from counterweight.styles.utilities import (
@@ -154,7 +156,7 @@ def clamp_fraction(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
-def view(model: Model) -> Div:
+def view(model: Model, row_component: Callable[[Process, bool], Component]) -> Div:
     busiest = sorted(model.processes, key=lambda p: p.cpu, reverse=True)[:VISIBLE_PROCESSES]
     selected = model.tick % VISIBLE_PROCESSES
     return Div(
@@ -177,7 +179,7 @@ def view(model: Model) -> Div:
             table_header(),
             Div(
                 style=fill(1) | col,
-                children=[process_row(process, index == selected) for index, process in enumerate(busiest)],
+                children=[row_component(process, index == selected) for index, process in enumerate(busiest)],
             ),
             footer(),
         ],
@@ -232,8 +234,7 @@ def table_header() -> Div:
     )
 
 
-@component
-def process_row(process: Process, selected: bool) -> Div:
+def render_process_row(process: Process, selected: bool) -> Div:
     background = text_bg("cyan", 800) if selected else Style()
     hours, rest = divmod(process.centiseconds, 360_000)
     minutes, rest = divmod(rest, 6_000)
@@ -260,6 +261,10 @@ def process_row(process: Process, selected: bool) -> Div:
             Text(content=f" {process.command}", style=fill(1) | background),
         ],
     )
+
+
+process_row = component(render_process_row)
+memo_process_row = component(memo=True)(render_process_row)
 
 
 def cell_color(column: str) -> Style:
@@ -295,6 +300,19 @@ WORKLOAD = Workload(
     description=__doc__ or "",
     initial=initial,
     step=step,
-    view=view,
+    view=partial(view, row_component=process_row),
     dimensions=(160, 50),
+)
+
+MEMO_WORKLOAD = replace(
+    WORKLOAD,
+    name="top-memo",
+    description="""
+`top`, with each process row a `memo` component.
+
+The rows are unkeyed and the table re-sorts every frame, so a row is reused only when the process at its index
+and whether it's selected are both unchanged, which a re-sort usually prevents:
+this measures what comparing arguments costs when memo mostly misses.
+""",
+    view=partial(view, row_component=memo_process_row),
 )

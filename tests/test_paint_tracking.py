@@ -33,6 +33,7 @@ async def _render(root_fn: Callable[[], Component], dimensions: tuple[int, int])
         headless=True,
         dimensions=dimensions,
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
     )
     return capture.getvalue().rstrip("\n")
 
@@ -50,6 +51,7 @@ async def _two_frames(root_fn: Callable[[], Component], dimensions: tuple[int, i
             Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     return c1.getvalue().rstrip("\n"), c2.getvalue().rstrip("\n")
 
@@ -101,6 +103,7 @@ async def test_ansi_background_is_explicit_black() -> None:
         headless=True,
         dimensions=(2, 1),
         autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
+        check_purity=True,
     )
     output = capture.getvalue()
     # Every position should carry the black background escape
@@ -120,6 +123,7 @@ async def test_ansi_uncovered_area_has_explicit_black_background() -> None:
         headless=True,
         dimensions=(2, 1),
         autopilot=[Screenshot.to_stream(capture, ansi=True), Quit()],
+        check_purity=True,
     )
     output = capture.getvalue()
     # Both the "X" cell and the blank cell to its right should set a background
@@ -144,6 +148,7 @@ async def test_ansi_after_resize_new_area_has_explicit_black_background() -> Non
             Screenshot.to_stream(c2, ansi=True),
             Quit(),
         ],
+        check_purity=True,
     )
     # Before: 1 column, 1 black background code
     assert c1.getvalue().count("\x1b[48;2;0;0;0m") == 1
@@ -318,6 +323,7 @@ async def test_resize_rerenders_content_correctly() -> None:
             Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     assert c1.getvalue().rstrip("\n") == "Hello     "
     assert c2.getvalue().rstrip("\n") == "Hello     "
@@ -341,6 +347,7 @@ async def test_resize_with_new_dimensions() -> None:
             Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     assert c1.getvalue().rstrip("\n") == "Hi   "
     assert c2.getvalue().rstrip("\n") == "Hi      "
@@ -364,6 +371,7 @@ async def test_resize_to_larger_new_area_is_spaces() -> None:
             Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     assert c1.getvalue().rstrip("\n") == "Hi   "
     assert c2.getvalue().rstrip("\n") == "\n".join(["Hi   ", "     ", "     "])
@@ -390,6 +398,7 @@ async def test_resize_to_smaller_no_stale_rows() -> None:
             Screenshot.to_stream(c2, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     assert c1.getvalue().rstrip("\n") == "\n".join(["L1   ", "L2   ", "L3   "])
     assert c2.getvalue().rstrip("\n") == "L1   "
@@ -420,6 +429,7 @@ async def test_resize_clears_stale_content() -> None:
             Screenshot.to_stream(c3, ansi=False),
             Quit(),
         ],
+        check_purity=True,
     )
     assert c1.getvalue().rstrip("\n") == "Hello     "
     assert c2.getvalue().rstrip("\n") == "Hi        "

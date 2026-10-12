@@ -1,24 +1,46 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from functools import wraps
-from typing import Callable, ParamSpec
+from typing import overload
 
 from counterweight.elements import AnyElement
 
-P = ParamSpec("P")
+
+@overload
+def component[**P](func: Callable[P, AnyElement], /) -> Callable[P, Component]: ...
 
 
-def component(func: Callable[P, AnyElement]) -> Callable[P, Component]:
+@overload
+def component[**P](*, memo: bool = False) -> Callable[[Callable[P, AnyElement]], Callable[P, Component]]: ...
+
+
+def component[**P](
+    func: Callable[P, AnyElement] | None = None, /, *, memo: bool = False
+) -> Callable[P, Component] | Callable[[Callable[P, AnyElement]], Callable[P, Component]]:
     """
-    A decorator that marks a function as a component.
+    A decorator that marks a function as a component, used bare (`@component`) or with options.
+
+    Parameters:
+        memo: If `True`, a render that would re-run this component only because its parent re-ran
+            reuses its previous output instead when its arguments equal last render's, as React's `memo` does.
+            It still re-runs when its own state changes.
+            Its output MUST depend only on its arguments and its hooks,
+            or the output it keeps goes stale; `check_purity` on `counterweight.app.app` catches that in tests.
     """
 
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> Component:
-        return Component(func=func, args=args, kwargs=kwargs)
+    def decorate(func: Callable[P, AnyElement]) -> Callable[P, Component]:
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Component:
+            return Component(func=func, args=args, kwargs=kwargs, memo=memo)
 
-    return wrapper
+        return wrapper
+
+    if func is None:
+        return decorate
+
+    return decorate(func)
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +56,8 @@ class Component:
     args: tuple[object, ...]
     kwargs: dict[str, object]
     key: str | None = None
+    memo: bool = field(default=False, compare=False)
+    """Whether `func` was decorated with `memo=True`; a property of `func`, so it isn't compared."""
 
     def with_key(self, key: str | None) -> Component:
         """

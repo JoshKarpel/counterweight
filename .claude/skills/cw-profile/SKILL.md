@@ -17,7 +17,9 @@ Choose by what the change touches: a cache keyed on content does nothing for `ca
 reusing last frame's layout matters most for `dashboard`, and text measurement dominates
 `agent` and `top`. `dashboard-local` draws what `dashboard` does, but holds its changing state
 in a leaf component rather than the root: compare the two to see what skipping components
-whose state didn't change saves.
+whose state didn't change saves. Each `-memo` workload (`dashboard-memo`, `top-memo`,
+`agent-memo`) draws what its twin does with the per-item component declared `memo`:
+compare the pair to see what skipping components whose arguments didn't change saves.
 
 ## Profile a run
 

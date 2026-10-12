@@ -171,11 +171,21 @@ async def run(
     warmup: int,
     dimensions: tuple[int, int] | None = None,
     snapshot: Path | None = None,
+    check_purity: bool = False,
 ) -> Timings:
-    """Run `workload` headless and time every frame after the first `warmup`."""
+    """
+    Run `workload` headless and time every frame after the first `warmup`.
+    `check_purity` is for tests: it calls every component a frame doesn't re-run, which the timings would include.
+    """
     dims = dimensions or workload.dimensions
     key_press_times: list[int] = []
-    await app(workload.root(key_press_times), headless=True, dimensions=dims, autopilot=autopilot(frames, snapshot))
+    await app(
+        workload.root(key_press_times),
+        headless=True,
+        dimensions=dims,
+        autopilot=autopilot(frames, snapshot),
+        check_purity=check_purity,
+    )
     frame_ms = [(end - start) / 1e6 for start, end in pairwise(key_press_times)]
     return Timings(
         workload=workload.name,

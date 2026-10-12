@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asyncio import Event, Queue, Task, TaskGroup, create_task, sleep, wait_for
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -15,13 +15,13 @@ from counterweight.app import app, handle_effects
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, StateSet, TerminalResized
+from counterweight.events import AnyEvent, KeyPressed, StateSet, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
-from counterweight.shadow import ShadowNode, dirty_paths, is_dirty, update_shadow
+from counterweight.shadow import ImpureComponent, ShadowNode, dirty_paths, is_dirty, update_shadow
 
 type Shape = tuple[tuple[str, Shape], ...]
 
@@ -71,13 +71,23 @@ def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
     return frozenset(keys)
 
 
-def rerun(root: Component | AnyElement, calls: Calls, *names: str) -> tuple[ShadowNode, ShadowNode]:
-    """Renders `root`, sets the named components' state, and renders the same `root` again."""
+def rerun(
+    root: Component | AnyElement,
+    calls: Calls,
+    *names: str,
+    between: Callable[[], None] = lambda: None,
+    check_purity: bool = False,
+) -> tuple[ShadowNode, ShadowNode]:
+    """
+    Renders `root`, calls `between`, sets the named components' state, and renders the same `root` again.
+    `check_purity` is off by default, since its extra calls would show up in `calls`.
+    """
     with state_sets() as queue:
         previous = update_shadow(root, None, NO_LAYOUTS).tree
+        between()
         dirty = set_state(calls, queue, *names)
         calls.names.clear()
-        return previous, update_shadow(root, previous, NO_LAYOUTS, dirty).tree
+        return previous, update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=check_purity).tree
 
 
 def test_sibling_state_change_does_not_rerun_a_component() -> None:
@@ -248,6 +258,7 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     assert calls.names == expected
 
 
+@pytest.mark.parametrize("memo", [False, True], ids=["plain", "memo"])
 @pytest.mark.parametrize(
     ("autopilot", "expected_renders"),
     [
@@ -256,11 +267,11 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     ],
 )
 async def test_whole_tree_rerenders_only_on_resize(
-    autopilot: tuple[AnyEvent | AnyControl, ...], expected_renders: int
+    autopilot: tuple[AnyEvent | AnyControl, ...], expected_renders: int, memo: bool
 ) -> None:
     renders: list[str] = []
 
-    @component
+    @component(memo=memo)
     def leaf() -> Text:
         renders.append("leaf")
         return Text(content="leaf")
@@ -275,17 +286,22 @@ async def test_whole_tree_rerenders_only_on_resize(
     assert len(renders) == expected_renders
 
 
-async def test_effects_start_on_the_first_painted_frame() -> None:
+@pytest.mark.parametrize("memo", [False, True], ids=["plain", "memo"])
+async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
     started = Event()
 
-    @component
-    def root() -> Div:
+    @component(memo=memo)
+    def starts() -> Div:
         async def setup() -> None:
             started.set()
             await forever()
 
         use_effect(setup, deps=())
         return Div()
+
+    @component
+    def root() -> Div:
+        return Div(children=[starts()])
 
     # Nothing yields to the event loop while an autopilot runs, so the app runs with none until the effect starts.
     running = create_task(app(root, headless=True, dimensions=(20, 10)))
@@ -333,3 +349,171 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
     )
 
     assert dirty_paths(tree, dirty, NO_LAYOUTS) == brute_force
+
+
+@component
+def passes(calls: Calls, child: Callable[[int, Calls], Component]) -> Div:
+    count, set_count = use_state(0)
+    calls.names.append("parent")
+    calls.setters["parent"] = set_count
+    return Div(children=[child(count, calls)])
+
+
+@component(memo=True)
+def memo_leaf(argument: object, calls: Calls) -> Text:
+    _, set_count = use_state(0)
+    calls.names.append("leaf")
+    calls.setters["leaf"] = set_count
+    return Text(content=str(argument))
+
+
+@pytest.mark.parametrize(
+    ("child", "names", "expected"),
+    [
+        pytest.param(lambda count, calls: memo_leaf("same", calls), ("parent",), ["parent"], id="equal-arguments"),
+        pytest.param(memo_leaf, ("parent",), ["parent", "leaf"], id="changed-arguments"),
+        pytest.param(
+            lambda count, calls: memo_leaf("same", calls),
+            ("parent", "leaf"),
+            ["parent", "leaf"],
+            id="equal-arguments-and-own-state-changed",
+        ),
+        pytest.param(
+            lambda count, calls: memo_leaf("same", calls).with_key(str(count)),
+            ("parent",),
+            ["parent", "leaf"],
+            id="changed-key",
+        ),
+    ],
+)
+def test_memo_component_reruns_only_when_its_arguments_or_state_changed(
+    child: Callable[[int, Calls], Component], names: tuple[str, ...], expected: list[str]
+) -> None:
+    calls = Calls()
+
+    rerun(passes(calls, child), calls, *names)
+
+    assert calls.names == expected
+
+
+def test_component_without_memo_reruns_when_its_parent_does_with_equal_arguments() -> None:
+    calls = Calls()
+
+    rerun(passes(calls, lambda count, calls: counted("leaf", (), calls)), calls, "parent")
+
+    assert calls.names == ["parent", "leaf"]
+
+
+SETTINGS = {"label": "before"}
+
+
+@component(memo=True)
+def reads_setting(argument: object, calls: Calls) -> Text:
+    calls.names.append("reads_setting")
+    return Text(content=SETTINGS["label"])
+
+
+@component(memo=True)
+def handler_capturing_setting(argument: object, calls: Calls) -> Text:
+    calls.names.append("handler_capturing_setting")
+    label = SETTINGS["label"]
+
+    def on_key(_: KeyPressed) -> None:
+        print(label)
+
+    return Text(content="", on_key=on_key)
+
+
+@component(memo=True)
+def inline_handler(argument: object, calls: Calls) -> Text:
+    calls.names.append("inline_handler")
+    return Text(content="", on_key=lambda _: None)
+
+
+@component
+def reads_setting_around(child: Component, calls: Calls) -> Div:
+    return Div(children=[child, Text(content=SETTINGS["label"])])
+
+
+@pytest.mark.parametrize(
+    ("root", "names", "stale"),
+    [
+        pytest.param(
+            lambda calls: passes(calls, lambda count, calls: reads_setting("same", calls)),
+            ("parent",),
+            "reads_setting",
+            id="memo-with-equal-arguments",
+        ),
+        pytest.param(
+            lambda calls: passes(calls, lambda count, calls: handler_capturing_setting("same", calls)),
+            ("parent",),
+            "handler_capturing_setting",
+            id="handler-captured-it",
+        ),
+        pytest.param(
+            lambda calls: reads_setting_around(counted("leaf", (), calls), calls),
+            ("leaf",),
+            "reads_setting_around",
+            id="passed-through-to-a-dirty-child",
+        ),
+        pytest.param(
+            lambda calls: Div(children=[Div(children=[reads_setting("same", calls)]), counted("sibling", (), calls)]),
+            ("sibling",),
+            "reads_setting",
+            id="inside-a-reused-element",
+        ),
+    ],
+)
+def test_check_purity_raises_naming_a_reused_component_that_reads_a_changed_module_level_value(
+    root: Callable[[Calls], Component | AnyElement],
+    names: tuple[str, ...],
+    stale: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls()
+
+    with pytest.raises(ImpureComponent, match=stale):
+        rerun(
+            root(calls),
+            calls,
+            *names,
+            between=lambda: monkeypatch.setitem(SETTINGS, "label", "after"),
+            check_purity=True,
+        )
+
+
+@pytest.mark.parametrize("child", [reads_setting, handler_capturing_setting, inline_handler], ids=lambda c: c.__name__)
+def test_check_purity_calls_a_reused_component_whose_output_is_unchanged_without_raising(
+    child: Callable[[object, Calls], Component],
+) -> None:
+    calls = Calls()
+
+    previous, next = rerun(passes(calls, lambda count, calls: child("same", calls)), calls, "parent", check_purity=True)
+
+    assert (next.children[0] is previous.children[0], calls.names) == (True, ["parent", child.__name__])
+
+
+@component(memo=True)
+def has_effect(argument: object, calls: Calls) -> Text:
+    calls.names.append("has_effect")
+
+    async def setup() -> None:
+        await forever()
+
+    use_effect(setup)
+    return Text(content="")
+
+
+def test_check_purity_leaves_a_reused_components_effect_hooks_unchanged() -> None:
+    calls = Calls()
+    root = passes(calls, lambda count, calls: has_effect("same", calls))
+
+    with state_sets() as queue:
+        previous = update_shadow(root, None, NO_LAYOUTS).tree
+        before = [(effect.setup, effect.new_deps) for effect in previous.children[0].hooks.effects]
+        dirty = set_state(calls, queue, "parent")
+        calls.names.clear()
+        next = update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=True).tree
+
+    after = [(effect.setup, effect.new_deps) for effect in next.children[0].hooks.effects]
+    assert (calls.names, after) == (["parent", "has_effect"], before)

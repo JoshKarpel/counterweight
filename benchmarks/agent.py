@@ -7,12 +7,14 @@ on a screen full of prose, code and diffs.
 """
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, replace
+from functools import partial
 from math import ceil
 from typing import Literal
 
 from benchmarks.harness import Workload
-from counterweight.components import component
+from counterweight.components import Component, component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
@@ -144,12 +146,12 @@ def visible(messages: tuple[Message, ...]) -> tuple[Message, ...]:
     return tuple(reversed(kept))
 
 
-def view(model: Model) -> Div:
+def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
     return Div(
         style=col,
         children=[
             header(model.tokens),
-            Div(style=fill(1) | col | pad_x(1), children=[message_view(message) for message in model.messages]),
+            Div(style=fill(1) | col | pad_x(1), children=[message_component(message) for message in model.messages]),
             spinner(model.tick),
             prompt(),
         ],
@@ -167,8 +169,7 @@ def header(tokens: int) -> Div:
     )
 
 
-@component
-def message_view(message: Message) -> Div:
+def render_message(message: Message) -> Div:
     match message.kind:
         case "user":
             return Div(
@@ -206,6 +207,10 @@ def message_view(message: Message) -> Div:
 SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
 
+message_view = component(render_message)
+memo_message_view = component(memo=True)(render_message)
+
+
 @component
 def spinner(tick: int) -> Text:
     return Text(
@@ -241,6 +246,18 @@ WORKLOAD = Workload(
     description=__doc__ or "",
     initial=initial,
     step=step,
-    view=view,
+    view=partial(view, message_component=message_view),
     dimensions=(120, 50),
+)
+
+MEMO_WORKLOAD = replace(
+    WORKLOAD,
+    name="agent-memo",
+    description="""
+`agent`, with each message a `memo` component.
+
+Messages are only appended, and only the newest one grows, so every other message keeps its index and its value:
+this measures what reusing all but one message saves.
+""",
+    view=partial(view, message_component=memo_message_view),
 )

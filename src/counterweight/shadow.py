@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from copy import copy
+from dataclasses import dataclass, field, replace
 from itertools import chain
 
 from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts
 from counterweight.components import Component
 from counterweight.elements import AnyElement
+from counterweight.equivalence import equivalent
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseEffect
 from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,14 @@ class DuplicateKey(Exception):
     """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
 
 
+class ImpureComponent(Exception):
+    """
+    Raised when `check_purity` is on and a component that a render didn't re-run
+    returns something different when called again with the same arguments and hooks,
+    so its output depends on something else and the output the render kept is stale.
+    """
+
+
 def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> bool:
     """
     Whether `node` has to re-run whatever its parent does:
@@ -88,6 +98,7 @@ class Reconciliation:
     layouts: Layouts
     dirty: frozenset[NodeKey]
     paths: frozenset[NodeKey]
+    check_purity: bool
     ran: list[Hooks] = field(default_factory=list)
     unmounted: list[Hooks] = field(default_factory=list)
 
@@ -97,16 +108,20 @@ def update_shadow(
     previous: ShadowNode | None,
     layouts: Layouts,
     dirty: frozenset[NodeKey] = frozenset(),
+    check_purity: bool = False,
 ) -> ShadowUpdate:
     """
     Builds the next shadow tree from `previous`, re-running only the components that have to:
-    those in `dirty` or whose rectangles moved (see `is_dirty`), and those whose parent passed them a new `Component`.
+    those in `dirty` or whose rectangles moved (see `is_dirty`), and those whose parent passed them a new `Component`,
+    unless it's a `memo` component equal to its previous one (see `continues`).
     A component that doesn't re-run keeps its previous node, whole subtree included,
     unless a dirty node is below it, in which case its children are reconciled again to reach it.
     `layouts` are the previous frame's, which `use_rects` reads.
+    With `check_purity`, every component that doesn't re-run is also called, and raises `ImpureComponent`
+    if what it returns isn't equivalent to the element it kept (see `check_is_pure`).
     """
     paths = frozenset() if previous is None else dirty_paths(previous, dirty, layouts)
-    reconciliation = Reconciliation(layouts=layouts, dirty=dirty, paths=paths)
+    reconciliation = Reconciliation(layouts=layouts, dirty=dirty, paths=paths, check_purity=check_purity)
     tree = update_node(next, previous, reconciliation)
     return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
 
@@ -131,11 +146,15 @@ def update_node(
             and next_func == previous_component.func
             and next_key == previous_component.key
         ):
-            if next_component is previous_component and previous_node.key not in reconciliation.paths:
+            is_continued = continues(next_component, previous_component)
+            if is_continued and previous_node.key not in reconciliation.paths:
                 new = previous_node
-            elif next_component is previous_component and not is_dirty(
-                previous_node, reconciliation.dirty, reconciliation.layouts
-            ):
+                if reconciliation.check_purity:
+                    for node in new.walk():
+                        check_is_pure(node, reconciliation.layouts)
+            elif is_continued and not is_dirty(previous_node, reconciliation.dirty, reconciliation.layouts):
+                if reconciliation.check_purity:
+                    check_is_pure(previous_node, reconciliation.layouts)
                 new = ShadowNode(
                     component=previous_component,
                     element=previous_element,
@@ -144,7 +163,8 @@ def update_node(
                 )
             else:
                 previous_hook_count = len(previous_hooks.data)
-                element, hook_count = call_component(next_component, previous_hooks, reconciliation)
+                element, hook_count = call_component(next_component, previous_hooks, reconciliation.layouts)
+                reconciliation.ran.append(previous_hooks)
 
                 if hook_count != previous_hook_count:
                     raise InconsistentHookExecution(
@@ -161,7 +181,8 @@ def update_node(
                 )
         case Component() as next_component, _:
             hook_state = Hooks()
-            element, _ = call_component(next_component, hook_state, reconciliation)
+            element, _ = call_component(next_component, hook_state, reconciliation.layouts)
+            reconciliation.ran.append(hook_state)
 
             new = ShadowNode(
                 component=next_component,
@@ -177,6 +198,9 @@ def update_node(
         ) as previous_node:
             if element is previous_element and previous_node.key not in reconciliation.paths:
                 new = previous_node
+                if reconciliation.check_purity:
+                    for node in new.walk():
+                        check_is_pure(node, reconciliation.layouts)
             else:
                 new = ShadowNode(
                     component=None,
@@ -202,18 +226,48 @@ def update_node(
     return new
 
 
-def call_component(next_component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:
+def continues(next: Component, previous: Component) -> bool:
     """
-    Calls a component function with `hooks` as the current hook state and the previous frame's layouts,
-    restoring the outer hook context even if it raises, and records that its hooks ran.
+    Whether `next` continues `previous` without re-running for its own sake:
+    it's the same object, which a parent that didn't re-run hands its children,
+    or it's a `memo` component equal to `previous`, which compares its function, arguments and key.
+    """
+    return next is previous or (next.memo and next == previous)
+
+
+def check_is_pure(node: ShadowNode, layouts: Layouts) -> None:
+    """
+    Calls a reused node's component again, against a copy of its hooks, and raises `ImpureComponent`
+    if the element it returns isn't `equivalent` to the one the node kept.
+    The copy's effects are copies too, since `use_effect` records its arguments on the hook it's given,
+    so the check schedules no effects and changes no hook the node keeps.
+    It compares child components without calling them; each reused child is checked on its own node.
+    """
+    if node.component is None:
+        return
+
+    hooks = replace(node.hooks, data=[copy(hook) if isinstance(hook, UseEffect) else hook for hook in node.hooks.data])
+    element, _ = call_component(node.component, hooks, layouts)
+    if not equivalent(element, node.element):
+        raise ImpureComponent(
+            f"{node.component.func.__qualname__} returned a different element when called again "
+            "with the same arguments and hooks, so it depends on something else, such as a module-level value, "
+            "and the output kept from its last run is stale. "
+            "A component must depend only on its arguments and its hooks."
+        )
+
+
+def call_component(component: Component, hooks: Hooks, layouts: Layouts) -> tuple[AnyElement, int]:
+    """
+    Calls a component function with `hooks` as the current hook state and the previous frame's `layouts`,
+    restoring the outer hook context even if it raises.
     Returns the element and how many hooks it called.
     """
     reset_current_hook_idx = current_hook_idx.set(0)
     reset_current_hook_state = current_hook_state.set(hooks)
-    reset_current_layouts = current_layouts.set(reconciliation.layouts)
+    reset_current_layouts = current_layouts.set(layouts)
     try:
-        element = next_component.func(*next_component.args, **next_component.kwargs)
-        reconciliation.ran.append(hooks)
+        element = component.func(*component.args, **component.kwargs)
         return element, current_hook_idx.get()
     finally:
         current_hook_idx.reset(reset_current_hook_idx)
