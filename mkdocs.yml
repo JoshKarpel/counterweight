@@ -12,6 +12,7 @@ watch:
 
 hooks:
   - mkdocs_hooks/screenshot_tabs.py
+  - mkdocs_hooks/utility_tables.py
 
 theme:
   name: material

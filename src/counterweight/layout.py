@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
-from counterweight.elements import AnyElement, Chunk, Div, StyledChar, Text, text_cells
+from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Region
+from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
 if TYPE_CHECKING:
@@ -287,7 +288,7 @@ class MeasurableText:
     one effective width, so most questions repeat one already answered.
     """
 
-    cells: tuple[StyledChar, ...]
+    cells: tuple[StyledGrapheme, ...]
     wrap: TextWrap
     sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
     min_content_width: int | UNMEASURED | None = UNMEASURED
@@ -303,7 +304,7 @@ class MeasurableText:
             return self.sizes[width]
         except KeyError:
             lines = wrap_cells(self.cells, self.wrap, width)
-            size = self.sizes[width] = (max((len(line) for line in lines), default=0), len(lines))
+            size = self.sizes[width] = (max((cells_width(line) for line in lines), default=0), len(lines))
             return size
 
     def narrowest_width(self) -> int | None:
@@ -347,13 +348,17 @@ def _measure_text(
     )
 
 
-def _min_content_width(cells: Iterable[StyledChar], wrap: TextWrap) -> int | None:
+def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int | None:
     """The widest word in `cells`, or `None` (unlimited) if they don't wrap."""
     if wrap == "none":
         return None
 
     return max(
-        (len(word) for paragraph in _split_paragraphs(cells) for word in _extract_words_and_spaces(paragraph)[0]),
+        (
+            cells_width(word)
+            for paragraph in _split_paragraphs(cells)
+            for word in _extract_words_and_spaces(paragraph)[0]
+        ),
         default=None,
     )
 
@@ -400,11 +405,16 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> Re
     return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
 
 
-def _split_paragraphs(cells: Iterable[StyledChar]) -> list[list[StyledChar]]:
-    paragraphs: list[list[StyledChar]] = []
-    current: list[StyledChar] = []
+def cells_width(cells: Iterable[StyledGrapheme]) -> int:
+    """How many terminal cells `cells` take side by side."""
+    return sum(cell.width for cell in cells)
+
+
+def _split_paragraphs(cells: Iterable[StyledGrapheme]) -> list[list[StyledGrapheme]]:
+    paragraphs: list[list[StyledGrapheme]] = []
+    current: list[StyledGrapheme] = []
     for cell in cells:
-        if cell.char == "\n":
+        if cell.grapheme in LINE_BREAKS:
             paragraphs.append(current)
             current = []
         else:
@@ -414,21 +424,21 @@ def _split_paragraphs(cells: Iterable[StyledChar]) -> list[list[StyledChar]]:
 
 
 def _extract_words_and_spaces(
-    paragraph: list[StyledChar],
-) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
+    paragraph: list[StyledGrapheme],
+) -> tuple[list[list[StyledGrapheme]], list[list[StyledGrapheme]]]:
     """Split a paragraph into (words, spaces).
 
     words[i] is a non-space run; spaces[i] is the space run between words[i] and words[i+1].
     Leading and trailing spaces are discarded.
     len(spaces) == len(words) - 1.
     """
-    words: list[list[StyledChar]] = []
-    spaces: list[list[StyledChar]] = []
-    current_word: list[StyledChar] = []
-    current_space: list[StyledChar] = []
+    words: list[list[StyledGrapheme]] = []
+    spaces: list[list[StyledGrapheme]] = []
+    current_word: list[StyledGrapheme] = []
+    current_space: list[StyledGrapheme] = []
 
     for cell in paragraph:
-        if cell.char == " ":
+        if cell.grapheme == " ":
             if current_word:
                 # We are in a word — start collecting the trailing space run.
                 current_space.append(cell)
@@ -453,20 +463,20 @@ def _extract_words_and_spaces(
 
 
 def _flatten_long_words(
-    words: list[list[StyledChar]],
-    spaces: list[list[StyledChar]],
+    words: list[list[StyledGrapheme]],
+    spaces: list[list[StyledGrapheme]],
     width: int,
-) -> tuple[list[list[StyledChar]], list[list[StyledChar]]]:
-    """Break any word longer than width into width-sized chunks.
+) -> tuple[list[list[StyledGrapheme]], list[list[StyledGrapheme]]]:
+    """Break any word wider than width into chunks at most width wide.
 
     Space runs between chunks of the same word become [] (no space between hyphenated chunks).
     Returns (flat_words, flat_spaces) with len(flat_spaces) == len(flat_words) - 1.
     """
-    flat_words: list[list[StyledChar]] = []
-    flat_spaces: list[list[StyledChar]] = []
+    flat_words: list[list[StyledGrapheme]] = []
+    flat_spaces: list[list[StyledGrapheme]] = []
 
     for i, word in enumerate(words):
-        if len(word) > width:
+        if cells_width(word) > width:
             chunks = _break_long_word(word, width)
         else:
             chunks = [word]
@@ -482,54 +492,50 @@ def _flatten_long_words(
     return flat_words, flat_spaces
 
 
-def _break_long_word(word: list[StyledChar], width: int) -> list[list[StyledChar]]:
-    """Break a word that is longer than width into width-sized chunks, hyphenating all but the last."""
-    if width <= 1:
-        return [word[i : i + width] for i in range(0, len(word), width)]
-    chunks: list[list[StyledChar]] = []
+def _break_long_word(word: list[StyledGrapheme], width: int) -> list[list[StyledGrapheme]]:
+    """
+    Break a word that is wider than width into chunks at most width wide, hyphenating all but the last,
+    without splitting a grapheme cluster.
+
+    A cluster too wide to fit beside a hyphen gets a chunk of its own, without one,
+    even if that chunk is wider than width.
+    """
+    room = width - 1 if width > 1 else width
+    chunks: list[list[StyledGrapheme]] = []
+    remaining = cells_width(word)
     i = 0
-    while i < len(word):
-        if i + width < len(word):
-            hyphen = StyledChar(char="-", style=word[i + width - 2].style)
-            chunks.append([*word[i : i + width - 1], hyphen])
-            i += width - 1
-        else:
-            chunks.append(word[i : i + width])
-            break
+    while remaining > width:
+        chunk: list[StyledGrapheme] = []
+        chunk_width = 0
+        while chunk_width + word[i].width <= room:
+            chunk.append(word[i])
+            chunk_width += word[i].width
+            i += 1
+        if not chunk:
+            chunk = [word[i]]
+            chunk_width = word[i].width
+            i += 1
+        elif room < width:
+            chunk.append(StyledGrapheme(grapheme="-", style=chunk[-1].style))
+        chunks.append(chunk)
+        remaining -= chunk_width
+    if i < len(word):
+        chunks.append(word[i:])
     return chunks
 
 
-def _wrap_greedy(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
+def _wrap_greedy(paragraph: list[StyledGrapheme], width: int) -> list[list[StyledGrapheme]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
-
-    lines: list[list[StyledChar]] = []
-    current: list[StyledChar] = []
-    pending_space: list[StyledChar] = []
-
-    for i, word in enumerate(flat_words):
-        if not current:
-            current = list(word)
-        elif len(current) + len(pending_space) + len(word) <= width:
-            current.extend(pending_space)
-            current.extend(word)
-        else:
-            lines.append(current)
-            current = list(word)
-        if i < len(flat_spaces):
-            pending_space = flat_spaces[i]
-
-    lines.append(current)
-    return lines
+    return _wrap_at_target(flat_words, [cells_width(word) for word in flat_words], flat_spaces, width)
 
 
-def _greedy_line_count(flat_words: list[list[StyledChar]], flat_spaces: list[list[StyledChar]], width: int) -> int:
+def _greedy_line_count(word_widths: list[int], flat_spaces: list[list[StyledGrapheme]], width: int) -> int:
     count = 1
     length = 0
     pending_space_len = 0
 
-    for i, word in enumerate(flat_words):
-        wlen = len(word)
+    for i, wlen in enumerate(word_widths):
         if not length:
             length = wlen
         elif length + pending_space_len + wlen <= width:
@@ -543,25 +549,33 @@ def _greedy_line_count(flat_words: list[list[StyledChar]], flat_spaces: list[lis
 
 
 def _wrap_at_target(
-    flat_words: list[list[StyledChar]],
-    flat_spaces: list[list[StyledChar]],
-    width: int,
+    flat_words: list[list[StyledGrapheme]],
+    word_widths: list[int],
+    flat_spaces: list[list[StyledGrapheme]],
     target: int,
-) -> list[list[StyledChar]]:
-    """Greedy wrap with long-word breaking, targeting `target` width for line breaks."""
-    lines: list[list[StyledChar]] = []
-    current: list[StyledChar] = []
-    pending_space: list[StyledChar] = []
+) -> list[list[StyledGrapheme]]:
+    """
+    Greedy wrap of already-broken words, targeting `target` width for line breaks.
 
-    for i, word in enumerate(flat_words):
+    Spaces are always one cell wide, so a space run's width is its length.
+    """
+    lines: list[list[StyledGrapheme]] = []
+    current: list[StyledGrapheme] = []
+    current_width = 0
+    pending_space: list[StyledGrapheme] = []
+
+    for i, (word, word_width) in enumerate(zip(flat_words, word_widths, strict=True)):
         if not current:
             current = list(word)
-        elif len(current) + len(pending_space) + len(word) <= target:
+            current_width = word_width
+        elif current_width + len(pending_space) + word_width <= target:
             current.extend(pending_space)
             current.extend(word)
+            current_width += len(pending_space) + word_width
         else:
             lines.append(current)
             current = list(word)
+            current_width = word_width
         if i < len(flat_spaces):
             pending_space = flat_spaces[i]
 
@@ -569,31 +583,32 @@ def _wrap_at_target(
     return lines
 
 
-def _wrap_balance(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
+def _wrap_balance(paragraph: list[StyledGrapheme], width: int) -> list[list[StyledGrapheme]]:
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
         return [[]]
 
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
+    word_widths = [cells_width(word) for word in flat_words]
 
-    k = _greedy_line_count(flat_words, flat_spaces, width)
+    k = _greedy_line_count(word_widths, flat_spaces, width)
 
     if k <= 1:
-        return _wrap_at_target(flat_words, flat_spaces, width, width)
+        return _wrap_at_target(flat_words, word_widths, flat_spaces, width)
 
     # Binary search for the narrowest target that still yields k lines.
     lo, hi = 1, width
     while lo < hi:
         mid = (lo + hi) // 2
-        if _greedy_line_count(flat_words, flat_spaces, mid) <= k:
+        if _greedy_line_count(word_widths, flat_spaces, mid) <= k:
             hi = mid
         else:
             lo = mid + 1
 
-    return _wrap_at_target(flat_words, flat_spaces, width, lo)
+    return _wrap_at_target(flat_words, word_widths, flat_spaces, lo)
 
 
-def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledChar]]:
+def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[StyledGrapheme]]:
     """DP optimal line-breaking minimizing sum of squared slack on non-last lines."""
     words, spaces = _extract_words_and_spaces(paragraph)
     if not words:
@@ -604,11 +619,11 @@ def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledCha
     n = len(flat_words)
     INF = float("inf")
 
-    # Precompute prefix sums of word lengths so line_length is O(1).
-    # prefix[i] = sum of len(flat_words[0]) .. len(flat_words[i-1])
+    # Precompute prefix sums of word widths so line_length is O(1).
+    # prefix[i] = sum of the widths of flat_words[0] .. flat_words[i-1]
     prefix: list[int] = [0] * (n + 1)
     for idx in range(n):
-        prefix[idx + 1] = prefix[idx] + len(flat_words[idx])
+        prefix[idx + 1] = prefix[idx] + cells_width(flat_words[idx])
 
     # Precompute prefix sums of space lengths between words.
     # space_prefix[k] = sum of len(flat_spaces[0]) .. len(flat_spaces[k-1])
@@ -623,8 +638,8 @@ def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledCha
         return word_len + space_len
 
     # dp[i] = min cost to break flat_words[i..n-1], bp[i] = best j for first break after i.
-    # bp[i] is always set to j > i before use because _flatten_long_words ensures every word fits
-    # within width, so each word can at minimum occupy its own line.
+    # bp[i] is always set to j > i before use because every word may occupy a line of its own,
+    # even the one-cluster chunks _flatten_long_words leaves wider than width (a wide cluster at width 1).
     dp: list[float] = [INF] * (n + 1)
     bp: list[int] = [0] * (n + 1)
     dp[n] = 0.0
@@ -632,9 +647,9 @@ def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledCha
     for i in range(n - 1, -1, -1):
         for j in range(i + 1, n + 1):
             ll = line_length(i, j)
-            if ll > width:
+            if ll > width and j > i + 1:
                 break
-            slack = width - ll
+            slack = max(width - ll, 0)
             if j == n:
                 cost = 0.0
             else:
@@ -645,11 +660,11 @@ def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledCha
                 bp[i] = j
 
     # Reconstruct lines.
-    lines: list[list[StyledChar]] = []
+    lines: list[list[StyledGrapheme]] = []
     i = 0
     while i < n:
         j = bp[i]
-        line: list[StyledChar] = []
+        line: list[StyledGrapheme] = []
         for k in range(i, j):
             if k > i:
                 # Insert the actual space run between flat_words[k-1] and flat_words[k].
@@ -663,10 +678,10 @@ def _wrap_pretty(paragraph: list[StyledChar], width: int) -> list[list[StyledCha
 
 
 def wrap_cells(
-    cells: Iterable[StyledChar],
+    cells: Iterable[StyledGrapheme],
     wrap: TextWrap,
     width: int | None,
-) -> list[list[StyledChar]]:
+) -> list[list[StyledGrapheme]]:
     if width is not None and width <= 0:
         return []
 
@@ -675,7 +690,7 @@ def wrap_cells(
     if wrap == "none" or width is None:
         return paragraphs
 
-    result: list[list[StyledChar]] = []
+    result: list[list[StyledGrapheme]] = []
     for paragraph in paragraphs:
         if wrap == "stable":
             result.extend(_wrap_greedy(paragraph, width))

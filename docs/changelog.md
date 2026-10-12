@@ -29,6 +29,10 @@
 - Documented that a component must call the same hooks in the same order on every render,
   and how to move a hook that is only sometimes needed into a child component.
 
+- Documented every style utility on the [utilities page](styles/utilities.md),
+  grouped by family: what each constant sets, each function's signature,
+  and the color palette.
+
 - [#318](https://github.com/JoshKarpel/counterweight/pull/318)
   Added three text wrapping modes for `Text` elements: `text_wrap_stable` (greedy),
   `text_wrap_balance` (equalizes line lengths), and `text_wrap_pretty` (Knuth–Plass DP,
@@ -197,12 +201,24 @@
   rather than a `dict` from `Position` to cell.
   Index it with a `Position` or an `(x, y)` pair, or read it a row at a time with `rows()`.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
-  The painted cell `counterweight.paint.P` is renamed `Cell`. It is a frozen dataclass of a character
-  and its resolved style, and no longer carries its element's `z`.
-  `counterweight.elements.CellPaint`, a character and its unresolved `CellStyle`, is renamed `StyledChar`.
+  The painted cell `counterweight.paint.P` is renamed `Cell`, and its `char` is renamed `grapheme`.
+  It is a frozen dataclass of a grapheme cluster and its resolved style, and no longer carries its element's `z`.
+  `counterweight.elements.CellPaint`, a grapheme cluster and its unresolved `CellStyle`,
+  is renamed `StyledGrapheme`, and its `char` is renamed `grapheme`.
 
 ### Fixed
 
+- [#392](https://github.com/JoshKarpel/counterweight/issues/392)
+  Text is measured, wrapped and painted by grapheme cluster and its display width, as measured by
+  [wcwidth](https://github.com/jquast/wcwidth), a new dependency,
+  so CJK characters and emoji take two cells and no longer push the rest of their line out of place,
+  combining marks and joined emoji (`👩‍💻`) stay whole,
+  and zero-width characters such as zero-width spaces take no cells.
+  `StyledGrapheme.width` is the number of cells a cluster takes.
+  See [wide characters](elements/text.md#wide-characters).
+- [#392](https://github.com/JoshKarpel/counterweight/issues/392)
+  Control characters in text other than line breaks, such as tab and escape,
+  are drawn as symbols (`␉`, `␛`) rather than written to the terminal, where they ran as commands.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Merging styles with `|` now lets the right side override the left with a default value:
   `border_heavy | border_none` has no border kind, `text_justify_center | text_justify_left` justifies left,

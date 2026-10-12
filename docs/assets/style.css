@@ -86,3 +86,39 @@ with rows tight enough that vertical borders join up.
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
   line-height: 1.15;
 }
+
+/*
+The color palette on the utilities page.
+Its table has a class so Material's styling for markdown tables (which matches only class-less tables) leaves it alone.
+*/
+
+.utility-palette {
+  overflow-x: auto;
+}
+
+.md-typeset .utility-palette .palette {
+  border-collapse: separate;
+  border-spacing: 0.15rem;
+  font-size: 0.7rem;
+}
+
+.md-typeset .utility-palette .palette th {
+  font-weight: normal;
+  text-align: center;
+  padding: 0 0.2rem;
+}
+
+.md-typeset .utility-palette .palette tbody th {
+  text-align: right;
+}
+
+.md-typeset .utility-palette .palette td {
+  padding: 0;
+}
+
+.utility-palette .swatch {
+  display: block;
+  width: 2rem;
+  height: 1.5rem;
+  border-radius: 0.2rem;
+}
