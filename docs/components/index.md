@@ -10,7 +10,9 @@ covers the same ground with interactive examples.
 
 ## How a component keeps its state
 
-Every render calls your component functions again and builds a new tree.
+A render calls a component function again when that component's state changed,
+or when the component that returned it was called again,
+and builds a new tree, keeping the previous render's output for every component it didn't call.
 Counterweight then pairs each component in the new tree with one from the previous render.
 A component that finds a partner **continues** it:
 it keeps its hooks, so `use_state` returns the stored value and its effects keep running.

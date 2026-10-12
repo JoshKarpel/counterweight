@@ -21,7 +21,7 @@ from counterweight.components import Component, component
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
 
@@ -40,14 +40,19 @@ def event_queue() -> Iterator[Queue[AnyEvent]]:
 async def render(
     root: Component | AnyElement,
     previous: ShadowNode | None,
-    active_effects: set[Task[None]],
     task_group: TaskGroup,
-) -> tuple[ShadowNode, set[Task[None]]]:
+    dirty: frozenset[NodeKey] = frozenset(),
+) -> ShadowNode:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
-    shadow = update_shadow(root, previous, NO_LAYOUTS)
-    active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=task_group)
+    update = update_shadow(root, previous, NO_LAYOUTS, dirty)
+    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
     await sleep(0)
-    return shadow, active_effects
+    return update.tree
+
+
+def effect_tasks(shadow: ShadowNode) -> list[Task[None]]:
+    """The tasks of every effect in the tree, to cancel before the test's task group exits."""
+    return [effect.task for node in shadow.walk() for effect in node.hooks.effects if effect.task is not None]
 
 
 @component
@@ -82,10 +87,10 @@ async def test_rerun_effect_stops_before_it_starts_again() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(logs_effect_per_dep("A", 1, log), None, set(), tg)
-        shadow, active = await render(logs_effect_per_dep("A", 2, log), shadow, active, tg)
+        shadow = await render(logs_effect_per_dep("A", 1, log), None, tg)
+        shadow = await render(logs_effect_per_dep("A", 2, log), shadow, tg)
         log_after_rerun = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_rerun == ["start A 1", "stop A 1", "start A 2"]
 
@@ -94,12 +99,10 @@ async def test_unmounted_effect_stops_before_sibling_rerun_starts() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(
-            Div(children=[logs_effect_per_dep("A", 1, log), logs_effect("B", log)]), None, set(), tg
-        )
-        shadow, active = await render(Div(children=[logs_effect_per_dep("A", 2, log)]), shadow, active, tg)
+        shadow = await render(Div(children=[logs_effect_per_dep("A", 1, log), logs_effect("B", log)]), None, tg)
+        shadow = await render(Div(children=[logs_effect_per_dep("A", 2, log)]), shadow, tg)
         log_after_rerender = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_rerender.index("stop B") < log_after_rerender.index("start A 2")
 
@@ -108,10 +111,10 @@ async def test_component_replaced_by_element_stops_its_effect() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(Div(children=[logs_effect("A", log)]), None, set(), tg)
-        shadow, active = await render(Div(children=[Div()]), shadow, active, tg)
+        shadow = await render(Div(children=[logs_effect("A", log)]), None, tg)
+        shadow = await render(Div(children=[Div()]), shadow, tg)
         log_after_replacement = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_replacement == ["start A", "stop A"]
 
@@ -133,9 +136,9 @@ async def test_component_nested_under_replaced_component_starts_with_initial_sta
 
     with event_queue():
         async with TaskGroup() as tg:
-            shadow, active = await render(Div(children=[wrapper()]), None, set(), tg)
+            shadow = await render(Div(children=[wrapper()]), None, tg)
             setters[-1](7)
-            await render(Div(children=[Div(children=[counter()])]), shadow, active, tg)
+            await render(Div(children=[Div(children=[counter()])]), shadow, tg)
 
     assert seen == [3, 3]
 
@@ -151,11 +154,11 @@ async def test_use_mouse_listener_removed_when_component_replaced_by_element() -
 
     try:
         async with TaskGroup() as tg:
-            shadow, active = await render(Div(children=[tracks_mouse()]), None, set(), tg)
+            shadow = await render(Div(children=[tracks_mouse()]), None, tg)
             listener_count_while_mounted = len(listeners)
-            shadow, active = await render(Div(children=[Div()]), shadow, active, tg)
+            shadow = await render(Div(children=[Div()]), shadow, tg)
             listener_count_after_replacement = len(listeners)
-            await cancel_tasks(active)
+            await cancel_tasks(effect_tasks(shadow))
     finally:
         current_use_mouse_listeners.reset(token)
 
@@ -197,13 +200,13 @@ async def test_reordered_keyed_children_keep_their_state() -> None:
 
     with event_queue():
         async with TaskGroup() as tg:
-            shadow, active = await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, set(), tg
+            shadow = await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg
             )
             setters["x"]("x was set")
             setters["y"]("y was set")
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, active, tg
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, tg
             )
 
     assert seen == {"x": "x was set", "y": "y was set"}
@@ -213,14 +216,10 @@ async def test_reordered_keyed_children_keep_their_effects_running() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(
-            Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, set(), tg
-        )
-        shadow, active = await render(
-            Div(children=[logs_effect(name, log).with_key(name) for name in ("y", "x")]), shadow, active, tg
-        )
+        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, tg)
+        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("y", "x")]), shadow, tg)
         log_after_reorder = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_reorder == ["start x", "start y"]
 
@@ -231,15 +230,14 @@ async def test_keyed_children_after_a_removed_keyed_child_keep_their_state() -> 
 
     with event_queue():
         async with TaskGroup() as tg:
-            shadow, active = await render(
+            shadow = await render(
                 Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "b", "c")]),
                 None,
-                set(),
                 tg,
             )
             setters["c"]("c was set")
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "c")]), shadow, active, tg
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "c")]), shadow, tg
             )
 
     assert seen["c"] == "c was set"
@@ -249,14 +247,12 @@ async def test_inserting_a_keyed_child_at_the_front_mounts_only_that_child() -> 
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(
-            Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, set(), tg
-        )
-        shadow, active = await render(
-            Div(children=[logs_effect(name, log).with_key(name) for name in ("w", "x", "y")]), shadow, active, tg
+        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, tg)
+        shadow = await render(
+            Div(children=[logs_effect(name, log).with_key(name) for name in ("w", "x", "y")]), shadow, tg
         )
         log_after_insert = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_insert == ["start x", "start y", "start w"]
 
@@ -265,12 +261,10 @@ async def test_unkeyed_child_after_a_removed_keyed_sibling_remounts() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow, active = await render(
-            Div(children=[logs_effect("a", log).with_key("a"), logs_effect("u", log)]), None, set(), tg
-        )
-        shadow, active = await render(Div(children=[logs_effect("u", log)]), shadow, active, tg)
+        shadow = await render(Div(children=[logs_effect("a", log).with_key("a"), logs_effect("u", log)]), None, tg)
+        shadow = await render(Div(children=[logs_effect("u", log)]), shadow, tg)
         log_after_removal = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_removal.count("start u") == 2
 
@@ -291,10 +285,10 @@ async def test_setter_is_the_same_object_across_renders() -> None:
 
     with event_queue():
         async with TaskGroup() as tg:
-            shadow, active = await render(remembers("a", setters, seen), None, set(), tg)
+            shadow = await render(remembers("a", setters, seen), None, tg)
             setters_by_render.append(setters["a"])
             setters["a"]("a was set")
-            await render(remembers("a", setters, seen), shadow, active, tg)
+            await render(remembers("a", setters, seen), shadow, tg)
             setters_by_render.append(setters["a"])
 
     assert setters_by_render[0] is setters_by_render[1]
@@ -316,11 +310,11 @@ async def test_effect_with_setter_in_deps_runs_once_across_renders() -> None:
         return Text(content=label)
 
     async with TaskGroup() as tg:
-        shadow, active = await render(depends_on_setter("first"), None, set(), tg)
-        shadow, active = await render(depends_on_setter("second"), shadow, active, tg)
-        shadow, active = await render(depends_on_setter("third"), shadow, active, tg)
+        shadow = await render(depends_on_setter("first"), None, tg)
+        shadow = await render(depends_on_setter("second"), shadow, tg)
+        shadow = await render(depends_on_setter("third"), shadow, tg)
         log_after_renders = log.copy()
-        await cancel_tasks(active)
+        await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_renders == ["start"]
 
@@ -375,8 +369,8 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 
     with event_queue() as queue:
         async with TaskGroup() as tg:
-            shadow, active = await render(before(setters, seen), None, set(), tg)
-            await render(after(setters, seen), shadow, active, tg)
+            shadow = await render(before(setters, seen), None, tg)
+            await render(after(setters, seen), shadow, tg)
             setters[name]("set after unmount")
 
     assert queue.empty()
@@ -385,12 +379,12 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
-    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None, NO_LAYOUTS)
+    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None, NO_LAYOUTS).tree
     state = ref(shadow.children[0].hooks.data[0])
 
     gc.disable()
     try:
-        shadow = update_shadow(Div(children=[Div()]), shadow, NO_LAYOUTS)
+        shadow = update_shadow(Div(children=[Div()]), shadow, NO_LAYOUTS).tree
         is_freed = state() is None
     finally:
         gc.enable()
@@ -404,11 +398,11 @@ async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
 
     with event_queue() as queue:
         async with TaskGroup() as tg:
-            shadow, active = await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, set(), tg
+            shadow = await render(
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg
             )
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, active, tg
+                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, tg
             )
             setters["x"]("set after move")
 
@@ -430,15 +424,15 @@ def calls_hooks(hook_count: int) -> Text:
     ],
 )
 def test_changing_hook_count_between_renders_raises(first_count: int, second_count: int) -> None:
-    shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS)
+    shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS).tree
 
     with pytest.raises(InconsistentHookExecution):
-        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS)
+        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS).tree
 
 
 def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
-    shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS)
-    shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS)
+    shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS).tree
+    shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS).tree
 
     assert len(shadow.hooks.data) == 2
 
@@ -457,14 +451,14 @@ def raises_on_render(should_raise: bool) -> Text:
 
 @pytest.mark.parametrize("is_rerender", [False, True], ids=["mount", "rerender"])
 def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
-    previous = update_shadow(raises_on_render(False), None, NO_LAYOUTS) if is_rerender else None
+    previous = update_shadow(raises_on_render(False), None, NO_LAYOUTS).tree if is_rerender else None
     outer_hooks = Hooks()
     outer_hook_idx = 5
     state_token = current_hook_state.set(outer_hooks)
     idx_token = current_hook_idx.set(outer_hook_idx)
     try:
         with pytest.raises(RenderFailed):
-            update_shadow(raises_on_render(True), previous, NO_LAYOUTS)
+            update_shadow(raises_on_render(True), previous, NO_LAYOUTS).tree
         context_after_raise = (current_hook_state.get() is outer_hooks, current_hook_idx.get())
     finally:
         current_hook_idx.reset(idx_token)

@@ -4,12 +4,15 @@ from asyncio import Task
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import count
-from typing import NewType
+from typing import TYPE_CHECKING, NewType
 from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+
+if TYPE_CHECKING:
+    from counterweight.hooks.hooks import Rects
 
 # Identifies one mounted node across frames, for as long as its hooks carry over.
 NodeKey = NewType("NodeKey", int)
@@ -59,7 +62,7 @@ class UseState:
 
         if self.value != value:  # avoid unnecessary updates
             self.value = value
-            current_event_queue.get().put_nowait(StateSet())
+            current_event_queue.get().put_nowait(StateSet(key=self.node_key))
 
 
 @dataclass(slots=True)
@@ -84,6 +87,8 @@ class Hooks:
     data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
     mount_status: MountStatus = field(default_factory=MountStatus)
     key: NodeKey = field(default_factory=_next_node_key)
+    rects: Rects | None = None
+    """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
 
     @property
     def effects(self) -> Iterator[UseEffect]:

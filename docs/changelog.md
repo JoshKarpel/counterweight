@@ -74,6 +74,11 @@
 
 ### Changed
 
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  A render calls only the components whose state changed and the components they return,
+  instead of every component, and keeps the previous render's output for the rest.
+  An effect with `deps=None` runs after every render of its own component,
+  rather than after every render of the app.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   The `*_center` and `*_end` alignment utilities
   (`justify_children_*`, `align_children_*`, `align_self_*`, `justify_items_*`, `justify_self_*`)

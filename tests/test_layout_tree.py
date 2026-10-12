@@ -33,7 +33,7 @@ def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowNode:
     """Render each element as one frame through `tree`, and return the last frame's shadow tree."""
     shadow: ShadowNode | None = None
     for element in elements:
-        next_shadow = update_shadow(element, shadow, NO_LAYOUTS)
+        next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
         tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)
         shadow = next_shadow
     if shadow is None:
@@ -93,9 +93,9 @@ UNCHANGING = [
 
 @pytest.mark.parametrize("element", UNCHANGING)
 def test_frame_with_no_changes_has_no_layout_changes(element: AnyElement) -> None:
-    previous = update_shadow(element, None, NO_LAYOUTS)
+    previous = update_shadow(element, None, NO_LAYOUTS).tree
 
-    assert layout_changes(previous, update_shadow(element, previous, NO_LAYOUTS)) == []
+    assert layout_changes(previous, update_shadow(element, previous, NO_LAYOUTS).tree) == []
 
 
 @pytest.mark.parametrize("element", UNCHANGING)
@@ -103,14 +103,14 @@ def test_frame_with_no_changes_dirties_no_node(element: AnyElement) -> None:
     tree = LayoutTree()
     shadow = frames(tree, [element])
 
-    tree.apply(layout_changes(shadow, update_shadow(element, shadow, NO_LAYOUTS)))
+    tree.apply(layout_changes(shadow, update_shadow(element, shadow, NO_LAYOUTS).tree))
 
     assert dirty_nodes(tree) == set()
 
 
 def test_changed_text_is_one_set_text() -> None:
-    previous = update_shadow(panes("alpha", "beta", "gamma"), None, NO_LAYOUTS)
-    next = update_shadow(panes("alpha", "beta, longer now", "gamma"), previous, NO_LAYOUTS)
+    previous = update_shadow(panes("alpha", "beta", "gamma"), None, NO_LAYOUTS).tree
+    next = update_shadow(panes("alpha", "beta, longer now", "gamma"), previous, NO_LAYOUTS).tree
 
     [(changed, text)] = [
         (node, element)
@@ -123,7 +123,7 @@ def test_changed_text_is_one_set_text() -> None:
 def test_changed_text_dirties_only_itself_and_its_ancestors() -> None:
     tree = LayoutTree()
     shadow = frames(tree, [panes("alpha", "beta", "gamma")])
-    next = update_shadow(panes("alpha", "beta, longer now", "gamma"), shadow, NO_LAYOUTS)
+    next = update_shadow(panes("alpha", "beta, longer now", "gamma"), shadow, NO_LAYOUTS).tree
 
     tree.apply(layout_changes(shadow, next))
 
@@ -134,7 +134,7 @@ def test_changed_text_dirties_only_itself_and_its_ancestors() -> None:
 def test_changed_chunk_dirties_its_text() -> None:
     tree = LayoutTree()
     shadow = frames(tree, [canvas(["red", "green", "blue"])])
-    next = update_shadow(canvas(["red", "yellow", "blue"]), shadow, NO_LAYOUTS)
+    next = update_shadow(canvas(["red", "yellow", "blue"]), shadow, NO_LAYOUTS).tree
 
     tree.apply(layout_changes(shadow, next))
 
@@ -147,8 +147,8 @@ def test_changed_chunk_dirties_its_text() -> None:
 
 
 def test_moved_keyed_child_is_one_set_children() -> None:
-    previous = update_shadow(keyed("a", "b", "c"), None, NO_LAYOUTS)
-    next = update_shadow(keyed("c", "a", "b"), previous, NO_LAYOUTS)
+    previous = update_shadow(keyed("a", "b", "c"), None, NO_LAYOUTS).tree
+    next = update_shadow(keyed("c", "a", "b"), previous, NO_LAYOUTS).tree
 
     assert layout_changes(previous, next) == [
         SetChildren(key=next.key, children=tuple(child.key for child in next.children))
@@ -157,8 +157,8 @@ def test_moved_keyed_child_is_one_set_children() -> None:
 
 def test_text_becoming_a_div_keeps_its_key() -> None:
     nested_text = Text(content="nested")
-    previous = update_shadow(Div(children=[Text(content="leaf")]), None, NO_LAYOUTS)
-    next = update_shadow(Div(children=[Div(children=[nested_text])]), previous, NO_LAYOUTS)
+    previous = update_shadow(Div(children=[Text(content="leaf")]), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=[Div(children=[nested_text])]), previous, NO_LAYOUTS).tree
 
     [was_text], [now_div] = previous.children, next.children
     [nested] = now_div.children
@@ -173,8 +173,8 @@ def test_text_becoming_a_div_keeps_its_key() -> None:
 
 
 def test_unmounted_subtree_removes_every_node_in_it() -> None:
-    previous = update_shadow(Div(children=[Text(content="sibling"), panes("deep", "deeper")]), None, NO_LAYOUTS)
-    next = update_shadow(Div(children=[Text(content="sibling")]), previous, NO_LAYOUTS)
+    previous = update_shadow(Div(children=[Text(content="sibling"), panes("deep", "deeper")]), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=[Text(content="sibling")]), previous, NO_LAYOUTS).tree
 
     removed = [change.key for change in layout_changes(previous, next) if isinstance(change, Remove)]
 
@@ -210,7 +210,7 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
 
 
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
-    shadow = update_shadow(element, None, NO_LAYOUTS)
+    shadow = update_shadow(element, None, NO_LAYOUTS).tree
     return LayoutTree().compute(layout_changes(None, shadow), shadow, AVAILABLE).in_paint_order
 
 
@@ -219,7 +219,7 @@ def test_reused_tree_lays_out_each_frame_as_a_fresh_tree_does(elements: list[Any
     tree = LayoutTree()
     shadow: ShadowNode | None = None
     for element in elements:
-        next_shadow = update_shadow(element, shadow, NO_LAYOUTS)
+        next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
 
         assert tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE).in_paint_order == fresh_layout(
             element

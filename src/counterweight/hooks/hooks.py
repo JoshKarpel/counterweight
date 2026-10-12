@@ -7,8 +7,9 @@ from typing import overload
 from counterweight._context_vars import current_hook_state, current_layouts, current_use_mouse_listeners
 from counterweight._utils import forever
 from counterweight.geometry import Position, Region
+from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT
+from counterweight.layout import INITIAL_RESOLVED_LAYOUT, Layouts
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def use_effect(setup: Setup, deps: Deps = None) -> None:
         deps: The dependencies of the effect.
             If any of the dependencies change, the previous invocation of the `setup` function will be cancelled
             and the `setup` function will be run again.
-            If `None`, the `setup` function will be run on every render.
+            If `None`, the `setup` function will be run every time the component renders.
     """
     return current_hook_state.get().use_effect(setup, deps)
 
@@ -85,9 +86,18 @@ def use_rects() -> Rects:
             *on the previous render cycle*.
             In the initial render, the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
+            A component that calls `use_rects` also renders on the next render cycle after its rectangles move.
     """
+    hooks = current_hook_state.get()
+    rects = rects_in(current_layouts.get(), hooks.key)
+    hooks.rects = rects
+    return rects
+
+
+def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
+    """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
-    dims = current_layouts.get().by_key.get(current_hook_state.get().key, INITIAL_RESOLVED_LAYOUT)
+    dims = layouts.by_key.get(key, INITIAL_RESOLVED_LAYOUT)
 
     return Rects(
         content=dims.content,

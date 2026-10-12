@@ -4,9 +4,9 @@ import dataclasses
 import logging
 import shutil
 import sys
-from asyncio import CancelledError, Queue, QueueEmpty, Task, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, QueueEmpty, TaskGroup, get_running_loop
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
@@ -43,7 +43,7 @@ from counterweight.events import (
 )
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
-from counterweight.hooks.impls import UseEffect
+from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import read_keys, start_input_control, stop_input_control
 from counterweight.layout import NO_LAYOUTS, LayoutTree, layout_changes
 from counterweight.logging import devlog
@@ -134,8 +134,8 @@ async def render_loop(
         return screen_element_style(w, h), cp, w, h
 
     @component
-    def screen() -> Div:
-        return Div(children=(root(),), style=screen_style)
+    def screen(style: Style) -> Div:
+        return Div(children=(root(),), style=style)
 
     logger.info("Application starting...")
 
@@ -179,7 +179,7 @@ async def render_loop(
         screen_style, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
-        active_effects: set[Task[None]] = set()
+        dirty: set[NodeKey] = set()
 
         should_quit = False
         should_bell = False
@@ -192,8 +192,12 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(screen(), None, NO_LAYOUTS)
+        shadow = update_shadow(screen(screen_style), None, NO_LAYOUTS).tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+
+        # A new root component re-runs every component below it. The warmup started no effects,
+        # so the first painted frame has to re-run every component to start them.
+        root_component = screen(screen_style)
 
         def handle_control(control: AnyControl | None) -> None:
             nonlocal should_render
@@ -278,14 +282,17 @@ async def render_loop(
                         allow_key_thread.set()
 
                     screen_style, current_paint, w, h = handle_screen_size_change()
+                    root_component = screen(screen_style)
 
                     logger.debug("Resuming application", extra={"handler": should_suspend.handler})
 
                     should_suspend = None
 
                 if should_render:
-                    previous_shadow, shadow = shadow, update_shadow(screen(), shadow, layouts)
-                    logger.debug("Updated shadow tree")
+                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty))
+                    dirty.clear()
+                    previous_shadow, shadow = shadow, update.tree
+                    logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
                     available = waxy.AvailableSize(
                         width=waxy.Definite(w),
@@ -323,8 +330,8 @@ async def render_loop(
                             "Wrote and flushed instructions to output stream", extra={"bytes": f"{len(instructions):_}"}
                         )
 
-                    active_effects = await handle_effects(shadow, active_effects=active_effects, task_group=tg)
-                    logger.debug("Reconciled effects", extra={"num_active_effects": len(active_effects)})
+                    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=tg)
+                    logger.debug("Reconciled effects")
 
                     should_render = False
 
@@ -353,11 +360,13 @@ async def render_loop(
                     event = events.popleft()
 
                     match event:
-                        case StateSet():
+                        case StateSet(key=key):
                             should_render = True
+                            dirty.add(key)
                         case TerminalResized(dimensions=override):
                             should_render = True
                             screen_style, current_paint, w, h = handle_screen_size_change(override)
+                            root_component = screen(screen_style)
                         case KeyPressed():
                             for element, _ in reversed(layouts.in_paint_order):
                                 if element.on_key:
@@ -406,29 +415,27 @@ async def render_loop(
         logger.info("Application stopped")
 
 
-async def handle_effects(shadow: ShadowNode, active_effects: set[Task[None]], task_group: TaskGroup) -> set[Task[None]]:
-    reruns: list[UseEffect] = []
-    kept: set[Task[None]] = set()
-    for node in shadow.walk():
-        for effect in node.hooks.effects:
-            if effect.deps != effect.new_deps or effect.new_deps is None:
-                reruns.append(effect)
-            else:
-                if effect.task is None:
-                    raise Exception("Effect task should never be None at this point")
-                kept.add(effect.task)
+async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:
+    """
+    Restarts the effects of the components that `ran` whose deps changed, or that have none,
+    and cancels every effect of the nodes that were `unmounted`.
+    The effects of components that didn't run keep running.
+    """
+    reruns = [
+        effect for hooks in ran for effect in hooks.effects if effect.new_deps is None or effect.deps != effect.new_deps
+    ]
+    stale = chain(
+        (effect.task for effect in reruns if effect.task is not None),
+        (effect.task for hooks in unmounted for effect in hooks.effects if effect.task is not None),
+    )
 
     # Every stale task is cancelled before any rerun starts, so an effect holding something exclusive
     # (a subscription, a terminal mode) releases it before its replacement or a sibling acquires it.
-    await cancel_tasks(active_effects - kept)
+    await cancel_tasks(stale)
 
-    started: set[Task[None]] = set()
     for effect in reruns:
         effect.deps = effect.new_deps
         effect.task = task_group.create_task(effect.setup())
-        started.add(effect.task)
-
-    return kept | started
 
 
 def build_concrete_element_tree(root: ShadowNode) -> AnyElement:

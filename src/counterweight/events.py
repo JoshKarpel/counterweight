@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 from counterweight.geometry import Position
+
+if TYPE_CHECKING:
+    from counterweight.hooks.impls import NodeKey
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +71,8 @@ class MouseScrolledUp(_Event):
 
 @dataclass(frozen=True, slots=True)
 class StateSet(_Event):
-    pass
+    key: NodeKey
+    """The key of the node whose state was set."""
 
 
 @dataclass(frozen=True, slots=True)

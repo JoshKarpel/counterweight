@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import chain
 
 from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts
 from counterweight.components import Component
 from counterweight.elements import AnyElement
+from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
 from counterweight.layout import Layouts
 
@@ -34,14 +35,87 @@ class ShadowNode:
             stack.extend(reversed(node.children))
 
 
+@dataclass(frozen=True, slots=True)
+class ShadowUpdate:
+    """
+    One frame's shadow tree, with the hooks of the components that ran to build it
+    and of every previous node it unmounted, so effects can follow exactly the renders that happened.
+    """
+
+    tree: ShadowNode
+    ran: tuple[Hooks, ...]
+    unmounted: tuple[Hooks, ...]
+
+
 class DuplicateKey(Exception):
     """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
 
 
-def update_shadow(next: Component | AnyElement, previous: ShadowNode | None, layouts: Layouts) -> ShadowNode:
+def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> bool:
+    """
+    Whether `node` has to re-run whatever its parent does:
+    its state was set, or the rectangles `use_rects` last returned to it have moved since.
+    """
+    return node.key in dirty or (node.hooks.rects is not None and node.hooks.rects != rects_in(layouts, node.key))
+
+
+def dirty_paths(tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> frozenset[NodeKey]:
+    """The keys of every dirty node in `tree` (see `is_dirty`) and of all their ancestors."""
+    paths: set[NodeKey] = set()
+    parents: dict[NodeKey, NodeKey] = {}
+    stack = [tree]
+    while stack:
+        node = stack.pop()
+        for child in node.children:
+            parents[child.key] = node.key
+        stack.extend(node.children)
+
+        if not is_dirty(node, dirty, layouts):
+            continue
+
+        key: NodeKey | None = node.key
+        while key is not None and key not in paths:
+            paths.add(key)
+            key = parents.get(key)
+
+    return frozenset(paths)
+
+
+@dataclass(frozen=True, slots=True)
+class Reconciliation:
+    """What one `update_shadow` call reads, and the hooks it collects as it goes."""
+
+    layouts: Layouts
+    dirty: frozenset[NodeKey]
+    paths: frozenset[NodeKey]
+    ran: list[Hooks] = field(default_factory=list)
+    unmounted: list[Hooks] = field(default_factory=list)
+
+
+def update_shadow(
+    next: Component | AnyElement,
+    previous: ShadowNode | None,
+    layouts: Layouts,
+    dirty: frozenset[NodeKey] = frozenset(),
+) -> ShadowUpdate:
+    """
+    Builds the next shadow tree from `previous`, re-running only the components that have to:
+    those in `dirty` or whose rectangles moved (see `is_dirty`), and those whose parent passed them a new `Component`.
+    A component that doesn't re-run keeps its previous node, whole subtree included,
+    unless a dirty node is below it, in which case its children are reconciled again to reach it.
+    `layouts` are the previous frame's, which `use_rects` reads.
+    """
+    paths = frozenset() if previous is None else dirty_paths(previous, dirty, layouts)
+    reconciliation = Reconciliation(layouts=layouts, dirty=dirty, paths=paths)
+    tree = update_node(next, previous, reconciliation)
+    return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
+
+
+def update_node(
+    next: Component | AnyElement, previous: ShadowNode | None, reconciliation: Reconciliation
+) -> ShadowNode:
     """
     Returns the updated shadow node, marking every previous node that the new tree doesn't continue as unmounted.
-    `layouts` are the previous frame's, which `use_rects` reads.
     """
     match next, previous:
         case Component(
@@ -49,70 +123,72 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None, lay
             key=next_key,
         ) as next_component, ShadowNode(
             component=previous_component,
+            element=previous_element,
             children=previous_children,
             hooks=previous_hooks,
-        ) if (
+        ) as previous_node if (
             previous_component is not None
             and next_func == previous_component.func
             and next_key == previous_component.key
         ):
-            previous_hook_count = len(previous_hooks.data)
-            element, hook_count = call_component(next_component, previous_hooks, layouts)
-
-            if hook_count != previous_hook_count:
-                raise InconsistentHookExecution(
-                    f"{next_func} called {hook_count} hooks on this render, "
-                    f"but {previous_hook_count} on its previous render. "
-                    "A component must call the same hooks in the same order on every render."
+            if next_component is previous_component and previous_node.key not in reconciliation.paths:
+                new = previous_node
+            elif next_component is previous_component and not is_dirty(
+                previous_node, reconciliation.dirty, reconciliation.layouts
+            ):
+                new = ShadowNode(
+                    component=previous_component,
+                    element=previous_element,
+                    children=reconcile_children(previous_element.children, previous_children, reconciliation),
+                    hooks=previous_hooks,
                 )
+            else:
+                previous_hook_count = len(previous_hooks.data)
+                element, hook_count = call_component(next_component, previous_hooks, reconciliation)
 
-            children = reconcile_children(element.children, previous_children, layouts)
+                if hook_count != previous_hook_count:
+                    raise InconsistentHookExecution(
+                        f"{next_func} called {hook_count} hooks on this render, "
+                        f"but {previous_hook_count} on its previous render. "
+                        "A component must call the same hooks in the same order on every render."
+                    )
 
-            new = ShadowNode(
-                component=next_component,
-                element=element,
-                children=children,
-                hooks=previous_hooks,  # the hooks are mutable and carry through renders
-            )
-
-            # logger.debug(
-            #     "Updated shadow node",
-            #     type="component",
-            #     id=id,
-            #     generation=new.generation,
-            # )
+                new = ShadowNode(
+                    component=next_component,
+                    element=element,
+                    children=reconcile_children(element.children, previous_children, reconciliation),
+                    hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                )
         case Component() as next_component, _:
             hook_state = Hooks()
-            element, _ = call_component(next_component, hook_state, layouts)
-
-            children = reconcile_children(element.children, (), layouts)
+            element, _ = call_component(next_component, hook_state, reconciliation)
 
             new = ShadowNode(
                 component=next_component,
                 element=element,
-                children=children,
+                children=reconcile_children(element.children, (), reconciliation),
                 hooks=hook_state,
             )
         case element, ShadowNode(
             component=None,
+            element=previous_element,
             children=previous_children,
             hooks=previous_hooks,
-        ):
-            children = reconcile_children(element.children, previous_children, layouts)
-
-            new = ShadowNode(
-                component=None,
-                element=element,
-                children=children,
-                hooks=previous_hooks,  # the hooks are mutable and carry through renders
-            )
+        ) as previous_node:
+            if element is previous_element and previous_node.key not in reconciliation.paths:
+                new = previous_node
+            else:
+                new = ShadowNode(
+                    component=None,
+                    element=element,
+                    children=reconcile_children(element.children, previous_children, reconciliation),
+                    hooks=previous_hooks,  # the hooks are mutable and carry through renders
+                )
         case element, None | ShadowNode():
-            children = reconcile_children(element.children, (), layouts)
-
             new = ShadowNode(
                 component=None,
                 element=element,
-                children=children,
+                children=reconcile_children(element.children, (), reconciliation),
                 hooks=Hooks(),
             )
         case _:
@@ -121,22 +197,23 @@ def update_shadow(next: Component | AnyElement, previous: ShadowNode | None, lay
 
     # A previous node is continued exactly when its hooks carry over.
     if previous is not None and new.hooks is not previous.hooks:
-        unmount(previous)
+        unmount(previous, reconciliation)
 
     return new
 
 
-def call_component(next_component: Component, hooks: Hooks, layouts: Layouts) -> tuple[AnyElement, int]:
+def call_component(next_component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:
     """
-    Calls a component function with `hooks` as the current hook state and `layouts` as the previous frame's,
-    restoring the outer hook context even if it raises.
+    Calls a component function with `hooks` as the current hook state and the previous frame's layouts,
+    restoring the outer hook context even if it raises, and records that its hooks ran.
     Returns the element and how many hooks it called.
     """
     reset_current_hook_idx = current_hook_idx.set(0)
     reset_current_hook_state = current_hook_state.set(hooks)
-    reset_current_layouts = current_layouts.set(layouts)
+    reset_current_layouts = current_layouts.set(reconciliation.layouts)
     try:
         element = next_component.func(*next_component.args, **next_component.kwargs)
+        reconciliation.ran.append(hooks)
         return element, current_hook_idx.get()
     finally:
         current_hook_idx.reset(reset_current_hook_idx)
@@ -144,17 +221,20 @@ def call_component(next_component: Component, hooks: Hooks, layouts: Layouts) ->
         current_layouts.reset(reset_current_layouts)
 
 
-def unmount(discarded: ShadowNode) -> None:
+def unmount(discarded: ShadowNode, reconciliation: Reconciliation) -> None:
     """
     Marks every node in a subtree that the new tree discards as unmounted,
-    so a setter captured by an unmounted component stops triggering renders.
+    so a setter captured by an unmounted component stops triggering renders, and collects their hooks.
     """
     for node in discarded.walk():
         node.hooks.mount_status.is_mounted = False
+        reconciliation.unmounted.append(node.hooks)
 
 
 def reconcile_children(
-    next_children: Sequence[Component | AnyElement], previous_children: Sequence[ShadowNode], layouts: Layouts
+    next_children: Sequence[Component | AnyElement],
+    previous_children: Sequence[ShadowNode],
+    reconciliation: Reconciliation,
 ) -> tuple[ShadowNode, ...]:
     """
     Pairs each next child with the previous child it continues, as React does:
@@ -184,9 +264,9 @@ def reconcile_children(
         else:
             previous_child = previous_by_index.pop(index, None)
 
-        children.append(update_shadow(next_child, previous_child, layouts))
+        children.append(update_node(next_child, previous_child, reconciliation))
 
     for unmatched in chain(previous_by_key.values(), previous_by_index.values()):
-        unmount(unmatched)
+        unmount(unmatched, reconciliation)
 
     return tuple(children)

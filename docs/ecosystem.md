@@ -96,9 +96,9 @@ Beyond the language:
 - Counterweight has mouse input, through `on_mouse` handlers and the
   [`use_mouse`](hooks/use_mouse.md) and [`use_hovered`](hooks/use_hovered.md) hooks.
   Ink has none.
-- React renders only the components whose state changed and their descendants,
-  and skips `memo` components whose props are unchanged.
-  Counterweight renders every component on every render, and has no `memo`.
+- Both render only the components whose state changed and their descendants,
+  but React also skips `memo` components whose props are unchanged.
+  Counterweight has no `memo`.
 
 Ink renders inline by default, below the shell prompt, and its `<Static>` component
 writes output that stays in the terminal's scrollback.
