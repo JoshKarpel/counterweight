@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Callable, Sequence, Union
 
 from counterweight._utils import flyweight
 from counterweight.controls import AnyControl
 from counterweight.events import KeyPressed, MouseEvent
+from counterweight.graphemes import grapheme_width, graphemes, visible
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
 
@@ -27,7 +28,7 @@ class Chunk:
     style: CellStyle = _DEFAULT_CELL_STYLE
 
     @property
-    def cells(self) -> tuple[StyledChar, ...]:
+    def cells(self) -> tuple[StyledGrapheme, ...]:
         return _chunk_cells(self.content, self.style)
 
     @classmethod
@@ -44,14 +45,14 @@ NEWLINE = Chunk(content="\n")
 
 
 @lru_cache(maxsize=2**12)
-def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledChar, ...]:
-    return tuple(StyledChar(char=char, style=style) for char in content)
+def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    return tuple(StyledGrapheme(grapheme=visible(grapheme), style=style) for grapheme in graphemes(content))
 
 
 @lru_cache(maxsize=2**12)
-def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledChar, ...]:
+def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
     if isinstance(content, str):
-        return tuple(StyledChar(char=char, style=text_style) for char in content)
+        return _chunk_cells(content, text_style)
     else:
         return tuple(cell for chunk in content for cell in chunk.cells)
 
@@ -68,7 +69,7 @@ class Text:
         return ()
 
     @property
-    def cells(self) -> tuple[StyledChar, ...]:
+    def cells(self) -> tuple[StyledGrapheme, ...]:
         content = self.content if isinstance(self.content, str) else tuple(self.content)
         return text_cells(content, self.style.text_style)
 
@@ -83,6 +84,14 @@ from counterweight.components import Component  # noqa: E402, deferred to avoid 
 
 @flyweight(maxsize=2**12)
 @dataclass(slots=True, frozen=True, kw_only=True)
-class StyledChar:
-    char: str
+class StyledGrapheme:
+    """One grapheme cluster of text, the style it's drawn with, and how many terminal cells it takes."""
+
+    grapheme: str
     style: CellStyle = _DEFAULT_CELL_STYLE
+    width: int = field(init=False, compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if len(self.grapheme) != 1 and len(graphemes(self.grapheme)) != 1:
+            raise ValueError(f"A StyledGrapheme holds exactly one grapheme cluster, not {self.grapheme!r}")
+        object.__setattr__(self, "width", grapheme_width(self.grapheme))

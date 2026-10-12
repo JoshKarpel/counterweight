@@ -56,6 +56,8 @@ Side by side in a row, wrapping `Text`s shrink to share it, down to the width of
 Words longer than the available width are broken with a hyphen (`-`) inserted at the
 break point.
 This applies to all three wrapping modes.
+Words are measured in terminal cells and broken between grapheme clusters, never inside one,
+so a line of [wide characters](../elements/text.md#wide-characters) may end a cell short.
 
 ---
 

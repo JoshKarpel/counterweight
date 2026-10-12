@@ -10,9 +10,9 @@ from typing import assert_never
 from xml.etree.ElementTree import Element, SubElement
 
 from counterweight._utils import flyweight, halve_integer
-from counterweight.elements import AnyElement, Div, StyledChar, Text
+from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
 from counterweight.geometry import Position, Region
-from counterweight.layout import ResolvedLayout, wrap_cells
+from counterweight.layout import ResolvedLayout, cells_width, wrap_cells
 from counterweight.styles.styles import (
     UNSET,
     BorderKind,
@@ -34,9 +34,14 @@ logger = logging.getLogger(__name__)
 @flyweight(maxsize=2**14)
 @dataclass(frozen=True, slots=True)
 class Cell:
-    """What one terminal cell shows: a character and the resolved style it's drawn with."""
+    """
+    What one terminal cell shows: a grapheme cluster and the resolved style it's drawn with.
 
-    char: str
+    A cluster two cells wide is followed by a continuation cell, whose `grapheme` is empty,
+    because the terminal draws the cluster across both.
+    """
+
+    grapheme: str
     style: ResolvedCellStyle
 
     @classmethod
@@ -44,6 +49,18 @@ class Cell:
     def blank(cls, color: Color) -> Cell:
         """A space on a `color` background."""
         return cls(" ", resolve_cell_style(CellStyle(background=color)))
+
+    @property
+    def is_continuation(self) -> bool:
+        """Whether this is the right half of a two-cell-wide cluster, which the cell to its left draws."""
+        return not self.grapheme
+
+    def erased(self) -> Cell:
+        """
+        A space in this cell's style, which is what a terminal leaves in the other half of a two-cell-wide
+        cluster when one half is drawn over.
+        """
+        return Cell(" ", self.style)
 
 
 BLANK = Cell.blank(color=Color.from_name("black"))
@@ -57,6 +74,10 @@ class Paint:
     Index it with a `Position` or an `(x, y)` pair.
     Indexing outside the screen raises `IndexError` (negative coordinates don't wrap around),
     while [`get`][counterweight.paint.Paint.get] returns `None` there instead.
+
+    Every two-cell-wide cluster is followed by its continuation cell on the same row, and every continuation
+    cell follows one. Writing over one half of a pair erases the other half to a space, as a terminal does,
+    so the cells written must not split a pair themselves (except where `write_row` clips them).
     """
 
     width: int
@@ -80,7 +101,21 @@ class Paint:
 
     def __setitem__(self, position: Position | tuple[int, int], cell: Cell) -> None:
         x, y = position if isinstance(position, tuple) else (position.x, position.y)
-        self.cells[self.index(x, y)] = cell
+        start = self.index(x, y)
+        self._erase_split_pairs(start, start + 1)
+        self.cells[start] = cell
+
+    def _erase_split_pairs(self, start: int, stop: int) -> None:
+        """
+        Before `cells[start:stop]`, part of one row, are overwritten, erase the half outside them
+        of any two-cell-wide cluster that straddles either end.
+        """
+        # A continuation cell never starts a row, so a pair split at either end lies within this row.
+        cells = self.cells
+        if (first := cells[start]).is_continuation:
+            cells[start - 1] = first.erased()
+        if stop < len(cells) and (after := cells[stop]).is_continuation:
+            cells[stop] = after.erased()
 
     def get(self, position: Position) -> Cell | None:
         """The cell at `position`, or `None` if it's off the screen."""
@@ -98,11 +133,21 @@ class Paint:
         width = right - left
         row = [cell] * width
         cells = self.cells
+        has_cells_after = right < w
+        # _erase_split_pairs, inlined because every border and background fills row by row.
         for start in range(top * w + left, bottom * w + left, w):
-            cells[start : start + width] = row
+            stop = start + width
+            if not cells[start].grapheme:
+                cells[start - 1] = cells[start].erased()
+            if has_cells_after and not cells[stop].grapheme:
+                cells[stop] = cells[stop].erased()
+            cells[start:stop] = row
 
     def write_row(self, x: int, y: int, row: Sequence[Cell]) -> None:
-        """Set the cells from `(x, y)` rightward to `row`, dropping any that fall off the screen."""
+        """
+        Set the cells from `(x, y)` rightward to `row`, dropping any that fall off the screen,
+        and erasing the half left on screen of a two-cell-wide cluster that straddles its edge.
+        """
         if not 0 <= y < self.height:
             return
         skip = -x if x < 0 else 0
@@ -110,7 +155,16 @@ class Paint:
         if skip >= keep:
             return
         start = y * self.width + x
-        self.cells[start + skip : start + keep] = row if skip == 0 and keep == len(row) else row[skip:keep]
+        self._erase_split_pairs(start + skip, start + keep)
+        if skip == 0 and keep == len(row):
+            self.cells[start : start + keep] = row
+            return
+        visible = list(row[skip:keep])
+        if visible[0].is_continuation:
+            visible[0] = visible[0].erased()
+        if keep < len(row) and row[keep].is_continuation:
+            visible[-1] = visible[-1].erased()
+        self.cells[start + skip : start + keep] = visible
 
     def rows(self) -> Iterator[list[Cell]]:
         """Each row of cells, top to bottom."""
@@ -239,24 +293,24 @@ def edge_fills(outer: Region, inner: Region, color: Color) -> tuple[Fill, ...]:
     return tuple((strip, cell) for strip in strips if not strip.is_empty)
 
 
-def justify_line(line: list[StyledChar], width: int, justify: TextJustify) -> list[StyledChar]:
-    space = width - len(line)
+def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -> list[StyledGrapheme]:
+    space = width - cells_width(line)
     if space <= 0:
         return line
     elif justify == "left":
-        return line + [StyledChar(char=" ")] * space
+        return line + [StyledGrapheme(grapheme=" ")] * space
     elif justify == "right":
-        return [StyledChar(char=" ")] * space + line
+        return [StyledGrapheme(grapheme=" ")] * space + line
     elif justify == "center":
         left, right = halve_integer(space)
-        return [StyledChar(char=" ")] * left + line + [StyledChar(char=" ")] * right
+        return [StyledGrapheme(grapheme=" ")] * left + line + [StyledGrapheme(grapheme=" ")] * right
     else:
         assert_never(justify)
 
 
 @lru_cache(maxsize=2**12)
 def text_lines(
-    chars: tuple[StyledChar, ...],
+    graphemes: tuple[StyledGrapheme, ...],
     wrap: TextWrap,
     justify: TextJustify,
     text_style: ResolvedCellStyle,
@@ -266,21 +320,31 @@ def text_lines(
     """
     The rows of cells that text fills a `width` by `height` region with, each exactly `width` cells long.
     They don't depend on where the region is, so text that moves keeps its cache entry.
+
+    A zero-width cluster takes no cell, so it isn't drawn.
+    A two-cell-wide cluster that would straddle the right edge is left out, and spaces fill the rest of its row.
     """
     if width <= 0:
         return ()
 
     lines = []
-    previous_char_style = None
-    for line in wrap_cells(cells=chars, wrap=wrap, width=width)[:height]:
-        cells = []
-        for char in justify_line(line, width, justify)[:width]:
-            char_style = char.style
-            if char_style is not previous_char_style:
-                resolved_style = resolve_cell_style(char_style, text_style)
-                previous_char_style = char_style
-            # resolved_style is always bound here, since previous_char_style starts as None
-            cells.append(Cell(char.char, resolved_style))
+    previous_style = None
+    for line in wrap_cells(cells=graphemes, wrap=wrap, width=width)[:height]:
+        cells: list[Cell] = []
+        for styled in justify_line(line, width, justify):
+            if not styled.width:
+                continue
+            if styled.style is not previous_style:
+                resolved_style = resolve_cell_style(styled.style, text_style)
+                previous_style = styled.style
+            room = width - len(cells)
+            if styled.width > room:
+                # resolved_style is always bound here, since previous_style starts as None
+                cells.extend([Cell(" ", resolved_style)] * room)
+                break
+            cells.append(Cell(styled.grapheme, resolved_style))
+            if styled.width == 2:
+                cells.append(Cell("", resolved_style))
         lines.append(tuple(cells))
     return tuple(lines)
 
@@ -455,7 +519,8 @@ def svg(paint: Paint) -> Element:
             )
 
             for x, cell in x_cells:
-                if cell.char == " ":  # optimization: don't write spaces
+                # optimization: don't write spaces; continuation cells are drawn by the cluster to their left
+                if cell.grapheme == " " or cell.is_continuation:
                     continue
 
                 ts = SubElement(
@@ -469,6 +534,6 @@ def svg(paint: Paint) -> Element:
                 # optimization: don't write white, it's the default
                 if cell.style.foreground != Color.from_name("white"):
                     ts.attrib["fill"] = cell.style.foreground.hex
-                ts.text = cell.char
+                ts.text = cell.grapheme
 
     return root

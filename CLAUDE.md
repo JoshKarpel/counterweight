@@ -86,6 +86,7 @@ read that to check a layout instead of the SVG.
 - **typer**: CLI interface
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **parsy**: Parser combinators for terminal input
+- **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
 
 ## Code Style Guidelines

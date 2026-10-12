@@ -52,7 +52,7 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> CellMap:
     for center_position, parts in hints.items():
         center = paint.get(center_position)
 
-        if center is None or center.char not in ALL_JOINED_BORDER_KIND_CHARS:
+        if center is None or center.grapheme not in ALL_JOINED_BORDER_KIND_CHARS:
             # Even if we got a hint, that cell may have been overwritten by another
             # element (e.g., putting a title over a border using absolute positioning).
             continue
@@ -66,11 +66,11 @@ def heal_borders(paint: Paint, hints: BorderHealingHints) -> CellMap:
 
         if replaced_char := get_replacement_char(
             parts=parts,
-            center=center.char,
-            left=left.char if left else None,
-            right=right.char if right else None,
-            above=above.char if above else None,
-            below=below.char if below else None,
+            center=center.grapheme,
+            left=left.grapheme if left else None,
+            right=right.grapheme if right else None,
+            above=above.grapheme if above else None,
+            below=below.grapheme if below else None,
         ):
             overlay[center_position] = Cell(replaced_char, center.style)
 
