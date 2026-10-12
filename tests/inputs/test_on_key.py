@@ -17,7 +17,7 @@ async def test_on_key() -> None:
         )
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(
             KeyPressed(key="f"),

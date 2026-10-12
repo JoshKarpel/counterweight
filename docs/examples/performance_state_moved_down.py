@@ -37,4 +37,4 @@ def dashboard() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(dashboard, "performance-dashboard", (80, 5))]
+SCREENSHOTS = [ScreenshotSpec(dashboard(), "performance-dashboard", (80, 5))]

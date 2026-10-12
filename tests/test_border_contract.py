@@ -28,7 +28,7 @@ async def render_box(sides: Style, contract: int) -> str:
 
     capture = io.StringIO()
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(7, 4),
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],

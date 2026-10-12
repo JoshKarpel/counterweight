@@ -4,11 +4,6 @@
 
 ### Added
 
-- [#271](https://github.com/JoshKarpel/counterweight/issues/271)
-  `app` passes any positional arguments after the root component to it,
-  so `app(root, Path(sys.argv[1]))` runs `root(Path(sys.argv[1]))`.
-  The type checker checks them against the root component's parameters.
-
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
@@ -102,6 +97,10 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#271](https://github.com/JoshKarpel/counterweight/issues/271)
+  `app` takes the root component already called, as `app(root())` rather than `app(root)`,
+  so a root component can take arguments like any other: `app(root(Path(sys.argv[1])))`.
 
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   An error raised while the app runs, in a component, a handler or an effect,

@@ -164,4 +164,4 @@ def mode_button(label: str, active: bool, on_click: Callable[[], None]) -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

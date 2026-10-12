@@ -101,9 +101,9 @@ def wrapping() -> Div:
 # --8<-- [end:wrapping]
 
 SCREENSHOTS = [
-    ScreenshotSpec(row_defaults, "layout-defaults-row", (50, 5)),
-    ScreenshotSpec(col_defaults, "layout-defaults-col", (50, 11)),
-    ScreenshotSpec(root_fills_screen, "layout-root", (50, 5)),
-    ScreenshotSpec(automatic_minimum, "layout-automatic-minimum", (60, 10)),
-    ScreenshotSpec(wrapping, "layout-wrapping", (48, 7)),
+    ScreenshotSpec(row_defaults(), "layout-defaults-row", (50, 5)),
+    ScreenshotSpec(col_defaults(), "layout-defaults-col", (50, 11)),
+    ScreenshotSpec(root_fills_screen(), "layout-root", (50, 5)),
+    ScreenshotSpec(automatic_minimum(), "layout-automatic-minimum", (60, 10)),
+    ScreenshotSpec(wrapping(), "layout-wrapping", (48, 7)),
 ]

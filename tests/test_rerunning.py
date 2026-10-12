@@ -265,7 +265,7 @@ async def test_whole_tree_rerenders_only_on_resize(
     def root() -> Div:
         return Div(children=[leaf()])
 
-    await app(root, headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()))
+    await app(root(), headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()))
 
     # The warmup render and the first painted frame each render every component.
     assert len(renders) == expected_renders
@@ -289,7 +289,7 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
         return Div(children=[starts()])
 
     # Nothing yields to the event loop while an autopilot runs, so the app runs with none until the effect starts.
-    running = create_task(app(root, headless=True, dimensions=(20, 10)))
+    running = create_task(app(root(), headless=True, dimensions=(20, 10)))
     try:
         await wait_for(started.wait(), timeout=5)
     finally:

@@ -125,4 +125,4 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
 
 
 if __name__ == "__main__":
-    run(app(root))
+    run(app(root()))

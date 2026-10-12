@@ -30,4 +30,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "box-model", (30, 10))]
+SCREENSHOTS = [ScreenshotSpec(root(), "box-model", (30, 10))]

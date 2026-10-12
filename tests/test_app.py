@@ -1,7 +1,5 @@
 import io
 from asyncio import wait_for
-from collections.abc import Callable
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,7 +20,7 @@ async def test_headless_autopilot_events_with_empty_app() -> None:
         return Div()
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(
             KeyPressed(key="f"),
@@ -41,7 +39,7 @@ async def test_headless_autopilot_events_with_empty_app() -> None:
     )
 
 
-async def render_text(root: Callable[[], Component], dimensions: tuple[int, int]) -> list[str]:
+async def render_text(root: Component, dimensions: tuple[int, int]) -> list[str]:
     capture = io.StringIO()
     await app(
         root,
@@ -53,39 +51,13 @@ async def render_text(root: Callable[[], Component], dimensions: tuple[int, int]
     return capture.getvalue().rstrip("\n").split("\n")
 
 
-@component
-def greeting(name: str, times: int) -> Text:
-    return Text(content=" ".join([f"hi {name}"] * times))
-
-
-async def test_app_calls_root_with_given_args() -> None:
-    capture = io.StringIO()
-    await app(
-        greeting,
-        "bob",
-        2,
-        headless=True,
-        dimensions=(13, 1),
-        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
-        check_purity=True,
-    )
-
-    assert capture.getvalue().rstrip("\n") == "hi bob hi bob"
-
-
-if TYPE_CHECKING:
-    _ = app(greeting, "bob")  # type: ignore[arg-type]
-    _ = app(greeting, 2, "bob")  # type: ignore[arg-type]
-    _ = app(greeting, "bob", 2, 3)  # type: ignore[arg-type]
-
-
 @pytest.mark.parametrize("root_style", [col, col | full])
 async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -> None:
     @component
     def root() -> Div:
         return Div(style=root_style | border, children=[Text(content="wider than the screen")])
 
-    assert await render_text(root, (10, 3)) == [
+    assert await render_text(root(), (10, 3)) == [
         "┌────────┐",
         "│wider th│",
         "└────────┘",
@@ -97,7 +69,7 @@ async def test_wrapping_text_in_root_wraps_at_screen_width() -> None:
     def root() -> Div:
         return Div(style=col, children=[Text(content="aaa bbb ccc", style=text_wrap_stable)])
 
-    assert await render_text(root, (7, 3)) == [
+    assert await render_text(root(), (7, 3)) == [
         "aaa bbb",
         "ccc    ",
         "       ",
@@ -137,12 +109,15 @@ def raises_in_effect() -> Text:
     return Text(content="")
 
 
-@pytest.mark.parametrize("root", [raises_in_render, raises_in_handler, raises_in_effect], ids=lambda r: r.__name__)
-async def test_app_raises_a_lone_error_itself_rather_than_in_an_exception_group(root: Callable[[], Component]) -> None:
+@pytest.mark.parametrize(
+    "root", [raises_in_render(), raises_in_handler(), raises_in_effect()], ids=lambda r: r.func.__name__
+)
+async def test_app_raises_a_lone_error_itself_rather_than_in_an_exception_group(root: Component) -> None:
     # No Quit: it would end the app before the effect's task runs. The error ends it instead.
     with pytest.raises(Boom) as raised:
         await wait_for(
-            app(root, headless=True, dimensions=(10, 2), autopilot=[KeyPressed(key="x")], check_purity=True), timeout=5
+            app(root, headless=True, dimensions=(10, 2), autopilot=[KeyPressed(key="x")], check_purity=True),
+            timeout=5,
         )
 
     assert not isinstance(raised.value.__context__, BaseExceptionGroup)
@@ -160,4 +135,4 @@ def raises_in_two_effects() -> Text:
 
 async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
     with pytest.RaisesGroup(Boom, Boom):
-        await wait_for(app(raises_in_two_effects, headless=True, dimensions=(10, 2), check_purity=True), timeout=5)
+        await wait_for(app(raises_in_two_effects(), headless=True, dimensions=(10, 2), check_purity=True), timeout=5)

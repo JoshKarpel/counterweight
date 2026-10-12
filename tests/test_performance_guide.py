@@ -94,13 +94,13 @@ def press(node: ShadowNode, key: str) -> None:
     ("root", "holder", "expected"),
     [
         pytest.param(
-            performance_state_in_root.dashboard,
+            performance_state_in_root.dashboard(),
             performance_state_in_root.dashboard,
             ["dashboard", *["metric_card"] * 4],
             id="state-in-root",
         ),
         pytest.param(
-            performance_state_moved_down.dashboard,
+            performance_state_moved_down.dashboard(),
             performance_state_moved_down.uptime,
             ["uptime"],
             id="state-moved-down",
@@ -108,14 +108,13 @@ def press(node: ShadowNode, key: str) -> None:
     ],
 )
 def test_the_uptime_ticking_reruns_the_component_holding_it_and_everything_it_returns(
-    root: Callable[[], Component], holder: Callable[[], Component], expected: list[str]
+    root: Component, holder: Callable[[], Component], expected: list[str]
 ) -> None:
-    dashboard = root()
     with renders() as r:
-        tree = r.render(dashboard).tree.root
+        tree = r.render(root).tree.root
         setter_of(find(tree, holder))(1)
 
-        assert ran(r.render(dashboard)) == expected
+        assert ran(r.render(root)) == expected
 
 
 # How do I skip a component whose arguments didn't change?
@@ -449,7 +448,7 @@ def test_use_memo_in_a_loop_raises_when_the_loop_length_changes() -> None:
 
 async def test_process_table_is_pure() -> None:
     await app(
-        performance_process_table.root,
+        performance_process_table.root(),
         headless=True,
         dimensions=(32, 7),
         autopilot=[KeyPressed(key=Key.Down), KeyPressed(key=Key.Down), KeyPressed(key=Key.Up), Quit()],

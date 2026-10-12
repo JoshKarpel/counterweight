@@ -160,12 +160,12 @@ def box_sizing() -> Div:
 # --8<-- [end:box-sizing]
 
 SCREENSHOTS = [
-    ScreenshotSpec(fixed, "layout-size-fixed", (50, 11)),
-    ScreenshotSpec(fit, "layout-size-fit", (50, 6)),
-    ScreenshotSpec(content_keywords, "layout-size-content-keywords", (40, 13)),
-    ScreenshotSpec(content_keywords_col, "layout-size-content-keywords-col", (40, 12)),
-    ScreenshotSpec(filling, "layout-size-fill", (50, 10)),
-    ScreenshotSpec(clamped, "layout-size-clamped", (60, 10)),
-    ScreenshotSpec(aspect, "layout-size-aspect-ratio", (36, 18)),
-    ScreenshotSpec(box_sizing, "layout-size-box-sizing", (30, 6)),
+    ScreenshotSpec(fixed(), "layout-size-fixed", (50, 11)),
+    ScreenshotSpec(fit(), "layout-size-fit", (50, 6)),
+    ScreenshotSpec(content_keywords(), "layout-size-content-keywords", (40, 13)),
+    ScreenshotSpec(content_keywords_col(), "layout-size-content-keywords-col", (40, 12)),
+    ScreenshotSpec(filling(), "layout-size-fill", (50, 10)),
+    ScreenshotSpec(clamped(), "layout-size-clamped", (60, 10)),
+    ScreenshotSpec(aspect(), "layout-size-aspect-ratio", (36, 18)),
+    ScreenshotSpec(box_sizing(), "layout-size-box-sizing", (30, 6)),
 ]

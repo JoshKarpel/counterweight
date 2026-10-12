@@ -109,4 +109,4 @@ def textpad() -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(toggle))
+    asyncio.run(app(toggle()))

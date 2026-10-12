@@ -87,8 +87,8 @@ def narrow() -> Div:
 # --8<-- [end:narrow]
 
 SCREENSHOTS = [
-    ScreenshotSpec(wrap_in_pane, "layout-text-wrap-in-pane", (60, 7)),
-    ScreenshotSpec(wrap_in_row, "layout-text-wrap-in-row", (60, 8)),
-    ScreenshotSpec(justify, "layout-text-justify", (50, 11)),
-    ScreenshotSpec(narrow, "layout-text-narrow", (48, 5)),
+    ScreenshotSpec(wrap_in_pane(), "layout-text-wrap-in-pane", (60, 7)),
+    ScreenshotSpec(wrap_in_row(), "layout-text-wrap-in-row", (60, 8)),
+    ScreenshotSpec(justify(), "layout-text-justify", (50, 11)),
+    ScreenshotSpec(narrow(), "layout-text-narrow", (48, 5)),
 ]

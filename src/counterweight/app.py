@@ -89,9 +89,8 @@ def screen_element_style(width: int, height: int) -> Style:
     )
 
 
-async def app[*Ts](
-    root: Callable[[*Ts], Component],
-    *args: *Ts,
+async def app(
+    root: Component,
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
     headless: bool = False,
@@ -101,8 +100,8 @@ async def app[*Ts](
 ) -> None:
     """
     Parameters:
-        root: The root [component][counterweight.components.component] of the application.
-        args: Positional arguments to call `root` with, such as values parsed from the command line.
+        root: The root [component][counterweight.components.component] of the application, already called
+            with its arguments, such as `app(root(path))`.
         output_stream: The stream to which the application will write its output.
         input_stream: The stream from which the application will read its input.
         headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
@@ -129,7 +128,7 @@ async def app[*Ts](
     """
     async with devlog():
         try:
-            await render_loop(root, args, output_stream, input_stream, headless, dimensions, autopilot, check_purity)
+            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity)
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
             # and keeps callers from catching it by its own type.
@@ -143,9 +142,8 @@ async def app[*Ts](
         raise error
 
 
-async def render_loop[*Ts](
-    root: Callable[[*Ts], Component],
-    args: tuple[*Ts],
+async def render_loop(
+    root: Component,
     output_stream: TextIO,
     input_stream: TextIO,
     headless: bool,
@@ -165,7 +163,7 @@ async def render_loop[*Ts](
 
     @component
     def screen(style: Style) -> Div:
-        return Div(children=(root(*args),), style=style)
+        return Div(children=(root,), style=style)
 
     logger.info("Application starting...")
 

@@ -95,8 +95,8 @@ def contract() -> Div:
 # --8<-- [end:contract]
 
 SCREENSHOTS = [
-    ScreenshotSpec(gap_margin_pad, "layout-gap-margin-pad", (60, 15)),
-    ScreenshotSpec(collapse, "layout-border-collapse", (49, 6)),
-    ScreenshotSpec(sides, "layout-border-sides", (61, 4)),
-    ScreenshotSpec(contract, "layout-border-contract", (37, 4)),
+    ScreenshotSpec(gap_margin_pad(), "layout-gap-margin-pad", (60, 15)),
+    ScreenshotSpec(collapse(), "layout-border-collapse", (49, 6)),
+    ScreenshotSpec(sides(), "layout-border-sides", (61, 4)),
+    ScreenshotSpec(contract(), "layout-border-contract", (37, 4)),
 ]

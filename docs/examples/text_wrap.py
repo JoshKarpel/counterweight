@@ -48,4 +48,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "text-wrap", (120, 14))]
+SCREENSHOTS = [ScreenshotSpec(root(), "text-wrap", (120, 14))]

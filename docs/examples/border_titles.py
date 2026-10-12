@@ -49,4 +49,4 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "border-titles", (70, 5))]
+SCREENSHOTS = [ScreenshotSpec(root(), "border-titles", (70, 5))]
