@@ -118,6 +118,8 @@ async def app(
             With this on, each of those components is also called, and if the element it returns differs
             from the one kept, the application raises `ImpureComponent`, naming the component.
             Handlers are compared by their code and the values they captured, since a re-run builds new ones.
+            Likewise, each `use_memo` that keeps its cached value also computes it again,
+            and raises `StaleMemo` if the result differs, naming the component and the hook.
             The extra call costs as much as a re-run, so turn it on in tests rather than in production.
     """
     async with devlog():

@@ -69,6 +69,28 @@ def use_effect(setup: Setup, deps: Deps = None) -> None:
     return current_hook_state.get().use_effect(setup, deps)
 
 
+def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T:
+    """
+    Parameters:
+        compute: A zero-argument function that computes the value.
+            It runs while the component renders: on the first render, and on every render whose `deps` changed.
+
+        deps: The values `compute` depends on.
+            If any of them change (compared with `==`), `compute` runs again.
+            `()` computes the value once, when the component mounts.
+            Unlike `use_effect`'s, these can't be `None`: to compute on every render, don't use this hook.
+
+    Returns:
+        The value `compute` returned when `deps` last changed.
+            It is the same object on every render until then,
+            so an element returned from it keeps the components below it from re-running,
+            and a handler returned from it can be passed to a `memo` component without making it re-run.
+            The cached value MUST depend only on `deps`;
+            `check_purity` on `counterweight.app.app` catches a value that goes stale.
+    """
+    return current_hook_state.get().use_memo(compute, deps)
+
+
 @dataclass(frozen=True, slots=True)
 class Rects:
     content: Region

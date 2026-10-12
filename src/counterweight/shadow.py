@@ -6,12 +6,12 @@ from copy import copy
 from dataclasses import dataclass, field, replace
 from itertools import chain
 
-from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts
+from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts, current_purity_checked
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseEffect
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseEffect, UseMemo
 from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
@@ -163,7 +163,9 @@ def update_node(
                 )
             else:
                 previous_hook_count = len(previous_hooks.data)
-                element, hook_count = call_component(next_component, previous_hooks, reconciliation.layouts)
+                element, hook_count = call_component(
+                    next_component, previous_hooks, reconciliation.layouts, reconciliation.check_purity
+                )
                 reconciliation.ran.append(previous_hooks)
 
                 if hook_count != previous_hook_count:
@@ -181,7 +183,7 @@ def update_node(
                 )
         case Component() as next_component, _:
             hook_state = Hooks()
-            element, _ = call_component(next_component, hook_state, reconciliation.layouts)
+            element, _ = call_component(next_component, hook_state, reconciliation.layouts, reconciliation.check_purity)
             reconciliation.ran.append(hook_state)
 
             new = ShadowNode(
@@ -239,15 +241,18 @@ def check_is_pure(node: ShadowNode, layouts: Layouts) -> None:
     """
     Calls a reused node's component again, against a copy of its hooks, and raises `ImpureComponent`
     if the element it returns isn't `equivalent` to the one the node kept.
-    The copy's effects are copies too, since `use_effect` records its arguments on the hook it's given,
+    The copy's effects and memos are copies too, since `use_effect` records its arguments on the hook it's given
+    and `use_memo` recomputes into its hook when its deps changed,
     so the check schedules no effects and changes no hook the node keeps.
     It compares child components without calling them; each reused child is checked on its own node.
     """
     if node.component is None:
         return
 
-    hooks = replace(node.hooks, data=[copy(hook) if isinstance(hook, UseEffect) else hook for hook in node.hooks.data])
-    element, _ = call_component(node.component, hooks, layouts)
+    hooks = replace(
+        node.hooks, data=[copy(hook) if isinstance(hook, UseEffect | UseMemo) else hook for hook in node.hooks.data]
+    )
+    element, _ = call_component(node.component, hooks, layouts, check_purity=True)
     if not equivalent(element, node.element):
         raise ImpureComponent(
             f"{node.component.func.__qualname__} returned a different element when called again "
@@ -257,15 +262,17 @@ def check_is_pure(node: ShadowNode, layouts: Layouts) -> None:
         )
 
 
-def call_component(component: Component, hooks: Hooks, layouts: Layouts) -> tuple[AnyElement, int]:
+def call_component(component: Component, hooks: Hooks, layouts: Layouts, check_purity: bool) -> tuple[AnyElement, int]:
     """
     Calls a component function with `hooks` as the current hook state and the previous frame's `layouts`,
     restoring the outer hook context even if it raises.
+    With `check_purity`, each `use_memo` that keeps its cached value also checks it (see `Hooks.use_memo`).
     Returns the element and how many hooks it called.
     """
     reset_current_hook_idx = current_hook_idx.set(0)
     reset_current_hook_state = current_hook_state.set(hooks)
     reset_current_layouts = current_layouts.set(layouts)
+    reset_current_purity_checked = current_purity_checked.set(component if check_purity else None)
     try:
         element = component.func(*component.args, **component.kwargs)
         return element, current_hook_idx.get()
@@ -273,6 +280,7 @@ def call_component(component: Component, hooks: Hooks, layouts: Layouts) -> tupl
         current_hook_idx.reset(reset_current_hook_idx)
         current_hook_state.reset(reset_current_hook_state)
         current_layouts.reset(reset_current_layouts)
+        current_purity_checked.reset(reset_current_purity_checked)
 
 
 def unmount(discarded: ShadowNode, reconciliation: Reconciliation) -> None:

@@ -7,7 +7,8 @@ from itertools import count
 from typing import TYPE_CHECKING, NewType
 from weakref import ref
 
-from counterweight._context_vars import current_event_queue, current_hook_idx
+from counterweight._context_vars import current_event_queue, current_hook_idx, current_purity_checked
+from counterweight.equivalence import equivalent
 from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
@@ -78,13 +79,27 @@ class UseEffect:
     task: Task[None] | None = None
 
 
+@dataclass(slots=True)
+class UseMemo:
+    value: object
+    deps: tuple[object, ...]
+
+
 class InconsistentHookExecution(Exception):
     pass
 
 
+class StaleMemo(Exception):
+    """
+    Raised when `check_purity` is on and a `use_memo` whose deps didn't change
+    computes something different from the value it cached,
+    so the computation depends on something missing from its deps and the cached value is stale.
+    """
+
+
 @dataclass(slots=True)
 class Hooks:
-    data: list[UseState | UseRef | UseEffect] = field(default_factory=list)
+    data: list[UseState | UseRef | UseEffect | UseMemo] = field(default_factory=list)
     mount_status: MountStatus = field(default_factory=MountStatus)
     key: NodeKey = field(default_factory=_next_node_key)
     rects: Rects | None = None
@@ -149,3 +164,29 @@ class Hooks:
         current_hook_idx.set(current_hook_idx.get() + 1)
 
         return None
+
+    def use_memo[T](self, compute: Getter[T], deps: tuple[object, ...]) -> T:
+        index = current_hook_idx.get()
+        try:
+            hook = self.data[index]
+            if not isinstance(hook, UseMemo):
+                raise InconsistentHookExecution(
+                    f"Expected a {UseMemo.__name__} hook, but got a {type(hook).__name__} hook instead."
+                )
+        except IndexError:
+            hook = UseMemo(value=compute(), deps=deps)
+            self.data.append(hook)
+        else:
+            if hook.deps != deps:
+                hook.value = compute()
+                hook.deps = deps
+            elif (checked := current_purity_checked.get()) is not None and not equivalent(compute(), hook.value):
+                raise StaleMemo(
+                    f"The use_memo hook at index {index} in {checked.func.__qualname__} computed a different value "
+                    "with the same deps, so its computation depends on something missing from its deps, "
+                    "and the value it cached is stale."
+                )
+
+        current_hook_idx.set(index + 1)
+
+        return hook.value  # type: ignore[return-value]

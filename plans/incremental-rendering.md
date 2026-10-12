@@ -350,6 +350,11 @@ the stored value by step 5's comparison, handlers included, and a difference rai
 `StaleMemo`, naming the component and the hook's index. That catches the two bugs `memo=True`
 can't have: a dependency left out of `deps`, and a cached handler that captured state that
 has since changed.
+`call_component` tells `use_memo` the check is on through a context variable holding the
+component being called (`None` when it's off), as it exposes `layouts` to `use_rects`, so the
+error can name the component. Step 5's extra call for a reused component copies its `UseMemo`s
+as well as its `UseEffect`s, since a `compute` whose deps read a changed hidden input would
+otherwise recompute into the hook the node keeps.
 
 Tests: equal deps return the same object, changed deps recompute, `deps=()` computes once,
 and a component returning a cached element doesn't re-run the components below it.

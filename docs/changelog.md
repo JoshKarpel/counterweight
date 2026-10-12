@@ -10,6 +10,12 @@
   and `check_purity` on `app`, which raises `ImpureComponent` when a component a render didn't re-run
   would have returned something different, because it depends on more than its arguments and hooks.
 
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  Added `use_memo`, which caches a value until its dependencies change,
+  so a component can keep an expensive derived value, an unchanging part of its output,
+  or a handler it passes to a `memo` component.
+  With `check_purity` on, a cached value that a dependency missing from its list would change raises `StaleMemo`.
+
 - Documented how Counterweight compares with Textual, Ink and Ratatui,
   and what it doesn't do, in [Ecosystem](ecosystem.md).
 

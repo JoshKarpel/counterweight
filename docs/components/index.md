@@ -183,7 +183,9 @@ every component a render doesn't re-run is called again,
 and if what it returns differs from its previous output, the app raises `ImpureComponent` naming it.
 Handlers are compared by their code and the values they captured,
 since a re-run creates new ones that never `==` the old ones.
-The extra call costs as much as a re-run, so leave `check_purity` off outside tests.
+[`use_memo`](../hooks/use_memo.md) is checked the same way:
+each cached value is computed again, and one that differs raises `StaleMemo`.
+The extra calls cost as much as re-running, so leave `check_purity` off outside tests.
 It doesn't catch a component that changes a `Ref` while rendering.
 
 ## API

@@ -79,7 +79,7 @@ or a framework that many apps already depend on.
 Ink is React itself, rendering to the terminal.
 Its README lists Claude Code, Gemini CLI and GitHub Copilot CLI among the tools built with it.
 If you know Ink, you know most of Counterweight:
-components, `use_state`, `use_effect`, `use_ref`, keys and `memo` all follow React's rules
+components, `use_state`, `use_effect`, `use_ref`, `use_memo`, keys and `memo` all follow React's rules
 (see [Components](components/index.md)).
 Both render only the components whose state changed and the components they return,
 skipping `memo` components whose arguments are unchanged.
