@@ -175,7 +175,7 @@ async def run(
 ) -> Timings:
     """
     Run `workload` headless and time every frame after the first `warmup`.
-    `check_purity` is for tests: it calls every component a frame doesn't re-run, which the timings would include.
+    `check_purity` is for tests: it runs every component again after each frame, which the timings would include.
     """
     dims = dimensions or workload.dimensions
     key_press_times: list[int] = []

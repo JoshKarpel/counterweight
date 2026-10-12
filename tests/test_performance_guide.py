@@ -21,7 +21,7 @@ from counterweight.hooks import Setter, use_memo, use_ref, use_state
 from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ImpureComponent, ShadowNode, ShadowUpdate, update_shadow
+from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
 from tests.rendering import state_set_keys, state_sets
@@ -33,7 +33,7 @@ class Renders:
 
     queue: Queue[AnyEvent]
     check_purity: bool
-    tree: ShadowNode | None = None
+    tree: ShadowTree | None = None
 
     def render(self, root: Component | AnyElement) -> ShadowUpdate:
         update = update_shadow(root, self.tree, NO_LAYOUTS, state_set_keys(self.queue), check_purity=self.check_purity)
@@ -54,7 +54,7 @@ def ran(update: ShadowUpdate) -> list[str]:
         node.component.func.__name__
         if node.component.key is None
         else f"{node.component.func.__name__}:{node.component.key}"
-        for node in update.tree.walk()
+        for node in update.tree.nodes
         if node.component is not None and id(node.hooks) in ran_hooks
     ]
 
@@ -112,7 +112,7 @@ def test_the_uptime_ticking_reruns_the_component_holding_it_and_everything_it_re
 ) -> None:
     dashboard = root()
     with renders() as r:
-        tree = r.render(dashboard).tree
+        tree = r.render(dashboard).tree.root
         setter_of(find(tree, holder))(1)
 
         assert ran(r.render(dashboard)) == expected
@@ -124,7 +124,7 @@ def test_the_uptime_ticking_reruns_the_component_holding_it_and_everything_it_re
 def test_moving_the_selection_reruns_only_the_two_rows_whose_selection_changed() -> None:
     root = process_table(PROCESSES)
     with renders() as r:
-        press(r.render(root).tree, Key.Down)
+        press(r.render(root).tree.root, Key.Down)
 
         assert ran(r.render(root)) == ["process_table", "process_row:977", "process_row:2048"]
 
@@ -168,7 +168,7 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
 def test_a_callback_argument_built_while_rendering_reruns_every_memo_row() -> None:
     root = process_table_with_inline_handler(PROCESSES)
     with renders() as r:
-        press(r.render(root).tree, Key.Down)
+        press(r.render(root).tree.root, Key.Down)
 
         assert len(rows(ran(r.render(root)))) == len(PROCESSES)
 
@@ -227,21 +227,21 @@ def key_log_with_tuple() -> Div:
 def test_an_argument_mutated_in_place_keeps_a_memo_component_stale(check_purity: bool) -> None:
     root = key_log_mutating()
     with renders(check_purity=check_purity) as r:
-        press(r.render(root).tree, "a")
+        press(r.render(root).tree.root, "a")
 
         if check_purity:
             with pytest.raises(ImpureComponent, match="key_list"):
                 r.render(root)
         else:
-            assert r.render(root).tree.children[0].element == Text(content="")
+            assert r.render(root).tree.root.children[0].element == Text(content="")
 
 
 def test_an_argument_replaced_rather_than_mutated_reruns_its_memo_component() -> None:
     root = key_log_with_tuple()
     with renders(check_purity=True) as r:
-        press(r.render(root).tree, "a")
+        press(r.render(root).tree.root, "a")
 
-        assert r.render(root).tree.children[0].element == Text(content="a")
+        assert r.render(root).tree.root.children[0].element == Text(content="a")
 
 
 SETTINGS = {"accent": "amber"}
@@ -270,7 +270,7 @@ def test_a_module_level_value_read_by_a_memo_component_goes_stale(
 ) -> None:
     root = page(use_argument)
     with renders(check_purity=True) as r:
-        tree = r.render(root).tree
+        tree = r.render(root).tree.root
         monkeypatch.setitem(SETTINGS, "accent", "cyan")
         press(tree, "a")
 
@@ -278,7 +278,7 @@ def test_a_module_level_value_read_by_a_memo_component_goes_stale(
             with pytest.raises(ImpureComponent, match="title"):
                 r.render(root)
         else:
-            assert r.render(root).tree.children[0].element == Text(content="[cyan] Processes")
+            assert r.render(root).tree.root.children[0].element == Text(content="[cyan] Processes")
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -317,7 +317,7 @@ def test_a_memo_hit_on_a_rebuilt_argument_compares_every_item(keep: bool, expect
     comparisons: list[str] = []
     root = log_view(("a", "b", "c"), comparisons, keep)
     with renders() as r:
-        press(r.render(root).tree, "x")
+        press(r.render(root).tree.root, "x")
         update = r.render(root)
 
     assert (ran(update), len(comparisons)) == (["log_view"], expected)
@@ -353,7 +353,7 @@ def test_a_dependency_missing_from_use_memo_keeps_its_value_stale(
             with pytest.raises(StaleMemo, match=func.__name__):
                 r.render(func(PROCESSES, 1.0))
         else:
-            assert r.render(func(PROCESSES, 1.0)).tree.element == Text(content="4 busy")
+            assert r.render(func(PROCESSES, 1.0)).tree.root.element == Text(content="4 busy")
 
 
 @component
@@ -373,10 +373,10 @@ def counter() -> Text:
 def test_a_cached_handler_that_captured_state_keeps_acting_on_it() -> None:
     root = counter_capturing()
     with renders() as r:
-        tree = r.render(root).tree
+        tree = r.render(root).tree.root
         for _ in range(3):
             press(tree, "a")
-            tree = r.render(root).tree
+            tree = r.render(root).tree.root
 
     assert content(tree) == "1"
 
@@ -384,7 +384,7 @@ def test_a_cached_handler_that_captured_state_keeps_acting_on_it() -> None:
 def test_check_purity_raises_for_a_cached_handler_that_captured_state() -> None:
     root = counter_capturing()
     with renders(check_purity=True) as r:
-        press(r.render(root).tree, "a")
+        press(r.render(root).tree.root, "a")
 
         with pytest.raises(StaleMemo, match="counter_capturing"):
             r.render(root)
@@ -393,10 +393,10 @@ def test_check_purity_raises_for_a_cached_handler_that_captured_state() -> None:
 def test_a_cached_handler_with_a_functional_update_counts_every_press() -> None:
     root = counter()
     with renders(check_purity=True) as r:
-        tree = r.render(root).tree
+        tree = r.render(root).tree.root
         for _ in range(3):
             press(tree, "a")
-            tree = r.render(root).tree
+            tree = r.render(root).tree.root
 
     assert content(tree) == "3"
 
@@ -422,10 +422,10 @@ def test_a_dependency_built_every_render_recomputes_every_render(inline: bool, e
     log: list[str] = []
     root = search_page(log, inline)
     with renders() as r:
-        tree = r.render(root).tree
+        tree = r.render(root).tree.root
         for key in "ab":
             press(tree.children[0], key)
-            tree = r.render(root).tree
+            tree = r.render(root).tree.root
 
     assert len(log) == expected
 

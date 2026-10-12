@@ -15,11 +15,11 @@ from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent, KeyPressed, TerminalResized
 from counterweight.geometry import Region
-from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_state
+from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, NodeKey
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseRef
 from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
-from counterweight.shadow import ImpureComponent, ShadowNode, dirty_paths, is_dirty, update_shadow
+from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
 from tests.rendering import effect_tasks, render, state_set_keys, state_sets
 
 type Shape = tuple[tuple[str, Shape], ...]
@@ -65,7 +65,7 @@ def rerun(
         between()
         dirty = set_state(calls, queue, *names)
         calls.names.clear()
-        return previous, update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=check_purity).tree
+        return previous.root, update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=check_purity).tree.root
 
 
 def test_sibling_state_change_does_not_rerun_a_component() -> None:
@@ -212,7 +212,7 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     calls = Calls()
     root = measures(calls)
     previous = update_shadow(root, None, NO_LAYOUTS).tree
-    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.key: layout})
+    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout})
     calls.names.clear()
 
     update_shadow(root, previous, layouts)
@@ -238,7 +238,7 @@ def test_component_that_stops_calling_use_rects_does_not_rerun_when_its_layout_m
         second = update_shadow(root, first, NO_LAYOUTS, set_state(calls, queue, "measures_until_set")).tree
     calls.names.clear()
 
-    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.key: MOVED}))
+    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}))
 
     assert calls.names == []
 
@@ -333,7 +333,7 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
         node.key for node in tree.walk() if any(is_dirty(below, dirty, NO_LAYOUTS) for below in node.walk())
     )
 
-    _, paths = dirty_paths(tree, dirty, NO_LAYOUTS)
+    _, paths = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS)
 
     assert paths == brute_force
 
@@ -342,9 +342,16 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
 def test_dirty_paths_reports_each_dirty_node(tree_and_dirty: tuple[ShadowNode, frozenset[NodeKey]]) -> None:
     tree, dirty = tree_and_dirty
 
-    dirty_nodes, _ = dirty_paths(tree, dirty, NO_LAYOUTS)
+    dirty_nodes, _ = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS)
 
     assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NO_LAYOUTS))
+
+
+@given(tree_and_dirty=dirty_trees())
+def test_shadow_tree_lists_its_nodes_in_pre_order(tree_and_dirty: tuple[ShadowNode, frozenset[NodeKey]]) -> None:
+    tree, _ = tree_and_dirty
+
+    assert ShadowTree(root=tree).nodes == tuple(tree.walk())
 
 
 @component
@@ -479,14 +486,14 @@ def test_check_purity_raises_naming_a_reused_component_that_reads_a_changed_modu
 
 
 @pytest.mark.parametrize("child", [reads_setting, handler_capturing_setting, inline_handler], ids=lambda c: c.__name__)
-def test_check_purity_calls_a_reused_component_whose_output_is_unchanged_without_raising(
+def test_check_purity_runs_every_component_again_and_keeps_a_reused_one_whose_output_is_unchanged(
     child: Callable[[object, Calls], Component],
 ) -> None:
     calls = Calls()
 
     previous, next = rerun(passes(calls, lambda count, calls: child("same", calls)), calls, "parent", check_purity=True)
 
-    assert (next.children[0] is previous.children[0], calls.names) == (True, ["parent", child.__name__])
+    assert (next.children[0] is previous.children[0], calls.names) == (True, ["parent", "parent", child.__name__])
 
 
 @component(memo=True)
@@ -506,10 +513,84 @@ def test_check_purity_leaves_a_reused_components_effect_hooks_unchanged() -> Non
 
     with state_sets() as queue:
         previous = update_shadow(root, None, NO_LAYOUTS).tree
-        before = [(effect.setup, effect.new_deps) for effect in previous.children[0].hooks.effects]
+        before = [(effect.setup, effect.new_deps) for effect in previous.root.children[0].hooks.effects]
         dirty = set_state(calls, queue, "parent")
         calls.names.clear()
         next = update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=True).tree
 
-    after = [(effect.setup, effect.new_deps) for effect in next.children[0].hooks.effects]
-    assert (calls.names, after) == (["parent", "has_effect"], before)
+    after = [(effect.setup, effect.new_deps) for effect in next.root.children[0].hooks.effects]
+    assert (calls.names, after) == (["parent", "parent", "has_effect"], before)
+
+
+@component
+def counts_its_calls(calls: Calls) -> Text:
+    calls.names.append("counts_its_calls")
+    return Text(content=str(len(calls.names)))
+
+
+def test_check_purity_raises_naming_a_component_that_ran_and_returns_something_different_when_run_again() -> None:
+    calls = Calls()
+
+    with pytest.raises(ImpureComponent, match="counts_its_calls"):
+        rerun(passes(calls, lambda count, calls: counts_its_calls(calls)), calls, "parent", check_purity=True)
+
+
+@component(memo=True)
+def calls_state_once_setting_changes(argument: object, calls: Calls) -> Text:
+    if SETTINGS["label"] == "after":
+        use_state(0)
+    return Text(content="")
+
+
+def test_check_purity_raises_naming_a_reused_component_that_calls_a_different_number_of_hooks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls()
+
+    with pytest.raises(InconsistentHookExecution, match="calls_state_once_setting_changes"):
+        rerun(
+            passes(calls, lambda count, calls: calls_state_once_setting_changes("same", calls)),
+            calls,
+            "parent",
+            between=lambda: monkeypatch.setitem(SETTINGS, "label", "after"),
+            check_purity=True,
+        )
+
+
+@component(memo=True)
+def counts_renders_in_a_ref(argument: object, calls: Calls) -> Text:
+    renders = use_ref(0)
+    renders.current += 1
+    return Text(content="")
+
+
+def test_check_purity_leaves_a_ref_that_a_reused_component_writes_while_rendering_unchanged() -> None:
+    calls = Calls()
+
+    _, next = rerun(
+        passes(calls, lambda count, calls: counts_renders_in_a_ref("same", calls)), calls, "parent", check_purity=True
+    )
+
+    [hook] = next.children[0].hooks.data
+    assert isinstance(hook, UseRef) and hook.ref.current == 1
+
+
+@component(memo=True)
+def one_child_per_setting_letter(argument: object, calls: Calls) -> Div:
+    return Div(children=[Text(content=letter) for letter in SETTINGS["label"]])
+
+
+def test_check_purity_leaves_every_node_mounted_when_running_again_unmounts_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls()
+    root = passes(calls, lambda count, calls: one_child_per_setting_letter("same", calls))
+
+    with state_sets() as queue:
+        previous = update_shadow(root, None, NO_LAYOUTS).tree
+        monkeypatch.setitem(SETTINGS, "label", "after")
+        dirty = set_state(calls, queue, "parent")
+        with pytest.raises(ImpureComponent):
+            update_shadow(root, previous, NO_LAYOUTS, dirty, check_purity=True)
+
+    assert all(node.hooks.mount_status.is_mounted for node in previous.nodes)

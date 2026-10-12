@@ -14,7 +14,7 @@ from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_styl
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
-    from counterweight.shadow import ShadowNode
+    from counterweight.shadow import ShadowNode, ShadowTree
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,7 +92,7 @@ class Remove:
 type LayoutChange = CreateLeaf | CreateContainer | SetStyle | SetText | ClearText | SetChildren | Remove
 
 
-def layout_changes(previous: ShadowNode | None, next: ShadowNode) -> list[LayoutChange]:
+def layout_changes(previous_tree: ShadowTree | None, next_tree: ShadowTree) -> list[LayoutChange]:
     """
     The changes that make a layout tree built from `previous` match `next`,
     pairing nodes by key as `update_shadow` paired them.
@@ -103,6 +103,8 @@ def layout_changes(previous: ShadowNode | None, next: ShadowNode) -> list[Layout
     """
     changes: list[LayoutChange] = []
     removals: list[LayoutChange] = []
+    previous = None if previous_tree is None else previous_tree.root
+    next = next_tree.root
 
     if previous is not None and previous.key != next.key:
         removals.extend(_removals(previous))
@@ -179,12 +181,14 @@ def _reconcile(
 
 
 def _append_style_change(previous: ShadowNode, key: NodeKey, style: waxy.Style, changes: list[LayoutChange]) -> None:
+    """Appends a `SetStyle` only when `style` differs from `previous`'s, since resetting it is wasted work."""
     previous_style = layout_style(previous.element.style)
     if previous_style is not style and previous_style != style:
         changes.append(SetStyle(key=key, style=style))
 
 
 def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
+    """A `Remove` for every node of `unmounted`'s subtree, parents first."""
     return (Remove(key=node.key) for node in unmounted.walk())
 
 
@@ -213,16 +217,16 @@ class LayoutTree:
     def compute(
         self,
         changes: Iterable[LayoutChange],
-        shadow: ShadowNode,
+        shadow: ShadowTree,
         available: waxy.AvailableSize,
     ) -> Layouts:
         """Apply `changes`, which make the tree match `shadow`, then lay it out."""
         self.apply(changes)
 
-        root = self.nodes[shadow.key]
+        root = self.nodes[shadow.root.key]
         self.tree.compute_layout(root, available, measure=_measure_text)
 
-        shadows = {self.nodes[node.key]: node for node in shadow.walk()}
+        shadows = {self.nodes[node.key]: node for node in shadow.nodes}
         in_paint_order: list[tuple[AnyElement, ResolvedLayout]] = []
         by_key: dict[NodeKey, ResolvedLayout] = {}
         for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
@@ -234,6 +238,7 @@ class LayoutTree:
         return Layouts(in_paint_order=tuple(in_paint_order), by_key=by_key)
 
     def apply(self, changes: Iterable[LayoutChange]) -> None:
+        """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
         nodes = self.nodes
         tree = self.tree
         for change in changes:

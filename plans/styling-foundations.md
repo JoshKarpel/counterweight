@@ -7,7 +7,7 @@ one merge rule for every style field, borders stored once, utilities for the new
 keywords, ratatui-style constraint utilities, a guide to choosing between flexbox and grid,
 reading layouts back in one call, memoizing text measurement, reusing the layout tree
 across frames, a pass that makes the gallery read as one document, and profiling the result.
-It doesn't cover component memoization (`plans/incremental-rendering.md`) or paint performance,
+It doesn't cover component memoization (see `docs/performance.md`) or paint performance,
 except where layout work touches them.
 It also doesn't cover exposing the grid features taffy 0.10 through 0.14 added
 (grid template areas, `repeat()`) or the `CONTENT` flex basis as utilities;

@@ -327,16 +327,19 @@ async def test_process_table_is_pure() -> None:
     )
 ```
 
-Every component a frame reuses or passes through is called again with the same arguments and hooks,
-and if what it returns differs from the output the frame kept, the app raises `ImpureComponent`, naming it.
+After each frame, every component is run again with the same arguments and hooks,
+and if that builds a different tree from the one the frame built,
+the app raises `ImpureComponent`, naming the first component whose output differs.
+That catches output a frame kept from a component that should have re-run,
+and a component that returns something different each time it's called.
 Every `use_memo` whose `deps` didn't change computes its value again,
 and raises `StaleMemo` if the result differs from the cached one.
-Elements are compared with `==`, except handlers,
-which are compared by their code and the values they captured,
+Elements are compared with `==`, and where that fails, piece by piece,
+with handlers compared by their code and the values they captured,
 since a re-run builds new ones that never `==` the old ones.
 
-The extra calls cost about as much as re-running everything, so leave it off outside tests.
+The second run costs about as much as re-running everything, so leave it off outside tests.
 It only checks the frames a test drives,
 so drive the interactions that change what a component might read without being told,
 such as a setting changed from another screen.
-It doesn't catch a component that changes a `Ref` while rendering.
+[`use_ref`](hooks/use_ref.md#not-reading-or-writing-a-ref-while-rendering) covers what it catches for refs.

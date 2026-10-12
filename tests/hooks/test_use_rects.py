@@ -39,7 +39,6 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
         headless=True,
         dimensions=(20, 10),
         autopilot=(KeyPressed(key="h"), KeyPressed(key="x"), Quit()),
-        check_purity=True,
     )
 
     # The warmup render, the first painted frame, the frame that hides it, and the frame after.

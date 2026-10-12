@@ -57,7 +57,11 @@ class Component:
     kwargs: dict[str, object]
     key: str | None = None
     memo: bool = field(default=False, compare=False)
-    """Whether `func` was decorated with `memo=True`; a property of `func`, so it isn't compared."""
+    """
+    Whether the decorator that built this was given `memo=True`.
+    It says how to reuse the component rather than what it renders, so it isn't compared:
+    one function decorated both ways builds equal `Component`s, which continue each other's hooks.
+    """
 
     def with_key(self, key: str | None) -> Component:
         """

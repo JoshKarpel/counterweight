@@ -178,18 +178,25 @@ and each way `memo` and `use_memo` can miss or go stale.
 
 ### Keeping components pure
 
-A component has to be **pure**: given the same arguments and hook state, it returns the same element.
+A component has to be **pure**: given the same arguments and hook state,
+it returns the same element, however many times it's called.
 A component that isn't re-run, `memo` or not, keeps showing the output from its last run,
-so one that also reads something else, such as a module-level value, goes stale.
-Pass `check_purity=True` to `app` in tests to catch that:
-every component a render doesn't re-run is called again,
-and if what it returns differs from its previous output, the app raises `ImpureComponent` naming it.
-Handlers are compared by their code and the values they captured,
+so one that also reads something else, such as a module-level value or the time, goes stale.
+To show something that changes on its own, such as a clock,
+keep it in state and update it from [`use_effect`](../hooks/use_effect.md).
+
+Pass `check_purity=True` to `app` in tests to catch an impure component:
+after each render, every component is run again with the same arguments and hooks,
+and if that builds a different tree,
+the app raises `ImpureComponent` naming the first component whose output differs.
+Elements are compared with `==`, and where that fails, piece by piece,
+with handlers compared by their code and the values they captured,
 since a re-run creates new ones that never `==` the old ones.
-[`use_memo`](../hooks/use_memo.md) is checked the same way:
+The second run also raises `InconsistentHookExecution` for a component that calls a different number of hooks,
+and checks [`use_memo`](../hooks/use_memo.md) the same way:
 each cached value is computed again, and one that differs raises `StaleMemo`.
-The extra calls cost as much as re-running, so leave `check_purity` off outside tests.
-It doesn't catch a component that changes a `Ref` while rendering.
+It costs as much as re-running everything, so leave `check_purity` off outside tests.
+[`use_ref`](../hooks/use_ref.md#not-reading-or-writing-a-ref-while-rendering) covers what it catches for refs.
 
 ## API
 

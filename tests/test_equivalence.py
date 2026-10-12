@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
@@ -74,6 +75,20 @@ class Holder:
         return self.value
 
 
+@dataclass(frozen=True, slots=True)
+class Reading:
+    """A dataclass whose own `__eq__` ignores `taken_at`, so two `Reading`s can be `==` with different fields."""
+
+    value: int
+    taken_at: float
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Reading) and self.value == other.value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+
 @pytest.mark.parametrize(
     ("a", "b"),
     [
@@ -97,6 +112,12 @@ class Holder:
         ),
         pytest.param({"k": handler_capturing("x")}, {"k": handler_capturing("x")}, id="dicts"),
         pytest.param(1, 1.0, id="different-types-compared-with-eq"),
+        pytest.param(Reading(7, 1.5), Reading(7, 2.5), id="dataclasses-whose-own-eq-calls-them-equal"),
+        pytest.param(
+            handler_capturing(Reading(7, 1.5)),
+            handler_capturing(Reading(7, 2.5)),
+            id="closures-capturing-values-whose-own-eq-calls-them-equal",
+        ),
     ],
 )
 def test_equivalent(a: object, b: object) -> None:
@@ -130,6 +151,10 @@ def test_equivalent(a: object, b: object) -> None:
         pytest.param(Text(content="x"), Text(content="y"), id="elements-with-different-content"),
         pytest.param((1, 2), (1, 2, 3), id="tuples-of-different-lengths"),
         pytest.param({"k": 1}, {"j": 1}, id="dicts-with-different-keys"),
+        pytest.param(Reading(7, 1.5), Reading(8, 1.5), id="dataclasses-whose-own-eq-calls-them-different"),
+        pytest.param(
+            OrderedDict([("k", 1), ("j", 2)]), OrderedDict([("j", 2), ("k", 1)]), id="ordered-dicts-in-different-orders"
+        ),
     ],
 )
 def test_not_equivalent(a: object, b: object) -> None:

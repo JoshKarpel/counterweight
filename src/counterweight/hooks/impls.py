@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from copy import copy
 from dataclasses import dataclass, field, replace
 from itertools import count
-from typing import TYPE_CHECKING, NewType
+from typing import TYPE_CHECKING, NewType, assert_never
 from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx, current_purity_checked
@@ -23,6 +23,7 @@ _node_keys = count()
 
 
 def _next_node_key() -> NodeKey:
+    """A key no other `Hooks` in the process has, so keys from different apps and tests never collide."""
     return NodeKey(next(_node_keys))
 
 
@@ -86,6 +87,19 @@ class UseMemo:
     deps: tuple[object, ...]
 
 
+def detached_hook(hook: UseState | UseRef | UseEffect | UseMemo) -> UseState | UseRef | UseEffect | UseMemo:
+    """A copy of `hook` for `Hooks.detached`, or `hook` itself for a `use_state` hook, which a render only reads."""
+    match hook:
+        case UseState():
+            return hook
+        case UseRef(ref=ref):
+            return UseRef(ref=Ref(current=ref.current))
+        case UseEffect() | UseMemo():
+            return copy(hook)
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
 class InconsistentHookExecution(Exception):
     pass
 
@@ -113,11 +127,18 @@ class Hooks:
     def detached(self) -> Hooks:
         """
         A copy to call the node's component against without changing anything the node keeps.
-        Every hook that writes to itself during a render is copied:
-        `use_effect` records its arguments on its hook, and `use_memo` recomputes into its hook when its deps changed.
-        The others are shared, so handlers built from them compare equal to the node's own.
+        Every hook a render can write to is copied:
+        `use_effect` records its arguments on its hook, `use_memo` recomputes into its hook when its deps changed,
+        and a component can assign `current` on a ref.
+        A ref's copy holds the same `current` object, so mutating that object in place still reaches the node's ref.
+        `use_state` hooks are shared, so the setters handlers capture are the node's own.
+        The mount status is copied too, so unmounting the copy leaves the node mounted.
         """
-        return replace(self, data=[copy(hook) if isinstance(hook, UseEffect | UseMemo) else hook for hook in self.data])
+        return replace(
+            self,
+            data=[detached_hook(hook) for hook in self.data],
+            mount_status=MountStatus(is_mounted=self.mount_status.is_mounted),
+        )
 
     def use_state[T](self, initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         try:

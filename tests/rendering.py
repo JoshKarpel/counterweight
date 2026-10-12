@@ -13,7 +13,7 @@ from counterweight.elements import AnyElement
 from counterweight.events import AnyEvent, StateSet
 from counterweight.hooks.impls import NodeKey
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import ShadowTree, update_shadow
 
 
 @contextmanager
@@ -41,10 +41,10 @@ def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
 
 async def render(
     root: Component | AnyElement,
-    previous: ShadowNode | None,
+    previous: ShadowTree | None,
     task_group: TaskGroup,
     dirty: frozenset[NodeKey] = frozenset(),
-) -> ShadowNode:
+) -> ShadowTree:
     """Reconciles one render and its effects, then yields once so newly started effects run to their first `await`."""
     update = update_shadow(root, previous, NO_LAYOUTS, dirty)
     await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
@@ -52,6 +52,6 @@ async def render(
     return update.tree
 
 
-def effect_tasks(shadow: ShadowNode) -> list[Task[None]]:
+def effect_tasks(shadow: ShadowTree) -> list[Task[None]]:
     """The tasks of every effect in the tree, to cancel before the test's task group exits."""
-    return [effect.task for node in shadow.walk() for effect in node.hooks.effects if effect.task is not None]
+    return [effect.task for node in shadow.nodes for effect in node.hooks.effects if effect.task is not None]

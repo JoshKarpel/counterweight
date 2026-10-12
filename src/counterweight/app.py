@@ -115,12 +115,15 @@ async def app(
             and their hooks. A render keeps the previous output of every component it doesn't re-run
             (because its state didn't change and its parent didn't re-run, or because it's a `memo` component
             whose arguments didn't change), so an impure one goes stale.
-            With this on, each of those components is also called, and if the element it returns differs
-            from the one kept, the application raises `ImpureComponent`, naming the component.
-            Handlers are compared by their code and the values they captured, since a re-run builds new ones.
-            Likewise, each `use_memo` that keeps its cached value also computes it again,
-            and raises `StaleMemo` if the result differs, naming the component and the hook.
-            The extra call costs as much as a re-run, so turn it on in tests rather than in production.
+            With this on, each render is followed by a second one that re-runs every component
+            against copies of its hooks, and if that builds a different tree, the application raises
+            `ImpureComponent`, naming the first component whose output differs.
+            Elements are compared with `==`, and where that fails, piece by piece,
+            so handlers are compared by their code and the values they captured, since a re-run builds new ones.
+            The second run also raises `InconsistentHookExecution` for a component that calls a different number
+            of hooks, and computes each `use_memo` that keeps its cached value again,
+            raising `StaleMemo` if the result differs, naming the component and the hook.
+            It costs as much as a render that re-runs everything, so turn it on in tests rather than in production.
     """
     async with devlog():
         try:
@@ -221,7 +224,7 @@ async def render_loop(
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
-            dirty.update(node.key for node in shadow.walk())
+            dirty.update(node.key for node in shadow.nodes)
 
         # The warmup started no effects, so the first painted frame has to re-run every component to start them.
         rerun_everything()

@@ -22,16 +22,16 @@ from counterweight.layout import (
     layout_style,
     text_source,
 )
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import ShadowTree, update_shadow
 from counterweight.styles.styles import CellStyle, Color
 from counterweight.styles.utilities import border, col, fill, row, text_wrap_stable
 
 AVAILABLE = waxy.AvailableSize(width=waxy.Definite(40), height=waxy.Definite(12))
 
 
-def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowNode:
+def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowTree:
     """Render each element as one frame through `tree`, and return the last frame's shadow tree."""
-    shadow: ShadowNode | None = None
+    shadow: ShadowTree | None = None
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
         tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)
@@ -73,10 +73,10 @@ def ancestors(tree: LayoutTree, node: waxy.NodeId) -> list[waxy.NodeId]:
     return [] if parent is None else [parent, *ancestors(tree, parent)]
 
 
-def nodes_by_text(tree: LayoutTree, shadow: ShadowNode) -> dict[str, waxy.NodeId]:
+def nodes_by_text(tree: LayoutTree, shadow: ShadowTree) -> dict[str, waxy.NodeId]:
     return {
         node.element.content: tree.nodes[node.key]
-        for node in shadow.walk()
+        for node in shadow.nodes
         if isinstance(node.element, Text) and isinstance(node.element.content, str)
     }
 
@@ -114,7 +114,7 @@ def test_changed_text_is_one_set_text() -> None:
 
     [(changed, text)] = [
         (node, element)
-        for node in next.walk()
+        for node in next.nodes
         if isinstance(element := node.element, Text) and element.content == "beta, longer now"
     ]
     assert layout_changes(previous, next) == [SetText(key=changed.key, text=text_source(text))]
@@ -124,7 +124,7 @@ def test_reused_subtree_is_not_descended_into(mocker: MockerFixture) -> None:
     unchanging = panes("alpha", "beta")
     previous = update_shadow(Div(children=[Text(content="before"), unchanging]), None, NO_LAYOUTS).tree
     next = update_shadow(Div(children=[Text(content="after"), unchanging]), previous, NO_LAYOUTS).tree
-    assert next.children[1] is previous.children[1]
+    assert next.root.children[1] is previous.root.children[1]
     text_source = mocker.spy(layout, "text_source")
 
     layout_changes(previous, next)
@@ -152,7 +152,7 @@ def test_changed_chunk_dirties_its_text() -> None:
 
     [canvas_node] = [
         tree.nodes[node.key]
-        for node in next.walk()
+        for node in next.nodes
         if isinstance(node.element, Text) and not isinstance(node.element.content, str)
     ]
     assert tree.tree.dirty(canvas_node)
@@ -163,7 +163,7 @@ def test_moved_keyed_child_is_one_set_children() -> None:
     next = update_shadow(keyed("c", "a", "b"), previous, NO_LAYOUTS).tree
 
     assert layout_changes(previous, next) == [
-        SetChildren(key=next.key, children=tuple(child.key for child in next.children))
+        SetChildren(key=next.root.key, children=tuple(child.key for child in next.root.children))
     ]
 
 
@@ -172,7 +172,7 @@ def test_text_becoming_a_div_keeps_its_key() -> None:
     previous = update_shadow(Div(children=[Text(content="leaf")]), None, NO_LAYOUTS).tree
     next = update_shadow(Div(children=[Div(children=[nested_text])]), previous, NO_LAYOUTS).tree
 
-    [was_text], [now_div] = previous.children, next.children
+    [was_text], [now_div] = previous.root.children, next.root.children
     [nested] = now_div.children
     assert (now_div.key, layout_changes(previous, next)) == (
         was_text.key,
@@ -190,7 +190,7 @@ def test_unmounted_subtree_removes_every_node_in_it() -> None:
 
     removed = [change.key for change in layout_changes(previous, next) if isinstance(change, Remove)]
 
-    assert sorted(removed) == sorted(node.key for node in previous.children[1].walk())
+    assert sorted(removed) == sorted(node.key for node in previous.root.children[1].walk())
 
 
 SEQUENCES = {
@@ -218,7 +218,7 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
     tree = LayoutTree()
     shadow = frames(tree, elements)
 
-    assert tree.tree.total_node_count() == len(tree.nodes) == len(list(shadow.walk()))
+    assert tree.tree.total_node_count() == len(tree.nodes) == len(shadow.nodes)
 
 
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
@@ -229,7 +229,7 @@ def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, ResolvedLayout]
 @pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
 def test_reused_tree_lays_out_each_frame_as_a_fresh_tree_does(elements: list[AnyElement]) -> None:
     tree = LayoutTree()
-    shadow: ShadowNode | None = None
+    shadow: ShadowTree | None = None
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
 

@@ -9,7 +9,7 @@ from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.hooks.impls import Hooks
 from counterweight.layout import Layouts, LayoutTree, ResolvedLayout, layout_changes
-from counterweight.shadow import ShadowNode
+from counterweight.shadow import ShadowNode, ShadowTree
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
     align_children_center,
@@ -70,7 +70,8 @@ def _shadow(element: AnyElement, children: Sequence[ShadowNode] = ()) -> ShadowN
 
 def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
     available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
-    return LayoutTree().compute(layout_changes(None, root), root, available)
+    shadow = ShadowTree(root=root)
+    return LayoutTree().compute(layout_changes(None, shadow), shadow, available)
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:

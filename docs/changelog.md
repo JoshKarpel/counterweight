@@ -7,8 +7,9 @@
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
-  and `check_purity` on `app`, which raises `ImpureComponent` when a component a render didn't re-run
-  would have returned something different, because it depends on more than its arguments and hooks.
+  and `check_purity` on `app`, which runs every component again after each render
+  and raises `ImpureComponent` when that builds something different,
+  because a component depends on more than its arguments and hooks.
 
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `use_memo`, which caches a value until its dependencies change,
@@ -28,6 +29,9 @@
 
 - Documented that a component must call the same hooks in the same order on every render,
   and how to move a hook that is only sometimes needed into a child component.
+
+- Documented what [`use_ref`](hooks/use_ref.md) is for,
+  and why a component shouldn't read or write a ref while rendering.
 
 - Documented every style utility on the [utilities page](styles/utilities.md),
   grouped by family: what each constant sets, each function's signature,
@@ -106,6 +110,7 @@
   instead of every component, and keeps the previous render's output for the rest.
   An effect with `deps=None` runs after every render of its own component,
   rather than after every render of the app.
+
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   The `*_center` and `*_end` alignment utilities
   (`justify_children_*`, `align_children_*`, `align_self_*`, `justify_items_*`, `justify_self_*`)

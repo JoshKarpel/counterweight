@@ -916,7 +916,7 @@ Median frame time, median of three rounds, with the range across rounds:
 
 **Date:** 2026-10-12
 
-**Change:** steps 3 to 7 of `plans/incremental-rendering.md`: per-node state in the shadow tree,
+**Change:** steps 3 to 7 of the incremental rendering plan (PR #394): per-node state in the shadow tree,
 layout reconciled by the pure `layout_changes`, re-running only components whose state, arguments or
 rectangles changed, `@component(memo=True)`, `use_memo`, and no layout reconciliation for reused subtrees.
 
@@ -981,7 +981,7 @@ Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, 
   keep each `Text`'s source on its shadow node, and keep a `NodeId → NodeKey` map in `LayoutTree` beside its
   `NodeKey → NodeId` one.
 - Paint is now the largest stage on every workload except `top`, where `update_shadow`, layout and paint
-  are about equal. That meets the incremental-rendering plan's condition for revisiting a native cell buffer
+  are about equal. Paint being the largest stage was the condition for revisiting a native cell buffer
   (fill, diff and output in Rust, comparing cells by value without `Cell` interning):
   pick it up in the next round of performance work.
 

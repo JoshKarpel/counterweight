@@ -348,7 +348,7 @@ def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
     shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None, NO_LAYOUTS).tree
-    state = ref(shadow.children[0].hooks.data[0])
+    state = ref(shadow.root.children[0].hooks.data[0])
 
     gc.disable()
     try:
@@ -402,7 +402,7 @@ def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
     shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS).tree
     shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS).tree
 
-    assert len(shadow.hooks.data) == 2
+    assert len(shadow.root.hooks.data) == 2
 
 
 class RenderFailed(Exception):

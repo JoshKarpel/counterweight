@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import chain
 
@@ -25,7 +25,17 @@ class ShadowNode:
 
     @property
     def key(self) -> NodeKey:
+        """The key of the mounted node this continues, which its hooks carry across frames."""
         return self.hooks.key
+
+    def detached(self) -> ShadowNode:
+        """A copy of the subtree whose hooks are `Hooks.detached`, so rendering against it changes nothing this keeps."""
+        return ShadowNode(
+            component=self.component,
+            element=self.element,
+            hooks=self.hooks.detached(),
+            children=tuple(child.detached() for child in self.children),
+        )
 
     def walk(self) -> Iterator[ShadowNode]:
         """Yields every node in the subtree in pre-order, with an explicit stack so cost is linear in node count."""
@@ -37,13 +47,47 @@ class ShadowNode:
 
 
 @dataclass(frozen=True, slots=True)
+class ShadowTree:
+    """
+    A shadow tree with its nodes indexed once, when it's built,
+    so whatever needs every node, or a node's ancestors, reads the index instead of walking the tree again.
+    """
+
+    root: ShadowNode
+    nodes: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
+    """Every node, in pre-order."""
+    parents: Mapping[NodeKey, NodeKey | None] = field(init=False, repr=False, compare=False)
+    """The key of each node's parent, by the node's key, with `None` for the root's."""
+    measured: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
+    """
+    The nodes whose last run called `use_rects`.
+    A node's `rects` change only when it runs, which only happens while building the next tree.
+    """
+
+    def __post_init__(self) -> None:
+        nodes = []
+        parents: dict[NodeKey, NodeKey | None] = {self.root.key: None}
+        measured = []
+        for node in self.root.walk():
+            nodes.append(node)
+            for child in node.children:
+                parents[child.key] = node.key
+            if node.hooks.rects is not None:
+                measured.append(node)
+
+        object.__setattr__(self, "nodes", tuple(nodes))
+        object.__setattr__(self, "parents", parents)
+        object.__setattr__(self, "measured", tuple(measured))
+
+
+@dataclass(frozen=True, slots=True)
 class ShadowUpdate:
     """
     One frame's shadow tree, with the hooks of the components that ran to build it
     and of every previous node it unmounted, so effects can follow exactly the renders that happened.
     """
 
-    tree: ShadowNode
+    tree: ShadowTree
     ran: tuple[Hooks, ...]
     unmounted: tuple[Hooks, ...]
 
@@ -54,9 +98,9 @@ class DuplicateKey(Exception):
 
 class ImpureComponent(Exception):
     """
-    Raised when `check_purity` is on and a component that a render didn't re-run
-    returns something different when called again with the same arguments and hooks,
-    so its output depends on something else and the output the render kept is stale.
+    Raised when `check_purity` is on and re-running every component builds a different tree from the one a render built,
+    so some component's output depends on something besides its arguments and hooks:
+    the output a render kept for it is stale, or calling it twice doesn't give the same result.
     """
 
 
@@ -69,32 +113,29 @@ def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> b
 
 
 def dirty_paths(
-    tree: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts
+    tree: ShadowTree, dirty: frozenset[NodeKey], layouts: Layouts
 ) -> tuple[frozenset[NodeKey], frozenset[NodeKey]]:
     """
     The keys of every dirty node in `tree` (see `is_dirty`),
     and the paths to them: those keys and the keys of all their ancestors.
+    Only a node in `dirty` or one that called `use_rects` can be dirty,
+    so it visits only those and their ancestors, not the whole tree.
     """
-    dirty_nodes: set[NodeKey] = set()
+    dirty_nodes = frozenset(
+        chain(
+            (key for key in dirty if key in tree.parents),
+            (node.key for node in tree.measured if is_dirty(node, dirty, layouts)),
+        )
+    )
+
     paths: set[NodeKey] = set()
-    parents: dict[NodeKey, NodeKey] = {}
-    stack = [tree]
-    while stack:
-        node = stack.pop()
-        for child in node.children:
-            parents[child.key] = node.key
-        stack.extend(node.children)
-
-        if not is_dirty(node, dirty, layouts):
-            continue
-
-        dirty_nodes.add(node.key)
-        key: NodeKey | None = node.key
+    for dirty_key in dirty_nodes:
+        key: NodeKey | None = dirty_key
         while key is not None and key not in paths:
             paths.add(key)
-            key = parents.get(key)
+            key = tree.parents[key]
 
-    return frozenset(dirty_nodes), frozenset(paths)
+    return dirty_nodes, frozenset(paths)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +152,7 @@ class Reconciliation:
 
 def update_shadow(
     next: Component | AnyElement,
-    previous: ShadowNode | None,
+    previous: ShadowTree | None,
     layouts: Layouts,
     dirty: frozenset[NodeKey] = frozenset(),
     check_purity: bool = False,
@@ -123,18 +164,14 @@ def update_shadow(
     A component that doesn't re-run keeps its previous node, whole subtree included,
     unless a dirty node is below it, in which case its children are reconciled again to reach it.
     `layouts` are the previous frame's, which `use_rects` reads.
-    With `check_purity`, every component that doesn't re-run is also called, and raises `ImpureComponent`
-    if what it returns isn't equivalent to the element it kept (see `check_is_pure`).
+    With `check_purity`, the tree is then built again with every component re-run (see `check_is_pure`).
     """
     dirty_nodes, paths = (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts)
-    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=dirty_nodes, paths=paths, check_purity=check_purity)
-    tree = update_node(next, previous, reconciliation)
+    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=dirty_nodes, paths=paths, check_purity=False)
+    tree = ShadowTree(root=update_node(next, None if previous is None else previous.root, reconciliation))
 
     if check_purity:
-        ran = {hooks.key for hooks in reconciliation.ran}
-        for node in tree.walk():
-            if node.key not in ran:
-                check_is_pure(node, layouts)
+        check_is_pure(next, tree, layouts)
 
     return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
 
@@ -241,23 +278,31 @@ def continues(next: Component, previous: Component) -> bool:
     return next is previous or (next.memo and next == previous)
 
 
-def check_is_pure(node: ShadowNode, layouts: Layouts) -> None:
+def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layouts) -> None:
     """
-    Calls a reused node's component again, against its `Hooks.detached` hooks, and raises `ImpureComponent`
-    if the element it returns isn't `equivalent` to the one the node kept.
-    It compares child components without calling them; each reused child is checked on its own node.
+    Builds `tree` again from `next`, re-running every component against a `ShadowNode.detached` copy of it,
+    and raises `ImpureComponent` naming the component that owns the first node whose element isn't `equivalent`.
+    A node is compared only once all its ancestors matched, so the component named is where the difference starts.
+    Re-running also checks each component's hook count (see `update_node`),
+    and each `use_memo` that keeps its cached value (see `Hooks.use_memo`).
     """
-    if node.component is None:
-        return
+    every_key = frozenset(tree.parents)
+    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=every_key, paths=every_key, check_purity=True)
+    rerun = update_node(next, tree.root.detached(), reconciliation)
 
-    element, _ = call_component(node.component, node.hooks.detached(), layouts, check_purity=True)
-    if not equivalent(element, node.element):
-        raise ImpureComponent(
-            f"{node.component.func.__qualname__} returned a different element when called again "
-            "with the same arguments and hooks, so it depends on something else, such as a module-level value, "
-            "and the output kept from its last run is stale. "
-            "A component must depend only on its arguments and its hooks."
-        )
+    pairs: list[tuple[ShadowNode, ShadowNode, Component | None]] = [(tree.root, rerun, tree.root.component)]
+    while pairs:
+        kept, again, owner = pairs.pop()
+        owner = kept.component if kept.component is not None else owner
+        if not equivalent(kept.element, again.element):
+            name = "The root element" if owner is None else owner.func.__qualname__
+            raise ImpureComponent(
+                f"{name} returned a different element when every component was run again "
+                "with the same arguments and hooks, so its output depends on something else, "
+                "such as a module-level value or the time. "
+                "A component must depend only on its arguments and its hooks."
+            )
+        pairs.extend((k, a, owner) for k, a in reversed(tuple(zip(kept.children, again.children, strict=True))))
 
 
 def call_component(component: Component, hooks: Hooks, layouts: Layouts, check_purity: bool) -> tuple[AnyElement, int]:

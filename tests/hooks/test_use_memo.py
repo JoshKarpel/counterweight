@@ -10,11 +10,11 @@ from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_memo, use_state
 from counterweight.hooks.impls import StaleMemo, UseMemo
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import ShadowTree, update_shadow
 from tests.rendering import state_set_keys, state_sets
 
 
-def render_after_each(root: Component, steps: list[Callable[[], None]], check_purity: bool = False) -> list[ShadowNode]:
+def render_after_each(root: Component, steps: list[Callable[[], None]], check_purity: bool = False) -> list[ShadowTree]:
     """Renders `root`, then calls each step and renders again with the state it set, returning every tree."""
     with state_sets() as queue:
         trees = [update_shadow(root, None, NO_LAYOUTS).tree]
@@ -148,7 +148,7 @@ def test_check_purity_keeps_a_cached_handler_whose_deps_are_complete() -> None:
         caches_handler(lambda count, other: (count,), setters), [step(setters, "other")], check_purity=True
     )
 
-    assert second.element.on_key is first.element.on_key
+    assert second.root.element.on_key is first.root.element.on_key
 
 
 @component(memo=True)
@@ -173,4 +173,4 @@ def test_check_purity_leaves_a_reused_components_memo_hooks_unchanged(monkeypatc
 
     _, second = render_after_each(holds_memo_child(setters), [change], check_purity=True)
 
-    assert [hook.deps for hook in second.children[0].hooks.data if isinstance(hook, UseMemo)] == [("before",)]
+    assert [hook.deps for hook in second.root.children[0].hooks.data if isinstance(hook, UseMemo)] == [("before",)]
