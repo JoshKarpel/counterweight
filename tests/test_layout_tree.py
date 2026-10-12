@@ -120,6 +120,18 @@ def test_changed_text_is_one_set_text() -> None:
     assert layout_changes(previous, next) == [SetText(key=changed.key, text=text_source(text))]
 
 
+def test_reused_subtree_is_not_descended_into(mocker: MockerFixture) -> None:
+    unchanging = panes("alpha", "beta")
+    previous = update_shadow(Div(children=[Text(content="before"), unchanging]), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=[Text(content="after"), unchanging]), previous, NO_LAYOUTS).tree
+    assert next.children[1] is previous.children[1]
+    text_source = mocker.spy(layout, "text_source")
+
+    layout_changes(previous, next)
+
+    assert {call.args[0].content for call in text_source.call_args_list} == {"before", "after"}
+
+
 def test_changed_text_dirties_only_itself_and_its_ancestors() -> None:
     tree = LayoutTree()
     shadow = frames(tree, [panes("alpha", "beta", "gamma")])

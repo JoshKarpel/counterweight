@@ -119,7 +119,14 @@ def _reconcile(
     changes: list[LayoutChange],
     removals: list[LayoutChange],
 ) -> None:
-    """Appends the changes for `next`'s subtree, given the previous node it continues, if any."""
+    """
+    Appends the changes for `next`'s subtree, given the previous node it continues, if any.
+    A subtree `update_shadow` reused is the previous node itself, frozen with all its descendants,
+    so it has no changes and isn't descended into.
+    """
+    if next is previous:
+        return
+
     key = next.key
     element = next.element
     style = layout_style(element.style)
