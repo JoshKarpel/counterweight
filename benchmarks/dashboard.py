@@ -5,10 +5,12 @@ Nearly everything is identical from frame to frame, so this measures the fixed c
 work that caches, or reuse of last frame's layout, could skip.
 """
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from functools import partial
 
 from benchmarks.harness import Workload
-from counterweight.components import component
+from counterweight.components import Component, component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
@@ -56,22 +58,30 @@ def step(model: Model) -> Model:
     return Model(tick=model.tick + 1)
 
 
-def view(model: Model) -> Div:
+def view(model: Model, card_component: Callable[[str, str], Component]) -> Div:
+    return layout(frame_counter(model.tick), card_component)
+
+
+def layout(counter: Component, card_component: Callable[[str, str], Component]) -> Div:
+    """
+    Everything but the frame counter, which is passed in so `dashboard-local` can hold its tick elsewhere,
+    with each metric card built by `card_component`, so `dashboard-memo` can declare it `memo`.
+    """
     return Div(
         style=col | pad(1),
         children=[
             header(),
-            Div(style=row | justify_children_space_between, children=[status(), frame_counter(model.tick)]),
+            Div(style=row | justify_children_space_between, children=[status(), counter]),
             Div(
                 style=fill(1) | col | border_collapse,
                 children=[
                     Div(
                         style=fill(1) | row | border_collapse,
-                        children=[metric_card(label, value) for label, value in METRICS[:6]],
+                        children=[card_component(label, value) for label, value in METRICS[:6]],
                     ),
                     Div(
                         style=fill(1) | row | border_collapse,
-                        children=[metric_card(label, value) for label, value in METRICS[6:]],
+                        children=[card_component(label, value) for label, value in METRICS[6:]],
                     ),
                 ],
             ),
@@ -98,11 +108,14 @@ def status() -> Text:
 
 @component
 def frame_counter(tick: int) -> Text:
+    return frame_text(tick)
+
+
+def frame_text(tick: int) -> Text:
     return Text(content=[Chunk(content=f"Frame: {tick:,}", style=CellStyle(foreground=slate_400))])
 
 
-@component
-def metric_card(label: str, value: str) -> Div:
+def render_metric_card(label: str, value: str) -> Div:
     return Div(
         style=fill(1) | col | border | border_color("slate", 700) | pad(1),
         children=[
@@ -112,11 +125,27 @@ def metric_card(label: str, value: str) -> Div:
     )
 
 
+metric_card = component(render_metric_card)
+memo_metric_card = component(memo=True)(render_metric_card)
+
+
 WORKLOAD = Workload(
     name="dashboard",
     description=__doc__ or "",
     initial=initial,
     step=step,
-    view=view,
+    view=partial(view, card_component=metric_card),
     dimensions=(120, 30),
+)
+
+MEMO_WORKLOAD = replace(
+    WORKLOAD,
+    name="dashboard-memo",
+    description="""
+`dashboard`, with each metric card a `memo` component.
+
+The cards' arguments never change, so every card is reused every frame and only the root and the frame counter re-run:
+compared with `dashboard`, this measures what skipping unchanged components saves.
+""",
+    view=partial(view, card_component=memo_metric_card),
 )

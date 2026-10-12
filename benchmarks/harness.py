@@ -6,8 +6,10 @@ The harness holds the model in a root component and advances it on every autopil
 so each run renders exactly `frames` frames after the first, and two runs of the same workload
 do the same work frame for frame, whatever the machine's speed.
 
-A frame's time is the interval between two consecutive renders of the root component,
-so it covers the whole render loop: events, the shadow tree, layout, paint, output and effects.
+A frame's time is the interval between two consecutive key presses, as seen by a key handler on the
+root element. The autopilot presses one key per loop iteration, and the render loop calls every element's
+key handler whether or not its component re-ran, so the interval covers one whole iteration:
+the shadow tree, layout, paint, output, effects and events. `frames` key presses time `frames - 1` frames.
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """
 
@@ -44,7 +46,7 @@ class Runnable(Protocol):
     @property
     def dimensions(self) -> tuple[int, int]: ...
 
-    def root(self, render_starts: list[int]) -> Callable[[], Component]: ...
+    def root(self, key_press_times: list[int]) -> Callable[[], Component]: ...
 
     def live_root(self, frame_interval: timedelta) -> Callable[[], Component]: ...
 
@@ -63,18 +65,18 @@ class Workload[M]:
     view: Callable[[M], Div]
     dimensions: tuple[int, int]
 
-    def root(self, render_starts: list[int]) -> Callable[[], Component]:
+    def root(self, key_press_times: list[int]) -> Callable[[], Component]:
         """
-        A root component that renders the model, with a key handler on the view's root that steps it.
-        Each render appends its start time to `render_starts`.
+        A root component that renders the model, with a key handler on the view's root that steps it
+        and appends the time to `key_press_times`.
         """
 
         @component
         def benchmark_root() -> Div:
-            render_starts.append(perf_counter_ns())
             model, set_model = use_state(self.initial)
 
             def on_key(_: KeyPressed) -> None:
+                key_press_times.append(perf_counter_ns())
                 set_model(self.step)
 
             return replace(self.view(model), on_key=on_key)
@@ -169,13 +171,22 @@ async def run(
     warmup: int,
     dimensions: tuple[int, int] | None = None,
     snapshot: Path | None = None,
+    check_purity: bool = False,
 ) -> Timings:
-    """Run `workload` headless and time every frame after the first `warmup`."""
+    """
+    Run `workload` headless and time every frame after the first `warmup`.
+    `check_purity` is for tests: it runs every component again after each frame, which the timings would include.
+    """
     dims = dimensions or workload.dimensions
-    render_starts: list[int] = []
-    await app(workload.root(render_starts), headless=True, dimensions=dims, autopilot=autopilot(frames, snapshot))
-    # The first render is the app's layout warmup, before its first painted frame.
-    frame_ms = [(end - start) / 1e6 for start, end in pairwise(render_starts[1:])]
+    key_press_times: list[int] = []
+    await app(
+        workload.root(key_press_times),
+        headless=True,
+        dimensions=dims,
+        autopilot=autopilot(frames, snapshot),
+        check_purity=check_purity,
+    )
+    frame_ms = [(end - start) / 1e6 for start, end in pairwise(key_press_times)]
     return Timings(
         workload=workload.name,
         source=str(Path(counterweight.__file__).parent),

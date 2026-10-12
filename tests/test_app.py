@@ -1,4 +1,5 @@
 import io
+from asyncio import wait_for
 from collections.abc import Callable
 
 import pytest
@@ -9,6 +10,7 @@ from counterweight.controls import Quit, Screenshot, Suspend, ToggleBorderHealin
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseDown, MouseMoved, MouseUp, TerminalResized
 from counterweight.geometry import Position
+from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import border, col, full, text_wrap_stable
 
@@ -34,12 +36,19 @@ async def test_headless_autopilot_events_with_empty_app() -> None:
             ToggleBorderHealing(),
             Quit(),
         ),
+        check_purity=True,
     )
 
 
 async def render_text(root: Callable[[], Component], dimensions: tuple[int, int]) -> list[str]:
     capture = io.StringIO()
-    await app(root, headless=True, dimensions=dimensions, autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()])
+    await app(
+        root,
+        headless=True,
+        dimensions=dimensions,
+        autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
+    )
     return capture.getvalue().rstrip("\n").split("\n")
 
 
@@ -66,3 +75,62 @@ async def test_wrapping_text_in_root_wraps_at_screen_width() -> None:
         "ccc    ",
         "       ",
     ]
+
+
+class Boom(Exception):
+    pass
+
+
+@component
+def raises_in_render() -> Text:
+    is_pressed, set_is_pressed = use_state(False)
+    if is_pressed:
+        raise Boom()
+
+    def on_key(_: KeyPressed) -> None:
+        set_is_pressed(True)
+
+    return Text(content="", on_key=on_key)
+
+
+@component
+def raises_in_handler() -> Text:
+    def on_key(_: KeyPressed) -> None:
+        raise Boom()
+
+    return Text(content="", on_key=on_key)
+
+
+@component
+def raises_in_effect() -> Text:
+    async def setup() -> None:
+        raise Boom()
+
+    use_effect(setup, deps=())
+    return Text(content="")
+
+
+@pytest.mark.parametrize("root", [raises_in_render, raises_in_handler, raises_in_effect], ids=lambda r: r.__name__)
+async def test_app_raises_a_lone_error_itself_rather_than_in_an_exception_group(root: Callable[[], Component]) -> None:
+    # No Quit: it would end the app before the effect's task runs. The error ends it instead.
+    with pytest.raises(Boom) as raised:
+        await wait_for(
+            app(root, headless=True, dimensions=(10, 2), autopilot=[KeyPressed(key="x")], check_purity=True), timeout=5
+        )
+
+    assert not isinstance(raised.value.__context__, BaseExceptionGroup)
+
+
+@component
+def raises_in_two_effects() -> Text:
+    async def setup() -> None:
+        raise Boom()
+
+    use_effect(setup, deps=())
+    use_effect(setup, deps=())
+    return Text(content="")
+
+
+async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
+    with pytest.RaisesGroup(Boom, Boom):
+        await wait_for(app(raises_in_two_effects, headless=True, dimensions=(10, 2), check_purity=True), timeout=5)

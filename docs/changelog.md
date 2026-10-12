@@ -4,11 +4,34 @@
 
 ### Added
 
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
+  and passes it arguments equal to the previous render's,
+  and `check_purity` on `app`, which runs every component again after each render
+  and raises `ImpureComponent` when that builds something different,
+  because a component depends on more than its arguments and hooks.
+
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  Added `use_memo`, which caches a value until its dependencies change,
+  so a component can keep an expensive derived value, an unchanging part of its output,
+  or a handler it passes to a `memo` component.
+  With `check_purity` on, a cached value that a dependency missing from its list would change raises `StaleMemo`.
+
+- Documented how to find where a frame's time goes, which components a frame re-runs,
+  and how to skip the rest with `memo=True` and `use_memo`, with their failure modes,
+  in [Performance](performance.md).
+
+- Documented how Counterweight compares with Textual, Ink and Ratatui,
+  and what it doesn't do, in [Ecosystem](ecosystem.md).
+
 - Documented how components keep their state across renders,
   and how to use keys to move or reset that state.
 
 - Documented that a component must call the same hooks in the same order on every render,
   and how to move a hook that is only sometimes needed into a child component.
+
+- Documented what [`use_ref`](hooks/use_ref.md) is for,
+  and why a component shouldn't read or write a ref while rendering.
 
 - Documented every style utility on the [utilities page](styles/utilities.md),
   grouped by family: what each constant sets, each function's signature,
@@ -74,6 +97,19 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  An error raised while the app runs, in a component, a handler or an effect,
+  propagates out of `app` as itself rather than wrapped in an `ExceptionGroup`,
+  after the terminal is restored, so its traceback ends at the line that raised it
+  and callers can catch it by its own type.
+  Errors raised at the same moment from more than one effect are still grouped.
+
+- [#394](https://github.com/JoshKarpel/counterweight/pull/394)
+  A render calls only the components whose state changed and the components they return,
+  instead of every component, and keeps the previous render's output for the rest.
+  An effect with `deps=None` runs after every render of its own component,
+  rather than after every render of the app.
 
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   The `*_center` and `*_end` alignment utilities

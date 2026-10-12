@@ -18,4 +18,6 @@
     That means that if the dimensions of the component's top-level element change
     in a way that is not connected to some other state change
     (e.g., if a sibling component changes size),
-    using this hook will not cause the component to re-render.
+    using this hook will not start a render cycle.
+    Once some other change starts one,
+    a component whose rectangles moved since it last rendered renders again.

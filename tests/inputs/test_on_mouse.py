@@ -37,6 +37,7 @@ async def test_on_mouse_only_captures_events_in_border_rect_with_history() -> No
             *(event for event, _ in events),
             Quit(),
         ),
+        check_purity=True,
     )
 
     assert recorder == [event for event, tf in events if tf]

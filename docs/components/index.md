@@ -3,14 +3,19 @@
 A component is a function decorated with [`@component`][counterweight.components.component]
 that returns an element and holds state through [hooks](../hooks/index.md).
 This page covers how a component's state survives from one render to the next,
-and how to use keys to control that.
+how to use keys to control that,
+and how to skip re-running a component whose arguments didn't change.
 The rules are the same as React's;
 React's [Preserving and Resetting State](https://react.dev/learn/preserving-and-resetting-state)
 covers the same ground with interactive examples.
 
 ## How a component keeps its state
 
-Every render calls your component functions again and builds a new tree.
+A render calls a component function again when that component's state changed,
+or when the component that returned it was called again
+(unless it's a [`memo`](#skipping-a-component-whose-arguments-didnt-change) component
+whose arguments didn't change),
+and builds a new tree, keeping the previous render's output for every component it didn't call.
 Counterweight then pairs each component in the new tree with one from the previous render.
 A component that finds a partner **continues** it:
 it keeps its hooks, so `use_state` returns the stored value and its effects keep running.
@@ -137,6 +142,61 @@ Adding a key to a component or removing one counts as a change too.
 Only components take a key; elements like `Div` and `Text` are always paired by position.
 A component inside an element moves only as far as that element does,
 so to move a subtree along with its state, make the root of that subtree a component and key it.
+
+## Skipping a component whose arguments didn't change
+
+A component that re-runs calls every component it returns again,
+even when it passes them the same arguments as last render.
+Declare a component `memo` to skip it in that case:
+
+```python
+@component(memo=True)
+def todo_row(title: str) -> Text: ...
+```
+
+When its parent re-runs and passes it arguments equal (`==`) to last render's, with the same key,
+a `memo` component keeps its previous output instead of re-running,
+along with every component below it.
+It still re-runs when its own state changes,
+and on the renders that re-run everything: the first one, and those after a resize or a suspend.
+
+`memo` is opt-in, as it is in React, because it isn't free and isn't always right:
+
+- Comparing the arguments costs something on every render, and `==` on a large argument walks all of it.
+  A cheap component can cost less to re-run than to compare.
+- A function the parent creates while rendering, such as a lambda passed as a handler,
+  is a new object every render and never equals the previous one, so the component always re-runs.
+- The component's output has to depend only on its arguments and its hooks.
+  One that also reads a module-level value, or an argument that is mutated in place,
+  keeps showing what it showed when it last ran.
+- In a list, an unkeyed `memo` component compares its arguments with whatever item was at its index last render,
+  so when the list is reordered, most of them change and re-run.
+  [Key](#choosing-a-key) the items to compare each one with itself.
+
+[Performance](../performance.md) walks through finding the components a frame re-runs,
+and each way `memo` and `use_memo` can miss or go stale.
+
+### Keeping components pure
+
+A component has to be **pure**: given the same arguments and hook state,
+it returns the same element, however many times it's called.
+A component that isn't re-run, `memo` or not, keeps showing the output from its last run,
+so one that also reads something else, such as a module-level value or the time, goes stale.
+To show something that changes on its own, such as a clock,
+keep it in state and update it from [`use_effect`](../hooks/use_effect.md).
+
+Pass `check_purity=True` to `app` in tests to catch an impure component:
+after each render, every component is run again with the same arguments and hooks,
+and if that builds a different tree,
+the app raises `ImpureComponent` naming the first component whose output differs.
+Elements are compared with `==`, and where that fails, piece by piece,
+with handlers compared by their code and the values they captured,
+since a re-run creates new ones that never `==` the old ones.
+The second run also raises `InconsistentHookExecution` for a component that calls a different number of hooks,
+and checks [`use_memo`](../hooks/use_memo.md) the same way:
+each cached value is computed again, and one that differs raises `StaleMemo`.
+It costs as much as re-running everything, so leave `check_purity` off outside tests.
+[`use_ref`](../hooks/use_ref.md#not-reading-or-writing-a-ref-while-rendering) covers what it catches for refs.
 
 ## API
 

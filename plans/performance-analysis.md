@@ -1,5 +1,7 @@
 # Performance Analysis — `profiling/canvas.py`
 
+**Date:** 2026-03-07
+
 **Workload:** 4 × `random_walkers` canvases, each 30×30 pixels rendered as half-block chars
 (30×15 Chunks per canvas = 450 Chunks × 4 = ~1,800 Chunks total), all walkers moving every frame.
 **Dataset:** 500 log lines, 50 complete render cycles, ~0.82 s wall time.
@@ -194,6 +196,8 @@ Relevant code: `src/counterweight/app.py:110` (init), `app.py:490` (`diff_paint`
 
 ### Run 1 (before `user_code_ns`)
 
+**Date:** 2026-03-07
+
 | Event | Count | Mean | Median | P95 | Max |
 |---|---|---|---|---|---|
 | Handled events | 49 | 0.007 ms | 0.006 ms | 0.010 ms | 0.010 ms |
@@ -208,6 +212,8 @@ Relevant code: `src/counterweight/app.py:110` (init), `app.py:490` (`diff_paint`
 | **Completed render cycle** | **50** | **16.261 ms** | — | **17.696 ms** | **18.311 ms** |
 
 ### Run 2 (with `user_code_ns`, lazy `use_state`)
+
+**Date:** 2026-03-07
 
 | Event | Count | Mean | Median | P95 | Max |
 |---|---|---|---|---|---|
@@ -229,6 +235,8 @@ Steady-state performance is unchanged: median ~15.7ms (~63.6 FPS).
 
 ### Run 3 (`@flyweight` on `CellStyle`, `_canvas_chunk` cache, `NEWLINE` constant, `canvas` in utils)
 
+**Date:** 2026-03-07
+
 | Event | Count | Mean | Median | P95 | Max |
 |---|---|---|---|---|---|
 | Updated shadow tree | 49 | 1.041 ms | 0.881 ms | 1.870 ms | 3.723 ms |
@@ -247,6 +255,8 @@ Shadow tree: **-67% median** vs run 2 (2.485ms → 0.818ms user_code). Bottlenec
 Overall cycle: **-13% median** (15.7ms → 13.7ms, ~73 FPS median).
 
 ### Run 4 (`paint_edge` cache, `paint_text` cache, batched `paint_to_instructions`)
+
+**Date:** 2026-03-07
 
 | Event | Count | Mean | Median | P95 | Max |
 |---|---|---|---|---|---|
@@ -293,6 +303,8 @@ Scalene hotspots (run 4, top lines by CPU%):
 
 ### Run 5 — `profiling/dashboard.py` (mostly-static workload)
 
+**Date:** 2026-03-07
+
 | Event | Count | Mean | Median | %cycle | P95 | Max |
 |---|---|---|---|---|---|---|
 | Updated shadow tree | 199 | 1.436 ms | 1.207 ms | 14.0% | 1.917 ms | 27.985 ms |
@@ -337,6 +349,8 @@ Scalene hotspots (run 5, top lines by CPU%):
 - `geometry.py:18–20` — `Position.from_point()` — 1.47% combined
 
 ### Run 6 — `profiling/canvas.py` (after #6 corner hints + #7 sparse paint; battery power)
+
+**Date:** 2026-03-08
 
 > **Clock-speed caveat:** recorded on battery — absolute times are ~1.8× slower than runs 1–4.
 > Compare proportions only.
@@ -391,6 +405,8 @@ Scalene hotspots (run 6, top lines by CPU%):
 
 ### Run 7 — `profiling/dashboard.py` (after #6 corner hints; sparse paint #7 reverted)
 
+**Date:** 2026-03-08
+
 | Event | Count | Mean | Median | %cycle | P95 | Max |
 |---|---|---|---|---|---|---|
 | Updated shadow tree | 49 | 1.200 ms | 1.105 ms | 16.6% | 1.625 ms | 2.865 ms |
@@ -437,6 +453,8 @@ Scalene hotspots (run 7, top lines by CPU%):
 ---
 
 ### Extra metrics (run 2)
+
+**Date:** 2026-03-07
 - `hint_cells` (border heal): constant 279 every cycle
 - `diff_cells` (border heal): constant 5 every cycle
 - `diff_cells` (paint diff): mean 203
@@ -447,6 +465,8 @@ Scalene hotspots (run 7, top lines by CPU%):
 ---
 
 ### Run 8 — canvas.py — after `CellStyle.__hash__` caching
+
+**Date:** 2026-03-08
 
 **Change:** Added `_hash` cached field + `__post_init__` + explicit `__hash__` override to `CellStyle`,
 so the hash is computed once at construction and returned in O(1) thereafter.
@@ -495,6 +515,8 @@ call, including cache hits, which is the majority of calls in a hot render loop.
 
 ### Run 9 — all four benchmark workloads, devlog through without-logging
 
+**Date:** 2026-10-10
+
 **Change:** the devlog moves from structlog (bridged through stdlib `logging`, rendered twice,
 once per file, synchronously in every log call) to without-logging: stdlib `logging` records,
 parsed in the caller, encoded once as JSON by a sink task, and written by a dedicated thread.
@@ -520,6 +542,8 @@ What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord`
 frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.
 
 ### Run 10 — all four benchmark workloads, per-frame layout (styling-foundations step 10)
+
+**Date:** 2026-10-10
 
 **Changes,** each profiled with `just profile <workload> <workload>-<change>` against the run before it:
 
@@ -584,6 +608,8 @@ to the app. What Tachyon's `<GC>` frames cover beyond cyclic collection is unexp
 
 ### Run 11 — all four benchmark workloads, faster interning
 
+**Date:** 2026-10-11
+
 **Change:** `@flyweight` returns a slotless subclass whose metaclass's `__call__` is an `lru_cache`
 keyed on the raw call arguments, so constructing an instance equal to a cached one is a single
 C-level cache hit that skips `__new__`, `__init__` and `__post_init__`.
@@ -631,6 +657,8 @@ Paint stage (`paint_layout`), ms per mean frame:
   and per-cell construction where whole rows could be filled with one slice assignment.
 
 ### Run 12 — all four benchmark workloads, `Paint` as a screen-sized buffer
+
+**Date:** 2026-10-11
 
 **Change:** `Paint` is a class holding a row-major `list[Cell]` for the whole screen, rather than a
 `dict[Position, Cell]` built per element and merged with `|=`.
@@ -680,6 +708,8 @@ padded by a margin around the screen.
 
 ### Run 13 — does `@flyweight` still pay, after the `Paint` buffer?
 
+**Date:** 2026-10-11
+
 **Method:** unprofiled `benchmarks run` with `@flyweight` replaced by the identity decorator for chosen
 classes, patched into `counterweight._utils` before the package imports (its `__init__` applies the
 decorators, so patching after `import counterweight` silently changes nothing). Every configuration's
@@ -707,6 +737,8 @@ Median frame time, median of three rounds, change against interning on:
   Those three are candidates to drop, pending a repeated run to confirm.
 
 ### Run 14 — confirming run 13's candidates: `Position`, `ResolvedCellStyle`, `StyledChar`
+
+**Date:** 2026-10-11
 
 **Method:** as in run 13, three interleaved rounds of unprofiled `benchmarks run` (500 frames),
 with each candidate's interning off alone and all three off together.
@@ -744,6 +776,8 @@ Output bytes over 100 frames with `ResolvedCellStyle` interning off:
   which interning turns into a cache hit.
 
 ### Run 15 — what styles cost per frame (styling-foundations step 12)
+
+**Date:** 2026-10-11
 
 **Question:** what step 4's resolve step and step 5's derived border widths cost per frame,
 and whether `Style` should cache its hash, now that `resolve_style`, `layout_style` and the merge cache
@@ -801,3 +835,174 @@ On `top` the rounds don't overlap: 11.92–12.55 ms before, 10.24–10.66 ms aft
   Interning `Style` with `@flyweight` would make those hits identity checks, at the cost of a lookup on
   every construction; that's untested.
 - The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
+
+### Run 16 — output independent of interning (incremental-rendering step 1)
+
+**Date:** 2026-10-12
+
+**Change:** `paint_to_instructions` starts a new SGR sequence only when a cell's style is neither the
+same object as the previous cell's nor equal to it (`cell.style is not style and cell.style != style`),
+so equal styles that are separate instances no longer re-send their SGR sequence.
+
+**Method:** as in run 14, with `ResolvedCellStyle`'s `@flyweight` replaced by the identity decorator
+before the package imports. Each configuration imports counterweight from its own copy of `src`
+(`PYTHONPATH`). Output bytes are counted over 100 frames by wrapping `paint_to_instructions`,
+with a hash of everything written.
+
+Output bytes over 100 frames:
+
+| Workload | Before, on | Before, off | After, on | After, off |
+|---|---|---|---|---|
+| canvas | 783,608 | 783,608 | 783,608 | 783,608 |
+| top | 1,380,087 | 2,056,441 (+49%) | 1,380,087 | 1,380,087 |
+| agent | 48,211 | 101,364 (+110%) | 48,211 | 48,211 |
+| dashboard | 10,061 | 10,061 | 10,061 | 10,061 |
+
+After the change, every workload's output hashes the same with interning on and off,
+and the same as before the change with interning on.
+`canvas`, `agent` and `dashboard` write more than run 14's "on" column; both sides of each
+comparison here are measured on the same code.
+
+Median frame time, median of three interleaved rounds of unprofiled `benchmarks run` (500 frames),
+with the range across rounds:
+
+| Workload | Before | After, interning on | After, `ResolvedCellStyle` off |
+|---|---|---|---|
+| canvas | 2.46 ms (2.44–2.51) | 2.46 ms (2.45–2.53) | 2.54 ms (2.52–2.55) |
+| top | 10.42 ms (10.41–10.84) | 11.18 ms (10.60–11.25) | 10.93 ms (10.71–11.66) |
+| agent | 0.89 ms (0.89–0.95) | 0.89 ms (0.88–0.90) | 0.94 ms (0.92–1.02) |
+| dashboard | 0.82 ms (0.78–0.84) | 0.80 ms (0.75–0.84) | 0.76 ms (0.76–0.80) |
+
+- The change costs nothing measurable. Five more interleaved rounds of `top`, before and after,
+  overlap: 10.21–10.59 ms (median 10.48) before, 10.33–10.79 ms (median 10.50) after.
+  The added `__eq__` runs only where the style really changes: about 200 times per frame on `top`
+  and `canvas`, at about 120 ns each, so under 0.03 ms per frame.
+- `ResolvedCellStyle` interning stays. `agent` is slower with it off in every round, with no overlap,
+  as in run 14. With output no longer depending on it, what it buys is speed alone.
+- The last frame of every workload (`profiles/<name>.txt`) and every docs screenshot is identical
+  before and after.
+
+### Run 17 — frames timed from the key handler, and `dashboard-local` (incremental-rendering step 2)
+
+**Date:** 2026-10-12
+
+**Change:** the harness times a frame as the interval between two autopilot key presses, seen by a key handler
+on the root element, rather than between two renders of the root component, which stops working once the root
+can be skipped. `frames` key presses time `frames - 1` frames, so a default run times 479 frames, not 480.
+`dashboard-local` draws what `dashboard` does, but its frame counter holds its tick in its own state and
+steps it from its own key handler, so nothing above the counter holds state.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), the old harness
+(from `HEAD`) against the new, on the same counterweight. Every round's last frame is identical between the
+two harnesses, and `dashboard-local`'s is identical to `dashboard`'s.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Timed from root renders | Timed from key presses |
+|---|---|---|
+| canvas | 2.54 ms (2.54–2.99) | 2.54 ms (2.52–2.73) |
+| top | 11.30 ms (10.64–12.42) | 12.29 ms (11.45–14.40) |
+| agent | 1.06 ms (0.88–1.11) | 0.93 ms (0.88–1.26) |
+| dashboard | 0.78 ms (0.74–0.95) | 0.89 ms (0.76–0.91) |
+| dashboard-local | | 0.84 ms (0.79–1.01) |
+
+- The two ways of timing agree within the round-to-round spread. Three more rounds of `top` ran while the
+  machine was noisier (single rounds from 10.6 to 23.2 ms); paired round by round, the six rounds' change
+  is +1%, +35%, −1%, +59%, −10% and +3%, so no systematic shift.
+- `dashboard-local` does the same work as `dashboard` while every component re-runs every frame,
+  and measures the same. Its column is the baseline for skipping unchanged components.
+
+### Run 18 — incremental rendering, and interning revisited (incremental-rendering steps 3 to 8)
+
+**Date:** 2026-10-12
+
+**Change:** steps 3 to 7 of the incremental rendering plan (PR #394): per-node state in the shadow tree,
+layout reconciled by the pure `layout_changes`, re-running only components whose state, arguments or
+rectangles changed, `@component(memo=True)`, `use_memo`, and no layout reconciliation for reused subtrees.
+
+**Method:** the baseline is step 2's `src` and `benchmarks` (`f0d40df`), run from their own directory
+against the same environment (`PYTHONPATH`), so both sides time frames from key presses.
+Steps 1 and 2 change nothing observable, so the baseline is the code from before the restructuring.
+Five interleaved rounds of unprofiled `benchmarks run` (500 frames), baseline and `HEAD` alternating per workload.
+Profiles are `<workload>-s8base` and `<workload>-s8`. The `-memo` workloads exist only on `HEAD`.
+Every round's last frame is identical between the baseline and `HEAD`, between each `-memo` workload and its twin,
+and between `dashboard-local` and `dashboard`.
+
+Median frame time, median of five rounds, with the range across rounds:
+
+| Workload | Baseline | `HEAD` | Change | `HEAD`, `-memo` twin | Change against `HEAD` |
+|---|---|---|---|---|---|
+| canvas | 2.46 ms (2.43–2.65) | 2.52 ms (2.51–2.56) | +2% | | |
+| top | 10.41 ms (10.33–10.46) | 10.46 ms (10.20–11.12) | +0% | 10.38 ms (10.29–10.68) | −1% |
+| agent | 0.89 ms (0.85–0.91) | 0.97 ms (0.91–1.01) | +8% | 0.90 ms (0.86–0.97) | −8% |
+| dashboard | 0.73 ms (0.70–0.80) | 0.82 ms (0.78–0.84) | +12% | 0.66 ms (0.65–0.71) | −20% |
+| dashboard-local | 0.74 ms (0.71–0.76) | 0.60 ms (0.58–0.63) | −19% | | |
+
+Stages, ms per mean frame (one profiled run each, so read them as shares of a frame rather than as frame times).
+Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, it's `layout_changes`:
+
+| Run | Mean frame | `update_shadow` | `layout_changes` | `LayoutTree.compute` | `paint_layout` | `diff_paint` | `Logger.debug` |
+|---|---|---|---|---|---|---|---|
+| canvas, baseline | 2.97 | 0.44 | | 0.76 | 0.94 | 0.24 | 0.22 |
+| canvas | 3.09 | 0.43 | 0.03 | 0.78 | 1.03 | 0.21 | 0.19 |
+| top, baseline | 11.05 | 3.16 | | 3.29 | 2.45 | 0.69 | 0.20 |
+| top | 12.38 | 3.58 | 0.85 | 3.09 | 2.65 | 0.78 | 0.26 |
+| top-memo | 12.79 | 3.80 | 1.00 | 3.12 | 2.72 | 0.72 | 0.27 |
+| agent, baseline | 1.28 | 0.16 | | 0.28 | 0.37 | 0.12 | 0.15 |
+| agent | 1.24 | 0.15 | 0.04 | 0.20 | 0.31 | 0.13 | 0.16 |
+| agent-memo | 1.07 | 0.13 | 0.03 | 0.23 | 0.28 | 0.09 | 0.15 |
+| dashboard, baseline | 0.84 | 0.14 | | 0.12 | 0.28 | 0.03 | 0.09 |
+| dashboard | 0.96 | 0.19 | 0.05 | 0.11 | 0.30 | 0.02 | 0.15 |
+| dashboard-memo | 0.77 | 0.08 | 0.02 | 0.09 | 0.30 | 0.03 | 0.13 |
+| dashboard-local, baseline | 0.84 | 0.17 | | 0.09 | 0.28 | 0.02 | 0.15 |
+| dashboard-local | 0.73 | 0.04 | 0.02 | 0.12 | 0.29 | 0.02 | 0.12 |
+
+- **`dashboard-local`** does what the plan expected: `update_shadow` falls by three quarters and `layout_changes`
+  is 0.02 ms, since only the frame counter re-runs. What's left of the frame is the whole-tree passes that call
+  no user code: taffy's traversal and reading layouts back (`LayoutTree.compute`), paint, diff, and logging.
+- **The `-memo` workloads** differ as the plan predicted. `dashboard-memo` reuses every card and cuts
+  `update_shadow` by more than half. `agent-memo` re-runs only the streaming message. `top-memo` saves nothing,
+  since its unkeyed rows reorder every frame and memo misses.
+- **`canvas` and `top`** are within the round-to-round spread of the baseline: their per-frame work dwarfs
+  the bookkeeping steps 3 to 7 added.
+- **`agent` and `dashboard`** are not: 0.08–0.09 ms per frame slower, with ranges that barely overlap.
+  Profiles of 3,000 frames on each side (`<workload>-s8base-long`, `<workload>-s8-long`) put the extra samples
+  in `update_shadow` and layout at +17% on `agent` and +18% on `dashboard`, spread across per-node bookkeeping
+  with no single hotspot. Each item is 1–5% of those stages' samples:
+  - `dirty_paths` walks the whole previous tree every frame, building a parent map, to find the dirty paths.
+  - `LayoutTree.compute` walks the whole next tree every frame to build its `NodeId → ShadowNode` map.
+  - `_reconcile` calls `text_source` for both the next and the previous `Text`, rebuilding the previous one's
+    source rather than reading it from anywhere.
+  - `call_component` sets and resets four context variables, where it set two.
+  - `ShadowNode.key` is a property that reads through to `Hooks`.
+
+  That's a fixed cost per node, a fraction of a percent of a 60 fps frame budget, and candidates to remove
+  if it ever matters: compute the dirty paths from the dirty keys upward through a parent map kept in the tree,
+  keep each `Text`'s source on its shadow node, and keep a `NodeId → NodeKey` map in `LayoutTree` beside its
+  `NodeKey → NodeId` one.
+- Paint is now the largest stage on every workload except `top`, where `update_shadow`, layout and paint
+  are about equal. Paint being the largest stage was the condition for revisiting a native cell buffer
+  (fill, diff and output in Rust, comparing cells by value without `Cell` interning):
+  pick it up in the next round of performance work.
+
+**Interning, revisited.** As in run 13: unprofiled `benchmarks run` with one class's `@flyweight` replaced by
+the identity decorator before the package imports, three interleaved rounds, every workload.
+Every configuration's last frames are identical to interning on.
+
+Median frame time, median of three rounds, change against interning on, with the range across rounds:
+
+| Workload | Interning on | `Cell` off | `CellStyle` off | `StyledChar` off |
+|---|---|---|---|---|
+| canvas | 2.48 ms (2.43–2.51) | +23% (2.98–3.11) | −2% (2.41–2.52) | −2% (2.35–2.56) |
+| top | 10.30 ms (10.25–10.55) | +9% (11.05–11.27) | +9% (11.19–11.71) | +4% (10.56–10.78) |
+| top-memo | 10.48 ms (10.42–10.58) | +7% (11.06–11.21) | +8% (11.18–11.51) | −0% (10.31–10.79) |
+| agent | 0.95 ms (0.94–0.97) | +9% (1.04–1.12) | +8% (0.97–1.06) | +8% (0.97–1.11) |
+| agent-memo | 0.89 ms (0.82–0.93) | +14% (0.97–1.03) | +0% (0.89–0.91) | +4% (0.88–0.99) |
+| dashboard | 0.81 ms (0.77–0.87) | +3% (0.81–0.86) | +8% (0.86–0.92) | +6% (0.84–0.87) |
+| dashboard-memo | 0.67 ms (0.64–0.70) | +1% (0.68–0.71) | +7% (0.65–0.72) | −0% (0.63–0.69) |
+| dashboard-local | 0.64 ms (0.59–0.68) | −6% (0.60–0.62) | −3% (0.60–0.65) | −4% (0.60–0.62) |
+
+Every `@flyweight` stays: each one's ranges don't overlap interning on for at least one workload.
+`Cell` on `canvas`, `top` and `agent`; `CellStyle` on `top`, `top-memo` and `agent`; `StyledChar` on `top`.
+Reused subtrees construct fewer values per frame, but the workloads that change most per frame build enough
+cells and styles that interning still pays where they're compared.

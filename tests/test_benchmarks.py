@@ -17,8 +17,24 @@ from counterweight.controls import Quit, Screenshot
 async def test_workload_renders_every_frame(name: str, tmp_path: Path) -> None:
     timings = await run(WORKLOADS[name], frames=5, warmup=1, snapshot=tmp_path / "snapshot.txt")
 
-    assert len(timings.frame_ms) == 4
+    assert len(timings.frame_ms) == 3
     assert (tmp_path / "snapshot.txt").read_text().strip()
+
+
+@pytest.mark.parametrize(
+    ("name", "twin"),
+    [
+        ("dashboard-local", "dashboard"),
+        ("dashboard-memo", "dashboard"),
+        ("top-memo", "top"),
+        ("agent-memo", "agent"),
+    ],
+)
+async def test_workload_draws_the_same_last_frame_as_its_twin(name: str, twin: str, tmp_path: Path) -> None:
+    for workload in (name, twin):
+        await run(WORKLOADS[workload], frames=7, warmup=1, snapshot=tmp_path / f"{workload}.txt", check_purity=True)
+
+    assert (tmp_path / f"{name}.txt").read_text() == (tmp_path / f"{twin}.txt").read_text()
 
 
 @pytest.mark.parametrize("name", WORKLOADS)
@@ -30,6 +46,7 @@ async def test_live_workload_renders_until_quit(name: str) -> None:
         headless=True,
         dimensions=WORKLOADS[name].dimensions,
         autopilot=[Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
     )
 
     assert capture.getvalue().strip()
