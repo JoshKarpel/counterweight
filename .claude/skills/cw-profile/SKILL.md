@@ -15,7 +15,9 @@ Run `uv run python -m benchmarks list` for the workloads and what each stresses,
 and `uv run python -m benchmarks show <workload>` to watch one run live in the terminal.
 Choose by what the change touches: a cache keyed on content does nothing for `canvas`,
 reusing last frame's layout matters most for `dashboard`, and text measurement dominates
-`agent` and `top`.
+`agent` and `top`. `dashboard-local` draws what `dashboard` does, but holds its changing state
+in a leaf component rather than the root: compare the two to see what skipping components
+whose state didn't change saves.
 
 ## Profile a run
 
@@ -37,7 +39,8 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
 
 `uv run python -m benchmarks report <name>` prints:
 
-- **Frame times**: median, mean, P95 and max of the interval between root renders,
+- **Frame times**: median, mean, P95 and max of the interval between two autopilot key presses,
+  as seen by a key handler on the root element,
   which covers the whole loop (events, shadow tree, layout, paint, output, effects)
   and anything else the event loop ran in between, such as the devlog's sink task.
 - **Stages**: samples by the function `counterweight.app.render_loop` called, by other asyncio

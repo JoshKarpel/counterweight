@@ -881,3 +881,33 @@ with the range across rounds:
   as in run 14. With output no longer depending on it, what it buys is speed alone.
 - The last frame of every workload (`profiles/<name>.txt`) and every docs screenshot is identical
   before and after.
+
+### Run 17 — frames timed from the key handler, and `dashboard-local` (incremental-rendering step 2)
+
+**Date:** 2026-10-12
+
+**Change:** the harness times a frame as the interval between two autopilot key presses, seen by a key handler
+on the root element, rather than between two renders of the root component, which stops working once the root
+can be skipped. `frames` key presses time `frames - 1` frames, so a default run times 479 frames, not 480.
+`dashboard-local` draws what `dashboard` does, but its frame counter holds its tick in its own state and
+steps it from its own key handler, so nothing above the counter holds state.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), the old harness
+(from `HEAD`) against the new, on the same counterweight. Every round's last frame is identical between the
+two harnesses, and `dashboard-local`'s is identical to `dashboard`'s.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Timed from root renders | Timed from key presses |
+|---|---|---|
+| canvas | 2.54 ms (2.54–2.99) | 2.54 ms (2.52–2.73) |
+| top | 11.30 ms (10.64–12.42) | 12.29 ms (11.45–14.40) |
+| agent | 1.06 ms (0.88–1.11) | 0.93 ms (0.88–1.26) |
+| dashboard | 0.78 ms (0.74–0.95) | 0.89 ms (0.76–0.91) |
+| dashboard-local | | 0.84 ms (0.79–1.01) |
+
+- The two ways of timing agree within the round-to-round spread. Three more rounds of `top` ran while the
+  machine was noisier (single rounds from 10.6 to 23.2 ms); paired round by round, the six rounds' change
+  is +1%, +35%, −1%, +59%, −10% and +3%, so no systematic shift.
+- `dashboard-local` does the same work as `dashboard` while every component re-runs every frame,
+  and measures the same. Its column is the baseline for skipping unchanged components.

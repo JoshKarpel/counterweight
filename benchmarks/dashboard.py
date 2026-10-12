@@ -8,7 +8,7 @@ work that caches, or reuse of last frame's layout, could skip.
 from dataclasses import dataclass
 
 from benchmarks.harness import Workload
-from counterweight.components import component
+from counterweight.components import Component, component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
@@ -57,11 +57,16 @@ def step(model: Model) -> Model:
 
 
 def view(model: Model) -> Div:
+    return layout(frame_counter(model.tick))
+
+
+def layout(counter: Component) -> Div:
+    """Everything but the frame counter, which is passed in so `dashboard-local` can hold its tick elsewhere."""
     return Div(
         style=col | pad(1),
         children=[
             header(),
-            Div(style=row | justify_children_space_between, children=[status(), frame_counter(model.tick)]),
+            Div(style=row | justify_children_space_between, children=[status(), counter]),
             Div(
                 style=fill(1) | col | border_collapse,
                 children=[
@@ -98,6 +103,10 @@ def status() -> Text:
 
 @component
 def frame_counter(tick: int) -> Text:
+    return frame_text(tick)
+
+
+def frame_text(tick: int) -> Text:
     return Text(content=[Chunk(content=f"Frame: {tick:,}", style=CellStyle(foreground=slate_400))])
 
 
