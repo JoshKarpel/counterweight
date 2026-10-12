@@ -15,3 +15,4 @@ such as gracefully quitting the application or playing the
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
+::: counterweight.controls.AdvanceClock

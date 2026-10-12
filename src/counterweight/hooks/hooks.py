@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import overload
 
-from counterweight._context_vars import current_hook_state, current_layouts, current_use_mouse_listeners
+from counterweight._context_vars import (
+    current_hook_state,
+    current_instant,
+    current_layouts,
+    current_use_mouse_listeners,
+)
 from counterweight._utils import forever
 from counterweight.geometry import Position, Region
 from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 from counterweight.layout import INITIAL_RESOLVED_LAYOUT, Layouts
 
 logger = logging.getLogger(__name__)
@@ -89,6 +95,31 @@ def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T:
             `check_purity` on `counterweight.app.app` catches a value that goes stale.
     """
     return current_hook_state.get().use_memo(compute, deps)
+
+
+def use_clock(interval: timedelta) -> Tick:
+    """
+    Parameters:
+        interval: How often the component reads the clock.
+            Ticks start at whole multiples of `interval` past midnight on the wall clock
+            (for an `interval` that divides a day),
+            so components reading the clock every second and every minute both re-run as the minute turns.
+
+    Returns:
+        A reading of the app's clock, taken when the component mounts,
+            and again on the first render after each new tick starts,
+            with the component re-running then if nothing else made it.
+            Between those, every render returns the same reading,
+            so the component's output stays a function of its arguments and hooks.
+            Components that take a reading in the same frame get the same one, whatever their intervals.
+
+    Raises:
+        ValueError: If `interval` isn't positive.
+    """
+    if interval <= timedelta():
+        raise ValueError(f"use_clock needs a positive interval, but got {interval!r}")
+
+    return current_hook_state.get().use_clock(interval, current_instant.get())
 
 
 @dataclass(frozen=True, slots=True)

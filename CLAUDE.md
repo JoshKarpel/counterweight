@@ -64,6 +64,8 @@ and hand-written utility functions need a docstring to describe them there.
 
 Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,
 and pages include its code between `--8<--` snippet markers.
+Run one in the terminal with `uv run python -m docs.examples.<module> [root]`, naming a root function to pick
+among several; running it by path fails, since the examples import from the `docs` package.
 Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`
 (the pre-commit hook runs it too).
 Every `docs/assets/<name>.svg` has a plain-text twin, `<name>.txt`:

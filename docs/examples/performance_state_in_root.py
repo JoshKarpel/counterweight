@@ -1,8 +1,10 @@
-from asyncio import sleep
+import asyncio
 
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.hooks import use_effect, use_state
+from counterweight.events import KeyPressed
+from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -24,19 +26,17 @@ def metric_card(label: str, value: str) -> Div:
 
 @component
 def dashboard() -> Div:
-    seconds, set_seconds = use_state(0)
+    note, set_note = use_state("")
 
-    async def tick() -> None:
-        while True:
-            await sleep(1)
-            set_seconds(lambda previous: previous + 1)
-
-    use_effect(tick, deps=())
+    def on_key(event: KeyPressed) -> None:
+        if len(event.key) == 1:
+            set_note(note + event.key)
 
     return Div(
         style=col,
+        on_key=on_key,
         children=[
-            Text(content=f"Up for {seconds} s"),
+            Text(content=f"Note: {note}"),
             Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
         ],
     )
@@ -45,3 +45,7 @@ def dashboard() -> Div:
 # --8<-- [end:example]
 
 SCREENSHOTS: list[ScreenshotSpec] = []
+
+
+if __name__ == "__main__":
+    asyncio.run(app(dashboard))

@@ -1,5 +1,7 @@
+import asyncio
 from dataclasses import dataclass
 
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseEvent, MouseUp
@@ -73,3 +75,7 @@ def root() -> Div:
 
 
 SCREENSHOTS = [ScreenshotSpec(root, "performance-process-table", (32, 7), events=(KeyPressed(key=Key.Down),))]
+
+
+if __name__ == "__main__":
+    asyncio.run(app(root))

@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -100,3 +104,8 @@ SCREENSHOTS = [
     ScreenshotSpec(sides, "layout-border-sides", (61, 4)),
     ScreenshotSpec(contract, "layout-border-contract", (37, 4)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (gap_margin_pad, collapse, sides, contract)}
+    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else gap_margin_pad))

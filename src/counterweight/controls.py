@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO, Union
 
@@ -125,10 +126,24 @@ class ToggleBorderHealing(_Control):
     """
 
 
+@dataclass(frozen=True, slots=True)
+class AdvanceClock(_Control):
+    """
+    Move the application's clock forward by `by`, as if that much more time had passed,
+    and render the components whose [`use_clock`][counterweight.hooks.use_clock] that makes due.
+
+    This is primarily useful in an autopilot, with a [`frozen_clock`][counterweight.clock.frozen_clock],
+    to show how an app changes over time without waiting for it.
+    """
+
+    by: timedelta
+
+
 AnyControl = Union[
     Quit,
     Bell,
     Screenshot,
     Suspend,
     ToggleBorderHealing,
+    AdvanceClock,
 ]

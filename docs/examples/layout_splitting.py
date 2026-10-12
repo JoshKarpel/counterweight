@@ -1,5 +1,9 @@
+import asyncio
+import sys
+
 import waxy
 
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -232,3 +236,23 @@ SCREENSHOTS = [
     ScreenshotSpec(overflow_grid, "layout-split-overflow-grid", (60, 10)),
     ScreenshotSpec(percent_gap, "layout-split-percent-gap", (60, 10)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {
+        root.__name__: root
+        for root in (
+            equal_flex,
+            equal_grid,
+            sidebar_flex,
+            sidebar_grid,
+            ratio_flex,
+            ratio_grid,
+            ratio_exact,
+            nested_flex,
+            nested_grid,
+            overflow_grid,
+            percent_gap,
+        )
+    }
+    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else equal_flex))

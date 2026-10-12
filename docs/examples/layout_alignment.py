@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -144,3 +148,8 @@ SCREENSHOTS = [
     ScreenshotSpec(center, "layout-center", (50, 9)),
     ScreenshotSpec(overflow, "layout-center-overflow", (70, 17)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (justify, align, align_self, center, overflow)}
+    asyncio.run(app(roots[sys.argv[1]] if len(sys.argv) > 1 else justify))

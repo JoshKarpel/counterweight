@@ -24,6 +24,7 @@ class ScreenshotSpec:
 
     `events` are fed to the app before the screenshot is taken,
     so one example can be shown in several states.
+    The app's clock is frozen, so an `AdvanceClock` among them is the only way time passes.
     """
 
     root: Callable[[], Component]
