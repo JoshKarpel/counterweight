@@ -113,8 +113,14 @@ the docs should warn against chaining handlers with `or`, which treats `()` as u
 Dispatch raises on any other return value, such as a list, rather than ignoring it.
 
 One rule covers when an event stops: whenever the response isn't `None`.
-A handler that wants to issue a control without stopping the event
-sends it with `use_send_control` (`plans/react-features.md` step 2).
+So a handler can't return a control and let the event keep bubbling.
+Nothing in the examples or the dependents needs to:
+a handler that issues a control is acting on the event, so it owns it.
+If one ever does, it can call the send function from `use_send_control` (`plans/react-features.md` step 2)
+and return `None`.
+That hook exists for code with no response to return a control through
+(effects, spawned tasks, and the Elm recipe's `dispatch`),
+so routing doesn't wait on it.
 
 Bubbling is the default, and stopping is explicit, because the opposite default is worse.
 If running a handler stopped the event, every handler that matches a few keys
@@ -159,7 +165,7 @@ Each element on the path receives the same event with its own `Receiver`,
 so a parent sees its own rects, not its child's.
 `on_click` uses `rects` to tell a release inside the element from one outside,
 since press capture delivers both;
-`focus_on_press` uses `focus_handle` to name the element to focus;
+`focus_receiver_on_press` uses `focus_handle` to name the element to focus;
 a text input uses `relative` to place its cursor;
 a scroll container pages by its own height.
 A handler that doesn't need the receiver still takes it, and ignores it.
@@ -234,11 +240,20 @@ testable without running an app:
 - `tab_focus` returns `FocusNext()` for Tab and `FocusPrevious()` for Shift+Tab.
   An app puts it on its root, which is last on every key's bubble path,
   so a focused component that wants Tab (indenting in a text area) claims it with `()` first.
-- `focus_on_press` returns `FocusOn(receiver.focus_handle)` for a `MouseDown`.
+- `focus_receiver_on_press` returns `FocusOn(receiver.focus_handle)` for a `MouseDown`,
+  focusing the component whose element received the press.
   It raises if `focus_handle` is `None`, which means it's attached to an element that isn't focusable:
   either the component never called `use_focus`,
   or the handler is on an inner element rather than the component's top-level one.
   It stops the event, so of nested focusables, the nearest to the pointer takes focus.
+- `focus_on_press(handle)` returns `FocusOn(handle)` for a `MouseDown`,
+  so a press on one element can focus another component.
+  It takes a `FocusHandle`, not `FocusHandle | None`,
+  so a handle that might not exist yet (one a child passes up after its first render, as in step 4)
+  fails type checking rather than silently meaning something else.
+- `clear_focus` returns `ClearFocus()` for a `MouseDown`.
+  It's how a click blurs: on the root for presses nothing below it claimed,
+  and composed into a non-focusable element's own press handler for the presses it claims.
 - `on_click(action)` claims every event of a button 1 press that reaches it,
   and on the release calls `action` if the release is inside the element's border,
   returning the controls `action` returns, or `()` if it returns `None`.
@@ -257,17 +272,17 @@ Text(content=message, on_input=select_text)
 
 # A composer: focusable and selectable. Both handlers claim MouseDown, so each runs both.
 focus = use_focus()
-Div(style=ring if focus.is_focused else plain, on_input=each(focus_on_press, select_text))
+Div(style=ring if focus.is_focused else plain, on_input=each(focus_receiver_on_press, select_text))
 
 # A button: focusable, not selectable.
 focus = use_focus()
-Text(content="Send", style=ring if focus.is_focused else plain, on_input=each(on_click(send), focus_on_press))
+Text(content="Send", style=ring if focus.is_focused else plain, on_input=each(on_click(send), focus_receiver_on_press))
 
 # The root: Tab navigation is opt-in, and its precedence over the app's own bindings is explicit.
 Div(..., on_input=first(app_shortcuts, tab_focus))
 ```
 
-Every library handler that acts on a press (`on_click`, `focus_on_press`, and `select_text`)
+Every library handler that acts on a press (`on_click`, `focus_receiver_on_press`, `focus_on_press`, `clear_focus`, and `select_text`)
 claims its `MouseDown` rather than letting it bubble.
 So the innermost element with a press handler owns the press,
 the same rule that makes the nearest focusable take focus,
@@ -279,16 +294,17 @@ Two press handlers on one element therefore compose with `each`, as the composer
 and an ancestor's press handler never runs for a press on a descendant that has its own.
 A text input that renders its own clear button,
 and wants a click on that button to focus the input,
-composes a handler returning `FocusOn(focus.handle)` for a `MouseDown` into the button's handler too,
+composes `focus_on_press(focus.handle)` into the button's handler,
 using the handle from its own `use_focus`,
-since the button's receiver carries the button's `focus_handle`, which is `None`.
+since the button's receiver carries the button's `focus_handle`, which is `None`:
+`each(on_click(clear), focus_on_press(focus.handle))`.
 That wiring is explicit and lives in user space, which is the point:
 the alternative, letting presses bubble, makes a click on a button also select or drag
 whenever an ancestor has a press handler, and nothing at the button's call site would show it.
 
 The costs:
 
-- **A missing handler fails silently.** A focusable component without `focus_on_press` just doesn't focus on click,
+- **A missing handler fails silently.** A focusable component without `focus_receiver_on_press` just doesn't focus on click,
   and an app without `tab_focus` has no Tab navigation.
   Higher-level pieces come with their handlers composed in (the text input hook from #391 returns one handler),
   so most apps wire the primitives only for their own components.
@@ -390,12 +406,12 @@ Focus moves only through controls, `auto_focus`, and the focused component going
 No key or click has a built-in effect on focus.
 An app that wants Escape to clear focus, as Ink's does, binds it to `ClearFocus()`.
 One that wants a click outside every focusable to blur, as browsers do,
-puts a handler on its root that returns `ClearFocus()` for a `MouseDown`,
+puts `clear_focus` on its root,
 which sees only the presses nothing below it claimed.
-`focus_on_press` claims every press that lands on a focusable, which is the point,
+`focus_receiver_on_press` claims every press that lands on a focusable, which is the point,
 but `on_click` and `select_text` claim presses on non-focusable elements too,
 so a click on a non-focusable button or a selectable message would keep focus where it was.
-Each of those elements composes the same `ClearFocus()` handler in alongside its press handler
+Each of those elements composes `clear_focus` in alongside its press handler
 (`each(on_click(send), clear_focus)`), which keeps the blur visible at the call site
 of every element that causes it.
 
@@ -446,7 +462,7 @@ A captured key missing from the current table means the node unmounted.
 ### How the dependents fit
 
 - **Text input (#391)**: the hook calls `use_focus` and returns `is_focused` for styling,
-  along with one handler that composes `focus_on_press` with its own key handling,
+  along with one handler that composes `focus_receiver_on_press` with its own key handling,
   so an app wires a single handler.
   It returns `()` for the keys it consumes and `None` for the rest,
   so the app's shortcuts on ancestors keep working while it's focused,
@@ -556,7 +572,7 @@ and the `FocusNext`, `FocusPrevious`, `FocusOn`, and `ClearFocus` controls,
 the focus order in the routing table, the focus reconciliation after each render,
 and key routing through the same bubbling dispatch.
 `Receiver` gains `focus_handle` and `is_focused`, for mouse events as well as keys.
-Add `tab_focus` and `focus_on_press` to `counterweight.handlers`.
+Add `tab_focus`, `focus_receiver_on_press`, `focus_on_press`, and `clear_focus` to `counterweight.handlers`.
 Add `docs/hooks/use_focus.md` to the hooks section of `mkdocs.yml`,
 the controls to `docs/input-handling/controls.md`, and the new handlers to their page.
 The docs gain a note that a component's key handler goes on its top-level element,
@@ -602,9 +618,11 @@ a focus change re-renders so `is_focused` is current;
 `handle` is the same object across renders;
 calling `use_focus` twice in one component raises;
 with `tab_focus` on the root, a focused handler returning `()` for Tab keeps focus where it is;
-with `focus_on_press` on nested focusables, a click focuses the innermost.
-`tab_focus` and `focus_on_press` themselves are tested by calling them directly,
-including `focus_on_press` raising for a `MouseDown` whose `focus_handle` is `None`.
+with `focus_receiver_on_press` on nested focusables, a click focuses the innermost.
+The library handlers themselves are tested by calling them directly,
+including `focus_receiver_on_press` raising for a `MouseDown` whose receiver's `focus_handle` is `None`,
+`focus_on_press(handle)` focusing `handle` whatever the receiver's `focus_handle`,
+and `clear_focus` returning `ClearFocus()` for a `MouseDown` and `None` for anything else.
 
 Profile the same render-heavy workload again, since reconciliation adds a pass per render.
 
