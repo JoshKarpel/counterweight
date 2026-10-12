@@ -37,26 +37,29 @@ though all three depend on it and the design is checked against them below.
 `Div` and `Text` have a single `on_input` field in place of `on_key` and `on_mouse`:
 
 ```python
+InputEvent = Union[KeyPressed, MouseEvent]
 InputResponse = Union[AnyControl, tuple[AnyControl, ...], None]
+InputHandler = Callable[[InputEvent, Receiver], InputResponse]
 
-on_input: Callable[[InputEvent], InputResponse] | None = None
+on_input: InputHandler | None = None
 ```
 
-`InputEvent` is the union of the routed event types described below.
-Both aliases are `Union` assignments like `MouseEvent` and `AnyEvent` in `events.py`,
+A handler takes the event and a `Receiver`, which describes the element the event is being delivered to
+(see [What a handler receives](#what-a-handler-receives)).
+`InputEvent` and `InputResponse` are `Union` assignments like `MouseEvent` and `AnyEvent` in `events.py`,
 rather than PEP 695 `type` statements, which `isinstance` can't take.
 That keeps `InputEvent` usable with `isinstance`, but not `InputResponse`:
 `isinstance(response, InputResponse)` raises `TypeError` for `None`, `()`, and anything else that isn't a control,
 because the union contains the parameterized `tuple[AnyControl, ...]`,
 and it passes for a control only because the check stops at the first member that matches.
 Dispatch checks a response by hand instead: `None`, an `AnyControl`, or a `tuple` whose every item is an `AnyControl`.
-`TerminalResized` and `StateSet` aren't in it and never reach a handler.
+`TerminalResized` and `StateSet` aren't in `InputEvent` and never reach a handler.
 A later `Pasted` event (#391) joins the union and routes like a key.
 
 A handler matches on the event, so one case covers both kinds of input:
 
 ```python
-def on_input(event: InputEvent) -> InputResponse:
+def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
     match event:
         case KeyPressed(key=Key.Down) | MouseScrolledDown():
             set_offset(lambda o: o + 1)
@@ -83,7 +86,8 @@ since the app turns on any-motion tracking (`output.py:28`).
 A root handler that matches many keys can return early on any other event with a guard clause,
 which the events docs should recommend.
 The break is loud: constructing an element with `on_key=` raises a `TypeError`,
-and a handler annotated `Callable[[KeyPressed], ...]` fails type checking against `on_input`,
+a handler that takes only the event fails type checking against `on_input` and raises when called,
+and one whose event parameter is annotated `KeyPressed` fails type checking,
 because parameters are contravariant.
 
 ### Routing: one target, then bubble
@@ -126,43 +130,82 @@ There is no capture phase. Nothing in the examples or the issues needs one.
 
 ### What a handler receives
 
-Each handler receives the event with the routing context of its own element attached:
+A handler takes two arguments: the event, unchanged from what the input parser or the autopilot produced,
+and a `Receiver` describing the element the event is being delivered to:
+
+```python
+@dataclass(frozen=True, slots=True)
+class Receiver:
+    rects: Rects
+    is_target: bool
+    focus_handle: FocusHandle | None
+    is_focused: bool
+
+    def relative(self, position: Position) -> Position: ...
+```
 
 - `rects`: the receiving element's `Rects`, as `use_rects` returns them.
 - `is_target`: whether the receiving element is the event's target, rather than an ancestor it bubbled to.
-- For mouse events, `relative`: the pointer's position relative to the top-left of the receiving element's content box.
 - `focus_handle`: the receiving element's `FocusHandle` if its component called `use_focus`, or `None`.
 - `is_focused`: whether the receiving element is the focused node.
   For a key it's the same as `is_target`, except when nothing is focused:
-  the root is then the target, and no copy has `is_focused`.
+  the root is then the target, and no receiver has `is_focused`.
   For a mouse event it tells a text input whether a click is the one that focuses it.
+- `relative(position)`: `position` relative to the top-left of the receiving element's content box,
+  as in `receiver.relative(event.absolute)` for a mouse event.
+  It's computed from `rects`, so it's a method rather than a field that only mouse events would fill.
 
-Each element on the path receives its own copy, so a parent sees its own rects, not its child's.
+Each element on the path receives the same event with its own `Receiver`,
+so a parent sees its own rects, not its child's.
 `on_click` uses `rects` to tell a release inside the element from one outside,
 since press capture delivers both;
 `focus_on_press` uses `focus_handle` to name the element to focus;
 a text input uses `relative` to place its cursor;
 a scroll container pages by its own height.
-A handler that doesn't need the context ignores it.
+A handler that doesn't need the receiver still takes it, and ignores it.
+
+A case that depends on the receiver uses a guard,
+since the receiver's fields aren't on the event and can't appear in its class pattern:
+
+```python
+def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+    match event:
+        case MouseDown(button=1) if receiver.is_target:
+            set_cursor(receiver.relative(event.absolute))
+            return ()
+        case _:
+            return None
+```
+
+Matching on `event, receiver` as a tuple also works, and narrows the event as a plain match does.
 
 The hooks stay, because render has no event to read:
 `use_focus` declares the component focusable and gives it `is_focused` to draw a focus ring,
 and `use_rects` and `use_hovered` serve layout and hover that change what renders.
-The event repeats what the router already knows at the moment a handler runs,
+The receiver repeats what the router already knows at the moment a handler runs,
 so a handler needs no hook just to get data the router has,
 and a component doesn't thread a hook's result into its handlers.
 
-The input parser and the autopilot produce events without routing context,
-since they don't know where an event will go.
-The router delivers a routed subclass of each event type,
-such as `RoutedMouseUp(MouseUp)` with the fields above, and `InputEvent` is the union of those.
-Handlers match on the base classes as they do now:
-`case MouseUp(button=1)` matches a `RoutedMouseUp`, and mypy narrows it to the routed type,
-so the extra fields are available without changing how a handler is written.
-A separate type keeps every routed event's fields required,
-rather than defaulted for events that were never routed.
-A routed event isn't equal to the raw event it came from,
-so a test that records events compares their fields rather than the events.
+The alternative is to put the receiver's fields on the event.
+The input parser and the autopilot produce events before anything knows where they'll go,
+so that needs a routed subclass of every input event type (`RoutedMouseUp(MouseUp)`),
+which the router delivers in place of the event it came from.
+Handlers could still match on the base classes, since mypy narrows `case MouseUp()` to `RoutedMouseUp`
+when the subject is a union of routed types,
+and a routing field could appear in the class pattern.
+But it's a second hierarchy kept in step with the first, growing with each event kind,
+and its names surface wherever a helper extracted from a handler wants the routing fields.
+A routed event wouldn't equal the raw event it came from,
+so a test couldn't compare the events its handler recorded with the ones it sent.
+
+A separate argument means a handler receives the types the autopilot sends and tests construct,
+and a helper is annotated with the type it was matched as (`def drag_to(event: MouseMoved, receiver: Receiver)`).
+Anything a later handler needs from the router is a new field on `Receiver`,
+rather than a change to any event type or handler signature.
+The cost is the second parameter on every handler, including the many that never read it,
+such as `lambda event, _: Quit()`.
+
+`Receiver` lives in `events.py`, beside `InputEvent`.
 `Rects` moves from `counterweight.hooks` to `counterweight.geometry`, re-exported from `counterweight.hooks`,
 and `FocusHandle` is defined outside the hooks package too,
 since `events.py` can't import from the hooks package, which imports `events.py`.
@@ -185,12 +228,13 @@ The combinations browsers express with two bits come from composition instead:
 keeping a behavior means composing its handler in, and preventing it means leaving it out.
 A non-selectable element doesn't opt out of selection; it just doesn't have `select_text`.
 
-The library handlers are pure functions from an event to a response, testable without running an app:
+The library handlers are pure functions from an event and a receiver to a response,
+testable without running an app:
 
 - `tab_focus` returns `FocusNext()` for Tab and `FocusPrevious()` for Shift+Tab.
   An app puts it on its root, which is last on every key's bubble path,
   so a focused component that wants Tab (indenting in a text area) claims it with `()` first.
-- `focus_on_press` returns `FocusOn(event.focus_handle)` for a `MouseDown`.
+- `focus_on_press` returns `FocusOn(receiver.focus_handle)` for a `MouseDown`.
   It raises if `focus_handle` is `None`, which means it's attached to an element that isn't focusable:
   either the component never called `use_focus`,
   or the handler is on an inner element rather than the component's top-level one.
@@ -201,7 +245,7 @@ The library handlers are pure functions from an event to a response, testable wi
 
 Two combinators compose handlers into the one an element takes:
 
-- `first(*handlers)` calls each in turn and returns the first response that isn't `None`, or `None`.
+- `first(*handlers)` calls each in turn with the same event and receiver, and returns the first response that isn't `None`, or `None`.
 - `each(*handlers)` calls all of them, and if any responded with something other than `None`,
   returns a tuple of every control they returned, in handler order; otherwise it returns `None`.
 
@@ -237,7 +281,7 @@ A text input that renders its own clear button,
 and wants a click on that button to focus the input,
 composes a handler returning `FocusOn(focus.handle)` for a `MouseDown` into the button's handler too,
 using the handle from its own `use_focus`,
-since the button's copy of the event carries the button's `focus_handle`, which is `None`.
+since the button's receiver carries the button's `focus_handle`, which is `None`.
 That wiring is explicit and lives in user space, which is the point:
 the alternative, letting presses bubble, makes a click on a button also select or drag
 whenever an ancestor has a press handler, and nothing at the button's call site would show it.
@@ -294,7 +338,7 @@ The target of a key event is the **focused** node, or the root component's node 
 That is the node of the component passed to `app()`,
 not the `screen` element the app wraps it in (`app.py:164`), which has no handler and no ancestors.
 With nothing focused, handlers on the root and only the root receive keys,
-though the root isn't focused, so its copy of a key has `is_target=True` and `is_focused=False`.
+though the root isn't focused, so its receiver has `is_target=True` and `is_focused=False`.
 There is no broadcast fallback for apps that never call `use_focus`.
 A fallback would be a second routing mode whose interaction with the first
 every app with one focusable component would have to reason about.
@@ -406,13 +450,13 @@ A captured key missing from the current table means the node unmounted.
   so an app wires a single handler.
   It returns `()` for the keys it consumes and `None` for the rest,
   so the app's shortcuts on ancestors keep working while it's focused,
-  and it places the cursor on a click from the event's `relative` position.
+  and it places the cursor on a click at `receiver.relative(event.absolute)`.
   It no longer needs to "ignore keys while unfocused", since unfocused inputs don't receive them.
 - **Scroll containers (#389)**: wheel events target the element under the pointer and bubble
   to the nearest scroll container, which handles them and stops them,
   so nested scroll containers scroll innermost-first.
   Keys reach a scroll container when it or a descendant is focused,
-  and it pages by the height in the event's `rects`.
+  and it pages by the height in its receiver's `rects`.
 - **Elm recipe** (`plans/react-features.md` step 4): its single `on_input` on the root
   is Elm's global keyboard subscription, and receives every key no focused handler stops.
   It composes `tab_focus` in if the app wants Tab navigation.
@@ -438,10 +482,13 @@ and every example, doc example, benchmark workload, and test it breaks.
 
 **Status:** Not started
 
-Add the `InputEvent` type, rename the fields, and keep routing exactly as it is:
+Add `InputEvent`, `InputHandler`, and `Receiver`, rename the fields, and keep routing exactly as it is:
 keys to every handler, mouse events to every element under the current or previous position.
-`InputEvent` is `Union[KeyPressed, MouseEvent]` until step 2 adds routed events,
-and handlers keep returning `AnyControl | None` until step 2 adds tuples of controls.
+`Receiver` has only `rects` and `relative` in this step,
+built from the resolved layout the dispatch loop already pairs with each element (`app.py:401`),
+with `Rects` moved to `counterweight.geometry`.
+Steps 2 and 3 add its other fields, which changes no handler's signature.
+Handlers keep returning `AnyControl | None` until step 2 adds tuples of controls.
 This is a mechanical migration that closes #124 on its own,
 and keeps the routing change in step 2 reviewable without a rename mixed into it.
 
@@ -451,6 +498,8 @@ The events docs gain a recommendation for a guard clause at the top of a root ha
 since the root already receives every pointer move.
 
 Tests: one `on_input` receives both a `KeyPressed` and a `MouseScrolledDown`;
+the receiver carries the element's rects;
+`Receiver.relative` gives a position relative to the content box's top-left;
 the existing `tests/inputs/test_on_key.py` and `test_on_mouse.py` port to `on_input`.
 
 ### 2. Route mouse events to a target and bubble them
@@ -458,7 +507,7 @@ the existing `tests/inputs/test_on_key.py` and `test_on_mouse.py` port to `on_in
 **Status:** Not started
 
 Add tuple responses, the routing table, the bubbling dispatch, hit-testing, press capture,
-and the routed mouse event types, with `Rects` moved to `counterweight.geometry`.
+and `Receiver.is_target`.
 Add `counterweight.handlers` with `first`, `each`, and `on_click`,
 and a `docs/input-handling/handlers.md` page for it in `mkdocs.yml`.
 `Layouts.in_paint_order` carries each node's key alongside its element,
@@ -466,7 +515,7 @@ so the loop can go from a hit to an ancestor path through `ShadowTree.parents`; 
 It is renamed for tree order, which is what it holds, since `paint_layout` does the paint-order sort.
 Existing handlers that return a control keep working,
 and `docs/input-handling/controls.md` describes returning a tuple of controls, `()` included.
-Keys keep going to every handler in this step, unrouted:
+Keys keep going to every handler in this step, unrouted, each with `is_target=True`:
 their controls are applied, and the stop is ignored until step 3.
 
 The click handlers written by hand move to `on_click`:
@@ -479,8 +528,7 @@ an event on a child reaches its parent's handler;
 a single control from the child is applied and keeps it from the parent;
 a tuple of two controls applies both, in order, and stops the event;
 a handler returning a list raises, and so does one returning a tuple containing something that isn't a control;
-the parent's copy of a bubbled event carries the parent's rects and `is_target=False`;
-`relative` is the pointer's position from the receiving element's content box;
+the parent receives the same event as the child, with a receiver carrying the parent's rects and `is_target=False`;
 a drag whose `MouseMoved` lands outside the element still reaches it until `MouseUp`,
 including when each move re-renders the element;
 after `MouseUp`, an event outside the element doesn't reach it;
@@ -506,8 +554,8 @@ Per event, walking an ancestor path costs no more than today's flat list.
 Add the `UseFocus` slot, the hook, the focused key as an input to `update_shadow`, `Focus`, `FocusHandle`,
 and the `FocusNext`, `FocusPrevious`, `FocusOn`, and `ClearFocus` controls,
 the focus order in the routing table, the focus reconciliation after each render,
-and key routing through the same bubbling dispatch, with `RoutedKeyPressed`.
-Every routed event, mouse events included, gains `focus_handle` and `is_focused`.
+and key routing through the same bubbling dispatch.
+`Receiver` gains `focus_handle` and `is_focused`, for mouse events as well as keys.
 Add `tab_focus` and `focus_on_press` to `counterweight.handlers`.
 Add `docs/hooks/use_focus.md` to the hooks section of `mkdocs.yml`,
 the controls to `docs/input-handling/controls.md`, and the new handlers to their page.
@@ -535,10 +583,10 @@ Its root handler returns both `Screenshot`s as a tuple instead.
 
 Tests:
 with nothing focused, only the root component's handler receives a key,
-and its copy has `is_target=True` and `is_focused=False`;
+and its receiver has `is_target=True` and `is_focused=False`;
 a key reaches the focused node, then its ancestors, and not its siblings;
-the focused node's copy of a key has `is_target=True` and `is_focused=True`, and its ancestors' copies don't;
-a focusable element's copy of an event carries its component's `handle` as `focus_handle`,
+the focused node's receiver has `is_target=True` and `is_focused=True`, and its ancestors' receivers don't;
+a focusable element's receiver carries its component's `handle` as `focus_handle`,
 and a non-focusable element's carries `None`;
 a click on the focused element carries `is_focused=True`;
 `FocusNext()` focuses the first focusable in tree order from nothing focused, and wraps from the last;
