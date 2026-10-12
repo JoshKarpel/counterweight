@@ -136,6 +136,7 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+  - performance.md
   - utilities.md
   - Under the Hood:
     - under-the-hood/index.md

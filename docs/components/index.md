@@ -173,6 +173,9 @@ and on the renders that re-run everything: the first one, and those after a resi
   so when the list is reordered, most of them change and re-run.
   [Key](#choosing-a-key) the items to compare each one with itself.
 
+[Performance](../performance.md) walks through finding the components a frame re-runs,
+and each way `memo` and `use_memo` can miss or go stale.
+
 ### Keeping components pure
 
 A component has to be **pure**: given the same arguments and hook state, it returns the same element.

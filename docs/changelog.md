@@ -16,6 +16,10 @@
   or a handler it passes to a `memo` component.
   With `check_purity` on, a cached value that a dependency missing from its list would change raises `StaleMemo`.
 
+- Documented how to find where a frame's time goes, which components a frame re-runs,
+  and how to skip the rest with `memo=True` and `use_memo`, with their failure modes,
+  in [Performance](performance.md).
+
 - Documented how Counterweight compares with Textual, Ink and Ratatui,
   and what it doesn't do, in [Ecosystem](ecosystem.md).
 
