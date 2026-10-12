@@ -168,29 +168,7 @@ a ticker subscription dispatches until its component is removed from the view.
 
 ### 5. Route key and mouse events
 
-**Status:** Needs design
-
-This changes how every example that passes `on_key=` handles keys, so it starts with a short
-design doc rather than code.
-The shape to evaluate, taken from the DOM:
-
-- A notion of focus: which element receives keys. Candidates are a `focusable` attribute on
-  elements plus a `use_focus` hook, or focus held in app state and set by controls.
-- Keys dispatch to the focused element, then bubble to its ancestors.
-  Mouse events dispatch to the topmost element under the pointer, then bubble.
-- A handler stops propagation through its return value, which fits the existing "handlers
-  return controls" design better than a method on the event.
-
-Questions the design has to answer:
-
-- What receives keys when nothing is focused? Dispatching to the root and bubbling nowhere
-  would keep today's global handlers working only if they sit on the root.
-- How does focus move (Tab order, mouse click, explicit control), and is that in scope for
-  the first version?
-- Whether to keep a migration path where unfocused apps behave as they do today.
-- How the Elm recipe's keyboard handling survives. It puts one `on_key` on the root element,
-  which acts as Elm's global keyboard subscription only if keys bubble to the root whenever
-  the focused element doesn't stop them.
+**Status:** Designed in `plans/focus-and-input-routing.md`
 
 ### 6. Add context
 
