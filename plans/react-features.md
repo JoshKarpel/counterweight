@@ -7,7 +7,7 @@ tracked task from a handler.
 Those two are what an Elm-style app structure (one model, a pure `update`, commands as data)
 needs from the runtime, so the plan ends that thread with a cookbook recipe for the structure
 rather than a library API.
-It builds on `plans/fix-react-semantics.md`, which fixed the reconciler and hooks divergences
+It builds on the reconciler and hooks matching React's semantics
 (stable setters, keyed children, setters that no-op after unmount, hook-count checks).
 
 ## Problems

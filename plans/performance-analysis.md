@@ -39,156 +39,19 @@ component functions running. This changes the priority of memoization vs. other 
 
 ## Optimization Opportunities
 
-### 1. Skip layout when tree is unchanged (saves ~4 ms/cycle, ~25%)
+The opportunities this analysis found, numbered as the runs below cite them:
 
-**Status:** TODO
-
-Layout runs every cycle even though the canvas workload has a completely static component
-tree and static styles — no sizing or structural changes ever occur. Adding a dirty flag
-(set when styles, structure, or terminal size change) to skip `compute_layout` would
-recover the full 4.1 ms on stable frames.
-
-Relevant code: `src/counterweight/app.py`, `src/counterweight/layout.py`
-
----
-
-### 2. Memoize stable component subtrees (saves ~2 ms/cycle, ~12%)
-
-**Status:** TODO
-
-**Revised priority:** now clearly #2, up from #3. `user_code_ns` shows that ~93% of shadow
-tree time is spent inside component functions — so skipping calls for unchanged subtrees
-would recover most of the 2.5ms. For the canvas workload, `header()` and `fps_display()`
-are static each frame and could be skipped entirely. Analogous to `React.memo`.
-
-The opt-in API would likely be a `@component(memo=True)` decorator flag or a `use_memo`
-hook. A component would be re-skipped if its args/kwargs are equal to the previous render.
-
-Relevant code: `src/counterweight/shadow.py` (`update_shadow`), `src/counterweight/components.py`
-
----
-
-### 3. Incremental paint for Text nodes (saves ~2–4 ms/cycle, ~15–25%)
-
-**Status:** DONE (user-side optimizations); framework-side incremental paint is N/A
-
-`canvas()` moved to `counterweight.utils` and optimized:
-- Coordinate pairs precomputed and cached per `(width, height)` via `_canvas_rows` —
-  eliminates 900 temp tuple allocations per call.
-- Row-structured iteration replaces flat `enumerate` + `i % width` modulo per cell.
-- `_canvas_chunk(fg, bg)` cached via `lru_cache(maxsize=512)` — each unique color pair
-  allocated once; subsequent calls return the interned `Chunk`. For the random walkers
-  workload (~31 unique pairs), drops canvas allocations from ~1,800 Chunks + 1,800
-  CellStyles per frame to ~31 cached objects after warmup.
-
-Framework-side incremental paint is not viable: user components are declarative and return
-a new element tree on every render, so the framework has no stable chunk references to diff
-against without re-running the component.
-
-Relevant code: `src/counterweight/utils.py`
-
----
-
-### 4. Use lazy initializers in `use_state` (fixed in canvas.py)
-
-**Status:** DONE
-
-`use_state(expensive_expr)` evaluates `expensive_expr` on every render even though the
-initial value is only used once. Pass a lambda instead: `use_state(lambda: expensive_expr)`.
-`use_state` already supports `Getter[T] | T` — if the argument is callable it is only
-invoked on first render.
-
-Fixed in `profiling/canvas.py`: `random.sample(...)` and the walkers list comprehension
-are now lambdas.
-
-Also a good pattern to document for framework users.
-
----
-
-### 5a. Cache `paint_edge()` output (saves est. ~0.5–1 ms/cycle on static layouts)
-
-**Status:** DONE
-
-`paint_edge()` fills margin/padding strips from `(outer, inner, color, z)` arguments — all hashable
-(`waxy.Rect` supports value equality, `Color` and `int` are trivially hashable). It does the same
-kind of point-by-point iteration as `fill_rect()`, which already has `@lru_cache`. Adding
-`@lru_cache(maxsize=2**10)` to `paint_edge()` would make static layouts hit the cache every frame.
-
-Relevant code: `src/counterweight/paint.py:145`
-
----
-
-### 5b. Cache `paint_text()` output (saves est. ~1–2 ms/cycle on static text)
-
-**Status:** DONE
-
-`paint_text()` rebuilds its full `Paint` dict every frame — running `wrap_cells`, `justify_line`,
-and dict construction — even when the `Text` element and rect are unchanged. `Text` is a frozen
-dataclass (hashable) and `waxy.Rect` supports value equality, so `@lru_cache` keyed on
-`(text, rect)` would return the cached dict by reference on subsequent calls.
-
-Note: the cached dict must not be mutated by callers. Currently `paint_element()` merges via
-`box | paint_text(...)` which creates a new dict — safe.
-
-Relevant code: `src/counterweight/paint.py:111`
-
----
-
-### 5c. Batch adjacent cells in `paint_to_instructions()` (reduces bytes written)
-
-**Status:** DONE
-
-`paint_to_instructions()` emits one `move_to + SGR + char + reset` per cell (~40 bytes each).
-For adjacent cells on the same row with the same style, only one `move_to` and one SGR are needed;
-subsequent chars on the same run can be concatenated. Sorting diff cells by `(y, x)` then grouping
-same-style runs would reduce output bytes substantially (e.g. a 60-char line of same-style text
-goes from ~2400 bytes to ~50 bytes). Impact on write time is modest at current scale but grows
-with terminal size or high-churn frames.
-
-Relevant code: `src/counterweight/output.py:89`
-
----
-
-### 6. Narrow border-healing hint set (saves ~0.4 ms/cycle, ~2.5%)
-
-**Status:** Done (2026-03-08)
-
-`hint_cells` was constant at 279 (canvas) / 784 (dashboard) every frame. Healing only
-ever produces fixes at corner positions — straight-edge overlaps always yield the same
-character. `paint_border()` now emits hints only for the (up to 4) corner positions of
-each bordered element, reducing hint_cells to ~16 (canvas) / ~48 (dashboard).
-
-Implemented in `src/counterweight/paint.py` `paint_border()` — replaced full `chars`
-dict broadcast with conditional corner-only population inside the `try/except/else` block.
-
----
-
-### 7. Sparse paint / dirty-region tracking (saves ~1 ms/cycle on static workloads)
-
-**Status:** TODO — tests written (`tests/test_paint_tracking.py`), implementation reverted; approach needs rethink
-
-`current_paint` is initialized as a full `w×h` dict of BLANK cells (`app.py:110`), so
-`diff_paint` iterates all `w×h` entries every frame — 1,920 iterations for an 80×24 terminal
-even when only 1 cell changed (dashboard frame counter).
-
-**Required changes:**
-
-1. **Initialize `current_paint` as `{}`** instead of pre-filling with BLANK. BLANK is the
-   implicit default (see `.get(pos, BLANK)` usage). Replace the explicit `CLEAR_SCREEN` write
-   (currently driven by the BLANK-filled paint dict) with a raw escape sequence instead.
-
-2. **Keep `new_paint` sparse** — `paint_layout` should not write BLANK cells into the dict;
-   callers already treat missing positions as BLANK.
-
-3. **`diff_paint` scans `new_paint.keys() | current_paint.keys()`** instead of only
-   `current_paint.keys()`. With both dicts sparse, this set is O(content cells), not
-   O(terminal size).
-
-**Expected gain:** Dashboard drops from ~1,920 iterations/frame to ~25 (one card's content),
-recovering most of the 1.0ms diff cost. Canvas (all cells change) gets no benefit.
-
-Relevant code: `src/counterweight/app.py:110` (init), `app.py:490` (`diff_paint`),
-`src/counterweight/paint.py` (`paint_layout`).
+- **#1 Skip layout when the tree is unchanged.** Done by incremental layout:
+  `LayoutTree` keeps taffy's tree across frames and applies only the `layout_changes` (run 18).
+- **#2 Memoize stable component subtrees.** Done: `update_shadow` re-runs only the components that have to,
+  and `@component(memo=True)` skips one whose arguments are unchanged (run 18).
+- **#3 Incremental paint for `Text` nodes.** Done in user code, in `counterweight.utils.canvas` (run 3).
+- **#4 Lazy initializers in `use_state`.** Done in the canvas workload (run 2).
+- **#5a–5c Cache `paint_edge()` and `paint_text()`, and batch adjacent cells in `paint_to_instructions()`.**
+  Done (run 4). Run 12 replaced the caches with cached region fills and text rows.
+- **#6 Narrow the border-healing hints to corners.** Done (runs 6 and 7).
+- **#7 Sparse paint.** Reverted after run 6.
+  Run 12's screen-sized `Paint` addresses the same cost: `diff_paint` skips rows that compare equal.
 
 ---
 
