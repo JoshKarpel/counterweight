@@ -30,7 +30,7 @@ def wrap_pane(mode: TextWrap) -> Div:
         children=(
             Text(
                 content=f" {mode} ",
-                style=position_absolute | inset_top(-1) | inset_left(1),
+                style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
             ),
             markdown(SAMPLE, MarkdownStyles(paragraph=WRAP_STYLE[mode])),
         ),

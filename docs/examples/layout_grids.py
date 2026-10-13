@@ -59,7 +59,7 @@ def auto_flow() -> Div:
                 children=(
                     Text(
                         content=" grid_template_columns(fr(1), fr(1), fr(1)) ",
-                        style=position_absolute | inset_top(-1) | inset_left(1),
+                        style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
                     ),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
                 ),
@@ -74,9 +74,12 @@ def auto_flow() -> Div:
                 children=(
                     Text(
                         content=" grid_template_rows(fr(1), fr(1), fr(1)) ",
-                        style=position_absolute | inset_top(-1) | inset_left(1),
+                        style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
                     ),
-                    Text(content=" grid_auto_flow_column ", style=position_absolute | inset_bottom(-1) | inset_left(1)),
+                    Text(
+                        content=" grid_auto_flow_column ",
+                        style=position_absolute | inset_bottom(-1) | inset_left(1) | clip_to_border,
+                    ),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
                 ),
             ),

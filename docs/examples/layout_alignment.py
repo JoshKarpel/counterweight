@@ -11,7 +11,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 
 def title(content: str) -> Text:
-    return Text(content=f" {content} ", style=position_absolute | inset_top(-1) | inset_left(1))
+    return Text(content=f" {content} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border)
 
 
 # --8<-- [end:title]
@@ -125,7 +125,7 @@ TALL = "\n".join(f"line {n}" for n in range(1, 13))
 @component
 def overflow() -> Div:
     return Div(
-        style=row | pad_y(4),
+        style=row,
         children=tuple(
             Div(
                 style=col | justify | fill(1) | border,
@@ -146,7 +146,7 @@ SCREENSHOTS = [
     ScreenshotSpec(align(), "layout-align-children", (120, 9)),
     ScreenshotSpec(align_self(), "layout-align-self", (80, 9)),
     ScreenshotSpec(center(), "layout-center", (50, 9)),
-    ScreenshotSpec(overflow(), "layout-center-overflow", (70, 17)),
+    ScreenshotSpec(overflow(), "layout-center-overflow", (70, 9)),
 ]
 
 

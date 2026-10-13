@@ -6,13 +6,15 @@ from types import ModuleType
 import pytest
 
 from benchmarks import agent, agent_markdown, canvas, dashboard, top
-from benchmarks.harness import run
+from benchmarks.harness import autopilot, run
 from benchmarks.parsing import INPUTS, InputTiming, ParsingTimings, parsing_table, time_parsing
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
 from benchmarks.tables import Column, render_table
 from benchmarks.workloads import WORKLOADS
+from counterweight import output
 from counterweight.app import app
-from counterweight.controls import Quit, Screenshot
+from counterweight.controls import Bell, Quit, Screenshot
+from counterweight.events import KeyPressed
 from counterweight.input_parsing import parse_input
 
 
@@ -39,6 +41,43 @@ async def test_workload_draws_the_same_last_frame_as_its_twin(name: str, twin: s
         await run(WORKLOADS[workload], frames=7, warmup=1, snapshot=tmp_path / f"{workload}.txt", check_purity=True)
 
     assert (tmp_path / f"{name}.txt").read_text() == (tmp_path / f"{twin}.txt").read_text()
+
+
+def test_autopilot_sends_each_frames_interjections_before_the_key_press_that_steps_to_it() -> None:
+    bell = Bell()
+
+    assert autopilot(3, None, {1: (bell,)}) == [
+        KeyPressed(key="n"),
+        bell,
+        KeyPressed(key="n"),
+        KeyPressed(key="n"),
+        Quit(),
+    ]
+
+
+async def test_scrolled_agent_reads_back_where_its_twin_follows_the_end(tmp_path: Path) -> None:
+    frames = agent.SCROLLED_BACK_AT + 5
+    for workload in ("agent", "agent-scrolled"):
+        await run(WORKLOADS[workload], frames=frames, warmup=1, snapshot=tmp_path / f"{workload}.txt")
+
+    assert (tmp_path / "agent.txt").read_text() != (tmp_path / "agent-scrolled.txt").read_text()
+
+
+async def test_agent_transcript_jumps_back_to_the_start_of_an_earlier_tool_call() -> None:
+    frames: list[output.Frame] = []
+    jump = KeyPressed(key="[")
+
+    await app(
+        agent.WORKLOAD.root([]),
+        headless=True,
+        dimensions=(80, 14),
+        # The first jump is to the newest tool call, which is already in view at the end.
+        autopilot=[*(KeyPressed(key="n") for _ in range(120)), jump, jump, Screenshot(handler=frames.append), Quit()],
+        check_purity=True,
+    )
+
+    _, top, title, *_ = frames[0].text(ansi=False).split("\n")
+    assert (top.strip()[0], title.strip()[:6]) == ("╭", "│Edit ")
 
 
 @pytest.mark.parametrize("name", WORKLOADS)

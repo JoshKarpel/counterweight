@@ -109,6 +109,7 @@ def test_rerunning_for_another_reason_within_a_tick_keeps_the_reading() -> None:
                 focus_handle=None,
                 is_focused=False,
                 subtree=Subtree(key=first.tree.root.key),
+                scroll=None,
             ),
         )
 

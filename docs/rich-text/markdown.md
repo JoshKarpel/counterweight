@@ -6,7 +6,7 @@ It handles [GitHub Flavored Markdown](https://github.github.com/gfm/),
 and YAML front matter at the top of a document.
 
 ```python
---8<-- "markdown_document.py:example"
+--8 < --"markdown_document.py:example"
 ```
 
 ![A rendered Markdown document](../assets/markdown-document.svg)
@@ -23,7 +23,7 @@ and YAML front matter at the top of a document.
 GitHub's extensions to CommonMark draw like this:
 
 ```python
---8<-- "markdown_document.py:github"
+--8 < --"markdown_document.py:github"
 ```
 
 ![A rendered Markdown document using GitHub's extensions](../assets/markdown-github.svg)

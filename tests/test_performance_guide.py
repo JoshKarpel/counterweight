@@ -92,6 +92,7 @@ def press(node: ShadowNode, key: str) -> None:
             focus_handle=None,
             is_focused=False,
             subtree=Subtree(key=node.key),
+            scroll=None,
         ),
     )
 

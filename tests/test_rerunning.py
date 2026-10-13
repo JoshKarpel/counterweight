@@ -192,6 +192,8 @@ MOVED = Rects(
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
     margin=Region(left=1, top=2, right=3, bottom=4),
+    clip=Region(left=0, top=0, right=10, bottom=10),
+    visible=Region(left=1, top=2, right=3, bottom=4),
 )
 
 
@@ -215,7 +217,7 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     calls = Calls()
     root = measures(calls)
     previous = update_shadow(root, None, NO_LAYOUTS).tree
-    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout})
+    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout}, scrolls={})
     calls.names.clear()
 
     update_shadow(root, previous, layouts)
@@ -241,7 +243,7 @@ def test_component_that_stops_calling_use_rects_does_not_rerun_when_its_layout_m
         second = update_shadow(root, first, NO_LAYOUTS, set_state(calls, queue, "measures_until_set")).tree
     calls.names.clear()
 
-    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}))
+    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}, scrolls={}))
 
     assert calls.names == []
 

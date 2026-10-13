@@ -23,6 +23,9 @@ compare the pair to see what skipping components whose arguments didn't change s
 `agent-markdown` streams Markdown shaped like a real coding agent's (short narration between tool calls,
 and now and then a summary with lists, tables and code), rendered with `markdown` and `code_block`:
 compare it with `agent` to see roughly what parsing and highlighting cost.
+`agent-scrolled` is `agent` with its transcript scrolled back partway through the run, so it reads back
+while messages stream in below and drop off above: compare it with `agent`, which follows the end,
+to see what scroll anchoring costs.
 
 ## Profile a run
 

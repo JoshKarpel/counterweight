@@ -1,0 +1,14 @@
+╭─ Add a dependency ───────────────────╮
+│                                      │
+│  Python 3▏                           │
+│         ╭──────────────────────╮     │
+│   Index │ 3.13                 │     │
+│         │ 3.14                 │     │
+╰─────────│ 3.15                 │─────╯
+          │ 3.15t                │      
+ Type to s╰──────────────────────╯      
+ Up move through them, Enter or Tab     
+ chooses one, and Escape closes them.   
+                                        
+                                        
+   just                                 

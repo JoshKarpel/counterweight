@@ -1,5 +1,5 @@
-from counterweight.focus import FocusHandle
-from counterweight.geometry import Rects
+from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.geometry import Rects, Scroll
 from counterweight.hooks.hooks import (
     Focus,
     Hovered,
@@ -12,12 +12,14 @@ from counterweight.hooks.hooks import (
     use_mouse,
     use_rects,
     use_ref,
+    use_scroll,
     use_state,
 )
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 __all__ = [
     "Deps",
+    "ElementHandle",
     "Focus",
     "FocusHandle",
     "Getter",
@@ -25,6 +27,7 @@ __all__ = [
     "Mouse",
     "Rects",
     "Ref",
+    "Scroll",
     "Setter",
     "Setup",
     "Tick",
@@ -36,5 +39,6 @@ __all__ = [
     "use_mouse",
     "use_rects",
     "use_ref",
+    "use_scroll",
     "use_state",
 ]

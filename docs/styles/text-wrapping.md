@@ -10,7 +10,7 @@ Counterweight supports four wrap modes, illustrated below with the same paragrap
 [Markdown](../rich-text/markdown.md), whose paragraphs wrap with the `paragraph` style of `MarkdownStyles`:
 
 ```python
---8<-- "text_wrap.py:example"
+--8 < --"text_wrap.py:example"
 ```
 
 ![Text Wrap Comparison](../assets/text-wrap.svg)

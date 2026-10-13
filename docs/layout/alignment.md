@@ -10,7 +10,7 @@ The examples on this page title each panel with this helper,
 which draws its text over the top border:
 
 ```python
---8<-- "layout_alignment.py:title"
+--8 < --"layout_alignment.py:title"
 ```
 
 ## Distributing children along the main axis
@@ -20,7 +20,7 @@ after its children take their sizes.
 Children that grow leave no free space, so these only matter when nothing claims it.
 
 ```python
---8<-- "layout_alignment.py:justify"
+--8 < --"layout_alignment.py:justify"
 ```
 
 ![The justify_children utilities](../assets/layout-justify-children.svg)
@@ -31,7 +31,7 @@ The default, `align_children_stretch`, fills the cross axis;
 the others keep each child at its content size and place it.
 
 ```python
---8<-- "layout_alignment.py:align"
+--8 < --"layout_alignment.py:align"
 ```
 
 ![The align_children utilities](../assets/layout-align-children.svg)
@@ -41,7 +41,7 @@ the others keep each child at its content size and place it.
 `align_self_*` on a child replaces its parent's `align_children_*` for that child alone.
 
 ```python
---8<-- "layout_alignment.py:align-self"
+--8 < --"layout_alignment.py:align-self"
 ```
 
 ![The align_self utilities](../assets/layout-align-self.svg)
@@ -56,7 +56,7 @@ To center a box over other content rather than among it, see
 [A dialog centered over the app](layering.md#a-dialog-centered-over-the-app).
 
 ```python
---8<-- "layout_alignment.py:center"
+--8 < --"layout_alignment.py:center"
 ```
 
 ![Centering with flexbox and grid](../assets/layout-center.svg)
@@ -65,12 +65,14 @@ To center a box over other content rather than among it, see
 
 The `*_center` and `*_end` utilities are CSS's _safe_ alignments:
 content too large for its container starts at the container's start edge
-and overflows only past the end, so its beginning stays on screen.
+and overflows only past the end, so its beginning stays in view.
 Each has an `*_unsafe` counterpart with CSS's default behavior,
 which centers or end-aligns the content anyway and overflows past the start edge too.
+These containers are `fill(1)` items, which [clip](clipping.md) what overflows them,
+so the unsafe one cuts off the content's beginning as well as its end.
 
 ```python
---8<-- "layout_alignment.py:overflow"
+--8 < --"layout_alignment.py:overflow"
 ```
 
 ![Safe and unsafe centering of content taller than its container](../assets/layout-center-overflow.svg)

@@ -6,6 +6,7 @@ from typing import Union
 
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
+from counterweight.focus import ElementHandle
 from counterweight.graphemes import grapheme_width, graphemes, visible
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
@@ -18,6 +19,8 @@ class Div:
     style: Style = _DEFAULT_STYLE
     children: tuple[Component | AnyElement, ...] = ()
     on_input: InputHandler | None = None
+    handle: ElementHandle | None = None
+    """The handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo]."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -60,6 +63,8 @@ class Text:
     content: str | tuple[Chunk, ...]
     style: Style = _DEFAULT_STYLE
     on_input: InputHandler | None = None
+    handle: ElementHandle | None = None
+    """The handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo]."""
 
     @property
     def children(self) -> tuple[Component | AnyElement, ...]:

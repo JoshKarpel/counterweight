@@ -53,7 +53,7 @@ the size and the wrapping paper cycle with Left and Right,
 the quantity steps with Up and Down, and gift wrap toggles with Space.
 
 ```python
---8<-- "focus_form.py:example"
+--8 < --"focus_form.py:example"
 ```
 
 The first field takes focus at startup, with `auto_focus=True`:
@@ -120,6 +120,10 @@ Focus also changes when a render leaves the focused component unable to keep it.
 Unmounting it, hiding it, or making it [unfocusable](#taking-a-component-out-of-focus) clears focus,
 rather than moving it to whichever component took the departed one's place.
 A component that mounts with `auto_focus=True` in the same render can then take focus.
+
+Wherever focus moves, the newly focused component's element is
+[scrolled into view](../layout/scrolling.md#scrolling-an-element-into-view) in any scroll container it's in,
+by as little as it takes, as browsers do.
 
 ## Focusing a component you render
 
