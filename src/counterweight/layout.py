@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Container, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
+from itertools import repeat
 from math import inf
 from typing import TYPE_CHECKING, assert_never
 
@@ -11,7 +12,7 @@ import waxy
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Rects, Region
 from counterweight.graphemes import LINE_BREAKS
-from counterweight.styles.styles import CellStyle, Style, TextWrap
+from counterweight.styles.styles import CellStyle, ClipTo, Style, TextWrap
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -25,6 +26,10 @@ INITIAL_RECTS = Rects(
     padding=_EMPTY_REGION,
     border=_EMPTY_REGION,
     margin=_EMPTY_REGION,
+    gutter_right=_EMPTY_REGION,
+    gutter_bottom=_EMPTY_REGION,
+    clip=None,
+    visible=None,
 )
 
 
@@ -205,22 +210,17 @@ class LayoutTree:
     tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
 
-    def compute(
-        self,
-        changes: Iterable[LayoutChange],
-        shadow: ShadowTree,
-        available: waxy.AvailableSize,
-    ) -> Layouts:
-        """Apply `changes`, which make the tree match `shadow`, then lay it out."""
+    def compute(self, changes: Iterable[LayoutChange], shadow: ShadowTree, width: int, height: int) -> Layouts:
+        """Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen."""
         self.apply(changes)
 
         root = self.nodes[shadow.root.key]
+        available = waxy.AvailableSize(width=waxy.Definite(width), height=waxy.Definite(height))
         self.tree.compute_layout(root, available, measure=_measure_text)
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
-        by_key = {
-            keys[node]: _resolve_layout(position, layout) for node, position, layout in self.tree.absolute_layouts(root)
-        }
+        boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
+        by_key = place(shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height))
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
         return Layouts(in_paint_order=in_paint_order, by_key=by_key)
@@ -266,6 +266,68 @@ def layout_style(style: Style) -> waxy.Style:
     if style.resolved.border_kind is None:
         return style.layout | _NO_BORDER
     return style.layout
+
+
+def place(
+    root: ShadowNode, boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]], screen: Region
+) -> dict[NodeKey, Rects]:
+    """
+    Where each node with a box in `boxes` is on `screen`, given its absolute position and layout,
+    walking down from `root` so each node's clip is built from its parent's.
+    A node without a box is hidden, and so is every node beneath it.
+
+    The walk follows the tree, not paint order, because a raised descendant paints after nodes
+    outside its ancestors, and must still be clipped by those ancestors.
+    """
+    placed: dict[NodeKey, Rects] = {}
+    stack: list[tuple[ShadowNode, Region | None]] = [(root, screen)]
+    while stack:
+        node, clip = stack.pop()
+        try:
+            position, layout = boxes[node.key]
+        except KeyError:
+            continue
+        rects = placed[node.key] = _resolve_layout(position, layout, clip)
+        if not (children := node.children):
+            continue
+        clips_x, clips_y = clipped_axes(node.element.style)
+        if clip is None or not (clips_x or clips_y):
+            stack.extend(zip(reversed(children), repeat(clip)))
+        else:
+            stack.extend(
+                (child, child_clip(clip, rects, child.element.style.resolved.clip_to, clips_x, clips_y))
+                for child in reversed(children)
+            )
+    return placed
+
+
+@lru_cache(maxsize=2**12)
+def clipped_axes(style: Style) -> tuple[bool, bool]:
+    """Whether an element with `style` clips its children horizontally and vertically, from its overflow on each axis."""
+    layout = style.layout
+    return layout.overflow_x != waxy.Overflow.Visible, layout.overflow_y != waxy.Overflow.Visible
+
+
+def child_clip(clip: Region, parent: Rects, clip_to: ClipTo, clips_x: bool, clips_y: bool) -> Region | None:
+    """
+    The clip of a child with `clip_to` whose `parent` has `clip`:
+    `clip`, cut down to the parent's padding or border box on each axis the parent clips,
+    or `None` if nothing is left.
+    """
+    match clip_to:
+        case "padding":
+            box = parent.padding
+        case "border":
+            box = parent.border
+        case _ as unreachable:
+            assert_never(unreachable)
+    clipped = Region(
+        left=max(clip.left, box.left) if clips_x else clip.left,
+        top=max(clip.top, box.top) if clips_y else clip.top,
+        right=min(clip.right, box.right) if clips_x else clip.right,
+        bottom=min(clip.bottom, box.bottom) if clips_y else clip.bottom,
+    )
+    return None if clipped.is_empty else clipped
 
 
 def paint_order(root: ShadowNode, visible: Container[NodeKey]) -> list[ShadowNode]:
@@ -408,14 +470,16 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 @lru_cache(maxsize=2**12)
-def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> Rects:
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout, clip: Region | None) -> Rects:
     """
-    The cell regions of one node's boxes, from its absolute border-box position.
+    The cell regions of one node's boxes, from its absolute border-box position, inside `clip`.
 
     Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
     integral and adjacent boxes share edges without gaps or overlaps.
+    Taffy narrows the children of a scroll container by its scrollbar gutters without saying where they are;
+    as in CSS, they lie between the border and the padding box, so the padding box excludes them.
 
-    Cached because most nodes keep their position and layout from one frame to the next,
+    Cached because most nodes keep their position, layout and clip from one frame to the next,
     and building the regions is most of the cost of reading layouts back.
     """
     left = int(position.x)
@@ -431,11 +495,14 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> Rects:
     )
 
     border_widths = layout.border
+    inner_right = border.right - int(border_widths.right)
+    inner_bottom = border.bottom - int(border_widths.bottom)
+    gutters = layout.scrollbar_size
     padding = Region(
         left=border.left + int(border_widths.left),
         top=border.top + int(border_widths.top),
-        right=border.right - int(border_widths.right),
-        bottom=border.bottom - int(border_widths.bottom),
+        right=inner_right - int(gutters.width),
+        bottom=inner_bottom - int(gutters.height),
     )
 
     padding_widths = layout.padding
@@ -446,7 +513,16 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> Rects:
         bottom=padding.bottom - int(padding_widths.bottom),
     )
 
-    return Rects(content=content, padding=padding, border=border, margin=margin)
+    return Rects(
+        content=content,
+        padding=padding,
+        border=border,
+        margin=margin,
+        gutter_right=Region(left=padding.right, top=padding.top, right=inner_right, bottom=padding.bottom),
+        gutter_bottom=Region(left=padding.left, top=padding.bottom, right=padding.right, bottom=inner_bottom),
+        clip=clip,
+        visible=None if clip is None else border.intersection(clip),
+    )
 
 
 def cells_width(cells: Iterable[StyledGrapheme]) -> int:

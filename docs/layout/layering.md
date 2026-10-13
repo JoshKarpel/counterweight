@@ -126,6 +126,8 @@ A dialog rendered deeper in the tree centers over its own parent.
 
 Negative insets reach past the parent's padding box onto its border.
 `inset_top(-1)` puts a box on the top border, and `inset_right(-1)` on the right border.
+`clip_to_border` keeps the badges visible if the parent
+[hides its overflow](clipping.md#drawing-on-the-parents-border).
 
 ```python
 --8<-- "layout_layering.py:badge"

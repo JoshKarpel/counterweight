@@ -4,6 +4,16 @@
 
 ### Added
 
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  Added the overflow utilities `overflow_visible`, `overflow_hidden` and `overflow_clip`,
+  with `overflow_x_*` and `overflow_y_*` forms that set one axis,
+  and the `clip_to` style field, with `clip_to_padding` and `clip_to_border`,
+  which lets a child such as a border title draw on its parent's border when its parent clips.
+  `Rects` gains `clip`, the region an element's ancestors let it draw in,
+  `visible`, the part of its border box inside that region,
+  and `gutter_right` and `gutter_bottom`, the strips a scroll container reserves for its scrollbars.
+  See [Clipping](layout/clipping.md).
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
   It takes `auto_focus`, to take focus on mount when nothing else has it;
@@ -133,6 +143,11 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  `Rects` is keyword-only, since it has more fields than are easy to keep in order.
+  A scroll container's `padding` and `content` exclude its scrollbar gutters, as taffy lays its children out,
+  where they included them.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
@@ -321,6 +336,14 @@
   is renamed `StyledGrapheme`, and its `char` is renamed `grapheme`.
 
 ### Fixed
+
+- [#388](https://github.com/JoshKarpel/counterweight/issues/388)
+  A box whose overflow is `Hidden`, `Clip` or `Scroll` clips its children to its padding box,
+  on each axis that sets it, where they painted over its border and beyond it.
+  The constraint utilities (`length`, `percentage`, `ratio` and `fill`) hide their box's overflow,
+  so a border title in a constrained box needs `clip_to_border`.
+  The mouse reaches an element only where it's painted:
+  routing, `use_hovered` and `on_click` ignore the parts of an element its ancestors clip away.
 
 - [#407](https://github.com/JoshKarpel/counterweight/issues/407)
   Terminal input is parsed incrementally, so typed and pasted text arrives intact:

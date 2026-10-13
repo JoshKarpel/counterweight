@@ -130,6 +130,7 @@ nav:
     - layout/alignment.md
     - layout/spacing-and-borders.md
     - layout/layering.md
+    - layout/clipping.md
     - layout/grids-and-wrapping.md
     - layout/text.md
     - layout/app-shells.md

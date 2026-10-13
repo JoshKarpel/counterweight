@@ -151,6 +151,14 @@ See [Layering](../layout/layering.md).
 
 <!-- utilities: position_* inset inset_* z -->
 
+### Overflow and clipping
+
+`overflow_hidden` and `overflow_clip` clip a box's children to its padding box, on both axes or, with `_x` or `_y`, on one.
+`clip_to_border` lets a child, such as a border title, draw on its parent's border instead.
+See [Clipping](../layout/clipping.md).
+
+<!-- utilities: overflow_* clip_to_* -->
+
 ### Text
 
 See [Text wrapping](text-wrapping.md) and [Text in layout](../layout/text.md).

@@ -946,3 +946,44 @@ Median frame time of three interleaved rounds, with the range across rounds:
   against 38 of 275 in run 19, since a key now calls one handler rather than every visible node's.
 - **Reconciling focus doesn't show** in either profile, and `RoutingTable.of` costs 0.031 ms per frame on `top`,
   against 0.021 ms in run 19, within the noise of one profiled run.
+
+### Run 21 — clipping (phase 1 of `plans/clipping-and-scrolling.md`, PR #415)
+
+**Date:** 2026-10-13
+
+**Change:** after taffy lays the tree out, `place` walks it from the root and gives each node a clip,
+which `_resolve_layout` takes as a third cache key and turns into `Rects.clip` and `Rects.visible`.
+`Paint.fill` and `Paint.write_row` bound their writes by the clip, `paint_element` drops healing hints outside it,
+and `target_at` hit-tests `visible`.
+`Region` caches its hash, as `CellStyle` and `Style` do, since it's now part of `_resolve_layout`'s key for every node.
+
+**Method:** the baseline is `HEAD` (`91ac4a0`) in a separate worktree, run with `PYTHONPATH` pointing at its `src`.
+One profiled `just profile` run of `dashboard` and `top` on each side (`before-clip-*`, `after-clip-*`),
+then three interleaved unprofiled `benchmarks run` rounds of `top`, `dashboard` and `agent` on each side
+before `Region` cached its hash (`ab-base-*`, `ab-clip-*`),
+and three more of the change without and with the cached hash (`ab-cur-*`, `ab-hash-*`).
+Both workloads' last frames are identical before and after.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | `HEAD` | Clipping | Clipping (second pair) | Clipping, `Region` caching its hash |
+|---|---|---|---|---|
+| `top` | 12.04 ms (11.31–13.26) | 12.80 ms (12.18–13.40) | 11.95 ms (11.92–12.22) | 11.67 ms (11.60–11.73) |
+| `dashboard` | 0.926 ms (0.895–0.936) | 0.980 ms (0.979–1.029) | 1.099 ms (0.996–1.506) | 1.111 ms (1.008–1.289) |
+| `agent` | 1.049 ms (1.039–1.099) | 1.121 ms (1.095–1.154) | 1.209 ms (1.192–1.261) | 1.151 ms (1.124–1.223) |
+
+- **The fixed cost of a frame rises by about 6%** on `dashboard` and `agent`, which draw few nodes per frame,
+  so the walk's per-node work shows. On `top` the rounds overlap.
+  The second pair of columns ran later, on a busier machine, so compare within a pair, not across them.
+- **`place` takes about 6% of the render loop on `top`**, but `LayoutTree.compute` without it falls from 26.4% to 22.2%,
+  since `place` took over the comprehension that resolved every node's layout.
+  Paint's share is unchanged (18.8% and 19.1%).
+- **Fresh objects per frame defeat identity checks in the caches.** A first version built the border's inner edge
+  as a new `Region` in every `paint_element` call, so `border_fills`' cache compared it field by field;
+  `border_fills` now takes the inner right and bottom edges as ints.
+  For a border box wholly inside its clip, `Region.intersection` returns the box itself,
+  so `paint_element` can tell by identity and keep the cached corners without filtering them.
+  The children of a clipping container still get a new clip `Region` each frame,
+  which `_resolve_layout`'s cache compares by value.
+- **`Region`'s cached hash is neutral or better**: `top` and `agent` were faster in most rounds,
+  and `dashboard`'s rounds overlap.

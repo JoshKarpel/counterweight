@@ -264,11 +264,10 @@ async def render_loop(
 
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
-        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
         warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
         shadow = warmup.tree
-        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h)
         routing = RoutingTable.of(shadow, layouts)
         focused = routing.reconciled_focus(None, warmup.mounted)
 
@@ -409,11 +408,7 @@ async def render_loop(
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    available = waxy.AvailableSize(
-                        width=waxy.Definite(w),
-                        height=waxy.Definite(h),
-                    )
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
+                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h)
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
@@ -432,7 +427,7 @@ async def render_loop(
                             instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
-                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
+                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h)
                         routing = RoutingTable.of(shadow, layouts)
                         if routing.reconciled_focus(settled, refocused.mounted) != settled:
                             raise UnsettledFocus(

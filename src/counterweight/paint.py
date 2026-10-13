@@ -116,18 +116,23 @@ class Paint:
         if stop < len(cells) and (after := cells[stop]).is_continuation:
             cells[stop] = after.erased()
 
+    @property
+    def bounds(self) -> Region:
+        """The region the paint covers, which clips nothing when given as a clip."""
+        return Region(left=0, top=0, right=self.width, bottom=self.height)
+
     def get(self, position: Position) -> Cell | None:
         """The cell at `position`, or `None` if it's off the screen."""
         if 0 <= position.x < self.width and 0 <= position.y < self.height:
             return self.cells[position.y * self.width + position.x]
         return None
 
-    def fill(self, region: Region, cell: Cell) -> None:
-        """Set every cell of `region` that is on the screen to `cell`."""
-        left, right = max(region.left, 0), min(region.right, self.width)
+    def fill(self, region: Region, cell: Cell, clip: Region) -> None:
+        """Set every cell of `region` that is inside `clip` and on the screen to `cell`."""
+        left, right = max(region.left, clip.left, 0), min(region.right, clip.right, self.width)
         if left >= right:
             return
-        top, bottom = max(region.top, 0), min(region.bottom, self.height)
+        top, bottom = max(region.top, clip.top, 0), min(region.bottom, clip.bottom, self.height)
         w = self.width
         width = right - left
         row = [cell] * width
@@ -142,15 +147,16 @@ class Paint:
                 cells[stop] = cells[stop].erased()
             cells[start:stop] = row
 
-    def write_row(self, x: int, y: int, row: Sequence[Cell]) -> None:
+    def write_row(self, x: int, y: int, row: Sequence[Cell], clip: Region) -> None:
         """
-        Set the cells from `(x, y)` rightward to `row`, dropping any that fall off the screen,
-        and erasing the half left on screen of a two-cell-wide cluster that straddles its edge.
+        Set the cells from `(x, y)` rightward to `row`, dropping any that fall outside `clip` or off the screen,
+        and erasing the half left inside of a two-cell-wide cluster that straddles their edge.
         """
-        if not 0 <= y < self.height:
+        if not max(clip.top, 0) <= y < min(clip.bottom, self.height):
             return
-        skip = -x if x < 0 else 0
-        keep = min(len(row), self.width - x)
+        low = max(clip.left, 0)
+        skip = low - x if x < low else 0
+        keep = min(len(row), min(clip.right, self.width) - x)
         if skip >= keep:
             return
         start = y * self.width + x
@@ -237,7 +243,8 @@ def paint_element(
     paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: Rects
 ) -> tuple[tuple[Position, JoinedBorderParts], ...]:
     """
-    Paint one element onto `paint`, returning its border healing hints.
+    Paint the part of one element inside its clip onto `paint`,
+    returning the border healing hints for its corners inside the clip.
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
@@ -245,9 +252,28 @@ def paint_element(
     sets `margin_color`, so a margin leaves whatever lies beneath it visible, as on the web.
     An element with no border, padding, text, `margin_color` or `content_color` paints nothing,
     not even its background, so an undecorated container laid over other elements leaves them visible.
+
+    A hint for a corner outside the clip is dropped, because healing only checks that the cell under a hint
+    is a border character, so it would rewrite whatever border was drawn there instead.
     """
-    border, hints = border_fills(
-        style.border_kind, style.border_style, style.border_contract, resolved.border, resolved.padding
+    clip = resolved.clip
+    if clip is None:
+        return ()
+
+    border, corners = border_fills(
+        style.border_kind,
+        style.border_style,
+        style.border_contract,
+        resolved.border,
+        resolved.padding,
+        resolved.gutter_right.right,
+        resolved.gutter_bottom.bottom,
+    )
+    # A border box wholly inside the clip is its own visible part, so all of its corners are too.
+    hints = (
+        corners
+        if resolved.visible is resolved.border
+        else tuple((position, parts) for position, parts in corners if clip.contains(position))
     )
     margin = (
         edge_fills(resolved.margin, resolved.border, style.margin_color)
@@ -270,11 +296,11 @@ def paint_element(
     if not fills and not lines and element.style.content_color is UNSET:
         return hints
 
-    paint.fill(resolved.border, Cell.blank(color=style.content_color))
+    paint.fill(resolved.border, Cell.blank(color=style.content_color), clip)
     for region, cell in fills:
-        paint.fill(region, cell)
+        paint.fill(region, cell, clip)
     for y, line in enumerate(lines, start=resolved.content.top):
-        paint.write_row(resolved.content.left, y, line)
+        paint.write_row(resolved.content.left, y, line, clip)
 
     return hints
 
@@ -355,10 +381,16 @@ def border_fills(
     contract: int,
     region: Region,
     padding: Region,
+    inner_right: int,
+    inner_bottom: int,
 ) -> tuple[tuple[Fill, ...], tuple[tuple[Position, JoinedBorderParts], ...]]:
     """
     A border's edges and corners as one-cell-wide fills, in the order they overwrite each other,
     and the corners that border healing may join to a neighboring border.
+
+    A side is drawn where the border box `region` reaches past the border's inner edge,
+    which is the `padding` box's left and top, and `inner_right` and `inner_bottom`,
+    outside the scrollbar gutters that the padding box excludes.
     """
     if kind is None:
         return (), ()
@@ -366,9 +398,9 @@ def border_fills(
     bv = kind.value
 
     draw_left = padding.left > region.left
-    draw_right = region.right > padding.right
+    draw_right = region.right > inner_right
     draw_top = padding.top > region.top
-    draw_bottom = region.bottom > padding.bottom
+    draw_bottom = region.bottom > inner_bottom
 
     if contract:
         contract_top = contract if not draw_top else None

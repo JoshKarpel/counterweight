@@ -12,6 +12,7 @@ from counterweight._utils import flyweight
 
 TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
+ClipTo = Literal["padding", "border"]
 
 
 UNSET = sentinel("UNSET")
@@ -625,6 +626,7 @@ class ResolvedStyle:
     """
 
     z: int | None
+    clip_to: ClipTo
     margin_color: Color
     padding_color: Color
     content_color: Color
@@ -640,6 +642,7 @@ class ResolvedStyle:
 
 STYLE_DEFAULTS = ResolvedStyle(
     z=None,
+    clip_to="padding",
     margin_color=_BLACK,
     padding_color=_BLACK,
     content_color=_BLACK,
@@ -668,11 +671,17 @@ class Style(StyleFragment):
     A `border_kind` of `None` removes the border, along with the space reserved for it.
     Each side is one cell, so a `Style` whose `layout` sets a border width other than
     `Length(0)` or `Length(1)` raises `ValueError`.
+
+    `clip_to` chooses which of its parent's boxes clips the element where the parent's overflow
+    on an axis is `Hidden`, `Clip` or `Scroll`: its padding box (`"padding"`, the default),
+    or its border box (`"border"`), so a title can be drawn on its parent's border.
+    Every clip above the parent clips the element too.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)
 
     z: int | UNSET = UNSET
+    clip_to: ClipTo | UNSET = UNSET
     margin_color: Color | UNSET = UNSET
     padding_color: Color | UNSET = UNSET
     content_color: Color | UNSET = UNSET
@@ -707,6 +716,7 @@ class Style(StyleFragment):
                 (
                     self.layout,
                     self.z,
+                    self.clip_to,
                     self.margin_color,
                     self.padding_color,
                     self.content_color,
@@ -729,6 +739,7 @@ class Style(StyleFragment):
         defaults = STYLE_DEFAULTS
         return ResolvedStyle(
             z=or_default(self.z, defaults.z),
+            clip_to=or_default(self.clip_to, defaults.clip_to),
             margin_color=or_default(self.margin_color, defaults.margin_color),
             padding_color=or_default(self.padding_color, defaults.padding_color),
             content_color=or_default(self.content_color, defaults.content_color),

@@ -190,6 +190,7 @@ STYLE_FIELD_CASES: tuple[tuple[str, Style, Style], ...] = (
     ("text_style", Style(text_style=CellStyle(italic=True)), Style(text_style=EXPLICIT_DEFAULT_CELL_STYLE)),
     ("text_justify", Style(text_justify="center"), Style(text_justify=STYLE_DEFAULTS.text_justify)),
     ("text_wrap", Style(text_wrap="pretty"), Style(text_wrap=STYLE_DEFAULTS.text_wrap)),
+    ("clip_to", Style(clip_to="border"), Style(clip_to=STYLE_DEFAULTS.clip_to)),
 )
 
 CELL_STYLE_FIELD_CASES: tuple[tuple[str, CellStyle, CellStyle], ...] = (

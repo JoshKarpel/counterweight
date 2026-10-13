@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 
 from counterweight._utils import unordered_range
@@ -42,6 +42,13 @@ class Region:
     top: int
     right: int
     bottom: int
+    _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "_hash", hash((self.left, self.top, self.right, self.bottom)))
+
+    def __hash__(self) -> int:
+        return self._hash
 
     @property
     def width(self) -> int:
@@ -107,7 +114,17 @@ class Region:
         return (Position(self.right - 1, y) for y in range(self.top, self.bottom))
 
     def intersection(self, other: Region) -> Region | None:
-        """The cells shared by both regions, or `None` if they share no cells."""
+        """
+        The cells shared by both regions, or `None` if they share no cells.
+        It's this region itself when `other` contains all of it, so callers can tell by identity.
+        """
+        if (
+            other.left <= self.left
+            and other.top <= self.top
+            and self.right <= other.right
+            and self.bottom <= other.bottom
+        ):
+            return None if self.is_empty else self
         overlap = Region(
             left=max(self.left, other.left),
             top=max(self.top, other.top),
@@ -117,11 +134,38 @@ class Region:
         return None if overlap.is_empty else overlap
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Rects:
-    """The regions an element's box model occupies, from its content box out to its margin box."""
+    """
+    Where an element is on the screen: the regions its box model occupies, from its content box out to its margin box,
+    and how much of it its ancestors' clips leave visible.
+
+    The boxes are whole, never cut down by the clip,
+    so `content` is always the region text wraps to, even when part of it is clipped away.
+    """
 
     content: Region
     padding: Region
     border: Region
     margin: Region
+
+    gutter_right: Region
+    """
+    The strip between the right side of the padding box and the border, reserved for a vertical scrollbar
+    when the element's `overflow_y` is `Scroll`, and empty otherwise.
+    """
+    gutter_bottom: Region
+    """
+    The strip between the bottom of the padding box and the border, reserved for a horizontal scrollbar
+    when the element's `overflow_x` is `Scroll`, and empty otherwise.
+    """
+
+    clip: Region | None
+    """
+    The region the element's ancestors let it draw in: its parent's clip (the screen, for the root),
+    cut down on each axis where the parent's overflow is `Hidden`, `Clip` or `Scroll`
+    to the parent's padding box, or its border box when the element's `clip_to` is `"border"`.
+    It's `None` when nothing is left, so the element draws nothing.
+    """
+    visible: Region | None
+    """The part of the border box inside `clip`, or `None` when none of it is."""

@@ -79,9 +79,8 @@ def _shadow(element: AnyElement, children: Sequence[ShadowNode] = ()) -> ShadowN
 
 
 def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
-    available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
     shadow = ShadowTree(root=root)
-    return LayoutTree().compute(layout_changes(None, shadow), shadow, available)
+    return LayoutTree().compute(layout_changes(None, shadow), shadow, w, h)
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:

@@ -48,6 +48,10 @@ WIDE = Cell("日", BLUE)
 CONTINUATION = Cell("", BLUE)
 
 
+# A clip larger than any test's paint, so the screen's edges are what clip.
+BEYOND_THE_SCREEN = Region(left=-9, top=-9, right=9, bottom=9)
+
+
 def grid(paint: Paint) -> list[str]:
     """Each row of `paint`, with `.` for a blank cell and `·` for a continuation cell."""
     return [
@@ -85,14 +89,15 @@ def test_get_off_screen_returns_none(position: Position) -> None:
         (Region(left=1, top=0, right=3, bottom=2), [".xx.", ".xx.", "...."]),
         (Region(left=-2, top=-1, right=2, bottom=1), ["xx..", "....", "...."]),
         (Region(left=3, top=2, right=9, bottom=9), ["....", "....", "...x"]),
+        (Region(left=3, top=0, right=9, bottom=1), ["...x", "....", "...."]),
         (Region(left=-5, top=1, right=-1, bottom=2), ["....", "....", "...."]),
         (Region(left=1, top=1, right=1, bottom=3), ["....", "....", "...."]),
     ],
-    ids=["inside", "overhangs-top-left", "overhangs-bottom-right", "entirely-off-screen", "empty"],
+    ids=["inside", "overhangs-top-left", "overhangs-bottom-right", "overhangs-right", "entirely-off-screen", "empty"],
 )
 def test_fill_clips_to_screen(region: Region, expected: list[str]) -> None:
     paint = Paint.blank(4, 3)
-    paint.fill(region, X)
+    paint.fill(region, X, BEYOND_THE_SCREEN)
     assert grid(paint) == expected
 
 
@@ -111,7 +116,7 @@ def test_fill_clips_to_screen(region: Region, expected: list[str]) -> None:
 )
 def test_write_row_clips_to_screen(x: int, y: int, expected: list[str]) -> None:
     paint = Paint.blank(4, 3)
-    paint.write_row(x, y, (X, Y))
+    paint.write_row(x, y, (X, Y), BEYOND_THE_SCREEN)
     assert grid(paint) == expected
 
 
@@ -126,15 +131,15 @@ def test_write_row_clips_to_screen(x: int, y: int, expected: list[str]) -> None:
 )
 def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen(x: int, expected: list[str]) -> None:
     paint = Paint.blank(4, 1)
-    paint.write_row(x, 0, (X, WIDE, CONTINUATION))
+    paint.write_row(x, 0, (X, WIDE, CONTINUATION), paint.bounds)
     assert grid(paint) == expected
 
 
 def test_write_row_overhanging_the_left_edge_leaves_the_row_above_alone() -> None:
     paint = Paint.blank(4, 2)
-    paint.write_row(0, 0, (X, WIDE, CONTINUATION, X))
+    paint.write_row(0, 0, (X, WIDE, CONTINUATION, X), paint.bounds)
 
-    paint.write_row(-1, 1, (Y, Y, Y))
+    paint.write_row(-1, 1, (Y, Y, Y), paint.bounds)
 
     assert grid(paint) == ["x日·x", "yy.."]
 
@@ -142,7 +147,7 @@ def test_write_row_overhanging_the_left_edge_leaves_the_row_above_alone() -> Non
 @pytest.mark.parametrize(("x", "other_half"), [(1, 2), (2, 1)], ids=["over-left-half", "over-right-half"])
 def test_writing_over_half_a_wide_cluster_erases_the_other_half_in_its_style(x: int, other_half: int) -> None:
     paint = Paint.blank(4, 1)
-    paint.write_row(1, 0, (WIDE, CONTINUATION))
+    paint.write_row(1, 0, (WIDE, CONTINUATION), paint.bounds)
     paint[x, 0] = X
     assert paint[x, 0] is X
     assert paint[other_half, 0] == Cell(" ", BLUE)
@@ -151,8 +156,8 @@ def test_writing_over_half_a_wide_cluster_erases_the_other_half_in_its_style(x: 
 def test_fill_over_half_of_wide_clusters_erases_their_other_halves() -> None:
     paint = Paint.blank(6, 2)
     for y in range(2):
-        paint.write_row(0, y, (WIDE, CONTINUATION, WIDE, CONTINUATION, WIDE, CONTINUATION))
-    paint.fill(Region(left=1, top=0, right=3, bottom=1), X)
+        paint.write_row(0, y, (WIDE, CONTINUATION, WIDE, CONTINUATION, WIDE, CONTINUATION), paint.bounds)
+    paint.fill(Region(left=1, top=0, right=3, bottom=1), X, paint.bounds)
     assert grid(paint) == [" xx 日·", "日·日·日·"]
 
 
@@ -174,10 +179,10 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
     for kind, x, y, extra in writes:
         if kind == "row":
             assert isinstance(extra, tuple)
-            paint.write_row(x, y, extra)
+            paint.write_row(x, y, extra, paint.bounds)
         elif kind == "fill":
             assert isinstance(extra, int)
-            paint.fill(Region(left=x, top=y, right=x + extra, bottom=y + 1), Y)
+            paint.fill(Region(left=x, top=y, right=x + extra, bottom=y + 1), Y, paint.bounds)
         else:
             paint[x, y] = X
 
@@ -427,14 +432,18 @@ def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
     region = Region(left=2, top=0, right=2, bottom=3)
     padding = Region(left=2, top=1, right=2, bottom=2)
 
-    assert border_fills(BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, padding) == ((), ())
+    assert border_fills(
+        BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, padding, padding.right, padding.bottom
+    ) == ((), ())
 
 
 def test_a_border_kind_without_joined_parts_draws_its_edges_but_gives_no_healing_hints() -> None:
     region = Region(left=0, top=0, right=3, bottom=3)
     padding = Region(left=1, top=1, right=2, bottom=2)
 
-    fills, hints = border_fills(BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, padding)
+    fills, hints = border_fills(
+        BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, padding, padding.right, padding.bottom
+    )
 
     assert (len(fills), hints) == (8, ())
 

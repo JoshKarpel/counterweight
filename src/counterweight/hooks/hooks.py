@@ -200,16 +200,22 @@ def use_hovered() -> Hovered:
     """
     Returns:
         A record describing which of the calling component's top-level element's
-            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside.
+            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside,
+            counting only the parts inside its [`clip`][counterweight.geometry.Rects.clip],
+            so the mouse over a part its ancestors clip away is outside all of them.
     """
     mouse = use_mouse()
     rects = use_rects()
 
+    position = mouse.absolute
+    if rects.clip is None or not rects.clip.contains(position):
+        return Hovered(content=False, padding=False, border=False, margin=False)
+
     return Hovered(
-        content=rects.content.contains(mouse.absolute),
-        padding=rects.padding.contains(mouse.absolute),
-        border=rects.border.contains(mouse.absolute),
-        margin=rects.margin.contains(mouse.absolute),
+        content=rects.content.contains(position),
+        padding=rects.padding.contains(position),
+        border=rects.border.contains(position),
+        margin=rects.margin.contains(position),
     )
 
 

@@ -109,6 +109,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 ### Input
 
+- **`on_click`'s `case _: return None` dropped.** The handler returns `None` without it.
 - **`read_keys`'s read size grown** (`3**10`, `2**11`): a burst longer than 1024 bytes is all a test could
   use to tell, and how a burst splits across reads isn't a contract. Shrinking it (`2 * 10`) is killed.
 
@@ -142,13 +143,19 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 ### Paint and output
 
-- **`Paint.write_row`'s `x <= 0` and `x < 1`.** At `x == 0`, `skip` is 0 either way.
+- **`Paint.write_row`'s `x <= low`.** At `x == low`, `skip` is 0 either way.
 - **`justify_line`'s `space < 0`.** Padding by zero spaces returns the same line.
 - **`svg`'s `"0.2F"` format, its dropped empty `style` attributes, and `0 / x_mul`**: they render identically.
 - **`paint_to_instructions`'s initial `style = ""`.** It differs from every cell's style, as `None` does.
 - **`CellStyle` and `ResolvedCellStyle`'s `hash(None)`.** Every instance hashing alike only slows caches;
   equality still decides.
 - **`JoinedBorderParts.select`'s `case _: return None` dropped.** The function returns `None` without it.
+
+### Styles
+
+- **`Style._resolve`'s fallbacks that equal the defaults.** `or_default(self.z, None)`, since `STYLE_DEFAULTS.z`
+  is `None`, and `resolve_cell_style` without its second argument for `border_style` and `text_style`,
+  whose default is `CELL_STYLE_DEFAULTS`, which both of `STYLE_DEFAULTS`' cell styles are.
 
 ### Utilities
 

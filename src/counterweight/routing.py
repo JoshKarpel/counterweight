@@ -133,11 +133,11 @@ class RoutingTable:
 
     def target_at(self, position: Position) -> NodeKey:
         """
-        The topmost visible element whose border box contains `position`, the last such in paint order,
-        or the root component's node if that's only the screen.
+        The topmost element painted at `position`, the last in paint order whose border box contains it
+        inside its clip, or the root component's node if that's only the screen.
         """
         for key, _, layout in reversed(self.layouts.in_paint_order):
-            if layout.border.contains(position):
+            if (visible := layout.visible) is not None and visible.contains(position):
                 return self.root if key == self.screen else key
         return self.root
 

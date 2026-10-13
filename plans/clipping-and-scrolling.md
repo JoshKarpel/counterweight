@@ -143,17 +143,21 @@ which matters more under scrolling, since every scrolled element moves.
 
 ### Border healing across a clip edge
 
-Each healing hint carries the clip of the element that made it.
-A hint whose cell is outside that clip is dropped:
+A healing hint whose cell is outside the clip of the element that made it is dropped:
 `heal_borders` only checks that the cell under a hint is a border character,
 so a hint whose own cell was clipped would rewrite whatever border lies beneath it.
-`paint_layout` drops it before merging the element's hints into the rest,
+Without that rule, a list item's corner scrolled under the container's top border
+would turn the container's `─` into a `┬` that flickers as the list scrolls.
+`paint_element` drops it before `paint_layout` merges the element's hints into the rest,
 since hints are keyed by position and a later element's clipped hint would otherwise replace
 an earlier element's live hint at the same cell.
-A hinted cell joins only neighbors inside its clip,
-so a child's border clipped flush against its container never joins the container's border.
-Without that rule, a list item's border scrolled under the container's top border
-would sprout a `┬` that flickers as the list scrolls.
+
+A hinted cell that survives joins any neighbor, inside its clip or not.
+Restricting it to neighbors inside its clip would break the documented border-collapse grid
+(`docs/examples/border_healing.py`): its rows and columns are `fill(1)` items, which clip,
+so a box's corner at the left edge of its column couldn't join the box beside it in the next column.
+A child's border flush against its container's padding box doesn't need the restriction either:
+the container's edge cells beside it, `─` and `│`, don't point toward the child's corner, so they never join it.
 
 This doesn't decide #74, whether healing should also require matching styles and `z`.
 It's a separate rule about clips, and it leaves an unclipped popup free to join borders beneath it,
@@ -457,7 +461,7 @@ Each phase is its own PR, and each leaves the app working.
    Subtract the scrollbar gutter in `_resolve_layout`.
    Compute each node's clip in the placement walk, with an offset of zero, and add `Rects.visible`.
    Clip `Paint.fill` and `Paint.write_row`, and pass each node's clip from `paint_layout`.
-   Carry clips in healing hints and apply the clip rule.
+   Drop healing hints outside their element's clip.
    Clip hit testing in `target_at`, `use_hovered` and `on_click`.
    Add `clip_to` with `"padding"` and `"border"`, and their utilities,
    and set `clip_to="border"` on the border titles in the examples and docs.
@@ -498,7 +502,8 @@ Each phase is its own PR, and each leaves the app working.
 - A `z(1)` descendant of a clipping container is still clipped.
 - A two-cell-wide cluster straddling a clip edge leaves a space on the visible side.
 - A border clipped by an ancestor leaves no healing hint behind,
-  and a border flush against its container's padding box doesn't join the container's border.
+  a border flush against its container's padding box doesn't join the container's border,
+  and collapsed borders of clipping items still join across their edges.
 - The mouse over a clipped-off part of an element targets the element painted there,
   `use_hovered` reports it outside, and a press released there doesn't click the element.
 - A clipped healing hint doesn't displace another element's live hint at the same cell.

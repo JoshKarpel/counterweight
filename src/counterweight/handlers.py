@@ -61,7 +61,8 @@ def each(*handlers: InputHandler) -> InputHandler:
 def on_click(action: Callable[[], InputResponse]) -> InputHandler:
     """
     A handler that claims a button `1` `MouseDown`, and so every later event of the press,
-    and on the press's `MouseUp`, calls `action` if the release is inside the element's border box.
+    and on the press's `MouseUp`, calls `action` if the release is over the element:
+    inside its border box, and inside its clip, where it's painted.
     It returns the controls `action` returns, or `()` if `action` returns `None`.
     It returns `None` for anything else, such as a key or a pointer move with no button held.
     """
@@ -71,7 +72,7 @@ def on_click(action: Callable[[], InputResponse]) -> InputHandler:
             case MouseDown(button=1) | MouseMoved(button=1):
                 return ()
             case MouseUp(absolute=position, button=1):
-                if not receiver.rects.border.contains(position):
+                if (visible := receiver.rects.visible) is None or not visible.contains(position):
                     return ()
                 response = action()
                 return () if response is None else response

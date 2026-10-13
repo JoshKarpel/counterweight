@@ -13,6 +13,8 @@ from counterweight.geometry import Position, Rects, Region
 from counterweight.hooks.impls import NodeKey
 from counterweight.styles.utilities import border, inset_left, inset_top, margin, pad, position_absolute, size
 
+SCREEN = Region(left=0, top=0, right=20, bottom=20)
+
 
 async def test_on_input_receives_keys() -> None:
     recorder: list[InputEvent] = []
@@ -82,7 +84,7 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
     await app(
         root(),
         headless=True,
-        dimensions=(20, 20),
+        dimensions=(SCREEN.width, SCREEN.height),
         autopilot=(
             MouseScrolledDown(absolute=Position(9, 7)),
             Quit(),
@@ -96,6 +98,10 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
             padding=Region(left=6, top=4, right=13, bottom=11),
             border=Region(left=5, top=3, right=14, bottom=12),
             margin=Region(left=4, top=2, right=15, bottom=13),
+            gutter_right=Region(left=13, top=4, right=13, bottom=11),
+            gutter_bottom=Region(left=6, top=11, right=13, bottom=11),
+            clip=SCREEN,
+            visible=Region(left=5, top=3, right=14, bottom=12),
         )
     ]
 
@@ -107,6 +113,10 @@ def test_receiver_relative_is_relative_to_the_content_box_top_left() -> None:
             padding=Region(left=6, top=4, right=13, bottom=11),
             border=Region(left=5, top=3, right=14, bottom=12),
             margin=Region(left=4, top=2, right=15, bottom=13),
+            gutter_right=Region(left=13, top=4, right=13, bottom=11),
+            gutter_bottom=Region(left=6, top=11, right=13, bottom=11),
+            clip=SCREEN,
+            visible=Region(left=5, top=3, right=14, bottom=12),
         ),
         is_target=True,
         focus_handle=None,

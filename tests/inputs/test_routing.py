@@ -204,9 +204,23 @@ async def test_the_parent_receives_the_same_event_with_its_own_receiver() -> Non
     child = Region(left=2, top=1, right=7, bottom=4)
     parent = Region(left=0, top=0, right=20, bottom=10)
     assert receivers == [
-        ("child", event, Rects(content=child, padding=child, border=child, margin=child), True),
-        ("parent", event, Rects(content=parent, padding=parent, border=parent, margin=parent), False),
+        ("child", event, unclipped(child, screen=parent), True),
+        ("parent", event, unclipped(parent, screen=parent), False),
     ]
+
+
+def unclipped(box: Region, screen: Region) -> Rects:
+    """The rects of an element with no margin, border or padding, whose ancestors clip nothing."""
+    return Rects(
+        content=box,
+        padding=box,
+        border=box,
+        margin=box,
+        gutter_right=Region(left=box.right, top=box.top, right=box.right, bottom=box.bottom),
+        gutter_bottom=Region(left=box.left, top=box.bottom, right=box.right, bottom=box.bottom),
+        clip=screen,
+        visible=box,
+    )
 
 
 async def test_an_empty_tuple_from_the_child_keeps_the_event_from_its_parent() -> None:

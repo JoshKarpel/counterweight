@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind, TextJustify, TextWrap
+from counterweight.styles.styles import BorderKind, ClipTo, TextJustify, TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -507,6 +507,33 @@ MARGIN_AUTO_TARGETS = {
 for target_suffix, sides in MARGIN_AUTO_TARGETS.items():
     margins = ", ".join(f"margin_{side}=waxy.Auto()" for side in sides)
     generated_lines.append(f"margin{target_suffix}_auto = Style(layout=waxy.Style({margins}))")
+
+generated_lines.append("")
+
+# --- Overflow utilities ---
+
+# TODO: Scroll, once scroll containers hold offsets (phase 3 of plans/clipping-and-scrolling.md).
+OVERFLOW_MAP = {
+    "Visible": "visible",
+    "Hidden": "hidden",
+    "Clip": "clip",
+}
+OVERFLOW_AXES = {
+    "": ["x", "y"],
+    "_x": ["x"],
+    "_y": ["y"],
+}
+for name, alias in OVERFLOW_MAP.items():
+    for axis_suffix, axes in OVERFLOW_AXES.items():
+        overflows = ", ".join(f"overflow_{axis}=waxy.Overflow.{name}" for axis in axes)
+        generated_lines.append(f"overflow{axis_suffix}_{alias} = Style(layout=waxy.Style({overflows}))")
+
+generated_lines.append("")
+
+# --- Clip utilities ---
+
+for c in get_args(ClipTo):
+    generated_lines.append(f'clip_to_{c} = Style(clip_to="{c}")')
 
 generated_lines.append("")
 

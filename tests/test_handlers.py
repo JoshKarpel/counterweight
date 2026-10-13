@@ -30,7 +30,16 @@ from counterweight.keys import Key
 
 BORDER = Region(left=2, top=1, right=7, bottom=4)
 RECEIVER = Receiver(
-    rects=Rects(content=BORDER, padding=BORDER, border=BORDER, margin=BORDER),
+    rects=Rects(
+        content=BORDER,
+        padding=BORDER,
+        border=BORDER,
+        margin=BORDER,
+        gutter_right=Region(left=7, top=1, right=7, bottom=4),
+        gutter_bottom=Region(left=2, top=4, right=7, bottom=4),
+        clip=Region(left=0, top=0, right=20, bottom=10),
+        visible=BORDER,
+    ),
     is_target=True,
     focus_handle=None,
     is_focused=False,
@@ -122,6 +131,22 @@ def test_on_click_does_not_call_its_action_for_a_release_outside_the_element() -
     clicks: list[str] = []
 
     response = on_click(lambda: clicks.append("click"))(MouseUp(absolute=OUTSIDE, button=1), RECEIVER)
+
+    assert (response, clicks) == ((), [])
+
+
+@pytest.mark.parametrize(
+    "visible",
+    [Region(left=2, top=1, right=3, bottom=4), None],
+    ids=["clipped-at-the-release", "clipped-away-entirely"],
+)
+def test_on_click_does_not_call_its_action_for_a_release_inside_the_border_box_where_it_is_clipped_away(
+    visible: Region | None,
+) -> None:
+    clicks: list[str] = []
+    clipped = replace(RECEIVER, rects=replace(RECEIVER.rects, clip=visible, visible=visible))
+
+    response = on_click(lambda: clicks.append("click"))(MouseUp(absolute=INSIDE, button=1), clipped)
 
     assert (response, clicks) == ((), [])
 
