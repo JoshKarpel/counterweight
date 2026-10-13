@@ -7,8 +7,8 @@ so each run renders exactly `frames` frames after the first, and two runs of the
 do the same work frame for frame, whatever the machine's speed.
 
 A frame's time is the interval between two consecutive key presses, as seen by a key handler on the
-root element. The autopilot presses one key per loop iteration, and the render loop passes every key to every element's
-input handler whether or not its component re-ran, so the interval covers one whole iteration:
+root element. The autopilot presses one key per loop iteration, and every key that no focused component stops
+bubbles to the root element's handler, whether or not its component re-ran, so the interval covers one whole iteration:
 the shadow tree, layout, paint, output, effects and events. `frames` key presses time `frames - 1` frames.
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """

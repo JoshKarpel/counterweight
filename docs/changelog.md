@@ -57,6 +57,9 @@
 - Documented what [`use_ref`](hooks/use_ref.md) is for,
   and why a component shouldn't read or write a ref while rendering.
 
+- Documented how to make a component draggable and keep it inside its parent,
+  in [Draggable Components](cookbook/draggable-components.md).
+
 - Documented every style utility on the [utilities page](styles/utilities.md),
   grouped by family: what each constant sets, each function's signature,
   and the color palette.
@@ -134,9 +137,10 @@
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   **Breaking:** a mouse event goes to one target, the element drawn on top at the pointer,
   then bubbles through its ancestors until a handler returns something other than `None`.
-  A press is captured by the element whose handler stops its `MouseDown`:
-  its moves and release go to that element alone, wherever the pointer is,
-  and reach no handler if nothing stopped the `MouseDown`.
+  A press runs from the first button going down to the last coming up,
+  and is captured by the element whose handler stops its first `MouseDown`:
+  its moves, and every button's presses and releases while it lasts, go to that element alone,
+  wherever the pointer is, and reach no handler if nothing stopped the first `MouseDown`.
   Previously every element under the pointer's current or previous position received every mouse event,
   so a drag that outran a render lost its element.
   A handler that acts on a release or a drag returns `()` for the `MouseDown`,

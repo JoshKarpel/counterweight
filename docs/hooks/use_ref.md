@@ -44,6 +44,10 @@ Rendering reads `line`, never `typed`.
 Refs fit:
 
 - **Values a handler builds up** before it sets state, as `typed` does above.
+- **Values a later event needs before the next render**, such as where a
+  [drag](../cookbook/draggable-components.md) began:
+  a handler sees the state of the render that built it,
+  so an event handled in the same batch as the one that set the state doesn't see the new value.
 - **Handles to things outside the tree**, such as a task or a client,
   that a handler or an effect uses.
 - **Something expensive to build once**, with a function as the initial value:

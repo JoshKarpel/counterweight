@@ -139,6 +139,7 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+    - cookbook/draggable-components.md
   - performance.md
   - utilities.md
   - Under the Hood:

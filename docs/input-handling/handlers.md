@@ -26,7 +26,7 @@ so the order states their precedence.
 In `first(on_click(open_menu), drag_panel)`, `drag_panel` never sees a button `1` press, which `on_click` handles.
 `each` runs every handler and combines their controls,
 which is how two handlers that both act on a `MouseDown` share one element:
-only the element that stops a press's `MouseDown` [receives the rest of it](events.md#presses),
+only the element that stops a press's first `MouseDown` [receives the rest of it](events.md#presses),
 so they can't sit on an element and its parent.
 
 ::: counterweight.handlers.first

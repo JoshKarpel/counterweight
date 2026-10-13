@@ -43,6 +43,17 @@ class Claim:
 
 
 @dataclass(frozen=True, slots=True)
+class Press:
+    """
+    A press in progress: the buttons held since the first of them went down,
+    and the node that claimed its first `MouseDown`, or `None` if nothing did.
+    """
+
+    buttons: frozenset[int]
+    captor: NodeKey | None
+
+
+@dataclass(frozen=True, slots=True)
 class Focusable:
     """What a visible node's last `use_focus` call said about it."""
 
@@ -227,34 +238,48 @@ def route_key(event: KeyPressed, focused: NodeKey | None, table: RoutingTable) -
 
 
 def route_mouse(
-    event: MouseEvent, captor: NodeKey | None, focused: NodeKey | None, table: RoutingTable
-) -> tuple[NodeKey | None, tuple[AnyControl, ...]]:
+    event: MouseEvent, press: Press | None, focused: NodeKey | None, table: RoutingTable
+) -> tuple[Press | None, tuple[AnyControl, ...]]:
     """
-    Routes `event` given the node that captured the press in progress, if any,
-    and returns the captor for the next event with the controls the handlers returned.
+    Routes `event` given the press in progress, if any,
+    and returns the press for the next event with the controls the handlers returned.
 
-    A `MouseDown` hit-tests and bubbles, and the node that claims it captures the press:
-    the press's later events, each `MouseMoved` with a button held and the `MouseUp`,
+    A press runs from the first button going down to the last one coming up, as in the web's Pointer Events.
+    Its first `MouseDown` hit-tests and bubbles, and the node that claims it captures the press:
+    the press's later events, each `MouseMoved` with a button held and each button's `MouseDown` and `MouseUp`,
     go to that node alone, wherever the pointer is, and stop there whatever it responds.
     The rest of a press nothing claimed, or whose captor has unmounted, reaches no handler,
+    and neither does a `MouseUp` for a button the press doesn't hold,
     so an element never receives the end of a press it didn't see begin.
-    A `MouseMoved` with no button held ends a press whose release the terminal never reported.
+    A `MouseMoved` with no button held ends a press whose release the terminal never reported,
+    and so does a `MouseDown` for a button the press already holds, which starts a new press.
     Wheel events aren't part of a press, and always hit-test.
     """
     match event:
         case MouseScrolledDown() | MouseScrolledUp():
-            return captor, claimed_controls(table.bubble(event, table.target_at(event.absolute), focused))
-        case MouseDown():
+            return press, claimed_controls(table.bubble(event, table.target_at(event.absolute), focused))
+        case MouseDown(button=button) if press is not None and button not in press.buttons:
+            return Press(buttons=press.buttons | {button}, captor=press.captor), captured(event, press, focused, table)
+        case MouseDown(button=button):
             claim = table.bubble(event, table.target_at(event.absolute), focused)
-            return (None if claim is None else claim.key), claimed_controls(claim)
+            captor = None if claim is None else claim.key
+            return Press(buttons=frozenset({button}), captor=captor), claimed_controls(claim)
         case MouseMoved(button=None):
             return None, claimed_controls(table.bubble(event, table.target_at(event.absolute), focused))
         case MouseMoved():
-            return captor, () if captor is None else table.deliver(event, captor, focused)
-        case MouseUp():
-            return None, () if captor is None else table.deliver(event, captor, focused)
+            return press, () if press is None else captured(event, press, focused, table)
+        case MouseUp(button=button):
+            if press is None or button not in press.buttons:
+                return press, ()
+            held = press.buttons - {button}
+            return (Press(buttons=held, captor=press.captor) if held else None), captured(event, press, focused, table)
         case _ as unreachable:
             assert_never(unreachable)
+
+
+def captured(event: MouseEvent, press: Press, focused: NodeKey | None, table: RoutingTable) -> tuple[AnyControl, ...]:
+    """Delivers a later event of `press` to its captor, or to no handler if nothing claimed the press."""
+    return () if press.captor is None else table.deliver(event, press.captor, focused)
 
 
 def claimed_controls(claim: Claim | None) -> tuple[AnyControl, ...]:

@@ -61,7 +61,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.routing import RoutingTable, UnsettledFocus, route_key, route_mouse
+from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -287,7 +287,7 @@ async def render_loop(
                     assert_never(unreachable)
 
         mouse_position = Position(x=-1, y=-1)
-        captor: NodeKey | None = None
+        press: Press | None = None
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -463,7 +463,7 @@ async def render_loop(
                             for control in route_key(event, focused, routing):
                                 handle_control(control)
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            captor, controls = route_mouse(m, captor, focused, routing)
+                            press, controls = route_mouse(m, press, focused, routing)
                             for control in controls:
                                 handle_control(control)
 

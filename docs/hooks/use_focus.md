@@ -200,8 +200,10 @@ When a render moves focus itself, to an `auto_focus` component that mounted,
 or away from a focused component that unmounted, hid, or became unfocusable,
 the components that gained and lost focus re-render before the frame is drawn,
 so an `auto_focus` component is focused in the first frame that shows it.
-A component that hides itself because it gained focus would move focus again,
+An `auto_focus` component that hides itself because it gained focus would move focus again,
 so it raises `UnsettledFocus` instead.
+One that a control focuses and that hides itself because it gained focus loses focus in the same render,
+like any focused component that hides, and is drawn unfocused.
 
 ## API
 

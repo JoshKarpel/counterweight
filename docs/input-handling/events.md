@@ -119,17 +119,22 @@ targets the root's element, though its rectangles don't contain the pointer.
 
 #### Presses
 
-A **press** runs from a `MouseDown` to its `MouseUp`.
-The `MouseDown` is routed like any mouse event,
+A **press** runs from the first mouse button going down to the last one coming up,
+as in the web's [Pointer Events](https://www.w3.org/TR/pointerevents/).
+Its first `MouseDown` is routed like any mouse event,
 and the element whose handler stops it **captures** the press:
-the press's later events, each `MouseMoved` with a button held and the `MouseUp`,
+the press's later events, each `MouseMoved` with a button held
+and each `MouseDown` and `MouseUp` of the buttons pressed and released while it lasts,
 go to that element alone, as their target, wherever the pointer is,
 and stop there whatever its handler returns.
+A second button pressed during a press joins it rather than starting a new one,
+so a handler that acts on one button matches on `button`, as [`on_click`](handlers.md) does for button `1`.
 So a drag keeps reaching the element it started on however fast the pointer moves,
 and a release outside the element still reaches it,
 which a handler can tell from its receiver's rectangles.
 
 The rest of a press that nothing stopped, or whose element has since unmounted, reaches no handler,
+and neither does a `MouseUp` for a button the press doesn't hold,
 so an element never receives the end of a press it didn't see begin:
 a release over a button after a press somewhere else doesn't click it.
 A handler that wants a press's moves stops its `MouseDown`, even with nothing to do for it:
@@ -147,7 +152,8 @@ def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
 ```
 
 A `MouseMoved` with no button held ends a press whose release the terminal never reported,
-such as when focus moves to another window mid-drag, and so does another `MouseDown`.
+such as when focus moves to another window mid-drag,
+and so does a `MouseDown` for a button the press already holds.
 Both are routed by the pointer's position, and the `MouseDown` starts a new press.
 Scroll wheel events aren't part of a press,
 so they always target the element under the pointer, even mid-drag.

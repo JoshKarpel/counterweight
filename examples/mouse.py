@@ -9,7 +9,7 @@ from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import InputEvent, InputResponse, MouseDown, MouseMoved, MouseUp, Receiver
 from counterweight.geometry import Position
-from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
+from counterweight.hooks import Ref, use_hovered, use_mouse, use_rects, use_ref, use_state
 from counterweight.styles.utilities import *
 
 logger = logging.getLogger(__name__)
@@ -162,17 +162,17 @@ def drag_text_box() -> Div:
 @component
 def draggable_text(content: str, init_x: int, init_y: int) -> Text:
     offset, set_offset = use_state(Position(init_x, init_y))
-    grab, set_grab = use_state(Position(0, 0))
+    # See docs/cookbook/draggable-components.md for why this is a ref, and why each move sets an absolute offset.
+    grab: Ref[tuple[Position, Position] | None] = use_ref(None)
 
-    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case MouseDown(absolute=a, button=1):
-                set_grab(receiver.relative(a))
+                grab.current = (a, offset)
                 return ()
-            case MouseMoved(absolute=a, button=1):
-                # Not a functional update: every move in a batch sees this render's offset and rects,
-                # so each sets the same absolute target rather than adding its delta again.
-                set_offset(offset + (a - grab - receiver.rects.content.top_left))
+            case MouseMoved(absolute=a, button=1) if grab.current is not None:
+                pointer, start = grab.current
+                set_offset(start + (a - pointer))
                 return ()
             case _:
                 return None

@@ -188,6 +188,8 @@ def use_hovered() -> Hovered:
 
 @dataclass(frozen=True, slots=True)
 class Focus:
+    """What [`use_focus`][counterweight.hooks.use_focus] returns to the calling component."""
+
     is_focused: bool
     """Whether the calling component is focused, so it receives key presses, as of this render."""
 

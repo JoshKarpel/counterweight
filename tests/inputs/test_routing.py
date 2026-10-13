@@ -18,7 +18,7 @@ from counterweight.events import (
     Receiver,
 )
 from counterweight.geometry import Position, Rects, Region
-from counterweight.handlers import on_click
+from counterweight.handlers import each, on_click
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.styles import Style
@@ -436,15 +436,91 @@ async def test_a_wheel_event_during_a_press_routes_by_position_and_the_capture_c
     assert names(deliveries) == ["captor", "other", "captor", "captor"]
 
 
-async def test_a_mouse_down_during_a_press_routes_by_position_and_captures_the_new_press() -> None:
+async def test_another_buttons_mouse_down_during_a_press_goes_to_the_captor() -> None:
     deliveries: list[Delivery] = []
 
     await run(
         captor_and_other(deliveries),
-        [MouseDown(absolute=Position(1, 1), button=1), MouseDown(absolute=Position(11, 1), button=3), held(2, 2)],
+        [MouseDown(absolute=Position(1, 1), button=1), MouseDown(absolute=Position(11, 1), button=3), held(12, 2)],
+    )
+
+    assert names(deliveries) == ["captor", "captor", "captor"]
+
+
+async def test_a_press_holding_several_buttons_ends_when_the_last_is_released() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        captor_and_other(deliveries),
+        [
+            MouseDown(absolute=Position(1, 1), button=1),
+            MouseDown(absolute=Position(11, 1), button=3),
+            MouseUp(absolute=Position(11, 1), button=1),
+            MouseMoved(absolute=Position(12, 1), button=3),
+            MouseUp(absolute=Position(12, 1), button=3),
+            MouseDown(absolute=Position(12, 1), button=1),
+        ],
+    )
+
+    assert names(deliveries) == ["captor", "captor", "captor", "captor", "captor", "other"]
+
+
+@pytest.mark.parametrize(
+    ("release", "expected_clicks"),
+    [(Position(1, 1), ["first"]), (Position(11, 1), [])],
+    ids=["over the first element", "over the second element"],
+)
+async def test_a_press_that_another_element_claims_a_second_button_of_still_belongs_to_the_first(
+    release: Position, expected_clicks: list[str]
+) -> None:
+    clicks: list[str] = []
+
+    def claim_presses(event: InputEvent, receiver: Receiver) -> InputResponse:
+        return () if isinstance(event, MouseDown) else None
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=size(20, 10),
+            children=[
+                Div(style=box(0, 0, 5, 5), on_input=on_click(lambda: clicks.append("first"))),
+                Div(style=box(10, 0, 5, 5), on_input=each(on_click(lambda: clicks.append("second")), claim_presses)),
+            ],
+        )
+
+    await run(
+        root,
+        [
+            MouseDown(absolute=Position(1, 1), button=1),
+            MouseDown(absolute=Position(11, 1), button=3),
+            MouseUp(absolute=release, button=1),
+            MouseUp(absolute=release, button=3),
+        ],
+    )
+
+    assert clicks == expected_clicks
+
+
+async def test_a_mouse_down_for_a_button_the_press_holds_routes_by_position_and_starts_a_new_press() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        captor_and_other(deliveries),
+        [MouseDown(absolute=Position(1, 1), button=1), MouseDown(absolute=Position(11, 1), button=1), held(2, 2)],
     )
 
     assert names(deliveries) == ["captor", "other", "other"]
+
+
+async def test_a_mouse_up_for_a_button_the_press_doesnt_hold_reaches_no_handler_and_the_press_continues() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        captor_and_other(deliveries),
+        [MouseDown(absolute=Position(1, 1), button=1), MouseUp(absolute=Position(1, 1), button=3), held(12, 2)],
+    )
+
+    assert names(deliveries) == ["captor", "captor"]
 
 
 async def test_a_move_with_no_button_held_during_a_press_routes_by_position_and_ends_the_press() -> None:
