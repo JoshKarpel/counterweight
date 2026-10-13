@@ -139,6 +139,7 @@ nav:
     - styles/text-wrapping.md
     - styles/utilities.md
   - Cookbook:
+    - cookbook/autocomplete.md
     - cookbook/border-titles.md
     - cookbook/border-healing.md
     - cookbook/draggable-components.md

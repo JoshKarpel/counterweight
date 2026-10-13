@@ -3,7 +3,8 @@
 A box's content can be larger than the box.
 Its overflow, as in CSS's [`overflow`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow),
 decides whether what doesn't fit is drawn anyway or cut off.
-This page covers cutting it off, and how a box draws on its parent's border when its parent cuts things off.
+This page covers cutting it off, how a box draws on its parent's border when its parent cuts things off,
+and how a box such as a dropdown escapes the clip altogether.
 
 ## Hiding overflow
 
@@ -44,7 +45,8 @@ so they combine with each other, as `overflow_x_hidden | overflow_y_clip`.
 ## Clipping applies whatever the `z`
 
 A clip cuts off everything inside the box, wherever it's positioned and however high its `z`,
-as on the web: a raised menu inside a box that hides its overflow is cut off at the box's padding box.
+as on the web: a raised menu inside a box that hides its overflow is cut off at the box's padding box,
+unless it [escapes every clip](#escaping-every-clip).
 
 ```python
 --8<-- "layout_clipping.py:raised"
@@ -74,6 +76,32 @@ CSS has no equivalent property: its
 [`overflow-clip-margin`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-clip-margin)
 widens the clip for every child of the box that sets it,
 where `clip_to` is set on the child, so a title can reach the border while the rest of the content stops at the padding box.
+
+## Escaping every clip
+
+A dropdown or an autocomplete list has to reach past the box it opens from,
+even when that box, or one around it, clips.
+`clip_to_screen` makes a box **unclipped**: no ancestor clips it, so only the edge of the screen cuts it off.
+
+```python
+--8<-- "layout_clipping.py:unclipped"
+```
+
+![A raised menu escaping its container](../assets/layout-clipping-unclipped.svg)
+
+Everything else about an unclipped box is as usual.
+It's positioned against its parent, so the menu stays under its menu bar.
+It's drawn in the usual order, so it needs a `z` to draw over what follows it,
+and a box elsewhere with a higher `z` still covers it.
+Its own overflow still clips its children, whose clips start from the screen.
+It receives the mouse wherever it's drawn, including outside its ancestors.
+
+On the web, a dropdown escapes a clip with `position: fixed`,
+which positions it against the viewport,
+so the page then has to work out where its anchor is, in script or with
+[anchor positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_anchor_positioning).
+An unclipped box keeps its parent as the box it's positioned against, so it's anchored already.
+The [autocomplete recipe](../cookbook/autocomplete.md) builds a complete one.
 
 ## Percentage insets and borders
 

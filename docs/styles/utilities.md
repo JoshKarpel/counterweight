@@ -154,7 +154,8 @@ See [Layering](../layout/layering.md).
 ### Overflow and clipping
 
 `overflow_hidden` and `overflow_clip` clip a box's children to its padding box, on both axes or, with `_x` or `_y`, on one.
-`clip_to_border` lets a child, such as a border title, draw on its parent's border instead.
+`clip_to_border` lets a child, such as a border title, draw on its parent's border instead,
+and `clip_to_screen` lets one, such as a dropdown, escape every clip above it.
 See [Clipping](../layout/clipping.md).
 
 <!-- utilities: overflow_* clip_to_* -->

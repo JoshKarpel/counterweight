@@ -987,3 +987,29 @@ Median frame time of three interleaved rounds, with the range across rounds:
   which `_resolve_layout`'s cache compares by value.
 - **`Region`'s cached hash is neutral or better**: `top` and `agent` were faster in most rounds,
   and `dashboard`'s rounds overlap.
+
+### Run 22 — unclipped elements (phase 2 of `plans/clipping-and-scrolling.md`, PR #415)
+
+**Date:** 2026-10-13
+
+**Change:** `clip_to="screen"` resets a node's clip to the screen in `place`.
+A child's clip now depends on its own `clip_to` under any parent whose clip isn't the screen,
+so `place` hands a parent's clip straight to its children only when that clip is the screen and the parent clips nothing,
+and otherwise calls `child_clip` for each child, where run 21 did so only under a parent that clips.
+
+**Method:** the baseline is `HEAD` (`0d75557`) in a separate worktree, run with `PYTHONPATH` pointing at its `src`.
+Three interleaved unprofiled `benchmarks run` rounds of `top`, `dashboard` and `agent` on each side
+(`ab-base2-*`, `ab-screen-*`).
+Each workload's last frame is identical before and after.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | `HEAD` | Unclipped elements |
+|---|---|---|
+| `top` | 11.69 ms (11.33–12.68) | 11.58 ms (11.20–11.95) |
+| `dashboard` | 0.993 ms (0.984–1.018) | 0.977 ms (0.945–1.077) |
+| `agent` | 1.115 ms (1.090–1.145) | 1.134 ms (1.127–1.193) |
+
+- **No change beyond the noise** on any workload: every pair of ranges overlaps.
+  None of the workloads sets `clip_to_screen`, so this measures the walk's extra `child_clip` calls
+  under clipping ancestors, which the constraint utilities make common in `top`.

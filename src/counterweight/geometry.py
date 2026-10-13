@@ -165,6 +165,7 @@ class Rects:
     The region the element's ancestors let it draw in: its parent's clip (the screen, for the root),
     cut down on each axis where the parent's overflow is `Hidden`, `Clip` or `Scroll`
     to the parent's padding box, or its border box when the element's `clip_to` is `"border"`.
+    It's the screen when the element's `clip_to` is `"screen"`, whatever its ancestors clip.
     It's `None` when nothing is left, so the element draws nothing.
     """
     visible: Region | None

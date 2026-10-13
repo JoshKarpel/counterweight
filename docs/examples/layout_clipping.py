@@ -103,6 +103,37 @@ def raised() -> Div:
 
 # --8<-- [end:raised]
 
+# --8<-- [start:unclipped]
+
+
+@component
+def unclipped() -> Div:
+    return Div(
+        style=col,
+        children=[
+            Div(
+                style=col | border | size(30, 5) | overflow_hidden,
+                children=[
+                    Text(content="File  Edit  View"),
+                    Text(
+                        content="Open…\nSave\nSave As…\nQuit",
+                        style=z(1)
+                        | position_absolute
+                        | inset_top(1)
+                        | inset_left(0)
+                        | clip_to_screen
+                        | border
+                        | border_heavy,
+                    ),
+                ],
+            ),
+            Text(content="With clip_to_screen, the menu\nreaches past the box.", style=pad_left(11)),
+        ],
+    )
+
+
+# --8<-- [end:unclipped]
+
 # --8<-- [start:percent-inset]
 
 below_parent = Style(layout=waxy.Style(position=waxy.Position.Absolute, inset_top=waxy.Percent(1.0)))
@@ -126,10 +157,11 @@ SCREENSHOTS = [
     ScreenshotSpec(one_axis(), "layout-clipping-one-axis", (40, 8)),
     ScreenshotSpec(clip_to(), "layout-clipping-clip-to", (60, 3)),
     ScreenshotSpec(raised(), "layout-clipping-raised", (48, 7)),
+    ScreenshotSpec(unclipped(), "layout-clipping-unclipped", (48, 7)),
     ScreenshotSpec(percent_inset(), "layout-clipping-percent-inset", (30, 3)),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (hidden, one_axis, clip_to, raised, percent_inset)}
+    roots = {root.__name__: root for root in (hidden, one_axis, clip_to, raised, unclipped, percent_inset)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else hidden()))

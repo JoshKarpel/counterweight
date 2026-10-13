@@ -12,7 +12,7 @@ from counterweight._utils import flyweight
 
 TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
-ClipTo = Literal["padding", "border"]
+ClipTo = Literal["padding", "border", "screen"]
 
 
 UNSET = sentinel("UNSET")
@@ -672,10 +672,13 @@ class Style(StyleFragment):
     Each side is one cell, so a `Style` whose `layout` sets a border width other than
     `Length(0)` or `Length(1)` raises `ValueError`.
 
-    `clip_to` chooses which of its parent's boxes clips the element where the parent's overflow
-    on an axis is `Hidden`, `Clip` or `Scroll`: its padding box (`"padding"`, the default),
-    or its border box (`"border"`), so a title can be drawn on its parent's border.
-    Every clip above the parent clips the element too.
+    `clip_to` chooses what clips the element.
+    With `"padding"`, the default, or `"border"`, it's its parent's padding or border box,
+    on each axis where the parent's overflow is `Hidden`, `Clip` or `Scroll`,
+    and every clip above the parent clips the element too;
+    `"border"` lets a title be drawn on its parent's border.
+    With `"screen"`, the element is unclipped: no ancestor clips it, so a popup can reach past them,
+    though its own overflow still clips its descendants.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)

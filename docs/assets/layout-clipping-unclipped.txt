@@ -1,0 +1,7 @@
+┌────────────────────────────┐                  
+│File  Edit  View            │                  
+│┏━━━━━━━━┓                  │                  
+│┃Open…   ┃                  │                  
+└┃Save    ┃──────────────────┘                  
+ ┃Save As…┃With clip_to_screen, the menu        
+ ┃Quit    ┃reaches past the box.                

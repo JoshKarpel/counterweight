@@ -291,11 +291,12 @@ def place(
         if not (children := node.children):
             continue
         clips_x, clips_y = clipped_axes(node.element.style)
-        if clip is None or not (clips_x or clips_y):
+        # Every child's clip is the screen, whatever its clip_to, so there's no need to look at each one.
+        if clip == screen and not (clips_x or clips_y):
             stack.extend(zip(reversed(children), repeat(clip)))
         else:
             stack.extend(
-                (child, child_clip(clip, rects, child.element.style.resolved.clip_to, clips_x, clips_y))
+                (child, child_clip(clip, screen, rects, child.element.style.resolved.clip_to, clips_x, clips_y))
                 for child in reversed(children)
             )
     return placed
@@ -308,19 +309,26 @@ def clipped_axes(style: Style) -> tuple[bool, bool]:
     return layout.overflow_x != waxy.Overflow.Visible, layout.overflow_y != waxy.Overflow.Visible
 
 
-def child_clip(clip: Region, parent: Rects, clip_to: ClipTo, clips_x: bool, clips_y: bool) -> Region | None:
+def child_clip(
+    clip: Region | None, screen: Region, parent: Rects, clip_to: ClipTo, clips_x: bool, clips_y: bool
+) -> Region | None:
     """
     The clip of a child with `clip_to` whose `parent` has `clip`:
-    `clip`, cut down to the parent's padding or border box on each axis the parent clips,
+    `screen` for an unclipped child, and otherwise `clip`,
+    cut down to the parent's padding or border box on each axis the parent clips,
     or `None` if nothing is left.
     """
     match clip_to:
+        case "screen":
+            return screen
         case "padding":
             box = parent.padding
         case "border":
             box = parent.border
         case _ as unreachable:
             assert_never(unreachable)
+    if clip is None or not (clips_x or clips_y):
+        return clip
     clipped = Region(
         left=max(clip.left, box.left) if clips_x else clip.left,
         top=max(clip.top, box.top) if clips_y else clip.top,

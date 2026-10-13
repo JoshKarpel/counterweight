@@ -7,12 +7,13 @@
 - [#415](https://github.com/JoshKarpel/counterweight/pull/415)
   Added the overflow utilities `overflow_visible`, `overflow_hidden` and `overflow_clip`,
   with `overflow_x_*` and `overflow_y_*` forms that set one axis,
-  and the `clip_to` style field, with `clip_to_padding` and `clip_to_border`,
-  which lets a child such as a border title draw on its parent's border when its parent clips.
+  and the `clip_to` style field, with `clip_to_padding`, `clip_to_border` and `clip_to_screen`,
+  which lets a child such as a border title draw on its parent's border when its parent clips,
+  or a popup such as a dropdown escape every clip above it.
   `Rects` gains `clip`, the region an element's ancestors let it draw in,
   `visible`, the part of its border box inside that region,
   and `gutter_right` and `gutter_bottom`, the strips a scroll container reserves for its scrollbars.
-  See [Clipping](layout/clipping.md).
+  See [Clipping](layout/clipping.md), and the [autocomplete recipe](cookbook/autocomplete.md).
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.

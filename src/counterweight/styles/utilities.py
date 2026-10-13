@@ -707,6 +707,7 @@ overflow_y_clip = Style(layout=waxy.Style(overflow_y=waxy.Overflow.Clip))
 
 clip_to_padding = Style(clip_to="padding")
 clip_to_border = Style(clip_to="border")
+clip_to_screen = Style(clip_to="screen")
 
 text_justify_left = Style(text_justify="left")
 text_justify_center = Style(text_justify="center")

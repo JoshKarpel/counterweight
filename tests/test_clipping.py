@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import pytest
 import waxy
@@ -23,6 +23,7 @@ from counterweight.styles.utilities import (
     border_y,
     clip_to_border,
     clip_to_padding,
+    clip_to_screen,
     col,
     fill,
     height,
@@ -195,10 +196,81 @@ async def test_the_children_of_a_clipping_element_clipped_away_entirely_are_clip
     assert await rows_of(root, (8, 2)) == ["        ", "        "]
 
 
+SCREEN = Region(left=0, top=0, right=8, bottom=2)
+
+
 def test_a_child_clip_is_none_when_the_parents_box_is_outside_the_clip() -> None:
     parent = rects(Region(left=5, top=0, right=8, bottom=2), clip=Region(left=0, top=0, right=4, bottom=2))
 
-    assert child_clip(Region(left=0, top=0, right=4, bottom=2), parent, "padding", True, True) is None
+    assert child_clip(Region(left=0, top=0, right=4, bottom=2), SCREEN, parent, "padding", True, True) is None
+
+
+@pytest.mark.parametrize("clip", [Region(left=1, top=0, right=3, bottom=1), None], ids=["clipped", "clipped-away"])
+def test_an_unclipped_childs_clip_is_the_screen_whatever_its_parents_clip(clip: Region | None) -> None:
+    parent = rects(Region(left=5, top=0, right=8, bottom=2), clip=Region(left=0, top=0, right=4, bottom=2))
+
+    assert child_clip(clip, SCREEN, parent, "screen", True, True) is SCREEN
+
+
+def popup(*children: AnyElement, style: Style = Style()) -> Div:
+    """A raised, unclipped box, one row below the top of its parent and two cells right of its left edge."""
+    return Div(
+        style=z(1) | position_absolute | inset_top(1) | inset_left(2) | clip_to_screen | style,
+        children=list(children) or [Text(content="popup")],
+    )
+
+
+def nested_clips(child: AnyElement) -> Div:
+    """`child` inside two nested boxes that hide their overflow, one row tall, above two rows of text."""
+    return Div(
+        style=col,
+        children=[
+            Div(
+                style=size(6, 1) | overflow_hidden, children=[Div(style=size(4, 1) | overflow_hidden, children=[child])]
+            ),
+            Text(content="abcdefgh"),
+            Text(content="ijklmnop"),
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "parent",
+    [lambda child: child, lambda child: Div(children=[child])],
+    ids=["in-a-clipping-parent", "in-a-parent-that-does-not-clip"],
+)
+async def test_an_unclipped_element_escapes_every_ancestors_clip(parent: Callable[[AnyElement], AnyElement]) -> None:
+    assert await rows_of(nested_clips(parent(popup())), (8, 3)) == ["        ", "abpopuph", "ijklmnop"]
+
+
+async def test_an_unclipped_element_escapes_an_ancestor_clipped_away_entirely() -> None:
+    hidden_away = Div(style=position_absolute | inset_left(5) | size(2, 1) | overflow_hidden, children=[popup()])
+    root = Div(style=size(4, 1) | overflow_hidden, children=[hidden_away])
+
+    assert await rows_of(root, (12, 2)) == ["            ", "       popup"]
+
+
+async def test_an_unclipped_elements_own_overflow_still_clips_its_descendants() -> None:
+    clipping_popup = popup(Text(content="popup"), style=size(3, 1) | overflow_hidden)
+
+    assert await rows_of(nested_clips(clipping_popup), (8, 3)) == ["        ", "abpopfgh", "ijklmnop"]
+
+
+async def test_an_unclipped_element_is_covered_by_a_later_sibling_of_its_ancestor_with_a_higher_z() -> None:
+    cover = Text(content="COVER", style=z(2) | position_absolute | inset_top(1) | inset_left(3))
+    root = Div(style=col, children=[nested_clips(popup()), cover])
+
+    assert await rows_of(root, (8, 3)) == ["        ", "abpCOVER", "ijklmnop"]
+
+
+async def test_an_unclipped_element_receives_the_mouse_outside_its_ancestors_clips() -> None:
+    presses: list[str] = []
+    target = Div(style=size(5, 1), on_input=clicks_on("popup", presses))
+    root = Div(on_input=clicks_on("root", presses), children=[nested_clips(popup(target))])
+
+    await frame_of(root, (8, 3), events=[MouseDown(absolute=Position(5, 1), button=1)])
+
+    assert presses == ["popup"]
 
 
 async def test_a_border_clipped_by_an_ancestor_leaves_no_healing_hint_behind() -> None:
