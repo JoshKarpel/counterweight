@@ -53,7 +53,7 @@ async def _check_input(mouse: bool, input_stream: TextIO, output_stream: TextIO)
     original = start_input_control(stream=input_stream)
     if mouse:
         start_mouse_tracking(stream=output_stream)
-    start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
+    key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
     try:
         while True:
             output_stream.write("Waiting for input (press ctrl+c to exit)...\n")
@@ -61,7 +61,7 @@ async def _check_input(mouse: bool, input_stream: TextIO, output_stream: TextIO)
             key = await event_queue.get()
             output_stream.write(f"{key!r}\n")
     finally:
-        stop_reading_keys(stream=input_stream)
+        stop_reading_keys(key_reader)
         stop_input_control(stream=input_stream, original=original)
         if mouse:
             stop_mouse_tracking(stream=output_stream)
