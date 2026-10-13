@@ -24,7 +24,7 @@ from counterweight.styles.utilities import (
 async def render_box(style: Style) -> str:
     @component
     def root() -> Div:
-        return Div(style=style, children=[Text(content="ab")])
+        return Div(style=style, children=(Text(content="ab"),))
 
     capture = io.StringIO()
     await app(

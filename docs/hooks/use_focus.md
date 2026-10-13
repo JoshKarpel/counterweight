@@ -53,7 +53,7 @@ the size and the wrapping paper cycle with Left and Right,
 the quantity steps with Up and Down, and gift wrap toggles with Space.
 
 ```python
---8<-- "focus_form.py:example"
+--8 < --"focus_form.py:example"
 ```
 
 The first field takes focus at startup, with `auto_focus=True`:
@@ -137,10 +137,10 @@ and passes it down:
 def labelled_input(label: str) -> Div:
     input_handle, _ = use_state(FocusHandle)
     return Div(
-        children=[
+        children=(
             Text(content=label, on_input=focus_on_press(input_handle)),
             text_input(focus_handle=input_handle),
-        ],
+        ),
     )
 ```
 

@@ -14,13 +14,13 @@ def half_block(top: Color, bottom: Color) -> Chunk:
 
 
 def test_canvas_draws_each_pair_of_pixel_rows_as_one_row_of_half_blocks() -> None:
-    assert canvas(2, 4, {(0, 0): RED, (1, 3): BLUE}, default=GREEN) == [
+    assert canvas(2, 4, {(0, 0): RED, (1, 3): BLUE}, default=GREEN) == (
         half_block(RED, GREEN),
         half_block(GREEN, GREEN),
         NEWLINE,
         half_block(GREEN, GREEN),
         half_block(GREEN, BLUE),
-    ]
+    )
 
 
 @pytest.mark.parametrize("height", [3, 5])

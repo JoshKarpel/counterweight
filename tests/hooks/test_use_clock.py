@@ -33,12 +33,12 @@ def clock_text(interval: timedelta) -> Text:
     )
 
 
-SECONDS = Div(children=[clock_text(timedelta(seconds=1)).with_key("seconds")])
+SECONDS = Div(children=(clock_text(timedelta(seconds=1)).with_key("seconds"),))
 SECONDS_AND_MINUTES = Div(
-    children=[
+    children=(
         clock_text(timedelta(seconds=1)).with_key("seconds"),
         clock_text(timedelta(minutes=1)).with_key("minutes"),
-    ]
+    )
 )
 
 
@@ -91,7 +91,7 @@ def clock_with_counter() -> Div:
     tick = use_clock(timedelta(minutes=1))
     return Div(
         on_input=lambda event, receiver: set_count(count + 1),
-        children=[Text(content=f"{count} {tick.now:%H:%M:%S}")],
+        children=(Text(content=f"{count} {tick.now:%H:%M:%S}"),),
     )
 
 
@@ -151,21 +151,21 @@ def test_a_wall_clock_set_back_takes_a_new_reading() -> None:
 @pytest.mark.parametrize("interval", [timedelta(), timedelta(seconds=-1)], ids=["zero", "negative"])
 def test_a_non_positive_interval_raises(interval: timedelta) -> None:
     with pytest.raises(ValueError, match="positive interval"):
-        render(Div(children=[clock_text(interval)]), None, MOUNTED)
+        render(Div(children=(clock_text(interval),)), None, MOUNTED)
 
 
 def test_nothing_is_due_in_a_tree_that_doesnt_read_the_clock() -> None:
-    update = render(Div(children=[Text(content="static")]), None, MOUNTED)
+    update = render(Div(children=(Text(content="static"),)), None, MOUNTED)
 
     assert until_due(update.tree, MOUNTED) is None
 
 
 def test_the_tree_is_due_when_its_soonest_clock_ticks() -> None:
     root = Div(
-        children=[
+        children=(
             clock_text(timedelta(minutes=1)).with_key("minutes"),
             clock_text(timedelta(seconds=10)).with_key("ten-seconds"),
-        ]
+        )
     )
     update = render(root, None, MOUNTED)
 
@@ -173,7 +173,7 @@ def test_the_tree_is_due_when_its_soonest_clock_ticks() -> None:
 
 
 def test_a_tree_with_a_due_clock_is_due_now() -> None:
-    update = render(Div(children=[clock_text(timedelta(seconds=10))]), None, MOUNTED)
+    update = render(Div(children=(clock_text(timedelta(seconds=10)),)), None, MOUNTED)
 
     assert until_due(update.tree, MOUNTED + timedelta(seconds=4)) == timedelta()
 
@@ -181,7 +181,7 @@ def test_a_tree_with_a_due_clock_is_due_now() -> None:
 def test_an_unmounted_clock_is_never_due() -> None:
     first = render(SECONDS, None, MOUNTED)
 
-    update = render(Div(children=[Text(content="gone")]), first, MOUNTED)
+    update = render(Div(children=(Text(content="gone"),)), first, MOUNTED)
 
     assert until_due(update.tree, MOUNTED + timedelta(seconds=1)) is None
 

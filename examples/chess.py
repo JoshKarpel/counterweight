@@ -49,7 +49,7 @@ def root() -> Div:
 
     return Div(
         style=row | align_self_stretch | align_children_center,
-        children=[board()],
+        children=(board(),),
         on_input=on_input,
     )
 
@@ -119,13 +119,13 @@ def board() -> Div:
 
     return Div(
         style=col | center_children,
-        children=[
+        children=tuple(
             Div(
                 style=row | center_children,
-                children=r,
+                children=tuple(r),
             )
             for r in rows
-        ],
+        ),
     )
 
 

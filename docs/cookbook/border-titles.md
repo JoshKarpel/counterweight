@@ -12,7 +12,7 @@ clips its children to its padding box, which would erase a title on its border.
 (see [Drawing on the parent's border](../layout/clipping.md#drawing-on-the-parents-border)).
 
 ```python
---8<-- "border_titles.py:example"
+--8 < --"border_titles.py:example"
 ```
 
 ![Border Titles](../assets/border-titles.svg)

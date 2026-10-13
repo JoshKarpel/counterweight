@@ -14,16 +14,16 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def shell_flex() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | fill(1),
-                children=[
+                children=(
                     Text(style=length(20) | border, content="sidebar:\nlength(20)"),
                     Text(style=fill(1) | border, content="main:\nfill(1)"),
-                ],
+                ),
             ),
             Text(style=length(1) | text_bg("slate", 700), content=" status: length(1)"),
-        ],
+        ),
     )
 
 
@@ -36,11 +36,11 @@ def shell_flex() -> Div:
 def shell_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1),
-        children=[
+        children=(
             Text(style=border, content="sidebar:\n20"),
             Text(style=border, content="main:\nfr(1)"),
             Text(style=grid_column(1, span(2)) | text_bg("slate", 700), content=" status: 1"),
-        ],
+        ),
     )
 
 
@@ -53,20 +53,20 @@ def shell_grid() -> Div:
 def mixed() -> Div:
     return Div(
         style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), 1),
-        children=[
+        children=(
             Div(
                 style=col | border,
-                children=[Text(content="inbox"), Text(content="drafts"), Text(content="sent")],
+                children=(Text(content="inbox"), Text(content="drafts"), Text(content="sent")),
             ),
             Text(style=border, content="main: fr(1)"),
             Div(
                 style=row | justify_children_space_between | grid_column(1, span(2)),
-                children=[
+                children=(
                     Text(style=text_bg("slate", 700), content=" status: row"),
                     Text(style=text_bg("slate", 700), content="justify_children_space_between "),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -79,11 +79,11 @@ def mixed() -> Div:
 def extra_child_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(fr(1), fr(1)),
-        children=[
+        children=(
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
             Text(style=border, content="a third child"),
-        ],
+        ),
     )
 
 
@@ -96,11 +96,11 @@ def extra_child_grid() -> Div:
 def extra_child_flex() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
-        ],
+        ),
     )
 
 
@@ -113,22 +113,22 @@ def extra_child_flex() -> Div:
 def conflict() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | width(42) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=length(30) | border, content="length(30)"),
                     Text(style=length(30) | border, content="length(30)"),
-                ],
+                ),
             ),
             Div(
                 style=row | width(42) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=length(30) | shrink(1) | border, content="length(30)\n| shrink(1)"),
                     Text(style=length(30) | shrink(1) | border, content="length(30)\n| shrink(1)"),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 

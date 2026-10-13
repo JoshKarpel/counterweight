@@ -49,24 +49,24 @@ def root() -> Div:
 
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
-        children=[
+        children=(
             Div(
                 style=border | border_heavy,
-                children=[
+                children=(
                     Text(
                         content=f"Border Edge Selection Demo\n{border_kind}\n{', '.join(sorted(active_sides))}",
                         style=border_sides(active_sides)
                         | Style(border_kind=border_kind)
                         | text_justify_center
                         | text_bg("amber", 800),
-                    )
-                ],
+                    ),
+                ),
             ),
             Text(
                 content="k/K  cycle border kind\ne/E  cycle active edges",
                 style=border_color("slate", 400) | text_color("slate", 200) | border | border_lightrounded | pad_x(2),
             ),
-        ],
+        ),
         on_input=on_input,
     )
 

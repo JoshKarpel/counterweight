@@ -68,13 +68,13 @@ async def rows_of(root: AnyElement, dimensions: tuple[int, int]) -> list[str]:
 def tall_box(overflow: Style) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=col | border | height(4) | width(8) | overflow,
-                children=[Text(content=f"line {i}") for i in range(6)],
+                children=tuple(Text(content=f"line {i}") for i in range(6)),
             ),
             Text(content="below"),
-        ],
+        ),
     )
 
 
@@ -116,7 +116,7 @@ WIDE_AND_TALL = Text(content="abcdef\nghijkl\nmnopqr", style=size(6, 3))
     ids=["x", "y"],
 )
 async def test_clipping_one_axis_leaves_the_other_unbounded(overflow: Style, expected: list[str]) -> None:
-    rows = await rows_of(Div(style=border | size(4, 4) | overflow, children=[WIDE_AND_TALL]), (6, 4))
+    rows = await rows_of(Div(style=border | size(4, 4) | overflow, children=(WIDE_AND_TALL,)), (6, 4))
 
     assert rows == [line[:6].ljust(6) for line in expected]
 
@@ -133,14 +133,14 @@ async def test_clipping_one_axis_leaves_the_start_of_the_other_unbounded(
     overflow: Style, inset: Style, expected: list[str]
 ) -> None:
     text = Text(content="abcdef\nghijkl\nmnopqr", style=position_absolute | inset | size(6, 3))
-    rows = await rows_of(Div(style=border | size(4, 4) | overflow, children=[text]), (6, 4))
+    rows = await rows_of(Div(style=border | size(4, 4) | overflow, children=(text,)), (6, 4))
 
     assert rows == expected
 
 
 async def test_nested_clipping_containers_clip_to_the_intersection_of_their_padding_boxes() -> None:
-    inner = Div(style=position_absolute | inset_left(2) | size(6, 3) | overflow_hidden, children=[WIDE_AND_TALL])
-    outer = Div(style=size(4, 2) | overflow_hidden, children=[inner])
+    inner = Div(style=position_absolute | inset_left(2) | size(6, 3) | overflow_hidden, children=(WIDE_AND_TALL,))
+    outer = Div(style=size(4, 2) | overflow_hidden, children=(inner,))
 
     assert await rows_of(outer, (8, 3)) == ["  ab    ", "  gh    ", "        "]
 
@@ -149,7 +149,7 @@ async def test_a_raised_descendant_of_a_clipping_container_is_still_clipped() ->
     menu = Text(content="menu", style=z(1) | position_absolute | inset_top(1) | inset_left(0))
     root = Div(
         style=col,
-        children=[Div(style=size(6, 1) | overflow_hidden, children=[menu]), Text(content="abcdef")],
+        children=(Div(style=size(6, 1) | overflow_hidden, children=(menu,)), Text(content="abcdef")),
     )
 
     assert await rows_of(root, (6, 2)) == ["      ", "abcdef"]
@@ -157,9 +157,9 @@ async def test_a_raised_descendant_of_a_clipping_container_is_still_clipped() ->
 
 async def test_a_wide_cluster_straddling_a_clip_edge_leaves_a_space_on_the_visible_side() -> None:
     text = Text(content="日bc日", style=position_absolute | inset_left(-1))
-    clipped = Div(style=position_absolute | inset_left(1) | size(4, 1) | overflow_hidden, children=[text])
+    clipped = Div(style=position_absolute | inset_left(1) | size(4, 1) | overflow_hidden, children=(text,))
 
-    paint = (await frame_of(Div(children=[clipped]), (6, 1))).paint
+    paint = (await frame_of(Div(children=(clipped,)), (6, 1))).paint
 
     assert [cell.grapheme for cell in paint.rows().__next__()] == [" ", " ", "b", "c", " ", " "]
     assert paint[0, 0] is BLANK
@@ -174,14 +174,14 @@ async def test_a_title_on_the_border_of_a_fill_box_paints_only_when_it_clips_to_
     clip_to: Style, expected: str
 ) -> None:
     title = Text(content="title", style=position_absolute | inset_top(-1) | inset_left(0) | clip_to)
-    root = Div(style=row, children=[Div(style=fill(1) | border, children=[title])])
+    root = Div(style=row, children=(Div(style=fill(1) | border, children=(title,)),))
 
     assert (await rows_of(root, (7, 3)))[0] == expected
 
 
 async def test_a_child_clipped_to_the_border_box_is_still_cut_off_at_its_outer_edge() -> None:
     title = Text(content="long title", style=position_absolute | inset_top(-1) | inset_left(0) | clip_to_border)
-    root = Div(style=row, children=[Div(style=fill(1) | border, children=[title]), Text(content="x")])
+    root = Div(style=row, children=(Div(style=fill(1) | border, children=(title,)), Text(content="x")))
 
     assert (await rows_of(root, (8, 3)))[0] == "┌long tx"
 
@@ -189,9 +189,9 @@ async def test_a_child_clipped_to_the_border_box_is_still_cut_off_at_its_outer_e
 async def test_the_children_of_a_clipping_element_clipped_away_entirely_are_clipped_away_too() -> None:
     hidden_away = Div(
         style=position_absolute | inset_left(5) | size(2, 1) | overflow_hidden,
-        children=[Div(style=size(2, 1) | overflow_hidden, children=[Text(content="x")])],
+        children=(Div(style=size(2, 1) | overflow_hidden, children=(Text(content="x"),)),),
     )
-    root = Div(style=size(4, 2) | overflow_hidden, children=[hidden_away])
+    root = Div(style=size(4, 2) | overflow_hidden, children=(hidden_away,))
 
     assert await rows_of(root, (8, 2)) == ["        ", "        "]
 
@@ -216,7 +216,7 @@ def popup(*children: AnyElement, style: Style = Style()) -> Div:
     """A raised, unclipped box, one row below the top of its parent and two cells right of its left edge."""
     return Div(
         style=z(1) | position_absolute | inset_top(1) | inset_left(2) | clip_to_screen | style,
-        children=list(children) or [Text(content="popup")],
+        children=children or (Text(content="popup"),),
     )
 
 
@@ -224,19 +224,20 @@ def nested_clips(child: AnyElement) -> Div:
     """`child` inside two nested boxes that hide their overflow, one row tall, above two rows of text."""
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
-                style=size(6, 1) | overflow_hidden, children=[Div(style=size(4, 1) | overflow_hidden, children=[child])]
+                style=size(6, 1) | overflow_hidden,
+                children=(Div(style=size(4, 1) | overflow_hidden, children=(child,)),),
             ),
             Text(content="abcdefgh"),
             Text(content="ijklmnop"),
-        ],
+        ),
     )
 
 
 @pytest.mark.parametrize(
     "parent",
-    [lambda child: child, lambda child: Div(children=[child])],
+    [lambda child: child, lambda child: Div(children=(child,))],
     ids=["in-a-clipping-parent", "in-a-parent-that-does-not-clip"],
 )
 async def test_an_unclipped_element_escapes_every_ancestors_clip(parent: Callable[[AnyElement], AnyElement]) -> None:
@@ -244,8 +245,8 @@ async def test_an_unclipped_element_escapes_every_ancestors_clip(parent: Callabl
 
 
 async def test_an_unclipped_element_escapes_an_ancestor_clipped_away_entirely() -> None:
-    hidden_away = Div(style=position_absolute | inset_left(5) | size(2, 1) | overflow_hidden, children=[popup()])
-    root = Div(style=size(4, 1) | overflow_hidden, children=[hidden_away])
+    hidden_away = Div(style=position_absolute | inset_left(5) | size(2, 1) | overflow_hidden, children=(popup(),))
+    root = Div(style=size(4, 1) | overflow_hidden, children=(hidden_away,))
 
     assert await rows_of(root, (12, 2)) == ["            ", "       popup"]
 
@@ -258,7 +259,7 @@ async def test_an_unclipped_elements_own_overflow_still_clips_its_descendants() 
 
 async def test_an_unclipped_element_is_covered_by_a_later_sibling_of_its_ancestor_with_a_higher_z() -> None:
     cover = Text(content="COVER", style=z(2) | position_absolute | inset_top(1) | inset_left(3))
-    root = Div(style=col, children=[nested_clips(popup()), cover])
+    root = Div(style=col, children=(nested_clips(popup()), cover))
 
     assert await rows_of(root, (8, 3)) == ["        ", "abpCOVER", "ijklmnop"]
 
@@ -266,7 +267,7 @@ async def test_an_unclipped_element_is_covered_by_a_later_sibling_of_its_ancesto
 async def test_an_unclipped_element_receives_the_mouse_outside_its_ancestors_clips() -> None:
     presses: list[str] = []
     target = Div(style=size(5, 1), on_input=clicks_on("popup", presses))
-    root = Div(on_input=clicks_on("root", presses), children=[nested_clips(popup(target))])
+    root = Div(on_input=clicks_on("root", presses), children=(nested_clips(popup(target)),))
 
     await frame_of(root, (8, 3), events=[MouseDown(absolute=Position(5, 1), button=1)])
 
@@ -275,7 +276,7 @@ async def test_an_unclipped_element_receives_the_mouse_outside_its_ancestors_cli
 
 async def test_a_border_clipped_by_an_ancestor_leaves_no_healing_hint_behind() -> None:
     child = Div(style=border | border_light | position_absolute | inset_top(-1) | inset_left(-1) | size(4, 3))
-    root = Div(style=border | border_light | size(6, 4) | overflow_hidden, children=[child])
+    root = Div(style=border | border_light | size(6, 4) | overflow_hidden, children=(child,))
 
     assert await rows_of(root, (6, 4)) == [
         "┌────┐",
@@ -287,7 +288,7 @@ async def test_a_border_clipped_by_an_ancestor_leaves_no_healing_hint_behind() -
 
 async def test_a_border_flush_against_its_containers_padding_box_does_not_join_the_containers_border() -> None:
     child = Div(style=border | border_light | size(4, 2))
-    root = Div(style=border | border_light | size(6, 4) | overflow_hidden, children=[child])
+    root = Div(style=border | border_light | size(6, 4) | overflow_hidden, children=(child,))
 
     assert await rows_of(root, (6, 4)) == [
         "┌────┐",
@@ -301,7 +302,7 @@ async def test_collapsed_borders_of_clipping_items_still_heal_across_their_edges
     cell = Style(layout=waxy.Style(gap_width=waxy.Length(-1))) | row
     root = Div(
         style=cell | size(5, 3),
-        children=[Div(style=fill(1) | border | border_light), Div(style=fill(1) | border | border_light)],
+        children=(Div(style=fill(1) | border | border_light), Div(style=fill(1) | border | border_light)),
     )
 
     assert await rows_of(root, (5, 3)) == ["┌─┬─┐", "│ │ │", "└─┴─┘"]
@@ -383,10 +384,10 @@ async def test_the_mouse_targets_the_element_painted_where_it_is(x: int, expecte
     overflowing = Div(style=position_absolute | inset_left(-3) | size(6, 1), on_input=clicks_on("overflowing", presses))
     root = Div(
         style=row,
-        children=[
+        children=(
             Div(style=size(3, 1), on_input=clicks_on("beside", presses)),
-            Div(style=size(3, 1) | overflow_hidden, children=[overflowing]),
-        ],
+            Div(style=size(3, 1) | overflow_hidden, children=(overflowing,)),
+        ),
     )
 
     await frame_of(root, (6, 1), events=[MouseDown(absolute=Position(x, 0), button=1)])
@@ -409,10 +410,10 @@ async def test_a_scroll_containers_padding_and_content_exclude_the_space_its_scr
     container = Div(
         style=SCROLLING | border | pad_x(3) | size(20, 6),
         on_input=record,
-        children=[Text(content=f"{i}") for i in range(10)],
+        children=tuple(Text(content=f"{i}") for i in range(10)),
     )
 
-    await frame_of(Div(children=[container]), (20, 6), events=[MouseDown(absolute=Position(5, 2), button=1)])
+    await frame_of(Div(children=(container,)), (20, 6), events=[MouseDown(absolute=Position(5, 2), button=1)])
 
     (rects_seen,) = recorded
     assert (rects_seen.padding, rects_seen.content) == (
@@ -422,6 +423,6 @@ async def test_a_scroll_containers_padding_and_content_exclude_the_space_its_scr
 
 
 async def test_the_space_a_scrollbar_width_reserves_beside_no_border_draws_no_border_side() -> None:
-    container = Div(style=SCROLLING | border_y | border_light | size(5, 3), children=[Text(content="ab")])
+    container = Div(style=SCROLLING | border_y | border_light | size(5, 3), children=(Text(content="ab"),))
 
-    assert await rows_of(Div(children=[container]), (5, 3)) == ["─────", "ab   ", "─────"]
+    assert await rows_of(Div(children=(container,)), (5, 3)) == ["─────", "ab   ", "─────"]

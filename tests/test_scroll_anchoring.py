@@ -46,8 +46,8 @@ def message(content: str) -> Text:
     return Text(content=content, style=text_wrap_stable)
 
 
-def transcript_children(messages: Sequence[tuple[int, str]]) -> list[AnyElement]:
-    return [message(content).with_key(str(id)) for id, content in messages]  # type: ignore[misc]
+def transcript_children(messages: Sequence[tuple[int, str]]) -> tuple[AnyElement, ...]:
+    return tuple(message(content).with_key(str(id)) for id, content in messages)  # type: ignore[misc]
 
 
 type Messages = tuple[tuple[int, str], ...]
@@ -79,13 +79,13 @@ def transcript(container_style: Style, start: Messages = MESSAGES) -> Div:
     return Div(
         style=col,
         on_input=on_key,
-        children=[
+        children=(
             Div(
                 style=col | height(4) | overflow_y_scroll | container_style,
                 handle=HANDLE,
                 children=transcript_children(messages),
-            )
-        ],
+            ),
+        ),
     )
 
 
@@ -197,23 +197,23 @@ def block_then_lines() -> Div:
     return Div(
         style=col,
         on_input=on_key,
-        children=[
+        children=(
             Div(
                 style=col | height(3) | overflow_y_scroll,
                 handle=HANDLE,
-                children=[
+                children=(
                     Div(
                         style=col,
-                        children=[
+                        children=(
                             Text(content="a\nexpanded" if is_expanded else "a"),
                             Text(content="b"),
                             Text(content="c"),
-                        ],
+                        ),
                     ),
                     *(Text(content=f"line {i}") for i in range(4)),
-                ],
-            )
-        ],
+                ),
+            ),
+        ),
     )
 
 
@@ -241,8 +241,8 @@ def test_the_anchor_is_picked_in_the_view_the_container_is_scrolled_to() -> None
     )
 
 
-def lines_of(count: int) -> list[AnyElement]:
-    return [Text(content=f"line {i}") for i in range(count)]
+def lines_of(count: int) -> tuple[AnyElement, ...]:
+    return tuple(Text(content=f"line {i}") for i in range(count))
 
 
 @pytest.mark.parametrize(
@@ -252,7 +252,7 @@ def lines_of(count: int) -> list[AnyElement]:
 )
 def test_an_excluded_node_is_never_the_anchor_nor_anything_inside_it(excluded: Style) -> None:
     skipped = Div(style=col | excluded, children=lines_of(2))
-    root = Div(style=col | height(3) | overflow_y_scroll, children=[Text(content="above"), skipped, *lines_of(3)])
+    root = Div(style=col | height(3) | overflow_y_scroll, children=(Text(content="above"), skipped, *lines_of(3)))
     shadow, layouts = laid_out(root, 6, 3, y=1)
 
     anchor = prior_scrolls(layouts)[shadow.root.key].anchor
@@ -263,7 +263,7 @@ def test_an_excluded_node_is_never_the_anchor_nor_anything_inside_it(excluded: S
 def test_a_nested_scroll_container_is_the_anchor_without_being_descended_into() -> None:
     nested = Div(style=col | height(3) | shrink(0) | overflow_y_scroll, children=lines_of(4))
     shadow, layouts = laid_out(
-        Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="x"), nested]), 6, 2, y=2
+        Div(style=col | height(2) | overflow_y_scroll, children=(Text(content="x"), nested)), 6, 2, y=2
     )
     outer, inner = shadow.root, shadow.root.children[1]
 
@@ -273,7 +273,7 @@ def test_a_nested_scroll_container_is_the_anchor_without_being_descended_into() 
 def test_a_node_exactly_filling_the_view_is_the_anchor_without_being_descended_into() -> None:
     root = Div(
         style=col | height(2) | overflow_y_scroll,
-        children=[*lines_of(1), Div(style=col, children=lines_of(2)), *lines_of(2)],
+        children=(*lines_of(1), Div(style=col, children=lines_of(2)), *lines_of(2)),
     )
     shadow, layouts = laid_out(root, 6, 2, y=1)
 
@@ -282,7 +282,7 @@ def test_a_node_exactly_filling_the_view_is_the_anchor_without_being_descended_i
 
 def test_a_container_with_nothing_it_can_anchor_in_view_has_no_anchor() -> None:
     root = Div(
-        style=col | height(2) | overflow_y_scroll, children=[Div(style=overflow_anchor_none, children=lines_of(4))]
+        style=col | height(2) | overflow_y_scroll, children=(Div(style=overflow_anchor_none, children=lines_of(4)),)
     )
     shadow, layouts = laid_out(root, 6, 2, y=1)
 
@@ -298,14 +298,14 @@ def test_a_container_at_the_end_it_sticks_to_picks_no_anchor() -> None:
 
 def test_a_node_starting_at_the_bottom_of_the_view_is_not_in_view() -> None:
     covering = Div(style=col | overflow_anchor_none, children=lines_of(3))
-    root = Div(style=col | height(2) | overflow_y_scroll, children=[covering, *lines_of(2)])
+    root = Div(style=col | height(2) | overflow_y_scroll, children=(covering, *lines_of(2)))
     shadow, layouts = laid_out(root, 6, 2, y=1)
 
     assert prior_scrolls(layouts)[shadow.root.key].anchor is None
 
 
 def test_a_leaf_partly_in_view_is_the_anchor() -> None:
-    root = Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="a\nb\nc"), *lines_of(2)])
+    root = Div(style=col | height(2) | overflow_y_scroll, children=(Text(content="a\nb\nc"), *lines_of(2)))
     shadow, layouts = laid_out(root, 6, 2, y=1)
 
     assert prior_scrolls(layouts)[shadow.root.key].anchor == Anchor(key=shadow.root.children[0].key, distance=-1)
@@ -313,7 +313,7 @@ def test_a_leaf_partly_in_view_is_the_anchor() -> None:
 
 def test_a_nested_container_keeps_its_anchor_in_place_inside_a_scrolled_container() -> None:
     inner = Div(style=col | height(2) | shrink(0) | overflow_y_scroll, children=lines_of(6))
-    outer = Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="top"), inner])
+    outer = Div(style=col | height(2) | overflow_y_scroll, children=(Text(content="top"), inner))
     shadow = update_shadow(outer, None, NO_LAYOUTS).tree
     inner_node = shadow.root.children[1]
     priors = {

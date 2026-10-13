@@ -22,7 +22,7 @@ def file_list(paths: tuple[str, ...]) -> Div:
 
     ordered = use_memo(lambda: sorted(paths, reverse=descending), deps=(paths, descending))
 
-    return Div(children=[Text(content=path) for path in ordered])
+    return Div(children=tuple(Text(content=path) for path in ordered))
 ```
 
 `file_list` sorts `paths` again only when `paths` or `descending` changes,
@@ -84,15 +84,15 @@ from functools import lru_cache
 
 
 @lru_cache(maxsize=64)
-def sorted_paths(paths: tuple[str, ...], descending: bool) -> list[str]:
-    return sorted(paths, reverse=descending)
+def sorted_paths(paths: tuple[str, ...], descending: bool) -> tuple[str, ...]:
+    return tuple(sorted(paths, reverse=descending))
 
 
 @component
 def file_list(paths: tuple[str, ...]) -> Div:
     descending, set_descending = use_state(False)
 
-    return Div(children=[Text(content=path) for path in sorted_paths(paths, descending)])
+    return Div(children=tuple(Text(content=path) for path in sorted_paths(paths, descending)))
 ```
 
 Prefer `use_memo` when:

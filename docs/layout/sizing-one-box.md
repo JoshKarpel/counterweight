@@ -11,7 +11,7 @@ The utilities on this page override either.
 An axis left unset keeps its default: the `height(4)` box below still stretches across the column.
 
 ```python
---8<-- "layout_box_sizing.py:fixed"
+--8 < --"layout_box_sizing.py:fixed"
 ```
 
 ![Fixed sizes](../assets/layout-size-fixed.svg)
@@ -23,7 +23,7 @@ Across it, a box stretches unless its alignment says otherwise:
 `align_self_start` (or any alignment except stretch) shrinks it to its content.
 
 ```python
---8<-- "layout_box_sizing.py:fit"
+--8 < --"layout_box_sizing.py:fit"
 ```
 
 ![Fitting content](../assets/layout-size-fit.svg)
@@ -44,7 +44,7 @@ Each has a `_height` counterpart.
 Here each box is the only child of a `row`:
 
 ```python
---8<-- "layout_box_sizing.py:content-keywords"
+--8 < --"layout_box_sizing.py:content-keywords"
 ```
 
 ![Sizing keywords](../assets/layout-size-content-keywords.svg)
@@ -58,7 +58,7 @@ A `max_content_width` box wider than the column keeps extra rows for the same re
 Put the box in a `row`, as above, or in a grid.
 
 ```python
---8<-- "layout_box_sizing.py:content-keywords-col"
+--8 < --"layout_box_sizing.py:content-keywords-col"
 ```
 
 ![Sizing keywords in a column](../assets/layout-size-content-keywords-col.svg)
@@ -70,7 +70,7 @@ Put the box in a `row`, as above, or in a grid.
 after the box's margins, whatever the other children need.
 
 ```python
---8<-- "layout_box_sizing.py:fill"
+--8 < --"layout_box_sizing.py:fill"
 ```
 
 ![Filling the parent](../assets/layout-size-fill.svg)
@@ -84,7 +84,7 @@ In the bottom row, two 30-cell boxes don't fit in 40 cells, so both shrink,
 but the first stops at 24 cells and the second gives up the rest.
 
 ```python
---8<-- "layout_box_sizing.py:clamped"
+--8 < --"layout_box_sizing.py:clamped"
 ```
 
 ![Clamped sizes](../assets/layout-size-clamped.svg)
@@ -99,7 +99,7 @@ The parent here sets `align_children_start`:
 a box stretched across a row has its height from the row, and its aspect ratio has nothing to set.
 
 ```python
---8<-- "layout_box_sizing.py:aspect-ratio"
+--8 < --"layout_box_sizing.py:aspect-ratio"
 ```
 
 ![Aspect ratios](../assets/layout-size-aspect-ratio.svg)
@@ -111,7 +111,7 @@ With `content_box`, the size applies to the content alone,
 and the border and padding are added outside it: here 24 cells of content, 4 of padding and 2 of border.
 
 ```python
---8<-- "layout_box_sizing.py:box-sizing"
+--8 < --"layout_box_sizing.py:box-sizing"
 ```
 
 ![Border box and content box](../assets/layout-size-box-sizing.svg)

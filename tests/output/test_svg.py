@@ -1,5 +1,7 @@
+import pytest
+
 from counterweight.output import Frame
-from counterweight.paint import Cell, Paint
+from counterweight.paint import Cell, Paint, svg, svg_text_style
 from counterweight.styles.styles import CellStyle, Color, ResolvedCellStyle, resolve_cell_style
 
 
@@ -46,3 +48,43 @@ def test_svg_draws_background_runs_as_rectangles_and_skips_blank_cells_and_white
  </text>
 </svg>"""
     )
+
+
+@pytest.mark.parametrize(
+    ("cell_style", "expected"),
+    [
+        (CellStyle(), {}),
+        (CellStyle(bold=True), {"font-weight": "bold"}),
+        (CellStyle(dim=True), {"fill-opacity": "0.5"}),
+        (CellStyle(italic=True), {"font-style": "italic"}),
+        (CellStyle(underline=True), {"text-decoration": "underline"}),
+        (CellStyle(strikethrough=True), {"text-decoration": "line-through"}),
+        (CellStyle(underline=True, strikethrough=True), {"text-decoration": "underline line-through"}),
+        (
+            CellStyle(bold=True, italic=True, underline=True),
+            {"font-weight": "bold", "font-style": "italic", "text-decoration": "underline"},
+        ),
+    ],
+)
+def test_svg_text_style_has_an_attribute_for_each_text_style_that_is_on(
+    cell_style: CellStyle, expected: dict[str, str]
+) -> None:
+    assert svg_text_style(resolve_cell_style(cell_style)) == expected
+
+
+def test_svg_draws_each_grapheme_with_its_text_style() -> None:
+    paint = Paint(
+        width=2,
+        height=1,
+        cells=[
+            Cell("a", resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True))),
+            Cell("b", resolve_cell_style(CellStyle(italic=True))),
+        ],
+    )
+
+    text = svg(paint).find("text")
+    assert text is not None
+    assert [glyph.attrib for glyph in text.iter("tspan") if glyph.text] == [
+        {"x": "0.00em", "fill": "#ff0000", "font-weight": "bold"},
+        {"x": "0.55em", "font-style": "italic"},
+    ]

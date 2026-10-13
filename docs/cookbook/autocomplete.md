@@ -11,7 +11,7 @@ a [focusable](../hooks/use_focus.md) component that keeps its text in state,
 and appends each typed grapheme to it or, for Backspace, removes the last one.
 
 ```python
---8<-- "autocomplete.py:example"
+--8 < --"autocomplete.py:example"
 ```
 
 Typing `py` into the package field opens the list,

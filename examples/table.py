@@ -90,7 +90,7 @@ def root() -> Div:
     return Div(
         style=col | center_children,
         on_input=on_input,
-        children=[
+        children=(
             Text(
                 content="Eight-Thousanders",
                 style=text_color("amber", 400) | pad_y(1),
@@ -100,7 +100,7 @@ def root() -> Div:
                 content=f"  ↑ / ↓  navigate  •  1-4  sort by column  •  {selected + 1} / {len(PEAKS)}",
                 style=text_color("slate", 400) | pad_y(1),
             ),
-        ],
+        ),
     )
 
 
@@ -108,10 +108,10 @@ def root() -> Div:
 def data_table(peaks: tuple[Peak, ...], selected: int, sort_col: int, sort_asc: bool) -> Div:
     return Div(
         style=col | border_collapse,
-        children=[
+        children=(
             header_row(sort_col=sort_col, sort_asc=sort_asc),
             *[data_row(peak=peaks[i], selected=(i == selected)) for i in range(len(peaks))],
-        ],
+        ),
     )
 
 
@@ -119,10 +119,10 @@ def data_table(peaks: tuple[Peak, ...], selected: int, sort_col: int, sort_asc: 
 def header_row(sort_col: int, sort_asc: bool) -> Div:
     return Div(
         style=row | border_collapse,
-        children=[
+        children=tuple(
             header_cell(label=label, col_width=COL_WIDTHS[idx], col_idx=idx, sort_col=sort_col, sort_asc=sort_asc)
             for idx, (label, _, _) in enumerate(COLUMNS)
-        ],
+        ),
     )
 
 
@@ -139,10 +139,10 @@ def header_cell(label: str, col_width: int, col_idx: int, sort_col: int, sort_as
 def data_row(peak: Peak, selected: bool) -> Div:
     return Div(
         style=row | border_collapse,
-        children=[
+        children=tuple(
             data_cell(value=display(peak), col_width=COL_WIDTHS[idx], selected=selected)
             for idx, (_, display, _) in enumerate(COLUMNS)
-        ],
+        ),
     )
 
 

@@ -64,7 +64,7 @@ async def render_text(root: Component, dimensions: tuple[int, int]) -> list[str]
 async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -> None:
     @component
     def root() -> Div:
-        return Div(style=root_style | border, children=[Text(content="wider than the screen")])
+        return Div(style=root_style | border, children=(Text(content="wider than the screen"),))
 
     assert await render_text(root(), (10, 3)) == [
         "┌────────┐",
@@ -76,7 +76,7 @@ async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -
 async def test_root_fills_screen_whatever_its_content_height() -> None:
     @component
     def root() -> Div:
-        return Div(style=border, children=[Text(content="\n".join("taller"))])
+        return Div(style=border, children=(Text(content="\n".join("taller")),))
 
     assert await render_text(root(), (6, 4)) == [
         "┌────┐",
@@ -89,7 +89,7 @@ async def test_root_fills_screen_whatever_its_content_height() -> None:
 async def test_wrapping_text_in_root_wraps_at_screen_width() -> None:
     @component
     def root() -> Div:
-        return Div(style=col, children=[Text(content="aaa bbb ccc", style=text_wrap_stable)])
+        return Div(style=col, children=(Text(content="aaa bbb ccc", style=text_wrap_stable),))
 
     assert await render_text(root(), (7, 3)) == [
         "aaa bbb",

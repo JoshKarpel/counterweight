@@ -29,7 +29,7 @@ def uptime() -> Text:
 def status_bar() -> Div:
     return Div(
         style=row | justify_children_space_between | border | border_lightrounded | pad_x(1),
-        children=[uptime(), wall_clock()],
+        children=(uptime(), wall_clock()),
     )
 
 

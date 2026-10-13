@@ -14,7 +14,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def tiles() -> Div:
     return Div(
         style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | grid_template_rows(fr(1), fr(1)) | gap(1),
-        children=[Text(style=border, content=f"tile {n}") for n in range(1, 7)],
+        children=tuple(Text(style=border, content=f"tile {n}") for n in range(1, 7)),
     )
 
 
@@ -27,7 +27,7 @@ def tiles() -> Div:
 def spans() -> Div:
     return Div(
         style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | grid_template_rows(fr(1), fr(1), fr(1)),
-        children=[
+        children=(
             Text(
                 style=grid_row(1) | grid_column(1, span(2)) | border | border_heavy,
                 content="grid_row(1)\ngrid_column(1, span(2))",
@@ -40,7 +40,7 @@ def spans() -> Div:
             Text(style=border, content="auto"),
             Text(style=border, content="auto"),
             Text(style=border, content="auto"),
-        ],
+        ),
     )
 
 
@@ -53,16 +53,16 @@ def spans() -> Div:
 def auto_flow() -> Div:
     return Div(
         style=row | gap(2),
-        children=[
+        children=(
             Div(
                 style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)) | fill(1) | border | border_heavy,
-                children=[
+                children=(
                     Text(
                         content=" grid_template_columns(fr(1), fr(1), fr(1)) ",
                         style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
                     ),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
-                ],
+                ),
             ),
             Div(
                 style=display_grid
@@ -71,7 +71,7 @@ def auto_flow() -> Div:
                 | fill(1)
                 | border
                 | border_heavy,
-                children=[
+                children=(
                     Text(
                         content=" grid_template_rows(fr(1), fr(1), fr(1)) ",
                         style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
@@ -81,9 +81,9 @@ def auto_flow() -> Div:
                         style=position_absolute | inset_bottom(-1) | inset_left(1) | clip_to_border,
                     ),
                     *(Text(style=border, content=str(n)) for n in range(1, 8)),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -98,7 +98,7 @@ TAGS = ["layout", "flexbox", "grid", "wrapping", "alignment", "text", "borders",
 def wrap() -> Div:
     return Div(
         style=row | flex_wrap | align_children_start | gap_width(1),
-        children=[Text(style=border | pad_x(1), content=tag) for tag in TAGS],
+        children=tuple(Text(style=border | pad_x(1), content=tag) for tag in TAGS),
     )
 
 

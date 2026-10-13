@@ -28,10 +28,10 @@ def note() -> Text:
 def dashboard() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             note(),
-            Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
-        ],
+            Div(style=row, children=tuple(metric_card(label, value) for label, value in METRICS)),
+        ),
     )
 
 

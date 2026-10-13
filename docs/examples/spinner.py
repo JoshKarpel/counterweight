@@ -26,11 +26,11 @@ def spinner(label: str) -> Text:
 def progress(done: tuple[str, ...], current: str) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             *(Text(content=f"✓ {step}", style=text_color("emerald", 500)) for step in done),
             # Keyed by the step, so each new step remounts the spinner and restarts its time.
             spinner(current).with_key(current),
-        ],
+        ),
     )
 
 

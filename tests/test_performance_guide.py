@@ -162,7 +162,7 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
 
     return Div(
         on_input=on_input,
-        children=[
+        children=tuple(
             # The wrapping lambda is the mistake under test: a new object every render.
             process_row(
                 process,
@@ -170,7 +170,7 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
                 lambda pid: set_selected_pid(pid),  # noqa: PLW0108
             ).with_key(str(process.pid))
             for process in by_cpu
-        ],
+        ),
     )
 
 
@@ -188,7 +188,7 @@ def unkeyed_process_table(processes: tuple[Process, ...]) -> Div:
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
     return Div(
-        children=[process_row(process, process.pid == selected_pid, set_selected_pid) for process in by_cpu],
+        children=tuple(process_row(process, process.pid == selected_pid, set_selected_pid) for process in by_cpu),
     )
 
 
@@ -215,7 +215,7 @@ def key_log_mutating() -> Div:
         keys.current.append(event.key)
         set_count(count + 1)
 
-    return Div(on_input=on_input, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=(key_list(keys.current),))
 
 
 @component(memo=True)
@@ -231,7 +231,7 @@ def key_log_with_tuple() -> Div:
         assert isinstance(event, KeyPressed)
         set_keys((*keys, event.key))
 
-    return Div(on_input=on_input, children=[key_tuple(keys)])
+    return Div(on_input=on_input, children=(key_tuple(keys),))
 
 
 @pytest.mark.parametrize("check_purity", [False, True], ids=["stale", "check-purity"])
@@ -272,7 +272,7 @@ def title_with_accent(text: str, accent: str) -> Text:
 def page(use_argument: bool) -> Div:
     count, set_count = use_state(0)
     child = title_with_accent("Processes", SETTINGS["accent"]) if use_argument else title("Processes")
-    return Div(on_input=lambda event, _: set_count(count + 1), children=[child, Text(content=str(count))])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=(child, Text(content=str(count))))
 
 
 @pytest.mark.parametrize(("use_argument", "is_stale"), [(False, True), (True, False)], ids=["hidden", "argument"])
@@ -320,7 +320,7 @@ def log_view(lines: tuple[str, ...], comparisons: list[str], keep: bool) -> Div:
         return tuple(Line(text=line.upper(), comparisons=comparisons) for line in lines)
 
     argument = use_memo(upper, deps=(lines,)) if keep else upper()
-    return Div(on_input=lambda event, _: set_count(count + 1), children=[line_list(argument)])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=(line_list(argument),))
 
 
 @pytest.mark.parametrize(("keep", "expected"), [(False, 3), (True, 0)], ids=["rebuilt", "kept"])
@@ -430,7 +430,7 @@ def search(on_submit: Callable[[str], None], log: list[str]) -> Text:
 def search_page(log: list[str], inline: bool) -> Div:
     query, set_query = use_state("")
     on_submit = (lambda text: set_query(text)) if inline else set_query  # noqa: PLW0108
-    return Div(children=[search(on_submit, log), Text(content=query)])
+    return Div(children=(search(on_submit, log), Text(content=query)))
 
 
 @pytest.mark.parametrize(("inline", "expected"), [(True, 3), (False, 1)], ids=["inline", "setter"])
@@ -449,7 +449,7 @@ def test_a_dependency_built_every_render_recomputes_every_render(inline: bool, e
 @component
 def process_labels(processes: tuple[Process, ...]) -> Div:
     labels = [use_memo(lambda: f"{process.name} ({process.pid})", deps=(process,)) for process in processes]
-    return Div(children=[Text(content=label) for label in labels])
+    return Div(children=tuple(Text(content=label) for label in labels))
 
 
 def test_use_memo_in_a_loop_raises_when_the_loop_length_changes() -> None:

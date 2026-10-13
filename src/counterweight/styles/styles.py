@@ -68,7 +68,15 @@ class Color(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
+        """
+        A color from `#rrggbb` or the CSS shorthand `#rgb`, with or without the `#`.
+        Any other number of digits, like `#rrggbbaa`'s alpha, raises `ValueError`.
+        """
         hex = hex.lstrip("#")
+        if len(hex) == 3:
+            hex = "".join(digit * 2 for digit in hex)
+        if len(hex) != 6:
+            raise ValueError(f"A hex color has 3 or 6 digits, not {hex!r}")
         return cls(
             int(hex[0:2], 16),
             int(hex[2:4], 16),
@@ -237,6 +245,14 @@ _WHITE = COLORS_BY_NAME["white"]
 _BLACK = COLORS_BY_NAME["black"]
 
 
+def is_osc_8_uri(uri: str) -> bool:
+    """
+    Whether `uri` can go in an OSC 8 hyperlink: non-empty, and only printable ASCII,
+    since any other character could end the escape sequence early or start another one.
+    """
+    return bool(uri) and all(" " <= c <= "~" for c in uri)
+
+
 @flyweight(maxsize=2**10)
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CellStyle(StyleFragment):
@@ -247,6 +263,12 @@ class CellStyle(StyleFragment):
     including when it is set to the default, so `CellStyle(bold=False)` turns bold off.
     Unset fields resolve to the defaults in
     [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
+
+    `link` makes the cell a hyperlink to that URI, which the terminal opens when it's clicked
+    (an [OSC 8](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda) hyperlink);
+    `None` makes it not a link, overriding a `link` it would otherwise inherit.
+    The URI must be printable ASCII, so percent-encode anything else,
+    or `CellStyle` raises `ValueError`.
     """
 
     foreground: Color | UNSET = UNSET
@@ -256,14 +278,26 @@ class CellStyle(StyleFragment):
     italic: bool | UNSET = UNSET
     underline: bool | UNSET = UNSET
     strikethrough: bool | UNSET = UNSET
+    link: str | UNSET | None = UNSET
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
 
     def __post_init__(self) -> None:
+        if isinstance(self.link, str) and not is_osc_8_uri(self.link):
+            raise ValueError(f"A link must be a non-empty URI of printable ASCII characters, not {self.link!r}")
         object.__setattr__(
             self,
             "_hash",
             hash(
-                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+                (
+                    self.foreground,
+                    self.background,
+                    self.bold,
+                    self.dim,
+                    self.italic,
+                    self.underline,
+                    self.strikethrough,
+                    self.link,
+                )
             ),
         )
 
@@ -286,6 +320,7 @@ class ResolvedCellStyle:
     italic: bool
     underline: bool
     strikethrough: bool
+    link: str | None
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
 
     def __post_init__(self) -> None:
@@ -293,7 +328,16 @@ class ResolvedCellStyle:
             self,
             "_hash",
             hash(
-                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+                (
+                    self.foreground,
+                    self.background,
+                    self.bold,
+                    self.dim,
+                    self.italic,
+                    self.underline,
+                    self.strikethrough,
+                    self.link,
+                )
             ),
         )
 
@@ -309,6 +353,7 @@ CELL_STYLE_DEFAULTS = ResolvedCellStyle(
     italic=False,
     underline=False,
     strikethrough=False,
+    link=None,
 )
 
 
@@ -328,6 +373,7 @@ def resolve_cell_style(style: CellStyle, defaults: ResolvedCellStyle = CELL_STYL
         italic=or_default(style.italic, defaults.italic),
         underline=or_default(style.underline, defaults.underline),
         strikethrough=or_default(style.strikethrough, defaults.strikethrough),
+        link=or_default(style.link, defaults.link),
     )
 
 

@@ -38,6 +38,25 @@
   and `visible`, the part of its border box inside that region.
   See [Clipping](layout/clipping.md), and the [autocomplete recipe](cookbook/autocomplete.md).
 
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added [`markdown`](rich-text/markdown.md), which renders a Markdown document
+  (GitHub Flavored Markdown, with its task lists, alerts, footnotes, bare URLs, and math, and YAML front matter)
+  as a `Div` of elements, styled by a `MarkdownStyles` with a field for each kind of block and span.
+  Links are hyperlinks, and fenced code blocks and front matter are highlighted.
+  The [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
+  shows a directory's Markdown files beside a tree of them, and the
+  [Markdown gallery](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_gallery.py) example
+  shows each kind of block and span beside its source.
+
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added [syntax highlighting](rich-text/syntax-highlighting.md) with Pygments:
+  `highlight` returns code as styled chunks, `code_style` its theme's background and text color,
+  and `code_block` a `Text` of the highlighted code on that background.
+
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added `link` to `CellStyle`, which makes any `Chunk` or `Text` a [hyperlink](rich-text/hyperlinks.md)
+  that the terminal opens when it's clicked.
+
 - [#411](https://github.com/JoshKarpel/counterweight/issues/411)
   Added the `SetTitle` control, which sets the title of the terminal window.
   The app saves the title it started with and restores it when it quits and while it's suspended,
@@ -123,7 +142,7 @@
 
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
-  half-block pixel art in a terminal canvas using `▀` characters.
+  half-block pixel art in a terminal canvas using `▀` characters, as a tuple of chunks for a `Text`.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
@@ -178,6 +197,20 @@
   `Rects` is keyword-only, since it has more fields than are easy to keep in order.
   A scroll container's `padding` and `content` exclude the space its `scrollbar_width` reserves,
   as taffy lays its children out, where they included it.
+
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  **Breaking:** a `Div`'s `children` is a tuple, and so is a `Text`'s `content` when it's chunks,
+  so an element is a value that can be cached and shared without anything changing it afterwards.
+  Pass `(a, b)` or `tuple(...)` where you passed a list.
+
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  `Color.from_hex` accepts the CSS shorthand `#rgb` as well as `#rrggbb`,
+  and raises `ValueError` for any other number of digits
+  instead of dropping the extra digits of a color like `#rrggbbaa`.
+
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  SVG screenshots draw text that is bold, dim, italic, underlined, or struck through,
+  instead of drawing it plain.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
@@ -335,9 +368,13 @@
   so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   **Breaking:** counterweight logs through the standard library's `logging`, and no longer depends on
-  or configures structlog. While an app runs, every log record at every level, including an app's own
-  (`logging.getLogger(__name__).debug("...", extra={...})`), is written to the devlog off the render loop
-  by [without-logging](https://www.without.help/without-logging/).
+  or configures structlog. While an app runs, its log records
+  (`logging.getLogger(__name__).debug("...", extra={...})`) are written to the devlog off the render loop
+  by [without-logging](https://www.without.help/without-logging/),
+  by default, counterweight's and the app's own at every level (the app's being the top-level package
+  of the module that defines its root component), and every other logger's from `INFO` up,
+  so a library that logs at `DEBUG` on a hot path costs nothing unless an app asks for its records.
+  `app`'s `log_levels` sets levels by logger name, as `logging.config` does, over those defaults.
   The devlog is a single JSON-lines file, which `counterweight devlog` renders for reading
   (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
   to see where a frame's time goes, profile the app with Python's sampling profiler

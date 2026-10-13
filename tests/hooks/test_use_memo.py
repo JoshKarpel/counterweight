@@ -96,7 +96,7 @@ def caches_its_element(calls: list[str], setters: dict[str, Setter[int]]) -> Div
         calls.append("child")
         return Text(content="child")
 
-    return use_memo(lambda: Div(children=[child()]), deps=())
+    return use_memo(lambda: Div(children=(child(),)), deps=())
 
 
 def test_component_returning_a_cached_element_does_not_rerun_the_components_below_it() -> None:
@@ -172,7 +172,7 @@ def deps_read_setting(argument: object) -> Text:
 def holds_memo_child(setters: dict[str, Setter[int]]) -> Div:
     _, set_count = use_state(1)
     setters["parent"] = set_count
-    return Div(children=[deps_read_setting("same")])
+    return Div(children=(deps_read_setting("same"),))
 
 
 def test_check_purity_leaves_a_reused_components_memo_hooks_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -164,12 +164,12 @@ type MessageComponent = Callable[[Message, ElementHandle | None], Component]
 def view(model: Model, message_component: MessageComponent) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             header(model.tokens),
             transcript(model.messages, message_component),
             spinner(model.tick),
             prompt(),
-        ],
+        ),
     )
 
 
@@ -199,10 +199,10 @@ def transcript(messages: tuple[Message, ...], message_component: MessageComponen
         handle=TRANSCRIPT,
         on_input=first(jump, scroll_on_keys(), scroll_on_wheel()),
         # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
-        children=[
+        children=tuple(
             message_component(message, landmark if message.id == jumped_to else None).with_key(str(message.id))
             for message in messages
-        ],
+        ),
     )
 
 
@@ -219,10 +219,10 @@ def previous_tool_call(messages: tuple[Message, ...], before: int | None) -> int
 def header(tokens: int) -> Div:
     return Div(
         style=row | justify_children_space_between | pad_x(1),
-        children=[
+        children=(
             Text(content="agent · ~/projects/counterweight", style=text_color("slate", 400)),
             Text(content=f"{tokens:,} tokens", style=text_color("slate", 500)),
-        ],
+        ),
     )
 
 
@@ -231,28 +231,28 @@ def render_message(message: Message, handle: ElementHandle | None = None) -> Div
         case "user":
             return Div(
                 handle=handle,
-                children=[Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300))],
+                children=(Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300)),),
             )
         case "assistant":
             return Div(
                 style=col,
                 handle=handle,
-                children=[Text(content=line or " ", style=text_wrap_stable) for line in message.lines],
+                children=tuple(Text(content=line or " ", style=text_wrap_stable) for line in message.lines),
             )
         case "read":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
                 handle=handle,
-                children=[
+                children=(
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(Text(content=line, style=text_color("slate", 300)) for line in message.lines),
-                ],
+                ),
             )
         case "edit":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
                 handle=handle,
-                children=[
+                children=(
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(
                         Text(
@@ -261,7 +261,7 @@ def render_message(message: Message, handle: ElementHandle | None = None) -> Div
                         )
                         for line in message.lines
                     ),
-                ],
+                ),
             )
 
 
@@ -276,11 +276,11 @@ memo_message_view = component(memo=True)(render_message)
 def spinner(tick: int) -> Text:
     return Text(
         style=pad_x(1),
-        content=[
+        content=(
             Chunk(content=SPINNER[tick % len(SPINNER)], style=CellStyle(foreground=amber_400)),
             Chunk(content=f" Thinking… {tick // 60}s", style=CellStyle(foreground=slate_400)),
             Chunk(content=" · esc to interrupt", style=CellStyle(foreground=slate_500)),
-        ],
+        ),
     )
 
 
@@ -288,17 +288,17 @@ def spinner(tick: int) -> Text:
 def prompt() -> Div:
     return Div(
         style=border | border_lightrounded | border_color("slate", 500),
-        children=[
+        children=(
             Text(
-                content=[
+                content=(
                     Chunk(content="> ", style=CellStyle(foreground=cyan_400)),
                     Chunk(content="Try ", style=CellStyle(foreground=slate_500)),
                     Chunk(content="fix the failing test", style=CellStyle(foreground=green_400)),
                     Chunk(content=" or ", style=CellStyle(foreground=slate_500)),
                     Chunk(content="explain this diff", style=CellStyle(foreground=red_400)),
-                ]
-            )
-        ],
+                )
+            ),
+        ),
     )
 
 

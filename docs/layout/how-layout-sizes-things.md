@@ -17,7 +17,7 @@ and its parent's full size across it.
 In a `row`, each child is as wide as its content and as tall as the row:
 
 ```python
---8<-- "layout_defaults.py:row"
+--8 < --"layout_defaults.py:row"
 ```
 
 ![Children of a row](../assets/layout-defaults-row.svg)
@@ -30,7 +30,7 @@ The space to the right is free space that no child claimed.
 In a `col`, the axes swap: each child is as tall as its content and as wide as the column.
 
 ```python
---8<-- "layout_defaults.py:col"
+--8 < --"layout_defaults.py:col"
 ```
 
 ![Children of a column](../assets/layout-defaults-col.svg)
@@ -46,7 +46,7 @@ Content wider than the terminal can't widen the root:
 the wide line is cut off at the root's border.
 
 ```python
---8<-- "layout_defaults.py:root"
+--8 < --"layout_defaults.py:root"
 ```
 
 ![The root filling the screen](../assets/layout-root.svg)
@@ -67,7 +67,7 @@ a minimum size of zero.
 `min_width(0)` (or `min_height(0)` in a `col`) has the same effect on its own axis.
 
 ```python
---8<-- "layout_defaults.py:automatic-minimum"
+--8 < --"layout_defaults.py:automatic-minimum"
 ```
 
 ![The automatic minimum size](../assets/layout-automatic-minimum.svg)
@@ -83,7 +83,7 @@ Setting a wrap mode such as `text_wrap_stable` breaks lines to fit the box's wid
 and [Text wrapping](../styles/text-wrapping.md) compares the wrap modes.
 
 ```python
---8<-- "layout_defaults.py:wrapping"
+--8 < --"layout_defaults.py:wrapping"
 ```
 
 ![Wrapped and unwrapped text](../assets/layout-wrapping.svg)

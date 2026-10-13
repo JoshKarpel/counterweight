@@ -46,14 +46,14 @@ EVENTS = [
 def pane() -> Div:
     return Div(
         style=col | border | border_lightrounded | size(30, 6),
-        children=[
+        children=(
             Text(content=" Deploy log ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border),
             Div(
                 style=fill(1) | col | overflow_y_scroll,
                 on_input=scroll_on_wheel(),
-                children=[Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)],
+                children=tuple(Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)),
             ),
-        ],
+        ),
     )
 
 
@@ -68,20 +68,20 @@ def controlled() -> Div:
 
     return Div(
         style=col | gap(1),
-        children=[
+        children=(
             Div(
                 style=row | gap(2),
-                children=[
+                children=(
                     Text(content="[ Top ]", on_input=on_click(lambda: ScrollTo(log, y=0))),
                     Text(content="[ Bottom ]", on_input=on_click(lambda: ScrollTo(log, y=len(EVENTS)))),
-                ],
+                ),
             ),
             Div(
                 style=col | border | border_lightrounded | size(30, 5) | overflow_y_scroll,
                 handle=log,
-                children=[Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)],
+                children=tuple(Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)),
             ),
-        ],
+        ),
     )
 
 
@@ -111,12 +111,12 @@ def windowed() -> Div:
     return Div(
         style=col | border | border_lightrounded | size(30, 6) | overflow_y_scroll,
         on_input=scroll_on_wheel(),
-        children=[
+        children=(
             Div(style=height(first) | shrink(0)),
             # Keyed, so a row keeps its node as the window moves, and scroll anchoring follows the row.
             *(windowed_row(i).with_key(str(i)) for i in range(first, last)),
             Div(style=height(ROWS - last) | shrink(0)),
-        ],
+        ),
     )
 
 
@@ -142,7 +142,7 @@ def tail() -> Div:
         style=col | border | border_lightrounded | size(30, 6) | overflow_y_scroll | stick_to_end_y,
         on_input=scroll_on_wheel(1),
         # Keyed, so a line keeps its node, which anchoring follows, as older lines drop off the top.
-        children=[request_line(n).with_key(str(n)) for n in range(max(0, newest - KEPT_LINES), newest)],
+        children=tuple(request_line(n).with_key(str(n)) for n in range(max(0, newest - KEPT_LINES), newest)),
     )
 
 
@@ -158,12 +158,12 @@ def jump_to_end() -> Div:
 
     return Div(
         style=col | border | border_lightrounded | size(30, 6),
-        children=[
+        children=(
             Div(
                 style=fill(1) | col | overflow_y_scroll | stick_to_end_y,
                 handle=log,
                 on_input=scroll_on_wheel(1),
-                children=[Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)],
+                children=tuple(Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)),
             ),
             # A sibling of the log, not a child, so it stays over the last line as the log scrolls.
             *(
@@ -182,7 +182,7 @@ def jump_to_end() -> Div:
                     ),
                 )
             ),
-        ],
+        ),
     )
 
 
@@ -218,7 +218,7 @@ def pager() -> Div:
         | overflow_y_scroll
         | (border_color("sky", 400) if focus.is_focused else border_color("slate", 600)),
         on_input=first(less_keys, scroll_on_keys(), scroll_on_wheel()),
-        children=[Text(content=f"{i:>2} {EVENTS[i % len(EVENTS)]}") for i in range(30)],
+        children=tuple(Text(content=f"{i:>2} {EVENTS[i % len(EVENTS)]}") for i in range(30)),
     )
 
 
@@ -240,33 +240,33 @@ def contents() -> Div:
 
     return Div(
         style=row | size(40, 6),
-        children=[
+        children=(
             Div(
                 style=col | width(14) | border_right | border_lightrounded | pad_x(1),
-                children=[
+                children=tuple(
                     Text(
                         content=title,
                         style=text_color("sky", 300),
                         on_input=on_click(partial(ScrollIntoView, heading)),
                     )
                     for (title, _), heading in zip(SECTIONS, headings, strict=True)
-                ],
+                ),
             ),
             Div(
                 style=fill(1) | col | gap(1) | pad_x(1) | overflow_y_scroll,
                 on_input=scroll_on_wheel(1),
-                children=[
+                children=tuple(
                     Div(
                         style=col,
-                        children=[
+                        children=(
                             Text(content=title, style=text_color("amber", 400), handle=heading),
                             Text(content=body, style=text_wrap_pretty),
-                        ],
+                        ),
                     )
                     for (title, body), heading in zip(SECTIONS, headings, strict=True)
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
