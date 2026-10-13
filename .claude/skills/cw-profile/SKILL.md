@@ -1,6 +1,6 @@
 ---
 name: cw-profile
-description: Performance profiling workflow for the counterweight project. Use when profiling the render loop, benchmarking a change, finding hotspots, investigating a performance regression, or comparing before and after runs. Covers the benchmark workloads in `benchmarks/`, profiling them with Tachyon (Python's sampling profiler), reading the report, and comparing runs.
+description: Performance profiling workflow for the counterweight project. Use when profiling the render loop or input parsing, benchmarking a change, finding hotspots, investigating a performance regression, or comparing before and after runs. Covers the benchmark workloads in `benchmarks/`, profiling them with Tachyon (Python's sampling profiler), reading the report, and comparing runs.
 ---
 
 # Counterweight Performance Profiling
@@ -73,6 +73,18 @@ frame times on a shared machine vary run to run.
 
 For a visual diff, `uv run python -m profiling.sampling replay --diff-flamegraph
 profiles/before.bin -o profiles/diff.html profiles/after.bin`.
+
+## Time input parsing
+
+Parsing terminal input isn't part of any workload's frames, so it has its own command,
+which times `parse_input` on whole reads (a key press, a read full of mouse motion, pasted text):
+
+```bash
+uv run python -m benchmarks parse --name before   # writes profiles/before.parsing.json
+# make the change
+uv run python -m benchmarks parse --name after
+uv run python -m benchmarks compare before after
+```
 
 ## Record results
 

@@ -204,7 +204,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "more-itertools" },
-    { name = "parsy" },
     { name = "waxy" },
     { name = "wcwidth" },
     { name = "without-cli" },
@@ -233,7 +232,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "more-itertools", specifier = ">=9.1" },
-    { name = "parsy", specifier = ">=2.1" },
     { name = "waxy", specifier = ">=0.7.0" },
     { name = "wcwidth", specifier = ">=0.8" },
     { name = "without-cli", specifier = ">=0.0.10" },
@@ -723,15 +721,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ec/46/68dde5b6bc00c1296ec6466ab27dddede6aec9af1b99090e1107091b3b84/paginate-0.5.7.tar.gz", hash = "sha256:22bd083ab41e1a8b4f3690544afb2c60c25e5c9a63a30fa2f483f6c60c8e5945", size = 19252, upload-time = "2024-08-25T14:17:24.139Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/90/96/04b8e52da071d28f5e21a805b19cb9390aa17a47462ac87f5e2696b9566d/paginate-0.5.7-py2.py3-none-any.whl", hash = "sha256:b885e2af73abcf01d9559fd5216b57ef722f8c42affbb63942377668e35c7591", size = 13746, upload-time = "2024-08-25T14:17:22.55Z" },
-]
-
-[[package]]
-name = "parsy"
-version = "2.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cc/58/1e3f382eef9e50a2a115486b0c178d22bb97d2fbb85421ccbe5d3a783530/parsy-2.2.tar.gz", hash = "sha256:e943147644a8cf0d82d1bcb5c5867dd517495254cea3e3eb058b1e421cb7561f", size = 47296, upload-time = "2025-09-12T11:39:26.783Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/fc/8cb9073bb1bee54eb49a1ae501a36402d01763812962ac811cdc1c81a9d7/parsy-2.2-py3-none-any.whl", hash = "sha256:5e981613d9d2d8b68012d1dd0afe928967bea2e4eefdb76c2f545af0dd02a9e7", size = 9538, upload-time = "2025-09-12T11:39:25.749Z" },
 ]
 
 [[package]]

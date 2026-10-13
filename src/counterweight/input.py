@@ -6,14 +6,19 @@ import selectors
 import termios
 from collections.abc import Callable
 from copy import deepcopy
+from datetime import timedelta
 from selectors import DefaultSelector
 from threading import Event
 from typing import TextIO
 
 from counterweight.events import AnyEvent
-from counterweight.keys import vt_inputs
+from counterweight.input_parsing import parse_input
 
 logger = logging.getLogger(__name__)
+
+# How long a lone ESC (or the start of an escape sequence) at the end of a read waits for the rest of a sequence
+# before it is the Escape key.
+ESCAPE_TIMEOUT = timedelta(milliseconds=50)
 
 
 def read_keys(
@@ -25,6 +30,8 @@ def read_keys(
     selector = DefaultSelector()
     selector.register(stream, selectors.EVENT_READ)
 
+    pending = b""
+
     while True:
         if not allow.is_set():
             waiting.set()
@@ -34,23 +41,24 @@ def read_keys(
         # We're just reading from one file,
         # so we can dispense with the ceremony of actually using the results of the select,
         # other than knowing that it did return something.
-        if not selector.select(timeout=1 / 60):
+        if selector.select(timeout=ESCAPE_TIMEOUT.total_seconds() if pending else 1 / 60):
+            buffer, is_final = pending + os.read(stream.fileno(), 2**10), False
+        elif pending:
+            # Nothing followed the held-over bytes in time, so they aren't the start of anything longer.
+            buffer, is_final = pending, True
+        else:
             continue
 
-        bytes = os.read(stream.fileno(), 2**10)
+        parsed = parse_input(buffer, is_final=is_final)
+        pending = parsed.remainder
 
-        if not bytes:
-            continue
+        for event in parsed.events:
+            put_event(event)
 
-        try:
-            inputs = vt_inputs.parse(bytes)
-
-            for i in inputs:
-                put_event(i)
-
-            logger.debug("Parsed user input", extra={"inputs": inputs, "bytes": bytes})
-        except Exception as e:
-            logger.error("Failed to parse input", extra={"error": repr(e), "bytes": bytes})
+        logger.debug(
+            "Parsed user input",
+            extra={"inputs": parsed.events, "skipped": parsed.skipped, "pending": pending, "bytes": buffer},
+        )
 
 
 LFLAG = 3

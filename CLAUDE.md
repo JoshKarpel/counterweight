@@ -79,7 +79,7 @@ read that to check a layout instead of the SVG.
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
 - **tests/**: Test suites organized by module
-- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile` (see the `cw-profile` skill)
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing timings (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies
@@ -87,7 +87,6 @@ read that to check a layout instead of the SVG.
 - **pydantic**: Data validation and settings
 - **without-cli**: The `counterweight` CLI and the benchmark CLI
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
-- **parsy**: Parser combinators for terminal input
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
 

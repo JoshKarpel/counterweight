@@ -7,11 +7,13 @@ import pytest
 
 from benchmarks import agent, canvas, dashboard, top
 from benchmarks.harness import run
+from benchmarks.parsing import INPUTS, InputTiming, ParsingTimings, parsing_table, time_parsing
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
 from benchmarks.tables import Column, render_table
 from benchmarks.workloads import WORKLOADS
 from counterweight.app import app
 from counterweight.controls import Quit, Screenshot
+from counterweight.input_parsing import parse_input
 
 
 @pytest.mark.parametrize("name", WORKLOADS)
@@ -151,3 +153,36 @@ def test_table_stacks_the_lines_of_a_multi_line_cell_within_its_row() -> None:
     table = render_table((Column("Workload"), Column("About")), [("top", "busy\nvery"), ("idle", "calm")], title="All")
 
     assert table == "All\nWorkload  About\n────────  ─────\ntop       busy\n          very\nidle      calm\n"
+
+
+@pytest.mark.parametrize("name", INPUTS)
+def test_parsing_input_is_whole_events_with_nothing_skipped_or_held_over(name: str) -> None:
+    parsed = parse_input(INPUTS[name], is_final=False)
+
+    assert parsed.events
+    assert (parsed.skipped, parsed.remainder) == ((), b"")
+
+
+def test_time_parsing_times_each_input_by_name() -> None:
+    timings = time_parsing({"arrow": b"\x1b[A", "text": "日本".encode()}, repeat=1)
+
+    assert {name: timing.size for name, timing in timings.inputs.items()} == {"arrow": 3, "text": 6}
+    assert all(timing.read_us > 0 for timing in timings.inputs.values())
+
+
+def test_parsing_timings_load_what_they_dump(tmp_path: Path) -> None:
+    timings = ParsingTimings(source="src", inputs={"key": InputTiming(size=3, read_us=1.5)})
+    timings.dump(tmp_path / "run.parsing.json")
+
+    assert ParsingTimings.load(tmp_path / "run.parsing.json") == timings
+
+
+def test_parsing_table_compares_only_the_inputs_both_runs_timed() -> None:
+    before = ParsingTimings(
+        source="a", inputs={"key": InputTiming(size=1, read_us=2.0), "paste": InputTiming(size=9, read_us=7.0)}
+    )
+    after = ParsingTimings(source="b", inputs={"key": InputTiming(size=1, read_us=1.5)})
+
+    table = parsing_table({"before": before, "after": after})
+
+    assert [row.split() for row in table.splitlines()[3:]] == [["key", "1", "2.00", "1.50", "-25%"]]

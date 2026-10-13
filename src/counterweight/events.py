@@ -22,6 +22,11 @@ class TerminalResized(_Event):
 @dataclass(frozen=True, slots=True)
 class KeyPressed(_Event):
     key: str
+    """
+    The `Key` for a control or special key (`Key.Enter`, `Key.Up`, `Key.F1`),
+    or the text typed: one grapheme cluster, such as `"a"`, `"é"` or `"👩‍💻"`.
+    Each grapheme cluster of pasted text is its own key press.
+    """
 
 
 @dataclass(frozen=True, slots=True)
