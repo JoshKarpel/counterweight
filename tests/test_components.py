@@ -5,7 +5,7 @@ from counterweight.elements import Div, Text
 
 
 def repeated(label: str, count: int = 1) -> Text:
-    return Text(content=label * count)
+    return Text(content=label * count)  # pragma: never runs
 
 
 bare = component(repeated)

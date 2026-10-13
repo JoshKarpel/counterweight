@@ -5,7 +5,7 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot, Suspend, ToggleBorderHealing
+from counterweight.controls import Bell, Quit, Screenshot, Suspend, ToggleBorderHealing
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed, MouseDown, MouseMoved, MouseUp, TerminalResized
 from counterweight.geometry import Position
@@ -61,6 +61,19 @@ async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -
         "┌────────┐",
         "│wider th│",
         "└────────┘",
+    ]
+
+
+async def test_root_fills_screen_whatever_its_content_height() -> None:
+    @component
+    def root() -> Div:
+        return Div(style=border, children=[Text(content="\n".join("taller"))])
+
+    assert await render_text(root(), (6, 4)) == [
+        "┌────┐",
+        "│t   │",
+        "│a   │",
+        "└────┘",
     ]
 
 
@@ -136,3 +149,15 @@ def raises_in_two_effects() -> Text:
 async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
     with pytest.RaisesGroup(Boom, Boom):
         await wait_for(app(raises_in_two_effects(), headless=True, dimensions=(10, 2), check_purity=True), timeout=5)
+
+
+async def test_a_headless_app_writes_nothing_even_when_it_rings_the_bell() -> None:
+    @component
+    def root() -> Text:
+        return Text(content="hi")
+
+    output = io.StringIO()
+
+    await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[Bell(), Quit()])
+
+    assert output.getvalue() == ""

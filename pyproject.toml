@@ -81,6 +81,31 @@ markers = ["slow"]
 
 asyncio_mode = "auto"
 
+[tool.coverage.run]
+branch = true
+source = ["src/counterweight/", "tests/"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+skip_empty = true
+sort = "-cover"
+# Checked only where `--cov` is passed (`just test` and CI), never in `addopts`: mutmut runs pytest itself,
+# against a copy of the source that `source` doesn't name and with only some tests per mutant,
+# so a gate there would fail mutmut's baseline and count every mutant as killed.
+fail_under = 100
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@overload",
+    "assert_never\\(",
+    "case _ as unreachable:",
+    # Test doubles and guards that fail the test if they ever run.
+    "raise AssertionError",
+    "pragma: unreachable",
+    # Functions a test builds only to compare or inspect, such as handlers whose code `equivalent` compares.
+    "pragma: never runs",
+]
+
 [tool.mypy]
 pretty = true
 show_error_codes = true

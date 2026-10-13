@@ -194,7 +194,8 @@ def paint_layout(
 ) -> tuple[Paint, BorderHealingHints]:
     styled = sorted(
         ((element, resolve_style(element.style), resolved) for element, resolved in elements),
-        key=lambda esr: (esr[1].z, esr[2].order),
+        # Stable, so elements with the same z keep their paint order.
+        key=lambda esr: esr[1].z,
     )
     paint = Paint.blank(width, height)
     hints: BorderHealingHints = {}

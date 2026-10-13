@@ -191,7 +191,6 @@ MOVED = ResolvedLayout(
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
     margin=Region(left=1, top=2, right=3, bottom=4),
-    order=0,
 )
 
 
@@ -432,7 +431,7 @@ def handler_capturing_setting(argument: object, calls: Calls) -> Text:
     label = SETTINGS["label"]
 
     def on_key(_: KeyPressed) -> None:
-        print(label)
+        print(label)  # pragma: never runs
 
     return Text(content="", on_key=on_key)
 
@@ -511,7 +510,7 @@ def has_effect(argument: object, calls: Calls) -> Text:
     calls.names.append("has_effect")
 
     async def setup() -> None:
-        await forever()
+        await forever()  # pragma: never runs
 
     use_effect(setup)
     return Text(content="")

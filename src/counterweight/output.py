@@ -37,7 +37,7 @@ BELL = "\x07"
 logger = logging.getLogger(__name__)
 
 
-def start_output_control(stream: TextIO) -> None:  # pragma: untestable
+def start_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_ON)
     stream.write(CURSOR_OFF)
     stream.write(CLEAR_SCREEN)
@@ -45,20 +45,20 @@ def start_output_control(stream: TextIO) -> None:  # pragma: untestable
     stream.flush()
 
 
-def stop_output_control(stream: TextIO) -> None:  # pragma: untestable
+def stop_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_OFF)
     stream.write(CURSOR_ON)
 
     stream.flush()
 
 
-def start_mouse_tracking(stream: TextIO) -> None:  # pragma: untestable
+def start_mouse_tracking(stream: TextIO) -> None:
     stream.write(SET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()
 
 
-def stop_mouse_tracking(stream: TextIO) -> None:  # pragma: untestable
+def stop_mouse_tracking(stream: TextIO) -> None:
     stream.write(UNSET_ANY_EVENT_MOUSE_SGR_FORMAT)
 
     stream.flush()

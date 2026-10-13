@@ -4,6 +4,8 @@ from counterweight.controls import Quit
 from counterweight.elements import Div
 from counterweight.events import KeyPressed
 from counterweight.hooks import Setter, use_state
+from counterweight.hooks.impls import MountStatus, NodeKey, UseState
+from tests.rendering import state_sets
 
 
 async def test_use_state() -> None:
@@ -33,3 +35,12 @@ async def test_use_state() -> None:
     )
 
     assert recorder == [0, 0, 1]
+
+
+def test_a_setter_outliving_its_state_does_nothing() -> None:
+    with state_sets() as queue:
+        setter = UseState(value=1, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7)).setter
+
+        setter(2)
+
+    assert queue.empty()

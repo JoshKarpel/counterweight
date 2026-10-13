@@ -12,35 +12,35 @@ from counterweight.events import KeyPressed
 
 def handler_capturing(value: object) -> Callable[[], object]:
     def handler() -> object:
-        return value
+        return value  # pragma: never runs
 
     return handler
 
 
 def key_handler_capturing(value: object) -> Callable[[KeyPressed], None]:
     def on_key(_: KeyPressed) -> None:
-        print(value)
+        print(value)  # pragma: never runs
 
     return on_key
 
 
 def handler_with_default(value: object) -> Callable[[], object]:
     def handler(captured: object = value) -> object:
-        return captured
+        return captured  # pragma: never runs
 
     return handler
 
 
 def handler_with_keyword_default(value: object) -> Callable[[], object]:
     def handler(*, captured: object = value) -> object:
-        return captured
+        return captured  # pragma: never runs
 
     return handler
 
 
 def recursive_handler(value: object) -> Callable[[int], object]:
     def handler(depth: int) -> object:
-        return value if depth == 0 else handler(depth - 1)
+        return value if depth == 0 else handler(depth - 1)  # pragma: never runs
 
     return handler
 
@@ -49,7 +49,7 @@ def unbound_capture(bind: bool) -> Callable[[], object]:
     """A closure over a variable that `bind=False` leaves unbound, so its cell is empty."""
 
     def handler() -> object:
-        return later
+        return later  # pragma: never runs
 
     if bind:
         later = "bound"
@@ -57,7 +57,7 @@ def unbound_capture(bind: bool) -> Callable[[], object]:
 
 
 def other_handler() -> None:
-    return None
+    return None  # pragma: never runs
 
 
 def twice(value: object) -> tuple[object, object]:
@@ -66,7 +66,7 @@ def twice(value: object) -> tuple[object, object]:
 
 
 def target(first: object, second: object) -> None:
-    return None
+    return None  # pragma: never runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,10 +74,10 @@ class Holder:
     value: object
 
     def handle(self) -> object:
-        return self.value
+        return self.value  # pragma: never runs
 
     def other(self) -> object:
-        return self.value
+        return self.value  # pragma: never runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +91,7 @@ class Reading:
         return isinstance(other, Reading) and self.value == other.value
 
     def __hash__(self) -> int:
-        return hash(self.value)
+        return hash(self.value)  # pragma: never runs
 
 
 @pytest.mark.parametrize(

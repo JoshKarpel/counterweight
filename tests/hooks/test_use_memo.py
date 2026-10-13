@@ -126,7 +126,7 @@ def caches_handler(deps: Callable[[int, int], tuple[object, ...]], setters: dict
     setters["other"] = set_other
 
     def on_key(_: KeyPressed) -> None:
-        print(count)
+        print(count)  # pragma: never runs
 
     return Text(content="", on_key=use_memo(lambda: on_key, deps(count, other)))
 

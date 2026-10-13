@@ -20,7 +20,6 @@ NESTED_BOXES = ResolvedLayout(
     padding=Region(left=2, top=2, right=9, bottom=7),
     border=Region(left=1, top=1, right=10, bottom=8),
     margin=Region(left=0, top=0, right=11, bottom=9),
-    order=0,
 )
 
 

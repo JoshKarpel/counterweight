@@ -291,7 +291,7 @@ def update_node(
                 children=reconcile_children(element.children, (), reconciliation),
                 hooks=Hooks(),
             )
-        case _:
+        case _:  # pragma: no cover
             # Not assert_never: mypy narrows this tuple match unsoundly to tuple[Never, Never], even with an arm missing.
             raise Exception("Unreachable!")  # pragma: no mutate
 

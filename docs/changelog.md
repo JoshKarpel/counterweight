@@ -268,6 +268,13 @@
   The `check-input` CLI subcommand is also fixed
   (was broken by [#86](https://github.com/JoshKarpel/counterweight/pull/86)).
 
+- `app` stops reading keys from the terminal before it returns,
+  so input typed afterward reaches whatever runs next.
+  Previously its key-reading thread kept running and consumed that input.
+
+- `counterweight check-input` prints `Exiting...` when stopped with ctrl+c.
+  Previously the message never appeared, and the CLI printed `Aborted!` instead.
+
 ### Removed
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)

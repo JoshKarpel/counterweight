@@ -22,10 +22,11 @@ pre-commit:
 
 alias p := pre-commit
 
-[doc('Run type checking and tests')]
-test:
+[doc('Run type checking, then the tests with coverage, passing any arguments on to pytest')]
+[positional-arguments]
+test *ARGS:
     uv run mypy
-    uv run pytest --failed-first
+    uv run pytest --failed-first --cov "$@"
 
 alias t := test
 

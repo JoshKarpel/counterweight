@@ -9,6 +9,7 @@ from asyncio import Queue
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,7 @@ from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
+from tests.devlog import devlog_lines
 from tests.rendering import state_set_keys, state_sets
 
 
@@ -74,11 +76,8 @@ def setter_of(node: ShadowNode) -> Setter[object]:
 
 
 def content(node: ShadowNode) -> object:
-    match node.element:
-        case Text(content=content):
-            return content
-        case _:
-            return None
+    assert isinstance(node.element, Text)
+    return node.element.content
 
 
 def press(node: ShadowNode, key: str) -> None:
@@ -292,7 +291,7 @@ class Line:
         return isinstance(other, Line) and self.text == other.text
 
     def __hash__(self) -> int:
-        return hash(self.text)
+        return hash(self.text)  # pragma: never runs
 
 
 @component(memo=True)
@@ -454,3 +453,25 @@ async def test_process_table_is_pure() -> None:
         autopilot=[KeyPressed(key=Key.Down), KeyPressed(key=Key.Down), KeyPressed(key=Key.Up), Quit()],
         check_purity=True,
     )
+
+
+def documented_devlog_frame() -> list[str]:
+    """The devlog lines the guide shows for one frame, without their timestamps."""
+    page = (Path(__file__).parent.parent / "docs" / "performance.md").read_text()
+    block = page.split("### The devlog", 1)[1].split("```text\n", 1)[1].split("```", 1)[0]
+    return [line.split(" ", 1)[1] for line in block.splitlines()]
+
+
+async def test_the_devlog_logs_the_frame_the_guide_shows_for_the_process_table() -> None:
+    with devlog_lines() as lines:
+        await app(
+            performance_process_table.root(),
+            headless=True,
+            dimensions=(32, 7),
+            autopilot=[KeyPressed(key=Key.Down), Quit()],
+        )
+
+    documented = documented_devlog_frame()
+    frames_start = [i for i, line in enumerate(lines) if "Updated shadow tree" in line]
+    assert documented
+    assert lines[frames_start[1] : frames_start[1] + len(documented)] == documented

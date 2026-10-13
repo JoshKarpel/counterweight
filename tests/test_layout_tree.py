@@ -36,8 +36,7 @@ def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowTree:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
         tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)
         shadow = next_shadow
-    if shadow is None:
-        raise ValueError("No frames")
+    assert shadow is not None
     return shadow
 
 
