@@ -2,15 +2,24 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_state
+from counterweight.elements import Chunk, Div, Text
+from counterweight.hooks import TextInput, use_state, use_text_input
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 METRICS = (("CPU", "23.4%"), ("Memory", "1.21 GB"), ("Disk", "44.8 MB/s"), ("Network", "8.33 MB/s"))
 
+CURSOR = (text_color("slate", 900) | text_bg("slate", 100)).text_style
+
 # --8<-- [start:example]
+
+
+def note_line(field: TextInput) -> list[Chunk]:
+    return [
+        Chunk(content=f"Note: {field.before_cursor}"),
+        Chunk(content=field.at_cursor, style=CURSOR),
+        Chunk(content=field.after_cursor),
+    ]
 
 
 @component
@@ -27,16 +36,13 @@ def metric_card(label: str, value: str) -> Div:
 @component
 def dashboard() -> Div:
     note, set_note = use_state("")
-
-    def on_input(event: InputEvent, _: Receiver) -> None:
-        if isinstance(event, KeyPressed) and len(event.key) == 1:
-            set_note(lambda note: note + event.key)
+    field = use_text_input(note, set_note, auto_focus=True)
 
     return Div(
         style=col,
-        on_input=on_input,
+        on_input=field.on_input,
         children=[
-            Text(content=f"Note: {note}"),
+            Text(content=note_line(field)),
             Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
         ],
     )

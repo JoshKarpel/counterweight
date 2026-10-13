@@ -2,18 +2,21 @@ import os
 import subprocess
 import sys
 from asyncio import run
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Suspend
-from counterweight.elements import Div, Text
+from counterweight.elements import Chunk, Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import use_focus, use_rects, use_state
+from counterweight.hooks import use_rects, use_state, use_text_input
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
+
+CURSOR = (text_color("slate", 900) | text_bg("slate", 100)).text_style
 
 
 @component
@@ -62,7 +65,6 @@ def open_editor(file: Path) -> None:
 
 @component
 def picker() -> Div:
-    use_focus(auto_focus=True)
     glob, set_glob = use_state("**/*.py")
     selected_file_idx, set_selected_file_idx = use_state(0)
 
@@ -78,36 +80,43 @@ def picker() -> Div:
             case KeyPressed(key=Key.Up):
                 set_selected_file_idx(lambda i: clamp(0, i - 1, len(files) - 1))
                 return ()
-            case KeyPressed(key=Key.Backspace):
-                new_glob = glob[:-1]
-                set_selected_file_idx(0)
-                set_glob(new_glob)
-                return ()
-            case KeyPressed(key=c) if c.isprintable() and len(c) == 1:
-                new_glob = glob + c
-                set_selected_file_idx(0)
-                set_glob(new_glob)
-                return ()
             case _:
                 return None
+
+    def edit_glob(edit: Callable[[str], str]) -> None:
+        def apply(glob: str) -> str:
+            if (edited := edit(glob)) != glob:
+                set_selected_file_idx(0)
+            return edited
+
+        set_glob(apply)
 
     return Div(
         style=col | fill(1) | justify_children_start | border_collapse,
         on_input=on_input,
         children=[
-            glob_input(glob=glob),
+            glob_input(glob=glob, set_glob=edit_glob),
             file_list(files=files, selected_idx=selected_file_idx),
         ],
     )
 
 
 @component
-def glob_input(glob: str) -> Div:
+def glob_input(glob: str, set_glob: Callable[[Callable[[str], str]], None]) -> Div:
+    field = use_text_input(glob, set_glob, auto_focus=True)
     return Div(
         style=row | align_self_stretch | border_collapse,
+        on_input=field.on_input,
         children=[
             Text(style=content_box | border | pad_x(1), content="glob"),
-            Text(style=content_box | border | pad_x(1) | fill(1), content=glob),
+            Text(
+                style=content_box | border | pad_x(1) | fill(1),
+                content=[
+                    Chunk(content=field.before_cursor),
+                    Chunk(content=field.at_cursor, style=CURSOR),
+                    Chunk(content=field.after_cursor),
+                ],
+            ),
         ],
     )
 

@@ -4,15 +4,17 @@ from collections.abc import Callable
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Quit
-from counterweight.elements import Div, Text
+from counterweight.elements import Chunk, Div, Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import use_hovered, use_rects, use_state
+from counterweight.hooks import Setter, use_hovered, use_rects, use_state, use_text_input
 from counterweight.keys import Key
 from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import *
 
 WRAP_MODES: tuple[TextWrap, ...] = ("none", "stable", "pretty", "balance")
+
+CURSOR = (text_color("slate", 900) | text_bg("sky", 200)).text_style
 
 SAMPLE = (
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
@@ -41,10 +43,6 @@ def root() -> Div:
                 set_wrap_idx(lambda i: (i + 1) % len(WRAP_MODES))
             case KeyPressed(key=Key.BackTab):
                 set_wrap_idx(lambda i: (i - 1) % len(WRAP_MODES))
-            case KeyPressed(key=Key.Backspace):
-                set_input_text(lambda t: t[:-1])
-            case KeyPressed(key=char) if len(char) == 1 and char.isprintable():
-                set_input_text(lambda t: t + char)
             case _:
                 pass
         return None
@@ -57,7 +55,7 @@ def root() -> Div:
             Div(
                 style=row | fill(1) | gap(1) | pad_x(1),
                 children=[
-                    input_pane(input_text),
+                    input_pane(input_text, set_input_text),
                     display_pane(input_text, WRAP_MODES[wrap_idx]),
                 ],
             ),
@@ -97,19 +95,25 @@ def toolbar(
 
 
 @component
-def input_pane(content: str) -> Div:
+def input_pane(content: str, set_content: Setter[str]) -> Div:
+    field = use_text_input(content, set_content, auto_focus=True)
     rects = use_rects()
     w = rects.content.width
 
     return Div(
         style=fill(1) | col | border | border_lightrounded | border_color("sky", 600) | pad_x(1),
+        on_input=field.on_input,
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
                 style=position_absolute | inset_top(-1) | inset_right(1) | text_color("sky", 600),
             ),
             Text(
-                content=content,
+                content=[
+                    Chunk(content=field.before_cursor),
+                    Chunk(content=field.at_cursor, style=CURSOR),
+                    Chunk(content=field.after_cursor),
+                ],
                 style=fill(1) | text_wrap_stable | text_color("sky", 200),
             ),
         ],
