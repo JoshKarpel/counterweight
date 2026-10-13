@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
-import selectors
 import termios
+from asyncio import TimerHandle, get_running_loop
 from collections.abc import Callable
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import timedelta
-from selectors import DefaultSelector
-from threading import Event
 from typing import TextIO
 
 from counterweight.events import AnyEvent
@@ -21,44 +20,81 @@ logger = logging.getLogger(__name__)
 ESCAPE_TIMEOUT = timedelta(milliseconds=50)
 
 
-def read_keys(
-    stream: TextIO,
-    put_event: Callable[[AnyEvent], None],
-    allow: Event,
-    waiting: Event,
-) -> None:
-    selector = DefaultSelector()
-    selector.register(stream, selectors.EVENT_READ)
+@dataclass(slots=True)
+class KeyReader:
+    """
+    The state of reading a stream between `start_reading_keys` and `stop_reading_keys`.
+    `pending` is the start of an escape sequence cut off by the end of a read,
+    held until more input arrives or `escape_timer` fires.
+    """
 
-    pending = b""
+    stream: TextIO
+    put_event: Callable[[AnyEvent], None]
+    pending: bytes = b""
+    escape_timer: TimerHandle | None = None
 
-    while True:
-        if not allow.is_set():
-            waiting.set()
-            allow.wait()
-            waiting.clear()
 
-        # We're just reading from one file,
-        # so we can dispense with the ceremony of actually using the results of the select,
-        # other than knowing that it did return something.
-        if selector.select(timeout=ESCAPE_TIMEOUT.total_seconds() if pending else 1 / 60):
-            buffer, is_final = pending + os.read(stream.fileno(), 2**10), False
-        elif pending:
-            # Nothing followed the held-over bytes in time, so they aren't the start of anything longer.
-            buffer, is_final = pending, True
-        else:
-            continue
+def start_reading_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> KeyReader:
+    """
+    Read `stream` whenever it has input, on the running event loop, and put each input parsed from it,
+    until `stop_reading_keys` (or the end of the input).
 
-        parsed = parse_input(buffer, is_final=is_final)
-        pending = parsed.remainder
+    Reading on the event loop rather than a thread makes stopping immediate, since nothing can be partway through
+    a read when `stop_reading_keys` returns.
+    """
+    reader = KeyReader(stream=stream, put_event=put_event)
+    get_running_loop().add_reader(stream.fileno(), read_keys, reader)
+    return reader
 
-        for event in parsed.events:
-            put_event(event)
 
-        logger.debug(
-            "Parsed user input",
-            extra={"inputs": parsed.events, "skipped": parsed.skipped, "pending": pending, "bytes": buffer},
+def stop_reading_keys(reader: KeyReader) -> None:
+    """
+    Stop reading `reader`'s stream, leaving any input that arrives afterward for whatever reads it next.
+    Input held waiting for the rest of an escape sequence is put as it stands, since no more of it is coming.
+    """
+    get_running_loop().remove_reader(reader.stream.fileno())
+
+    if reader.pending:
+        put_parsed_keys(reader, reader.pending, is_final=True)
+
+
+def read_keys(reader: KeyReader) -> None:
+    """
+    Read the input waiting on `reader`'s stream and put each input parsed from it.
+    At the end of the input, stop reading the stream, since it stays readable and the event loop would call this forever.
+    """
+    bytes = os.read(reader.stream.fileno(), 2**10)
+
+    if not bytes:
+        stop_reading_keys(reader)
+        return
+
+    put_parsed_keys(reader, reader.pending + bytes, is_final=False)
+
+
+def put_parsed_keys(reader: KeyReader, buffer: bytes, is_final: bool) -> None:
+    """
+    Parse `buffer` and put each input parsed from it,
+    holding any cut-off escape sequence in `reader` until `ESCAPE_TIMEOUT` passes with nothing following it.
+    """
+    if reader.escape_timer is not None:
+        reader.escape_timer.cancel()
+        reader.escape_timer = None
+
+    parsed = parse_input(buffer, is_final=is_final)
+    reader.pending = parsed.remainder
+
+    if reader.pending:
+        reader.escape_timer = get_running_loop().call_later(
+            ESCAPE_TIMEOUT.total_seconds(), put_parsed_keys, reader, reader.pending, True
         )
+
+    logger.debug(
+        "Parsed user input",
+        extra={"inputs": parsed.events, "skipped": parsed.skipped, "pending": reader.pending, "bytes": buffer},
+    )
+    for event in parsed.events:
+        reader.put_event(event)
 
 
 LFLAG = 3
@@ -67,7 +103,7 @@ CC = 6
 TCGetAttr = list[int | list[int | bytes]]
 
 
-def start_input_control(stream: TextIO) -> TCGetAttr:  # pragma: untestable
+def start_input_control(stream: TextIO) -> TCGetAttr:
     original = termios.tcgetattr(stream)
 
     modified = deepcopy(original)
@@ -81,5 +117,5 @@ def start_input_control(stream: TextIO) -> TCGetAttr:  # pragma: untestable
     return original
 
 
-def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:  # pragma: untestable
+def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
     termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)

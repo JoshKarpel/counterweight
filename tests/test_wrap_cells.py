@@ -251,3 +251,29 @@ def test_narrowest_width_is_the_widest_word_in_cells() -> None:
 
 def test_zero_width_clusters_take_no_width() -> None:
     assert MeasurableText(cells=tuple(cells("a\N{ZERO WIDTH SPACE}b")), wrap="none").size_at(None) == (2, 1)
+
+
+def test_hyphen_takes_the_style_of_the_cluster_before_it() -> None:
+    bold = CellStyle(bold=True)
+
+    lines = wrap_cells(list(text_cells("abcdef", bold)), "stable", 4)
+
+    assert [(cell.grapheme, cell.style) for cell in lines[0]] == [(grapheme, bold) for grapheme in "abc-"]
+
+
+def test_text_measures_nothing_at_no_width() -> None:
+    assert MeasurableText.of(("hello", CellStyle(), "stable")).size_at(0) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    ("content", "wrap", "expected"),
+    [
+        ("ab cde f", "stable", 3),
+        ("ab cde f", "none", None),
+        ("", "stable", None),
+    ],
+)
+def test_narrowest_width_is_the_widest_word_or_unlimited_if_text_does_not_wrap(
+    content: str, wrap: TextWrap, expected: int | None
+) -> None:
+    assert MeasurableText.of((content, CellStyle(), wrap)).narrowest_width() == expected

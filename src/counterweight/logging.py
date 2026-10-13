@@ -7,9 +7,10 @@ at read time, so the render loop pays for one encoding per record rather than on
 
 import json
 from asyncio import sleep
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from functools import partial
 from pathlib import Path
 from shutil import get_terminal_size
 from tempfile import gettempdir
@@ -80,34 +81,40 @@ def format_line(line: str, raw: bool) -> str:
     return line.rstrip("\n") if raw else render_line(json.loads(line))
 
 
-async def tail_devlog(out: Writer, raw: bool = False) -> None:
+async def tail_devlog(
+    out: Writer,
+    raw: bool = False,
+    path: Path = DEVLOG_FILE,
+    wait: Callable[[], Awaitable[None]] = partial(sleep, TAIL_POLL.total_seconds()),
+) -> None:
     """
     Write the devlog to `out` as it's written, starting over when an app truncates it.
     Only complete lines are written, since the writer may be partway through one.
+    `wait` is awaited whenever there is nothing new to read.
 
     Waiting for more on the event loop, not in a blocking sleep, is what lets the first Ctrl-C stop it:
     under `asyncio.run` that cancels the main task, which a blocking loop would never notice.
     """
     while True:
-        DEVLOG_FILE.touch(exist_ok=True)
-        with DEVLOG_FILE.open(mode="r") as f:
-            partial = ""
+        path.touch(exist_ok=True)
+        with path.open(mode="r") as f:
+            pending = ""
             while True:
-                partial += f.readline()
-                if partial.endswith("\n"):
-                    out.write(f"{format_line(partial, raw)}\n")
+                pending += f.readline()
+                if pending.endswith("\n"):
+                    out.write(f"{format_line(pending, raw)}\n")
                     out.flush()
-                    partial = ""
-                elif f.tell() > DEVLOG_FILE.stat().st_size:
+                    pending = ""
+                elif f.tell() > path.stat().st_size:
                     out.write(f"{' DevLog Rotated '.center(get_terminal_size().columns, '━')}\n")
                     break
                 else:
-                    await sleep(TAIL_POLL.total_seconds())
+                    await wait()
 
 
-def last_devlog(out: Writer, n: int, raw: bool = False) -> None:
+def last_devlog(out: Writer, n: int, raw: bool = False, path: Path = DEVLOG_FILE) -> None:
     """Write the last `n` complete lines of the devlog to `out`."""
-    DEVLOG_FILE.touch(exist_ok=True)
-    lines = [line for line in DEVLOG_FILE.read_text().splitlines(keepends=True) if line.endswith("\n")]
+    path.touch(exist_ok=True)
+    lines = [line for line in path.read_text().splitlines(keepends=True) if line.endswith("\n")]
     for line in lines[-n:]:
         out.write(f"{format_line(line, raw)}\n")

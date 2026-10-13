@@ -311,3 +311,7 @@ def test_input_split_anywhere_parses_to_the_same_text_and_events(buffer: bytes, 
     reads = [buffer[start:end] for start, end in zip([0, *cuts], [*cuts, len(buffer)], strict=True)]
 
     assert join_text(parse_reads(reads)) == join_text(parse_reads([buffer]))
+
+
+def test_key_repr_is_its_qualified_name() -> None:
+    assert repr(Key.Up) == "Key.Up"

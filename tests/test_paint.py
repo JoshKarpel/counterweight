@@ -13,10 +13,25 @@ from counterweight.elements import Div, Text
 from counterweight.geometry import Position, Region
 from counterweight.graphemes import grapheme_width
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, diff_paint, text_lines
+from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, text_lines
 from counterweight.styles import Style
-from counterweight.styles.styles import CellStyle, Color, resolve_cell_style
-from counterweight.styles.utilities import border, border_light, inset_left, inset_top, position_absolute, size, z
+from counterweight.styles.styles import BorderKind, CellStyle, Color, resolve_cell_style
+from counterweight.styles.utilities import (
+    _COLOR_MAP,
+    border,
+    border_bg,
+    border_light,
+    content_color,
+    inset_left,
+    inset_top,
+    margin,
+    margin_color,
+    pad,
+    padding_color,
+    position_absolute,
+    size,
+    z,
+)
 
 RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
 BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
@@ -47,8 +62,8 @@ def test_set_and_get_by_position_or_pair(key: Position | tuple[int, int]) -> Non
 
 
 @pytest.mark.parametrize("key", [(-1, 0), (0, -1), (4, 0), (0, 3)])
-def test_indexing_off_screen_raises(key: tuple[int, int]) -> None:
-    with pytest.raises(IndexError):
+def test_indexing_off_screen_raises_naming_the_position_and_size(key: tuple[int, int]) -> None:
+    with pytest.raises(IndexError, match=rf"\({key[0]}, {key[1]}\).*\b4x3\b"):
         Paint.blank(4, 3)[key]
 
 
@@ -106,6 +121,15 @@ def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen(x: int, expe
     paint = Paint.blank(4, 1)
     paint.write_row(x, 0, (X, WIDE, CONTINUATION))
     assert grid(paint) == expected
+
+
+def test_write_row_overhanging_the_left_edge_leaves_the_row_above_alone() -> None:
+    paint = Paint.blank(4, 2)
+    paint.write_row(0, 0, (X, WIDE, CONTINUATION, X))
+
+    paint.write_row(-1, 1, (Y, Y, Y))
+
+    assert grid(paint) == ["x日·x", "yy.."]
 
 
 @pytest.mark.parametrize(("x", "other_half"), [(1, 2), (2, 1)], ids=["over-left-half", "over-right-half"])
@@ -204,8 +228,8 @@ def test_diff_compares_equal_cells_by_value() -> None:
     assert diff_paint(new, current) == [(1, 0, [Y])]
 
 
-def test_diff_of_different_sizes_raises() -> None:
-    with pytest.raises(ValueError):
+def test_diff_of_different_sizes_raises_naming_both_sizes() -> None:
+    with pytest.raises(ValueError, match=r"\b4x3\b.*\b3x4\b"):
         diff_paint(Paint.blank(4, 3), Paint.blank(3, 4))
 
 
@@ -275,3 +299,62 @@ async def test_wide_characters_take_two_cells_each() -> None:
     )
 
     assert grid(paint) == ["┌────────┐", "│日·本·語·ab│", "└────────┘"]
+
+
+async def test_text_taller_than_its_content_box_is_cut_off_at_the_box() -> None:
+    frames: list[str] = []
+
+    @component
+    def root() -> Div:
+        return Div(children=[Text(content="a\nb", style=size(3, 1))])
+
+    await app(
+        root(),
+        headless=True,
+        dimensions=(3, 2),
+        autopilot=[Screenshot(handler=lambda frame: frames.append(frame.text(ansi=False))), Quit()],
+    )
+
+    assert frames == ["a  \n   "]
+
+
+def test_text_lines_are_empty_at_no_width() -> None:
+    assert text_lines(tuple(Text(content="hi").cells), "stable", "left", resolve_cell_style(CellStyle()), 0, 3) == ()
+
+
+def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
+    region = Region(left=2, top=0, right=2, bottom=3)
+    padding = Region(left=2, top=1, right=2, bottom=2)
+
+    assert border_fills(BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, padding) == ((), ())
+
+
+def test_a_border_kind_without_joined_parts_draws_its_edges_but_gives_no_healing_hints() -> None:
+    region = Region(left=0, top=0, right=3, bottom=3)
+    padding = Region(left=1, top=1, right=2, bottom=2)
+
+    fills, hints = border_fills(BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, padding)
+
+    assert (len(fills), hints) == (8, ())
+
+
+async def test_color_utilities_fill_the_margin_border_padding_and_content() -> None:
+    frames: list[Frame] = []
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=margin(1)
+            | border
+            | pad(1)
+            | margin_color("red", 500)
+            | border_bg("green", 500)
+            | padding_color("blue", 500)
+            | content_color("amber", 500)
+        )
+
+    await app(root(), headless=True, dimensions=(9, 9), autopilot=[Screenshot(handler=frames.append), Quit()])
+
+    [frame] = frames
+    backgrounds = [frame.paint[x, x].style.background for x in (0, 1, 2, 4)]
+    assert backgrounds == [_COLOR_MAP[(color, 500)] for color in ("red", "green", "blue", "amber")]
