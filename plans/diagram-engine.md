@@ -38,6 +38,12 @@ Neither should pay for the other.
 
 The probe at the end of this plan runs the whole pipeline:
 
+- Graph input: nodes named only by edges join the node list in edge order,
+  as Mermaid's `A --> B` declares them.
+  Self-loops are rejected.
+- Cycle breaking: a depth-first search in input order finds the edges that close a cycle,
+  and they're laid out reversed, then drawn upward with the arrowhead under the node they point at.
+  Edges between the same two nodes share one line, with an arrowhead for each direction.
 - Ranking and ordering: longest-path ranks, then barycenter ordering over four sweeps.
   Long edges pass through 1-cell dummy nodes.
 - Coordinate assignment: each node is pulled toward the nodes it connects to,
@@ -47,17 +53,24 @@ The probe at the end of this plan runs the whole pipeline:
   so long edges straighten first.
   Each rank is solved exactly with pool-adjacent-violators over weighted medians,
   in alternating sweeps.
-- Layout: the ranks compile into a waxy tree, a column of flex rows.
-  Each node's left margin moves it to its assigned x,
-  and fixed-height spacers between rows hold the edge channels.
 - Ports: an edge arrives where it already is if that's over the target's interior,
   with arrowheads two cells apart.
-  A source with one outgoing edge leaves from wherever that edge lands.
+  A box grows wider when its label alone leaves too little room for its arrowheads.
+  A source with one outgoing edge leaves from wherever that edge lands,
+  when that column is within the source's own border.
+  An edge with an arrowhead at its source leaves from its own port beside the shared exit.
 - Channel tracks: each source's outgoing edges share one horizontal track.
   An edge whose run passes another edge's source column must sit below it,
   and one that passes another's arrival column must sit above it.
-  Tracks are assigned in that order,
-  which avoids every crossing that stacking can avoid.
+  Tracks are assigned in that order.
+  Two edges that each must sit below the other cross whatever the order,
+  and a longer cycle of these constraints is broken at its leftmost edge,
+  a heuristic that can leave a crossing a different break would avoid.
+- Layout: the ranks compile into a waxy tree, a column of flex rows,
+  and taffy lays it out once.
+  Each node's left margin moves it to its assigned x,
+  fixed-height spacers between rows hold the edge channels,
+  and nodes don't shrink, so a diagram wider than the screen overflows rather than squashing its boxes.
 - Drawing: every cell stores up, down, left, and right bits,
   and the glyph comes from their combination.
 
@@ -136,6 +149,42 @@ A CI pipeline at 80 columns, with a wide fan-out and fan-in:
                                                       ╰─────────────╯
 ```
 
+A job queue at 44 columns, with cycles.
+`worker` and `queue` point at each other, so they share a line with an arrowhead at each end,
+and `wait` closes a longer loop back to `submit`, whose `▲` has its own port.
+`ok` grows past its label to fit four arrowheads:
+
+```text
+                          ╭────────╮
+                          │ submit │
+                          ╰┬───┬───╯
+                           ▲   │
+        ╭──────────────────╯   ├──────╮
+        │                      ▼      │
+        │                  ╭───────╮  │
+        │                  │ queue │  │
+        │                  ╰┬──┬───╯  │
+        │                   ▲  │      │
+        │                   │  ╰───╮  │
+        │                   ▼      │  │
+        │              ╭────────╮  │  │
+        │              │ worker │  │  │
+        │              ╰────┬───╯  │  │
+        │                   │      │  │
+        │      ╭──────────┬─┴───╮  │  │
+        │      ▼          ▼     │  │  │
+        │  ╭───────╮  ╭──────╮  │  │  │
+        │  │ retry │  │ fail │  │  │  │
+        │  ╰───┬───╯  ╰───┬──╯  │  │  │
+        │      │          │     │  │  │
+        │ ╭────╯          │     ╰─╮│  │
+        │ │               ╰─────╮ │╰╮ │
+        │ ▼                     ▼ ▼ ▼ ▼
+    ╭───┴──╮                   ╭───────╮
+    │ wait │                   │  ok   │
+    ╰──────╯                   ╰───────╯
+```
+
 What it established:
 
 - Coordinate assignment is what makes the output acceptable.
@@ -148,18 +197,28 @@ What it established:
 - Channel heights are known before layout,
   because they depend only on the ordering and the x positions,
   so once widths are known, taffy still sizes everything in one pass.
+  The probe computes x positions, ports, and tracks first,
+  then builds and lays out the tree once.
 - Edges merge into node borders as `┬` and `┴`,
   the same direction-bits idea `border_healing.py` uses.
 
 Known weaknesses:
 
-- Crowded targets: a narrow box with many inputs forces small kinks (`publish` above).
-  A node could grow to fit its ports, or take edges on its sides.
+- Crowded targets: arrowheads two cells apart push edges off their straight line,
+  so they kink just above a busy box (`publish` above),
+  and a box with more inputs than its label is wide grows (`ok` above).
+  Taking edges on a box's sides would avoid both.
 - Long horizontal runs: `publish` to `deploy docs` runs a long way right,
   because the long edge from `build docs` holds the right-hand column.
   Better ordering heuristics would help.
 - Off-center exits: an edge can leave a box off-center (`db`, `render`)
   when that keeps it straight.
+- Cycle breaking follows input order, not a minimum feedback set,
+  so some graphs get more upward edges than they need.
+  Finding the fewest edges to reverse is NP-hard, so dot and ELK use heuristics too.
+- Self-loops need a route around a box's side, which the probe doesn't have.
+- Overflow: a diagram wider than the screen runs off its right edge,
+  until fitting (below) narrows it.
 
 ## Where placement plugs into taffy
 
@@ -327,8 +386,13 @@ What it showed:
 
 ## Fitting the screen and staying put
 
-Taffy already wraps node text into narrower boxes.
-On top of that, the engine can shrink gaps
+Counterweight's text measurement already wraps a label at a given width,
+so the engine can narrow a box by choosing the width it measures that node at,
+before coordinate assignment.
+Boxes must not shrink during layout itself:
+taffy's default `flex_shrink` squeezes them below the size the router drew around,
+which is why the probe's nodes don't shrink.
+On top of narrowing boxes, the engine can shrink gaps
 (mermaid-ascii's `--max-width` and termaid's auto-fit both do)
 and flip direction from down to right by aspect ratio.
 
@@ -339,6 +403,8 @@ Stability matters for an editor and for reactive re-renders alike:
   and says "adding one node can change the whole diagram".
 - Input order breaks ties,
   a lesson from ELK's retrospective, where users said drawings change unexpectedly.
+  That rules out iterating over sets of node names,
+  whose order changes between runs with Python's hash seed.
 - Pinning: some nodes keep fixed positions,
   as in ELK's `semiInteractive` mode and TALA's partial positions.
 - Caching: key the layout on graph structure plus node sizes,
@@ -371,14 +437,19 @@ These depend on the open questions; the order assumes routing first.
 2. Connectors: a post-layout routing pass,
    with A* using bend and soft-obstacle costs, port spreading, and arrowheads,
    then ordering and nudging in shared channels.
-3. Graph core: pure functions for ranking, ordering, coordinate assignment,
+3. Graph core: pure functions for cycle breaking, ranking, ordering, coordinate assignment,
    ports, and channel tracks, tested directly on plain data.
+   Each takes its spacing (the gap between neighbours) as an argument.
+   Tests cover cycles, sinks above the last rank, isolated nodes,
+   and boxes with more inputs than their label is wide.
 4. Graph container: measure nodes, run the core,
-   compile positions into the taffy tree, and route through step 2's channels.
-5. Fitting: shrink gaps, then flip direction, when the diagram doesn't fit.
+   compile positions into the taffy tree in one layout pass, and route through step 2's channels.
+5. Fitting: narrow boxes, shrink gaps, then flip direction, when the diagram doesn't fit.
 6. Drop shadows: document the wrapper pattern (a cookbook page),
-   and have the graph container leave room for a node's shadow.
-7. Mermaid subset: flowchart syntax parsed into the graph container.
+   and have the graph container leave room for a node's shadow by passing a wider gap to the core.
+7. Mermaid subset: flowchart syntax parsed into the graph container,
+   with nodes declared by the edges that name them.
+   Self-loops need routing around a box's side before they can be accepted.
 
 ## Prior art
 
@@ -423,21 +494,21 @@ written to answer whether the approach holds up, not a starting point to ship.
 
 Save it as `layered.py` and run it from this repository, which provides waxy:
 `uv run python layered.py ci 80`.
-It takes a graph name (`request` or `ci`) and an available width.
+It takes a graph name (`request`, `ci`, or `retry`) and an available width.
 
 ```python
 """
 Throwaway probe of a layered (Sugiyama-style) diagram engine for counterweight.
 
 Ranks, orders and x-coordinates are computed in Python, compiled into a waxy/taffy tree of flex rows
-(each node pushed to its x by a left margin, channel spacers between rows), laid out by taffy,
+(each node pushed to its x by a left margin, channel spacers between rows), laid out by taffy in one pass,
 then edges are routed in the inter-rank channels and drawn with box-drawing characters.
 
-Run from the counterweight repo, which provides waxy: `uv run python layered.py [request|ci] [width]`.
+Run from the counterweight repo, which provides waxy: `uv run python layered.py [request|ci|retry] [width]`.
 """
 
 import sys
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import waxy
 
@@ -474,31 +545,85 @@ GRAPHS = {
             ("publish", "deploy docs"),
         ],
     ),
+    # Nodes named only by edges, a two-node cycle, a longer cycle, and a box with more inputs than its label is wide.
+    "retry": (
+        [],
+        [
+            ("submit", "queue"),
+            ("queue", "worker"),
+            ("worker", "queue"),
+            ("worker", "ok"),
+            ("worker", "retry"),
+            ("retry", "wait"),
+            ("wait", "submit"),
+            ("submit", "ok"),
+            ("worker", "fail"),
+            ("fail", "ok"),
+            ("queue", "ok"),
+        ],
+    ),
 }
 
 
-def layers(nodes: list[str], edges: list[tuple[str, str]]) -> dict[str, int]:
-    """Longest-path layering."""
-    preds = defaultdict(list)
+def acyclic(nodes, edges):
+    """
+    The edges that close a cycle: each one points back to a node still on the stack of a depth-first search,
+    which visits nodes and edges in input order so the same graph always breaks at the same edges.
+    Reversing them leaves the graph acyclic.
+    """
+    succs = defaultdict(list)
+    for s, t in edges:
+        succs[s].append(t)
+    on_stack, done, back = set(), set(), set()
+    for root in nodes:
+        if root in done:
+            continue
+        on_stack.add(root)
+        stack = [(root, iter(succs[root]))]
+        while stack:
+            n, untried = stack[-1]
+            for t in untried:
+                if t in on_stack:
+                    back.add((n, t))
+                elif t not in done:
+                    on_stack.add(t)
+                    stack.append((t, iter(succs[t])))
+                    break
+            else:
+                on_stack.discard(n)
+                done.add(n)
+                stack.pop()
+    return back
+
+
+def layers(nodes, edges):
+    """Longest-path layering, visiting nodes in topological order so long chains don't recurse."""
+    preds, succs = defaultdict(list), defaultdict(list)
     for s, t in edges:
         preds[t].append(s)
-    rank: dict[str, int] = {}
-
-    def r(n: str) -> int:
-        if n not in rank:
-            rank[n] = 1 + max((r(p) for p in preds[n]), default=-1)
-        return rank[n]
-
-    for n in nodes:
-        r(n)
+        succs[s].append(t)
+    waiting = {n: len(preds[n]) for n in nodes}
+    ready = deque(n for n in nodes if not waiting[n])
+    rank = {}
+    while ready:
+        n = ready.popleft()
+        rank[n] = 1 + max((rank[p] for p in preds[n]), default=-1)
+        for t in succs[n]:
+            waiting[t] -= 1
+            if not waiting[t]:
+                ready.append(t)
     return rank
 
 
 def add_dummies(nodes, edges, rank):
-    """Split edges spanning several ranks into chains through 1-cell-wide dummy nodes."""
+    """
+    Split edges spanning several ranks into chains through 1-cell-wide dummy nodes.
+    Also returns the edge each piece of a chain came from.
+    """
     nodes = list(nodes)
     rank = dict(rank)
     out = []
+    chain = {}
     for s, t in edges:
         prev = s
         for k in range(rank[s] + 1, rank[t]):
@@ -506,13 +631,18 @@ def add_dummies(nodes, edges, rank):
             nodes.append(d)
             rank[d] = k
             out.append((prev, d))
+            chain[(prev, d)] = (s, t)
             prev = d
         out.append((prev, t))
-    return nodes, out, rank
+        chain[(prev, t)] = (s, t)
+    return nodes, out, chain, rank
 
 
 def order(nodes, edges, rank, sweeps=4):
-    """Barycenter crossing reduction, alternating down and up sweeps."""
+    """
+    Barycenter crossing reduction, alternating down and up sweeps.
+    A node with no neighbours in the reference rank keeps its current position as its key.
+    """
     by_rank = defaultdict(list)
     for n in nodes:
         by_rank[rank[n]].append(n)
@@ -527,62 +657,68 @@ def order(nodes, edges, rank, sweeps=4):
             ref = by_rank[r - 1] if down else by_rank[r + 1]
             pos = {n: j for j, n in enumerate(ref)}
             nbrs = preds if down else succs
+            # Read positions before sorting: CPython empties a list while sorting it, so `.index` would fail.
+            current = {n: j for j, n in enumerate(by_rank[r])}
 
             def bary(n):
                 ps = [pos[p] for p in nbrs[n] if p in pos]
-                return sum(ps) / len(ps) if ps else by_rank[r].index(n)
+                return sum(ps) / len(ps) if ps else current[n]
 
             by_rank[r].sort(key=bary)
     return [by_rank[r] for r in range(depth)]
 
 
-def channel_tracks(ranked, edges, xs_out, xs_in):
+def channel_tracks(ranked, edges, bundle, xs_out, xs_in):
     """
-    One horizontal track per source bundle in each inter-rank gap, stacked so bundles don't cross where
-    stacking can prevent it, and packed so bundles that don't overlap share a track.
+    One horizontal track per bundle in each inter-rank gap, stacked so bundles don't cross where
+    the ordering constraints between them agree, and packed so bundles that don't overlap share a track.
     Returns each bundle's track and each gap's track count.
     """
+    rank_of = {n: r for r, ns in enumerate(ranked) for n in ns}
+    bundles_by_gap = defaultdict(lambda: defaultdict(list))
+    for e in edges:
+        bundles_by_gap[rank_of[e[0]]][bundle[e]].append(e)
     tracks = {}
     heights = []
-    rank_of = {n: r for r, ns in enumerate(ranked) for n in ns}
     for r in range(len(ranked) - 1):
-        bundles = defaultdict(list)
-        for s, t in edges:
-            if rank_of[s] == r:
-                bundles[s].append(t)
         nets = {}
-        for s, ts in bundles.items():
-            bottoms = [xs_in[(s, t)] for t in ts]
-            xs = [xs_out[s], *bottoms]
+        for b, es in bundles_by_gap[r].items():
+            bottoms = [xs_in[e] for e in es]
+            xs = [xs_out[b], *bottoms]
             if min(xs) != max(xs):
-                nets[s] = (min(xs), max(xs), xs_out[s], bottoms)
+                nets[b] = (min(xs), max(xs), xs_out[b], bottoms)
 
         # A net whose horizontal run passes another's source column must sit below it,
         # and one that passes another's arrival column must sit above it; otherwise they cross.
-        above = defaultdict(set)
+        below = defaultdict(set)
         for a, (alo, ahi, _, _) in nets.items():
             for b, (_, _, btop, bbottoms) in nets.items():
                 if a == b:
                     continue
                 if alo <= btop <= ahi:
-                    above[b].add(a)
+                    below[b].add(a)
                 if any(alo <= x <= ahi for x in bbottoms):
-                    above[a].add(b)
+                    below[a].add(b)
         for a in nets:  # Contradictory pairs cross whatever we do, so drop both constraints.
-            for b in list(above[a]):
-                if a in above[b]:
-                    above[a].discard(b)
-                    above[b].discard(a)
+            for b in list(below[a]):
+                if a in below[b]:
+                    below[a].discard(b)
+                    below[b].discard(a)
+        above = defaultdict(set)
+        for a, bs in below.items():
+            for b in bs:
+                above[b].add(a)
 
         placed: dict[int, list[tuple[int, int]]] = defaultdict(list)
-        remaining = set(nets)
+        remaining = dict.fromkeys(nets)  # Ordered, so ties break the same way on every run.
         while remaining:
-            ready = [n for n in remaining if not any(p in remaining for p in parents(above, n))]
-            # A longer cycle can't be satisfied either; break it at the leftmost net.
+            ready = [n for n in remaining if not above[n] & remaining.keys()]
+            # A longer cycle can't be satisfied either. Breaking it at the leftmost net is a heuristic:
+            # a different break might violate fewer constraints.
             n = min(ready or remaining, key=lambda n: nets[n][:2])
-            remaining.discard(n)
+            del remaining[n]
             lo, hi = nets[n][:2]
-            k = 1 + max((tracks[p] for p in parents(above, n) if p in tracks), default=-1)
+            k = 1 + max((tracks[p] for p in above[n] if p in tracks), default=-1)
             while any(not (hi < plo - 1 or lo > phi + 1) for plo, phi in placed[k]):
                 k += 1
             tracks[n] = k
@@ -591,16 +727,27 @@ def channel_tracks(ranked, edges, xs_out, xs_in):
     return tracks, heights
 
 
-def parents(above, n):
-    """The nets that must sit above `n`."""
-    return [p for p, below in above.items() if n in below]
+def node_sizes(nodes, ports):
+    """
+    Each node's (width, height). A dummy is one cell wide.
+    A box fits its label, and grows so the ports on its busier side fit two cells apart within its border.
+    """
+    return {n: (1, 3) if n.startswith("~") else (max(len(n) + 4, 2 * ports[n] + 1), 3) for n in nodes}
 
 
-GAP = 2
-
-
-def size(n):
-    return (1, 3) if n.startswith("~") else (len(n) + 4, 3)
+def spread(wants, lo, hi):
+    """
+    Ports for edges that want the given columns, in order, kept within [lo, hi] and two cells apart
+    so arrowheads don't touch: pushed right, then back left.
+    The range must be wide enough to hold them all, or the push left passes `lo`.
+    """
+    ports = [min(max(x, lo), hi) for x in wants]
+    for k in range(1, len(ports)):
+        ports[k] = max(ports[k], ports[k - 1] + 2)
+    ports[-1] = min(ports[-1], hi)
+    for k in range(len(ports) - 2, -1, -1):
+        ports[k] = min(ports[k], ports[k + 1] - 2)
+    return ports
 
 
 def weighted_median(points):
@@ -617,29 +764,29 @@ def weighted_median(points):
     return points[-1][0]
 
 
-def place_rank(ns, targets):
+def place_rank(ns, targets, sizes, gap):
     """
     Left x for each node of one rank, minimizing the weighted distance of each node's center from its targets
-    subject to keeping the rank's order with at least GAP between neighbours:
+    subject to keeping the rank's order with at least `gap` between neighbours:
     pool-adjacent-violators with weighted medians, which is exact for this L1 objective.
     """
     blocks = []  # [members [(node, offset)], extent, points [(value, weight)], pos]
     for n in ns:
-        w = size(n)[0]
+        w = sizes[n][0]
         points = [(c - w // 2, wt) for c, wt in targets[n]]
         block = [[(n, 0)], w, points, weighted_median(points)]
         blocks.append(block)
-        while len(blocks) > 1 and blocks[-2][3] + blocks[-2][1] + GAP > blocks[-1][3]:
+        while len(blocks) > 1 and blocks[-2][3] + blocks[-2][1] + gap > blocks[-1][3]:
             b2 = blocks.pop()
             b1 = blocks.pop()
-            shift = b1[1] + GAP
+            shift = b1[1] + gap
             members = b1[0] + [(m, off + shift) for m, off in b2[0]]
             points = b1[2] + [(v - shift, wt) for v, wt in b2[2]]
             blocks.append([members, shift + b2[1], points, weighted_median(points)])
     return {m: b[3] + off for b in blocks for m, off in b[0]}
 
 
-def assign_x(ranked, edges):
+def assign_x(ranked, edges, sizes, gap):
     """
     Coordinate assignment in the style of dot's: pull every edge vertical, weighting edges by how many of
     their ends are dummies (1, 2, 8) so long edges straighten first. Gauss-Seidel sweeps over the ranks.
@@ -654,10 +801,10 @@ def assign_x(ranked, edges):
         x = 0
         for n in ns:
             xs[n] = x
-            x += size(n)[0] + GAP
+            x += sizes[n][0] + gap
 
     def center(n):
-        return xs[n] + size(n)[0] // 2
+        return xs[n] + sizes[n][0] // 2
 
     for sweep in range(12):
         down = sweep % 2 == 0
@@ -667,34 +814,36 @@ def assign_x(ranked, edges):
             for n in ns:
                 use = [(center(m), wt) for m, wt, side in nbrs[n] if sweep >= 2 or side == ("up" if down else "down")]
                 targets[n] = use or [(center(n), 0.01)]
-            xs.update(place_rank(ns, targets))
+            xs.update(place_rank(ns, targets, sizes, gap))
     lo = min(xs.values())
     return {n: x - lo for n, x in xs.items()}
 
 
-def layout(ranked, edges, width, channel_heights):
+def layout(ranked, xs, sizes, width, channel_heights):
     """
     Lay out the ranks as a column of flex rows with fixed-height channel spacers between them,
-    each node pushed to its assigned x by its left margin, centred as a whole in `width`.
+    each node pushed to its assigned x by its left margin.
+    Nodes don't shrink: a diagram wider than `width` overflows rather than squashing its boxes.
     """
-    xs = assign_x(ranked, edges)
-    extent = max(xs[n] + size(n)[0] for n in xs)
-    xs = {n: x + max(0, (width - extent) // 2) for n, x in xs.items()}
     tree = waxy.TaffyTree()
-    ids = {}
+    names = {}
     rows = []
     for r, ns in enumerate(ranked):
         kids = []
         right = 0
         for n in ns:
-            w, h = size(n)
-            ids[n] = tree.new_leaf(
+            w, h = sizes[n]
+            leaf = tree.new_leaf(
                 waxy.Style(
-                    size_width=waxy.Length(w), size_height=waxy.Length(h), margin_left=waxy.Length(xs[n] - right)
+                    size_width=waxy.Length(w),
+                    size_height=waxy.Length(h),
+                    margin_left=waxy.Length(xs[n] - right),
+                    flex_shrink=0.0,
                 )
             )
+            names[leaf] = n
             right = xs[n] + w
-            kids.append(ids[n])
+            kids.append(leaf)
         rows.append(
             tree.new_with_children(
                 waxy.Style(flex_direction=waxy.FlexDirection.Row, align_items=waxy.AlignItems.Center),
@@ -708,11 +857,11 @@ def layout(ranked, edges, width, channel_heights):
         waxy.Style(flex_direction=waxy.FlexDirection.Column, size_width=waxy.Length(width)), rows
     )
     tree.compute_layout(root, waxy.AvailableSize(width=waxy.Definite(width), height=waxy.MaxContent()))
-    rects = {}
-    for node, pos, lay in tree.absolute_layouts(root):
-        for n, i in ids.items():
-            if i == node:
-                rects[n] = (int(pos.x), int(pos.y), int(lay.size.width), int(lay.size.height))
+    rects = {
+        names[node]: (int(pos.x), int(pos.y), int(lay.size.width), int(lay.size.height))
+        for node, pos, lay in tree.absolute_layouts(root)
+        if node in names
+    }
     return rects, int(tree.layout(root).size.height)
 
 
@@ -730,64 +879,85 @@ def interior(x, w):
 
 
 def render(nodes, edges, width):
-    _, height, cells = draw(nodes, edges, width)
+    _, width, height, cells = draw(nodes, edges, width)
     return "\n".join("".join(cells.get((x, y), " ") for x in range(width)).rstrip() for y in range(height))
 
 
-def draw(nodes, edges, width, boxes=True):
+def draw(nodes, edges, width, gap=2, boxes=True):
     """
-    Each real node's rect, the drawing's height, and its non-blank cells by position:
+    Each real node's rect, the drawing's width and height, and its non-blank cells by position:
     edges and arrowheads, plus boxes and labels if `boxes`.
+    The drawing is `width` wide, or wider if the diagram doesn't fit.
+
+    Nodes named only by edges are added after `nodes`, in edge order.
+    Edges that close a cycle are drawn upward, with the arrowhead under the node they point at.
+    Edges between the same two nodes share one line, with an arrowhead for each direction.
     """
-    rank = layers(nodes, edges)
-    all_nodes, split, rank = add_dummies(nodes, edges, rank)
+    if loops := [s for s, t in edges if s == t]:
+        raise ValueError(f"self-loops aren't supported: {loops}")
+    nodes = list(dict.fromkeys([*nodes, *(n for e in edges for n in e)]))
+    back = acyclic(nodes, edges)
+    heads = defaultdict(set)  # Which ends of each downward edge carry an arrowhead.
+    for s, t in edges:
+        if (s, t) in back:
+            heads[(t, s)].add("up")
+        else:
+            heads[(s, t)].add("down")
+    rank = layers(nodes, list(heads))
+    all_nodes, split, chain, rank = add_dummies(nodes, list(heads), rank)
     ranked = order(all_nodes, split, rank)
 
-    # Pass 1 with zero-height channels just to learn x positions (channel heights only change y).
-    rects, _ = layout(ranked, split, width, [0] * (len(ranked) - 1))
-    xs_out = {n: x + w // 2 for n, (x, y, w, h) in rects.items()}
-    incoming = defaultdict(list)
-    for s, t in split:
-        incoming[t].append(s)
-    xs_in = {}
-    for t, ss in incoming.items():
-        x, _, w, _ = rects[t]
-        ss = sorted(ss, key=lambda s: xs_out[s])
-        if len(ss) == 1 or w < 3:
-            for s in ss:
-                xs_in[(s, t)] = x + w // 2
-            continue
-        # Land each edge where it already is when that's over the box, two cells apart so arrowheads don't touch,
-        # pushing right and then back left to stay within the box's interior.
-        lo, hi = x + 1, x + w - 2
-        ports = [min(max(xs_out[s], lo), hi) for s in ss]
-        for k in range(1, len(ports)):
-            ports[k] = max(ports[k], ports[k - 1] + 2)
-        ports[-1] = min(ports[-1], hi)
-        for k in range(len(ports) - 2, -1, -1):
-            ports[k] = min(ports[k], ports[k + 1] - 2)
-        for s, p in zip(ss, ports):
-            xs_in[(s, t)] = p
-    outgoing = defaultdict(list)
+    outgoing, incoming = defaultdict(list), defaultdict(list)
     for s, t in split:
         outgoing[s].append(t)
+        incoming[t].append(s)
+    # Edges leave a source together, sharing one exit column and one channel track,
+    # except that an edge with an arrowhead at its source leaves on its own when the source has other edges.
+    bundle = {(s, t): (s, t) if "up" in heads[chain[(s, t)]] and len(outgoing[s]) > 1 else s for s, t in split}
+    exits = defaultdict(list)
+    for (s, _), b in bundle.items():
+        if b not in exits[s]:
+            exits[s].append(b)
+    sizes = node_sizes(all_nodes, {n: max(len(incoming.get(n, ())), len(exits.get(n, ()))) for n in all_nodes})
+
+    xs = assign_x(ranked, split, sizes, gap)
+    extent = max(xs[n] + sizes[n][0] for n in xs)
+    width = max(width, extent)
+    xs = {n: x + (width - extent) // 2 for n, x in xs.items()}
+    xs_out = {b: xs[s] + sizes[s][0] // 2 for (s, _), b in bundle.items()}
+    xs_in = {}
+    # Land each edge where it already is when that's over the box.
+    for t, ss in incoming.items():
+        x, w = xs[t], sizes[t][0]
+        if len(ss) == 1:
+            xs_in[(ss[0], t)] = x + w // 2
+            continue
+        ss = sorted(ss, key=lambda s: xs_out[bundle[(s, t)]])
+        for s, p in zip(ss, spread([xs_out[bundle[(s, t)]] for s in ss], x + 1, x + w - 2)):
+            xs_in[(s, t)] = p
+    # Leave each upward edge toward where it lands, beside the source's shared exit.
+    for s, bs in exits.items():
+        if len(bs) == 1:
+            continue
+        want = {b: xs_out[b] if b == s else xs_in[b] for b in bs}
+        bs = sorted(bs, key=want.__getitem__)
+        for b, p in zip(bs, spread([want[b] for b in bs], xs[s] + 1, xs[s] + sizes[s][0] - 2)):
+            xs_out[b] = p
     for s, t in split:
         if len(outgoing[s]) != 1 or len(incoming[t]) != 1:
             continue
-        sx, _, sw, _ = rects[s]
-        tx, _, tw, _ = rects[t]
-        (slo, shi), (tlo, thi) = interior(sx, sw), interior(tx, tw)
+        (slo, shi), (tlo, thi) = interior(xs[s], sizes[s][0]), interior(xs[t], sizes[t][0])
         lo, hi = max(slo, tlo), min(shi, thi)
         if lo <= hi:
             x = xs_out[s] if lo <= xs_out[s] <= hi else xs_in[(s, t)] if lo <= xs_in[(s, t)] <= hi else (lo + hi) // 2
             xs_out[s] = xs_in[(s, t)] = x
     # A source with one outgoing edge can leave from wherever that edge lands, if that's over its own interior.
     for s, (t,) in ((s, ts) for s, ts in outgoing.items() if len(ts) == 1):
-        sx, _, sw, _ = rects[s]
+        sx, sw = xs[s], sizes[s][0]
         if sw >= 3 and sx + 1 <= xs_in[(s, t)] <= sx + sw - 2:
             xs_out[s] = xs_in[(s, t)]
-    tracks, heights = channel_tracks(ranked, split, xs_out, xs_in)
-    rects, height = layout(ranked, split, width, heights)
+    tracks, heights = channel_tracks(ranked, split, bundle, xs_out, xs_in)
+    rects, height = layout(ranked, xs, sizes, width, heights)
 
     bits = defaultdict(int)
     text = {}
@@ -813,33 +983,43 @@ def draw(nodes, edges, width, boxes=True):
         seg(x, y, x, y + h - 1)
         seg(x + w - 1, y, x + w - 1, y + h - 1)
         for i, c in enumerate(n):
-            text[(x + 2 + i, y + 1)] = c
+            text[(x + (w - len(n)) // 2 + i, y + 1)] = c
 
     arrows = {}
     for s, t in split:
         sx, sy, sw, sh = rects[s]
         tx, ty, tw, th = rects[t]
-        x0, x1 = xs_out[s], xs_in[(s, t)]
+        x0, x1 = xs_out[bundle[(s, t)]], xs_in[(s, t)]
         bottom = sy + sh - 1
         top = ty
         if t.startswith("~"):
             x1 = tx
+        ends = heads[chain[(s, t)]]
+        arrive = t.startswith("~") or "down" in ends
+        # Without an arrowhead, an edge runs on into the target's border to join it as a tee.
+        end = top - 1 if arrive else top
         if x0 == x1:
-            seg(x0, bottom, x0, top - 1)
+            seg(x0, bottom, x0, end)
         else:
-            ty_track = bottom + 1 + tracks[s] + 1
+            ty_track = bottom + 1 + tracks[bundle[(s, t)]] + 1
             seg(x0, bottom, x0, ty_track)
             seg(x0, ty_track, x1, ty_track)
-            seg(x1, ty_track, x1, top - 1)
-        if not t.startswith("~"):
+            seg(x1, ty_track, x1, end)
+        if not t.startswith("~") and "down" in ends:
             arrows[(x1, top - 1)] = "▼"
-        if not boxes and not s.startswith("~"):
-            # Without boxes to merge with, the exit cell carries the border it sits on, so it reads as a tee.
-            bits[(x0, bottom)] |= L | R
+        if not s.startswith("~") and "up" in ends:
+            arrows[(x0, bottom + 1)] = "▲"
+        if not boxes:
+            # Without boxes to merge with, a cell where an edge meets a box carries the border it sits on,
+            # so it reads as a tee.
+            if not s.startswith("~"):
+                bits[(x0, bottom)] |= L | R
+            if not arrive:
+                bits[(x1, top)] |= L | R
 
     cells = {p: GLYPH[b] for p, b in bits.items() if b} | text | arrows
     real = {n: r for n, r in rects.items() if not n.startswith("~")}
-    return real, height, cells
+    return real, width, height, cells
 
 
 if __name__ == "__main__":
@@ -906,21 +1086,24 @@ def swatches() -> Div:
     )
 
 
+GAP = 3  # One more cell between neighbours than the plain diagram, for the shadow.
+
+
 @component
-def diagram(graph: str, width: int, shadow: Style, node: Style, tee: str) -> Div:
+def diagram(graph: str, columns: int, shadow: Style, node: Style, tee: str) -> Div:
     """
     The prototype's layout drawn with counterweight elements: shadowed nodes placed absolutely,
     with the edges as runs of text above both.
     Edges touch a node only at the border cell they leave from, which the router draws as a tee
     (`tee`, to match the node's border weight), because border healing only joins corners.
     """
-    rects, _, cells = layered.draw(*layered.GRAPHS[graph], width, boxes=False)
+    rects, _, _, cells = layered.draw(*layered.GRAPHS[graph], columns, gap=GAP, boxes=False)
     exits = {(x, y + h - 1) for x0, y, w, h in rects.values() for x in range(x0, x0 + w)}
     cells = {p: tee if p in exits and c == "┬" else c for p, c in cells.items()}
     nodes = [
         Div(
             style=position_absolute | inset_left(x) | inset_top(y) | shadow | z(0),
-            children=[Text(content=name, style=border | node | pad_x(1) | z(2))],
+            children=[Text(content=name, style=border | node | width(w) | text_justify_center | z(2))],
         )
         for name, (x, y, w, h) in rects.items()
     ]
@@ -970,11 +1153,10 @@ STYLES = {
 
 async def main() -> None:
     await shoot(swatches(), "swatches", (100, 6))
-    layered.GAP = 3  # One more cell between neighbours, for the shadow.
-    for graph, width in [("request", 44), ("ci", 90)]:
-        _, height, _ = layered.draw(*layered.GRAPHS[graph], width)
+    for graph, columns in [("request", 44), ("ci", 90)]:
+        _, columns, height, _ = layered.draw(*layered.GRAPHS[graph], columns, gap=GAP)
         for name, (shadow, node, tee) in STYLES.items():
-            await shoot(diagram(graph, width, shadow, node, tee), f"{graph}-{name}", (width, height + 1))
+            await shoot(diagram(graph, columns, shadow, node, tee), f"{graph}-{name}", (columns, height + 1))
 
 
 if __name__ == "__main__":
