@@ -17,21 +17,9 @@ if TYPE_CHECKING:
     from counterweight.shadow import ShadowNode, ShadowTree
 
 
-@dataclass(frozen=True, slots=True)
-class ResolvedLayout:
-    content: Region
-    padding: Region
-    border: Region
-    margin: Region
-
-    @property
-    def rects(self) -> Rects:
-        return Rects(content=self.content, padding=self.padding, border=self.border, margin=self.margin)
-
-
 _EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)
 
-INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
+INITIAL_RECTS = Rects(
     content=_EMPTY_REGION,
     padding=_EMPTY_REGION,
     border=_EMPTY_REGION,
@@ -198,8 +186,8 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 class Layouts:
     """One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key."""
 
-    in_paint_order: tuple[tuple[NodeKey, AnyElement, ResolvedLayout], ...]
-    by_key: Mapping[NodeKey, ResolvedLayout]
+    in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects], ...]
+    by_key: Mapping[NodeKey, Rects]
 
 
 NO_LAYOUTS = Layouts(in_paint_order=(), by_key={})
@@ -419,7 +407,7 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 @lru_cache(maxsize=2**12)
-def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> ResolvedLayout:
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> Rects:
     """
     The cell regions of one node's boxes, from its absolute border-box position.
 
@@ -457,7 +445,7 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> ResolvedLayout
         bottom=padding.bottom - int(padding_widths.bottom),
     )
 
-    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin)
+    return Rects(content=content, padding=padding, border=border, margin=margin)
 
 
 def cells_width(cells: Iterable[StyledGrapheme]) -> int:

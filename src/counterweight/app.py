@@ -40,6 +40,8 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
     StateSet,
@@ -249,7 +251,7 @@ async def render_loop(
                 return
 
             for changed in (focused, key):
-                if changed is not None and changed in routing.parents:
+                if changed is not None:
                     event_queue.put_nowait(StateSet(key=changed))
             focused = key
 
@@ -462,7 +464,15 @@ async def render_loop(
                         case KeyPressed():
                             for control in route_key(event, focused, routing):
                                 handle_control(control)
-                        case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
+                        case (
+                            MouseMoved()
+                            | MouseDown()
+                            | MouseUp()
+                            | MouseScrolledDown()
+                            | MouseScrolledUp()
+                            | MouseScrolledLeft()
+                            | MouseScrolledRight()
+                        ) as m:
                             press, controls = route_mouse(m, press, focused, routing)
                             for control in controls:
                                 handle_control(control)

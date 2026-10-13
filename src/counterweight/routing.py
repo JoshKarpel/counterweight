@@ -20,6 +20,8 @@ from counterweight.events import (
     MouseEvent,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
     Receiver,
@@ -171,7 +173,7 @@ class RoutingTable:
             return None
         focus = self.focus.get(key)
         receiver = Receiver(
-            rects=self.layouts.by_key[key].rects,
+            rects=self.layouts.by_key[key],
             is_target=is_target,
             focus_handle=None if focus is None else focus.handle,
             is_focused=key == focused,
@@ -185,12 +187,7 @@ class RoutingTable:
 
     def contains(self, subtree: Subtree, key: NodeKey) -> bool:
         """Whether the node with `key` is `subtree`'s node or one of its descendants."""
-        ancestor: NodeKey | None = key
-        while ancestor is not None:
-            if ancestor == subtree.key:
-                return True
-            ancestor = self.parents.get(ancestor)
-        return False
+        return subtree.key in self.path(key)
 
     def moved_focus(self, focused: NodeKey | None, within: Subtree | None, is_forward: bool) -> NodeKey | None:
         """
@@ -256,7 +253,7 @@ def route_mouse(
     Wheel events aren't part of a press, and always hit-test.
     """
     match event:
-        case MouseScrolledDown() | MouseScrolledUp():
+        case MouseScrolledDown() | MouseScrolledUp() | MouseScrolledLeft() | MouseScrolledRight():
             return press, claimed_controls(table.bubble(event, table.target_at(event.absolute), focused))
         case MouseDown(button=button) if press is not None and button not in press.buttons:
             return Press(buttons=press.buttons | {button}, captor=press.captor), captured(event, press, focused, table)

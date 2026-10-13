@@ -21,7 +21,7 @@ from counterweight.focus import Subtree
 from counterweight.hooks import Setter, use_memo, use_ref, use_state
 from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, NO_LAYOUTS
+from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
@@ -88,7 +88,7 @@ def press(node: ShadowNode, key: str) -> None:
     on_input(
         KeyPressed(key=key),
         Receiver(
-            rects=INITIAL_RESOLVED_LAYOUT.rects,
+            rects=INITIAL_RECTS,
             is_target=True,
             focus_handle=None,
             is_focused=False,

@@ -11,8 +11,8 @@ from xml.etree.ElementTree import Element, SubElement
 
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
-from counterweight.geometry import Position, Region
-from counterweight.layout import ResolvedLayout, cells_width, wrap_cells
+from counterweight.geometry import Position, Rects, Region
+from counterweight.layout import cells_width, wrap_cells
 from counterweight.styles.styles import (
     UNSET,
     BorderKind,
@@ -187,7 +187,7 @@ Run = tuple[int, int, list[Cell]]  # cells to draw left to right from (x, y)
 
 
 def paint_layout(
-    elements: Iterable[tuple[AnyElement, ResolvedLayout]],
+    elements: Iterable[tuple[AnyElement, Rects]],
     width: int,
     height: int,
 ) -> tuple[Paint, BorderHealingHints]:
@@ -234,7 +234,7 @@ def runs_of(paint: Paint) -> list[Run]:
 
 
 def paint_element(
-    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: ResolvedLayout
+    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: Rects
 ) -> tuple[tuple[Position, JoinedBorderParts], ...]:
     """
     Paint one element onto `paint`, returning its border healing hints.

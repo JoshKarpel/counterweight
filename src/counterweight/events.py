@@ -73,6 +73,24 @@ class MouseScrolledUp(_Event):
 
 
 @dataclass(frozen=True, slots=True)
+class MouseScrolledLeft(_Event):
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
+    direction: int = -1
+    """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
+
+
+@dataclass(frozen=True, slots=True)
+class MouseScrolledRight(_Event):
+    absolute: Position
+    """The absolute position on the screen that the mouse moved to."""
+
+    direction: int = 1
+    """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
+
+
+@dataclass(frozen=True, slots=True)
 class StateSet(_Event):
     key: NodeKey
     """The key of the node whose state was set."""
@@ -89,16 +107,11 @@ MouseEvent = Union[
     MouseUp,
     MouseScrolledDown,
     MouseScrolledUp,
+    MouseScrolledLeft,
+    MouseScrolledRight,
 ]
 
-InputEvent = Union[
-    KeyPressed,
-    MouseMoved,
-    MouseDown,
-    MouseUp,
-    MouseScrolledDown,
-    MouseScrolledUp,
-]
+InputEvent = Union[KeyPressed, MouseEvent]
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,10 +173,6 @@ AnyEvent = Union[
     TerminalResized,
     KeyPressed,
     StateSet,
-    MouseMoved,
-    MouseDown,
-    MouseUp,
-    MouseScrolledDown,
-    MouseScrolledUp,
+    MouseEvent,
     Dummy,
 ]

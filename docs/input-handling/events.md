@@ -174,7 +174,8 @@ and [routes](#key-presses) it to the focused element.
 
 Each time the state of the mouse changes,
 Counterweight emits a _single_ mouse event,
-one of `MouseMoved`, `MouseDown`, `MouseUp`, `MouseScrolledDown`, or `MouseScrolledUp`.
+one of `MouseMoved`, `MouseDown`, `MouseUp`,
+`MouseScrolledDown`, `MouseScrolledUp`, `MouseScrolledLeft`, or `MouseScrolledRight`.
 
 ::: counterweight.events.MouseEvent
 
@@ -184,6 +185,8 @@ one of `MouseMoved`, `MouseDown`, `MouseUp`, `MouseScrolledDown`, or `MouseScrol
 
 ::: counterweight.events.MouseScrolledDown
 ::: counterweight.events.MouseScrolledUp
+::: counterweight.events.MouseScrolledLeft
+::: counterweight.events.MouseScrolledRight
 
 For example, consider the following series of mouse actions and corresponding events:
 
@@ -207,6 +210,8 @@ For example, consider the following series of mouse actions and corresponding ev
     | `1`    | Left                          | Right                        |
     | `2`    | Middle                        | Middle                       |
     | `3`    | Right                         | Left                         |
+    | `8`    | Back                          | Back                         |
+    | `9`    | Forward                       | Forward                      |
 
     You should always use the numbers instead of names to refer to mouse buttons to ensure that your application works
     as expected for both left-handed and right-handed users.

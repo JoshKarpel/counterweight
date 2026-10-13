@@ -290,6 +290,23 @@
 
 ### Fixed
 
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Scrolling the mouse wheel up is reported as `MouseScrolledUp` and down as `MouseScrolledDown`,
+  as xterm defines them; previously the two were swapped.
+  The mouse wheel scrolled with Shift, Alt or Control held is reported as a scroll,
+  and the horizontal wheel as `MouseScrolledLeft` and `MouseScrolledRight`, new events.
+  Previously all of these were reported as presses of buttons 1 to 3,
+  so a sideways trackpad swipe clicked whatever was under the pointer.
+  Buttons 8 to 11, such as back and forward, are reported by their own numbers
+  rather than as buttons 1 to 4.
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Home, Page Up and Page Down are reported, as the new `Key.Home`, `Key.PageUp` and `Key.PageDown`,
+  and so is every key the `Key` enum names with Shift, Control, or both,
+  such as `Key.ShiftHome`, `Key.ControlPageDown` and `Key.ControlF5`,
+  with Shift and F1 to F12 reported as F13 to F24, as xterm does.
+  Previously only the arrow keys were reported with modifiers.
+  Control+Shift+Delete is reported as `Key.ControlShiftDelete` rather than `Key.ControlShiftInsert`.
+  **Breaking:** `Key.ControlSpace` is `"ctrl+space"`, like every other key, rather than `"ctrl-space"`.
 - [#392](https://github.com/JoshKarpel/counterweight/issues/392)
   Text is measured, wrapped and painted by grapheme cluster and its display width, as measured by
   [wcwidth](https://github.com/jquast/wcwidth), a new dependency,

@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 from counterweight import layout
 from counterweight.components import component
 from counterweight.elements import AnyElement, Chunk, Div, Text
+from counterweight.geometry import Rects
 from counterweight.layout import (
     NO_LAYOUTS,
     ClearText,
@@ -15,7 +16,6 @@ from counterweight.layout import (
     LayoutTree,
     MeasurableText,
     Remove,
-    ResolvedLayout,
     SetChildren,
     SetText,
     _measure_text,
@@ -222,12 +222,12 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
     assert tree.tree.total_node_count() == len(tree.nodes) == len(shadow.nodes)
 
 
-def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, Rects], ...]:
     """Each element and its layout in paint order, without the node keys, which differ between two trees."""
     return tuple((element, layout) for _, element, layout in layouts.in_paint_order)
 
 
-def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, Rects], ...]:
     shadow = update_shadow(element, None, NO_LAYOUTS).tree
     return without_keys(LayoutTree().compute(layout_changes(None, shadow), shadow, AVAILABLE))
 

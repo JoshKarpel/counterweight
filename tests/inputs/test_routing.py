@@ -14,6 +14,9 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+    MouseScrolledUp,
     MouseUp,
     Receiver,
 )
@@ -420,14 +423,17 @@ def captor_and_other(deliveries: list[Delivery]) -> Callable[[], Component]:
     return root
 
 
-async def test_a_wheel_event_during_a_press_routes_by_position_and_the_capture_continues() -> None:
+@pytest.mark.parametrize("wheel", [MouseScrolledDown, MouseScrolledUp, MouseScrolledLeft, MouseScrolledRight])
+async def test_a_wheel_event_during_a_press_routes_by_position_and_the_capture_continues(
+    wheel: type[MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight],
+) -> None:
     deliveries: list[Delivery] = []
 
     await run(
         captor_and_other(deliveries),
         [
             MouseDown(absolute=Position(1, 1), button=1),
-            MouseScrolledDown(absolute=Position(11, 1)),
+            wheel(absolute=Position(11, 1)),
             held(12, 2),
             MouseUp(absolute=Position(12, 2), button=1),
         ],

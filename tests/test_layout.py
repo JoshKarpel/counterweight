@@ -7,8 +7,9 @@ import waxy
 
 from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
+from counterweight.geometry import Rects
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import Layouts, LayoutTree, ResolvedLayout, layout_changes
+from counterweight.layout import Layouts, LayoutTree, layout_changes
 from counterweight.shadow import ShadowNode, ShadowTree
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
@@ -75,11 +76,11 @@ def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
     return LayoutTree().compute(layout_changes(None, shadow), shadow, available)
 
 
-def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
     return tuple((element, layout) for _, element, layout in _layouts(root, w, h).in_paint_order)
 
 
-def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
     """Wrap root in the element the app places the root component in."""
     screen = _shadow(Div(style=screen_element_style(w, h)), children=[root])
     return _layout(screen, w, h)
@@ -630,7 +631,7 @@ def test_int_track_gives_the_same_widths_as_length() -> None:
 
 
 def test_int_grid_line_and_span_place_a_child_like_their_waxy_values() -> None:
-    def placed(placement: Style) -> ResolvedLayout:
+    def placed(placement: Style) -> Rects:
         child = _shadow(Div(style=placement))
         root = _shadow(Div(style=display_grid | size(40, 12) | grid_template_rows(3, 3, 3, 3)), children=[child])
         return _layout(root)[1][1]

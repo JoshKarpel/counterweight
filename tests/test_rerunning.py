@@ -18,7 +18,7 @@ from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseRef
-from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
+from counterweight.layout import NO_LAYOUTS, Layouts
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
 from tests.rendering import effect_tasks, render, state_set_keys, state_sets
 
@@ -183,7 +183,7 @@ async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() 
     assert log == ["stop"]
 
 
-MOVED = ResolvedLayout(
+MOVED = Rects(
     content=Region(left=1, top=2, right=3, bottom=4),
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
@@ -206,7 +206,7 @@ def measures(calls: Calls) -> Div:
     ],
 )
 def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
-    layout: ResolvedLayout | None, expected: list[str]
+    layout: Rects | None, expected: list[str]
 ) -> None:
     calls = Calls()
     root = measures(calls)
@@ -305,7 +305,7 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED_RECTS]))
+        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
         return ShadowNode(
             component=None,
             element=Text(content=""),
@@ -317,9 +317,6 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
     keys = [node.key for node in tree.walk()]
     dirty = draw(st.frozensets(st.sampled_from(keys)))
     return tree, dirty
-
-
-MOVED_RECTS = Rects(content=MOVED.content, padding=MOVED.padding, border=MOVED.border, margin=MOVED.margin)
 
 
 @given(tree_and_dirty=dirty_trees())

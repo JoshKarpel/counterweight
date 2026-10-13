@@ -15,7 +15,7 @@ from counterweight.focus import FocusHandle
 from counterweight.geometry import Position, Rects
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, Layouts
+from counterweight.layout import INITIAL_RECTS, Layouts
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def use_rects() -> Rects:
 def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
-    return layouts.by_key.get(key, INITIAL_RESOLVED_LAYOUT).rects
+    return layouts.by_key.get(key, INITIAL_RECTS)
 
 
 @dataclass(frozen=True, slots=True)
