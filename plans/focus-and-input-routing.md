@@ -81,7 +81,8 @@ The cost of one field is that a handler interested in only one kind of input
 receives the others, and every existing `on_key=`/`on_mouse=` breaks.
 Receiving the others is cheap: a handler that falls off the end returns `None`,
 and a key-only handler sees a `MouseMoved` in a call that falls through its cases.
-The root, an ancestor of every hit target, sees every pointer move that nothing below it stops,
+The root, an ancestor of every mouse target (see [Mouse targets](#mouse-targets)),
+sees every pointer move that nothing below it stops,
 since the app turns on any-motion tracking (`output.py:28`).
 A root handler that matches many keys can return early on any other event with a guard clause,
 which the events docs should recommend.
@@ -222,6 +223,9 @@ such as `lambda event, _: Quit()`.
 `Rects` moves from `counterweight.hooks` to `counterweight.geometry`, re-exported from `counterweight.hooks`,
 and `FocusHandle` and `Subtree` are defined outside the hooks package too,
 since `events.py` can't import from the hooks package, which imports `events.py`.
+`Subtree` wraps a `NodeKey`, which stays in `counterweight.hooks.impls`:
+its module imports it under `TYPE_CHECKING` only, as `layout.py` does,
+since nothing there constructs a `NodeKey`, and annotations aren't evaluated.
 
 ### No built-in behavior
 
@@ -263,9 +267,11 @@ testable without running an app:
 - `clear_focus` returns `ClearFocus()` for a `MouseDown`.
   It's how a click blurs: on the root for presses nothing below it claimed,
   and composed into a non-focusable element's own press handler for the presses it claims.
-- `on_click(action)` claims every event of a button 1 press that reaches it,
+- `on_click(action)` claims a button 1 `MouseDown` and every later event of the press,
   and on the release calls `action` if the release is inside the element's border,
   returning the controls `action` returns, or `()` if it returns `None`.
+  It needs no state to know the press began on its element,
+  since only the node that claimed a press's `MouseDown` receives its release (see [Mouse targets](#mouse-targets)).
 
 Two combinators compose handlers into the one an element takes:
 
@@ -292,15 +298,15 @@ Div(..., on_input=first(app_shortcuts, tab_focus))
 ```
 
 Every library handler that acts on a press (`on_click`, `focus_receiver_on_press`, `focus_on_press`, `clear_focus`, and `select_text`)
-claims its `MouseDown` rather than letting it bubble.
-So the innermost element with a press handler owns the press,
+claims its `MouseDown` rather than letting it bubble,
+and the node that claims it receives the rest of the press, which bubbles no further.
+So the innermost element with a press handler owns the whole press,
 the same rule that makes the nearest focusable take focus,
-and a press on a button can't also start an ancestor's selection or drag
+and a press on a button can't also start an ancestor's selection or drag,
+or reach an ancestor's `on_click` on release
 (dragging a panel by its title bar when the press lands on the title bar's close button).
-Press capture routes the rest of a press by the node it landed on, whoever claimed it,
-so claiming only decides whether ancestors see the press too.
 Two press handlers on one element therefore compose with `each`, as the composer and the button do,
-and an ancestor's press handler never runs for a press on a descendant that has its own.
+and an ancestor's press handler never sees any event of a press on a descendant that has its own.
 A text input that renders its own clear button,
 and wants a click on that button to focus the input,
 composes `focus_on_press(focus.handle)` into the button's handler,
@@ -328,17 +334,26 @@ The costs:
 
 ### Mouse targets
 
-The target of a mouse event is the topmost visible element whose border rectangle
-contains the pointer: the last such element in paint order.
-Paint order is the `(z, order)` sort that `paint_layout` applies (`paint.py:195`),
-not the tree order `LayoutTree.compute` returns,
-so hit-testing shares that sort key with painting,
+The target of a mouse event is the topmost visible element of the root component's tree
+whose border rectangle contains the pointer: the last such element in paint order.
+An element's margin isn't part of it, as on the web,
+so a press in a margin reaches whatever lies beneath, usually the parent, even where `margin_color` paints it.
+Hit-testing walks the same paint order that painting does (see [step 3](#3-scope-z-to-stacking-contexts)),
+so the element drawn on top of a cell is the one a click on it reaches,
 and an element raised with `z` takes clicks from a later sibling it covers.
 Hidden elements have no layout, so they're never hit.
+A pointer over no element of the root's tree, when the root's element is smaller than the terminal,
+targets the root component's node, as a key does when nothing is focused.
+The `screen` element the app wraps the root in is never a target,
+so the root is an ancestor of every target and sees every pointer event nothing below it stops.
+Its receiver then has `is_target=True`, and rects that don't contain the pointer.
 
-While a button is held, from `MouseDown` to `MouseUp`, the press's own events
-(each `MouseMoved` with a button held, and the `MouseUp`) target the node that received the `MouseDown`,
-wherever the pointer is.
+A press runs from a `MouseDown` to its `MouseUp`.
+The `MouseDown` hit-tests and bubbles like any event,
+and the node whose handler claims it **captures** the press:
+the press's remaining events (each `MouseMoved` with a button held, and the `MouseUp`)
+go to that node as their target, wherever the pointer is,
+and stop there whatever its handler returns.
 This is the implicit pointer grab that X11, Win32, and DOM pointer capture all provide.
 It replaces today's "current or previous position" rule,
 which exists so a drag keeps reaching its element for one more event after the pointer leaves it,
@@ -346,11 +361,19 @@ but loses the drag entirely when the pointer outruns a render
 (the TODO in `examples/mouse.py`'s `draggable_text`).
 Wheel events aren't part of a press, so they always target the element under the pointer,
 and a wheel turned mid-drag scrolls the container it's over.
-If the captured node unmounts mid-press, the remaining events of that press route by hit-testing.
 
-A release the terminal never reported (focus switched away mid-drag) mustn't leave the capture stuck.
+The rest of a press that nothing claimed, or whose capturing node has unmounted, reaches no handler.
+Routing it by hit-testing instead would hand an element the end of a press it never saw begin:
+a release over a button after a press elsewhere would click it,
+which browsers rule out by firing `click` only where the down and the up both landed.
+So a handler that wants a press's moves claims its `MouseDown`, even with nothing to do for it.
+The cost is that nothing but the capturing node sees a press's moves:
+not an ancestor watching a drag a descendant claimed,
+nor an element between the one the press landed on and the one that claimed it.
+
+A release the terminal never reported (focus switched away mid-drag) mustn't leave the press stuck.
 Any-motion tracking reports the held button with every move,
-so a `MouseMoved` with no button held ends the capture, as does a `MouseDown`,
+so a `MouseMoved` with no button held ends the press, as does a `MouseDown`,
 and either one hit-tests afresh.
 
 An element no longer sees the move that leaves it.
@@ -593,7 +616,8 @@ A captured key missing from the current table means the node unmounted.
 
 Each step leaves the test suite passing and is a separate PR.
 Each updates `docs/input-handling/events.md`, the changelog,
-and every example, doc example, benchmark workload, and test it breaks.
+and every example, doc example, benchmark workload, and test it breaks,
+including the code blocks written inline in the docs' Markdown, which no build or test runs.
 
 ### 1. Replace `on_key` and `on_mouse` with `on_input`
 
@@ -604,13 +628,16 @@ keys to every handler, mouse events to every element under the current or previo
 `Receiver` has only `rects` and `relative` in this step,
 built from the resolved layout the dispatch loop already pairs with each element (`app.py:401`),
 with `Rects` moved to `counterweight.geometry`.
-Steps 2 and 3 add its other fields, which changes no handler's signature.
-Handlers keep returning `AnyControl | None` until step 2 adds tuples of controls.
+Steps 4 and 5 add its other fields, which changes no handler's signature.
+Handlers keep returning `AnyControl | None` until step 4 adds tuples of controls.
 This is a mechanical migration that closes #124 on its own,
-and keeps the routing change in step 2 reviewable without a rename mixed into it.
+and keeps the routing change in step 4 reviewable without a rename mixed into it.
 
 `examples/wordle.py` drops the fake `KeyPressed` events its mouse handlers build:
 `letter_box` and the menu buttons call the shared logic directly, or share one `on_input`.
+`grep -rn 'on_key\|on_mouse' docs` finds the inline snippets and prose the rename breaks,
+such as `docs/hooks/use_mouse.md`'s comparison with `on_mouse`
+and the `use_memo`-wrapped handlers in `docs/performance.md`, which gain the receiver parameter.
 The events docs gain a recommendation for a guard clause at the top of a root handler that matches many keys,
 since the root already receives every pointer move.
 
@@ -619,7 +646,100 @@ the receiver carries the element's rects;
 `Receiver.relative` gives a position relative to the content box's top-left;
 the existing `tests/inputs/test_on_key.py` and `test_on_mouse.py` port to `on_input`.
 
-### 2. Route mouse events to a target and bubble them
+### 2. Paint margins only where they're colored
+
+**Status:** Not started
+
+`paint_element` fills an element's whole margin box with its background (`paint.py:274`),
+and its margin strips with `margin_color`, which resolves to black when unset,
+so every element with a margin erases what lies beneath that margin.
+That's harmless in flow, where siblings' margins don't overlap,
+but an absolutely positioned box with `auto` margins erases its whole parent.
+Instead, the background fills the border box,
+and the margin strips paint only when the element's own style sets `margin_color`,
+read from the unresolved style as `content_color` already is (`paint.py:271`).
+A margin paints nothing on the web, where backgrounds stop at the border box;
+`margin_color` keeps its use for showing the box model.
+
+With margins transparent, a box centers itself over its parent the way CSS does,
+with insets of 0, `auto` margins, and a fit-content size:
+
+```python
+dialog = position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height
+```
+
+A probe with waxy 0.7.0 lays this out centered in a `col` parent that doesn't center its children,
+at the dialog's own size; it's today's paint that blanks the rest of the parent.
+The layering docs' dialog recipe becomes this,
+replacing the full-parent overlay `Div` it wraps the dialog in today.
+That overlay is a box the size of the parent, there only so that ordinary alignment can center the dialog,
+and it would be the topmost element under every cell of the parent,
+taking every click once hit-testing arrives in step 4.
+The dialog's own box covers only the dialog, so hit-testing needs no way to make an element click-through.
+
+Add `inset(n)`, `inset_x(n)`, and `inset_y(n)`, which set all four, the left and right, and the top and bottom insets,
+alongside `margin(n)` and `pad(n)`;
+`inset_sides(top, right, bottom, left)`, `margin_sides`, and `pad_sides`, which set each side separately,
+in the order of CSS's four-value shorthands;
+and `auto` margins for each side and each pair of sides as `margin_auto`, `margin_x_auto`, `margin_top_auto`, and so on.
+Each goes in `docs/styles/utilities.md`'s markers.
+
+Tests: a margin without `margin_color` leaves what lies beneath it visible;
+a margin with `margin_color` paints it;
+a content color fills the border box, not the margin box;
+the dialog recipe centers a box in a parent that doesn't center its children,
+and leaves the parent's other children visible around it.
+
+### 3. Scope `z` to stacking contexts
+
+**Status:** Not started
+
+`paint_layout` orders every element in one flat sort by `(z, order)` (`paint.py:195`),
+so a `z(1)` element paints after its own children, whose `z` defaults to 0,
+and a content color on it covers them entirely.
+
+Instead, `z` follows CSS's stacking contexts.
+An element whose style sets `z`, `z(0)` included, forms a **stacking context**:
+it and its descendants paint as a unit at its `z`, and its descendants' `z` orders them only within it.
+An element that doesn't set `z` forms none,
+so its descendants join the nearest context above it, alongside it.
+Each context paints its own element first,
+then its members in a stable sort by `(z, order)`, where a member that doesn't set `z` counts as 0,
+and a member that forms a context paints its whole context in its place.
+The root forms a context whatever it sets.
+CSS's `z-index` forms a context only on a positioned element or a flex or grid item,
+which every Counterweight element is.
+
+So a `z(1)` dropdown inside a toolbar that sets no `z` paints over the content below the toolbar,
+while the same dropdown inside a toolbar that sets `z(0)` paints only over the toolbar's own content,
+beneath the toolbar's later siblings.
+A `z(-1)` member paints after its context's own element, so over that element's background, as in CSS,
+where the flat sort puts it before every element today.
+
+The resolved style keeps whether `z` was set, which `resolve_style` drops today (`styles.py:741`),
+so `ResolvedStyle.z` becomes `int | None`.
+`LayoutTree.compute` builds the order from the shadow tree,
+so `Layouts.in_paint_order` holds paint order, as its name says, and `paint_layout` drops its sort.
+Hit-testing in step 4 walks the same tuple, so a click reaches whatever is drawn on top.
+
+The rule is harder to state than "`z` orders siblings", so the layering docs show it with the dropdown,
+once escaping a toolbar without `z` and once scoped by a toolbar with `z(0)`.
+The changelog lists the change in paint order for apps that set `z` on nested elements, or a negative `z`.
+
+Clipping is by ancestry, not stacking order:
+a clipping container (#388) cuts off a dropdown inside it however high its `z`, as on the web.
+Since an absolutely positioned box's containing block is always its parent here,
+a popup can't escape a clip by being positioned against an ancestor outside it, as it can on the web,
+so it has to render outside the clipping container.
+
+Tests: a `z(1)` element's children paint over it, including children with a content color of their own;
+a child with a lower `z` than its parent that sets `z` still paints over it;
+a `z(1)` child of an element without `z` paints over that element's later siblings;
+a `z(1)` child of a `z(0)` element paints beneath that element's later siblings;
+a `z(-1)` member paints over its context's element and beneath the context's other members.
+The `z.py` and layering screenshots are regenerated and checked for changes.
+
+### 4. Route mouse events to a target and bubble them
 
 **Status:** Not started
 
@@ -629,17 +749,22 @@ Add `counterweight.handlers` with `first`, `each`, and `on_click`,
 and a `docs/input-handling/handlers.md` page for it in `mkdocs.yml`.
 `Layouts.in_paint_order` carries each node's key alongside its element,
 so the loop can go from a hit to an ancestor path through `ShadowTree.parents`; painting keeps taking elements.
-It is renamed for tree order, which is what it holds, since `paint_layout` does the paint-order sort.
 Existing handlers that return a control keep working,
 and `docs/input-handling/controls.md` describes returning a tuple of controls, `()` included.
 Keys keep going to every handler in this step, unrouted, each with `is_target=True`:
-their controls are applied, and the stop is ignored until step 3.
+their controls are applied, and the stop is ignored until step 5.
 
 The click handlers written by hand move to `on_click`:
 `wordle.py`'s menu buttons and `text_wrap.py`'s `mode_button`.
+`examples/mouse.py`'s `last_dragged_box` returns `()` for the `MouseDown` it already handles,
+and `draggable_text` gains a case that claims its `MouseDown`,
+since otherwise the moves of their drags reach no handler.
 
 Tests: of two overlapping absolutely positioned siblings, only the topmost receives a click;
 a sibling raised with `z` receives a click over a later sibling in tree order;
+a child of an element raised with `z` receives a click over its parent;
+a click outside the root component's element, when that element is smaller than the terminal,
+targets the root's node, with `is_target=True`;
 an event on a child reaches its parent's handler;
 `()` from the child keeps it from the parent;
 a single control from the child is applied and keeps it from the parent;
@@ -649,7 +774,11 @@ the parent receives the same event as the child, with a receiver carrying the pa
 a drag whose `MouseMoved` lands outside the element still reaches it until `MouseUp`,
 including when each move re-renders the element;
 after `MouseUp`, an event outside the element doesn't reach it;
-if the pressed node unmounts mid-drag, later events route by position;
+the rest of a press goes to the node that claimed its `MouseDown`, with `is_target=True`,
+and not to a descendant it landed on or to the claimer's ancestors, whatever the claimer's handler returns;
+the held moves and release of a press nothing claimed reach no handler,
+so a release over an `on_click` element after an unclaimed press elsewhere doesn't call its action;
+if the capturing node unmounts mid-press, the rest of the press reaches no handler;
 a wheel event during a capture routes by position, and the capture continues;
 a `MouseDown` during a capture routes by position;
 a `MouseMoved` with no button held during a capture routes by position and ends the capture.
@@ -664,7 +793,7 @@ Profile a render-heavy workload with the `cw-profile` skill before and after,
 since the routing table is rebuilt on every render.
 Per event, walking an ancestor path costs no more than today's flat list.
 
-### 3. Add `use_focus` and route keys to the focused node
+### 5. Add `use_focus` and route keys to the focused node
 
 **Status:** Not started
 
@@ -679,6 +808,9 @@ Add `docs/hooks/use_focus.md` to the hooks section of `mkdocs.yml`,
 the controls to `docs/input-handling/controls.md`, and the new handlers to their page.
 The docs gain a note that a component's key handler goes on its top-level element,
 and that a deep component's global shortcut goes on the root.
+Inline snippets whose key handler sits below the root stop receiving keys without failing anything:
+`docs/hooks/use_ref.md`'s `line_entry` and `docs/performance.md`'s `key_log` call `use_focus(auto_focus=True)`.
+`docs/ecosystem.md` drops focus from its list of gaps.
 
 `docs/examples/focus_form.py` is the `use_focus` page's example, and exercises every way focus moves.
 It's an order form whose fields are focusable components that take keys rather than text,
@@ -693,22 +825,27 @@ The form's element returns `FocusNext(within=receiver.subtree)` for Enter,
 and each field's label focuses it with `focus_on_press` and a handle the form keeps in `use_state(FocusHandle)`.
 The submit button claims Enter for itself and opens a confirmation modal,
 returning `ClearFocus()` so the modal's auto-focused Cancel button takes focus.
-The modal traps Tab with `tab_focus` on its element,
-and closing it returns focus to the submit button through a handle the form passes to both.
+The modal is positioned with step 2's dialog recipe, so a press beside it reaches the form,
+and traps Tab with `tab_focus` on its element,
+and Enter on Cancel closes it, returning focus to the submit button through a handle the form passes to both.
 Its `SCREENSHOTS` show the first field focused at startup, the second after Enter,
 gift wrap after a press on its label,
 the submit button after Enter skips the unfocusable wrapping paper and the help panel,
 the modal open with Cancel focused after another Enter,
 focus wrapped back to Cancel after two Tabs, still inside the modal,
+the submit button focused again after Enter on Cancel closes the modal,
 and the help panel focused after a press on it, showing its second tip after Right.
 
 The examples that put key handlers below the root move to focus:
 `stopwatch.py` drops its `selected` prop and its root's `Tab`/`Shift+Tab` bindings
-for `use_focus` on each stopwatch and `tab_focus` on the root;
+for `use_focus(auto_focus=True)` on each stopwatch, styled by `is_focused`, and `tab_focus` on the root,
+so the first stopwatch is focused at startup, as it's selected today,
+and its help text says "focused" where it says "selected";
 `end_to_end.py`'s `textpad` becomes focusable with `auto_focus=True`, so it takes focus each time it remounts,
 and its root keeps swapping `textpad` and `time` on `Tab`, which has no built-in meaning;
-`suspend.py`'s `picker` and `wordle.py`'s `play` use `auto_focus=True`
-with their handler on the component's top-level element.
+`suspend.py`'s `picker` uses `auto_focus=True`;
+`wordle.py`'s `play` does too, and moves its key handler from the guess rows' Div (`wordle.py:205`)
+to its top-level Div, which keys reach.
 So do two that a broken example wouldn't reveal:
 `docs/examples/performance_process_table.py`'s `process_table`,
 whose screenshot's `Down` would otherwise stop moving the selection,
