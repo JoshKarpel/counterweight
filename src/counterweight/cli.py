@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import sys
-from asyncio import Queue, get_running_loop, run
-from textwrap import dedent
+from asyncio import Queue, get_running_loop
 from threading import Event, Thread
 
-from typer import Option, Typer
+from without_cli import INT, Streams, command, flag, group, option, optional, run
 
 from counterweight._context_vars import current_event_queue
 from counterweight.constants import PACKAGE_NAME, __version__
@@ -14,48 +13,33 @@ from counterweight.input import read_keys, start_input_control, stop_input_contr
 from counterweight.logging import last_devlog, tail_devlog
 from counterweight.output import start_mouse_tracking, stop_mouse_tracking
 
-cli = Typer(
-    name=PACKAGE_NAME,
-    no_args_is_help=True,
-    help=dedent(
-        """\
-        CLI tools for Counterweight.
-        """
-    ),
+SIGINT_EXIT = 130
+
+
+@command("version")
+async def version(streams: Streams) -> int:
+    """Display version information."""
+    streams.stdout.write(f"{__version__}\n")
+    return 0
+
+
+@command(
+    "devlog",
+    option("--last", optional(INT), summary="Print the last N log messages and exit."),
+    flag("--json", summary="Print the raw JSON lines instead of rendering them."),
 )
-
-
-@cli.command()
-def version() -> None:
-    """
-    Display version information.
-    """
-    print(__version__)
-
-
-@cli.command()
-def devlog(
-    last: int | None = Option(default=None, help="Print the last N log messages and exit."),
-    json: bool = Option(default=False, help="Print the raw JSON lines instead of rendering them."),
-) -> None:
+async def devlog(streams: Streams, last: int | None, json: bool) -> int:
     """Tail the developer log file."""
     if last is not None:
-        last_devlog(last, raw=json)
+        last_devlog(streams.stdout, last, raw=json)
     else:
-        tail_devlog(raw=json)
+        await tail_devlog(streams.stdout, raw=json)
+    return 0
 
 
-@cli.command()
-def check_input(mouse: bool = Option(default=False, help="Also capture mouse inputs and show mouse events.")) -> None:
-    """
-    Enter the same input-capture state used during application mode,
-    and show the results of reading input (e.g., key events).
-    """
-
-    run(_check_input(mouse=mouse))
-
-
-async def _check_input(mouse: bool) -> None:
+@command("check-input", flag("--mouse", summary="Also capture mouse inputs and show mouse events."))
+async def check_input(streams: Streams, mouse: bool) -> int:
+    """Show the events read from input (such as key presses), in the input-capture state an app runs in."""
     event_queue: Queue[AnyEvent] = Queue()
     current_event_queue.set(event_queue)
 
@@ -64,6 +48,7 @@ async def _check_input(mouse: bool) -> None:
     def put_event(event: AnyEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
+    # Input capture needs the real terminal's file descriptors, which `streams` doesn't carry.
     input_stream = sys.stdin
     output_stream = sys.stdout
 
@@ -87,16 +72,32 @@ async def _check_input(mouse: bool) -> None:
         start_mouse_tracking(stream=output_stream)
     try:
         while True:
-            print("Waiting for input (press ctrl+c to exit)...")
+            streams.stdout.write("Waiting for input (press ctrl+c to exit)...\n")
+            streams.stdout.flush()
             key = await event_queue.get()
-            print(f"{key!r}")
-    except KeyboardInterrupt:
-        print("Exiting...")
+            streams.stdout.write(f"{key!r}\n")
     finally:
         stop_input_control(stream=input_stream, original=original)
         if mouse:
             stop_mouse_tracking(stream=output_stream)
 
 
+cli = group(
+    PACKAGE_NAME,
+    commands=(version, devlog, check_input),
+    summary="CLI tools for Counterweight.",
+    version=__version__,
+)
+
+
+def main() -> None:
+    """The `counterweight` console script."""
+    try:
+        code = run(cli)
+    except KeyboardInterrupt:
+        code = SIGINT_EXIT
+    raise SystemExit(code)
+
+
 if __name__ == "__main__":
-    cli()
+    main()

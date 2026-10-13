@@ -32,10 +32,10 @@ classifiers = [
 ]
 requires-python = ">=3.15"
 dependencies = [
-    "typer>=0.9",
     "parsy>=2.1",
     "more-itertools>=9.1",
     "waxy>=0.7.0",
+    "without-cli>=0.0.10",
     "without-logging>=0.0.10",
     "without-streams>=0.0.10",
     "wcwidth>=0.8",
@@ -60,7 +60,7 @@ dev = [
 ]
 
 [project.scripts]
-counterweight = "counterweight.cli:cli"
+counterweight = "counterweight.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JoshKarpel/counterweight"

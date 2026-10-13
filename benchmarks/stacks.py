@@ -5,7 +5,8 @@ The stages aren't listed here, they come from the stack. A sample inside `counte
 belongs to whatever function the loop called, so a stage split out of an existing one shows up
 without changes here. A sample in another asyncio task (such as the devlog's sink) belongs to that task,
 and one in the event loop's own machinery (waiting in `select`, scheduling) to the event loop.
-Everything else ran before the event loop started or after it stopped, and is left out.
+Everything else ran before the event loop started or after it stopped, or in the benchmark command
+outside the workload's run (reading its arguments, reporting), and is left out.
 """
 
 from collections import Counter
@@ -60,6 +61,8 @@ class Summary:
 RENDER_LOOP = Frame(file="app.py", function="render_loop")
 TASK_STEP = Frame(file="events.py", function="Handle._run")
 LOOP_ITERATION = Frame(file="base_events.py", function="BaseEventLoop._run_once")
+RUN_COMMAND = Frame(file="__main__.py", function="run_workload")
+HARNESS_RUN = Frame(file="harness.py", function="run")
 
 
 def parse_frame(raw: str) -> Frame:
@@ -98,6 +101,11 @@ def attribute(stack: Stack) -> Attribution | None:
     """
     if (loop_frames := below(stack.frames, RENDER_LOOP)) is not None:
         return Attribution(stage=loop_frames[0].label if loop_frames else LOOP_ITSELF, frames=loop_frames)
+    # The command's task outlives the workload's run, so it's named for the run rather than its outermost frame,
+    # which is the CLI framework's own wrapper.
+    if (command_frames := below(stack.frames, RUN_COMMAND)) is not None:
+        is_running = command_frames[:1] == (HARNESS_RUN,)
+        return Attribution(stage=f"task {HARNESS_RUN.label}", frames=command_frames) if is_running else None
     if task_frames := below(stack.frames, TASK_STEP):
         return Attribution(stage=f"task {task_frames[0].label}", frames=task_frames)
     if (iteration_frames := below(stack.frames, LOOP_ITERATION)) is not None:
