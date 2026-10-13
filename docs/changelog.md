@@ -169,6 +169,10 @@
   and raises `ValueError` for any other number of digits
   instead of dropping the extra digits of a color like `#rrggbbaa`.
 
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  SVG screenshots draw text that is bold, dim, italic, underlined, or struck through,
+  instead of drawing it plain.
+
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
   so terminals that support it show the whole frame at once instead of tearing partway through drawing it,

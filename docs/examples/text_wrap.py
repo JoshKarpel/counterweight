@@ -3,13 +3,17 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
+from counterweight.markdown import MarkdownStyles, markdown
 from counterweight.styles.styles import Style, TextWrap
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]
 
-SAMPLE = "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness."
+SAMPLE = """\
+It was the *best of times*, it was the *worst of times*,
+it was the age of **wisdom**, it was the age of **foolishness**.
+"""
 
 WRAP_STYLE: dict[TextWrap, Style] = {
     "none": text_wrap_none,
@@ -28,10 +32,7 @@ def wrap_pane(mode: TextWrap) -> Div:
                 content=f" {mode} ",
                 style=position_absolute | inset_top(-1) | inset_left(1),
             ),
-            Text(
-                content=SAMPLE,
-                style=fill(1) | WRAP_STYLE[mode],
-            ),
+            markdown(SAMPLE, MarkdownStyles(paragraph=WRAP_STYLE[mode])),
         ),
     )
 

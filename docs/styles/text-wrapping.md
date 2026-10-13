@@ -6,7 +6,8 @@ Use the `text_wrap_*` style utilities to control how long text is broken across 
 
 ## Wrap Modes
 
-Counterweight supports four wrap modes, illustrated below with the same paragraph of text:
+Counterweight supports four wrap modes, illustrated below with the same paragraph of
+[Markdown](../rich-text/markdown.md), whose paragraphs wrap with the `paragraph` style of `MarkdownStyles`:
 
 ```python
 --8<-- "text_wrap.py:example"
