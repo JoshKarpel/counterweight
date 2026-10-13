@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import os
 from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from signal import SIGINT, SIGWINCH, raise_signal, signal
 
 import pytest
@@ -16,10 +16,13 @@ from counterweight.controls import AnyControl, Bell, Quit, RestoreTitle, Screens
 from counterweight.elements import Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.geometry import Position
-from counterweight.hooks import Mouse, use_effect, use_mouse, use_state
+from counterweight.handlers import first
+from counterweight.hooks import Mouse, use_effect, use_mouse, use_state, use_text_input
 from counterweight.output import (
     ALT_SCREEN_OFF,
     ALT_SCREEN_ON,
+    BRACKETED_PASTE_OFF,
+    BRACKETED_PASTE_ON,
     CLEAR_SCREEN,
     CURSOR_OFF,
     CURSOR_ON,
@@ -37,8 +40,8 @@ from tests.terminal import Terminal
 
 TIMEOUT = 5
 
-TAKE_OVER = ALT_SCREEN_ON + CURSOR_OFF + CLEAR_SCREEN + SAVE_TITLE + SET_ANY_EVENT_MOUSE_SGR_FORMAT
-HAND_BACK = UNSET_ANY_EVENT_MOUSE_SGR_FORMAT + ALT_SCREEN_OFF + CURSOR_ON + RESTORE_TITLE
+TAKE_OVER = ALT_SCREEN_ON + CURSOR_OFF + CLEAR_SCREEN + SAVE_TITLE + SET_ANY_EVENT_MOUSE_SGR_FORMAT + BRACKETED_PASTE_ON
+HAND_BACK = BRACKETED_PASTE_OFF + UNSET_ANY_EVENT_MOUSE_SGR_FORMAT + ALT_SCREEN_OFF + CURSOR_ON + RESTORE_TITLE
 HI = (
     SYNCHRONIZED_OUTPUT_ON
     + CLEAR_SCREEN
@@ -104,7 +107,7 @@ async def test_app_takes_over_the_terminal_draws_rings_the_bell_and_hands_it_bac
         f"DEBUG    counterweight.app Wrote and flushed instructions to output stream bytes='{len(HI):_}'"
     ]
     assert output.getvalue() == drawn + "\a" + HAND_BACK
-    assert output.flushed[2:4] == [drawn, drawn + "\a"]
+    assert output.flushed[3:5] == [drawn, drawn + "\a"]
     assert terminal.settings() == before
 
 
@@ -231,6 +234,42 @@ async def test_app_reads_keys_from_the_terminal(terminal: Terminal) -> None:
     await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT)
 
     assert pressed == [KeyPressed(key="a"), KeyPressed(key="q")]
+
+
+async def typed_into_text_input(terminal: Terminal, typed: bytes) -> str:
+    """
+    The value of a focused text input once `typed` reaches it in one read, followed by Enter,
+    which the input passes on to quit before the edits render.
+    """
+    values: list[str] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+
+        def set_recorded(edit: Callable[[str], str]) -> None:
+            def recorded(latest: str) -> str:
+                values.append(edit(latest))
+                return values[-1]
+
+            set_value(recorded)
+
+        field = use_text_input(value, set_recorded, auto_focus=True)
+        return Text(content=value, on_input=first(field.on_input, lambda event, _: Quit()))
+
+    os.write(terminal.keyboard, typed + b"\r")
+
+    await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(20, 1)), TIMEOUT)
+
+    return values[-1]
+
+
+async def test_keys_typed_in_one_read_each_edit_a_text_input_in_turn(terminal: Terminal) -> None:
+    assert await typed_into_text_input(terminal, b"hello\x1b[D\x1b[DXY") == "helXYlo"
+
+
+async def test_a_bracketed_paste_reaches_a_text_input_as_one_edit(terminal: Terminal) -> None:
+    assert await typed_into_text_input(terminal, b"<>\x1b[D\x1b[200~one\rtwo\x1b[201~") == "<one two>"
 
 
 async def test_app_stops_reading_keys_when_it_returns(terminal: Terminal) -> None:

@@ -19,7 +19,7 @@ def note() -> Text:
 
     def on_input(event: InputEvent, _: Receiver) -> None:
         if isinstance(event, KeyPressed) and len(event.key) == 1:
-            set_text(text + event.key)
+            set_text(lambda text: text + event.key)
 
     return Text(content=f"Note: {text}", on_input=on_input)
 

@@ -210,7 +210,7 @@ def key_log() -> Div:
         if not isinstance(event, KeyPressed):
             return None
         keys.current.append(event.key)
-        set_count(count + 1)
+        set_count(lambda count: count + 1)
         return ()
 
     return Div(on_input=on_input, children=[key_list(keys.current)])
@@ -218,7 +218,7 @@ def key_log() -> Div:
 
 `key_list` keeps showing the keys from when it last ran.
 Replace the value instead of changing it:
-hold a tuple in state, and set a new one with `set_keys((*keys, event.key))`.
+hold a tuple in state, and set a new one with `set_keys(lambda keys: (*keys, event.key))`.
 
 **A hidden input**, such as a module-level setting, isn't one of the arguments:
 

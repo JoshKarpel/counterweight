@@ -6,13 +6,16 @@ import termios
 from asyncio import Queue, get_running_loop, wait_for
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TextIO
 
 import pytest
 
-from counterweight.events import AnyEvent, KeyPressed, MouseMoved
+from counterweight.events import AnyEvent, KeyPressed, MouseMoved, Pasted
 from counterweight.geometry import Position
 from counterweight.input import (
+    ESCAPE_TIMEOUT,
+    PASTE_TIMEOUT,
     KeyReader,
     read_keys,
     start_input_control,
@@ -138,6 +141,36 @@ async def test_read_keys_reads_a_burst_of_input_whole(terminal: Terminal, key_re
     assert (await next_in(key_reading.records)).inputs == (moved, moved, moved)  # type: ignore[attr-defined]
 
 
+async def test_read_keys_puts_a_paste_longer_than_one_read_as_one_event(
+    terminal: Terminal, key_reading: KeyReading
+) -> None:
+    text = "0123456789" * 250
+    os.write(terminal.keyboard, b"\x1b[200~" + text.encode() + b"\x1b[201~q")
+
+    assert [await next_in(key_reading.events), await next_in(key_reading.events)] == [
+        Pasted(text=text),
+        KeyPressed(key="q"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("typed", "timeout"),
+    [
+        (b"\x1b", ESCAPE_TIMEOUT),
+        (b"\x1b[200~ab", PASTE_TIMEOUT),
+    ],
+)
+async def test_held_input_waits_as_long_as_its_kind_needs(
+    terminal: Terminal, key_reading: KeyReading, typed: bytes, timeout: timedelta
+) -> None:
+    os.write(terminal.keyboard, typed)
+    await next_in(key_reading.records)
+    timer = key_reading.reader.hold_timer
+
+    assert timer is not None
+    assert timer.when() - get_running_loop().time() == pytest.approx(timeout.total_seconds(), abs=0.04)
+
+
 async def test_stopping_reading_keys_stops_the_event_loop_reading_the_stream(
     terminal: Terminal, key_reading: KeyReading
 ) -> None:
@@ -189,7 +222,7 @@ async def test_an_escape_sequence_split_across_reads_is_one_key(terminal: Termin
     held = await next_in(key_reading.records)
     os.write(terminal.keyboard, b"[A")
 
-    assert held.pending == b"\x1b"  # type: ignore[attr-defined]
+    assert held.held == 1  # type: ignore[attr-defined]
     assert await next_in(key_reading.events) == KeyPressed(key=Key.Up)
 
 
@@ -202,10 +235,10 @@ async def test_stopping_reading_keys_puts_a_held_escape(terminal: Terminal, key_
     assert key_reading.events.get_nowait() == KeyPressed(key=Key.Escape)
 
 
-async def test_stopping_reading_keys_cancels_the_escape_timeout(terminal: Terminal, key_reading: KeyReading) -> None:
+async def test_stopping_reading_keys_cancels_the_hold_timeout(terminal: Terminal, key_reading: KeyReading) -> None:
     os.write(terminal.keyboard, b"\x1b")
     await next_in(key_reading.records)
-    timer = key_reading.reader.escape_timer
+    timer = key_reading.reader.hold_timer
 
     stop_reading_keys(key_reading.reader)
 

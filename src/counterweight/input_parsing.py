@@ -1,11 +1,11 @@
 """
 Turns the bytes a terminal sends into events: typed text, control keys, the escape sequences for special keys,
-and mouse reports.
+mouse reports, and bracketed pastes.
 
 Parsing is pure and incremental, so the reader that feeds it owns all of the timing:
-`parse_input` returns the events in the bytes read so far, and the trailing bytes that may be the start
-of something longer (an escape sequence or a UTF-8 character cut off by the end of a read),
-which the reader puts in front of its next read.
+`parse_input` returns the events in the bytes read so far, and where it stopped short of the trailing bytes
+that may be the start of something longer (an escape sequence, a paste, or a UTF-8 character cut off by the end
+of a read), which the reader keeps in front of its next read.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ from counterweight.events import (
     MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
+    Pasted,
 )
 from counterweight.geometry import Position
 from counterweight.graphemes import graphemes
@@ -192,6 +193,10 @@ WHEEL_EVENTS: tuple[type[MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft
 
 CONTROL_BYTE = re.compile(rb"[\x00-\x1f\x7f]")
 
+# https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Bracketed-Paste-Mode
+PASTE_START = b"\x1b[200~"
+PASTE_END = b"\x1b[201~"
+
 SURROGATES = re.compile(r"([\ud800-\udfff]+)")
 
 
@@ -205,8 +210,17 @@ class ParsedInput:
     control bytes with no `Key`, and bytes that aren't UTF-8.
     """
 
-    remainder: bytes
-    """The trailing bytes that may be the start of a longer escape sequence or UTF-8 character."""
+    end: int
+    """
+    How far parsing got: the bytes from here on may be the start of a longer escape sequence, paste,
+    or UTF-8 character, so they're held for the next parse.
+    """
+
+    paste_searched: int | None = None
+    """
+    If the held bytes are a paste whose end hasn't arrived, how many of them have been searched for its end,
+    so the next parse searches only what follows; `None` if they aren't.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,22 +230,30 @@ class Step:
     end: int
     events: tuple[AnyEvent, ...] = ()
     skipped: tuple[bytes, ...] = ()
+    paste_searched: int | None = None
 
 
-def parse_input(buffer: bytes, *, is_final: bool) -> ParsedInput:
+def parse_input(buffer: bytes | bytearray, *, is_final: bool, paste_searched: int | None = None) -> ParsedInput:
     """
-    The events in `buffer`, and the bytes at its end that need more input to make sense of.
+    The events in `buffer`, and how far it parsed before the bytes at its end that need more input to make sense of.
 
     With `is_final`, no more input is coming soon, so nothing is held back:
-    a lone `ESC` is the Escape key, and an incomplete UTF-8 character is skipped.
+    a lone `ESC` is the Escape key, an incomplete UTF-8 character is skipped,
+    and a paste whose end hasn't arrived is the paste.
+
+    `paste_searched` MUST be the `paste_searched` of the parse that held the bytes `buffer` starts with,
+    so a long paste arriving over many reads is searched once rather than once per read.
     """
     events: list[AnyEvent] = []
     skipped: list[bytes] = []
 
     position = 0
+    step = Step(end=0)
     while position < len(buffer):
         byte = buffer[position]
-        if byte == ESC:
+        if byte == ESC and buffer.startswith(PASTE_START, position):
+            step = parse_paste(buffer, position, is_final, (paste_searched or 0) if position == 0 else 0)
+        elif byte == ESC:
             step = parse_escape(buffer, position, is_final)
         elif CONTROL_BYTE.match(buffer, position):
             step = parse_control(buffer, position)
@@ -245,10 +267,15 @@ def parse_input(buffer: bytes, *, is_final: bool) -> ParsedInput:
             break
         position = step.end
 
-    return ParsedInput(events=tuple(events), skipped=tuple(skipped), remainder=buffer[position:])
+    return ParsedInput(
+        events=tuple(events),
+        skipped=tuple(skipped),
+        end=position,
+        paste_searched=step.paste_searched,
+    )
 
 
-def parse_escape(buffer: bytes, start: int, is_final: bool) -> Step:
+def parse_escape(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:
     """
     Parse from an `ESC`, which may begin an escape sequence or be the Escape key on its own.
     Stops where it started if there isn't enough input yet to tell which.
@@ -261,7 +288,7 @@ def parse_escape(buffer: bytes, start: int, is_final: bool) -> Step:
             return Step(end=start)
         return Step(end=start + 1, events=(KeyPressed(key=Key.Escape),))
 
-    sequence = match[0]
+    sequence = bytes(match[0])
 
     if match[1] is not None:
         event = sequence_event(sequence)
@@ -276,6 +303,35 @@ def parse_escape(buffer: bytes, start: int, is_final: bool) -> Step:
         return Step(end=start)
 
     return Step(end=start + 1, events=(KeyPressed(key=Key.Escape),))
+
+
+def parse_paste(buffer: bytes | bytearray, start: int, is_final: bool, searched: int) -> Step:
+    """
+    Parse a bracketed paste: everything between `PASTE_START` and `PASTE_END`, control bytes and escapes included,
+    is the pasted text.
+    Stops where it started until `PASTE_END` arrives, unless `is_final`,
+    when no more of the paste is coming soon and what has arrived is the paste.
+    The first `searched` bytes from `start` have been searched for `PASTE_END` already,
+    but for its first bytes, which the next read may complete.
+    """
+    text_start = start + len(PASTE_START)
+    text_end = buffer.find(PASTE_END, max(text_start, start + searched - len(PASTE_END) + 1))
+
+    if text_end == -1:
+        if not is_final:
+            return Step(end=start, paste_searched=len(buffer) - start)
+        text_end = end = len(buffer)
+    else:
+        end = text_end + len(PASTE_END)
+
+    # As in parse_text, each byte that isn't UTF-8 becomes a lone surrogate, so it can be skipped.
+    pieces = SURROGATES.split(buffer[text_start:text_end].decode("utf-8", "surrogateescape"))
+    text = "".join(pieces[::2]).replace("\r\n", "\n").replace("\r", "\n")
+    return Step(
+        end=end,
+        events=(Pasted(text=text),),
+        skipped=tuple(piece.encode("utf-8", "surrogateescape") for piece in pieces[1::2]),
+    )
 
 
 def sequence_event(sequence: bytes) -> AnyEvent | None:
@@ -309,14 +365,14 @@ def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
         return MouseDown(absolute=position, button=button)
 
 
-def parse_control(buffer: bytes, start: int) -> Step:
+def parse_control(buffer: bytes | bytearray, start: int) -> Step:
     """Parse one control byte other than `ESC`."""
     if key := CONTROL_KEYS.get(buffer[start]):
         return Step(end=start + 1, events=(KeyPressed(key=key),))
-    return Step(end=start + 1, skipped=(buffer[start : start + 1],))
+    return Step(end=start + 1, skipped=(bytes(buffer[start : start + 1]),))
 
 
-def parse_text(buffer: bytes, start: int, is_final: bool) -> Step:
+def parse_text(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:
     """
     Parse a run of text up to the next control byte, one `KeyPressed` per grapheme cluster.
     Stops before a UTF-8 character cut off by the end of the input, unless `is_final`.

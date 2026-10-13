@@ -3,7 +3,7 @@
 ## Handling Input
 
 `Div` and `Text` elements take an `on_input` handler,
-which Counterweight calls with key presses and mouse events,
+which Counterweight calls with key presses, pastes, and mouse events,
 along with a [`Receiver`][counterweight.events.Receiver] describing the element the event is delivered to.
 A handler matches on the event, so one case can cover a key and a mouse event alike:
 
@@ -169,6 +169,20 @@ Each time a key is pressed, Counterweight emits a `KeyPressed` event that holds 
 and [routes](#key-presses) it to the focused element.
 
 ::: counterweight.events.KeyPressed
+
+## Handling Pastes
+
+Counterweight turns on the terminal's bracketed paste mode,
+so text pasted into the terminal arrives as one `Pasted` event holding all of it,
+rather than as a key press per character,
+and it's [routed](#key-presses) to the focused element, as a key press is.
+A handler that only matches key presses never sees it,
+so a paste can't trigger a binding by holding the binding's key.
+[`use_text_input`](../hooks/use_text_input.md) inserts it in one edit.
+Terminals without bracketed paste send pasted text as typed keys,
+with its line breaks as Enter.
+
+::: counterweight.events.Pasted
 
 ## Handling Mouse Events
 

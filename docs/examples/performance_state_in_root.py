@@ -30,7 +30,7 @@ def dashboard() -> Div:
 
     def on_input(event: InputEvent, _: Receiver) -> None:
         if isinstance(event, KeyPressed) and len(event.key) == 1:
-            set_note(note + event.key)
+            set_note(lambda note: note + event.key)
 
     return Div(
         style=col,

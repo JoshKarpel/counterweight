@@ -7,7 +7,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import Setter, use_clock, use_focus, use_ref, use_state
+from counterweight.hooks import Setter, toggle, use_clock, use_focus, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-def toggle() -> Div:
+def time_or_textpad() -> Div:
     border_cycle_ref = use_ref(cycle(BorderKind))
 
     def advance_border() -> BorderKind:
@@ -44,7 +44,7 @@ def toggle() -> Div:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Tab):
-                set_toggled(not toggled)
+                set_toggled(toggle)
                 return ()
             case KeyPressed(key=Key.F1):
                 set_border_kind(advance_border())
@@ -94,10 +94,10 @@ def textpad() -> Text:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Backspace):
-                set_buffer(buffer[:-1])
+                set_buffer(lambda buffer: buffer[:-1])
                 return ()
             case KeyPressed(key=key) if key.isprintable() and len(key) == 1:
-                set_buffer([*buffer, key])
+                set_buffer(lambda buffer: [*buffer, key])
                 return ()
             case _:
                 return None
@@ -112,4 +112,4 @@ def textpad() -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(toggle()))
+    asyncio.run(app(time_or_textpad()))

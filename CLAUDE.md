@@ -28,10 +28,12 @@ The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
-- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`, `use_focus`)
+- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`, `use_focus`, `use_text_input`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
 - **Routing** (src/counterweight/routing.py): Which handlers an input event reaches: its target (the focused node for keys), bubbling, and press capture; and where focus can move
 - **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
+- **Text editing** (src/counterweight/text_editing.py): The pure core of `use_text_input`: which edit each key press or paste makes, and what it does to a value and a cursor
+- **Widgets** (src/counterweight/widgets.py): Styled components built on headless hooks, such as `text_input`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
 

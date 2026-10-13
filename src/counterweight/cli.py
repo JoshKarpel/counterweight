@@ -10,7 +10,7 @@ from counterweight.constants import PACKAGE_NAME, __version__
 from counterweight.events import AnyEvent
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
 from counterweight.logging import last_devlog, tail_devlog
-from counterweight.output import start_mouse_tracking, stop_mouse_tracking
+from counterweight.output import start_bracketed_paste, start_mouse_tracking, stop_bracketed_paste, stop_mouse_tracking
 
 SIGINT_EXIT = 130
 
@@ -51,10 +51,11 @@ async def _check_input(mouse: bool, input_stream: TextIO, output_stream: TextIO)
     event_queue: Queue[AnyEvent] = Queue()
 
     original = start_input_control(stream=input_stream)
-    if mouse:
-        start_mouse_tracking(stream=output_stream)
     key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
     try:
+        start_bracketed_paste(stream=output_stream)
+        if mouse:
+            start_mouse_tracking(stream=output_stream)
         while True:
             output_stream.write("Waiting for input (press ctrl+c to exit)...\n")
             output_stream.flush()
@@ -63,6 +64,7 @@ async def _check_input(mouse: bool, input_stream: TextIO, output_stream: TextIO)
     finally:
         stop_reading_keys(key_reader)
         stop_input_control(stream=input_stream, original=original)
+        stop_bracketed_paste(stream=output_stream)
         if mouse:
             stop_mouse_tracking(stream=output_stream)
 

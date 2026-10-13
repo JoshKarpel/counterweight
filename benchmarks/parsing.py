@@ -3,7 +3,8 @@ Times `parse_input` on fixed reads of terminal input, outside the render loop.
 
 The inputs cover the cases that matter for parsing: a single key press (the common case, one per read),
 a read full of mouse motion reports (the most input any-event tracking produces at once),
-and full reads of pasted text, ASCII and not. Each is a whole read, so nothing is held over to the next one.
+full reads of text pasted without bracketed paste, ASCII and not, which arrive as key presses,
+and a full read of one bracketed paste. Each is a whole read, so nothing is held over to the next one.
 """
 
 import json
@@ -17,7 +18,8 @@ import counterweight
 from benchmarks.tables import Column, render_table
 from counterweight.input_parsing import parse_input
 
-# How many bytes counterweight.input.read_keys reads at once.
+# How many bytes each timed read holds. A terminal hands over at most a few kilobytes per read,
+# whatever counterweight.input.READ_SIZE asks for; this stays at 1 KB so timings compare across runs.
 READ_SIZE = 2**10
 
 
@@ -40,6 +42,7 @@ INPUTS: Mapping[str, bytes] = {
         [f"{word} ".encode() for word in "the quick brown fox jumps over the lazy dog".split()] * 30
     ),
     "non-ascii-paste": fill_read([character.encode() for character in "naïve café 日本語 👩‍💻 " * 100]),
+    "bracketed-paste": b"\x1b[200~" + b"the quick brown fox jumps over the lazy dog\r" * 22 + b"\x1b[201~",
 }
 
 

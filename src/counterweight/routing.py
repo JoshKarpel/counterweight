@@ -24,6 +24,7 @@ from counterweight.events import (
     MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
+    Pasted,
     Receiver,
     response_controls,
 )
@@ -226,9 +227,9 @@ class RoutingTable:
         )
 
 
-def route_key(event: KeyPressed, focused: NodeKey | None, table: RoutingTable) -> tuple[AnyControl, ...]:
+def route_key(event: KeyPressed | Pasted, focused: NodeKey | None, table: RoutingTable) -> tuple[AnyControl, ...]:
     """
-    Bubbles `event` from the `focused` node, or from the root component's node if nothing is focused,
+    Bubbles a key press or paste from the `focused` node, or from the root component's node if nothing is focused,
     and returns the controls of the handler that claimed it, if any.
     """
     return claimed_controls(table.bubble(event, table.root if focused is None else focused, focused))

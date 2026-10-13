@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -12,10 +14,25 @@ from counterweight.events import (
     MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
+    Pasted,
 )
 from counterweight.geometry import Position
-from counterweight.input_parsing import ParsedInput, parse_input
+from counterweight.input_parsing import PASTE_START, parse_input
 from counterweight.keys import Key
+
+
+@dataclass(frozen=True, slots=True)
+class Parsed:
+    """What `parse_input` found in a buffer, with the bytes it held back rather than where it stopped."""
+
+    events: tuple[AnyEvent, ...]
+    skipped: tuple[bytes, ...]
+    remainder: bytes
+
+
+def parse(buffer: bytes, *, is_final: bool) -> Parsed:
+    parsed = parse_input(buffer, is_final=is_final)
+    return Parsed(events=parsed.events, skipped=parsed.skipped, remainder=buffer[parsed.end :])
 
 
 @pytest.mark.parametrize(
@@ -183,101 +200,151 @@ from counterweight.keys import Key
     ],
 )
 def test_known_input_parses_to_its_events(buffer: bytes, expected: list[AnyEvent]) -> None:
-    assert parse_input(buffer, is_final=True) == ParsedInput(events=tuple(expected), skipped=(), remainder=b"")
+    assert parse(buffer, is_final=True) == Parsed(events=tuple(expected), skipped=(), remainder=b"")
+
+
+@pytest.mark.parametrize(
+    "buffer, expected",
+    [
+        (b"\x1b[200~hello\x1b[201~", [Pasted(text="hello")]),
+        (b"\x1b[200~\x1b[201~", [Pasted(text="")]),
+        ("\x1b[200~é👩‍💻\x1b[201~".encode(), [Pasted(text="é👩‍💻")]),
+        # what would be keys or sequences outside a paste are text inside one
+        (b"\x1b[200~a\tb\x03\x1b[Ac\x1b[200~\x1b[201~", [Pasted(text="a\tb\x03\x1b[Ac\x1b[200~")]),
+        # terminals send pasted line breaks as carriage returns
+        (b"\x1b[200~a\rb\r\nc\nd\x1b[201~", [Pasted(text="a\nb\nc\nd")]),
+        (
+            b"x\x1b[200~y\x1b[201~z",
+            [KeyPressed(key="x"), Pasted(text="y"), KeyPressed(key="z")],
+        ),
+        (
+            b"\x1b[200~a\x1b[201~\x1b[200~b\x1b[201~",
+            [Pasted(text="a"), Pasted(text="b")],
+        ),
+    ],
+)
+def test_bracketed_paste_parses_to_one_event_holding_its_text(buffer: bytes, expected: list[AnyEvent]) -> None:
+    assert parse(buffer, is_final=False) == Parsed(events=tuple(expected), skipped=(), remainder=b"")
+
+
+def test_a_held_paste_is_searched_for_its_end_only_past_what_was_searched_before() -> None:
+    buffer = b"\x1b[200~a\x1b[201~"
+
+    assert parse_input(buffer, is_final=False, paste_searched=len(buffer) + len(PASTE_START)).end == 0
+
+
+def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
+    assert parse(b"\x1b[200~a\xffb\x1b[201~", is_final=True) == Parsed(
+        events=(Pasted(text="ab"),), skipped=(b"\xff",), remainder=b""
+    )
 
 
 @pytest.mark.parametrize(
     "buffer, expected",
     [
         # well-formed CSI and SS3 sequences we don't know the meaning of
-        (b"\x1b[1;5p", ParsedInput(events=(), skipped=(b"\x1b[1;5p",), remainder=b"")),
-        (b"\x1b[5^", ParsedInput(events=(), skipped=(b"\x1b[5^",), remainder=b"")),
-        (b"\x1b[a", ParsedInput(events=(), skipped=(b"\x1b[a",), remainder=b"")),
-        (b"\x1b[I", ParsedInput(events=(), skipped=(b"\x1b[I",), remainder=b"")),
-        (b"\x1b[200~", ParsedInput(events=(), skipped=(b"\x1b[200~",), remainder=b"")),
-        (b"\x1b[1 q", ParsedInput(events=(), skipped=(b"\x1b[1 q",), remainder=b"")),
-        (b"\x1bOx", ParsedInput(events=(), skipped=(b"\x1bOx",), remainder=b"")),
-        (b"\x1b[<35;1M", ParsedInput(events=(), skipped=(b"\x1b[<35;1M",), remainder=b"")),
+        (b"\x1b[1;5p", Parsed(events=(), skipped=(b"\x1b[1;5p",), remainder=b"")),
+        (b"\x1b[5^", Parsed(events=(), skipped=(b"\x1b[5^",), remainder=b"")),
+        (b"\x1b[a", Parsed(events=(), skipped=(b"\x1b[a",), remainder=b"")),
+        (b"\x1b[I", Parsed(events=(), skipped=(b"\x1b[I",), remainder=b"")),
+        (b"\x1b[201~", Parsed(events=(), skipped=(b"\x1b[201~",), remainder=b"")),
+        (b"\x1b[1 q", Parsed(events=(), skipped=(b"\x1b[1 q",), remainder=b"")),
+        (b"\x1bOx", Parsed(events=(), skipped=(b"\x1bOx",), remainder=b"")),
+        (b"\x1b[<35;1M", Parsed(events=(), skipped=(b"\x1b[<35;1M",), remainder=b"")),
         (
             b"a\x1b[1;5pb",
-            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\x1b[1;5p",), remainder=b""),
+            Parsed(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\x1b[1;5p",), remainder=b""),
         ),
         # a sequence cut short by a byte that can't be in one is skipped up to that byte
         (
             b"\x1b[1;\x03",
-            ParsedInput(events=(KeyPressed(key=Key.ControlC),), skipped=(b"\x1b[1;",), remainder=b""),
+            Parsed(events=(KeyPressed(key=Key.ControlC),), skipped=(b"\x1b[1;",), remainder=b""),
         ),
         (
             "\x1b[1;é".encode(),
-            ParsedInput(events=(KeyPressed(key="é"),), skipped=(b"\x1b[1;",), remainder=b""),
+            Parsed(events=(KeyPressed(key="é"),), skipped=(b"\x1b[1;",), remainder=b""),
         ),
         # control bytes with no key
-        (b"\x1c", ParsedInput(events=(), skipped=(b"\x1c",), remainder=b"")),
+        (b"\x1c", Parsed(events=(), skipped=(b"\x1c",), remainder=b"")),
         # bytes that aren't UTF-8 are skipped, and everything around them kept
         (
             b"a\xffb",
-            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\xff",), remainder=b""),
+            Parsed(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\xff",), remainder=b""),
         ),
         (
             b"a\xc3\x1b[A",
-            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key=Key.Up)), skipped=(b"\xc3",), remainder=b""),
+            Parsed(events=(KeyPressed(key="a"), KeyPressed(key=Key.Up)), skipped=(b"\xc3",), remainder=b""),
         ),
         (
             b"\xff\xcc\x81",
-            ParsedInput(events=(KeyPressed(key="\u0301"),), skipped=(b"\xff",), remainder=b""),
+            Parsed(events=(KeyPressed(key="\u0301"),), skipped=(b"\xff",), remainder=b""),
         ),
     ],
 )
-def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: ParsedInput) -> None:
-    assert parse_input(buffer, is_final=True) == expected
+def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: Parsed) -> None:
+    assert parse(buffer, is_final=True) == expected
 
 
 @pytest.mark.parametrize(
     "buffer, expected",
     [
-        (b"\x1b", ParsedInput(events=(), skipped=(), remainder=b"\x1b")),
-        (b"a\x1b", ParsedInput(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\x1b")),
-        (b"\x1b[", ParsedInput(events=(), skipped=(), remainder=b"\x1b[")),
-        (b"\x1b[<35;1", ParsedInput(events=(), skipped=(), remainder=b"\x1b[<35;1")),
-        (b"\x1bO", ParsedInput(events=(), skipped=(), remainder=b"\x1bO")),
-        (b"a\xc3", ParsedInput(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\xc3")),
-        (b"\xf0\x9f\x98", ParsedInput(events=(), skipped=(), remainder=b"\xf0\x9f\x98")),
+        (b"\x1b", Parsed(events=(), skipped=(), remainder=b"\x1b")),
+        (b"a\x1b", Parsed(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\x1b")),
+        (b"\x1b[", Parsed(events=(), skipped=(), remainder=b"\x1b[")),
+        (b"\x1b[<35;1", Parsed(events=(), skipped=(), remainder=b"\x1b[<35;1")),
+        (b"\x1bO", Parsed(events=(), skipped=(), remainder=b"\x1bO")),
+        (b"a\xc3", Parsed(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\xc3")),
+        (b"\xf0\x9f\x98", Parsed(events=(), skipped=(), remainder=b"\xf0\x9f\x98")),
+        (b"\x1b[200~ab", Parsed(events=(), skipped=(), remainder=b"\x1b[200~ab")),
+        (b"\x1b[200~ab\x1b[20", Parsed(events=(), skipped=(), remainder=b"\x1b[200~ab\x1b[20")),
+        (
+            b"a\x1b[200~b\x1b[201~\x1b[200~c",
+            Parsed(events=(KeyPressed(key="a"), Pasted(text="b")), skipped=(), remainder=b"\x1b[200~c"),
+        ),
     ],
 )
-def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expected: ParsedInput) -> None:
-    assert parse_input(buffer, is_final=False) == expected
+def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expected: Parsed) -> None:
+    assert parse(buffer, is_final=False) == expected
 
 
 @pytest.mark.parametrize(
     "buffer, expected",
     [
-        (b"\x1b", ParsedInput(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
+        (b"\x1b", Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
         (
             b"\x1b[",
-            ParsedInput(events=(KeyPressed(key=Key.Escape), KeyPressed(key="[")), skipped=(), remainder=b""),
+            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="[")), skipped=(), remainder=b""),
         ),
         (
             b"\x1bO",
-            ParsedInput(events=(KeyPressed(key=Key.Escape), KeyPressed(key="O")), skipped=(), remainder=b""),
+            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="O")), skipped=(), remainder=b""),
         ),
-        (b"a\xc3", ParsedInput(events=(KeyPressed(key="a"),), skipped=(b"\xc3",), remainder=b"")),
+        (b"a\xc3", Parsed(events=(KeyPressed(key="a"),), skipped=(b"\xc3",), remainder=b"")),
+        (b"\x1b[200~ab", Parsed(events=(Pasted(text="ab"),), skipped=(), remainder=b"")),
+        (b"\x1b[200~", Parsed(events=(Pasted(text=""),), skipped=(), remainder=b"")),
     ],
 )
-def test_final_input_is_not_held_over(buffer: bytes, expected: ParsedInput) -> None:
-    assert parse_input(buffer, is_final=True) == expected
+def test_final_input_is_not_held_over(buffer: bytes, expected: Parsed) -> None:
+    assert parse(buffer, is_final=True) == expected
 
 
-def parse_reads(reads: list[bytes]) -> ParsedInput:
-    """Parse `reads` one after another, the way the input reader does, carrying each remainder into the next read."""
+def parse_reads(reads: list[bytes]) -> Parsed:
+    """
+    Parse `reads` one after another, the way the input reader does,
+    holding what each parse stopped short of, and how much of a held paste it searched, for the next read.
+    """
     events: list[AnyEvent] = []
     skipped: list[bytes] = []
-    pending = b""
+    held = bytearray()
+    paste_searched: int | None = None
     for index, read in enumerate(reads):
-        parsed = parse_input(pending + read, is_final=index == len(reads) - 1)
+        held += read
+        parsed = parse_input(held, is_final=index == len(reads) - 1, paste_searched=paste_searched)
         events.extend(parsed.events)
         skipped.extend(parsed.skipped)
-        pending = parsed.remainder
-    return ParsedInput(events=tuple(events), skipped=(b"".join(skipped),), remainder=pending)
+        del held[: parsed.end]
+        paste_searched = parsed.paste_searched
+    return Parsed(events=tuple(events), skipped=(b"".join(skipped),), remainder=bytes(held))
 
 
 SPLIT_CORPUS = b"".join(
@@ -290,6 +357,7 @@ SPLIT_CORPUS = b"".join(
         b"\x1b[3;5~",
         b"\xff",
         b"\x03",
+        b"\x1b[200~p\x1b[A\r\n\x1b[201~",
     ]
 )
 
@@ -305,12 +373,7 @@ def test_grapheme_cluster_split_across_reads_is_two_key_presses() -> None:
 
 @given(st.binary())
 def test_final_parse_of_any_bytes_holds_nothing_over(buffer: bytes) -> None:
-    assert parse_input(buffer, is_final=True).remainder == b""
-
-
-@given(st.binary())
-def test_held_over_bytes_are_a_suffix_of_the_input(buffer: bytes) -> None:
-    assert buffer.endswith(parse_input(buffer, is_final=False).remainder)
+    assert parse(buffer, is_final=True).remainder == b""
 
 
 TOKENS = st.one_of(
@@ -329,13 +392,23 @@ TOKENS = st.one_of(
             b"\xff",
             b";",
             b"~",
+            b"\x1b[200~",
+            b"\x1b[201~",
         ]
     ),
     st.text().map(str.encode),
 )
 
 
-def join_text(parsed: ParsedInput) -> tuple[object, ...]:
+@given(st.lists(TOKENS).map(b"".join))
+def test_paste_searched_counts_the_held_bytes_only_when_they_are_a_paste(buffer: bytes) -> None:
+    parsed = parse_input(buffer, is_final=False)
+    held = buffer[parsed.end :]
+
+    assert parsed.paste_searched == (len(held) if held.startswith(PASTE_START) else None)
+
+
+def join_text(parsed: Parsed) -> tuple[object, ...]:
     """The events in `parsed`, with each run of text joined into one string, since reads may split a grapheme cluster."""
     joined: list[object] = []
     for event in parsed.events:

@@ -160,7 +160,7 @@ def test_parsing_input_is_whole_events_with_nothing_skipped_or_held_over(name: s
     parsed = parse_input(INPUTS[name], is_final=False)
 
     assert parsed.events
-    assert (parsed.skipped, parsed.remainder) == ((), b"")
+    assert (parsed.skipped, parsed.end) == ((), len(INPUTS[name]))
 
 
 def test_time_parsing_times_each_input_by_name() -> None:

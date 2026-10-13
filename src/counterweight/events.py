@@ -28,7 +28,18 @@ class KeyPressed(_Event):
     """
     The `Key` for a control or special key (`Key.Enter`, `Key.Up`, `Key.F1`),
     or the text typed: one grapheme cluster, such as `"a"`, `"é"` or `"👩‍💻"`.
-    Each grapheme cluster of pasted text is its own key press.
+    Text pasted in a terminal without bracketed paste arrives as a key press per grapheme cluster;
+    in one with it, the text arrives as one [`Pasted`][counterweight.events.Pasted].
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class Pasted(_Event):
+    text: str
+    """
+    The text pasted into the terminal, whole, with each line break as `"\\n"`
+    (terminals send a pasted line break as a carriage return).
+    It can hold anything a key press can't, such as line breaks and tabs, which arrive as text rather than as keys.
     """
 
 
@@ -116,7 +127,7 @@ MouseEvent = Union[
     MouseScrolledRight,
 ]
 
-InputEvent = Union[KeyPressed, MouseEvent]
+InputEvent = Union[KeyPressed, Pasted, MouseEvent]
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +150,7 @@ class Receiver:
     is_focused: bool
     """
     Whether the receiving element is the focused one.
-    For a key press it's the same as `is_target`, except when nothing is focused:
+    For a key press or a paste it's the same as `is_target`, except when nothing is focused:
     the root component's element is then the target, and no receiver is focused.
     """
 
@@ -177,6 +188,7 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
 AnyEvent = Union[
     TerminalResized,
     KeyPressed,
+    Pasted,
     StateSet,
     MouseEvent,
     Dummy,

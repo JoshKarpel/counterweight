@@ -4,6 +4,20 @@
 
 ### Added
 
+- [#391](https://github.com/JoshKarpel/counterweight/issues/391)
+  Added [`use_text_input`](hooks/use_text_input.md), which edits one line of text and leaves drawing it to its caller.
+  The caller owns the value and passes its setter; the hook owns the cursor, makes the component focusable,
+  and returns the value split around the cursor with an `on_input` handler for Readline's editing keys and pastes.
+  Each edit applies to the latest value through the setter, so keys typed faster than the app renders all land,
+  and a setter that validates or transforms edits decides where the cursor goes.
+  `counterweight.widgets.text_input` is a bordered box built on it, with a placeholder.
+
+- Added `toggle`, which flips a flag through a `use_state` setter (`set_open(toggle)`),
+  so toggles that land before the next render each flip the latest value,
+  and a type checker rejects it for state that isn't a `bool`.
+  The [`use_state`](hooks/use_state.md#updating-state-from-its-previous-value) docs show how setting state
+  from a value computed from the state a render saw loses updates, and when to pass a function instead.
+
 - [#411](https://github.com/JoshKarpel/counterweight/issues/411)
   Added the `SetTitle` control, which sets the title of the terminal window.
   The app saves the title it started with and restores it when it quits and while it's suspended,
@@ -139,6 +153,13 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#391](https://github.com/JoshKarpel/counterweight/issues/391)
+  **Breaking:** the app turns on the terminal's bracketed paste mode,
+  so pasted text arrives as one [`Pasted`](input-handling/events.md#handling-pastes) event holding all of it,
+  routed to the focused element like a key press, with its line breaks as `"\n"`.
+  Previously it arrived as a `KeyPressed` per grapheme cluster, and its line breaks as Enter.
+  `counterweight check-input` shows pastes too.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),

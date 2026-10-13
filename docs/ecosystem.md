@@ -33,7 +33,7 @@ and over Ratatui to have the framework own the state, the event loop and the lay
 | Screen | Full screen (inline: [#393](https://github.com/JoshKarpel/counterweight/issues/393)) | Full screen or inline | Inline or full screen | Full screen, inline or a fixed area |
 | Mouse | Yes | Yes | No | Through the backend's events |
 | Focus | Yes | Yes | Yes | No |
-| Text input | No ([#391](https://github.com/JoshKarpel/counterweight/issues/391)) | Built in | Third-party packages | Third-party crates |
+| Text input | One line, as a [hook](hooks/use_text_input.md) | Built in | Third-party packages | Third-party crates |
 | Scrolling | No ([#388](https://github.com/JoshKarpel/counterweight/issues/388), [#389](https://github.com/JoshKarpel/counterweight/issues/389)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
 | Wide characters | No ([#392](https://github.com/JoshKarpel/counterweight/issues/392)) | Yes | Yes | Yes |
 | Platforms | Linux, macOS | Linux, macOS, Windows | Not stated | Linux, macOS, Windows |
@@ -131,10 +131,8 @@ or when frame time is the constraint: Counterweight renders in Python, and Ratat
 
 These are the gaps you're most likely to hit, with what to do instead:
 
-- **Text input.** There's no text input element.
-  Build one from a component that calls [`use_focus`](hooks/use_focus.md)
-  and edits a string in `use_state` from its handler's `KeyPressed` cases.
-  Tracked in [#391](https://github.com/JoshKarpel/counterweight/issues/391).
+- **Multi-line text editing.** [`use_text_input`](hooks/use_text_input.md) edits one line,
+  with no selection, and a value wider than its box wraps rather than scrolling.
 - **Scrolling and clipping.** There are no scroll containers,
   and content that overflows its container isn't clipped:
   it paints over the container's border and whatever lies beyond it.

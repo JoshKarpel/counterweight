@@ -22,7 +22,7 @@ def counter() -> Text:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Up):
-                set_count(count + 1)
+                set_count(lambda count: count + 1)
                 return ()
             case _:
                 return None

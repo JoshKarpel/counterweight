@@ -8,7 +8,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_state
+from counterweight.hooks import toggle, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -76,7 +76,7 @@ def root() -> Div:
             case KeyPressed(key="1" | "2" | "3" | "4" as k):
                 col = int(k) - 1
                 if col == sort_col:
-                    set_sort_asc(not sort_asc)
+                    set_sort_asc(toggle)
                 else:
                     set_sort_col(col)
                     set_sort_asc(True)

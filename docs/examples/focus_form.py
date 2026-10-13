@@ -8,7 +8,7 @@ from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseUp, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import each, first, focus_on_press, focus_receiver_on_press, on_click, tab_focus
-from counterweight.hooks import Focus, FocusHandle, Setter, use_focus, use_state
+from counterweight.hooks import Focus, FocusHandle, Setter, toggle, use_focus, use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
@@ -86,7 +86,7 @@ def toggle_field(is_on: bool, set_on: Setter[bool], handle: FocusHandle) -> Text
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Space):
-                set_on(not is_on)
+                set_on(toggle)
                 return ()
             case _:
                 return None
