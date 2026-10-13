@@ -3,7 +3,15 @@ from __future__ import annotations
 import pytest
 
 from counterweight.components import component
-from counterweight.controls import AnyControl, FocusNext, FocusOn, ScrollAlignment, ScrollIntoView, ScrollTo
+from counterweight.controls import (
+    AnyControl,
+    FocusNext,
+    FocusOn,
+    ScrollAlignment,
+    ScrollBy,
+    ScrollIntoView,
+    ScrollTo,
+)
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent, InputEvent, InputResponse, KeyPressed, Receiver
 from counterweight.focus import ElementHandle, FocusHandle
@@ -132,6 +140,15 @@ async def test_scroll_into_view_applies_each_request_from_where_the_last_left_th
     container = Div(style=col | size(8, 3) | overflow_y_scroll, on_input=both, children=items())
 
     assert await last_rows(container, (8, 3), [KeyPressed(key="x")]) == showing(4, 5, 6)
+
+
+async def test_scroll_controls_in_one_response_apply_in_the_order_they_were_returned() -> None:
+    def both(event: InputEvent, receiver: Receiver) -> InputResponse:
+        return ScrollIntoView(ITEMS[4]), ScrollBy(HANDLE, y=1)
+
+    container = Div(style=col | size(8, 3) | overflow_y_scroll, handle=HANDLE, on_input=both, children=items())
+
+    assert await last_rows(container, (8, 3), [KeyPressed(key="x")]) == showing(5, 6, 7)
 
 
 async def test_scroll_into_view_scrolls_no_container_above_an_unclipped_element() -> None:

@@ -66,6 +66,8 @@ class ShadowTree:
     root: ShadowNode
     nodes: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
     """Every node, in pre-order."""
+    by_key: Mapping[NodeKey, ShadowNode] = field(init=False, repr=False, compare=False)
+    """Every node, by its key, in pre-order."""
     parents: Mapping[NodeKey, NodeKey | None] = field(init=False, repr=False, compare=False)
     """The key of each node's parent, by the node's key, with `None` for the root's."""
     measured: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
@@ -83,7 +85,7 @@ class ShadowTree:
     """The nodes that call `use_clock`, which a node does on every run if it does on any."""
 
     def __post_init__(self) -> None:
-        nodes = []
+        by_key: dict[NodeKey, ShadowNode] = {}
         parents: dict[NodeKey, NodeKey | None] = {self.root.key: None}
         measured = []
         scroll_readers = []
@@ -91,7 +93,7 @@ class ShadowTree:
         focusable = {}
         clocked = []
         for node in self.root.walk():
-            nodes.append(node)
+            by_key[node.key] = node
             for child in node.children:
                 parents[child.key] = node.key
             if node.hooks.rects is not None:
@@ -110,7 +112,8 @@ class ShadowTree:
             if node.hooks.clocks:
                 clocked.append(node)
 
-        object.__setattr__(self, "nodes", tuple(nodes))
+        object.__setattr__(self, "nodes", tuple(by_key.values()))
+        object.__setattr__(self, "by_key", by_key)
         object.__setattr__(self, "parents", parents)
         object.__setattr__(self, "measured", tuple(measured))
         object.__setattr__(self, "scroll_readers", tuple(scroll_readers))

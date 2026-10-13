@@ -200,9 +200,14 @@ class ScrollTo(_Control):
     as the web's [`scrollTo`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollTo) does,
     leaving an axis given as `None` where it is.
     The offset is clamped to the range the container scrolls through, from 0 to its
-    [`max_offset`][counterweight.geometry.Scroll.max_offset] as of the last frame,
+    [`max_offset`][counterweight.geometry.Scroll.max_offset],
     so a large `y` scrolls to the end.
-    It does nothing if `target` names no mounted, visible scroll container.
+
+    It applies to the layout of the next render, before that render paints,
+    after [anchoring](../layout/scrolling.md#keeping-the-content-in-view) and sticking to the end,
+    and in order with the other scroll controls returned since the last render,
+    so a handler that returns it beside a state change scrolls the content that change lays out.
+    It does nothing if `target` names no mounted, visible scroll container then.
     """
 
     target: ElementHandle | Subtree
@@ -224,8 +229,7 @@ class ScrollBy(_Control):
     Scroll the scroll container `target` names by `x` columns and `y` rows,
     as the web's [`scrollBy`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollBy) does:
     positive values move toward the end of the content, and negative ones toward its start.
-    The offset is clamped as [`ScrollTo`][counterweight.controls.ScrollTo] clamps it,
-    and it does nothing if `target` names no mounted, visible scroll container.
+    The offset is clamped, and the control applied, as [`ScrollTo`][counterweight.controls.ScrollTo]'s is.
     """
 
     target: ElementHandle | Subtree
@@ -254,12 +258,14 @@ class ScrollIntoView(_Control):
     and doesn't scroll at all if the element is already wholly in view, or covers the whole view.
     Each offset is clamped to the range its container scrolls through.
 
-    It applies to the layout of the next render, before that render paints,
+    It applies as [`ScrollTo`][counterweight.controls.ScrollTo] does, to the layout of the next render,
     so a handler that returns it beside a state change, such as moving a highlight through a long list,
     shows the scroll in the same frame as the change.
     The element `target` names is the one with that handle in the next render,
     so a handle moved onto a newly highlighted element names the new one.
-    It does nothing if `target` names no mounted, visible element then.
+    It does nothing if `target` names no mounted, visible element then,
+    and it stops at an element with [`clip_to_screen`](../layout/clipping.md#escaping-every-clip),
+    since no container above that element clips it.
     """
 
     target: ElementHandle | Subtree

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
-from counterweight.controls import ScrollAlignment
+from counterweight.controls import ScrollAlignment, ScrollBy, ScrollIntoView, ScrollTo
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
@@ -228,17 +228,14 @@ class PriorScroll:
     anchor: Anchor | None
 
 
-def prior_scrolls(layouts: Layouts, offsets: Mapping[NodeKey, Position]) -> dict[NodeKey, PriorScroll]:
-    """
-    How each scroll container in `layouts` is scrolled before the next layout,
-    at its offset in `offsets`, which scroll controls may have moved since `layouts` was laid out.
-    """
+def prior_scrolls(layouts: Layouts) -> dict[NodeKey, PriorScroll]:
+    """How each scroll container in `layouts` is scrolled before the next layout."""
     by_key = layouts.by_key
     priors = {}
     for container in layouts.scroll_containers:
         key = container.key
         scroll = layouts.scrolls[key]
-        offset = offsets[key]
+        offset = scroll.offset
         is_at_end_y = offset.y == scroll.max_offset.y
         # The spec skips anchoring at the top, so content added above the top pushes the rest down,
         # and a container that doesn't scroll vertically is always at the top.
@@ -248,31 +245,31 @@ def prior_scrolls(layouts: Layouts, offsets: Mapping[NodeKey, Position]) -> dict
             offset=offset,
             is_at_end_x=offset.x == scroll.max_offset.x,
             is_at_end_y=is_at_end_y,
-            anchor=anchor_of(container, by_key, offset.y - scroll.offset.y) if is_anchored else None,
+            anchor=anchor_of(container, by_key) if is_anchored else None,
         )
     return priors
 
 
-def anchor_of(container: ShadowNode, by_key: Mapping[NodeKey, Rects], scrolled: int) -> Anchor | None:
+def anchor_of(container: ShadowNode, by_key: Mapping[NodeKey, Rects]) -> Anchor | None:
     """
-    The anchor of the scroll `container`, laid out at `by_key` and since scrolled down by `scrolled` rows,
+    The anchor of the scroll `container`, laid out at `by_key`,
     picked as the [spec](https://drafts.csswg.org/css-scroll-anchoring/#anchor-node-selection) picks one,
     or `None` if its anchoring is off or nothing in it is in view.
     """
     if container.element.style.resolved.overflow_anchor == "none":
         return None
     view = by_key[container.key].padding
-    anchor = _anchor_among(container.children, by_key, scrolled, view.top, view.bottom)
+    anchor = _anchor_among(container.children, by_key, view.top, view.bottom)
     if anchor is None:
         return None
-    return Anchor(key=anchor, distance=by_key[anchor].border.top - scrolled - view.top)
+    return Anchor(key=anchor, distance=by_key[anchor].border.top - view.top)
 
 
 def _anchor_among(
-    nodes: Iterable[ShadowNode], by_key: Mapping[NodeKey, Rects], scrolled: int, top: int, bottom: int
+    nodes: Iterable[ShadowNode], by_key: Mapping[NodeKey, Rects], top: int, bottom: int
 ) -> NodeKey | None:
     """
-    The first of `nodes`, in tree order, that's in the rows from `top` to `bottom` once moved up by `scrolled`,
+    The first of `nodes`, in tree order, that's in the rows from `top` to `bottom`,
     where one wholly in them is the anchor, and one partly in them is descended into for a better one,
     unless it's a scroll container, and is the anchor if none of its children is in them.
     A hidden or unclipped node, or one whose anchoring is off, is never the anchor, nor is anything inside it.
@@ -286,13 +283,13 @@ def _anchor_among(
             or resolved.overflow_anchor == "none"
         ):
             continue
-        node_top = rects.border.top - scrolled
-        node_bottom = rects.border.bottom - scrolled
+        node_top = rects.border.top
+        node_bottom = rects.border.bottom
         if node_bottom <= top or node_top >= bottom:
             continue
         if (top <= node_top and node_bottom <= bottom) or any(scrolled_axes(style)):
             return node.key
-        descendant = _anchor_among(node.children, by_key, scrolled, top, bottom)
+        descendant = _anchor_among(node.children, by_key, top, bottom)
         return node.key if descendant is None else descendant
     return None
 
@@ -315,12 +312,12 @@ class LayoutTree:
         width: int,
         height: int,
         priors: Mapping[NodeKey, PriorScroll],
-        into_view: Sequence[IntoView] = (),
+        requests: Sequence[ScrollRequest] = (),
     ) -> Layouts:
         """
         Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen,
         with each scroll container scrolled as `place` scrolls it from how it was scrolled before, in `priors`,
-        and then scrolled to bring each node in `into_view` into view, in order.
+        and then as each of `requests` scrolls it, in order.
         """
         self.apply(changes)
 
@@ -335,7 +332,7 @@ class LayoutTree:
             boxes,
             Region(left=0, top=0, right=width, bottom=height),
             priors,
-            scrolled_into_view(into_view, shadow, boxes, priors),
+            requested_scrolls(requests, shadow, boxes, priors),
         )
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
@@ -483,59 +480,79 @@ def settled_scroll(
 
 
 @dataclass(frozen=True, slots=True)
-class IntoView:
-    """A node to scroll into view, aligned in each scroll container above it as `block` and `inline` say."""
+class ScrollRequest:
+    """A scroll control, with the key of the node it names in the tree it's laid out with."""
 
     key: NodeKey
-    block: ScrollAlignment
-    inline: ScrollAlignment
+    control: ScrollTo | ScrollBy | ScrollIntoView
 
 
-def scrolled_into_view(
-    requests: Iterable[IntoView],
+def requested_scrolls(
+    requests: Iterable[ScrollRequest],
     shadow: ShadowTree,
     boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
     priors: Mapping[NodeKey, PriorScroll],
 ) -> dict[NodeKey, Scroll]:
     """
     The scroll of each scroll container that `requests` move, applied in order,
-    each scrolling the containers above its node from the innermost out, as the web's `scrollIntoView` does:
-    each container is scrolled to bring the node's border box into its view as the containers inside it left it,
-    and clamped, from its `settled_scroll`, or from where an earlier request left it.
-    The walk stops at an unclipped node, since no container above it clips it, or anything inside it,
-    as the web doesn't scroll a container to show a fixed element that its clip doesn't cut off.
+    each from the container's `settled_scroll`, or from where an earlier request left it, and clamped.
+    A `ScrollTo` or `ScrollBy` moves the node it names,
+    which `place` ignores unless it's a scroll container, so one that names any other node moves nothing.
+    A `ScrollIntoView` scrolls the containers above its node from the innermost out, as the web's `scrollIntoView` does,
+    each to bring the node's border box into its view as the containers inside it left it.
     A request for a node without a box in `boxes`, because it's hidden or unmounted, moves nothing.
     """
     scrolled: dict[NodeKey, Scroll] = {}
-    nodes: dict[NodeKey, ShadowNode] | None = None
+
+    def scroll_before(key: NodeKey, style: Style) -> Scroll:
+        """The scroll of the container with `key` and `style` before the request at hand moves it."""
+        if (scroll := scrolled.get(key)) is None:
+            position, layout = boxes[key]
+            return settled_scroll(style, position, layout, priors.get(key), boxes)
+        return scroll
+
     for request in requests:
         try:
             position, layout = boxes[request.key]
         except KeyError:
             continue
-        if nodes is None:
-            nodes = {node.key: node for node in shadow.nodes}
-        left, top = int(position.x), int(position.y)
-        right, bottom = left + int(layout.size.width), top + int(layout.size.height)
-        child = request.key
-        while nodes[child].element.style.resolved.clip_to != "screen" and (key := shadow.parents[child]) is not None:
-            style = nodes[key].element.style
-            if any(scrolled_axes(style)):
-                container_position, container_layout = boxes[key]
-                if (scroll := scrolled.get(key)) is None:
-                    scroll = settled_scroll(style, container_position, container_layout, priors.get(key), boxes)
-                view = _resolve_layout(container_position, container_layout, None, 0, 0).padding
-                offset = scroll.clamp(
-                    Position(
-                        aligned(request.inline, left, right, view.left, view.right, scroll.offset.x),
-                        aligned(request.block, top, bottom, view.top, view.bottom, scroll.offset.y),
+        match request.control:
+            case ScrollTo() | ScrollBy() as control:
+                scroll = scroll_before(request.key, shadow.by_key[request.key].element.style)
+                scrolled[request.key] = replace(scroll, offset=scroll.clamp(control.destination(scroll.offset)))
+            case ScrollIntoView(block=block, inline=inline):
+                left, top = int(position.x), int(position.y)
+                right, bottom = left + int(layout.size.width), top + int(layout.size.height)
+                for key, style in scroll_containers_above(request.key, shadow):
+                    scroll = scroll_before(key, style)
+                    container_position, container_layout = boxes[key]
+                    view = _resolve_layout(container_position, container_layout, None, 0, 0).padding
+                    offset = scroll.clamp(
+                        Position(
+                            aligned(inline, left, right, view.left, view.right, scroll.offset.x),
+                            aligned(block, top, bottom, view.top, view.bottom, scroll.offset.y),
+                        )
                     )
-                )
-                scrolled[key] = replace(scroll, offset=offset)
-                left, right = left - offset.x, right - offset.x
-                top, bottom = top - offset.y, bottom - offset.y
-            child = key
+                    scrolled[key] = replace(scroll, offset=offset)
+                    left, right = left - offset.x, right - offset.x
+                    top, bottom = top - offset.y, bottom - offset.y
+            case _ as unreachable:
+                assert_never(unreachable)
     return scrolled
+
+
+def scroll_containers_above(key: NodeKey, shadow: ShadowTree) -> Iterator[tuple[NodeKey, Style]]:
+    """
+    The key and style of each scroll container above the node with `key`, from the innermost out,
+    stopping at an unclipped node, since no container above it clips it, or anything inside it,
+    as the web doesn't scroll a container to show a fixed element that its clip doesn't cut off.
+    """
+    nodes = shadow.by_key
+    while nodes[key].element.style.resolved.clip_to != "screen" and (parent := shadow.parents[key]) is not None:
+        style = nodes[parent].element.style
+        if any(scrolled_axes(style)):
+            yield parent, style
+        key = parent
 
 
 def aligned(alignment: ScrollAlignment, start: int, end: int, view_start: int, view_end: int, offset: int) -> int:

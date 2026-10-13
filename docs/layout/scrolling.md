@@ -111,6 +111,21 @@ create one with `use_state(ElementHandle)`, and pass it to the element's `handle
 Two mounted elements given the same handle raise `DuplicateElementHandle`,
 and a control whose handle names no mounted scroll container does nothing.
 
+Scroll controls apply to the layout of the render after the handler that returns them, before that render paints,
+in the order they were returned,
+and after [anchoring](#keeping-the-content-in-view) and [sticking to the end](#following-the-end) have placed the content,
+so each moves the view from where those left it.
+So a handler that adds a line to a log and returns `ScrollBy(log, y=1)` beside the state change
+scrolls by a row of the log that has the new line, in the same frame.
+That's where counterweight differs from the web:
+a browser's `scrollBy` scrolls the page as it stands while the handler runs,
+before React renders the state change, and a React app that wants to scroll the content that change lays out
+calls it from `useLayoutEffect` instead, which is what scroll controls do.
+A handler that runs later in the same batch of input sees the controls returned before it:
+its receiver's `scroll` is moved by each `ScrollTo` and `ScrollBy` since the last render,
+clamped to the range as of that render,
+so `scroll_on_keys` passes a key on once an earlier key has scrolled its container to the end.
+
 ## Scrolling an element into view
 
 [`ScrollIntoView`](../input-handling/controls.md#scrolling) scrolls to an element rather than to an offset,
@@ -137,7 +152,7 @@ A table of contents scrolls each section's heading to the top of the pane it's i
 
     ![The Hooks section at the top of the document](../assets/scrolling-contents-jumped.svg)
 
-It applies to the layout of the render after the handler that returns it, before that render paints,
+Like the other scroll controls, it applies to the layout of the render after the handler that returns it,
 as React's `useLayoutEffect` would call `scrollIntoView` after the DOM updates and before the browser paints.
 So a handler that changes state and returns `ScrollIntoView` beside it shows both in the same frame,
 and the handle names the element that has it in that render, not the one before.

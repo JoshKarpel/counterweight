@@ -10,6 +10,7 @@ from counterweight.controls import (
     FocusPrevious,
     Quit,
     ScrollBy,
+    ScrollTo,
     ToggleBorderHealing,
 )
 from counterweight.events import (
@@ -308,12 +309,12 @@ TALL = replace(
         (Key.Right, ScrollBy(TALL.subtree, x=1)),
         (Key.PageUp, ScrollBy(TALL.subtree, y=-12)),
         (Key.PageDown, ScrollBy(TALL.subtree, y=12)),
-        (Key.Home, ScrollBy(TALL.subtree, y=-30)),
-        (Key.End, ScrollBy(TALL.subtree, y=50)),
+        (Key.Home, ScrollTo(TALL.subtree, y=0)),
+        (Key.End, ScrollTo(TALL.subtree, y=80)),
     ],
     ids=["up", "down", "left", "right", "page up", "page down", "home", "end"],
 )
-def test_scroll_on_keys_scrolls_its_receiver_for_each_scrolling_key(key: str, expected: ScrollBy) -> None:
+def test_scroll_on_keys_scrolls_its_receiver_for_each_scrolling_key(key: str, expected: ScrollBy | ScrollTo) -> None:
     assert scroll_on_keys(page=0.5)(KeyPressed(key=key), TALL) == expected
 
 
@@ -376,3 +377,8 @@ def test_a_page_that_is_not_a_positive_fraction_raises(fraction: float) -> None:
 
     with pytest.raises(ValueError, match="positive fraction"):
         page_down(TALL.subtree, TALL.scroll, fraction)
+
+
+def test_scroll_on_keys_with_a_page_that_is_not_a_positive_fraction_raises_before_any_key() -> None:
+    with pytest.raises(ValueError, match="positive fraction"):
+        scroll_on_keys(page=0.0)

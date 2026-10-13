@@ -184,10 +184,8 @@ def transcript(messages: tuple[Message, ...], message_component: MessageComponen
     def jump(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key="["):
-                earlier = [m.id for m in messages if m.kind in TOOL_CALLS and (jumped_to is None or m.id < jumped_to)]
-                if not earlier:
-                    return ()
-                set_jumped_to(earlier[-1])
+                # An update, not a value, so each press in a batch steps back from where the one before it landed.
+                set_jumped_to(lambda current: previous_tool_call(messages, current))
                 return ScrollIntoView(landmark)
             case KeyPressed(key=Key.End):
                 # Start the next jump from the newest tool call again, and let scroll_on_keys scroll to the end.
@@ -206,6 +204,15 @@ def transcript(messages: tuple[Message, ...], message_component: MessageComponen
             for message in messages
         ],
     )
+
+
+def previous_tool_call(messages: tuple[Message, ...], before: int | None) -> int | None:
+    """
+    The id of the newest tool call in `messages` older than the message with id `before`, or than none if it's `None`,
+    or `before` itself if there's no such call, so jumping back from the oldest stays there.
+    """
+    earlier = [m.id for m in messages if m.kind in TOOL_CALLS and (before is None or m.id < before)]
+    return earlier[-1] if earlier else before
 
 
 @component

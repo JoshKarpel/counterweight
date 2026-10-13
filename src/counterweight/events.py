@@ -153,8 +153,11 @@ class Receiver:
 
     scroll: Scroll | None
     """
-    How far the receiving element is scrolled, as [`use_scroll`][counterweight.hooks.use_scroll] reports it,
-    if it's a scroll container, or `None` if it isn't.
+    How far the receiving element is scrolled, if it's a scroll container, or `None` if it isn't:
+    its scroll as of the last render, as [`use_scroll`][counterweight.hooks.use_scroll] reports it,
+    moved by each [`ScrollTo`][counterweight.controls.ScrollTo] and [`ScrollBy`][counterweight.controls.ScrollBy]
+    returned since, and clamped to its range as of that render,
+    so a handler later in a batch of input sees what the ones before it scrolled.
     """
 
     def relative(self, position: Position) -> Position:

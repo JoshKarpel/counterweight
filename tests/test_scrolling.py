@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import pytest
 import waxy
 
-from counterweight.app import app, offsets_of, scrolled_offsets, stale_scroll_readers
+from counterweight.app import app, stale_scroll_readers
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot, ScrollBy, ScrollTo
 from counterweight.elements import AnyElement, Div, Text
@@ -27,7 +27,7 @@ from counterweight.hooks.impls import NodeKey
 from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, PriorScroll, layout_changes
 from counterweight.output import Frame
-from counterweight.routing import RoutingTable
+from counterweight.routing import RoutingTable, route_key
 from counterweight.shadow import DuplicateElementHandle, update_shadow
 from counterweight.styles import Style
 from counterweight.styles.utilities import (
@@ -391,6 +391,35 @@ async def test_a_receiver_carries_the_scroll_of_a_scroll_container_and_none_for_
     assert scrolls == [Scroll(offset=Position(0, 1), max_offset=Position(0, 1), view_width=6, view_height=2), None]
 
 
+@component
+def growing() -> Div:
+    """A container 2 rows tall over 3 lines, where `a` adds a line and scrolls down a row, and `g` only adds one."""
+    count, set_count = use_state(3)
+
+    def on_key(event: InputEvent, receiver: Receiver) -> InputResponse:
+        assert isinstance(event, KeyPressed)
+        set_count(lambda c: c + 1)
+        return ScrollBy(HANDLE, y=1) if event.key == "a" else ()
+
+    return Div(
+        style=col,
+        on_input=on_key,
+        children=[Div(style=col | size(6, 2) | overflow_y_scroll, handle=HANDLE, children=lines(count))],
+    )
+
+
+async def test_a_scroll_returned_beside_a_state_change_scrolls_the_content_that_change_lays_out() -> None:
+    autopilot: list[AnyEvent | AnyControl] = [ScrollTo(HANDLE, y=1), KeyPressed(key="a")]
+
+    assert await last_rows(growing(), (6, 2), autopilot) == ["line 2", "line 3"]
+
+
+async def test_a_scroll_that_moves_nothing_does_not_wait_to_move_a_later_layout() -> None:
+    autopilot: list[AnyEvent | AnyControl] = [ScrollTo(HANDLE, y=1), ScrollBy(HANDLE, y=1), KeyPressed(key="g")]
+
+    assert await last_rows(growing(), (6, 2), autopilot) == ["line 1", "line 2"]
+
+
 def test_a_text_whose_overflow_is_scroll_raises() -> None:
     shadow = update_shadow(Text(content="x", style=overflow_y_scroll), None, NO_LAYOUTS).tree
 
@@ -468,33 +497,61 @@ def test_a_scroll_controls_destination(control: ScrollTo | ScrollBy, expected: P
 
 KEY = NodeKey(5)
 SCROLLS = {KEY: Scroll(offset=Position(0, 2), max_offset=Position(0, 4), view_width=3, view_height=2)}
-OFFSETS = {KEY: Position(0, 2)}
 
 
-def test_scrolled_offsets_moves_the_named_container_within_its_range() -> None:
-    assert scrolled_offsets(OFFSETS, SCROLLS, KEY, ScrollBy(HANDLE, y=5)) == {KEY: Position(0, 4)}
+def scrolled_table(root: AnyElement, priors: dict[int, PriorScroll], width: int, height: int) -> RoutingTable:
+    """
+    The routing table of `root`, under a screen element, on a `width` by `height` screen,
+    with the nodes at those pre-order indexes scrolled, where the screen element is node 0 and `root` node 1.
+    """
+    shadow = update_shadow(Div(children=[root]), None, NO_LAYOUTS).tree
+    by_index = {shadow.nodes[index].key: prior for index, prior in priors.items()}
+    return RoutingTable.of(shadow, LayoutTree().compute(layout_changes(None, shadow), shadow, width, height, by_index))
+
+
+# A container 2 rows tall, scrolled 2 rows into the 4 it can scroll, under the root.
+SCROLLED_TABLE = scrolled_table(
+    Div(children=[Div(style=col | size(6, 2) | overflow_y_scroll, handle=HANDLE, children=lines(6))]),
+    {2: scrolled_to(Position(0, 2))},
+    6,
+    3,
+)
+
+
+def test_scrolled_moves_the_named_container_within_its_range() -> None:
+    key = SCROLLED_TABLE.key_of(HANDLE)
+    assert key is not None
+
+    assert SCROLLED_TABLE.scrolled(ScrollBy(HANDLE, y=5)).scrolls[key].offset == Position(0, 4)
 
 
 @pytest.mark.parametrize(
-    ("key", "control"),
+    "control",
     [
-        (KEY, ScrollBy(HANDLE, x=3)),
-        (KEY, ScrollTo(HANDLE, y=2)),
-        (None, ScrollBy(HANDLE, y=1)),
-        (NodeKey(6), ScrollBy(HANDLE, y=1)),
+        ScrollBy(HANDLE, x=3),
+        ScrollTo(HANDLE, y=2),
+        ScrollBy(ElementHandle(), y=1),
+        ScrollBy(Subtree(key=SCROLLED_TABLE.root), y=1),
     ],
     ids=["clamped-back", "same-offset", "unmounted-handle", "not-a-scroll-container"],
 )
-def test_scrolled_offsets_is_the_same_mapping_when_nothing_moves(
-    key: NodeKey | None, control: ScrollTo | ScrollBy
-) -> None:
-    assert scrolled_offsets(OFFSETS, SCROLLS, key, control) is OFFSETS
+def test_scrolled_is_the_same_table_when_nothing_moves(control: ScrollTo | ScrollBy) -> None:
+    assert SCROLLED_TABLE.scrolled(control) is SCROLLED_TABLE
 
 
-def test_offsets_of_takes_each_containers_clamped_offset() -> None:
-    layouts = Layouts(in_paint_order=(), by_key={}, scrolls=SCROLLS)
+def test_a_key_bubbles_once_an_earlier_control_in_its_batch_scrolls_its_container_to_the_end() -> None:
+    inner = Div(style=col | size(6, 2) | shrink(0) | overflow_y_scroll, on_input=scroll_on_keys(), children=lines(4))
+    outer = Div(style=col | size(6, 2) | overflow_y_scroll, on_input=scroll_on_keys(), children=[inner, *lines(2)])
+    # The outer container is the root, and the inner one 1 row short of its end.
+    table = scrolled_table(outer, {2: scrolled_to(Position(0, 1))}, 6, 2)
+    outer_key, inner_key = table.root, table.layouts.scroll_containers[1].key
 
-    assert offsets_of(layouts) == OFFSETS
+    (moved,) = route_key(KeyPressed(key=Key.Down), inner_key, table)
+    assert isinstance(moved, ScrollBy)
+
+    assert route_key(KeyPressed(key=Key.Down), inner_key, table.scrolled(moved)) == (
+        ScrollBy(Subtree(key=outer_key), y=1),
+    )
 
 
 def test_stale_scroll_readers_are_the_nodes_whose_scroll_changed() -> None:

@@ -16,7 +16,9 @@
   The controls `ScrollTo` and `ScrollBy` scroll a container named by an `ElementHandle`,
   which an element takes as its `handle`, or by a receiver's `subtree`,
   and `ScrollIntoView` scrolls every container above an element until it's in view,
-  as the web's `scrollIntoView` does, in the same frame as any state change returned beside it.
+  as the web's `scrollIntoView` does.
+  All three apply in order to the layout of the next render, so they scroll in the same frame as,
+  and the content laid out by, any state change returned beside them.
   Moving focus scrolls the newly focused element into view.
   `counterweight.handlers` gains `scroll_on_wheel` and `scroll_on_keys`, which scroll for the wheel
   and for the arrow keys, PageUp, PageDown, Home and End,

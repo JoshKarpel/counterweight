@@ -1,5 +1,6 @@
 """
-Which handlers an input event reaches, given the last render's shadow tree and layouts:
+Which handlers an input event reaches, given the last render's shadow tree and layouts,
+with its scrolls moved by the scroll controls since:
 the event's target, the ancestors it bubbles to from there, and the node that captured a press;
 and where focus can go, given the same tree.
 Handlers run here, but what their controls do is up to the render loop, which holds the focused key.
@@ -8,10 +9,10 @@ Handlers run here, but what their controls do is up to the render loop, which ho
 from __future__ import annotations
 
 from collections.abc import Collection, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, assert_never
 
-from counterweight.controls import AnyControl
+from counterweight.controls import AnyControl, ScrollBy, ScrollTo
 from counterweight.events import (
     InputEvent,
     InputHandler,
@@ -28,7 +29,7 @@ from counterweight.events import (
     response_controls,
 )
 from counterweight.focus import ElementHandle, FocusHandle, Subtree
-from counterweight.geometry import Position
+from counterweight.geometry import Position, Scroll
 from counterweight.layout import Layouts
 
 if TYPE_CHECKING:
@@ -95,6 +96,11 @@ class RoutingTable:
     """The key of every visible, focusable node, by its handle."""
     element_keys: Mapping[ElementHandle, NodeKey]
     """The key of every mounted element given a `handle`, by its handle."""
+    scrolls: Mapping[NodeKey, Scroll]
+    """
+    The scroll of every visible scroll container, as the render laid it out
+    and as the `ScrollTo` and `ScrollBy` controls since have moved it, which is what receivers carry.
+    """
 
     @classmethod
     def of(cls, shadow: ShadowTree, layouts: Layouts) -> RoutingTable:
@@ -132,6 +138,7 @@ class RoutingTable:
             focus=focus,
             focus_keys={focusable.handle: key for key, focusable in focus.items() if focusable.is_focusable},
             element_keys=shadow.handled,
+            scrolls=layouts.scrolls,
         )
 
     def target_at(self, position: Position) -> NodeKey:
@@ -181,13 +188,26 @@ class RoutingTable:
             focus_handle=None if focus is None else focus.handle,
             is_focused=key == focused,
             subtree=Subtree(key=key),
-            scroll=self.layouts.scrolls.get(key),
+            scroll=self.scrolls.get(key),
         )
         return response_controls(handler(event, receiver))
 
     def key_of(self, target: ElementHandle | Subtree) -> NodeKey | None:
         """The key of the element `target` names, or `None` for a handle that names no mounted element."""
         return named_key(target, self.element_keys)
+
+    def scrolled(self, control: ScrollTo | ScrollBy) -> RoutingTable:
+        """
+        This table with the scroll container `control` names moved as it moves it,
+        clamped to how far the container scrolled when it was laid out,
+        or this table itself if that leaves it where it is, or `control` names no visible scroll container.
+        """
+        key = self.key_of(control.target)
+        if key is None or (scroll := self.scrolls.get(key)) is None:
+            return self
+        if (moved := scroll.clamp(control.destination(scroll.offset))) == scroll.offset:
+            return self
+        return replace(self, scrolls={**self.scrolls, key: replace(scroll, offset=moved)})
 
     def can_focus(self, key: NodeKey) -> bool:
         """Whether the node with `key` is visible, and its last run called `use_focus` with `is_focusable=True`."""

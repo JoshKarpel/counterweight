@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from counterweight.controls import ClearFocus, FocusNext, FocusOn, FocusPrevious, ScrollBy
+from counterweight.controls import ClearFocus, FocusNext, FocusOn, FocusPrevious, ScrollBy, ScrollTo
 from counterweight.events import (
     InputEvent,
     InputHandler,
@@ -216,8 +216,10 @@ def scroll_on_keys(page: float = PAGE_FRACTION) -> InputHandler:
     and for anything else.
 
     Raises:
-        ValueError: For one of those keys when its receiver isn't a [scroll container](../layout/scrolling.md).
+        ValueError: If `page` isn't positive,
+            and for one of those keys when its receiver isn't a [scroll container](../layout/scrolling.md).
     """
+    check_page_fraction(page)
 
     def handler(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not isinstance(event, KeyPressed) or event.key not in SCROLL_KEYS:
@@ -227,6 +229,7 @@ def scroll_on_keys(page: float = PAGE_FRACTION) -> InputHandler:
                 "scroll_on_keys received a key press on an element that isn't a scroll container. "
                 "Put it on an element whose overflow is Scroll, such as with overflow_y_scroll."
             )
+        control: ScrollBy | ScrollTo
         match event.key:
             case Key.Up:
                 control = ScrollBy(receiver.subtree, y=-1)
@@ -240,10 +243,11 @@ def scroll_on_keys(page: float = PAGE_FRACTION) -> InputHandler:
                 control = page_up(receiver.subtree, scroll, page)
             case Key.PageDown:
                 control = page_down(receiver.subtree, scroll, page)
+            # Absolute, since anchoring may move the content before the next layout applies the control.
             case Key.Home:
-                control = ScrollBy(receiver.subtree, y=-scroll.offset.y)
+                control = ScrollTo(receiver.subtree, y=0)
             case _:  # Key.End, the last of SCROLL_KEYS
-                control = ScrollBy(receiver.subtree, y=scroll.max_offset.y - scroll.offset.y)
+                control = ScrollTo(receiver.subtree, y=scroll.max_offset.y)
         if scroll.clamp(control.destination(scroll.offset)) == scroll.offset:
             return None
         return control
@@ -281,6 +285,11 @@ def page_up(target: ElementHandle | Subtree, scroll: Scroll, fraction: float = P
 
 def page_rows(scroll: Scroll, fraction: float) -> int:
     """How many rows a page of `fraction` of `scroll`'s view is: rounded down, and at least one."""
+    check_page_fraction(fraction)
+    return max(1, int(scroll.view_height * fraction))
+
+
+def check_page_fraction(fraction: float) -> None:
+    """Raises `ValueError` if `fraction` isn't positive, so it can't be a page."""
     if fraction <= 0:
         raise ValueError(f"A page must be a positive fraction of the view, but got {fraction!r}")
-    return max(1, int(scroll.view_height * fraction))

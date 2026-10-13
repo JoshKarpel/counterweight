@@ -35,7 +35,7 @@ from counterweight.styles.utilities import (
     text_wrap_stable,
     unstick_y,
 )
-from tests.test_scrolling import HANDLE, last_rows
+from tests.test_scrolling import HANDLE, last_rows, scrolled_to
 
 # Eight messages that each take one row of a screen 12 wide, and two of one 8 wide.
 MESSAGES = tuple((i, f"m{i} aaaa bbb") for i in range(8))
@@ -223,15 +223,17 @@ async def test_a_node_partly_in_view_is_descended_into_for_an_anchor_wholly_in_v
     assert await last_rows(block_then_lines(), (6, 3), autopilot) == ["b     ", "c     ", "line 0"]
 
 
-def laid_out(root: AnyElement, width: int, height: int) -> tuple[ShadowTree, Layouts]:
+def laid_out(root: AnyElement, width: int, height: int, y: int) -> tuple[ShadowTree, Layouts]:
+    """`root`'s tree and its layouts, with `root` scrolled down `y` rows."""
     shadow = update_shadow(root, None, NO_LAYOUTS).tree
-    return shadow, LayoutTree().compute(layout_changes(None, shadow), shadow, width, height, {})
+    priors = {shadow.root.key: scrolled_to(Position(0, y))}
+    return shadow, LayoutTree().compute(layout_changes(None, shadow), shadow, width, height, priors)
 
 
-def test_the_anchor_is_picked_where_a_scroll_since_the_layout_has_moved_the_content() -> None:
-    shadow, layouts = laid_out(Div(style=col | height(2) | overflow_y_scroll, children=lines_of(5)), 6, 2)
+def test_the_anchor_is_picked_in_the_view_the_container_is_scrolled_to() -> None:
+    shadow, layouts = laid_out(Div(style=col | height(2) | overflow_y_scroll, children=lines_of(5)), 6, 2, y=3)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 3)})[shadow.root.key] == PriorScroll(
+    assert prior_scrolls(layouts)[shadow.root.key] == PriorScroll(
         offset=Position(0, 3),
         is_at_end_x=True,
         is_at_end_y=True,
@@ -251,9 +253,9 @@ def lines_of(count: int) -> list[AnyElement]:
 def test_an_excluded_node_is_never_the_anchor_nor_anything_inside_it(excluded: Style) -> None:
     skipped = Div(style=col | excluded, children=lines_of(2))
     root = Div(style=col | height(3) | overflow_y_scroll, children=[Text(content="above"), skipped, *lines_of(3)])
-    shadow, layouts = laid_out(root, 6, 3)
+    shadow, layouts = laid_out(root, 6, 3, y=1)
 
-    anchor = prior_scrolls(layouts, {shadow.root.key: Position(0, 1)})[shadow.root.key].anchor
+    anchor = prior_scrolls(layouts)[shadow.root.key].anchor
 
     assert anchor is not None and anchor.key == shadow.root.children[2].key
 
@@ -261,13 +263,11 @@ def test_an_excluded_node_is_never_the_anchor_nor_anything_inside_it(excluded: S
 def test_a_nested_scroll_container_is_the_anchor_without_being_descended_into() -> None:
     nested = Div(style=col | height(3) | shrink(0) | overflow_y_scroll, children=lines_of(4))
     shadow, layouts = laid_out(
-        Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="x"), nested]), 6, 2
+        Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="x"), nested]), 6, 2, y=2
     )
     outer, inner = shadow.root, shadow.root.children[1]
 
-    assert prior_scrolls(layouts, {outer.key: Position(0, 2), inner.key: Position(0, 0)})[outer.key].anchor == Anchor(
-        key=inner.key, distance=-1
-    )
+    assert prior_scrolls(layouts)[outer.key].anchor == Anchor(key=inner.key, distance=-1)
 
 
 def test_a_node_exactly_filling_the_view_is_the_anchor_without_being_descended_into() -> None:
@@ -275,44 +275,40 @@ def test_a_node_exactly_filling_the_view_is_the_anchor_without_being_descended_i
         style=col | height(2) | overflow_y_scroll,
         children=[*lines_of(1), Div(style=col, children=lines_of(2)), *lines_of(2)],
     )
-    shadow, layouts = laid_out(root, 6, 2)
+    shadow, layouts = laid_out(root, 6, 2, y=1)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 1)})[shadow.root.key].anchor == Anchor(
-        key=shadow.root.children[1].key, distance=0
-    )
+    assert prior_scrolls(layouts)[shadow.root.key].anchor == Anchor(key=shadow.root.children[1].key, distance=0)
 
 
 def test_a_container_with_nothing_it_can_anchor_in_view_has_no_anchor() -> None:
     root = Div(
         style=col | height(2) | overflow_y_scroll, children=[Div(style=overflow_anchor_none, children=lines_of(4))]
     )
-    shadow, layouts = laid_out(root, 6, 2)
+    shadow, layouts = laid_out(root, 6, 2, y=1)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 1)})[shadow.root.key].anchor is None
+    assert prior_scrolls(layouts)[shadow.root.key].anchor is None
 
 
 def test_a_container_at_the_end_it_sticks_to_picks_no_anchor() -> None:
     root = Div(style=col | height(2) | overflow_y_scroll | stick_to_end_y, children=lines_of(4))
-    shadow, layouts = laid_out(root, 6, 2)
+    shadow, layouts = laid_out(root, 6, 2, y=2)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 2)})[shadow.root.key].anchor is None
+    assert prior_scrolls(layouts)[shadow.root.key].anchor is None
 
 
 def test_a_node_starting_at_the_bottom_of_the_view_is_not_in_view() -> None:
     covering = Div(style=col | overflow_anchor_none, children=lines_of(3))
     root = Div(style=col | height(2) | overflow_y_scroll, children=[covering, *lines_of(2)])
-    shadow, layouts = laid_out(root, 6, 2)
+    shadow, layouts = laid_out(root, 6, 2, y=1)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 1)})[shadow.root.key].anchor is None
+    assert prior_scrolls(layouts)[shadow.root.key].anchor is None
 
 
 def test_a_leaf_partly_in_view_is_the_anchor() -> None:
     root = Div(style=col | height(2) | overflow_y_scroll, children=[Text(content="a\nb\nc"), *lines_of(2)])
-    shadow, layouts = laid_out(root, 6, 2)
+    shadow, layouts = laid_out(root, 6, 2, y=1)
 
-    assert prior_scrolls(layouts, {shadow.root.key: Position(0, 1)})[shadow.root.key].anchor == Anchor(
-        key=shadow.root.children[0].key, distance=-1
-    )
+    assert prior_scrolls(layouts)[shadow.root.key].anchor == Anchor(key=shadow.root.children[0].key, distance=-1)
 
 
 def test_a_nested_container_keeps_its_anchor_in_place_inside_a_scrolled_container() -> None:
