@@ -71,7 +71,7 @@ scrollable_overflow_rect Rect(left=0, right=16, top=0, bottom=12)
   Its members are `Visible`, `Clip`, `Hidden` and `Scroll`,
   so a scroll container always reserves its gutter, whether or not its content overflows.
 - **Effects start after the frame paints.**
-  `handle_effects` runs at `app.py:479`, after `paint_layout` at `app.py:447`,
+  `handle_effects` runs at `app.py:479`, after `paint_layout` at `app.py:446`,
   so anything an app does in an effect in response to a layout shows up a frame late.
 
 ## Design
@@ -93,12 +93,18 @@ The walk follows the tree, not paint order.
 so a `z(1)` dropdown paints after siblings of its ancestors,
 and a clip stack built while painting would have dropped those ancestors' clips by then.
 
-The offset and the clip are separate because an unclipped element resets one and not the other.
+The offset and the clip are separate because an element's `clip_to` changes one and not the other.
 Computing each clip from translated boxes makes nested scroll and clipping containers compose:
 a hidden container inside a scroll container moves its clip with the scroll.
 
 Scrolling changes only the walk's input, not taffy's,
 so a scroll leaves taffy's layout cache intact and costs a walk and a repaint.
+
+The walk runs after the offsets for that layout are settled.
+Anchoring, `ScrollIntoView` and clamping read taffy's unscrolled positions and extents,
+so they run between `compute_layout` and the walk, and the walk translates by the offsets they produce.
+When settling focus lays the tree out a second time (`app.py:435`), they run again on that layout,
+so the routing table and the paint see the same positions.
 
 ### The box model on the screen
 
@@ -113,8 +119,10 @@ so a scroll leaves taffy's layout cache intact and costs a walk and a repaint.
   a dropdown anchored to a half-hidden input would move,
   and an element scrolled entirely out of view would have no position at all.
 - **With what's visible.** A `visible` field holds the border box intersected with the clip,
-  empty when the element is clipped out entirely.
+  `None` when the element is clipped out entirely, as `Region.intersection` returns.
   A component that wants to know whether it's on screen reads that.
+  A `clip` field holds the clip itself, since the margin box lies outside the border box
+  and can't be bounded by `visible`.
 
 `_resolve_layout` subtracts `layout.scrollbar_size` from the right and bottom of the padding box,
 so `padding` and `content` match what taffy laid out,
@@ -139,6 +147,9 @@ Each healing hint carries the clip of the element that made it.
 A hint whose cell is outside that clip is dropped:
 `heal_borders` only checks that the cell under a hint is a border character,
 so a hint whose own cell was clipped would rewrite whatever border lies beneath it.
+`paint_layout` drops it before merging the element's hints into the rest,
+since hints are keyed by position and a later element's clipped hint would otherwise replace
+an earlier element's live hint at the same cell.
 A hinted cell joins only neighbors inside its clip,
 so a child's border clipped flush against its container never joins the container's border.
 Without that rule, a list item's border scrolled under the container's top border
@@ -153,12 +164,29 @@ since its clip is the screen.
 `target_at` tests each node's `visible` region in place of its border box,
 so the mouse over a clipped-off part of an element reaches whatever is painted there.
 `use_hovered` intersects each of its rectangles with the clip.
+`on_click` tests its release against `visible` in place of the border box,
+so a press released over a clipped-off part of the element, where something else is painted, doesn't click it.
 
 ### Escaping the clip
 
-A style field makes an element **unclipped**: no ancestor clips it.
-Its clip resets to the screen, and its descendants' clips start from there.
-Everything else about it is as usual:
+A style field, `clip_to`, on the child names what clips it:
+
+- **`"padding"`**, the default: the parent's padding box, intersected with every clip above the parent.
+- **`"border"`**: the parent's border box, intersected with every clip above the parent,
+  so the element can paint on its parent's border and is still cut off wherever that border is
+  (see [Border titles](#border-titles)).
+- **`"screen"`**: the element is **unclipped**: no ancestor clips it.
+  Its clip resets to the screen.
+
+A parent whose overflow is `Visible` on an axis adds no clip on that axis, so there `"padding"` and `"border"` agree.
+The element's descendants' clips start from its clip.
+
+It's a field on the child because the parent's content and its title want different clips from the same parent:
+the content stops at the padding box, which is what fixes #388, and only the title reaches the border.
+CSS's nearest property, [`overflow-clip-margin`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-clip-margin),
+is set on the container and widens the clip for every child, so it can't make that split.
+
+Everything else about an unclipped element is as usual:
 
 - **It's positioned against its parent**, so an autocomplete list sits under its input
   with `inset_top=Percent(1.0)`, and it keeps its offset, so it moves when its scroll container scrolls.
@@ -179,6 +207,26 @@ The web then has to compute the box's position from its anchor,
 in script or with [anchor positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_anchor_positioning);
 here an unclipped box keeps its parent as its containing block, so it's anchored already.
 
+#### Border titles
+
+The documented way to title a border is an absolutely positioned `Text` at `inset_top(-1)`,
+which sits on the parent's border row (`docs/examples/border_titles.py`, `docs/examples/layout_alignment.py`).
+The clip is the padding box, so in a box with hidden overflow, which every `fill(1)` and other constraint item has,
+clipping would erase the title.
+Titles set `clip_to="border"`, and the examples and docs say so.
+The web clips the same way, and titles a border with `<fieldset>` and `<legend>`, which overflow doesn't clip.
+
+A title clipped to its parent's border box is cut off with that border,
+so in a list of titled panels inside a scroll container,
+a panel scrolled partly out of view loses the same part of its title as of its border.
+An unclipped title would paint past the scroll container's edge instead.
+
+A title on a scroll container's own border doesn't work either way.
+It's positioned inside the container, so it scrolls away with the content on the first wheel tick,
+and a probe against the pinned `waxy` shows one at `inset_bottom(-1)` adds a row to the container's scroll extent
+(`scroll_height()` goes from 0 to 1 with content that fits), though one at `inset_top(-1)` doesn't.
+The scrolling docs put the border and title on a wrapper and scroll a child for a titled pane.
+
 ### Scroll containers
 
 An element whose overflow is `Scroll` on an axis is a **scroll container** on that axis.
@@ -196,6 +244,11 @@ and it leaves the framework unable to scroll anything itself.
 Moving focus to an element scrolled out of view has to scroll each container above it,
 and keeping the reader's place as content changes (see [Scroll anchoring](#scroll-anchoring))
 has to adjust offsets between layout and paint, where no component runs.
+
+A scroll still re-renders some components:
+`use_rects` re-renders its caller after its rects move,
+so a component inside a scroll container that calls `use_rects`, or `use_hovered`, which calls it,
+renders again after each scroll that moves it.
 
 #### Extent and clamping
 
@@ -266,7 +319,7 @@ and it has several plausible designs, from a fixed number of frames to a fixed d
 Library handlers, composed onto the scroll container's element like `tab_focus` and `on_click`:
 
 - **`scroll_on_wheel(lines)`** scrolls by `lines` for each `MouseScrolledUp`, `Down`, `Left` and `Right`.
-- **`scroll_on_keys(page=1.0)`** scrolls for arrow keys, `PageUp` and `PageDown`, and `Home` and `End`,
+- **`scroll_on_keys(page=0.875)`** scrolls for arrow keys, `PageUp` and `PageDown`, and `Home` and `End`,
   when the container is focused.
   A page is `page` times the padding box's height, as `page_up` and `page_down` compute it.
 - **`scroll_on_scrollbar`** claims a press on the scrollbar: on the thumb it drags,
@@ -277,11 +330,13 @@ so the event bubbles to the next scroll container out, the web's scroll chaining
 Each raises, as `focus_receiver_on_press` does, when its receiver isn't a scroll container.
 
 Paging is also available on its own, for apps that bind it to other keys:
-`page_down(scroll, fraction=1.0)` and `page_up(scroll, fraction=1.0)` return the `ScrollBy`
+`page_down(scroll, fraction=0.875)` and `page_up(scroll, fraction=0.875)` return the `ScrollBy`
 that moves `scroll` by `fraction` of its padding box's height, rounded down and at least one line.
-The default is a whole window, as `less` moves for `Space`, `f` and `Ctrl+F`,
-and `fraction=0.5` is its half-window `d` and `Ctrl+D`.
-`less` keeps no lines of overlap between pages; a fraction below 1 does that.
+The default is Chrome's page step (`kMinFractionToStepWhenPaging` in Chromium's `ScrollableArea`),
+so the last lines of one page stay in view at the top of the next to read on from:
+on a 24-row pane, a page is 21 rows and 3 stay in view.
+`fraction=0.5` is `less`'s half window for `d` and `Ctrl+D`,
+and `fraction=1.0` its whole window for `Space`, `f` and `Ctrl+F`, with no overlap.
 
 #### The scrollbar
 
@@ -295,8 +350,8 @@ Style fields set the thumb and track colors, as CSS's `scrollbar-color` does.
 
 An offset that only gets clamped keeps the content at the top of the view where it is
 while content changes around it.
-The `agent` benchmark's transcript, rebuilt as a scroll container holding every message
-in place of `visible`'s estimate, shows where that's right and where it isn't,
+The `agent` benchmark's transcript, rebuilt as a scroll container holding a fixed number of the newest messages
+in place of `visible`'s row estimate, shows where that's right and where it isn't,
 for a reader either following the stream at the bottom or scrolled back to read an earlier tool call:
 
 | Situation | Following | Reading back |
@@ -322,13 +377,21 @@ The right column needs **scroll anchoring**, CSS's
   Unclipped nodes are never anchors.
 - After the layout, it adjusts the offset so the anchor's top edge is where it was on the screen,
   then clamps.
-- A container scrolled to its end on an axis stays at its end,
-  which is the left column, and is what the web gets by putting an anchor element last.
 - If the anchor unmounted, the offset is only clamped.
 
 Browsers anchor by default, and so does this, with a style field to turn it off for a container,
 as `overflow-anchor: none` does.
 A container that turns it off only clamps.
+
+The left column is opt-in, through a second style field that makes a container **stick to its end** on an axis:
+when it's scrolled to its end before a layout, it's scrolled to its end after.
+A container whose content fits is at its end, since its offset and its maximum are both zero,
+so a transcript that starts short follows its end from the first message.
+Sticking by default would make every list or document that starts short and then grows follow its end,
+which is right for a transcript or a log and wrong for most other things.
+The web has no property for it either:
+a page opts in by placing an anchor element last, or by reversing a column's direction so it starts at the end.
+A container that sticks to its end still anchors once it's scrolled back from the end.
 
 The anchor's top edge stays put, not the line inside it,
 so when a long paragraph that's the anchor rewraps, the line the reader was on can still move within it.
@@ -338,15 +401,18 @@ That's the web's behavior too.
 
 Generated overflow utilities, for both axes and each axis alone:
 `overflow_visible`, `overflow_hidden`, `overflow_clip` and `overflow_scroll`, with `_x` and `_y` variants,
-the scrollbar width and colors, turning scroll anchoring off, and a utility for unclipped elements.
+the scrollbar width and colors, turning scroll anchoring off, sticking to the end on each axis,
+and a utility for each value of `clip_to`.
 
 Docs pages, with screenshot examples:
 
-- **Clipping**: the #388 container, clipping on one axis, unclipped elements,
+- **Clipping**: the #388 container, clipping on one axis, each value of `clip_to`,
+  a list of titled panels in a scroll container,
   and what `inset_top=Percent(1.0)` means against a bordered parent
   (the percentage resolves against the padding box, so it lands on the bottom border row).
 - **Scrolling**: a scroll container with each of the handlers, `use_scroll`, the scrollbar styles,
-  and scroll anchoring, with the agent transcript's situations.
+  scroll anchoring and sticking to the end, with the agent transcript's situations,
+  and a titled pane that scrolls a child inside its border.
 
 ### Cookbook: autocomplete
 
@@ -372,7 +438,7 @@ The recipe covers:
   A click on a match chooses it, and keeps focus in the field.
 - **Escaping the panel.** The panel is a `fill(1)` item, whose hidden overflow would cut the list off.
   The screenshots show the list reaching past the panel's border,
-  and the same field without `unclipped`, cut off at the border, to show what the field does.
+  and the same field with the default `clip_to`, cut off at the border, to show what `"screen"` does.
 - **Opening upward.** A field near the bottom of the screen puts the list above it,
   at `inset_bottom=Percent(1.0)`, when there's more room above than below,
   comparing the field's `use_rects` with the screen's height from the root's `use_rects`.
@@ -392,23 +458,28 @@ Each phase is its own PR, and each leaves the app working.
    Compute each node's clip in the placement walk, with an offset of zero, and add `Rects.visible`.
    Clip `Paint.fill` and `Paint.write_row`, and pass each node's clip from `paint_layout`.
    Carry clips in healing hints and apply the clip rule.
-   Clip hit testing in `target_at` and `use_hovered`.
+   Clip hit testing in `target_at`, `use_hovered` and `on_click`.
+   Add `clip_to` with `"padding"` and `"border"`, and their utilities,
+   and set `clip_to="border"` on the border titles in the examples and docs.
    Add the `visible`, `hidden` and `clip` overflow utilities and the clipping docs.
    Regenerate every screenshot and review each change:
    the constraint utilities' hidden overflow means some existing screenshots will change,
    and each change should be overflow that was painting over something.
 2. **Unclipped elements.**
-   The style field, the clip reset in the walk, its utility, and the autocomplete cookbook page.
+   `clip_to="screen"`, the clip reset in the walk, its utility, and the autocomplete cookbook page.
 3. **Scroll offsets (#389).**
    Offsets held by the app loop, clamped after each layout,
    the walk's offset, `use_scroll`, `Receiver.scroll`, `ElementHandle`, `ScrollTo` and `ScrollBy`,
    `scroll_on_wheel`, and the `overflow_scroll` utilities.
-   Rebuild the `agent` transcript as a scroll container holding every message and delete `visible`,
-   so a live run (`live_root`) can wheel back through it.
+   Rebuild the `agent` transcript as a scroll container holding a fixed number of the newest messages,
+   replacing `visible`'s row estimate, so a live run (`live_root`) can wheel back through it.
+   The count bounds it as `visible` does, so each frame's cost stays flat across a run
+   and messages still drop off the top, the table's second row.
    Put the autocomplete recipe's form in a scroll container, with a screenshot of the list scrolled with it.
 4. **Scroll anchoring.**
-   Choosing anchors before layout, adjusting offsets after it, staying at the end,
-   and the style field and utility to turn it off.
+   Choosing anchors before layout, adjusting offsets after it,
+   the style field and utility to turn it off,
+   and the style field and utilities to stick to the end, which the `agent` transcript sets.
    Add an `agent` workload whose autopilot, which already takes events and controls,
    scrolls back partway, so the benchmark measures a transcript read back while it streams.
 5. **The scrollbar.**
@@ -429,17 +500,23 @@ Each phase is its own PR, and each leaves the app working.
 - A border clipped by an ancestor leaves no healing hint behind,
   and a border flush against its container's padding box doesn't join the container's border.
 - The mouse over a clipped-off part of an element targets the element painted there,
-  and `use_hovered` reports it outside.
+  `use_hovered` reports it outside, and a press released there doesn't click the element.
+- A clipped healing hint doesn't displace another element's live hint at the same cell.
+- A border title in a `fill(1)` box still paints on the border row.
+- A titled panel scrolled partly out of a scroll container loses its title where it loses its border,
+  and nothing it paints reaches past the container's padding box.
 - An unclipped element escapes every ancestor's clip, receives the mouse there,
   moves with its scroll container, and is covered by a later sibling of its ancestor with a higher `z`.
 - A scrolled container paints its children translated and clipped,
   `use_rects` reports the translated boxes, and a click lands on the child painted under it.
 - An offset is clamped when the content shrinks, and dropped when the container unmounts.
 - A wheel event at the end of a scroll container's range scrolls the container outside it.
-- `page_down` with a fraction moves by that share of the padding box, at least one line,
-  and clamps at the end.
-- Each cell of the agent transcript's table, as a test against a small transcript:
+- `page_down` moves by 87.5% of the padding box by default, and with a fraction by that share of it,
+  at least one line, and clamps at the end.
+- Each cell of the agent transcript's table, as a test against a small transcript that sticks to its end:
   following stays at the bottom, and reading back keeps the anchor's top edge in place.
+- A container that doesn't stick to its end, and whose content starts short and then grows, stays at the top.
+- A container that sticks to its end and starts short follows its end once its content overflows.
 - A container with anchoring turned off only clamps.
 - Focusing an element scrolled out of view scrolls it into view through nested containers.
 - `ScrollIntoView` aligns its target by each of `"start"`, `"center"`, `"end"` and `"nearest"`,
@@ -452,9 +529,10 @@ Each phase is its own PR, and each leaves the app working.
 
 ## Open questions
 
-- **Naming the unclipped field.** `unclipped` says what it does to the element;
-  the web's nearest name is `position: fixed`, which also changes what the box is positioned against,
-  so it would mislead here.
+- **Naming `clip_to` and its values.** `clip_to` names what clips the element;
+  the web's nearest names are `overflow-clip-margin`, which is set on the container,
+  and `position: fixed` for `"screen"`, which also changes what the box is positioned against,
+  so both would mislead here.
 - **A top layer for modals.** A modal or command palette declared deep in the tree
   needs to escape stacking contexts as well as clips, which the web does with its
   [top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer),
