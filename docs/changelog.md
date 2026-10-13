@@ -184,6 +184,14 @@
   annotate it as `InputEvent` and match on the event's class.
   `Rects` lives in `counterweight.geometry`, and `counterweight.hooks` still exports it.
 
+- Cancelling the task running `app` raises `CancelledError` out of it once the terminal is restored,
+  as asyncio expects, so `asyncio.timeout` and `wait_for` around an app can tell it was cancelled.
+  Previously `app` returned as if the app had quit.
+  Pressing ctrl+c still quits the app and `app` returns,
+  so an app run with `asyncio.run` exits without a traceback.
+  A second ctrl+c, before a stuck app has quit, goes to the interrupt handler `app` replaced,
+  which for `asyncio.run` cancels the app and raises `KeyboardInterrupt`.
+
 - [#271](https://github.com/JoshKarpel/counterweight/issues/271)
   `app` takes the root component already called, as `app(root())` rather than `app(root)`,
   so a root component can take arguments like any other: `app(root(Path(sys.argv[1])))`.
@@ -367,6 +375,10 @@
   (they were previously reported as mouse presses).
   The `check-input` CLI subcommand is also fixed
   (was broken by [#86](https://github.com/JoshKarpel/counterweight/pull/86)).
+
+- `app` stops reading keys from the terminal before it returns,
+  so input typed afterward reaches whatever runs next.
+  Previously its key-reading thread kept running and consumed that input.
 
 ### Removed
 

@@ -34,7 +34,7 @@ requires-python = ">=3.15"
 dependencies = [
     "parsy>=2.1",
     "more-itertools>=9.1",
-    "waxy>=0.7.0",
+    "waxy>=0.7.1",
     "without-cli>=0.0.10",
     "without-logging>=0.0.10",
     "without-streams>=0.0.10",
@@ -57,6 +57,7 @@ dev = [
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.19.0",
     "ruff>=0.15.4",
+    "mutmut>=3.8.0",
 ]
 
 [project.scripts]
@@ -80,12 +81,42 @@ markers = ["slow"]
 
 asyncio_mode = "auto"
 
+# A test stuck in a system call (such as a `tcsetattr` waiting on a pty nobody reads) can't be timed out by asyncio,
+# so dump every thread's traceback and exit, rather than hanging silently until CI cancels the job.
+faulthandler_timeout = 30
+faulthandler_exit_on_timeout = true
+
+[tool.coverage.run]
+branch = true
+source = ["src/counterweight/", "tests/"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+skip_empty = true
+sort = "-cover"
+# Checked only where `--cov` is passed (`just test` with no arguments, and CI), never in `addopts`:
+# mutmut runs pytest itself, against a copy of the source that `source` doesn't name and with only some tests per mutant,
+# so a gate there would fail mutmut's baseline and count every mutant as killed.
+fail_under = 100
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@overload",
+    "assert_never\\(",
+    "case _ as unreachable:",
+    # Test doubles and guards that fail the test if they ever run.
+    "raise AssertionError",
+    "pragma: unreachable",
+    # Functions a test builds only to compare or inspect, such as handlers whose code `equivalent` compares.
+    "pragma: never runs",
+]
+
 [tool.mypy]
 pretty = true
 show_error_codes = true
 
 files = ["."]
-exclude = ["site/"]
+exclude = ["site/", "mutants/"]
 
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -128,3 +159,12 @@ ignore = [
     "F403",  # star imports, used for utilities
     "F405",  # star imports, used for utilities
 ]
+
+[tool.mutmut]
+source_paths = ["src"]
+also_copy = ["benchmarks/", "docs/", "mkdocs_hooks/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+# It checks that every public name in the utilities module is documented, and mutmut adds names to it.
+pytest_add_cli_args = ["--ignore=tests/test_mkdocs_utility_tables.py"]
+# The type checker proves these lines unreachable, so every mutant of them survives.
+do_not_mutate_patterns = ["assert_never\\("]

@@ -74,8 +74,9 @@ def apply(instructions: str, screen: list[list[tuple[str, str]]]) -> None:
     Run `instructions` on `screen`, a grid of (char, active SGR) pairs, the way a terminal would,
     for the subset of escape sequences that `paint_to_instructions` emits.
 
-    A wide character fills its own column and the next, which holds `""`, and drawing over either half
-    of one erases the other half to a space, as terminals do. Every character here is one code point.
+    A wide character fills its own column and the next, which holds `""`, and drawing over its left half
+    erases its right half to a space, as terminals do. Every character here is one code point.
+    Runs never start on a right half, so drawing over one without its left half first fails.
     """
     x = y = 0
     sgr = ""
@@ -98,9 +99,8 @@ def apply(instructions: str, screen: list[list[tuple[str, str]]]) -> None:
 
 def erase_other_half(line: list[tuple[str, str]], x: int) -> None:
     char, _ = line[x]
-    if not char:
-        line[x - 1] = (" ", line[x - 1][1])
-    elif grapheme_width(char) == 2:
+    assert char, f"drew over the right half of a wide character at column {x} before its left half"
+    if grapheme_width(char) == 2:
         line[x + 1] = (" ", line[x + 1][1])
 
 

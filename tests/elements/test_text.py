@@ -1,3 +1,4 @@
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -71,7 +72,7 @@ def test_styled_grapheme_carries_its_width(grapheme: str, expected: int) -> None
 
 @pytest.mark.parametrize("grapheme", ["", "ab", "日本"])
 def test_styled_grapheme_rejects_anything_but_one_cluster(grapheme: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape(repr(grapheme))):
         StyledGrapheme(grapheme=grapheme)
 
 

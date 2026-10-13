@@ -383,7 +383,7 @@ async def test_calling_use_focus_twice_in_one_component_raises() -> None:
     def twice() -> Text:
         use_focus()
         use_focus()
-        return Text(content="")
+        return Text(content="")  # pragma: never runs
 
     with pytest.raises(DuplicateUseFocus):
         await run(twice(), [])

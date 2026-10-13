@@ -31,11 +31,9 @@ def state_set_keys(queue: Queue[AnyEvent]) -> frozenset[NodeKey]:
     """Drains `queue`, returning the keys of the nodes whose state was set, as the render loop collects `dirty`."""
     keys: set[NodeKey] = set()
     while not queue.empty():
-        match queue.get_nowait():
-            case StateSet(key=key):
-                keys.add(key)
-            case _:
-                pass
+        event = queue.get_nowait()
+        assert isinstance(event, StateSet), f"only setters put events here, but got {event!r}"
+        keys.add(event.key)
     return frozenset(keys)
 
 

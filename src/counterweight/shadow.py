@@ -325,9 +325,9 @@ def update_node(
                 children=reconcile_children(element.children, (), reconciliation),
                 hooks=Hooks(),
             )
-        case _:
+        case _:  # pragma: no cover
             # Not assert_never: mypy narrows this tuple match unsoundly to tuple[Never, Never], even with an arm missing.
-            raise Exception("Unreachable!")
+            raise Exception("Unreachable!")  # pragma: no mutate
 
     # A previous node is continued exactly when its hooks carry over.
     if previous is not None and new.hooks is not previous.hooks:
@@ -350,8 +350,10 @@ def check_is_pure(
 ) -> None:
     """
     Builds `tree` again from `next`, re-running every component against a `ShadowNode.detached` copy of it,
-    and raises `ImpureComponent` naming the component that owns the first node whose element isn't `equivalent`.
-    A node is compared only once all its ancestors matched, so the component named is where the difference starts.
+    and raises `ImpureComponent` naming the first component whose element isn't `equivalent`.
+    A component is compared only once all its ancestors matched, so the one named is where the difference starts.
+    Only components are compared: an element that isn't a component's is part of its parent's element,
+    or is `next` itself, which both runs share.
     Re-running also checks each component's hook count (see `update_node`),
     and each `use_memo` that keeps its cached value (see `Hooks.use_memo`).
     """
@@ -361,19 +363,17 @@ def check_is_pure(
     )
     rerun = update_node(next, tree.root.detached(), reconciliation)
 
-    pairs: list[tuple[ShadowNode, ShadowNode, Component | None]] = [(tree.root, rerun, tree.root.component)]
+    pairs = [(tree.root, rerun)]
     while pairs:
-        kept, again, owner = pairs.pop()
-        owner = kept.component if kept.component is not None else owner
-        if not equivalent(kept.element, again.element):
-            name = "The root element" if owner is None else owner.func.__qualname__
+        kept, again = pairs.pop()
+        if kept.component is not None and not equivalent(kept.element, again.element):
             raise ImpureComponent(
-                f"{name} returned a different element when every component was run again "
+                f"{kept.component.func.__qualname__} returned a different element when every component was run again "
                 "with the same arguments and hooks, so its output depends on something else, "
                 "such as a module-level value or the time. "
                 "A component must depend only on its arguments and its hooks."
             )
-        pairs.extend((k, a, owner) for k, a in reversed(tuple(zip(kept.children, again.children, strict=True))))
+        pairs.extend(reversed(tuple(zip(kept.children, again.children, strict=True))))
 
 
 def call_component(component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:

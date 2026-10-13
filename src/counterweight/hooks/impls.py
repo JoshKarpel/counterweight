@@ -257,9 +257,11 @@ class Hooks:
                 new_deps=deps,
             )
             self.data.append(hook)
-
-        hook.setup = setup  # we must capture the new setup function to update its closure
-        hook.new_deps = deps  # ... but the decision about whether to actually rerun it will be made based on its deps
+        else:
+            # We must capture the new setup function to update its closure,
+            # but the decision about whether to actually rerun it will be made based on its deps.
+            hook.setup = setup
+            hook.new_deps = deps
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 

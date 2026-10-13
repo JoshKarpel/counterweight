@@ -3,6 +3,7 @@ from __future__ import annotations
 import gc
 from asyncio import TaskGroup
 from collections.abc import Callable
+from datetime import timedelta
 from sys import getrecursionlimit
 from weakref import WeakSet, ref
 
@@ -16,7 +17,7 @@ from counterweight._context_vars import (
 from counterweight._utils import cancel_tasks, forever
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.hooks import Mouse, Setter, use_effect, use_mouse, use_state
+from counterweight.hooks import Mouse, Setter, use_clock, use_effect, use_focus, use_memo, use_mouse, use_ref, use_state
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import DuplicateKey, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
@@ -269,7 +270,7 @@ async def test_unkeyed_child_after_a_removed_keyed_sibling_remounts() -> None:
 def test_duplicate_sibling_keys_raise() -> None:
     log: list[str] = []
 
-    with pytest.raises(DuplicateKey):
+    with pytest.raises(DuplicateKey, match=r"^Sibling components share the key 'k'$"):
         update_shadow(
             Div(children=[logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k")]), None, NO_LAYOUTS
         )
@@ -425,6 +426,56 @@ def test_changing_hook_count_between_renders_raises(first_count: int, second_cou
 
     with pytest.raises(InconsistentHookExecution):
         update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS).tree
+
+
+async def never_runs() -> None:
+    raise AssertionError("update_shadow doesn't start effects")
+
+
+HOOK_CALLS: dict[str, Callable[[], object]] = {
+    "UseState": lambda: use_state(0),
+    "UseRef": lambda: use_ref(0),
+    "UseEffect": lambda: use_effect(never_runs, deps=()),
+    "UseMemo": lambda: use_memo(lambda: 0, deps=()),
+    "UseClock": lambda: use_clock(timedelta(seconds=1)),
+    "UseFocus": use_focus,
+}
+
+
+@component
+def calls_hook(name: str) -> Text:
+    HOOK_CALLS[name]()
+    return Text(content=name)
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        pytest.param("UseRef", "UseState", id="use_state"),
+        pytest.param("UseEffect", "UseRef", id="use_ref"),
+        pytest.param("UseMemo", "UseEffect", id="use_effect"),
+        pytest.param("UseClock", "UseMemo", id="use_memo"),
+        pytest.param("UseFocus", "UseClock", id="use_clock"),
+        pytest.param("UseState", "UseFocus", id="use_focus"),
+    ],
+)
+def test_calling_a_different_hook_in_the_same_place_raises_naming_both(first: str, second: str) -> None:
+    shadow = update_shadow(calls_hook(first), None, NO_LAYOUTS).tree
+
+    with pytest.raises(
+        InconsistentHookExecution, match=rf"^Expected a {second} hook, but got a {first} hook instead\.$"
+    ):
+        update_shadow(calls_hook(second), shadow, NO_LAYOUTS)
+
+
+def test_a_components_keyword_arguments_reach_its_function() -> None:
+    @component
+    def labeled(*, label: str) -> Text:
+        return Text(content=label)
+
+    shadow = update_shadow(labeled(label="from a keyword"), None, NO_LAYOUTS).tree
+
+    assert shadow.root.element == Text(content="from a keyword")
 
 
 def test_calling_the_same_hooks_every_render_does_not_raise() -> None:

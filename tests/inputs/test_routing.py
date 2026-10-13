@@ -482,7 +482,7 @@ async def test_a_press_that_another_element_claims_a_second_button_of_still_belo
     clicks: list[str] = []
 
     def claim_presses(event: InputEvent, receiver: Receiver) -> InputResponse:
-        return () if isinstance(event, MouseDown) else None
+        return () if isinstance(event, MouseDown) else None  # pragma: never runs
 
     @component
     def root() -> Div:

@@ -17,6 +17,8 @@ from counterweight.styles.utilities import (
     align_children_center_unsafe,
     align_children_end,
     align_children_end_unsafe,
+    align_children_start,
+    aspect_ratio,
     border,
     border_collapse,
     border_lightrounded,
@@ -28,6 +30,9 @@ from counterweight.styles.utilities import (
     fr,
     full_height,
     full_width,
+    gap,
+    gap_height,
+    grid_column,
     grid_row,
     grid_template_columns,
     grid_template_rows,
@@ -47,7 +52,10 @@ from counterweight.styles.utilities import (
     margin_x,
     margin_y,
     max_content_width,
+    max_height,
+    max_width,
     min_content_width,
+    min_height,
     min_width,
     pad,
     percentage,
@@ -597,6 +605,12 @@ def test_constraints_split_a_column_whatever_the_content() -> None:
     assert [layout.border.height for _, layout in _layout(root)[1::2]] == [2, 3, 5]
 
 
+def test_lengths_keep_their_size_when_they_overflow_the_row() -> None:
+    root = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(length(30), length(25)))
+
+    assert _border_widths(root) == [30, 25]
+
+
 def test_min_width_holds_whichever_side_of_fill_it_is_merged_on() -> None:
     before = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(min_width(15) | fill(1), fill(3)))
     after = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(fill(1) | min_width(15), fill(3)))
@@ -638,3 +652,47 @@ def test_int_grid_line_and_span_place_a_child_like_their_waxy_values() -> None:
 
     assert placed(grid_row(2, span(3))) == placed(grid_row(waxy.GridLine(2), waxy.GridSpan(3)))
     assert placed(grid_row(2, span(3))).border.height == 9
+
+
+def _border_boxes(root: ShadowNode) -> list[tuple[int, int, int, int]]:
+    """The left, top, width and height of each child of `root`'s border box."""
+    return [
+        (layout.border.left, layout.border.top, layout.border.width, layout.border.height)
+        for _, layout in _layout(root)[1:]
+    ]
+
+
+@pytest.mark.parametrize(
+    ("parent", "child", "expected"),
+    [
+        pytest.param(col | height(10), min_height(4), (0, 0, 0, 4), id="min-height"),
+        pytest.param(col | height(10), fill(1) | max_height(3), (0, 0, 0, 3), id="max-height"),
+        pytest.param(row | width(40), fill(1) | max_width(12), (0, 0, 12, 0), id="max-width"),
+        pytest.param(col | align_children_start, width(8) | aspect_ratio(2.0), (0, 0, 8, 4), id="aspect-ratio"),
+        pytest.param(
+            display_grid | size(40, 12) | grid_template_columns(10, 10, 10, 10),
+            grid_column(2, span(2)),
+            (10, 0, 20, 12),
+            id="grid-column",
+        ),
+    ],
+)
+def test_size_and_placement_utilities_shape_a_child(parent: Style, child: Style, expected: tuple[int, ...]) -> None:
+    assert _border_boxes(_shadow(Div(style=parent), children=[_shadow(Div(style=child))])) == [expected]
+
+
+def test_gap_height_spaces_a_columns_children() -> None:
+    children = [_shadow(Div(style=height(2))), _shadow(Div(style=height(2)))]
+
+    assert _border_boxes(_shadow(Div(style=col | gap_height(3)), children=children)) == [(0, 0, 0, 2), (0, 5, 0, 2)]
+
+
+def test_gap_spaces_grid_cells_both_ways() -> None:
+    grid = display_grid | grid_template_columns(3, 3) | grid_template_rows(3, 3) | gap(2)
+
+    assert _border_boxes(_shadow(Div(style=grid), children=[_shadow(Div()) for _ in range(4)])) == [
+        (0, 0, 3, 3),
+        (5, 0, 3, 3),
+        (0, 5, 3, 3),
+        (5, 5, 3, 3),
+    ]

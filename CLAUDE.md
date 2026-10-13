@@ -45,8 +45,11 @@ This project uses [Just](https://github.com/casey/just) as the task runner. Key 
 # Install dependencies
 just install
 
-# Run tests with type checking and coverage
-just test
+# Run type checking, then the tests with coverage, passing any arguments on to pytest
+just test [-k pattern | tests/test_paint.py ...]
+
+# Run mutation testing (mutmut), or re-run only the named mutants (see the cw-mutate skill)
+just mutate ['counterweight.shadow.*']
 
 # Build the documentation
 just docs-build
@@ -115,5 +118,9 @@ read that to check a layout instead of the SVG.
 - Follow PEP 8 conventions for naming
 - Pydantic for data modeling
 - Use pytest for testing
+- Line and branch coverage of `src/counterweight` and `tests` is held at 100% (`fail_under` in `pyproject.toml`),
+  so new code comes with the tests that run it.
+  Mark a function a test builds only to compare or inspect (a handler `equivalent` compares) `# pragma: never runs`,
+  and use `# pragma: no cover` only for code the suite can't run, saying why.
 - No implicit optional types
 - Don't write lots of comments; the code and test names should be self-explanatory.

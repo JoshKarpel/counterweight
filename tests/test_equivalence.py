@@ -12,35 +12,35 @@ from counterweight.events import InputEvent, InputHandler, Receiver
 
 def handler_capturing(value: object) -> Callable[[], object]:
     def handler() -> object:
-        return value
+        return value  # pragma: never runs
 
     return handler
 
 
 def key_handler_capturing(value: object) -> InputHandler:
     def on_input(event: InputEvent, _: Receiver) -> None:
-        print(value)
+        print(value)  # pragma: never runs
 
     return on_input
 
 
 def handler_with_default(value: object) -> Callable[[], object]:
     def handler(captured: object = value) -> object:
-        return captured
+        return captured  # pragma: never runs
 
     return handler
 
 
 def handler_with_keyword_default(value: object) -> Callable[[], object]:
     def handler(*, captured: object = value) -> object:
-        return captured
+        return captured  # pragma: never runs
 
     return handler
 
 
 def recursive_handler(value: object) -> Callable[[int], object]:
     def handler(depth: int) -> object:
-        return value if depth == 0 else handler(depth - 1)
+        return value if depth == 0 else handler(depth - 1)  # pragma: never runs
 
     return handler
 
@@ -49,7 +49,7 @@ def unbound_capture(bind: bool) -> Callable[[], object]:
     """A closure over a variable that `bind=False` leaves unbound, so its cell is empty."""
 
     def handler() -> object:
-        return later
+        return later  # pragma: never runs
 
     if bind:
         later = "bound"
@@ -57,11 +57,16 @@ def unbound_capture(bind: bool) -> Callable[[], object]:
 
 
 def other_handler() -> None:
-    return None
+    return None  # pragma: never runs
+
+
+def twice(value: object) -> tuple[object, object]:
+    """The same object in both places, so comparing it against two different objects reuses it."""
+    return (value, value)
 
 
 def target(first: object, second: object) -> None:
-    return None
+    return None  # pragma: never runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,10 +74,10 @@ class Holder:
     value: object
 
     def handle(self) -> object:
-        return self.value
+        return self.value  # pragma: never runs
 
     def other(self) -> object:
-        return self.value
+        return self.value  # pragma: never runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +91,7 @@ class Reading:
         return isinstance(other, Reading) and self.value == other.value
 
     def __hash__(self) -> int:
-        return hash(self.value)
+        return hash(self.value)  # pragma: never runs
 
 
 @pytest.mark.parametrize(
@@ -111,6 +116,39 @@ class Reading:
             id="elements-holding-equivalent-handlers",
         ),
         pytest.param({"k": handler_capturing("x")}, {"k": handler_capturing("x")}, id="dicts"),
+        pytest.param(
+            {"k": handler_capturing("x"), "j": handler_capturing("y")},
+            {"j": handler_capturing("y"), "k": handler_capturing("x")},
+            id="dicts-in-different-orders",
+        ),
+        pytest.param(
+            handler_with_default(handler_capturing("x")),
+            handler_with_default(handler_capturing("x")),
+            id="defaults-holding-equivalent-closures",
+        ),
+        pytest.param(
+            handler_with_keyword_default(handler_capturing("x")),
+            handler_with_keyword_default(handler_capturing("x")),
+            id="keyword-defaults-holding-equivalent-closures",
+        ),
+        pytest.param(
+            Holder(handler_capturing("x")).handle,
+            Holder(handler_capturing("x")).handle,
+            id="methods-bound-to-objects-holding-equivalent-closures",
+        ),
+        pytest.param(
+            partial(handler_capturing("x")), partial(handler_capturing("x")), id="partials-of-equivalent-closures"
+        ),
+        pytest.param(
+            partial(target, handler_capturing("x"), second="y"),
+            partial(target, handler_capturing("x"), second="y"),
+            id="partials-with-arguments-holding-equivalent-closures",
+        ),
+        pytest.param(
+            partial(target, "x", second=handler_capturing("y")),
+            partial(target, "x", second=handler_capturing("y")),
+            id="partials-with-keywords-holding-equivalent-closures",
+        ),
         pytest.param(1, 1.0, id="different-types-compared-with-eq"),
         pytest.param(Reading(7, 1.5), Reading(7, 2.5), id="dataclasses-whose-own-eq-calls-them-equal"),
         pytest.param(
@@ -151,6 +189,16 @@ def test_equivalent(a: object, b: object) -> None:
         pytest.param(Text(content="x"), Text(content="y"), id="elements-with-different-content"),
         pytest.param((1, 2), (1, 2, 3), id="tuples-of-different-lengths"),
         pytest.param({"k": 1}, {"j": 1}, id="dicts-with-different-keys"),
+        pytest.param(
+            (handler_capturing("x"), handler_capturing("y")),
+            twice(handler_capturing("x")),
+            id="one-closure-against-an-equivalent-closure-then-a-different-one",
+        ),
+        pytest.param(
+            twice(handler_capturing("x")),
+            (handler_capturing("x"), handler_capturing("y")),
+            id="an-equivalent-closure-then-a-different-one-against-one-closure",
+        ),
         pytest.param(Reading(7, 1.5), Reading(8, 1.5), id="dataclasses-whose-own-eq-calls-them-different"),
         pytest.param(
             OrderedDict([("k", 1), ("j", 2)]), OrderedDict([("j", 2), ("k", 1)]), id="ordered-dicts-in-different-orders"
