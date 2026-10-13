@@ -58,9 +58,55 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
+# --8<-- [start:clipped]
+
+
+@component
+def clipped() -> Div:
+    return Div(
+        style=row | gap(2),
+        children=[
+            Div(
+                style=border | border_light | size(16, 5) | overflow,
+                children=[
+                    Div(
+                        style=position_absolute | inset_top(-1) | inset_left(2) | size(11, 3) | border | border_light,
+                        children=[Text(content=f" {name}")],
+                    )
+                ],
+            )
+            for name, overflow in (("visible", overflow_visible), ("hidden", overflow_hidden))
+        ],
+    )
+
+
+# --8<-- [end:clipped]
+
+# --8<-- [start:raised]
+
+
+@component
+def raised() -> Div:
+    return Div(
+        style=col,
+        children=[
+            Div(style=border | border_light | size(24, 3), children=[Text(content="A panel")]),
+            Text(
+                content="A raised box",
+                style=z(1) | position_absolute | inset_top(2) | inset_left(4) | border | border_light,
+            ),
+        ],
+    )
+
+
+# --8<-- [end:raised]
+
 SCREENSHOTS = [
     ScreenshotSpec(root(), "border-healing-on", (60, 20)),
     ScreenshotSpec(root(), "border-healing-off", (60, 20), events=[KeyPressed(key=Key.Space)]),
+    ScreenshotSpec(clipped(), "border-healing-clipped", (34, 5)),
+    ScreenshotSpec(raised(), "border-healing-raised", (24, 5)),
+    ScreenshotSpec(raised(), "border-healing-raised-off", (24, 5), events=[ToggleBorderHealing()]),
 ]
 
 

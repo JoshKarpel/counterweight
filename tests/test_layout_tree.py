@@ -27,7 +27,7 @@ from counterweight.shadow import ShadowTree, update_shadow
 from counterweight.styles.styles import CellStyle, Color
 from counterweight.styles.utilities import border, col, fill, row, text_wrap_stable
 
-AVAILABLE = waxy.AvailableSize(width=waxy.Definite(40), height=waxy.Definite(12))
+WIDTH, HEIGHT = 40, 12
 
 
 def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowTree:
@@ -35,7 +35,7 @@ def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowTree:
     shadow: ShadowTree | None = None
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
-        tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)
+        tree.compute(layout_changes(shadow, next_shadow), next_shadow, WIDTH, HEIGHT, {})
         shadow = next_shadow
     assert shadow is not None
     return shadow
@@ -228,7 +228,7 @@ def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, Rects], ...]:
 
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, Rects], ...]:
     shadow = update_shadow(element, None, NO_LAYOUTS).tree
-    return without_keys(LayoutTree().compute(layout_changes(None, shadow), shadow, AVAILABLE))
+    return without_keys(LayoutTree().compute(layout_changes(None, shadow), shadow, WIDTH, HEIGHT, {}))
 
 
 @pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
@@ -238,9 +238,9 @@ def test_reused_tree_lays_out_each_frame_as_a_fresh_tree_does(elements: list[Any
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
 
-        assert without_keys(tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)) == fresh_layout(
-            element
-        )
+        assert without_keys(
+            tree.compute(layout_changes(shadow, next_shadow), next_shadow, WIDTH, HEIGHT, {})
+        ) == fresh_layout(element)
 
         shadow = next_shadow
 

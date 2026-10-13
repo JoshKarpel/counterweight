@@ -65,9 +65,11 @@ To center a box over other content rather than among it, see
 
 The `*_center` and `*_end` utilities are CSS's _safe_ alignments:
 content too large for its container starts at the container's start edge
-and overflows only past the end, so its beginning stays on screen.
+and overflows only past the end, so its beginning stays in view.
 Each has an `*_unsafe` counterpart with CSS's default behavior,
 which centers or end-aligns the content anyway and overflows past the start edge too.
+These containers are `fill(1)` items, which [clip](clipping.md) what overflows them,
+so the unsafe one cuts off the content's beginning as well as its end.
 
 ```python
 --8<-- "layout_alignment.py:overflow"

@@ -5,15 +5,17 @@ Nothing above the counter holds state, so only the counter's state changes each 
 compared with `dashboard`, this measures what skipping the components whose state didn't change saves.
 """
 
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from time import perf_counter_ns
 
 from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import component
+from counterweight.controls import AnyControl
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.events import AnyEvent, InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_clock, use_focus, use_state
 
 
@@ -24,6 +26,7 @@ class LocalDashboard:
     name: str
     description: str
     dimensions: tuple[int, int]
+    interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]] = field(default_factory=dict)
 
     @component
     def root(self, key_press_times: list[int]) -> Div:

@@ -20,6 +20,9 @@ in a leaf component rather than the root: compare the two to see what skipping c
 whose state didn't change saves. Each `-memo` workload (`dashboard-memo`, `top-memo`,
 `agent-memo`) draws what its twin does with the per-item component declared `memo`:
 compare the pair to see what skipping components whose arguments didn't change saves.
+`agent-scrolled` is `agent` with its transcript scrolled back partway through the run, so it reads back
+while messages stream in below and drop off above: compare it with `agent`, which follows the end,
+to see what scroll anchoring costs.
 
 ## Profile a run
 

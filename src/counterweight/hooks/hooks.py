@@ -13,8 +13,8 @@ from counterweight._context_vars import (
     current_use_mouse_listeners,
 )
 from counterweight._utils import forever
-from counterweight.focus import FocusHandle
-from counterweight.geometry import Position, Rects
+from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.geometry import ORIGIN, Position, Rects, Scroll
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 from counterweight.layout import INITIAL_RECTS, Layouts
@@ -161,6 +161,41 @@ def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     return layouts.by_key.get(key, INITIAL_RECTS)
 
 
+def use_scroll(handle: ElementHandle | None = None) -> Scroll:
+    """
+    Parameters:
+        handle: The element to report on, by the [`ElementHandle`][counterweight.focus.ElementHandle]
+            passed to its `handle`, as a React component reads another element's `scrollTop` through a ref,
+            or `None` for the calling component's top-level element.
+
+    Returns:
+        How far the element is scrolled, and how far it can be,
+            if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
+            A component that calls `use_scroll` renders again as soon as that scroll changes,
+            whether a control scrolled it or its content changed size.
+            It's all zeros on the initial render, for an element that isn't a scroll container,
+            and for a `handle` that named no visible element in the previous render cycle.
+    """
+    hooks = current_hook_state.get()
+    scroll = scroll_in(current_layouts.get(), hooks.key, handle)
+    if hooks.scrolls is None:
+        hooks.scrolls = {}
+    hooks.scrolls[handle] = scroll
+    return scroll
+
+
+NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0)
+
+
+def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -> Scroll:
+    """
+    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    the scroll of the element `handle` names, or of `reader`'s own element if it's `None`.
+    """
+    key = reader if handle is None else layouts.handles.get(handle)
+    return NO_SCROLL if key is None else layouts.scrolls.get(key, NO_SCROLL)
+
+
 @dataclass(frozen=True, slots=True)
 class Mouse:
     absolute: Position
@@ -214,16 +249,22 @@ def use_hovered() -> Hovered:
     """
     Returns:
         A record describing which of the calling component's top-level element's
-            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside.
+            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside,
+            counting only the parts inside its [`clip`][counterweight.geometry.Rects.clip],
+            so the mouse over a part its ancestors clip away is outside all of them.
     """
     mouse = use_mouse()
     rects = use_rects()
 
+    position = mouse.absolute
+    if rects.clip is None or not rects.clip.contains(position):
+        return Hovered(content=False, padding=False, border=False, margin=False)
+
     return Hovered(
-        content=rects.content.contains(mouse.absolute),
-        padding=rects.padding.contains(mouse.absolute),
-        border=rects.border.contains(mouse.absolute),
-        margin=rects.margin.contains(mouse.absolute),
+        content=rects.content.contains(position),
+        padding=rects.padding.contains(position),
+        border=rects.border.contains(position),
+        margin=rects.margin.contains(position),
     )
 
 

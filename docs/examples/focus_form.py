@@ -123,7 +123,7 @@ def help_panel() -> Div:
         on_input=first(on_input, focus_receiver_on_press),
         children=[
             Text(
-                style=position_absolute | inset_left(1) | inset_top(-1),
+                style=position_absolute | inset_left(1) | inset_top(-1) | clip_to_border,
                 content=f" {marked(focus, f'Tip {page + 1}/{len(TIPS)}')} ",
             ),
             Text(content=TIPS[page], style=text_color("slate", 400)),

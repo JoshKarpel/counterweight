@@ -1,5 +1,6 @@
 from asyncio import TaskGroup
 from collections.abc import Callable
+from dataclasses import replace
 from weakref import WeakSet
 
 import pytest
@@ -20,7 +21,13 @@ NESTED_BOXES = Rects(
     padding=Region(left=2, top=2, right=9, bottom=7),
     border=Region(left=1, top=1, right=10, bottom=8),
     margin=Region(left=0, top=0, right=11, bottom=9),
+    clip=Region(left=0, top=0, right=20, bottom=10),
+    visible=Region(left=1, top=1, right=10, bottom=8),
 )
+CLIPPED_AT_COLUMN_3 = replace(
+    NESTED_BOXES, clip=Region(left=0, top=0, right=3, bottom=10), visible=Region(left=1, top=1, right=3, bottom=8)
+)
+CLIPPED_AWAY = replace(NESTED_BOXES, clip=None, visible=None)
 
 
 @component
@@ -54,25 +61,50 @@ async def test_use_mouse_keeps_its_subscription_when_the_component_reruns() -> N
     assert (len(recorded), tasks_after_rerun) == (2, tasks_after_mount)
 
 
+NOWHERE = Hovered(content=False, padding=False, border=False, margin=False)
+
+
 @pytest.mark.parametrize(
-    ("position", "expected"),
+    ("rects", "position", "expected"),
     [
         pytest.param(
-            Position(4, 4), Hovered(content=True, padding=True, border=True, margin=True), id="in-the-content"
+            NESTED_BOXES,
+            Position(4, 4),
+            Hovered(content=True, padding=True, border=True, margin=True),
+            id="in-the-content",
         ),
         pytest.param(
-            Position(2, 4), Hovered(content=False, padding=True, border=True, margin=True), id="in-the-padding"
+            NESTED_BOXES,
+            Position(2, 4),
+            Hovered(content=False, padding=True, border=True, margin=True),
+            id="in-the-padding",
         ),
         pytest.param(
-            Position(1, 4), Hovered(content=False, padding=False, border=True, margin=True), id="on-the-border"
+            NESTED_BOXES,
+            Position(1, 4),
+            Hovered(content=False, padding=False, border=True, margin=True),
+            id="on-the-border",
         ),
         pytest.param(
-            Position(0, 4), Hovered(content=False, padding=False, border=False, margin=True), id="in-the-margin"
+            NESTED_BOXES,
+            Position(0, 4),
+            Hovered(content=False, padding=False, border=False, margin=True),
+            id="in-the-margin",
         ),
-        pytest.param(Position(15, 4), Hovered(content=False, padding=False, border=False, margin=False), id="outside"),
+        pytest.param(NESTED_BOXES, Position(15, 4), NOWHERE, id="outside"),
+        pytest.param(
+            CLIPPED_AT_COLUMN_3,
+            Position(2, 4),
+            Hovered(content=False, padding=True, border=True, margin=True),
+            id="in-the-padding-inside-the-clip",
+        ),
+        pytest.param(CLIPPED_AT_COLUMN_3, Position(4, 4), NOWHERE, id="in-the-content-outside-the-clip"),
+        pytest.param(CLIPPED_AWAY, Position(4, 4), NOWHERE, id="in-the-content-of-an-element-clipped-away"),
     ],
 )
-async def test_use_hovered_reports_which_of_its_boxes_the_mouse_is_in(position: Position, expected: Hovered) -> None:
+async def test_use_hovered_reports_which_of_its_boxes_the_mouse_is_in_inside_its_clip(
+    rects: Rects, position: Position, expected: Hovered
+) -> None:
     recorded: list[Hovered] = []
     listeners = WeakSet[Callable[[Mouse], None]]()
     token = current_use_mouse_listeners.set(listeners)
@@ -88,7 +120,7 @@ async def test_use_hovered_reports_which_of_its_boxes_the_mouse_is_in(position: 
                 shadow = await render(hovers(), None, tg)
                 for listener in list(listeners):
                     listener(Mouse(absolute=position, motion=Position(0, 0), button=None))
-                layouts = Layouts(in_paint_order=(), by_key={shadow.root.key: NESTED_BOXES})
+                layouts = Layouts(in_paint_order=(), by_key={shadow.root.key: rects}, scrolls={})
                 shadow = update_shadow(hovers(), shadow, layouts).tree
                 await cancel_tasks(effect_tasks(shadow))
     finally:

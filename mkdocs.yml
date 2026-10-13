@@ -114,6 +114,7 @@ nav:
     - hooks/use_clock.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_scroll.md
     - hooks/use_focus.md
     - hooks/use_hovered.md
   - Headless Components:
@@ -134,6 +135,8 @@ nav:
     - layout/alignment.md
     - layout/spacing-and-borders.md
     - layout/layering.md
+    - layout/clipping.md
+    - layout/scrolling.md
     - layout/grids-and-wrapping.md
     - layout/text.md
     - layout/app-shells.md
@@ -142,6 +145,7 @@ nav:
     - styles/text-wrapping.md
     - styles/utilities.md
   - Cookbook:
+    - cookbook/autocomplete.md
     - cookbook/border-titles.md
     - cookbook/border-healing.md
     - cookbook/draggable-components.md
