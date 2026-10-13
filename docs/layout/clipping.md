@@ -12,6 +12,7 @@ By default a box's overflow is visible:
 children that don't fit are drawn past its padding box, over its border and whatever lies beyond.
 `overflow_hidden` clips them to its padding box instead,
 so nothing inside the box is drawn outside its border.
+`overflow_scroll` clips them the same way, and lets them [scroll](scrolling.md).
 
 ```python
 --8<-- "layout_clipping.py:hidden"
@@ -102,6 +103,17 @@ so the page then has to work out where its anchor is, in script or with
 [anchor positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_anchor_positioning).
 An unclipped box keeps its parent as the box it's positioned against, so it's anchored already.
 The [autocomplete recipe](../cookbook/autocomplete.md) builds a complete one.
+
+A [scroll container](scrolling.md) clips to its padding box too,
+so in a list of titled panels that scrolls, a panel scrolled partly out of view
+loses the same part of its title as of its border.
+A title clipped to the screen would be drawn past the scroll container's edge instead.
+
+```python
+--8<-- "layout_clipping.py:scrolled-panels"
+```
+
+![Titled panels scrolled one row down](../assets/layout-clipping-scrolled-panels.svg)
 
 ## Percentage insets and borders
 

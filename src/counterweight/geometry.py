@@ -170,3 +170,34 @@ class Rects:
     """
     visible: Region | None
     """The part of the border box inside `clip`, or `None` when none of it is."""
+
+
+ORIGIN = Position(0, 0)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Scroll:
+    """How far a scroll container's content is scrolled, and how far it can be."""
+
+    offset: Position
+    """
+    How far the content is scrolled from where layout put it: `x` columns left and `y` rows up,
+    so `Position(0, 0)` shows the start of the content, as the web's `scrollLeft` and `scrollTop` do.
+    """
+    max_offset: Position
+    """
+    The largest `offset` on each axis, which shows the end of the content,
+    as the web's `scrollWidth` minus `clientWidth` does.
+    It's 0 on an axis the container doesn't scroll, and on one whose content fits.
+    """
+    view_width: int
+    """The width of the container's padding box, the part of the content in view, as the web's `clientWidth`."""
+    view_height: int
+    """The height of the container's padding box, the part of the content in view, as the web's `clientHeight`."""
+
+    def clamp(self, offset: Position) -> Position:
+        """`offset`, moved onto the range the content scrolls through on each axis, from 0 to `max_offset`."""
+        return Position(
+            max(0, min(offset.x, self.max_offset.x)),
+            max(0, min(offset.y, self.max_offset.y)),
+        )

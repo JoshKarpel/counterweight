@@ -5,6 +5,18 @@
 ### Added
 
 - [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  Added [scroll containers](layout/scrolling.md): a box whose overflow is `Scroll`,
+  with the utilities `overflow_scroll`, `overflow_x_scroll` and `overflow_y_scroll`,
+  shows the part of its content its offset scrolls into view.
+  Counterweight holds each container's offset and clamps it to how far the content reaches after every layout.
+  The controls `ScrollTo` and `ScrollBy` scroll a container named by an `ElementHandle`,
+  which an element takes as its `handle`, or by a receiver's `subtree`,
+  and `counterweight.handlers` gains `scroll_on_wheel`, which scrolls for the wheel
+  and passes the wheel on to the container outside once its own reaches an end.
+  [`use_scroll`](hooks/use_scroll.md) returns how far the calling component's element is scrolled
+  and how far it can be, and a `Receiver` carries the same as its `scroll`.
+
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
   Added the overflow utilities `overflow_visible`, `overflow_hidden` and `overflow_clip`,
   with `overflow_x_*` and `overflow_y_*` forms that set one axis,
   and the `clip_to` style field, with `clip_to_padding`, `clip_to_border` and `clip_to_screen`,

@@ -512,11 +512,11 @@ generated_lines.append("")
 
 # --- Overflow utilities ---
 
-# TODO: Scroll, once scroll containers hold offsets (phase 3 of plans/clipping-and-scrolling.md).
 OVERFLOW_MAP = {
     "Visible": "visible",
     "Hidden": "hidden",
     "Clip": "clip",
+    "Scroll": "scroll",
 }
 OVERFLOW_AXES = {
     "": ["x", "y"],

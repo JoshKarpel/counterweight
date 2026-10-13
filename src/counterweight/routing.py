@@ -27,7 +27,7 @@ from counterweight.events import (
     Receiver,
     response_controls,
 )
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
 from counterweight.geometry import Position
 from counterweight.layout import Layouts
 
@@ -93,6 +93,8 @@ class RoutingTable:
     """Every visible node whose last run called `use_focus`, in tree order, unfocusable ones included."""
     focus_keys: Mapping[FocusHandle, NodeKey]
     """The key of every visible, focusable node, by its handle."""
+    element_keys: Mapping[ElementHandle, NodeKey]
+    """The key of every mounted element given a `handle`, by its handle."""
 
     @classmethod
     def of(cls, shadow: ShadowTree, layouts: Layouts) -> RoutingTable:
@@ -129,6 +131,7 @@ class RoutingTable:
             },
             focus=focus,
             focus_keys={focusable.handle: key for key, focusable in focus.items() if focusable.is_focusable},
+            element_keys=shadow.handled,
         )
 
     def target_at(self, position: Position) -> NodeKey:
@@ -178,8 +181,19 @@ class RoutingTable:
             focus_handle=None if focus is None else focus.handle,
             is_focused=key == focused,
             subtree=Subtree(key=key),
+            scroll=self.layouts.scrolls.get(key),
         )
         return response_controls(handler(event, receiver))
+
+    def key_of(self, target: ElementHandle | Subtree) -> NodeKey | None:
+        """The key of the element `target` names, or `None` for a handle that names no mounted element."""
+        match target:
+            case ElementHandle():
+                return self.element_keys.get(target)
+            case Subtree(key=key):
+                return key
+            case _ as unreachable:
+                assert_never(unreachable)
 
     def can_focus(self, key: NodeKey) -> bool:
         """Whether the node with `key` is visible, and its last run called `use_focus` with `is_focusable=True`."""

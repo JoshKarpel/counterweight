@@ -1,9 +1,9 @@
 ╭─ Add a dependency ───────────────────╮
 │ Package py▏                          │
-│   Group ╭──────────────────────╮     │
-│         │ mypy                 │     │
+│         ╭──────────────────────╮     │
+│   Group │ mypy                 │     │
 │         │ pydantic             │     │
-│         │ pydantic-settings    │     │
+│  Python │ pydantic-settings    │     │
 ╰─────────│ pytest               │─────╯
           │ pytest-asyncio       │      
  Type to s╰──────────────────────╯      

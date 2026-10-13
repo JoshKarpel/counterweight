@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from counterweight.controls import ClearFocus, FocusNext, FocusOn, FocusPrevious
+from counterweight.controls import ClearFocus, FocusNext, FocusOn, FocusPrevious, ScrollBy
 from counterweight.events import (
     InputEvent,
     InputHandler,
@@ -16,11 +16,16 @@ from counterweight.events import (
     KeyPressed,
     MouseDown,
     MouseMoved,
+    MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+    MouseScrolledUp,
     MouseUp,
     Receiver,
     response_controls,
 )
 from counterweight.focus import FocusHandle
+from counterweight.geometry import Position
 from counterweight.keys import Key
 
 
@@ -152,3 +157,40 @@ def clear_focus(event: InputEvent, receiver: Receiver) -> InputResponse:
             return ClearFocus()
         case _:
             return None
+
+
+def scroll_on_wheel(lines: int = 3) -> InputHandler:
+    """
+    A handler that scrolls the scroll container it's on by `lines` toward the wheel's direction
+    for each `MouseScrolledUp`, `MouseScrolledDown`, `MouseScrolledLeft` and `MouseScrolledRight`,
+    which is three lines by default, as desktop platforms scroll for each notch of the wheel.
+    It returns `None` for a wheel event that would move the container past the end of its range,
+    so the event bubbles to the next scroll container out, as the web chains scrolling,
+    and for anything else.
+
+    Raises:
+        ValueError: For a wheel event whose receiver isn't a [scroll container](../layout/scrolling.md).
+    """
+
+    def handler(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case MouseScrolledUp():
+                delta = Position(0, -lines)
+            case MouseScrolledDown():
+                delta = Position(0, lines)
+            case MouseScrolledLeft():
+                delta = Position(-lines, 0)
+            case MouseScrolledRight():
+                delta = Position(lines, 0)
+            case _:
+                return None
+        if (scroll := receiver.scroll) is None:
+            raise ValueError(
+                "scroll_on_wheel received a wheel event on an element that isn't a scroll container. "
+                "Put it on an element whose overflow is Scroll, such as with overflow_y_scroll."
+            )
+        if scroll.clamp(scroll.offset + delta) == scroll.offset:
+            return None
+        return ScrollBy(receiver.subtree, x=delta.x, y=delta.y)
+
+    return handler

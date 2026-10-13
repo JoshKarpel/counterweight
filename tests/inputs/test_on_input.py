@@ -122,6 +122,7 @@ def test_receiver_relative_is_relative_to_the_content_box_top_left() -> None:
         focus_handle=None,
         is_focused=False,
         subtree=Subtree(key=NodeKey(3)),
+        scroll=None,
     )
 
     assert receiver.relative(Position(x=10, y=7)) == Position(x=2, y=1)

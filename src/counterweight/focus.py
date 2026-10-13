@@ -1,6 +1,8 @@
 """
-The values that name focus targets: which component a control should focus, and which part of the tree to move it in.
-They live outside the hooks package, since controls and events name them, and the hooks package imports both.
+The values that name what a control acts on: which component to focus, which element to scroll,
+and which part of the tree to move focus in.
+They live outside the hooks and elements modules, since controls and events name them,
+and those modules import both.
 """
 
 from __future__ import annotations
@@ -25,6 +27,23 @@ class FocusHandle:
     def __repr__(self) -> str:
         """Names the handle by its identity, since that's all that tells two handles apart."""
         return f"<FocusHandle at {id(self):#x}>"
+
+
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
+class ElementHandle:
+    """
+    An opaque token that names one element, such as a scroll container for
+    [`ScrollTo`][counterweight.controls.ScrollTo] and [`ScrollBy`][counterweight.controls.ScrollBy],
+    as a React ref names a DOM node.
+
+    It's an identity token, equal only to itself, so it can exist before the element it names has mounted:
+    a component creates one with `use_state(ElementHandle)` and passes it to an element's `handle`.
+    Two mounted elements given the same handle raise `DuplicateElementHandle`.
+    """
+
+    def __repr__(self) -> str:
+        """Names the handle by its identity, since that's all that tells two handles apart."""
+        return f"<ElementHandle at {id(self):#x}>"
 
 
 @dataclass(frozen=True, slots=True)

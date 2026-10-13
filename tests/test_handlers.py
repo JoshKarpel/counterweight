@@ -2,7 +2,16 @@ from dataclasses import replace
 
 import pytest
 
-from counterweight.controls import Bell, ClearFocus, FocusNext, FocusOn, FocusPrevious, Quit, ToggleBorderHealing
+from counterweight.controls import (
+    Bell,
+    ClearFocus,
+    FocusNext,
+    FocusOn,
+    FocusPrevious,
+    Quit,
+    ScrollBy,
+    ToggleBorderHealing,
+)
 from counterweight.events import (
     InputEvent,
     InputHandler,
@@ -11,11 +20,14 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+    MouseScrolledUp,
     MouseUp,
     Receiver,
 )
 from counterweight.focus import FocusHandle, Subtree
-from counterweight.geometry import Position, Rects, Region
+from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.handlers import (
     clear_focus,
     each,
@@ -23,6 +35,7 @@ from counterweight.handlers import (
     focus_on_press,
     focus_receiver_on_press,
     on_click,
+    scroll_on_wheel,
     tab_focus,
 )
 from counterweight.hooks.impls import NodeKey
@@ -44,6 +57,7 @@ RECEIVER = Receiver(
     focus_handle=None,
     is_focused=False,
     subtree=Subtree(key=NodeKey(7)),
+    scroll=None,
 )
 KEY = KeyPressed(key="k")
 INSIDE = Position(3, 2)
@@ -223,3 +237,57 @@ def test_clear_focus_clears_focus_for_a_press() -> None:
 @pytest.mark.parametrize("event", [KeyPressed(key="k"), MouseUp(absolute=INSIDE, button=1)], ids=["key", "release"])
 def test_clear_focus_does_not_handle_other_events(event: InputEvent) -> None:
     assert clear_focus(event, RECEIVER) is None
+
+
+SCROLLED = replace(
+    RECEIVER, scroll=Scroll(offset=Position(4, 3), max_offset=Position(9, 8), view_width=5, view_height=3)
+)
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (MouseScrolledUp(absolute=INSIDE), ScrollBy(SCROLLED.subtree, y=-2)),
+        (MouseScrolledDown(absolute=INSIDE), ScrollBy(SCROLLED.subtree, y=2)),
+        (MouseScrolledLeft(absolute=INSIDE), ScrollBy(SCROLLED.subtree, x=-2)),
+        (MouseScrolledRight(absolute=INSIDE), ScrollBy(SCROLLED.subtree, x=2)),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_scroll_on_wheel_scrolls_its_receiver_by_its_lines_toward_the_wheel(
+    event: InputEvent, expected: ScrollBy
+) -> None:
+    assert scroll_on_wheel(2)(event, SCROLLED) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "offset"),
+    [
+        (MouseScrolledUp(absolute=INSIDE), Position(4, 0)),
+        (MouseScrolledDown(absolute=INSIDE), Position(4, 8)),
+        (MouseScrolledLeft(absolute=INSIDE), Position(0, 3)),
+        (MouseScrolledRight(absolute=INSIDE), Position(9, 3)),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_scroll_on_wheel_does_not_handle_a_wheel_event_past_the_end_of_the_range(
+    event: InputEvent, offset: Position
+) -> None:
+    assert SCROLLED.scroll is not None
+    at_end = replace(SCROLLED, scroll=replace(SCROLLED.scroll, offset=offset))
+
+    assert scroll_on_wheel(2)(event, at_end) is None
+
+
+def test_scroll_on_wheel_scrolls_three_lines_by_default() -> None:
+    assert scroll_on_wheel()(MouseScrolledDown(absolute=INSIDE), SCROLLED) == ScrollBy(SCROLLED.subtree, y=3)
+
+
+def test_scroll_on_wheel_raises_for_a_wheel_event_on_a_receiver_that_is_not_a_scroll_container() -> None:
+    with pytest.raises(ValueError, match="isn't a scroll container"):
+        scroll_on_wheel()(MouseScrolledDown(absolute=INSIDE), RECEIVER)
+
+
+@pytest.mark.parametrize("event", [KEY, MouseDown(absolute=INSIDE, button=1)])
+def test_scroll_on_wheel_does_not_handle_other_events(event: InputEvent) -> None:
+    assert scroll_on_wheel()(event, SCROLLED) is None

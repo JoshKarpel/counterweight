@@ -72,3 +72,16 @@ leaves focus where it was, unless the element composes `clear_focus` in too.
 ::: counterweight.handlers.focus_receiver_on_press
 ::: counterweight.handlers.focus_on_press
 ::: counterweight.handlers.clear_focus
+
+## Scrolling
+
+Nothing scrolls a [scroll container](../layout/scrolling.md) unless a handler returns a control that does,
+so a container the wheel scrolls composes `scroll_on_wheel` in:
+
+```python
+from counterweight.handlers import scroll_on_wheel
+
+Div(style=fill(1) | col | overflow_y_scroll, on_input=scroll_on_wheel(), children=...)
+```
+
+::: counterweight.handlers.scroll_on_wheel

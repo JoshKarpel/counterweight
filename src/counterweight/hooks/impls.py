@@ -17,7 +17,7 @@ from counterweight.focus import FocusHandle
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 if TYPE_CHECKING:
-    from counterweight.geometry import Rects
+    from counterweight.geometry import Rects, Scroll
 
 # Identifies one mounted node across frames, for as long as its hooks carry over.
 NodeKey = NewType("NodeKey", int)
@@ -181,6 +181,8 @@ class Hooks:
     key: NodeKey = field(default_factory=_next_node_key)
     rects: Rects | None = None
     """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
+    scroll: Scroll | None = None
+    """What `use_scroll` last returned to this node, so the node re-renders once its scroll changes."""
     focus: UseFocus | None = None
     """The `use_focus` hook of this node's last run, if it called `use_focus`, which makes the node focusable."""
     clocks: list[UseClock] = field(default_factory=list)

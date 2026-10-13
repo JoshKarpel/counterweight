@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Container, Iterable, Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from itertools import repeat
 from math import inf
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, assert_never
 import waxy
 
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
-from counterweight.geometry import Rects, Region
+from counterweight.geometry import ORIGIN, Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, ClipTo, Style, TextWrap
 
@@ -190,13 +190,17 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 
 @dataclass(frozen=True, slots=True)
 class Layouts:
-    """One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key."""
+    """
+    One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key,
+    and the scroll of each visible scroll container by key.
+    """
 
     in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects], ...]
     by_key: Mapping[NodeKey, Rects]
+    scrolls: Mapping[NodeKey, Scroll]
 
 
-NO_LAYOUTS = Layouts(in_paint_order=(), by_key={})
+NO_LAYOUTS = Layouts(in_paint_order=(), by_key={}, scrolls={})
 
 
 @dataclass(eq=False, slots=True)
@@ -210,8 +214,18 @@ class LayoutTree:
     tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
 
-    def compute(self, changes: Iterable[LayoutChange], shadow: ShadowTree, width: int, height: int) -> Layouts:
-        """Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen."""
+    def compute(
+        self,
+        changes: Iterable[LayoutChange],
+        shadow: ShadowTree,
+        width: int,
+        height: int,
+        offsets: Mapping[NodeKey, Position],
+    ) -> Layouts:
+        """
+        Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen,
+        with each scroll container scrolled to its offset in `offsets`, clamped to how far it can scroll.
+        """
         self.apply(changes)
 
         root = self.nodes[shadow.root.key]
@@ -220,10 +234,10 @@ class LayoutTree:
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
-        by_key = place(shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height))
+        by_key, scrolls = place(shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height), offsets)
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
-        return Layouts(in_paint_order=in_paint_order, by_key=by_key)
+        return Layouts(in_paint_order=in_paint_order, by_key=by_key, scrolls=scrolls)
 
     def apply(self, changes: Iterable[LayoutChange]) -> None:
         """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
@@ -269,37 +283,90 @@ def layout_style(style: Style) -> waxy.Style:
 
 
 def place(
-    root: ShadowNode, boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]], screen: Region
-) -> dict[NodeKey, Rects]:
+    root: ShadowNode,
+    boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
+    screen: Region,
+    offsets: Mapping[NodeKey, Position],
+) -> tuple[dict[NodeKey, Rects], dict[NodeKey, Scroll]]:
     """
     Where each node with a box in `boxes` is on `screen`, given its absolute position and layout,
-    walking down from `root` so each node's clip is built from its parent's.
+    and the scroll of each scroll container among them,
+    walking down from `root` so each node's clip is built from its parent's,
+    and each node is moved by the offsets of the scroll containers above it.
     A node without a box is hidden, and so is every node beneath it.
+
+    A scroll container's offset is the one in `offsets`, or 0 for one that has none,
+    clamped to how far it scrolls in this layout.
 
     The walk follows the tree, not paint order, because a raised descendant paints after nodes
     outside its ancestors, and must still be clipped by those ancestors.
     """
     placed: dict[NodeKey, Rects] = {}
-    stack: list[tuple[ShadowNode, Region | None]] = [(root, screen)]
+    scrolls: dict[NodeKey, Scroll] = {}
+    stack: list[tuple[ShadowNode, Region | None, int, int]] = [(root, screen, 0, 0)]
     while stack:
-        node, clip = stack.pop()
+        node, clip, scrolled_x, scrolled_y = stack.pop()
         try:
             position, layout = boxes[node.key]
         except KeyError:
             continue
-        rects = placed[node.key] = _resolve_layout(position, layout, clip)
+        rects = placed[node.key] = _resolve_layout(position, layout, clip, scrolled_x, scrolled_y)
+        style = node.element.style
+        scrolls_x, scrolls_y = scrolled_axes(style)
+        if scrolls_x or scrolls_y:
+            if isinstance(node.element, Text):
+                raise ValueError(
+                    "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
+                    "put it in a Div whose overflow is Scroll, which scrolls it."
+                )
+            scroll = scrolls[node.key] = scroll_of(
+                offsets.get(node.key, ORIGIN), layout, rects.padding, scrolls_x, scrolls_y
+            )
+            scrolled_x += scroll.offset.x
+            scrolled_y += scroll.offset.y
         if not (children := node.children):
             continue
-        clips_x, clips_y = clipped_axes(node.element.style)
+        clips_x, clips_y = clipped_axes(style)
         # Every child's clip is the screen, whatever its clip_to, so there's no need to look at each one.
         if clip == screen and not (clips_x or clips_y):
-            stack.extend(zip(reversed(children), repeat(clip)))
+            stack.extend(zip(reversed(children), repeat(clip), repeat(scrolled_x), repeat(scrolled_y)))
         else:
             stack.extend(
-                (child, child_clip(clip, screen, rects, child.element.style.resolved.clip_to, clips_x, clips_y))
+                (
+                    child,
+                    child_clip(clip, screen, rects, child.element.style.resolved.clip_to, clips_x, clips_y),
+                    scrolled_x,
+                    scrolled_y,
+                )
                 for child in reversed(children)
             )
-    return placed
+    return placed, scrolls
+
+
+@lru_cache(maxsize=2**12)
+def scrolled_axes(style: Style) -> tuple[bool, bool]:
+    """Whether an element with `style` is a scroll container horizontally and vertically: its overflow is `Scroll`."""
+    layout = style.layout
+    return layout.overflow_x == waxy.Overflow.Scroll, layout.overflow_y == waxy.Overflow.Scroll
+
+
+def scroll_of(requested: Position, layout: waxy.Layout, padding: Region, scrolls_x: bool, scrolls_y: bool) -> Scroll:
+    """
+    The scroll of a container with `layout` and `padding` box, scrolled to `requested`
+    on each axis it scrolls, clamped to how far it can scroll there.
+    Taffy's scroll width and height are how far the content reaches past the padding box,
+    absolutely positioned descendants included.
+    """
+    unclamped = Scroll(
+        offset=requested,
+        max_offset=Position(
+            int(layout.scroll_width()) if scrolls_x else 0,
+            int(layout.scroll_height()) if scrolls_y else 0,
+        ),
+        view_width=padding.width,
+        view_height=padding.height,
+    )
+    return replace(unclamped, offset=unclamped.clamp(requested))
 
 
 @lru_cache(maxsize=2**12)
@@ -478,9 +545,13 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 @lru_cache(maxsize=2**12)
-def _resolve_layout(position: waxy.Point, layout: waxy.Layout, clip: Region | None) -> Rects:
+def _resolve_layout(
+    position: waxy.Point, layout: waxy.Layout, clip: Region | None, scrolled_x: int, scrolled_y: int
+) -> Rects:
     """
-    The cell regions of one node's boxes, from its absolute border-box position, inside `clip`.
+    The cell regions of one node's boxes, from its absolute border-box position,
+    moved left by `scrolled_x` and up by `scrolled_y`, the sum of the offsets of the scroll containers above it,
+    inside `clip`.
 
     Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
     integral and adjacent boxes share edges without gaps or overlaps.
@@ -490,8 +561,8 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout, clip: Region | No
     Cached because most nodes keep their position, layout and clip from one frame to the next,
     and building the regions is most of the cost of reading layouts back.
     """
-    left = int(position.x)
-    top = int(position.y)
+    left = int(position.x) - scrolled_x
+    top = int(position.y) - scrolled_y
     border = Region(left=left, top=top, right=left + int(layout.size.width), bottom=top + int(layout.size.height))
 
     margin_widths = layout.margin

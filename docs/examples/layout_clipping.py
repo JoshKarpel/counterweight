@@ -5,7 +5,9 @@ import waxy
 
 from counterweight.app import app
 from counterweight.components import component
+from counterweight.controls import ScrollTo
 from counterweight.elements import Div, Text
+from counterweight.hooks import ElementHandle
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -152,6 +154,33 @@ def percent_inset() -> Div:
 
 # --8<-- [end:percent-inset]
 
+# --8<-- [start:scrolled-panels]
+
+PANELS = ElementHandle()
+
+
+@component
+def scrolled_panels() -> Div:
+    return Div(
+        style=col | size(24, 6) | overflow_y_scroll,
+        handle=PANELS,
+        children=[
+            Div(
+                style=border | border_lightrounded | height(3) | shrink(0),
+                children=[
+                    Text(
+                        content=f" {title} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border
+                    ),
+                    Text(content=body),
+                ],
+            )
+            for title, body in (("web", "3 replicas"), ("worker", "8 replicas"), ("cron", "1 replica"))
+        ],
+    )
+
+
+# --8<-- [end:scrolled-panels]
+
 SCREENSHOTS = [
     ScreenshotSpec(hidden(), "layout-clipping-hidden", (42, 9)),
     ScreenshotSpec(one_axis(), "layout-clipping-one-axis", (40, 8)),
@@ -159,9 +188,12 @@ SCREENSHOTS = [
     ScreenshotSpec(raised(), "layout-clipping-raised", (48, 7)),
     ScreenshotSpec(unclipped(), "layout-clipping-unclipped", (48, 7)),
     ScreenshotSpec(percent_inset(), "layout-clipping-percent-inset", (30, 3)),
+    ScreenshotSpec(scrolled_panels(), "layout-clipping-scrolled-panels", (24, 6), events=[ScrollTo(PANELS, y=1)]),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (hidden, one_axis, clip_to, raised, unclipped, percent_inset)}
+    roots = {
+        root.__name__: root for root in (hidden, one_axis, clip_to, raised, unclipped, percent_inset, scrolled_panels)
+    }
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else hidden()))

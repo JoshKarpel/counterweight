@@ -4,18 +4,19 @@ Lots of streaming text: a coding-agent transcript, where the newest message grow
 Older messages don't change, but each new word reflows the streaming message's wrapped text
 and moves everything below it, so this measures wrapping, text measurement and paint
 on a screen full of prose, code and diffs.
+The transcript is a scroll container holding the newest messages, which the wheel scrolls through in a live run.
 """
 
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import partial
-from math import ceil
 from typing import Literal
 
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
 from counterweight.elements import Chunk, Div, Text
+from counterweight.handlers import scroll_on_wheel
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
     amber_400,
@@ -27,6 +28,7 @@ from counterweight.styles.utilities import (
     fill,
     green_400,
     justify_children_space_between,
+    overflow_y_scroll,
     pad_x,
     red_400,
     row,
@@ -37,8 +39,7 @@ from counterweight.styles.utilities import (
 )
 
 WORDS_PER_FRAME = 3
-TRANSCRIPT_ROWS = 42
-WRAP_WIDTH = 112
+KEPT_MESSAGES = 12
 
 VOCABULARY = (
     "the layout tree component render frame cell style border paint diff text wrap measure width height "
@@ -114,7 +115,7 @@ def step(model: Model) -> Model:
 
     return Model(
         tick=model.tick + 1,
-        messages=visible(messages),
+        messages=messages[-KEPT_MESSAGES:],
         target_words=target_words,
         tokens=model.tokens + WORDS_PER_FRAME * 4 // 3,
     )
@@ -129,29 +130,16 @@ def tool_call(rng: random.Random) -> Message:
     return Message(kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}"))
 
 
-def visible(messages: tuple[Message, ...]) -> tuple[Message, ...]:
-    """
-    The newest messages that fit in the transcript, estimating wrapped rows from the line lengths,
-    since there's no scrolling yet: older messages fall off the top as the transcript grows.
-    """
-    kept: list[Message] = []
-    rows = 0
-    for message in reversed(messages):
-        rows += sum(max(1, ceil(len(line) / WRAP_WIDTH)) for line in message.lines) + (
-            3 if message.kind in ("read", "edit") else 0
-        )
-        if rows > TRANSCRIPT_ROWS and kept:
-            break
-        kept.append(message)
-    return tuple(reversed(kept))
-
-
 def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
     return Div(
         style=col,
         children=[
             header(model.tokens),
-            Div(style=fill(1) | col | pad_x(1), children=[message_component(message) for message in model.messages]),
+            Div(
+                style=fill(1) | col | pad_x(1) | overflow_y_scroll,
+                on_input=scroll_on_wheel(),
+                children=[message_component(message) for message in model.messages],
+            ),
             spinner(model.tick),
             prompt(),
         ],

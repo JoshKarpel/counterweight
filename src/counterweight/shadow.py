@@ -18,6 +18,7 @@ from counterweight.clock import BEGINNING, Instant
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
+from counterweight.focus import ElementHandle
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseFocus
 from counterweight.layout import Layouts
@@ -72,6 +73,10 @@ class ShadowTree:
     The nodes whose last run called `use_rects`.
     A node's `rects` change only when it runs, which only happens while building the next tree.
     """
+    scroll_readers: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
+    """The nodes whose last run called `use_scroll`, which the render loop re-renders when their scroll changes."""
+    handled: Mapping[ElementHandle, NodeKey] = field(init=False, repr=False, compare=False)
+    """The key of each element given a `handle`, hidden ones included, by its handle."""
     focusable: Mapping[NodeKey, UseFocus] = field(init=False, repr=False, compare=False)
     """The `use_focus` hook of each node whose last run called `use_focus`, hidden ones included, in pre-order."""
     clocked: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
@@ -81,6 +86,8 @@ class ShadowTree:
         nodes = []
         parents: dict[NodeKey, NodeKey | None] = {self.root.key: None}
         measured = []
+        scroll_readers = []
+        handled: dict[ElementHandle, NodeKey] = {}
         focusable = {}
         clocked = []
         for node in self.root.walk():
@@ -89,6 +96,15 @@ class ShadowTree:
                 parents[child.key] = node.key
             if node.hooks.rects is not None:
                 measured.append(node)
+            if node.hooks.scroll is not None:
+                scroll_readers.append(node)
+            if (handle := node.element.handle) is not None:
+                if handle in handled:
+                    raise DuplicateElementHandle(
+                        f"Two mounted elements were given the same handle, {handle!r}. "
+                        "Give each element its own, such as from its own use_state(ElementHandle)."
+                    )
+                handled[handle] = node.key
             if node.hooks.focus is not None:
                 focusable[node.key] = node.hooks.focus
             if node.hooks.clocks:
@@ -97,6 +113,8 @@ class ShadowTree:
         object.__setattr__(self, "nodes", tuple(nodes))
         object.__setattr__(self, "parents", parents)
         object.__setattr__(self, "measured", tuple(measured))
+        object.__setattr__(self, "scroll_readers", tuple(scroll_readers))
+        object.__setattr__(self, "handled", handled)
         object.__setattr__(self, "focusable", focusable)
         object.__setattr__(self, "clocked", tuple(clocked))
 
@@ -128,6 +146,10 @@ class ShadowUpdate:
             unmounted=self.unmounted + later.unmounted,
             mounted=(self.mounted | later.mounted) - unmounted_later,
         )
+
+
+class DuplicateElementHandle(Exception):
+    """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
 
 
 class DuplicateKey(Exception):
@@ -390,8 +412,10 @@ def call_component(component: Component, hooks: Hooks, reconciliation: Reconcili
     reset_current_focused = current_focused.set(reconciliation.focused)
     reset_current_instant = current_instant.set(reconciliation.instant)
     reset_current_purity_checked = current_purity_checked.set(component if reconciliation.check_purity else None)
-    # use_rects isn't positional, so a run that stops calling it must stop the node re-running when its layout moves.
+    # use_rects and use_scroll aren't positional, so a run that stops calling one must stop the node re-running
+    # when what it reports changes.
     hooks.rects = None
+    hooks.scroll = None
     # use_focus raises when it's called twice in one run, which it tells by this being set.
     hooks.focus = None
     try:

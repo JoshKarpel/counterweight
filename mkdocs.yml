@@ -114,6 +114,7 @@ nav:
     - hooks/use_clock.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_scroll.md
     - hooks/use_focus.md
     - hooks/use_hovered.md
   - Input Handling:
@@ -131,6 +132,7 @@ nav:
     - layout/spacing-and-borders.md
     - layout/layering.md
     - layout/clipping.md
+    - layout/scrolling.md
     - layout/grids-and-wrapping.md
     - layout/text.md
     - layout/app-shells.md

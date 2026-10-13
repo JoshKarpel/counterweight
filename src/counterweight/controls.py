@@ -7,7 +7,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO, Union
 
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
+from counterweight.geometry import Position
 
 if TYPE_CHECKING:
     from counterweight.output import Frame
@@ -192,6 +193,51 @@ class AdvanceClock(_Control):
     by: timedelta
 
 
+@dataclass(frozen=True, slots=True)
+class ScrollTo(_Control):
+    """
+    Scroll the scroll container `target` names so its offset is `x` and `y`,
+    as the web's [`scrollTo`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollTo) does,
+    leaving an axis given as `None` where it is.
+    The offset is clamped to the range the container scrolls through, from 0 to its
+    [`max_offset`][counterweight.geometry.Scroll.max_offset] as of the last frame,
+    so a large `y` scrolls to the end.
+    It does nothing if `target` names no mounted, visible scroll container.
+    """
+
+    target: ElementHandle | Subtree
+    """
+    The scroll container, by the [`ElementHandle`][counterweight.focus.ElementHandle] passed to its `handle`,
+    or by the [`subtree`][counterweight.events.Receiver.subtree] of a handler's receiver.
+    """
+    x: int | None = None
+    y: int | None = None
+
+    def destination(self, offset: Position) -> Position:
+        """Where this moves a container scrolled to `offset`, before clamping."""
+        return Position(offset.x if self.x is None else self.x, offset.y if self.y is None else self.y)
+
+
+@dataclass(frozen=True, slots=True)
+class ScrollBy(_Control):
+    """
+    Scroll the scroll container `target` names by `x` columns and `y` rows,
+    as the web's [`scrollBy`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollBy) does:
+    positive values move toward the end of the content, and negative ones toward its start.
+    The offset is clamped as [`ScrollTo`][counterweight.controls.ScrollTo] clamps it,
+    and it does nothing if `target` names no mounted, visible scroll container.
+    """
+
+    target: ElementHandle | Subtree
+    """The scroll container, named as [`ScrollTo`][counterweight.controls.ScrollTo] names it."""
+    x: int = 0
+    y: int = 0
+
+    def destination(self, offset: Position) -> Position:
+        """Where this moves a container scrolled to `offset`, before clamping."""
+        return Position(offset.x + self.x, offset.y + self.y)
+
+
 AnyControl = Union[
     Quit,
     Bell,
@@ -203,4 +249,6 @@ AnyControl = Union[
     FocusOn,
     ClearFocus,
     AdvanceClock,
+    ScrollTo,
+    ScrollBy,
 ]

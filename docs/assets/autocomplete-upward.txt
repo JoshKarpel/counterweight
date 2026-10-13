@@ -1,9 +1,9 @@
 ╭─ Add a dependency ───────────────────╮
 │ Package                              │
+│                                      │
 │   Group                              │
 │                                      │
-│                                      │
-│                                      │
+│  Python                              │
 ╰──────────────────────────────────────╯
                                         
  Type to see suggestions. Down and      

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Union
 
 from counterweight.controls import AnyControl
 from counterweight.focus import FocusHandle, Subtree
-from counterweight.geometry import Position, Rects
+from counterweight.geometry import Position, Rects, Scroll
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -147,7 +147,14 @@ class Receiver:
     """
     The receiving element and its descendants,
     for [`FocusNext`][counterweight.controls.FocusNext] and [`FocusPrevious`][counterweight.controls.FocusPrevious]
-    to move focus within.
+    to move focus within, and for [`ScrollTo`][counterweight.controls.ScrollTo]
+    and [`ScrollBy`][counterweight.controls.ScrollBy] to scroll it.
+    """
+
+    scroll: Scroll | None
+    """
+    How far the receiving element is scrolled, as [`use_scroll`][counterweight.hooks.use_scroll] reports it,
+    if it's a scroll container, or `None` if it isn't.
     """
 
     def relative(self, position: Position) -> Position:

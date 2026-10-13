@@ -8,9 +8,9 @@ import waxy
 from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseUp, Receiver
+from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseScrolledDown, MouseUp, Receiver
 from counterweight.geometry import Position
-from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, tab_focus
+from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
 from counterweight.hooks import use_focus, use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
@@ -34,6 +34,8 @@ PACKAGES = (
     "wcwidth",
 )
 GROUPS = ("bench", "dev", "docs", "lint", "test")
+PYTHONS = ("3.13", "3.14", "3.15", "3.15t")
+INDEXES = ("pypi", "testpypi", "pytorch-cpu", "pytorch-cu128")
 RECIPES = ("codegen", "devlog", "docs-build", "docs-serve", "mutate", "pre-commit", "profile", "test", "upgrade")
 
 MOST_SHOWN = 5
@@ -140,8 +142,16 @@ def root(list_clip: Style = clip_to_screen) -> Div:
                 style=fill(1) | col | border | border_lightrounded | pad_x(1),
                 children=[
                     Text(content=" Add a dependency ", style=position_absolute | inset_top(-1) | clip_to_border),
-                    labelled("Package", autocomplete(PACKAGES, height, auto_focus=True, list_clip=list_clip)),
-                    labelled("Group", autocomplete(GROUPS, height, list_clip=list_clip)),
+                    Div(
+                        style=fill(1) | col | gap(1) | overflow_y_scroll,
+                        on_input=scroll_on_wheel(1),
+                        children=[
+                            labelled("Package", autocomplete(PACKAGES, height, auto_focus=True, list_clip=list_clip)),
+                            labelled("Group", autocomplete(GROUPS, height, list_clip=list_clip)),
+                            labelled("Python", autocomplete(PYTHONS, height, list_clip=list_clip)),
+                            labelled("Index", autocomplete(INDEXES, height, list_clip=list_clip)),
+                        ],
+                    ),
                 ],
             ),
             Text(
@@ -176,7 +186,13 @@ SCREENSHOTS = [
     ScreenshotSpec(
         root(), "autocomplete-chosen", DIMENSIONS, events=(*typed("py"), DOWN, DOWN, KeyPressed(key=Key.Enter))
     ),
-    ScreenshotSpec(root(), "autocomplete-upward", DIMENSIONS, events=(TAB, TAB, *typed("dc"))),
+    ScreenshotSpec(root(), "autocomplete-upward", DIMENSIONS, events=(TAB, TAB, TAB, TAB, *typed("dc"))),
+    ScreenshotSpec(
+        root(),
+        "autocomplete-scrolled",
+        DIMENSIONS,
+        events=(TAB, TAB, *typed("3"), *(MouseScrolledDown(absolute=Position(4, 1)) for _ in range(3))),
+    ),
 ]
 
 

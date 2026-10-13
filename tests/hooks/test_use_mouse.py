@@ -122,7 +122,7 @@ async def test_use_hovered_reports_which_of_its_boxes_the_mouse_is_in_inside_its
                 shadow = await render(hovers(), None, tg)
                 for listener in list(listeners):
                     listener(Mouse(absolute=position, motion=Position(0, 0), button=None))
-                layouts = Layouts(in_paint_order=(), by_key={shadow.root.key: rects})
+                layouts = Layouts(in_paint_order=(), by_key={shadow.root.key: rects}, scrolls={})
                 shadow = update_shadow(hovers(), shadow, layouts).tree
                 await cancel_tasks(effect_tasks(shadow))
     finally:

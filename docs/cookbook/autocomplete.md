@@ -3,7 +3,8 @@
 An autocomplete field suggests completions as you type,
 in a list that opens under the field and lays over whatever is there.
 The list has to reach past the box the field is in,
-which here is a [`fill(1)`](../layout/splitting-space.md) panel, and so hides its overflow.
+which here is a form that [scrolls](../layout/scrolling.md) inside a [`fill(1)`](../layout/splitting-space.md) panel,
+and so clips its children.
 
 Counterweight has no text input element, so the recipe builds a minimal one:
 a [focusable](../hooks/use_focus.md) component that keeps its text in state,
@@ -70,9 +71,20 @@ With the default, `clip_to_padding`, the panel would cut the list off at its pad
 `clip_to_screen` changes only what clips the list.
 The list is still positioned against the field, and still needs its `z` to cover what follows it.
 
+## Inside a scroll container
+
+The form scrolls, with [`scroll_on_wheel`](../input-handling/handlers.md#scrolling),
+and has its border and title on the panel around it, so they stay put while the fields move.
+The open list is positioned against its field, so it moves with the field as the form scrolls.
+It's part of the form's content, so it also extends how far the form scrolls:
+the four fields and the gaps between them reach two rows past the form,
+but with the Python field's list open, the form scrolls three rows down, and further still to show all of it.
+
+![The Python field's list, scrolled up with the field](../assets/autocomplete-scrolled.svg)
+
 ## Opening upward
 
-A field near the bottom of the screen opens its list above it instead,
+A field near the bottom of the screen, below the panel, opens its list above it instead,
 with `inset_bottom=Percent(1.0)`, when there's more room above it than below.
 The field compares its own border box, from [`use_rects`](../hooks/use_rects.md),
 with the screen's height, which the root takes from its own `use_rects` and passes down:

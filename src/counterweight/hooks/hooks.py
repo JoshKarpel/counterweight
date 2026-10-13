@@ -14,7 +14,7 @@ from counterweight._context_vars import (
 )
 from counterweight._utils import forever
 from counterweight.focus import FocusHandle
-from counterweight.geometry import Position, Rects
+from counterweight.geometry import ORIGIN, Position, Rects, Scroll
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 from counterweight.layout import INITIAL_RECTS, Layouts
@@ -145,6 +145,29 @@ def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
     return layouts.by_key.get(key, INITIAL_RECTS)
+
+
+def use_scroll() -> Scroll:
+    """
+    Returns:
+        How far the calling component's top-level element is scrolled, and how far it can be,
+            if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
+            A component that calls `use_scroll` renders again as soon as its scroll changes,
+            whether a control scrolled it or its content changed size.
+            It's all zeros on the initial render, and for an element that isn't a scroll container.
+    """
+    hooks = current_hook_state.get()
+    scroll = scroll_in(current_layouts.get(), hooks.key)
+    hooks.scroll = scroll
+    return scroll
+
+
+NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0)
+
+
+def scroll_in(layouts: Layouts, key: NodeKey) -> Scroll:
+    """The scroll `use_scroll` reports for the node with `key`, given the previous frame's `layouts`."""
+    return layouts.scrolls.get(key, NO_SCROLL)
 
 
 @dataclass(frozen=True, slots=True)

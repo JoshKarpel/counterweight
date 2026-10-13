@@ -80,7 +80,7 @@ def _shadow(element: AnyElement, children: Sequence[ShadowNode] = ()) -> ShadowN
 
 def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
     shadow = ShadowTree(root=root)
-    return LayoutTree().compute(layout_changes(None, shadow), shadow, w, h)
+    return LayoutTree().compute(layout_changes(None, shadow), shadow, w, h, {})
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:

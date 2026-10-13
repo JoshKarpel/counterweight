@@ -33,3 +33,11 @@ The [focus handlers](handlers.md#focus) return them for Tab and for presses.
 ::: counterweight.controls.FocusPrevious
 ::: counterweight.controls.FocusOn
 ::: counterweight.controls.ClearFocus
+
+### Scrolling
+
+These controls scroll a [scroll container](../layout/scrolling.md).
+[`scroll_on_wheel`](handlers.md#scrolling) returns `ScrollBy` for the wheel.
+
+::: counterweight.controls.ScrollTo
+::: counterweight.controls.ScrollBy

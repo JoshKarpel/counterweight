@@ -5,7 +5,7 @@ import shutil
 import sys
 from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator, Mapping
 from datetime import timedelta
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
@@ -30,6 +30,8 @@ from counterweight.controls import (
     FocusPrevious,
     Quit,
     Screenshot,
+    ScrollBy,
+    ScrollTo,
     Suspend,
     ToggleBorderHealing,
     _Control,
@@ -49,11 +51,12 @@ from counterweight.events import (
     StateSet,
     TerminalResized,
 )
-from counterweight.geometry import Position
+from counterweight.geometry import Position, Scroll
 from counterweight.hooks import Mouse
+from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.layout import NO_LAYOUTS, LayoutTree, layout_changes
+from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, layout_changes
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -67,7 +70,7 @@ from counterweight.output import (
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
 from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
-from counterweight.shadow import until_due, update_shadow
+from counterweight.shadow import ShadowTree, until_due, update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -267,7 +270,9 @@ async def render_loop(
         layout_tree = LayoutTree()
         warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
         shadow = warmup.tree
-        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h)
+        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
+        # Each visible scroll container's offset, as of the last layout and the scroll controls since.
+        offsets = offsets_of(layouts)
         routing = RoutingTable.of(shadow, layouts)
         focused = routing.reconciled_focus(None, warmup.mounted)
 
@@ -303,6 +308,7 @@ async def render_loop(
 
             nonlocal do_heal_borders
             nonlocal clock_offset
+            nonlocal offsets
 
             match control:
                 case Quit():
@@ -327,6 +333,11 @@ async def render_loop(
                     refocus(None)
                 case AdvanceClock(by=by):
                     clock_offset += by
+                case ScrollTo() | ScrollBy():
+                    scrolled = scrolled_offsets(offsets, layouts.scrolls, routing.key_of(control.target), control)
+                    if scrolled is not offsets:
+                        offsets = scrolled
+                        should_render = True
                 case _ as unreachable:
                     assert_never(unreachable)
 
@@ -408,7 +419,7 @@ async def render_loop(
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h)
+                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, offsets)
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
@@ -427,7 +438,7 @@ async def render_loop(
                             instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
-                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h)
+                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, offsets)
                         routing = RoutingTable.of(shadow, layouts)
                         if routing.reconciled_focus(settled, refocused.mounted) != settled:
                             raise UnsettledFocus(
@@ -437,6 +448,10 @@ async def render_loop(
                         update = update.followed_by(refocused)
                         focused = settled
                         logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+
+                    offsets = offsets_of(layouts)
+                    for key in stale_scroll_readers(shadow, layouts):
+                        event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
                         ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
@@ -570,6 +585,38 @@ async def render_loop(
             stop_handling_interrupt_signal(previous_interrupt_handler)
 
         logger.info("Application stopped")
+
+
+def offsets_of(layouts: Layouts) -> Mapping[NodeKey, Position]:
+    """
+    The offset of each scroll container in `layouts`, already clamped to how far it scrolls,
+    so a container that unmounted, was hidden, or stopped scrolling has none, and starts at 0 if it scrolls again.
+    """
+    return {key: scroll.offset for key, scroll in layouts.scrolls.items()}
+
+
+def scrolled_offsets(
+    offsets: Mapping[NodeKey, Position],
+    scrolls: Mapping[NodeKey, Scroll],
+    key: NodeKey | None,
+    control: ScrollTo | ScrollBy,
+) -> Mapping[NodeKey, Position]:
+    """
+    `offsets` with the scroll container whose key is `key` moved as `control` moves it,
+    clamped to how far it scrolls as of the last layout, in `scrolls`,
+    or `offsets` itself if that leaves it where it is, or `key` is no visible scroll container.
+    """
+    if key is None or (scroll := scrolls.get(key)) is None:
+        return offsets
+    offset = offsets[key]
+    if (moved := scroll.clamp(control.destination(offset))) == offset:
+        return offsets
+    return {**offsets, key: moved}
+
+
+def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
+    """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
+    return (node.key for node in shadow.scroll_readers if node.hooks.scroll != scroll_in(layouts, node.key))
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

@@ -234,6 +234,9 @@ The scrolling docs put the border and title on a wrapper and scroll a child for 
 ### Scroll containers
 
 An element whose overflow is `Scroll` on an axis is a **scroll container** on that axis.
+Only a `Div` can be one: a `Text` whose overflow is `Scroll` raises,
+since scrolling its own lines would need paint to draw them past its content box,
+and horizontally past the width it wraps to, where a `Div` around it scrolls it already.
 
 #### Where the offset lives
 
@@ -269,8 +272,10 @@ Offsets of nodes that unmount are dropped.
 its offset, its maximum offset, and the size of its padding box (the part of the content in view).
 `Receiver` carries the same `Scroll` for a receiving element that's a scroll container, or `None`.
 Two controls change an offset, clamped to the extent:
-`ScrollTo(target, position)` and `ScrollBy(target, delta)`,
+`ScrollTo(target, x=None, y=None)` and `ScrollBy(target, x=0, y=0)`,
 where `target` names the scroll container (see [Naming elements](#naming-elements)).
+They take each axis separately, as the web's `scrollTo({left, top})` and `scrollBy` do,
+so `ScrollTo` leaves an axis it isn't given where it is.
 
 #### Naming elements
 
