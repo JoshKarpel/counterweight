@@ -6,7 +6,7 @@ import pytest
 
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, Receiver
 from counterweight.hooks import Setter, use_memo, use_state
 from counterweight.hooks.impls import StaleMemo, UseMemo
 from counterweight.layout import NO_LAYOUTS
@@ -125,10 +125,10 @@ def caches_handler(deps: Callable[[int, int], tuple[object, ...]], setters: dict
     setters["count"] = set_count
     setters["other"] = set_other
 
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         print(count)  # pragma: never runs
 
-    return Text(content="", on_key=use_memo(lambda: on_key, deps(count, other)))
+    return Text(content="", on_input=use_memo(lambda: on_input, deps(count, other)))
 
 
 @pytest.mark.parametrize(
@@ -159,7 +159,7 @@ def test_check_purity_keeps_a_cached_handler_whose_deps_are_complete() -> None:
         caches_handler(lambda count, other: (count,), setters), [step(setters, "other")], check_purity=True
     )
 
-    assert second.root.element.on_key is first.root.element.on_key
+    assert second.root.element.on_input is first.root.element.on_input
 
 
 @component(memo=True)

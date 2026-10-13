@@ -683,6 +683,18 @@ inset_bottom_right = Style(
     layout=waxy.Style(position=waxy.Position.Absolute, inset_bottom=waxy.Length(0), inset_right=waxy.Length(0))
 )
 
+margin_auto = Style(
+    layout=waxy.Style(
+        margin_top=waxy.Auto(), margin_bottom=waxy.Auto(), margin_left=waxy.Auto(), margin_right=waxy.Auto()
+    )
+)
+margin_x_auto = Style(layout=waxy.Style(margin_left=waxy.Auto(), margin_right=waxy.Auto()))
+margin_y_auto = Style(layout=waxy.Style(margin_top=waxy.Auto(), margin_bottom=waxy.Auto()))
+margin_top_auto = Style(layout=waxy.Style(margin_top=waxy.Auto()))
+margin_bottom_auto = Style(layout=waxy.Style(margin_bottom=waxy.Auto()))
+margin_left_auto = Style(layout=waxy.Style(margin_left=waxy.Auto()))
+margin_right_auto = Style(layout=waxy.Style(margin_right=waxy.Auto()))
+
 text_justify_left = Style(text_justify="left")
 text_justify_center = Style(text_justify="center")
 text_justify_right = Style(text_justify="right")
@@ -816,8 +828,42 @@ def inset_right(n: int) -> Style:
 
 
 @lru_cache(maxsize=256)
+def inset_x(n: int) -> Style:
+    """Inset a positioned box `n` cells from the left and right."""
+    return Style(layout=waxy.Style(inset_left=waxy.Length(n), inset_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset_y(n: int) -> Style:
+    """Inset a positioned box `n` cells from the top and bottom."""
+    return Style(layout=waxy.Style(inset_top=waxy.Length(n), inset_bottom=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def inset(n: int) -> Style:
+    """Inset a positioned box `n` cells from all four sides."""
+    return inset_sides(n, n, n, n)
+
+
+@lru_cache(maxsize=256)
+def inset_sides(top: int, right: int, bottom: int, left: int) -> Style:
+    """Inset a positioned box from each side separately, in the order of CSS's four-value `inset`."""
+    return Style(
+        layout=waxy.Style(
+            inset_top=waxy.Length(top),
+            inset_right=waxy.Length(right),
+            inset_bottom=waxy.Length(bottom),
+            inset_left=waxy.Length(left),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
 def z(z: int = 0) -> Style:
-    """Draw the box on layer `z`: where boxes overlap, the higher `z` is drawn on top."""
+    """
+    Draw the box and its descendants as one layer at `z` among the boxes of the stacking context it belongs to,
+    where the higher `z` is drawn on top, and make it a stacking context for its descendants' own `z`.
+    """
     return Style(z=z)
 
 
@@ -974,6 +1020,19 @@ def margin(n: int) -> Style:
 
 
 @lru_cache(maxsize=256)
+def margin_sides(top: int, right: int, bottom: int, left: int) -> Style:
+    """Put margin on each side of the box separately, in the order of CSS's four-value `margin`."""
+    return Style(
+        layout=waxy.Style(
+            margin_top=waxy.Length(top),
+            margin_right=waxy.Length(right),
+            margin_bottom=waxy.Length(bottom),
+            margin_left=waxy.Length(left),
+        )
+    )
+
+
+@lru_cache(maxsize=256)
 def gap_width(n: int) -> Style:
     """Put `n` cells between children placed side by side."""
     return Style(layout=waxy.Style(gap_width=waxy.Length(n)))
@@ -1038,6 +1097,19 @@ def pad_left(n: int) -> Style:
 def pad_right(n: int) -> Style:
     """Put `n` cells of padding inside the border on the right."""
     return Style(layout=waxy.Style(padding_right=waxy.Length(n)))
+
+
+@lru_cache(maxsize=256)
+def pad_sides(top: int, right: int, bottom: int, left: int) -> Style:
+    """Put padding inside the border on each side separately, in the order of CSS's four-value `padding`."""
+    return Style(
+        layout=waxy.Style(
+            padding_top=waxy.Length(top),
+            padding_right=waxy.Length(right),
+            padding_bottom=waxy.Length(bottom),
+            padding_left=waxy.Length(left),
+        )
+    )
 
 
 @lru_cache(maxsize=256)

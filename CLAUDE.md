@@ -7,14 +7,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Counterweight is an experimental text user interface (TUI) framework for Python, inspired by React and Tailwind CSS.
 It builds declarative TUI applications using a component-based architecture with hooks for state management and styles for visual presentation.
 
+## Public API Scope
+
+Counterweight is a framework, so the people who need a feature are its users,
+and the examples, docs, and tests in this repository are only a sample of what they'll build.
+"Nothing here needs it yet" is not a reason to omit or defer public API.
+When a feature fits the design and is cheap to build, test, and document,
+build it with the change that makes it obvious:
+every variant in a family of utilities,
+or an option that browsers or React offer beside the one a change adds.
+Defer only what is expensive, or what has several plausible designs and no way yet to choose between them,
+and say which of those it is.
+
+This applies to the API users call, not to internal structure:
+don't add abstractions to the implementation ahead of a change that needs them.
+
 ## Architecture
 
 The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
-- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`)
+- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`, `use_focus`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
+- **Routing** (src/counterweight/routing.py): Which handlers an input event reaches: its target (the focused node for keys), bubbling, and press capture; and where focus can move
+- **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
 
@@ -54,9 +71,8 @@ the `# Stop generated` marker.
 just codegen
 ```
 
-Don't omit utilities on the grounds that nothing needs them yet: we can't know what users will want.
 When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
-generate every member of it.
+generate every member of it (see [Public API Scope](#public-api-scope)).
 
 `docs/styles/utilities.md` lists every public utility through `<!-- utilities: <glob> ... -->` markers,
 which `mkdocs_hooks/utility_tables.py` renders from the module.

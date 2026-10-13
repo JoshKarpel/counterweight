@@ -17,12 +17,12 @@ from counterweight.clock import BEGINNING
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed, TerminalResized
+from counterweight.events import AnyEvent, InputEvent, Receiver, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseClock, UseRef
-from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
+from counterweight.layout import NO_LAYOUTS, Layouts
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
 from tests.rendering import effect_tasks, render, state_set_keys, state_sets
 
@@ -187,7 +187,7 @@ async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() 
     assert log == ["stop"]
 
 
-MOVED = ResolvedLayout(
+MOVED = Rects(
     content=Region(left=1, top=2, right=3, bottom=4),
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
@@ -210,7 +210,7 @@ def measures(calls: Calls) -> Div:
     ],
 )
 def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
-    layout: ResolvedLayout | None, expected: list[str]
+    layout: Rects | None, expected: list[str]
 ) -> None:
     calls = Calls()
     root = measures(calls)
@@ -313,7 +313,7 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED_RECTS]))
+        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,
@@ -328,7 +328,6 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
     return tree, dirty
 
 
-MOVED_RECTS = Rects(content=MOVED.content, padding=MOVED.padding, border=MOVED.border, margin=MOVED.margin)
 NOW = BEGINNING + timedelta(seconds=90)
 DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=BEGINNING)
 NOT_DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=NOW)
@@ -432,16 +431,16 @@ def handler_capturing_setting(argument: object, calls: Calls) -> Text:
     calls.names.append("handler_capturing_setting")
     label = SETTINGS["label"]
 
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         print(label)  # pragma: never runs
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component(memo=True)
 def inline_handler(argument: object, calls: Calls) -> Text:
     calls.names.append("inline_handler")
-    return Text(content="", on_key=lambda _: None)
+    return Text(content="", on_input=lambda event, _: None)
 
 
 @component

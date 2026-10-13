@@ -7,7 +7,7 @@ from typing import Any
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -67,13 +67,13 @@ def root() -> Div:
     sort_col, set_sort_col = use_state(1)  # default: height
     sort_asc, set_sort_asc = use_state(False)  # default: descending
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Up:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Up):
                 set_selected(lambda s: max(0, s - 1))
-            case Key.Down:
+            case KeyPressed(key=Key.Down):
                 set_selected(lambda s: min(len(PEAKS) - 1, s + 1))
-            case "1" | "2" | "3" | "4" as k:
+            case KeyPressed(key="1" | "2" | "3" | "4" as k):
                 col = int(k) - 1
                 if col == sort_col:
                     set_sort_asc(not sort_asc)
@@ -81,13 +81,15 @@ def root() -> Div:
                     set_sort_col(col)
                     set_sort_asc(True)
                 set_selected(0)
+            case _:
+                pass
 
     _, _, sort_key = COLUMNS[sort_col]
     sorted_peaks = tuple(sorted(PEAKS, key=sort_key, reverse=not sort_asc))
 
     return Div(
         style=col | center_children,
-        on_key=on_key,
+        on_input=on_input,
         children=[
             Text(
                 content="Eight-Thousanders",

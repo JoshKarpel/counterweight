@@ -114,10 +114,12 @@ nav:
     - hooks/use_clock.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_focus.md
     - hooks/use_hovered.md
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md
+    - input-handling/handlers.md
     - input-handling/controls.md
   - Layout:
     - layout/index.md
@@ -138,6 +140,7 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+    - cookbook/draggable-components.md
     - cookbook/spinners.md
   - performance.md
   - utilities.md

@@ -42,9 +42,12 @@ class Key(str, Enum):
     Right = "right"
     Up = "up"
     Down = "down"
+    Home = "home"
     End = "end"
     Insert = "insert"
     Delete = "delete"
+    PageUp = "pageup"
+    PageDown = "pagedown"
 
     ControlLeft = "ctrl+left"
     ControlRight = "ctrl+right"
@@ -133,7 +136,7 @@ class Key(str, Enum):
     ControlF23 = "ctrl+f23"
     ControlF24 = "ctrl+f24"
 
-    ControlSpace = "ctrl-space"
+    ControlSpace = "ctrl+space"
     Tab = "tab"
     Space = " "
     Enter = "enter"

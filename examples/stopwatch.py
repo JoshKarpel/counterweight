@@ -1,15 +1,15 @@
 import asyncio
 import logging
 from collections.abc import Callable
-from dataclasses import replace
 from datetime import timedelta
 from textwrap import dedent
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
-from counterweight.hooks import use_clock, use_state
+from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
+from counterweight.handlers import tab_focus
+from counterweight.hooks import use_clock, use_focus, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -20,17 +20,9 @@ logger = logging.getLogger(__name__)
 def root() -> Div:
     num_stopwatches = 3
 
-    selected_stopwatch, set_selected_stopwatch = use_state(0)
-
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Tab:
-                set_selected_stopwatch(lambda s: (s + 1) % num_stopwatches)
-            case Key.BackTab:
-                set_selected_stopwatch(lambda s: (s - 1) % num_stopwatches)
-
     return Div(
         style=col | justify_children_space_between | align_children_center,
+        on_input=tab_focus,
         children=[
             Text(
                 style=text_color("amber", 600),
@@ -38,8 +30,7 @@ def root() -> Div:
             ),
             Div(
                 style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
-                on_key=on_key,
-                children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
+                children=[stopwatch() for _ in range(num_stopwatches)],
             ),
             Text(
                 style=border_color("slate", 400)
@@ -50,9 +41,9 @@ def root() -> Div:
                 | pad_y(1),
                 content=dedent(
                     """\
-                    - <tab>/<shift+tab> to select next/previous stopwatch
-                    - <space> to start/stop selected stopwatch
-                    - <backspace> to reset selected stopwatch
+                    - <tab>/<shift+tab> to focus next/previous stopwatch
+                    - <space> to start/stop focused stopwatch
+                    - <backspace> to reset focused stopwatch
                     """
                 ),
             ),
@@ -61,54 +52,75 @@ def root() -> Div:
 
 
 @component
-def stopwatch(selected: bool) -> Div:
+def stopwatch() -> Div:
     running, set_running = use_state(False)
     banked, set_banked = use_state(timedelta())
+
+    def start() -> None:
+        set_running(True)
 
     def stop(elapsed: timedelta) -> None:
         set_running(False)
         set_banked(elapsed)
 
-    def on_key(event: KeyPressed) -> None:
-        if not selected:
-            return
+    def reset() -> None:
+        set_running(False)
+        set_banked(timedelta())
 
-        match event.key:
-            case Key.Space if not running:
-                set_running(True)
-            case Key.Backspace:
-                set_running(False)
-                set_banked(timedelta())
-
-    return Div(
-        on_key=on_key,
-        children=[running_face(selected, banked, stop) if running else face(selected, running, banked)],
-    )
+    # Starting or stopping swaps one face for the other, and the face that mounts takes focus from the one that left.
+    return Div(children=[running_face(banked, stop, reset) if running else stopped_face(banked, start, reset)])
 
 
 @component
-def running_face(selected: bool, banked: timedelta, stop: Callable[[timedelta], None]) -> Text:
+def stopped_face(banked: timedelta, start: Callable[[], None], reset: Callable[[], None]) -> Text:
+    focused = use_focus(auto_focus=True).is_focused
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Space):
+                start()
+                return ()
+            case KeyPressed(key=Key.Backspace):
+                reset()
+                return ()
+            case _:
+                return None
+
+    return face(focused, False, banked, on_input)
+
+
+@component
+def running_face(banked: timedelta, stop: Callable[[timedelta], None], reset: Callable[[], None]) -> Text:
+    focused = use_focus(auto_focus=True).is_focused
     # Starting the stopwatch mounts this component, so the time since it mounted is the time since it started.
     elapsed = banked + use_clock(timedelta(milliseconds=10)).since_mount
 
-    def on_key(event: KeyPressed) -> None:
-        if selected and event.key == Key.Space:
-            stop(elapsed)
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Space):
+                stop(elapsed)
+                return ()
+            case KeyPressed(key=Key.Backspace):
+                reset()
+                return ()
+            case _:
+                return None
 
-    return replace(face(selected, True, elapsed), on_key=on_key)
+    return face(focused, True, elapsed, on_input)
 
 
-def face(selected: bool, running: bool, elapsed: timedelta) -> Text:
+def face(focused: bool, running: bool, elapsed: timedelta, on_input: InputHandler) -> Text:
     return Text(
         content=f"{elapsed.total_seconds():.2f}",
         style=(
-            (border_color("emerald", 600) if selected else border_color("emerald", 300))
+            (border_color("emerald", 600) if focused else border_color("emerald", 300))
             if running
-            else (border_color("rose", 500) if selected else border_color("rose", 400))
+            else (border_color("rose", 500) if focused else border_color("rose", 400))
         )
-        | (border | border_heavy if selected else border | border_double)
+        | (border | border_heavy if focused else border | border_double)
         | pad_x(2)
         | pad_y(1),
+        on_input=on_input,
     )
 
 

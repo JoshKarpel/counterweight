@@ -21,6 +21,8 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
 )
@@ -61,55 +63,116 @@ CONTROL_KEYS: Mapping[int, Key] = {
     0x7F: Key.Backspace,
 }
 
-SEQUENCE_KEYS: Mapping[bytes, Key] = {
-    b"\x1bOP": Key.F1,
-    b"\x1bOQ": Key.F2,
-    b"\x1bOR": Key.F3,
-    b"\x1bOS": Key.F4,
-    b"\x1b[A": Key.Up,
-    b"\x1b[B": Key.Down,
-    b"\x1b[C": Key.Right,
-    b"\x1b[D": Key.Left,
-    b"\x1b[F": Key.End,
-    b"\x1b[Z": Key.BackTab,
-    b"\x1b[2~": Key.Insert,
-    b"\x1b[3~": Key.Delete,
-    b"\x1b[11~": Key.F1,
-    b"\x1b[12~": Key.F2,
-    b"\x1b[13~": Key.F3,
-    b"\x1b[14~": Key.F4,
-    b"\x1b[15~": Key.F5,
-    b"\x1b[17~": Key.F6,
-    b"\x1b[18~": Key.F7,
-    b"\x1b[19~": Key.F8,
-    b"\x1b[20~": Key.F9,
-    b"\x1b[21~": Key.F10,
-    b"\x1b[23~": Key.F11,
-    b"\x1b[24~": Key.F12,
-    b"\x1b[25~": Key.F13,
-    b"\x1b[26~": Key.F14,
-    b"\x1b[28~": Key.F15,
-    b"\x1b[29~": Key.F16,
-    b"\x1b[31~": Key.F17,
-    b"\x1b[32~": Key.F18,
-    b"\x1b[33~": Key.F19,
-    b"\x1b[34~": Key.F20,
-    b"\x1b[1;2A": Key.ShiftUp,
-    b"\x1b[1;2B": Key.ShiftDown,
-    b"\x1b[1;2C": Key.ShiftRight,
-    b"\x1b[1;2D": Key.ShiftLeft,
-    b"\x1b[1;5A": Key.ControlUp,
-    b"\x1b[1;5B": Key.ControlDown,
-    b"\x1b[1;5C": Key.ControlRight,
-    b"\x1b[1;5D": Key.ControlLeft,
-    b"\x1b[1;6A": Key.ControlShiftUp,
-    b"\x1b[1;6B": Key.ControlShiftDown,
-    b"\x1b[1;6C": Key.ControlShiftRight,
-    b"\x1b[1;6D": Key.ControlShiftLeft,
-    b"\x1b[3;3~": Key.AltDelete,
-    b"\x1b[3;5~": Key.ControlDelete,
-    b"\x1b[3;6~": Key.ControlShiftInsert,
+# The keys whose sequences end in a letter: `CSI <letter>`, `SS3 <letter>`, or `CSI 1 ; <modifier> <letter>`.
+LETTER_KEYS: Mapping[bytes, Key] = {
+    b"A": Key.Up,
+    b"B": Key.Down,
+    b"C": Key.Right,
+    b"D": Key.Left,
+    b"H": Key.Home,
+    b"F": Key.End,
+    b"P": Key.F1,
+    b"Q": Key.F2,
+    b"R": Key.F3,
+    b"S": Key.F4,
 }
+
+# The keys whose sequences are `CSI <number> ~` or `CSI <number> ; <modifier> ~`.
+# Home and End have two numbers each, from the VT220 and rxvt, and F1 through F4 have numbers besides their letters.
+NUMBERED_KEYS: Mapping[bytes, Key] = {
+    b"1": Key.Home,
+    b"2": Key.Insert,
+    b"3": Key.Delete,
+    b"4": Key.End,
+    b"5": Key.PageUp,
+    b"6": Key.PageDown,
+    b"7": Key.Home,
+    b"8": Key.End,
+    b"11": Key.F1,
+    b"12": Key.F2,
+    b"13": Key.F3,
+    b"14": Key.F4,
+    b"15": Key.F5,
+    b"17": Key.F6,
+    b"18": Key.F7,
+    b"19": Key.F8,
+    b"20": Key.F9,
+    b"21": Key.F10,
+    b"23": Key.F11,
+    b"24": Key.F12,
+    b"25": Key.F13,
+    b"26": Key.F14,
+    b"28": Key.F15,
+    b"29": Key.F16,
+    b"31": Key.F17,
+    b"32": Key.F18,
+    b"33": Key.F19,
+    b"34": Key.F20,
+}
+
+FUNCTION_KEYS = [Key(f"f{number}") for number in range(1, 25)]
+
+# xterm's modifier parameter is 1 plus the sum of Shift (1), Alt (2) and Control (4).
+SHIFT = b"2"
+ALT = b"3"
+CONTROL = b"5"
+CONTROL_SHIFT = b"6"
+
+
+def modified(key: Key, modifier: bytes) -> Key | None:
+    """
+    The key xterm reports for `key` pressed with `modifier`, or `None` if `Key` has no member for it.
+
+    xterm reports Shift with F1 through F12 as F13 through F24.
+    """
+    if key in FUNCTION_KEYS:
+        number = FUNCTION_KEYS.index(key) + 1
+        if number > 12:
+            return None
+        match modifier:
+            case b"2":
+                return FUNCTION_KEYS[number + 11]
+            case b"5":
+                return Key(f"ctrl+{key.value}")
+            case b"6":
+                return Key(f"ctrl+{FUNCTION_KEYS[number + 11].value}")
+            case _:
+                return None
+
+    match modifier:
+        case b"2":
+            return Key(f"shift+{key.value}")
+        case b"5":
+            return Key(f"ctrl+{key.value}")
+        case b"6":
+            return Key(f"ctrl+shift+{key.value}")
+        case b"3" if key is Key.Delete:
+            return Key.AltDelete
+        case _:
+            return None
+
+
+def sequence_keys() -> dict[bytes, Key]:
+    """Every escape sequence for a key, and the key it reports."""
+    lookup: dict[bytes, Key] = {b"\x1b[Z": Key.BackTab}
+    for final, key in LETTER_KEYS.items():
+        lookup[b"\x1bO" + final] = key
+        # Unmodified F1 through F4 are only ever `SS3 <letter>`.
+        if key not in FUNCTION_KEYS:
+            lookup[b"\x1b[" + final] = key
+    for number, key in NUMBERED_KEYS.items():
+        lookup[b"\x1b[%s~" % number] = key
+    for modifier in (SHIFT, ALT, CONTROL, CONTROL_SHIFT):
+        for final, key in LETTER_KEYS.items():
+            if (modified_key := modified(key, modifier)) is not None:
+                lookup[b"\x1b[1;%s%s" % (modifier, final)] = modified_key
+        for number, key in NUMBERED_KEYS.items():
+            if (modified_key := modified(key, modifier)) is not None:
+                lookup[b"\x1b[%s;%s~" % (number, modifier)] = modified_key
+    return lookup
+
+
+SEQUENCE_KEYS: Mapping[bytes, Key] = sequence_keys()
 
 # The shape of a CSI sequence (ESC [, parameter bytes, intermediate bytes, a final byte) or an SS3 one (ESC O, a final byte),
 # per ECMA-48, independent of what it means. Without its final byte, the match is a sequence cut short:
@@ -118,6 +181,14 @@ ESCAPE_SEQUENCE = re.compile(rb"\x1b(?:\[[\x30-\x3f]*[\x20-\x2f]*|O)([\x40-\x7e]
 
 # https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Extended-coordinates
 SGR_MOUSE = re.compile(rb"\x1b\[<(\d+);(\d+);(\d+)([Mm])")
+
+# The wheel event for each value of the low two bits of an SGR code with bit 64 set.
+WHEEL_EVENTS: tuple[type[MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight], ...] = (
+    MouseScrolledUp,
+    MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+)
 
 CONTROL_BYTE = re.compile(rb"[\x00-\x1f\x7f]")
 
@@ -220,14 +291,16 @@ def sequence_event(sequence: bytes) -> AnyEvent | None:
 
 def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
     """The event for an SGR mouse report; `final` is `M` for a press or motion and `m` for a release."""
-    moving = button_info & 32
-    button = (button_info & 0b11) + 1
+    # Bits 4, 8, and 16 report Shift, Meta, and Control, which no event carries yet,
+    # so every check below masks them off rather than comparing the whole code.
+    low_bits = button_info & 0b11
 
-    if button_info == 65:
-        return MouseScrolledUp(absolute=position)
-    elif button_info == 64:
-        return MouseScrolledDown(absolute=position)
-    elif moving:
+    if button_info & 64:
+        return WHEEL_EVENTS[low_bits](absolute=position)
+
+    # Bit 128 marks buttons 8 through 11 (back, forward, ...), numbered by the same low bits as buttons 1 through 4.
+    button = low_bits + (8 if button_info & 128 else 1)
+    if button_info & 32:
         # Motion with no button held reports button 3, which is 4 here.
         return MouseMoved(absolute=position, button=button if button != 4 else None)
     elif final == b"m":

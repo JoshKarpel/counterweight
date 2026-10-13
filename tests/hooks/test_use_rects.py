@@ -2,7 +2,7 @@ from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, use_rects, use_state
 from counterweight.styles.utilities import border, display_none, margin, pad, size
@@ -25,14 +25,14 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
         is_hidden, set_is_hidden = use_state(False)
         renders, set_renders = use_state(0)
 
-        def on_key(event: KeyPressed) -> None:
-            match event.key:
-                case "h":
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            match event:
+                case KeyPressed(key="h"):
                     set_is_hidden(True)
                 case _:
                     set_renders(renders + 1)
 
-        return Div(children=[measured(is_hidden, recorded)], on_key=on_key)
+        return Div(children=[measured(is_hidden, recorded)], on_input=on_input)
 
     await app(
         root(),

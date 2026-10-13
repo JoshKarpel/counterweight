@@ -7,7 +7,7 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import Bell, Quit, Screenshot, Suspend, ToggleBorderHealing
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseDown, MouseMoved, MouseUp, TerminalResized
+from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, Receiver, TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import Style
@@ -99,18 +99,18 @@ def raises_in_render() -> Text:
     if is_pressed:
         raise Boom()
 
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         set_is_pressed(True)
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component
 def raises_in_handler() -> Text:
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         raise Boom()
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component

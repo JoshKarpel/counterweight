@@ -4,7 +4,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, ToggleBorderHealing
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -29,16 +29,16 @@ def box(s: str) -> Div:
 
 @component
 def root() -> Div:
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match event.key:
-            case Key.Space:
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case KeyPressed(key=Key.Space):
                 return ToggleBorderHealing()
             case _:
                 return None
 
     return Div(
         style=row | container_style,
-        on_key=on_key,
+        on_input=on_input,
         children=[
             Div(
                 style=col | container_style,

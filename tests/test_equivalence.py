@@ -7,7 +7,7 @@ import pytest
 
 from counterweight.elements import Div, Text
 from counterweight.equivalence import equivalent
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, InputHandler, Receiver
 
 
 def handler_capturing(value: object) -> Callable[[], object]:
@@ -17,11 +17,11 @@ def handler_capturing(value: object) -> Callable[[], object]:
     return handler
 
 
-def key_handler_capturing(value: object) -> Callable[[KeyPressed], None]:
-    def on_key(_: KeyPressed) -> None:
+def key_handler_capturing(value: object) -> InputHandler:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         print(value)  # pragma: never runs
 
-    return on_key
+    return on_input
 
 
 def handler_with_default(value: object) -> Callable[[], object]:
@@ -111,8 +111,8 @@ class Reading:
         pytest.param(partial(target, "x", second="y"), partial(target, "x", second="y"), id="partials"),
         pytest.param(Holder("x").handle, Holder("x").handle, id="methods-bound-to-equal-objects"),
         pytest.param(
-            Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
-            Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
+            Div(children=[Text(content="x", on_input=key_handler_capturing("x"))]),
+            Div(children=[Text(content="x", on_input=key_handler_capturing("x"))]),
             id="elements-holding-equivalent-handlers",
         ),
         pytest.param({"k": handler_capturing("x")}, {"k": handler_capturing("x")}, id="dicts"),
@@ -182,8 +182,8 @@ def test_equivalent(a: object, b: object) -> None:
         pytest.param(Holder("x").handle, Holder("y").handle, id="methods-bound-to-different-objects"),
         pytest.param(Holder("x").handle, Holder("x").other, id="different-methods"),
         pytest.param(
-            Div(children=[Text(content="x", on_key=key_handler_capturing("x"))]),
-            Div(children=[Text(content="x", on_key=key_handler_capturing("y"))]),
+            Div(children=[Text(content="x", on_input=key_handler_capturing("x"))]),
+            Div(children=[Text(content="x", on_input=key_handler_capturing("y"))]),
             id="elements-holding-different-handlers",
         ),
         pytest.param(Text(content="x"), Text(content="y"), id="elements-with-different-content"),

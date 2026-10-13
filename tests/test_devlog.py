@@ -95,7 +95,7 @@ async def test_the_devlog_counts_every_event_a_frame_handles() -> None:
     @component
     def counter() -> Text:
         count, set_count = use_state(0)
-        return Text(content=str(count), on_key=lambda _: set_count(count + 1))
+        return Text(content=str(count), on_input=lambda event, _: set_count(count + 1))
 
     with devlog_lines() as lines:
         await app(counter(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="a"), Quit()])

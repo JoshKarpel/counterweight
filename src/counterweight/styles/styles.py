@@ -617,7 +617,42 @@ LAYOUT_BORDER_FIELDS = frozenset({"border_top", "border_bottom", "border_left", 
 BORDER_WIDTHS = (waxy.Length(0), waxy.Length(1))
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ResolvedStyle:
+    """
+    The drawing fields of a [`Style`][counterweight.styles.Style], every one filled in, as paint reads them,
+    except `z`, which stays `None` when unset, because an element that sets no `z` forms no stacking context.
+    """
+
+    z: int | None
+    margin_color: Color
+    padding_color: Color
+    content_color: Color
+
+    border_kind: BorderKind | None
+    border_style: ResolvedCellStyle
+    border_contract: int
+
+    text_style: ResolvedCellStyle
+    text_justify: TextJustify
+    text_wrap: TextWrap
+
+
+STYLE_DEFAULTS = ResolvedStyle(
+    z=None,
+    margin_color=_BLACK,
+    padding_color=_BLACK,
+    content_color=_BLACK,
+    border_kind=BorderKind.Light,
+    border_style=CELL_STYLE_DEFAULTS,
+    border_contract=0,
+    text_style=CELL_STYLE_DEFAULTS,
+    text_justify="left",
+    text_wrap="none",
+)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Style(StyleFragment):
     """
     How an element is laid out and drawn.
@@ -651,6 +686,11 @@ class Style(StyleFragment):
     text_wrap: TextWrap | UNSET = UNSET
 
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+    resolved: ResolvedStyle = field(init=False, repr=False, compare=False, hash=False)
+    """
+    This style's drawing fields, with the unset ones filled from `STYLE_DEFAULTS`,
+    resolved once when the style is built, since paint reads them for every element on every frame.
+    """
 
     def __post_init__(self) -> None:
         for name in sorted(self.layout.fields_set & LAYOUT_BORDER_FIELDS):
@@ -679,9 +719,26 @@ class Style(StyleFragment):
                 )
             ),
         )
+        object.__setattr__(self, "resolved", self._resolve())
 
     def __hash__(self) -> int:
         return self._hash
+
+    def _resolve(self) -> ResolvedStyle:
+        """Fill this style's unset drawing fields from `STYLE_DEFAULTS`."""
+        defaults = STYLE_DEFAULTS
+        return ResolvedStyle(
+            z=or_default(self.z, defaults.z),
+            margin_color=or_default(self.margin_color, defaults.margin_color),
+            padding_color=or_default(self.padding_color, defaults.padding_color),
+            content_color=or_default(self.content_color, defaults.content_color),
+            border_kind=or_default(self.border_kind, defaults.border_kind),
+            border_style=resolve_cell_style(self.border_style, defaults.border_style),
+            border_contract=or_default(self.border_contract, defaults.border_contract),
+            text_style=resolve_cell_style(self.text_style, defaults.text_style),
+            text_justify=or_default(self.text_justify, defaults.text_justify),
+            text_wrap=or_default(self.text_wrap, defaults.text_wrap),
+        )
 
 
 _EMPTY_STYLE = Style()
@@ -699,53 +756,3 @@ def merge(*styles: Style | None) -> Style:
     for style in styles:
         merged = merged | style
     return merged
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ResolvedStyle:
-    """The drawing fields of a [`Style`][counterweight.styles.Style], every one filled in, as paint reads them."""
-
-    z: int
-    margin_color: Color
-    padding_color: Color
-    content_color: Color
-
-    border_kind: BorderKind | None
-    border_style: ResolvedCellStyle
-    border_contract: int
-
-    text_style: ResolvedCellStyle
-    text_justify: TextJustify
-    text_wrap: TextWrap
-
-
-STYLE_DEFAULTS = ResolvedStyle(
-    z=0,
-    margin_color=_BLACK,
-    padding_color=_BLACK,
-    content_color=_BLACK,
-    border_kind=BorderKind.Light,
-    border_style=CELL_STYLE_DEFAULTS,
-    border_contract=0,
-    text_style=CELL_STYLE_DEFAULTS,
-    text_justify="left",
-    text_wrap="none",
-)
-
-
-@lru_cache(maxsize=2**12)
-def resolve_style(style: Style) -> ResolvedStyle:
-    """Fill `style`'s unset drawing fields from `STYLE_DEFAULTS`."""
-    defaults = STYLE_DEFAULTS
-    return ResolvedStyle(
-        z=or_default(style.z, defaults.z),
-        margin_color=or_default(style.margin_color, defaults.margin_color),
-        padding_color=or_default(style.padding_color, defaults.padding_color),
-        content_color=or_default(style.content_color, defaults.content_color),
-        border_kind=or_default(style.border_kind, defaults.border_kind),
-        border_style=resolve_cell_style(style.border_style, defaults.border_style),
-        border_contract=or_default(style.border_contract, defaults.border_contract),
-        text_style=resolve_cell_style(style.text_style, defaults.text_style),
-        text_justify=or_default(style.text_justify, defaults.text_justify),
-        text_wrap=or_default(style.text_wrap, defaults.text_wrap),
-    )

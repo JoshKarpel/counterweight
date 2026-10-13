@@ -9,7 +9,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_state
 from counterweight.output import Frame, paint_to_str
 from counterweight.paint import Cell, Paint
@@ -71,10 +71,8 @@ async def test_screenshots_requested_in_one_cycle_receive_the_same_frame() -> No
     @component
     def root() -> Div:
         return Div(
-            children=[
-                Text(content="a", on_key=lambda _: Screenshot(handler=frames.append)),
-                Text(content="b", on_key=lambda _: Screenshot(handler=frames.append)),
-            ]
+            children=[Text(content="a")],
+            on_input=lambda event, _: (Screenshot(handler=frames.append), Screenshot(handler=frames.append)),
         )
 
     await app(root(), headless=True, dimensions=(5, 2), autopilot=[KeyPressed(key="x"), Quit()], check_purity=True)
@@ -90,10 +88,10 @@ async def test_frame_does_not_change_after_later_renders() -> None:
     def root() -> Div:
         content, set_content = use_state("before")
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_content("after")
 
-        return Div(children=[Text(content=content, on_key=on_key)])
+        return Div(children=[Text(content=content)], on_input=on_input)
 
     await app(
         root(),

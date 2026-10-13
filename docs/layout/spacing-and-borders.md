@@ -37,7 +37,13 @@ All three put space around children, but they belong to different elements:
   Margins don't collapse into each other, so two children with `margin_x(1)` are two cells apart.
 - `pad` is set on the parent, and puts space between its border and all of its children.
 
+`margin_sides` and `pad_sides` set each side separately,
+in the order of CSS's four-value shorthands: top, right, bottom, left.
+
 `margin_color` and `padding_color` color the margin and padding, in red and blue here.
+As on the web, a margin is painted only where its element sets `margin_color`,
+and `content_color` fills the box inside the margin,
+so a margin otherwise leaves whatever lies beneath it visible.
 
 ```python
 --8<-- "layout_spacing.py:gap-margin-pad"
