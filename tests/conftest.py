@@ -17,8 +17,6 @@ LRU_CACHE = type(lru_cache(lambda: None))
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    # See collection_between_tests.
-    gc.disable()
     # Only mutmut's workers prepare themselves, so the suite never runs this, or the two functions below.
     if "__mutmut_" in os.environ.get("MUTANT_UNDER_TEST", ""):  # pragma: no cover
         clear_memos()
@@ -52,19 +50,6 @@ def cap_address_space(headroom: int) -> None:  # pragma: no cover
     pages = int(Path("/proc/self/statm").read_text().split()[0])
     _, hard = resource.getrlimit(resource.RLIMIT_AS)
     resource.setrlimit(resource.RLIMIT_AS, (pages * resource.getpagesize() + headroom, hard))
-
-
-@pytest.fixture(autouse=True)
-def collection_between_tests() -> Iterator[None]:
-    """
-    Collects the garbage each test leaves, on the main thread, with the collector otherwise off.
-    An app's devlog writes from a thread of its own, and a collection that thread triggered would drop
-    waxy objects there, which raises because waxy's types can't be dropped off the main thread.
-    Nothing is collected during a test, so all of its garbage is still in the youngest generation, which is cheap
-    to collect; a full collection after every test makes the suite an order of magnitude slower.
-    """
-    yield
-    gc.collect(0)
 
 
 @pytest.fixture

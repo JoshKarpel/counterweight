@@ -48,10 +48,6 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   so an effect started by a render hasn't run when the next autopilot event is handled:
   `use_mouse` hasn't subscribed when the first `MouseMoved` arrives, and that event is lost.
   Test hooks that need a running effect with `tests.rendering.render`, which yields once after starting effects.
-- **The devlog's writer thread can run the garbage collector.** A collection it triggers drops waxy objects
-  from cyclic garbage on that thread, which raises because waxy's types can't be dropped off the main thread,
-  and `-Werror` fails whichever test was running. mutmut's stats pass allocates enough to make this likely.
-  `tests/conftest.py` keeps the collector off and collects the youngest generation after each test instead.
 - **Hypothesis finds some mutants only rarely.** The wrap property tests in `tests/test_wrap_algorithms.py`
   check against slow reference implementations, but 100 random paragraphs seldom separate the squared-slack cost
   or its tie-breaking from a near miss. Each counterexample a longer search found is pinned with `@example`,

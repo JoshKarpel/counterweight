@@ -20,8 +20,7 @@ def start_reading_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) ->
     until `stop_reading_keys` (or the end of the input).
 
     Reading on the event loop rather than a thread makes stopping immediate, since nothing can be partway through
-    a read when `stop_reading_keys` returns, and keeps waxy objects off one more thread that could drop them
-    in a garbage collection: waxy's types can't be dropped off the main thread.
+    a read when `stop_reading_keys` returns.
     """
     get_running_loop().add_reader(stream.fileno(), read_keys, stream, put_event)
 
