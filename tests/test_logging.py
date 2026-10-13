@@ -1,6 +1,7 @@
+import io
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
 from traceback import TracebackException
@@ -66,24 +67,26 @@ def json_line(message: str) -> str:
     return json.dumps({**RECORD, "message": message}) + "\n"
 
 
-def scripted_wait(*steps: Callable[[], None]) -> Callable[[], None]:
-    """A `wait` for `tail_devlog` that runs the next step each time it's called, then stops tailing."""
+def scripted_wait(*steps: Callable[[], None]) -> Callable[[], Awaitable[None]]:
+    """A `wait` for `tail_devlog` that runs the next step each time it's awaited, then stops tailing."""
     remaining = iter(steps)
 
-    def wait() -> None:
-        next(remaining, stop)()
+    async def wait() -> None:
+        next(remaining, raise_stop)()
 
     return wait
 
 
-def stop() -> None:
+def raise_stop() -> None:
     raise StopTailing
 
 
+async def stop() -> None:
+    raise_stop()
+
+
 @pytest.mark.parametrize("raw", [True, False])
-def test_tail_devlog_prints_each_line_once_it_is_complete(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], raw: bool
-) -> None:
+async def test_tail_devlog_writes_each_line_once_it_is_complete(tmp_path: Path, raw: bool) -> None:
     path = tmp_path / "devlog.jsonl"
     first, second = json_line("First"), json_line("Second")
     path.write_text(first + second[:10])
@@ -92,14 +95,15 @@ def test_tail_devlog_prints_each_line_once_it_is_complete(
         with path.open("a") as f:
             f.write(second[10:])
 
+    out = io.StringIO()
     with pytest.raises(StopTailing):
-        tail_devlog(raw=raw, path=path, wait=scripted_wait(finish_second))
+        await tail_devlog(out, raw=raw, path=path, wait=scripted_wait(finish_second))
 
-    assert capsys.readouterr().out == f"{format_line(first, raw)}\n{format_line(second, raw)}\n"
+    assert out.getvalue() == f"{format_line(first, raw)}\n{format_line(second, raw)}\n"
 
 
-def test_tail_devlog_starts_over_when_the_devlog_is_truncated(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+async def test_tail_devlog_starts_over_when_the_devlog_is_truncated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("COLUMNS", "24")
     path = tmp_path / "devlog.jsonl"
@@ -108,40 +112,41 @@ def test_tail_devlog_starts_over_when_the_devlog_is_truncated(
     def truncate() -> None:
         path.write_text("next\n")
 
+    out = io.StringIO()
     with pytest.raises(StopTailing):
-        tail_devlog(raw=True, path=path, wait=scripted_wait(truncate))
+        await tail_devlog(out, raw=True, path=path, wait=scripted_wait(truncate))
 
-    assert capsys.readouterr().out == "a long first line\n━━━━ DevLog Rotated ━━━━\nnext\n"
+    assert out.getvalue() == "a long first line\n━━━━ DevLog Rotated ━━━━\nnext\n"
 
 
-def test_tail_devlog_creates_a_missing_devlog(tmp_path: Path) -> None:
+async def test_tail_devlog_creates_a_missing_devlog(tmp_path: Path) -> None:
     path = tmp_path / "devlog.jsonl"
 
     with pytest.raises(StopTailing):
-        tail_devlog(path=path, wait=stop)
+        await tail_devlog(io.StringIO(), path=path, wait=stop)
 
     assert path.read_text() == ""
 
 
 @pytest.mark.parametrize("raw", [True, False])
-def test_last_devlog_prints_the_last_complete_lines(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], raw: bool
-) -> None:
+def test_last_devlog_writes_the_last_complete_lines(tmp_path: Path, raw: bool) -> None:
     path = tmp_path / "devlog.jsonl"
     lines = [json_line(message) for message in ("First", "Second", "Third")]
     path.write_text("".join(lines) + '{"incomplete')
 
-    last_devlog(2, raw=raw, path=path)
+    out = io.StringIO()
+    last_devlog(out, 2, raw=raw, path=path)
 
-    assert capsys.readouterr().out == f"{format_line(lines[1], raw)}\n{format_line(lines[2], raw)}\n"
+    assert out.getvalue() == f"{format_line(lines[1], raw)}\n{format_line(lines[2], raw)}\n"
 
 
-def test_last_devlog_creates_a_missing_devlog(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_last_devlog_creates_a_missing_devlog(tmp_path: Path) -> None:
     path = tmp_path / "devlog.jsonl"
+    out = io.StringIO()
 
-    last_devlog(3, path=path)
+    last_devlog(out, 3, path=path)
 
-    assert (path.read_text(), capsys.readouterr().out) == ("", "")
+    assert (path.read_text(), out.getvalue()) == ("", "")
 
 
 @pytest.mark.parametrize("line", ["ends in spaces \t ", "ends in X"])
@@ -182,22 +187,24 @@ def test_render_exception_prints_each_frame_and_its_code_after_its_cause() -> No
     ]
 
 
-def test_tail_devlog_renders_lines_by_default(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+async def test_tail_devlog_renders_lines_by_default(tmp_path: Path) -> None:
     path = tmp_path / "devlog.jsonl"
     line = json_line("First")
     path.write_text(line)
+    out = io.StringIO()
 
     with pytest.raises(StopTailing):
-        tail_devlog(path=path, wait=stop)
+        await tail_devlog(out, path=path, wait=stop)
 
-    assert capsys.readouterr().out == format_line(line, raw=False) + "\n"
+    assert out.getvalue() == format_line(line, raw=False) + "\n"
 
 
-def test_last_devlog_renders_lines_by_default(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_last_devlog_renders_lines_by_default(tmp_path: Path) -> None:
     path = tmp_path / "devlog.jsonl"
     line = json_line("First")
     path.write_text(line)
+    out = io.StringIO()
 
-    last_devlog(1, path=path)
+    last_devlog(out, 1, path=path)
 
-    assert capsys.readouterr().out == format_line(line, raw=False) + "\n"
+    assert out.getvalue() == format_line(line, raw=False) + "\n"

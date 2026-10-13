@@ -8,7 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
 from tests.terminal import Terminal
 
@@ -66,11 +65,6 @@ def collection_between_tests() -> Iterator[None]:
     """
     yield
     gc.collect(0)
-
-
-@pytest.fixture
-def runner() -> CliRunner:
-    return CliRunner()
 
 
 @pytest.fixture

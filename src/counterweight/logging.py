@@ -6,24 +6,23 @@ at read time, so the render loop pays for one encoding per record rather than on
 """
 
 import json
-from collections.abc import AsyncIterator, Callable, Mapping
+from asyncio import sleep
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 from shutil import get_terminal_size
 from tempfile import gettempdir
-from time import sleep
 
+from without_cli import Writer
 from without_logging import Level, capture, render_json, to_stream
 from without_streams.wiring import compose, offload
 
 from counterweight.constants import PACKAGE_NAME
 
 DEVLOG_FILE = Path(gettempdir()) / f"{PACKAGE_NAME}.log.jsonl"
-
-# How long `tail_devlog` waits before checking the devlog again.
-POLL_INTERVAL = timedelta(milliseconds=10)
+TAIL_POLL = timedelta(milliseconds=10)
 
 ENVELOPE = frozenset({"timestamp", "level", "logger", "message", "exception"})
 
@@ -82,15 +81,19 @@ def format_line(line: str, raw: bool) -> str:
     return line.rstrip("\n") if raw else render_line(json.loads(line))
 
 
-def tail_devlog(
+async def tail_devlog(
+    out: Writer,
     raw: bool = False,
     path: Path = DEVLOG_FILE,
-    wait: Callable[[], None] = partial(sleep, POLL_INTERVAL.total_seconds()),
+    wait: Callable[[], Awaitable[None]] = partial(sleep, TAIL_POLL.total_seconds()),
 ) -> None:
     """
-    Print the devlog as it's written, starting over when an app truncates it.
-    Only complete lines are printed, since the writer may be partway through one.
-    `wait` is called whenever there is nothing new to read.
+    Write the devlog to `out` as it's written, starting over when an app truncates it.
+    Only complete lines are written, since the writer may be partway through one.
+    `wait` is awaited whenever there is nothing new to read.
+
+    Waiting for more on the event loop, not in a blocking sleep, is what lets the first Ctrl-C stop it:
+    under `asyncio.run` that cancels the main task, which a blocking loop would never notice.
     """
     while True:
         path.touch(exist_ok=True)
@@ -99,18 +102,19 @@ def tail_devlog(
             while True:
                 pending += f.readline()
                 if pending.endswith("\n"):
-                    print(format_line(pending, raw))
+                    out.write(f"{format_line(pending, raw)}\n")
+                    out.flush()
                     pending = ""
                 elif f.tell() > path.stat().st_size:
-                    print(" DevLog Rotated ".center(get_terminal_size().columns, "━"))
+                    out.write(f"{' DevLog Rotated '.center(get_terminal_size().columns, '━')}\n")
                     break
                 else:
-                    wait()
+                    await wait()
 
 
-def last_devlog(n: int, raw: bool = False, path: Path = DEVLOG_FILE) -> None:
-    """Print the last `n` complete lines of the devlog."""
+def last_devlog(out: Writer, n: int, raw: bool = False, path: Path = DEVLOG_FILE) -> None:
+    """Write the last `n` complete lines of the devlog to `out`."""
     path.touch(exist_ok=True)
     lines = [line for line in path.read_text().splitlines(keepends=True) if line.endswith("\n")]
     for line in lines[-n:]:
-        print(format_line(line, raw))
+        out.write(f"{format_line(line, raw)}\n")

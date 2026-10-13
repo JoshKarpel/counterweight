@@ -88,7 +88,7 @@ read that to check a layout instead of the SVG.
 ## Key Dependencies
 
 - **pydantic**: Data validation and settings
-- **typer**: CLI interface
+- **without-cli**: The `counterweight` CLI and the benchmark CLI
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **parsy**: Parser combinators for terminal input
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
@@ -100,7 +100,6 @@ read that to check a layout instead of the SVG.
 - Formatting and linting: Run `uv run pre-commit` to enforce
 - Use pathlib instead of os.path
 - Follow PEP 8 conventions for naming
-- Use rich for terminal output
 - Pydantic for data modeling
 - Use pytest for testing
 - Line and branch coverage of `src/counterweight` and `tests` is held at 100% (`fail_under` in `pyproject.toml`),

@@ -191,6 +191,12 @@
   Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
   from Pydantic models to frozen `dataclass` instances, removing the runtime Pydantic dependency.
 
+- The `counterweight` CLI is built on [without-cli](https://www.without.help/without-cli/),
+  so counterweight no longer depends on typer, click, rich or shellingham.
+  `counterweight` with no command prints a short usage error instead of the full help,
+  `counterweight --version` prints the version as `counterweight version` does,
+  and shell completion (`--install-completion`) is gone.
+
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   The layout engine has been replaced with [waxy](https://github.com/JoshKarpel/waxy),
   a Python binding for the [taffy](https://github.com/DioxusLabs/taffy) flexbox/grid layout engine.
@@ -279,9 +285,6 @@
 - `app` stops reading keys from the terminal before it returns,
   so input typed afterward reaches whatever runs next.
   Previously its key-reading thread kept running and consumed that input.
-
-- `counterweight check-input` prints `Exiting...` when stopped with ctrl+c.
-  Previously the message never appeared, and the CLI printed `Aborted!` instead.
 
 ### Removed
 

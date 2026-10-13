@@ -10,15 +10,6 @@ exclude-newer-span = "P7D"
 waxy = false
 
 [[package]]
-name = "annotated-doc"
-version = "0.0.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5a/8e/38aa427ed5402449e226975b649c5dc73ccadfefeb95e6aecb8f8ea4b6b6/annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb", size = 10758, upload-time = "2026-07-28T13:50:58.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101", size = 5302, upload-time = "2026-07-28T13:50:57.239Z" },
-]
-
-[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -214,9 +205,9 @@ source = { editable = "." }
 dependencies = [
     { name = "more-itertools" },
     { name = "parsy" },
-    { name = "typer" },
     { name = "waxy" },
     { name = "wcwidth" },
+    { name = "without-cli" },
     { name = "without-logging" },
     { name = "without-streams" },
 ]
@@ -244,9 +235,9 @@ dev = [
 requires-dist = [
     { name = "more-itertools", specifier = ">=9.1" },
     { name = "parsy", specifier = ">=2.1" },
-    { name = "typer", specifier = ">=0.9" },
     { name = "waxy", specifier = ">=0.7.0" },
     { name = "wcwidth", specifier = ">=0.8" },
+    { name = "without-cli", specifier = ">=0.0.10" },
     { name = "without-logging", specifier = ">=0.0.10" },
     { name = "without-streams", specifier = ">=0.0.10" },
 ]
@@ -1103,15 +1094,6 @@ wheels = [
 ]
 
 [[package]]
-name = "shellingham"
-version = "1.5.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
-]
-
-[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1144,21 +1126,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/00/21/39a76b01bd5eea82a04baaca7580e105d8c59450df03998345bb2cfb307b/textual-8.2.8.tar.gz", hash = "sha256:3f106a9fbc73e39dd266c9712432087de78a6d644084c7c241d6a25c3169115b", size = 1860502, upload-time = "2026-06-30T06:51:24.495Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/be/35261223d9416a0751cdff1c7b4a6f881387218a12d439fe22fefebc8c04/textual-8.2.8-py3-none-any.whl", hash = "sha256:267375fd402dc8d981457212efa71f0e3365fd17bba144ba9bb3ed7563cb374a", size = 731418, upload-time = "2026-06-30T06:51:26.364Z" },
-]
-
-[[package]]
-name = "typer"
-version = "0.27.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "annotated-doc" },
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "rich" },
-    { name = "shellingham" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/16/f7/57713ba479fd405eb76de31404b2c744c289e336b2d999511ebf51e496f7/typer-0.27.2.tar.gz", hash = "sha256:269b7eb9d3c202ca84b4bc9618cb04ebb43d3d4d1e567e4c768607232c05f945", size = 204045, upload-time = "2026-08-28T10:26:55.046Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/bf/205d0004930ede8f542fb58f601526fccf4ae7626075ca1e6c4de5d3d652/typer-0.27.2-py3-none-any.whl", hash = "sha256:b3a5fc4342d5fc8fda8fc3010b1cf117e9249aab7fae800c2eff62fd3842d97d", size = 123130, upload-time = "2026-08-28T10:26:53.752Z" },
 ]
 
 [[package]]
@@ -1284,6 +1251,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/eb/f9/92390a601c0d0a51ca77b9c6d587562ff98b088a3f4f98f074e8d006d3d3/without_async-0.0.10.tar.gz", hash = "sha256:83b25c319ba83d5918707b7cd681f940f10ae2cef4fcc1738ec1243e26b40167", size = 6688, upload-time = "2026-10-04T05:16:03.141Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/ae/2d7853780b0dd22fa2005c038772dae85b006baa8cf96171d877f84b7197/without_async-0.0.10-py3-none-any.whl", hash = "sha256:f821f178974ab5de1e34a4e791084b93f9942897628be522fa54c5e0c5876ba6", size = 8438, upload-time = "2026-10-04T05:15:48.072Z" },
+]
+
+[[package]]
+name = "without-cli"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/45/334f77a9c5edd0fa196429db68f1f62df0a7fb0599a53dcc0db3a1dce8fa/without_cli-0.0.10.tar.gz", hash = "sha256:8536d2115069e205ebc2120f3b855843b90bd77f5becef2300d1d4d4caaeaa42", size = 24684, upload-time = "2026-10-04T05:16:03.923Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/b8/f1311265cd44c93d44f286e7f579cd51d0362875fbedda9796849acbdf29/without_cli-0.0.10-py3-none-any.whl", hash = "sha256:f255baf96767b45dee3ffd0753150307506ce689957c4a5e1d7f6b5553663596", size = 29774, upload-time = "2026-10-04T05:15:48.922Z" },
 ]
 
 [[package]]

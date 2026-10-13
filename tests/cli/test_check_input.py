@@ -7,7 +7,8 @@ from signal import SIGINT
 
 import pytest
 
-from counterweight.cli import _check_input, check_input
+from counterweight.cli import SIGINT_EXIT, _check_input, main
+from counterweight.constants import PACKAGE_NAME
 from tests.terminal import Terminal
 
 TIMEOUT = 5
@@ -54,19 +55,20 @@ async def test_check_input_prints_each_input_until_cancelled_then_stops_reading_
 
 
 class InterruptedOutput(io.StringIO):
-    """Output that interrupts the process, as ctrl+c would, once the waiting prompt is printed."""
+    """Output that interrupts the process, as ctrl+c would, whenever anything is written to it."""
 
     def write(self, text: str) -> int:
-        if text.startswith("Waiting"):
-            os.kill(os.getpid(), SIGINT)
+        os.kill(os.getpid(), SIGINT)
         return super().write(text)
 
 
-def test_check_input_says_it_is_exiting_when_interrupted(terminal: Terminal, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_check_input_exits_like_sigint_when_interrupted(terminal: Terminal, monkeypatch: pytest.MonkeyPatch) -> None:
     output = InterruptedOutput()
+    monkeypatch.setattr(sys, "argv", [PACKAGE_NAME, "check-input"])
     monkeypatch.setattr(sys, "stdin", terminal.stream)
     monkeypatch.setattr(sys, "stdout", output)
 
-    check_input(mouse=False)
+    with pytest.raises(SystemExit) as exit:
+        main()
 
-    assert output.getvalue().endswith("Exiting...\n")
+    assert (exit.value.code, output.getvalue()) == (SIGINT_EXIT, WAITING)
