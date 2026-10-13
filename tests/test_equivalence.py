@@ -60,6 +60,11 @@ def other_handler() -> None:
     return None
 
 
+def twice(value: object) -> tuple[object, object]:
+    """The same object in both places, so comparing it against two different objects reuses it."""
+    return (value, value)
+
+
 def target(first: object, second: object) -> None:
     return None
 
@@ -111,6 +116,39 @@ class Reading:
             id="elements-holding-equivalent-handlers",
         ),
         pytest.param({"k": handler_capturing("x")}, {"k": handler_capturing("x")}, id="dicts"),
+        pytest.param(
+            {"k": handler_capturing("x"), "j": handler_capturing("y")},
+            {"j": handler_capturing("y"), "k": handler_capturing("x")},
+            id="dicts-in-different-orders",
+        ),
+        pytest.param(
+            handler_with_default(handler_capturing("x")),
+            handler_with_default(handler_capturing("x")),
+            id="defaults-holding-equivalent-closures",
+        ),
+        pytest.param(
+            handler_with_keyword_default(handler_capturing("x")),
+            handler_with_keyword_default(handler_capturing("x")),
+            id="keyword-defaults-holding-equivalent-closures",
+        ),
+        pytest.param(
+            Holder(handler_capturing("x")).handle,
+            Holder(handler_capturing("x")).handle,
+            id="methods-bound-to-objects-holding-equivalent-closures",
+        ),
+        pytest.param(
+            partial(handler_capturing("x")), partial(handler_capturing("x")), id="partials-of-equivalent-closures"
+        ),
+        pytest.param(
+            partial(target, handler_capturing("x"), second="y"),
+            partial(target, handler_capturing("x"), second="y"),
+            id="partials-with-arguments-holding-equivalent-closures",
+        ),
+        pytest.param(
+            partial(target, "x", second=handler_capturing("y")),
+            partial(target, "x", second=handler_capturing("y")),
+            id="partials-with-keywords-holding-equivalent-closures",
+        ),
         pytest.param(1, 1.0, id="different-types-compared-with-eq"),
         pytest.param(Reading(7, 1.5), Reading(7, 2.5), id="dataclasses-whose-own-eq-calls-them-equal"),
         pytest.param(
@@ -151,6 +189,16 @@ def test_equivalent(a: object, b: object) -> None:
         pytest.param(Text(content="x"), Text(content="y"), id="elements-with-different-content"),
         pytest.param((1, 2), (1, 2, 3), id="tuples-of-different-lengths"),
         pytest.param({"k": 1}, {"j": 1}, id="dicts-with-different-keys"),
+        pytest.param(
+            (handler_capturing("x"), handler_capturing("y")),
+            twice(handler_capturing("x")),
+            id="one-closure-against-an-equivalent-closure-then-a-different-one",
+        ),
+        pytest.param(
+            twice(handler_capturing("x")),
+            (handler_capturing("x"), handler_capturing("y")),
+            id="an-equivalent-closure-then-a-different-one-against-one-closure",
+        ),
         pytest.param(Reading(7, 1.5), Reading(8, 1.5), id="dataclasses-whose-own-eq-calls-them-different"),
         pytest.param(
             OrderedDict([("k", 1), ("j", 2)]), OrderedDict([("j", 2), ("k", 1)]), id="ordered-dicts-in-different-orders"

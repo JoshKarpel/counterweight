@@ -35,6 +35,11 @@ docs-serve PORT="8000":
 
 alias d := docs-serve
 
+[doc('Run mutation testing, or re-run only the named mutants (globs work)')]
+[positional-arguments]
+mutate *MUTANTS:
+    uv run mutmut run "$@"
+
 [doc('Build documentation with strict mode')]
 docs-build:
     uv run mkdocs build --strict

@@ -32,7 +32,8 @@ if TYPE_CHECKING:
 
 
 def test_bare_component_is_not_memo() -> None:
-    assert bare("a").memo is False
+    # Decorating here rather than using the module-level `bare` makes mutation testing see `component` run.
+    assert component(repeated)("a").memo is False
 
 
 def test_memo_component_is_memo() -> None:

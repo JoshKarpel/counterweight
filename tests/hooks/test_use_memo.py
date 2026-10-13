@@ -74,6 +74,17 @@ def test_compute_runs_on_mount_and_whenever_deps_change(
     assert [entry for entry in log if isinstance(entry, tuple)] == expected
 
 
+def test_compute_doesnt_run_again_once_changed_deps_stop_changing() -> None:
+    log: list[object] = []
+    setters: dict[str, Setter[int]] = {}
+
+    render_after_each(
+        memoizes(lambda count, other: (count,), log, setters), [step(setters, "count"), step(setters, "other")]
+    )
+
+    assert [entry for entry in log if isinstance(entry, tuple)] == [("compute", 1), ("compute", 2)]
+
+
 @component
 def caches_its_element(calls: list[str], setters: dict[str, Setter[int]]) -> Div:
     _, set_count = use_state(1)

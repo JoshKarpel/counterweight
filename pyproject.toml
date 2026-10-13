@@ -57,6 +57,7 @@ dev = [
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.19.0",
     "ruff>=0.15.4",
+    "mutmut>=3.8.0",
 ]
 
 [project.scripts]
@@ -85,7 +86,7 @@ pretty = true
 show_error_codes = true
 
 files = ["."]
-exclude = ["site/"]
+exclude = ["site/", "mutants/"]
 
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -128,3 +129,12 @@ ignore = [
     "F403",  # star imports, used for utilities
     "F405",  # star imports, used for utilities
 ]
+
+[tool.mutmut]
+source_paths = ["src"]
+also_copy = ["benchmarks/", "docs/", "mkdocs_hooks/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+# It checks that every public name in the utilities module is documented, and mutmut adds names to it.
+pytest_add_cli_args = ["--ignore=tests/test_mkdocs_utility_tables.py"]
+# The type checker proves these lines unreachable, so every mutant of them survives.
+do_not_mutate_patterns = ["assert_never\\("]

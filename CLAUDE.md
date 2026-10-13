@@ -31,6 +31,9 @@ just install
 # Run tests with type checking and coverage
 just test
 
+# Run mutation testing (mutmut), or re-run only the named mutants (see the cw-mutate skill)
+just mutate ['counterweight.shadow.*']
+
 # Build the documentation
 just docs-build
 
