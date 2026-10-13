@@ -1,3 +1,6 @@
+import asyncio
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -49,4 +52,8 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root, "border-titles", (70, 5))]
+SCREENSHOTS = [ScreenshotSpec(root(), "border-titles", (70, 5))]
+
+
+if __name__ == "__main__":
+    asyncio.run(app(root()))

@@ -1,5 +1,7 @@
+import asyncio
 from dataclasses import dataclass
 
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, MouseDown, MouseMoved, MouseUp, Receiver
@@ -81,7 +83,11 @@ DRAG_PAST_THE_EDGE = (
 )
 
 SCREENSHOTS = [
-    ScreenshotSpec(root, "draggable", (40, 10)),
-    ScreenshotSpec(root, "draggable-dragged", (40, 10), events=DRAG),
-    ScreenshotSpec(root, "draggable-past-the-edge", (40, 10), events=DRAG_PAST_THE_EDGE),
+    ScreenshotSpec(root(), "draggable", (40, 10)),
+    ScreenshotSpec(root(), "draggable-dragged", (40, 10), events=DRAG),
+    ScreenshotSpec(root(), "draggable-past-the-edge", (40, 10), events=DRAG_PAST_THE_EDGE),
 ]
+
+
+if __name__ == "__main__":
+    asyncio.run(app(root()))

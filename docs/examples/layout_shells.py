@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -66,7 +70,12 @@ def three_panes() -> Div:
 # --8<-- [end:three-panes]
 
 SCREENSHOTS = [
-    ScreenshotSpec(header_body_footer, "layout-shell-header-body-footer", (60, 10)),
-    ScreenshotSpec(sidebar_status, "layout-shell-sidebar-status", (60, 10)),
-    ScreenshotSpec(three_panes, "layout-shell-three-panes", (80, 14)),
+    ScreenshotSpec(header_body_footer(), "layout-shell-header-body-footer", (60, 10)),
+    ScreenshotSpec(sidebar_status(), "layout-shell-sidebar-status", (60, 10)),
+    ScreenshotSpec(three_panes(), "layout-shell-three-panes", (80, 14)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (header_body_footer, sidebar_status, three_panes)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else header_body_footer()))

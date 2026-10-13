@@ -80,6 +80,8 @@ and hand-written utility functions need a docstring to describe them there.
 
 Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,
 and pages include its code between `--8<--` snippet markers.
+Run one in the terminal with `uv run python -m docs.examples.<module> [root]`, naming a root function to pick
+among several; running it by path fails, since the examples import from the `docs` package.
 Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`
 (the pre-commit hook runs it too).
 Every `docs/assets/<name>.svg` has a plain-text twin, `<name>.txt`:
@@ -99,7 +101,7 @@ read that to check a layout instead of the SVG.
 ## Key Dependencies
 
 - **pydantic**: Data validation and settings
-- **typer**: CLI interface
+- **without-cli**: The `counterweight` CLI and the benchmark CLI
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **parsy**: Parser combinators for terminal input
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
@@ -111,7 +113,6 @@ read that to check a layout instead of the SVG.
 - Formatting and linting: Run `uv run pre-commit` to enforce
 - Use pathlib instead of os.path
 - Follow PEP 8 conventions for naming
-- Use rich for terminal output
 - Pydantic for data modeling
 - Use pytest for testing
 - No implicit optional types

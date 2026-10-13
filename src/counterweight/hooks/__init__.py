@@ -4,6 +4,7 @@ from counterweight.hooks.hooks import (
     Focus,
     Hovered,
     Mouse,
+    use_clock,
     use_effect,
     use_focus,
     use_hovered,
@@ -13,7 +14,7 @@ from counterweight.hooks.hooks import (
     use_ref,
     use_state,
 )
-from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 __all__ = [
     "Deps",
@@ -26,6 +27,8 @@ __all__ = [
     "Ref",
     "Setter",
     "Setup",
+    "Tick",
+    "use_clock",
     "use_effect",
     "use_focus",
     "use_hovered",

@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
@@ -67,11 +67,11 @@ def held(x: int, y: int) -> MouseMoved:
     return MouseMoved(absolute=Position(x, y), button=1)
 
 
-async def run(root: Callable[[], Component], autopilot: Sequence[InputEvent | AnyControl]) -> None:
+async def run(root: Component, autopilot: Sequence[InputEvent | AnyControl]) -> None:
     await app(root, headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()), check_purity=True)
 
 
-def parent_and_child(deliveries: list[Delivery], child_response: InputResponse) -> Callable[[], Component]:
+def parent_and_child(deliveries: list[Delivery], child_response: InputResponse) -> Component:
     @component
     def root() -> Div:
         return Div(
@@ -80,7 +80,7 @@ def parent_and_child(deliveries: list[Delivery], child_response: InputResponse) 
             children=[Div(style=box(2, 1, 5, 3), on_input=recording("child", deliveries, child_response))],
         )
 
-    return root
+    return root()
 
 
 async def test_of_two_overlapping_siblings_only_the_topmost_receives_a_click() -> None:
@@ -96,7 +96,7 @@ async def test_of_two_overlapping_siblings_only_the_topmost_receives_a_click() -
             ],
         )
 
-    await run(root, click(3, 3))
+    await run(root(), click(3, 3))
 
     assert names(deliveries) == ["above", "above"]
 
@@ -114,7 +114,7 @@ async def test_a_sibling_raised_with_z_receives_a_click_over_a_later_sibling() -
             ],
         )
 
-    await run(root, click(3, 3))
+    await run(root(), click(3, 3))
 
     assert names(deliveries) == ["raised", "raised"]
 
@@ -135,7 +135,7 @@ async def test_a_child_of_an_element_raised_with_z_receives_a_click_over_its_par
             ],
         )
 
-    await run(root, [MouseScrolledDown(absolute=Position(2, 2))])
+    await run(root(), [MouseScrolledDown(absolute=Position(2, 2))])
 
     assert [(delivery.name, delivery.is_target) for delivery in deliveries] == [("child", True), ("parent", False)]
 
@@ -148,7 +148,7 @@ async def test_a_pointer_outside_the_root_components_element_targets_the_root(po
     def root() -> Div:
         return Div(style=size(5, 5), on_input=lambda _, receiver: receivers.append(receiver))
 
-    await run(root, [MouseScrolledDown(absolute=position)])
+    await run(root(), [MouseScrolledDown(absolute=position)])
 
     assert [(receiver.is_target, receiver.rects.border) for receiver in receivers] == [
         (True, Region(left=0, top=0, right=5, bottom=5))
@@ -167,7 +167,7 @@ async def test_a_press_in_a_childs_margin_targets_what_lies_beneath_it(child_sty
             children=[Div(style=box(2, 1, 5, 3) | child_style, on_input=recording("child", deliveries, ()))],
         )
 
-    await run(root, click(2, 1))
+    await run(root(), click(2, 1))
 
     assert [(delivery.name, delivery.is_target) for delivery in deliveries] == [("parent", True), ("parent", True)]
 
@@ -199,7 +199,7 @@ async def test_the_parent_receives_the_same_event_with_its_own_receiver() -> Non
         )
 
     event = MouseScrolledDown(absolute=Position(3, 2))
-    await run(root, [event])
+    await run(root(), [event])
 
     child = Region(left=2, top=1, right=7, bottom=4)
     parent = Region(left=0, top=0, right=20, bottom=10)
@@ -282,7 +282,7 @@ async def test_a_drag_keeps_reaching_the_element_that_claimed_it_until_the_relea
         return Div(style=size(20, 10), on_input=recording("root", deliveries), children=[dragged()])
 
     await run(
-        root,
+        root(),
         [
             MouseDown(absolute=Position(1, 1), button=1),
             held(10, 5),
@@ -306,7 +306,7 @@ async def test_after_the_release_an_event_outside_the_element_does_not_reach_it(
         )
 
     await run(
-        root,
+        root(),
         [
             *click(1, 1),
             MouseMoved(absolute=Position(10, 5), button=None),
@@ -339,7 +339,7 @@ async def test_the_rest_of_a_press_goes_to_the_node_that_claimed_it_alone() -> N
         )
 
     await run(
-        root, [MouseDown(absolute=Position(2, 2), button=1), held(2, 2), MouseUp(absolute=Position(2, 2), button=1)]
+        root(), [MouseDown(absolute=Position(2, 2), button=1), held(2, 2), MouseUp(absolute=Position(2, 2), button=1)]
     )
 
     assert [(delivery.name, type(delivery.event), delivery.is_target) for delivery in deliveries] == [
@@ -363,7 +363,7 @@ async def test_the_rest_of_a_press_nothing_claimed_reaches_no_handler() -> None:
         )
 
     await run(
-        root, [MouseDown(absolute=Position(2, 5), button=1), held(11, 0), MouseUp(absolute=Position(11, 0), button=1)]
+        root(), [MouseDown(absolute=Position(2, 5), button=1), held(11, 0), MouseUp(absolute=Position(11, 0), button=1)]
     )
 
     assert (names(deliveries), clicks) == (["root"], [])
@@ -379,7 +379,7 @@ async def test_a_press_and_release_on_an_on_click_element_calls_its_action() -> 
             children=[Text(content="click", style=box(10, 0, 5, 1), on_input=on_click(lambda: clicks.append("click")))],
         )
 
-    await run(root, click(11, 0))
+    await run(root(), click(11, 0))
 
     assert clicks == ["click"]
 
@@ -403,13 +403,13 @@ async def test_the_rest_of_a_press_whose_captor_unmounted_reaches_no_handler() -
         )
 
     await run(
-        root, [MouseDown(absolute=Position(1, 1), button=1), held(2, 2), MouseUp(absolute=Position(2, 2), button=1)]
+        root(), [MouseDown(absolute=Position(1, 1), button=1), held(2, 2), MouseUp(absolute=Position(2, 2), button=1)]
     )
 
     assert names(deliveries) == ["captor"]
 
 
-def captor_and_other(deliveries: list[Delivery]) -> Callable[[], Component]:
+def captor_and_other(deliveries: list[Delivery]) -> Component:
     @component
     def root() -> Div:
         return Div(
@@ -420,7 +420,7 @@ def captor_and_other(deliveries: list[Delivery]) -> Callable[[], Component]:
             ],
         )
 
-    return root
+    return root()
 
 
 @pytest.mark.parametrize("wheel", [MouseScrolledDown, MouseScrolledUp, MouseScrolledLeft, MouseScrolledRight])
@@ -495,7 +495,7 @@ async def test_a_press_that_another_element_claims_a_second_button_of_still_belo
         )
 
     await run(
-        root,
+        root(),
         [
             MouseDown(absolute=Position(1, 1), button=1),
             MouseDown(absolute=Position(11, 1), button=3),

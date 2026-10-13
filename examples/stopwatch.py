@@ -1,14 +1,15 @@
 import asyncio
 import logging
+from collections.abc import Callable
+from datetime import timedelta
 from textwrap import dedent
-from time import monotonic
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
 from counterweight.handlers import tab_focus
-from counterweight.hooks import use_effect, use_focus, use_state
+from counterweight.hooks import use_clock, use_focus, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -51,37 +52,66 @@ def root() -> Div:
 
 
 @component
-def stopwatch() -> Text:
-    focused = use_focus(auto_focus=True).is_focused
+def stopwatch() -> Div:
     running, set_running = use_state(False)
-    elapsed_time, set_elapsed_time = use_state(0.0)
+    banked, set_banked = use_state(timedelta())
+
+    def start() -> None:
+        set_running(True)
+
+    def stop(elapsed: timedelta) -> None:
+        set_running(False)
+        set_banked(elapsed)
+
+    def reset() -> None:
+        set_running(False)
+        set_banked(timedelta())
+
+    # Starting or stopping swaps one face for the other, and the face that mounts takes focus from the one that left.
+    return Div(children=[running_face(banked, stop, reset) if running else stopped_face(banked, start, reset)])
+
+
+@component
+def stopped_face(banked: timedelta, start: Callable[[], None], reset: Callable[[], None]) -> Text:
+    focused = use_focus(auto_focus=True).is_focused
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Space):
-                set_running(not running)
+                start()
                 return ()
             case KeyPressed(key=Key.Backspace):
-                set_running(False)
-                set_elapsed_time(0)
+                reset()
                 return ()
             case _:
                 return None
 
-    async def tick() -> None:
-        if running:
-            previous = monotonic()
-            while True:
-                now = monotonic()
-                set_elapsed_time(lambda e: e + (now - previous))
-                previous = now
+    return face(focused, False, banked, on_input)
 
-                await asyncio.sleep(0.01)
 
-    use_effect(tick, deps=(running,))
+@component
+def running_face(banked: timedelta, stop: Callable[[timedelta], None], reset: Callable[[], None]) -> Text:
+    focused = use_focus(auto_focus=True).is_focused
+    # Starting the stopwatch mounts this component, so the time since it mounted is the time since it started.
+    elapsed = banked + use_clock(timedelta(milliseconds=10)).since_mount
 
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Space):
+                stop(elapsed)
+                return ()
+            case KeyPressed(key=Key.Backspace):
+                reset()
+                return ()
+            case _:
+                return None
+
+    return face(focused, True, elapsed, on_input)
+
+
+def face(focused: bool, running: bool, elapsed: timedelta, on_input: InputHandler) -> Text:
     return Text(
-        content=f"{elapsed_time:.6f}",
+        content=f"{elapsed.total_seconds():.2f}",
         style=(
             (border_color("emerald", 600) if focused else border_color("emerald", 300))
             if running
@@ -95,4 +125,4 @@ def stopwatch() -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

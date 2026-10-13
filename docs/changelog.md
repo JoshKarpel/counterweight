@@ -28,6 +28,15 @@
   `position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height`
   centers a box over its parent at its own size, as in CSS.
 
+- [#400](https://github.com/JoshKarpel/counterweight/issues/400)
+  Added [`use_clock`](hooks/use_clock.md), which gives a component the time
+  (the wall-clock time, and how long since the app started and since the component mounted)
+  while it stays pure: it re-runs when its next tick starts, ticks follow the wall clock,
+  and components reading it in the same frame see the same time.
+  `app` takes a `clock` to read the time from, such as a `frozen_clock` for tests and screenshots,
+  and the `AdvanceClock` control moves it forward.
+  The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
@@ -175,6 +184,10 @@
   annotate it as `InputEvent` and match on the event's class.
   `Rects` lives in `counterweight.geometry`, and `counterweight.hooks` still exports it.
 
+- [#271](https://github.com/JoshKarpel/counterweight/issues/271)
+  `app` takes the root component already called, as `app(root())` rather than `app(root)`,
+  so a root component can take arguments like any other: `app(root(Path(sys.argv[1])))`.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   An error raised while the app runs, in a component, a handler or an effect,
   propagates out of `app` as itself rather than wrapped in an `ExceptionGroup`,
@@ -246,6 +259,12 @@
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Core types (`Style`, `CellStyle`, `Div`, `Text`, `Chunk`, hook types) have been converted
   from Pydantic models to frozen `dataclass` instances, removing the runtime Pydantic dependency.
+
+- The `counterweight` CLI is built on [without-cli](https://www.without.help/without-cli/),
+  so counterweight no longer depends on typer, click, rich or shellingham.
+  `counterweight` with no command prints a short usage error instead of the full help,
+  `counterweight --version` prints the version as `counterweight version` does,
+  and shell completion (`--install-completion`) is gone.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   The layout engine has been replaced with [waxy](https://github.com/JoshKarpel/waxy),

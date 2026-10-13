@@ -1,5 +1,7 @@
+import asyncio
 from collections.abc import Callable
 
+from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import ClearFocus, FocusNext, FocusOn
 from counterweight.elements import Div, Text
@@ -244,12 +246,16 @@ MODAL_TABBED = (*MODAL_OPEN, TAB, TAB)
 MODAL_CLOSED = (*MODAL_TABBED, ENTER)
 
 SCREENSHOTS = [
-    ScreenshotSpec(order_form, "focus-form-startup", (40, 14)),
-    ScreenshotSpec(order_form, "focus-form-enter", (40, 14), events=(ENTER,)),
-    ScreenshotSpec(order_form, "focus-form-label", (40, 14), events=ON_GIFT_WRAP),
-    ScreenshotSpec(order_form, "focus-form-submit", (40, 14), events=ON_SUBMIT),
-    ScreenshotSpec(order_form, "focus-form-modal", (40, 14), events=MODAL_OPEN),
-    ScreenshotSpec(order_form, "focus-form-modal-tab", (40, 14), events=MODAL_TABBED),
-    ScreenshotSpec(order_form, "focus-form-modal-closed", (40, 14), events=MODAL_CLOSED),
-    ScreenshotSpec(order_form, "focus-form-help", (40, 14), events=(*press(*HELP_PANEL), KeyPressed(key=Key.Right))),
+    ScreenshotSpec(order_form(), "focus-form-startup", (40, 14)),
+    ScreenshotSpec(order_form(), "focus-form-enter", (40, 14), events=(ENTER,)),
+    ScreenshotSpec(order_form(), "focus-form-label", (40, 14), events=ON_GIFT_WRAP),
+    ScreenshotSpec(order_form(), "focus-form-submit", (40, 14), events=ON_SUBMIT),
+    ScreenshotSpec(order_form(), "focus-form-modal", (40, 14), events=MODAL_OPEN),
+    ScreenshotSpec(order_form(), "focus-form-modal-tab", (40, 14), events=MODAL_TABBED),
+    ScreenshotSpec(order_form(), "focus-form-modal-closed", (40, 14), events=MODAL_CLOSED),
+    ScreenshotSpec(order_form(), "focus-form-help", (40, 14), events=(*press(*HELP_PANEL), KeyPressed(key=Key.Right))),
 ]
+
+
+if __name__ == "__main__":
+    asyncio.run(app(order_form()))

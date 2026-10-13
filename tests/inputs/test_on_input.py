@@ -25,7 +25,7 @@ async def test_on_input_receives_keys() -> None:
         )
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(
             KeyPressed(key="f"),
@@ -55,7 +55,7 @@ async def test_one_on_input_receives_both_keys_and_mouse_events() -> None:
     ]
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(*events, Quit()),
         check_purity=True,
@@ -80,7 +80,7 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
         )
 
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(20, 20),
         autopilot=(

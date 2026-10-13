@@ -5,18 +5,16 @@ Nothing above the counter holds state, so only the counter's state changes each 
 compared with `dashboard`, this measures what skipping the components whose state didn't change saves.
 """
 
-import asyncio
-from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from time import perf_counter_ns
 
 from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text, layout, metric_card
-from counterweight.components import Component, component
+from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_effect, use_focus, use_state
+from counterweight.hooks import use_clock, use_focus, use_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,27 +25,20 @@ class LocalDashboard:
     description: str
     dimensions: tuple[int, int]
 
-    def root(self, key_press_times: list[int]) -> Callable[[], Component]:
+    @component
+    def root(self, key_press_times: list[int]) -> Div:
         """A root component whose key handler only appends the time to `key_press_times`; the counter steps itself."""
 
-        @component
-        def dashboard_local_root() -> Div:
-            def on_input(event: InputEvent, _: Receiver) -> None:
-                if isinstance(event, KeyPressed):
-                    key_press_times.append(perf_counter_ns())
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            if isinstance(event, KeyPressed):
+                key_press_times.append(perf_counter_ns())
 
-            return replace(layout(key_frame_counter(), metric_card), on_input=on_input)
+        return replace(layout(key_frame_counter(), metric_card), on_input=on_input)
 
-        return dashboard_local_root
-
-    def live_root(self, frame_interval: timedelta) -> Callable[[], Component]:
+    @component
+    def live_root(self, frame_interval: timedelta) -> Div:
         """A root component whose counter steps itself every `frame_interval`."""
-
-        @component
-        def live_dashboard_local_root() -> Div:
-            return layout(timed_frame_counter(frame_interval), metric_card)
-
-        return live_dashboard_local_root
+        return layout(timed_frame_counter(frame_interval), metric_card)
 
 
 @component
@@ -65,17 +56,7 @@ def key_frame_counter() -> Text:
 
 @component
 def timed_frame_counter(frame_interval: timedelta) -> Text:
-    tick, set_tick = use_state(0)
-    seconds = frame_interval.total_seconds()
-
-    async def advance() -> None:
-        while True:
-            await asyncio.sleep(seconds)
-            set_tick(lambda previous: previous + 1)
-
-    use_effect(advance, deps=())
-
-    return frame_text(tick)
+    return frame_text(use_clock(frame_interval).since_mount // frame_interval)
 
 
 WORKLOAD = LocalDashboard(

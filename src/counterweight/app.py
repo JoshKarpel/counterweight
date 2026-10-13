@@ -4,9 +4,10 @@ import dataclasses
 import logging
 import shutil
 import sys
-from asyncio import CancelledError, Queue, QueueEmpty, TaskGroup, get_running_loop
+from asyncio import CancelledError, Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
 from collections.abc import Callable, Collection
+from datetime import timedelta
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
@@ -18,8 +19,10 @@ import waxy
 from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
 from counterweight._utils import cancel_tasks, drain_queue, maybe_await
 from counterweight.border_healing import heal_borders
+from counterweight.clock import Clock, Instant, system_clock
 from counterweight.components import Component, component
 from counterweight.controls import (
+    AdvanceClock,
     AnyControl,
     Bell,
     ClearFocus,
@@ -64,7 +67,7 @@ from counterweight.output import (
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
 from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
-from counterweight.shadow import ShadowNode, update_shadow
+from counterweight.shadow import ShadowNode, until_due, update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -97,17 +100,19 @@ def screen_element_style(width: int, height: int) -> Style:
 
 
 async def app(
-    root: Callable[[], Component],
+    root: Component,
     output_stream: TextIO = sys.stdout,
     input_stream: TextIO = sys.stdin,
     headless: bool = False,
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AnyEvent | AnyControl] = (),
     check_purity: bool = False,
+    clock: Clock = system_clock,
 ) -> None:
     """
     Parameters:
-        root: The root [component][counterweight.components.component] of the application.
+        root: The root [component][counterweight.components.component] of the application, already called
+            with its arguments, such as `app(root(path))`.
         output_stream: The stream to which the application will write its output.
         input_stream: The stream from which the application will read its input.
         headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
@@ -131,10 +136,14 @@ async def app(
             of hooks, and computes each `use_memo` that keeps its cached value again,
             raising `StaleMemo` if the result differs, naming the component and the hook.
             It costs as much as a render that re-runs everything, so turn it on in tests rather than in production.
+        clock: Where [`use_clock`][counterweight.hooks.use_clock] reads the time, once per render.
+            Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to make output that doesn't depend on
+            when the application runs, such as a screenshot, and move it with the
+            [`AdvanceClock`][counterweight.controls.AdvanceClock] control.
     """
     async with devlog():
         try:
-            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity)
+            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock)
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
             # and keeps callers from catching it by its own type.
@@ -149,13 +158,14 @@ async def app(
 
 
 async def render_loop(
-    root: Callable[[], Component],
+    root: Component,
     output_stream: TextIO,
     input_stream: TextIO,
     headless: bool,
     dimensions: tuple[int, int] | None,
     autopilot: Iterable[AnyEvent | AnyControl],
     check_purity: bool,
+    clock: Clock,
 ) -> None:
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
         w, h = override or dimensions or shutil.get_terminal_size()
@@ -169,7 +179,7 @@ async def render_loop(
 
     @component
     def screen(style: Style) -> Div:
-        return Div(children=(root(),), style=style)
+        return Div(children=(root,), style=style)
 
     logger.info("Application starting...")
 
@@ -222,11 +232,22 @@ async def render_loop(
 
         do_heal_borders = True
 
+        started = clock()
+        clock_offset = timedelta()
+
+        def read_clock() -> Instant:
+            """The time now, moved on by any `AdvanceClock`, with its monotonic time measured from the start."""
+            reading = clock()
+            return Instant(
+                wall=reading.wall + clock_offset,
+                monotonic=reading.monotonic - started.monotonic + clock_offset,
+            )
+
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        warmup = update_shadow(root_component, None, NO_LAYOUTS)
+        warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
         shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
         routing = RoutingTable.of(shadow, layouts)
@@ -263,6 +284,7 @@ async def render_loop(
             nonlocal should_suspend
 
             nonlocal do_heal_borders
+            nonlocal clock_offset
 
             match control:
                 case Quit():
@@ -285,6 +307,8 @@ async def render_loop(
                     refocus(routing.focus_keys.get(handle, focused))
                 case ClearFocus():
                     refocus(None)
+                case AdvanceClock(by=by):
+                    clock_offset += by
                 case _ as unreachable:
                     assert_never(unreachable)
 
@@ -353,9 +377,18 @@ async def render_loop(
 
                     should_suspend = None
 
-                if should_render:
+                instant = read_clock()
+                if should_render or until_due(shadow, instant) == timedelta():
                     previous_layouts = layouts
-                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity, focused)
+                    update = update_shadow(
+                        root_component,
+                        shadow,
+                        layouts,
+                        frozenset(dirty),
+                        check_purity,
+                        focused=focused,
+                        instant=instant,
+                    )
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
@@ -379,7 +412,8 @@ async def render_loop(
                             previous_layouts,
                             frozenset(key for key in (focused, settled) if key is not None),
                             check_purity,
-                            settled,
+                            focused=settled,
+                            instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
                         layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
@@ -447,8 +481,16 @@ async def render_loop(
                 # so there's no way for an effect to add events to the queue once we get past the `await drain_queue()` below,
                 # since we don't await again until we hit this point again in the next render cycle.
 
+                # With nothing in the queue, wake when a component's clock is due, so it can re-run.
+                # The check above decides whether it is: the timer runs on the monotonic clock and ticks follow the
+                # wall clock, so the timer can fire a little early while the system adjusts the wall clock.
                 num_events_handled = 0
-                events = deque(await drain_queue(event_queue))
+                next_tick = until_due(shadow, read_clock())
+                try:
+                    async with timeout(None if next_tick is None else next_tick.total_seconds()):
+                        events = deque(await drain_queue(event_queue))
+                except TimeoutError:
+                    events = deque()
 
                 while events:
                     event = events.popleft()

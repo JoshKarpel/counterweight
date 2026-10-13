@@ -1,8 +1,10 @@
-from asyncio import sleep
+import asyncio
 
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.hooks import use_effect, use_state
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.hooks import use_focus, use_state
 from counterweight.styles.utilities import *
 from docs.examples.performance_state_in_root import METRICS, metric_card
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -11,17 +13,15 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 
 @component
-def uptime() -> Text:
-    seconds, set_seconds = use_state(0)
+def note() -> Text:
+    use_focus(auto_focus=True)
+    text, set_text = use_state("")
 
-    async def tick() -> None:
-        while True:
-            await sleep(1)
-            set_seconds(lambda previous: previous + 1)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        if isinstance(event, KeyPressed) and len(event.key) == 1:
+            set_text(text + event.key)
 
-    use_effect(tick, deps=())
-
-    return Text(content=f"Up for {seconds} s")
+    return Text(content=f"Note: {text}", on_input=on_input)
 
 
 @component
@@ -29,7 +29,7 @@ def dashboard() -> Div:
     return Div(
         style=col,
         children=[
-            uptime(),
+            note(),
             Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
         ],
     )
@@ -37,4 +37,15 @@ def dashboard() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(dashboard, "performance-dashboard", (80, 5))]
+SCREENSHOTS = [
+    ScreenshotSpec(
+        dashboard(),
+        "performance-dashboard",
+        (80, 5),
+        events=[KeyPressed(key=key) for key in "disk is busy"],
+    )
+]
+
+
+if __name__ == "__main__":
+    asyncio.run(app(dashboard()))

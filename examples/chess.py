@@ -130,4 +130,4 @@ def board() -> Div:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root))
+    asyncio.run(app(root()))

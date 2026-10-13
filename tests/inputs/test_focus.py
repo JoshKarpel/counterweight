@@ -66,7 +66,7 @@ def press(x: int, y: int) -> tuple[MouseDown, MouseUp]:
     return MouseDown(absolute=Position(x, y), button=1), MouseUp(absolute=Position(x, y), button=1)
 
 
-async def run(root: Callable[[], Component], autopilot: Sequence[InputEvent | AnyControl]) -> None:
+async def run(root: Component, autopilot: Sequence[InputEvent | AnyControl]) -> None:
     await app(root, headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()), check_purity=True)
 
 
@@ -92,7 +92,7 @@ def rooted(
     deliveries: list[Delivery],
     children: Callable[[bool], Sequence[Component | AnyElement]],
     on_input: InputHandler | None = None,
-) -> Callable[[], Component]:
+) -> Component:
     """
     A root that records what reaches it, toggles a flag on `TOGGLE`, and renders `children(flag)`.
     `on_input` handles what the root doesn't.
@@ -113,7 +113,7 @@ def rooted(
 
         return Div(style=size(20, 10), on_input=handler, children=children(flag))
 
-    return root
+    return root()
 
 
 def three(deliveries: list[Delivery], **kwargs: object) -> Callable[[bool], Sequence[Component]]:
@@ -181,7 +181,7 @@ async def test_a_receiver_carries_its_components_focus_handle_or_none() -> None:
     def root() -> Div:
         return Div(style=size(20, 10), on_input=receiving("root"), children=[focused_box()])
 
-    await run(root, [MouseScrolledDown(absolute=Position(1, 1))])
+    await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
 
     assert received == [("focusable", handle), ("root", None)]
 
@@ -282,12 +282,12 @@ def focus_label(name: str, auto_focus: bool = False) -> Text:
     return Text(content=f"{name}:{'on' if focus.is_focused else 'off'}")
 
 
-def labels(*names: str, auto_focus: str | None = None) -> Callable[[], Component]:
+def labels(*names: str, auto_focus: str | None = None) -> Component:
     @component
     def root() -> Div:
         return Div(style=col, children=[focus_label(name, auto_focus=name == auto_focus) for name in names])
 
-    return root
+    return root()
 
 
 def lines(frames: Sequence[Frame]) -> list[list[str]]:
@@ -373,7 +373,7 @@ async def test_use_focus_keeps_its_handle_across_renders() -> None:
 
         return Text(content=str(count), on_input=on_input)
 
-    await run(counter, [PROBE, PROBE])
+    await run(counter(), [PROBE, PROBE])
 
     assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
 
@@ -386,7 +386,7 @@ async def test_calling_use_focus_twice_in_one_component_raises() -> None:
         return Text(content="")
 
     with pytest.raises(DuplicateUseFocus):
-        await run(twice, [])
+        await run(twice(), [])
 
 
 async def test_with_tab_focus_on_the_root_a_focused_handler_that_claims_tab_keeps_focus() -> None:
@@ -441,7 +441,7 @@ def xyz(deliveries: list[Delivery]) -> tuple[Component, ...]:
 
 def before_group_after(
     deliveries: list[Delivery], group_input: InputHandler, group_children: tuple[Component | AnyElement, ...]
-) -> Callable[[], Component]:
+) -> Component:
     """`before`, which takes focus, then a group holding `group_children`, then `after`, with `tab_focus` on the root."""
     return rooted(
         deliveries,
@@ -580,7 +580,7 @@ async def test_a_parent_and_child_on_one_bubble_path_receive_different_subtrees(
             children=[Div(style=box(0, 0, 5, 5), on_input=remember_subtree)],
         )
 
-    await run(root, [MouseScrolledDown(absolute=Position(1, 1))])
+    await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
 
     assert len(subtrees) == 2 and subtrees[0] != subtrees[1]
 
@@ -604,7 +604,7 @@ async def test_focus_on_focuses_a_child_given_the_parents_handle_from_its_first_
     def focus_on_key(handle: FocusHandle) -> InputHandler:
         return lambda event, _: FocusOn(handle) if event == KeyPressed(key="f") else None
 
-    await run(lambda: labelled(deliveries, focus_on_key), [KeyPressed(key="f"), PROBE])
+    await run(labelled(deliveries, focus_on_key), [KeyPressed(key="f"), PROBE])
 
     assert probed(deliveries) == ["child"]
 
@@ -626,7 +626,7 @@ async def test_use_focus_returns_the_handle_it_was_given() -> None:
         returned.append(use_focus(handle=given).handle)
         return Text(content="")
 
-    await run(root, [])
+    await run(root(), [])
 
     assert returned and all(handle is given for handle in returned)
 
@@ -638,7 +638,7 @@ async def test_passing_a_different_handle_on_a_later_render_raises() -> None:
         return Text(content="")
 
     with pytest.raises(ChangedFocusHandle):
-        await run(root, [])
+        await run(root(), [])
 
 
 @pytest.mark.parametrize("is_focusable", [True, False], ids=["focusable", "unfocusable"])
@@ -748,7 +748,7 @@ async def test_a_component_keeps_its_handle_when_it_becomes_unfocusable_and_focu
 
         return Text(content="", on_input=on_input)
 
-    await run(root, [TOGGLE, TOGGLE])
+    await run(root(), [TOGGLE, TOGGLE])
 
     assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
 

@@ -24,7 +24,7 @@ async def test_use_state() -> None:
         return Div(on_input=on_input)
 
     await app(
-        root,
+        root(),
         headless=True,
         autopilot=(
             KeyPressed(key="f"),

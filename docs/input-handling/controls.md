@@ -21,6 +21,7 @@ and returning any control or tuple stops the event, as `()` does (see [Events](e
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
+::: counterweight.controls.AdvanceClock
 
 ### Focus
 

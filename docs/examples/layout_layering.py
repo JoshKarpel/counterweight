@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles import Style
@@ -139,10 +143,15 @@ def badge() -> Div:
 # --8<-- [end:badge]
 
 SCREENSHOTS = [
-    ScreenshotSpec(relative, "layout-relative", (39, 7)),
-    ScreenshotSpec(absolute, "layout-absolute", (50, 9)),
-    ScreenshotSpec(dialog, "layout-dialog", (60, 12)),
-    ScreenshotSpec(dropdown_escapes, "layout-dropdown-escapes", (30, 9)),
-    ScreenshotSpec(dropdown_scoped, "layout-dropdown-scoped", (30, 9)),
-    ScreenshotSpec(badge, "layout-badge", (21, 3)),
+    ScreenshotSpec(relative(), "layout-relative", (39, 7)),
+    ScreenshotSpec(absolute(), "layout-absolute", (50, 9)),
+    ScreenshotSpec(dialog(), "layout-dialog", (60, 12)),
+    ScreenshotSpec(dropdown_escapes(), "layout-dropdown-escapes", (30, 9)),
+    ScreenshotSpec(dropdown_scoped(), "layout-dropdown-scoped", (30, 9)),
+    ScreenshotSpec(badge(), "layout-badge", (21, 3)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (relative, absolute, dialog, dropdown_escapes, dropdown_scoped, badge)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else relative()))

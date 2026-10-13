@@ -4,7 +4,7 @@ The description of one docs screenshot, which each example module lists in its `
 `docs.examples.generate_screenshots` collects those lists and renders them.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,9 +24,10 @@ class ScreenshotSpec:
 
     `events` are fed to the app before the screenshot is taken,
     so one example can be shown in several states.
+    The app's clock is frozen, so an `AdvanceClock` among them is the only way time passes.
     """
 
-    root: Callable[[], Component]
+    root: Component
     asset: str
     dimensions: tuple[int, int]
     events: Sequence[AnyEvent | AnyControl] = ()

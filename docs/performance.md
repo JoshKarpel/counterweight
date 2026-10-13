@@ -71,23 +71,24 @@ In each frame, every component has one of three outcomes:
 - **Reuse:** neither it nor anything below it changed,
   so its previous output is kept whole, and layout doesn't reconcile it again.
 
-A component that calls [`use_rects`](hooks/use_rects.md) also re-runs when its rectangles move.
+A component that calls [`use_rects`](hooks/use_rects.md) also re-runs when its rectangles move,
+and one that calls [`use_clock`](hooks/use_clock.md) when its next tick starts.
 The first frame, and the frames after a resize or a resume from a suspend, re-run every component.
 
-Here's a dashboard whose root holds a ticking uptime:
+Here's a dashboard whose root holds a note you type into:
 
 ```python
 --8<-- "performance_state_in_root.py:example"
 ```
 
-Each second, `dashboard`'s state changes, so it re-runs,
+Each key press changes `dashboard`'s state, so it re-runs,
 builds a new `metric_card` for each metric, and every card re-runs too,
 though none of them shows anything that changed:
 
 ```mermaid
 flowchart TB
     dashboard["dashboard"]:::rerun --> column["Div"]:::rerun
-    column --> uptime_text["Text: Up for 1 s"]:::rerun
+    column --> note_text["Text: Note: d"]:::rerun
     column --> cards_row["Div"]:::rerun
     cards_row --> cards["metric_card ×4"]:::rerun
 
@@ -102,13 +103,13 @@ Move the state down into the component that shows it:
 
 ![Dashboard](assets/performance-dashboard.svg)
 
-Now each second re-runs `uptime` alone.
+Now each key press re-runs `note` alone.
 `dashboard` passes through to it, and the cards are reused:
 
 ```mermaid
 flowchart TB
     dashboard["dashboard"]:::through --> column["Div"]:::through
-    column --> uptime["uptime"]:::rerun
+    column --> note["note"]:::rerun
     column --> cards_row["Div"]:::reuse
     cards_row --> cards["metric_card ×4"]:::reuse
 
@@ -120,6 +121,8 @@ flowchart TB
 Orange re-runs, blue passes through, and grey is reused.
 Elements are drawn too, since a frame passes through or reuses them the same way.
 Holding state in the component that uses it is the first thing to try, and it needs no new API.
+The same goes for `use_clock`: call it in the component that shows the time,
+and each tick re-runs that component alone.
 
 ## How do I skip a component whose arguments didn't change?
 
@@ -328,7 +331,7 @@ Pass `check_purity=True` to `app` in tests, and drive the app with an autopilot:
 ```python
 async def test_process_table_is_pure() -> None:
     await app(
-        root,
+        root(),
         headless=True,
         dimensions=(32, 7),
         autopilot=[KeyPressed(key=Key.Down), KeyPressed(key=Key.Down), KeyPressed(key=Key.Up), Quit()],

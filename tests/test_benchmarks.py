@@ -8,6 +8,7 @@ import pytest
 from benchmarks import agent, canvas, dashboard, top
 from benchmarks.harness import run
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
+from benchmarks.tables import Column, render_table
 from benchmarks.workloads import WORKLOADS
 from counterweight.app import app
 from counterweight.controls import Quit, Screenshot
@@ -123,3 +124,30 @@ def test_summary_counts_inclusive_samples_only_below_each_stage_root() -> None:
         "renderers.py:render": 13,
         "selectors.py:EpollSelector.select": 17,
     }
+
+
+def test_summary_counts_the_benchmark_command_only_while_it_runs_the_workload() -> None:
+    command = "tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;commands.py:action:679;__main__.py:run_workload"
+    collapsed = f"""\
+{command}:93;harness.py:run:174;app.py:app:139 3
+{command}:93;harness.py:run:174;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:40 5
+{command}:95;__main__.py:frames_table:182 7
+"""
+
+    summary = summarize(parse_collapsed(collapsed))
+
+    assert summary.stages == {"task harness.py:run": 3, "layout.py:compute_layout": 5, STARTUP: 7}
+
+
+def test_table_pads_columns_to_their_widest_cell_and_right_aligns_on_request() -> None:
+    table = render_table(
+        (Column("Name"), Column("Time", is_right_aligned=True)), [("render", "1.5 ms"), ("go", "12.25 ms")]
+    )
+
+    assert table == "Name        Time\n──────  ────────\nrender    1.5 ms\ngo      12.25 ms\n"
+
+
+def test_table_stacks_the_lines_of_a_multi_line_cell_within_its_row() -> None:
+    table = render_table((Column("Workload"), Column("About")), [("top", "busy\nvery"), ("idle", "calm")], title="All")
+
+    assert table == "All\nWorkload  About\n────────  ─────\ntop       busy\n          very\nidle      calm\n"

@@ -4,15 +4,17 @@ from asyncio import Task
 from collections.abc import Iterator
 from copy import copy
 from dataclasses import dataclass, field, replace
+from datetime import timedelta
 from itertools import count
 from typing import TYPE_CHECKING, NewType, assert_never
 from weakref import ref
 
 from counterweight._context_vars import current_event_queue, current_hook_idx, current_purity_checked
+from counterweight.clock import Instant, tick_index, until_next_tick
 from counterweight.equivalence import equivalent
 from counterweight.events import StateSet
 from counterweight.focus import FocusHandle
-from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
+from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 if TYPE_CHECKING:
     from counterweight.geometry import Rects
@@ -104,17 +106,46 @@ class UseFocus:
     in_focus_order: bool
 
 
-type Hook = UseState | UseRef | UseEffect | UseMemo | UseFocus
+@dataclass(slots=True)
+class UseClock:
+    """
+    The readings `use_clock` has taken for one node.
+    A node keeps its `current` reading until a frame's instant falls in a later tick,
+    so re-running it again within a tick, as `check_purity` does, returns the same `Tick`.
+    """
+
+    interval: timedelta
+    mounted: Instant
+    current: Instant
+
+    def is_due(self, instant: Instant) -> bool:
+        """Whether `instant` falls in a different tick from the current reading, so the node takes a new one."""
+        return tick_index(instant.wall, self.interval) != tick_index(self.current.wall, self.interval)
+
+    def until_due(self, instant: Instant) -> timedelta:
+        """How long after `instant` the node is due a new reading."""
+        return timedelta() if self.is_due(instant) else until_next_tick(instant.wall, self.interval)
+
+    @property
+    def tick(self) -> Tick:
+        return Tick(
+            now=self.current.wall,
+            since_start=self.current.monotonic,
+            since_mount=self.current.monotonic - self.mounted.monotonic,
+        )
 
 
-def detached_hook(hook: Hook) -> Hook:
+type AnyHook = UseState | UseRef | UseEffect | UseMemo | UseFocus | UseClock
+
+
+def detached_hook(hook: AnyHook) -> AnyHook:
     """A copy of `hook` for `Hooks.detached`, or `hook` itself for a `use_state` hook, which a render only reads."""
     match hook:
         case UseState():
             return hook
         case UseRef(ref=ref):
             return UseRef(ref=Ref(current=ref.current))
-        case UseEffect() | UseMemo() | UseFocus():
+        case UseEffect() | UseMemo() | UseFocus() | UseClock():
             return copy(hook)
         case _ as unreachable:
             assert_never(unreachable)
@@ -145,13 +176,15 @@ class StaleMemo(Exception):
 
 @dataclass(slots=True)
 class Hooks:
-    data: list[Hook] = field(default_factory=list)
+    data: list[AnyHook] = field(default_factory=list)
     mount_status: MountStatus = field(default_factory=MountStatus)
     key: NodeKey = field(default_factory=_next_node_key)
     rects: Rects | None = None
     """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
     focus: UseFocus | None = None
     """The `use_focus` hook of this node's last run, if it called `use_focus`, which makes the node focusable."""
+    clocks: list[UseClock] = field(default_factory=list)
+    """The node's `use_clock` hooks, also in `data`, so the node re-renders once one of them is due."""
 
     @property
     def effects(self) -> Iterator[UseEffect]:
@@ -162,14 +195,17 @@ class Hooks:
         A copy to call the node's component against without changing anything the node keeps.
         Every hook a render can write to is copied:
         `use_effect` records its arguments on its hook, `use_memo` recomputes into its hook when its deps changed,
+        `use_clock` takes a new reading into its hook when one is due,
         and a component can assign `current` on a ref.
         A ref's copy holds the same `current` object, so mutating that object in place still reaches the node's ref.
         `use_state` hooks are shared, so the setters handlers capture are the node's own.
         The mount status is copied too, so unmounting the copy leaves the node mounted.
         """
+        data = [detached_hook(hook) for hook in self.data]
         return replace(
             self,
-            data=[detached_hook(hook) for hook in self.data],
+            data=data,
+            clocks=[hook for hook in data if isinstance(hook, UseClock)],
             mount_status=MountStatus(is_mounted=self.mount_status.is_mounted),
         )
 
@@ -294,3 +330,23 @@ class Hooks:
         current_hook_idx.set(index + 1)
 
         return hook.value  # type: ignore[return-value]
+
+    def use_clock(self, interval: timedelta, instant: Instant) -> Tick:
+        try:
+            hook = self.data[current_hook_idx.get()]
+            if not isinstance(hook, UseClock):
+                raise InconsistentHookExecution(
+                    f"Expected a {UseClock.__name__} hook, but got a {type(hook).__name__} hook instead."
+                )
+        except IndexError:
+            hook = UseClock(interval=interval, mounted=instant, current=instant)
+            self.data.append(hook)
+            self.clocks.append(hook)
+        else:
+            hook.interval = interval
+            if hook.is_due(instant):
+                hook.current = instant
+
+        current_hook_idx.set(current_hook_idx.get() + 1)
+
+        return hook.tick

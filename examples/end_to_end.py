@@ -1,13 +1,13 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import timedelta
 from itertools import cycle
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import Setter, use_effect, use_focus, use_ref, use_state
+from counterweight.hooks import Setter, use_clock, use_focus, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
@@ -75,17 +75,10 @@ def toggle() -> Div:
 
 @component
 def time() -> Text:
-    now, set_now = use_state(datetime.now())
-
-    async def tick() -> None:
-        while True:
-            await asyncio.sleep(0.01)
-            set_now(datetime.now())
-
-    use_effect(tick, deps=())
+    tick = use_clock(timedelta(seconds=1))
 
     return Text(
-        content=f"{now:%Y-%m-%d %H:%M:%S}",
+        content=f"{tick.now:%Y-%m-%d %H:%M:%S}",
         style=text_color("rose", 500) | border_color("teal", 600) | pad(1) | border | border_lightrounded,
     )
 
@@ -119,4 +112,4 @@ def textpad() -> Text:
 
 
 if __name__ == "__main__":
-    asyncio.run(app(toggle))
+    asyncio.run(app(toggle()))

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from weakref import WeakSet
 
 if TYPE_CHECKING:
+    from counterweight.clock import Instant
     from counterweight.components import Component
     from counterweight.events import AnyEvent
     from counterweight.hooks import Mouse
@@ -20,5 +21,6 @@ current_hook_state: ContextVar[Hooks] = ContextVar("current_hook_state")
 current_layouts: ContextVar[Layouts] = ContextVar("current_layouts")
 # The focused node's key while a component is called, so `use_focus` can tell its component whether it's focused.
 current_focused: ContextVar[NodeKey | None] = ContextVar("current_focused")
+current_instant: ContextVar[Instant] = ContextVar("current_instant")
 # The component being called when `check_purity` is on, so `use_memo` can check its cached values and name it.
 current_purity_checked: ContextVar[Component | None] = ContextVar("current_purity_checked", default=None)

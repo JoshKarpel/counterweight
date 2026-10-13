@@ -177,7 +177,8 @@ A component has to be **pure**: given the same arguments and hook state,
 it returns the same element, however many times it's called.
 A component that isn't re-run, `memo` or not, keeps showing the output from its last run,
 so one that also reads something else, such as a module-level value or the time, goes stale.
-To show something that changes on its own, such as a clock,
+To show the time, read it with [`use_clock`](../hooks/use_clock.md).
+To show something else that changes on its own, such as a value polled from a server,
 keep it in state and update it from [`use_effect`](../hooks/use_effect.md).
 
 Pass `check_purity=True` to `app` in tests to catch an impure component:
