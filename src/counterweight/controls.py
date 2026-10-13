@@ -5,9 +5,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO, Union
+from typing import TYPE_CHECKING, Literal, TextIO, Union
 
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
+from counterweight.geometry import Position
 
 if TYPE_CHECKING:
     from counterweight.output import Frame
@@ -224,6 +225,89 @@ class AdvanceClock(_Control):
     by: timedelta
 
 
+@dataclass(frozen=True, slots=True)
+class ScrollTo(_Control):
+    """
+    Scroll the scroll container `target` names so its offset is `x` and `y`,
+    as the web's [`scrollTo`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollTo) does,
+    leaving an axis given as `None` where it is.
+    The offset is clamped to the range the container scrolls through, from 0 to its
+    [`max_offset`][counterweight.geometry.Scroll.max_offset],
+    so a large `y` scrolls to the end.
+
+    It applies to the layout of the next render, before that render paints,
+    after [anchoring](../layout/scrolling.md#keeping-the-content-in-view) and sticking to the end,
+    and in order with the other scroll controls returned since the last render,
+    so a handler that returns it beside a state change scrolls the content that change lays out.
+    It does nothing if `target` names no mounted, visible scroll container then.
+    """
+
+    target: ElementHandle | Subtree
+    """
+    The scroll container, by the [`ElementHandle`][counterweight.focus.ElementHandle] passed to its `handle`,
+    or by the [`subtree`][counterweight.events.Receiver.subtree] of a handler's receiver.
+    """
+    x: int | None = None
+    y: int | None = None
+
+    def destination(self, offset: Position) -> Position:
+        """Where this moves a container scrolled to `offset`, before clamping."""
+        return Position(offset.x if self.x is None else self.x, offset.y if self.y is None else self.y)
+
+
+@dataclass(frozen=True, slots=True)
+class ScrollBy(_Control):
+    """
+    Scroll the scroll container `target` names by `x` columns and `y` rows,
+    as the web's [`scrollBy`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollBy) does:
+    positive values move toward the end of the content, and negative ones toward its start.
+    The offset is clamped, and the control applied, as [`ScrollTo`][counterweight.controls.ScrollTo]'s is.
+    """
+
+    target: ElementHandle | Subtree
+    """The scroll container, named as [`ScrollTo`][counterweight.controls.ScrollTo] names it."""
+    x: int = 0
+    y: int = 0
+
+    def destination(self, offset: Position) -> Position:
+        """Where this moves a container scrolled to `offset`, before clamping."""
+        return Position(offset.x + self.x, offset.y + self.y)
+
+
+ScrollAlignment = Literal["start", "center", "end", "nearest"]
+
+
+@dataclass(frozen=True, slots=True)
+class ScrollIntoView(_Control):
+    """
+    Scroll each scroll container above the element `target` names so the element's border box is in view,
+    from the innermost container out, as the web's
+    [`scrollIntoView`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) does,
+    aligning it as `block` says vertically and as `inline` says horizontally, with the web's defaults.
+    On each axis, `"start"` puts the element's start edge at the start edge of the container's view,
+    `"center"` its center at the view's center, and `"end"` its end edge at the view's end edge.
+    `"nearest"` does whichever of `"start"` and `"end"` scrolls least,
+    and doesn't scroll at all if the element is already wholly in view, or covers the whole view.
+    Each offset is clamped to the range its container scrolls through.
+
+    It applies as [`ScrollTo`][counterweight.controls.ScrollTo] does, to the layout of the next render,
+    so a handler that returns it beside a state change, such as moving a highlight through a long list,
+    shows the scroll in the same frame as the change.
+    The element `target` names is the one with that handle in the next render,
+    so a handle moved onto a newly highlighted element names the new one.
+    It does nothing if `target` names no mounted, visible element then,
+    and it stops at an element with [`clip_to_screen`](../layout/clipping.md#escaping-every-clip),
+    since no container above that element clips it.
+    """
+
+    target: ElementHandle | Subtree
+    """The element, named as [`ScrollTo`][counterweight.controls.ScrollTo] names a scroll container."""
+    block: ScrollAlignment = "start"
+    """Where to put the element vertically."""
+    inline: ScrollAlignment = "nearest"
+    """Where to put the element horizontally."""
+
+
 AnyControl = Union[
     Quit,
     Bell,
@@ -237,4 +321,7 @@ AnyControl = Union[
     FocusOn,
     ClearFocus,
     AdvanceClock,
+    ScrollTo,
+    ScrollBy,
+    ScrollIntoView,
 ]

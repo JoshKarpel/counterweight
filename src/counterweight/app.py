@@ -5,7 +5,7 @@ import shutil
 import sys
 from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator
 from datetime import timedelta
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
@@ -31,6 +31,9 @@ from counterweight.controls import (
     Quit,
     RestoreTitle,
     Screenshot,
+    ScrollBy,
+    ScrollIntoView,
+    ScrollTo,
     SetTitle,
     Suspend,
     ToggleBorderHealing,
@@ -51,11 +54,13 @@ from counterweight.events import (
     StateSet,
     TerminalResized,
 )
+from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.layout import NO_LAYOUTS, LayoutTree, layout_changes
+from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, ScrollRequest, layout_changes, prior_scrolls
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -69,8 +74,8 @@ from counterweight.output import (
     title_instructions,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
-from counterweight.shadow import until_due, update_shadow
+from counterweight.routing import Press, RoutingTable, UnsettledFocus, named_key, route_key, route_mouse
+from counterweight.shadow import ShadowTree, until_due, update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -277,13 +282,16 @@ async def render_loop(
 
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
-        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
         warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
         shadow = warmup.tree
-        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
         routing = RoutingTable.of(shadow, layouts)
         focused = routing.reconciled_focus(None, warmup.mounted)
+        # The scroll controls to apply in the next layout, in order, including the ones focus moving adds.
+        pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = (
+            [] if focused is None else [focus_into_view(focused)]
+        )
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
@@ -307,6 +315,8 @@ async def render_loop(
                 if changed is not None:
                     event_queue.put_nowait(StateSet(key=changed))
             focused = key
+            if key is not None:
+                pending_scrolls.append(focus_into_view(key))
 
         def handle_control(control: AnyControl) -> None:
             nonlocal should_render
@@ -318,6 +328,7 @@ async def render_loop(
 
             nonlocal do_heal_borders
             nonlocal clock_offset
+            nonlocal routing
 
             match control:
                 case Quit():
@@ -346,6 +357,15 @@ async def render_loop(
                     refocus(None)
                 case AdvanceClock(by=by):
                     clock_offset += by
+                case ScrollTo() | ScrollBy():
+                    # Pending even if it moves nothing now, since a render this batch causes may give it room to.
+                    pending_scrolls.append(control)
+                    if (scrolled := routing.scrolled(control)) is not routing:
+                        routing = scrolled
+                        should_render = True
+                case ScrollIntoView():
+                    pending_scrolls.append(control)
+                    should_render = True
                 case _ as unreachable:
                     assert_never(unreachable)
 
@@ -423,6 +443,8 @@ async def render_loop(
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
                     previous_layouts = layouts
+                    # Picked from the frame on screen, before the update below changes what's in it.
+                    priors = prior_scrolls(layouts)
                     update = update_shadow(
                         root_component,
                         shadow,
@@ -436,11 +458,14 @@ async def render_loop(
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    available = waxy.AvailableSize(
-                        width=waxy.Definite(w),
-                        height=waxy.Definite(h),
+                    layouts = layout_tree.compute(
+                        layout_changes(previous_shadow, shadow),
+                        shadow,
+                        w,
+                        h,
+                        priors,
+                        scroll_requests(pending_scrolls, shadow),
                     )
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
@@ -459,7 +484,16 @@ async def render_loop(
                             instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
-                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
+                        if settled is not None:
+                            pending_scrolls.append(focus_into_view(settled))
+                        layouts = layout_tree.compute(
+                            layout_changes(previous_shadow, shadow),
+                            shadow,
+                            w,
+                            h,
+                            priors,
+                            scroll_requests(pending_scrolls, shadow),
+                        )
                         routing = RoutingTable.of(shadow, layouts)
                         if routing.reconciled_focus(settled, refocused.mounted) != settled:
                             raise UnsettledFocus(
@@ -469,6 +503,10 @@ async def render_loop(
                         update = update.followed_by(refocused)
                         focused = settled
                         logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+
+                    pending_scrolls.clear()
+                    for key in stale_scroll_readers(shadow, layouts):
+                        event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
                         ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
@@ -509,6 +547,9 @@ async def render_loop(
                     should_render = False
 
                     logger.debug("Completed render cycle")
+                else:
+                    # Without a render, every pending control moves nothing, and mustn't wait to move a later layout.
+                    pending_scrolls.clear()
 
                 if ap is not None:
                     if isinstance(ap, _Control):
@@ -602,6 +643,29 @@ async def render_loop(
             stop_handling_interrupt_signal(previous_interrupt_handler)
 
         logger.info("Application stopped")
+
+
+def focus_into_view(key: NodeKey) -> ScrollIntoView:
+    """What focusing the node with `key` scrolls into view: the node, by as little as it takes, as browsers do."""
+    return ScrollIntoView(Subtree(key=key), block="nearest", inline="nearest")
+
+
+def scroll_requests(pending: Iterable[ScrollTo | ScrollBy | ScrollIntoView], shadow: ShadowTree) -> list[ScrollRequest]:
+    """What `pending` asks of a layout of `shadow`, skipping a handle that names no mounted element."""
+    return [
+        ScrollRequest(key=key, control=control)
+        for control in pending
+        if (key := named_key(control.target, shadow.handled)) is not None
+    ]
+
+
+def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
+    """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
+    return (
+        node.key
+        for node in shadow.scroll_readers
+        if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
+    )
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

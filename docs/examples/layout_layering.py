@@ -121,7 +121,11 @@ def badge() -> Div:
                 children=[
                     Text(content="inbox"),
                     Text(
-                        style=position_absolute | inset_top(-1) | inset_right(1) | text_color("red", 500),
+                        style=position_absolute
+                        | inset_top(-1)
+                        | inset_right(1)
+                        | clip_to_border
+                        | text_color("red", 500),
                         content="3",
                     ),
                 ],
@@ -131,7 +135,11 @@ def badge() -> Div:
                 children=[
                     Text(content="alerts"),
                     Text(
-                        style=position_absolute | inset_top(-1) | inset_right(-1) | text_bg("red", 600),
+                        style=position_absolute
+                        | inset_top(-1)
+                        | inset_right(-1)
+                        | clip_to_border
+                        | text_bg("red", 600),
                         content="!",
                     ),
                 ],

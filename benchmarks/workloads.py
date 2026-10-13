@@ -11,6 +11,7 @@ WORKLOADS: dict[str, Runnable] = {
         top.MEMO_WORKLOAD,
         agent.WORKLOAD,
         agent.MEMO_WORKLOAD,
+        agent.SCROLLED_WORKLOAD,
         dashboard.WORKLOAD,
         dashboard.MEMO_WORKLOAD,
         dashboard_local.WORKLOAD,

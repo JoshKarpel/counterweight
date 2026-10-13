@@ -4,6 +4,40 @@
 
 ### Added
 
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  Added [scroll containers](layout/scrolling.md): a box whose overflow is `Scroll`,
+  with the utilities `overflow_scroll`, `overflow_x_scroll` and `overflow_y_scroll`,
+  shows the part of its content its offset scrolls into view.
+  Counterweight holds each container's offset, and after every layout keeps the content in view where it was,
+  as CSS's scroll anchoring does, and clamps the offset to how far the content reaches.
+  The `overflow_anchor` style field, with `overflow_anchor_auto` and `overflow_anchor_none`, turns anchoring off,
+  and the `stick_to_end_x` and `stick_to_end_y` style fields, with `stick_to_end` and `unstick` and their `_x` and `_y` forms,
+  keep a container that's scrolled to its end there as its content grows, as a log or a chat transcript wants.
+  The controls `ScrollTo` and `ScrollBy` scroll a container named by an `ElementHandle`,
+  which an element takes as its `handle`, or by a receiver's `subtree`,
+  and `ScrollIntoView` scrolls every container above an element until it's in view,
+  as the web's `scrollIntoView` does.
+  All three apply in order to the layout of the next render, so they scroll in the same frame as,
+  and the content laid out by, any state change returned beside them.
+  Moving focus scrolls the newly focused element into view.
+  `counterweight.handlers` gains `scroll_on_wheel` and `scroll_on_keys`, which scroll for the wheel
+  and for the arrow keys, PageUp, PageDown, Home and End,
+  and pass the event on to the container outside once their own reaches an end,
+  and `page_down` and `page_up`, which return the `ScrollBy` for a page of any fraction of the view.
+  [`use_scroll`](hooks/use_scroll.md) returns how far the calling component's element,
+  or the element with a given `ElementHandle`, is scrolled and how far it can be,
+  and a `Receiver` carries the same as its `scroll`.
+
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  Added the overflow utilities `overflow_visible`, `overflow_hidden` and `overflow_clip`,
+  with `overflow_x_*` and `overflow_y_*` forms that set one axis,
+  and the `clip_to` style field, with `clip_to_padding`, `clip_to_border` and `clip_to_screen`,
+  which lets a child such as a border title draw on its parent's border when its parent clips,
+  or a popup such as a dropdown escape every clip above it.
+  `Rects` gains `clip`, the region an element's ancestors let it draw in,
+  and `visible`, the part of its border box inside that region.
+  See [Clipping](layout/clipping.md), and the [autocomplete recipe](cookbook/autocomplete.md).
+
 - [#411](https://github.com/JoshKarpel/counterweight/issues/411)
   Added the `SetTitle` control, which sets the title of the terminal window.
   The app saves the title it started with and restores it when it quits and while it's suspended,
@@ -139,6 +173,11 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#415](https://github.com/JoshKarpel/counterweight/pull/415)
+  `Rects` is keyword-only, since it has more fields than are easy to keep in order.
+  A scroll container's `padding` and `content` exclude the space its `scrollbar_width` reserves,
+  as taffy lays its children out, where they included it.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
@@ -327,6 +366,14 @@
   is renamed `StyledGrapheme`, and its `char` is renamed `grapheme`.
 
 ### Fixed
+
+- [#388](https://github.com/JoshKarpel/counterweight/issues/388)
+  A box whose overflow is `Hidden`, `Clip` or `Scroll` clips its children to its padding box,
+  on each axis that sets it, where they painted over its border and beyond it.
+  The constraint utilities (`length`, `percentage`, `ratio` and `fill`) hide their box's overflow,
+  so a border title in a constrained box needs `clip_to_border`.
+  The mouse reaches an element only where it's painted:
+  routing, `use_hovered` and `on_click` ignore the parts of an element its ancestors clip away.
 
 - [#407](https://github.com/JoshKarpel/counterweight/issues/407)
   Terminal input is parsed incrementally, so typed and pasted text arrives intact:

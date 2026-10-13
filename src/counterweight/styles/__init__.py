@@ -4,7 +4,9 @@ from counterweight.styles.styles import (
     UNSET,
     BorderKind,
     CellStyle,
+    ClipTo,
     Color,
+    OverflowAnchor,
     Style,
     merge,
 )
@@ -15,7 +17,9 @@ __all__ = [
     "UNSET",
     "BorderKind",
     "CellStyle",
+    "ClipTo",
     "Color",
+    "OverflowAnchor",
     "Style",
     "merge",
 ]

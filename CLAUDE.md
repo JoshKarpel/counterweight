@@ -22,6 +22,17 @@ and say which of those it is.
 This applies to the API users call, not to internal structure:
 don't add abstractions to the implementation ahead of a change that needs them.
 
+## Ask How the Web Does It
+
+Counterweight borrows its models from browsers and React,
+so when a design question is open, first find out how the web answers it
+(CSS, the DOM, HTML elements, React's APIs, and the patterns apps build on them),
+and write that answer into the plan, issue or PR beside the design.
+It's the starting point, not the verdict:
+where counterweight differs (cells instead of pixels, taffy's layout,
+effects that start after the frame paints), say what the difference changes
+and why the design diverges.
+
 ## Architecture
 
 The framework follows a React-like architecture:

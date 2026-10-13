@@ -2,7 +2,17 @@ from dataclasses import replace
 
 import pytest
 
-from counterweight.controls import Bell, ClearFocus, FocusNext, FocusOn, FocusPrevious, Quit, ToggleBorderHealing
+from counterweight.controls import (
+    Bell,
+    ClearFocus,
+    FocusNext,
+    FocusOn,
+    FocusPrevious,
+    Quit,
+    ScrollBy,
+    ScrollTo,
+    ToggleBorderHealing,
+)
 from counterweight.events import (
     InputEvent,
     InputHandler,
@@ -11,11 +21,14 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+    MouseScrolledUp,
     MouseUp,
     Receiver,
 )
-from counterweight.focus import FocusHandle, Subtree
-from counterweight.geometry import Position, Rects, Region
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
+from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.handlers import (
     clear_focus,
     each,
@@ -23,6 +36,10 @@ from counterweight.handlers import (
     focus_on_press,
     focus_receiver_on_press,
     on_click,
+    page_down,
+    page_up,
+    scroll_on_keys,
+    scroll_on_wheel,
     tab_focus,
 )
 from counterweight.hooks.impls import NodeKey
@@ -30,11 +47,19 @@ from counterweight.keys import Key
 
 BORDER = Region(left=2, top=1, right=7, bottom=4)
 RECEIVER = Receiver(
-    rects=Rects(content=BORDER, padding=BORDER, border=BORDER, margin=BORDER),
+    rects=Rects(
+        content=BORDER,
+        padding=BORDER,
+        border=BORDER,
+        margin=BORDER,
+        clip=Region(left=0, top=0, right=20, bottom=10),
+        visible=BORDER,
+    ),
     is_target=True,
     focus_handle=None,
     is_focused=False,
     subtree=Subtree(key=NodeKey(7)),
+    scroll=None,
 )
 KEY = KeyPressed(key="k")
 INSIDE = Position(3, 2)
@@ -126,6 +151,22 @@ def test_on_click_does_not_call_its_action_for_a_release_outside_the_element() -
     assert (response, clicks) == ((), [])
 
 
+@pytest.mark.parametrize(
+    "visible",
+    [Region(left=2, top=1, right=3, bottom=4), None],
+    ids=["clipped-at-the-release", "clipped-away-entirely"],
+)
+def test_on_click_does_not_call_its_action_for_a_release_inside_the_border_box_where_it_is_clipped_away(
+    visible: Region | None,
+) -> None:
+    clicks: list[str] = []
+    clipped = replace(RECEIVER, rects=replace(RECEIVER.rects, clip=visible, visible=visible))
+
+    response = on_click(lambda: clicks.append("click"))(MouseUp(absolute=INSIDE, button=1), clipped)
+
+    assert (response, clicks) == ((), [])
+
+
 @pytest.mark.parametrize("action_response", [Quit(), (Quit(), Bell())], ids=["control", "tuple"])
 def test_on_click_returns_its_actions_controls(action_response: InputResponse) -> None:
     assert on_click(lambda: action_response)(MouseUp(absolute=INSIDE, button=1), RECEIVER) == action_response
@@ -198,3 +239,146 @@ def test_clear_focus_clears_focus_for_a_press() -> None:
 @pytest.mark.parametrize("event", [KeyPressed(key="k"), MouseUp(absolute=INSIDE, button=1)], ids=["key", "release"])
 def test_clear_focus_does_not_handle_other_events(event: InputEvent) -> None:
     assert clear_focus(event, RECEIVER) is None
+
+
+SCROLLED = replace(
+    RECEIVER, scroll=Scroll(offset=Position(4, 3), max_offset=Position(9, 8), view_width=5, view_height=3)
+)
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (MouseScrolledUp(absolute=INSIDE), ScrollBy(SCROLLED.subtree, y=-2)),
+        (MouseScrolledDown(absolute=INSIDE), ScrollBy(SCROLLED.subtree, y=2)),
+        (MouseScrolledLeft(absolute=INSIDE), ScrollBy(SCROLLED.subtree, x=-2)),
+        (MouseScrolledRight(absolute=INSIDE), ScrollBy(SCROLLED.subtree, x=2)),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_scroll_on_wheel_scrolls_its_receiver_by_its_lines_toward_the_wheel(
+    event: InputEvent, expected: ScrollBy
+) -> None:
+    assert scroll_on_wheel(2)(event, SCROLLED) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "offset"),
+    [
+        (MouseScrolledUp(absolute=INSIDE), Position(4, 0)),
+        (MouseScrolledDown(absolute=INSIDE), Position(4, 8)),
+        (MouseScrolledLeft(absolute=INSIDE), Position(0, 3)),
+        (MouseScrolledRight(absolute=INSIDE), Position(9, 3)),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_scroll_on_wheel_does_not_handle_a_wheel_event_past_the_end_of_the_range(
+    event: InputEvent, offset: Position
+) -> None:
+    assert SCROLLED.scroll is not None
+    at_end = replace(SCROLLED, scroll=replace(SCROLLED.scroll, offset=offset))
+
+    assert scroll_on_wheel(2)(event, at_end) is None
+
+
+def test_scroll_on_wheel_scrolls_three_lines_by_default() -> None:
+    assert scroll_on_wheel()(MouseScrolledDown(absolute=INSIDE), SCROLLED) == ScrollBy(SCROLLED.subtree, y=3)
+
+
+def test_scroll_on_wheel_raises_for_a_wheel_event_on_a_receiver_that_is_not_a_scroll_container() -> None:
+    with pytest.raises(ValueError, match="isn't a scroll container"):
+        scroll_on_wheel()(MouseScrolledDown(absolute=INSIDE), RECEIVER)
+
+
+@pytest.mark.parametrize("event", [KEY, MouseDown(absolute=INSIDE, button=1)])
+def test_scroll_on_wheel_does_not_handle_other_events(event: InputEvent) -> None:
+    assert scroll_on_wheel()(event, SCROLLED) is None
+
+
+TALL = replace(
+    RECEIVER, scroll=Scroll(offset=Position(4, 30), max_offset=Position(9, 80), view_width=5, view_height=24)
+)
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        (Key.Up, ScrollBy(TALL.subtree, y=-1)),
+        (Key.Down, ScrollBy(TALL.subtree, y=1)),
+        (Key.Left, ScrollBy(TALL.subtree, x=-1)),
+        (Key.Right, ScrollBy(TALL.subtree, x=1)),
+        (Key.PageUp, ScrollBy(TALL.subtree, y=-12)),
+        (Key.PageDown, ScrollBy(TALL.subtree, y=12)),
+        (Key.Home, ScrollTo(TALL.subtree, y=0)),
+        (Key.End, ScrollTo(TALL.subtree, y=80)),
+    ],
+    ids=["up", "down", "left", "right", "page up", "page down", "home", "end"],
+)
+def test_scroll_on_keys_scrolls_its_receiver_for_each_scrolling_key(key: str, expected: ScrollBy | ScrollTo) -> None:
+    assert scroll_on_keys(page=0.5)(KeyPressed(key=key), TALL) == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "offset"),
+    [
+        (Key.Up, Position(4, 0)),
+        (Key.Down, Position(4, 80)),
+        (Key.Left, Position(0, 30)),
+        (Key.Right, Position(9, 30)),
+        (Key.PageUp, Position(4, 0)),
+        (Key.PageDown, Position(4, 80)),
+        (Key.Home, Position(4, 0)),
+        (Key.End, Position(4, 80)),
+    ],
+    ids=["up", "down", "left", "right", "page up", "page down", "home", "end"],
+)
+def test_scroll_on_keys_does_not_handle_a_key_past_the_end_of_the_range(key: str, offset: Position) -> None:
+    assert TALL.scroll is not None
+    at_end = replace(TALL, scroll=replace(TALL.scroll, offset=offset))
+
+    assert scroll_on_keys()(KeyPressed(key=key), at_end) is None
+
+
+def test_scroll_on_keys_pages_by_seven_eighths_of_the_view_by_default() -> None:
+    assert scroll_on_keys()(KeyPressed(key=Key.PageDown), TALL) == ScrollBy(TALL.subtree, y=21)
+
+
+def test_scroll_on_keys_raises_for_a_scrolling_key_on_a_receiver_that_is_not_a_scroll_container() -> None:
+    with pytest.raises(ValueError, match="isn't a scroll container"):
+        scroll_on_keys()(KeyPressed(key=Key.Down), RECEIVER)
+
+
+@pytest.mark.parametrize("event", [KEY, KeyPressed(key=Key.Enter), MouseScrolledDown(absolute=INSIDE)])
+def test_scroll_on_keys_does_not_handle_other_events(event: InputEvent) -> None:
+    assert scroll_on_keys()(event, RECEIVER) is None
+
+
+@pytest.mark.parametrize(
+    ("fraction", "rows"), [(0.875, 21), (0.5, 12), (1.0, 24), (0.01, 1)], ids=["chrome", "half", "whole", "tiny"]
+)
+def test_page_down_scrolls_down_by_a_fraction_of_the_view_rounded_down_and_at_least_one_row(
+    fraction: float, rows: int
+) -> None:
+    assert TALL.scroll is not None
+    handle = ElementHandle()
+
+    assert page_down(handle, TALL.scroll, fraction) == ScrollBy(handle, y=rows)
+
+
+def test_page_up_scrolls_up_by_as_much_as_page_down_scrolls_down() -> None:
+    assert TALL.scroll is not None
+
+    assert page_up(TALL.subtree, TALL.scroll, 0.5) == ScrollBy(TALL.subtree, y=-12)
+
+
+@pytest.mark.parametrize("fraction", [0.0, -0.5])
+def test_a_page_that_is_not_a_positive_fraction_raises(fraction: float) -> None:
+    assert TALL.scroll is not None
+
+    with pytest.raises(ValueError, match="positive fraction"):
+        page_down(TALL.subtree, TALL.scroll, fraction)
+
+
+def test_scroll_on_keys_with_a_page_that_is_not_a_positive_fraction_raises_before_any_key() -> None:
+    with pytest.raises(ValueError, match="positive fraction"):
+        scroll_on_keys(page=0.0)

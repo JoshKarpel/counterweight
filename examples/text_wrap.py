@@ -106,7 +106,7 @@ def input_pane(content: str) -> Div:
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
-                style=position_absolute | inset_top(-1) | inset_right(1) | text_color("sky", 600),
+                style=position_absolute | inset_top(-1) | inset_right(1) | clip_to_border | text_color("sky", 600),
             ),
             Text(
                 content=content,
@@ -133,7 +133,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
         children=[
             Text(
                 content=f" {w}c " if w > 0 else "",
-                style=position_absolute | inset_top(-1) | inset_right(1) | text_color("violet", 600),
+                style=position_absolute | inset_top(-1) | inset_right(1) | clip_to_border | text_color("violet", 600),
             ),
             Text(
                 content=content or " ",
