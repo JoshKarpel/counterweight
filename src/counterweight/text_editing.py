@@ -25,6 +25,15 @@ class EditableText:
         """`value` with `cursor` clamped to it, for a cursor kept while the value changed underneath it."""
         return cls(value=value, cursor=max(0, min(cursor, len(graphemes(value)))))
 
+    def following(self, value: str) -> EditableText:
+        """
+        This text if its value is still `value`,
+        or else `value` with the cursor at its end, since something other than an edit changed it.
+        """
+        if value == self.value:
+            return self
+        return EditableText(value=value, cursor=len(graphemes(value)))
+
 
 # One editing action, such as moving the cursor a word left or deleting the cluster before it.
 type Edit = Callable[[EditableText], EditableText]
@@ -168,6 +177,17 @@ def key_edit(key: str) -> Edit | None:
     return insert(key)
 
 
+# What each control character in a paste becomes on one line: a line break or a tab separates words, so it's a space,
+# and any other is dropped, as it isn't text and typing can't insert it.
+PASTE_CONTROLS: Mapping[int, str | None] = {
+    **dict.fromkeys([*range(0x20), *range(0x7F, 0xA0)]),
+    **dict.fromkeys(map(ord, "\n\v\f\r\x1c\x1d\x1e\x85\u2028\u2029\t"), " "),
+}
+
+
 def paste_edit(text: str) -> Edit:
-    """The edit pasting `text` makes: inserting it on one line, with each line break as a space."""
-    return insert(text.replace("\n", " "))
+    """
+    The edit pasting `text` makes: inserting it on one line, with each line break and tab as a space,
+    and without any other control characters.
+    """
+    return insert(text.translate(PASTE_CONTROLS))

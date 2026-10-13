@@ -339,7 +339,8 @@ def use_text_input(
             Several key presses can arrive between renders, as when typing fast,
             so an edit applies to the latest value rather than to `value`, which is the one this render saw.
             Validate or transform an edit by wrapping the setter:
-            `lambda edit: set_value(lambda v: new if (new := edit(v)).isdigit() else v)` keeps only digits.
+            `lambda edit: set_value(lambda v: new if (new := edit(v)).isdigit() or not new else v)`
+            keeps only digits, and lets the value be emptied.
             Each edit also calls it before and after with a function that returns the value it's given,
             to read the latest value, and then the one the edit settled at:
             the cursor moves with an edit unless the setter left the value as it was before it.
@@ -355,16 +356,16 @@ def use_text_input(
     Returns:
         The value split around the cursor, for the calling component to draw,
         and the handler that edits it, for the calling component to put on the element it returns.
-        The cursor starts at the end of the value, and stays where it is, clamped to the value,
-        when the value changes other than by an edit.
+        The cursor starts at the end of the value, and moves to the end when the value changes other than by an edit.
     """
     focus = use_focus(auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order)
-    cursor, set_cursor = use_state(lambda: len(graphemes(value)))
+    # The value the cursor was last placed in, so a value that differs from it was changed other than by an edit.
+    text, set_text = use_state(lambda: EditableText(value=value, cursor=len(graphemes(value))))
 
     def apply(edit: Edit) -> None:
-        # Both setters apply an updater immediately, so this reads the latest cursor, then the latest value,
+        # Both setters apply an updater immediately, so this reads the latest text, then the latest value,
         # and a second edit before the next render starts from the first one's result.
-        def edit_cursor(latest_cursor: int) -> int:
+        def edit_text(latest_text: EditableText) -> EditableText:
             # This render's value stands until the setter reports a later one, which one that ignores calls never does.
             values = [value]
 
@@ -373,14 +374,14 @@ def use_text_input(
                 return latest_value
 
             set_value(read_value)
-            before = EditableText.at(values[-1], latest_cursor)
+            before = latest_text.following(values[-1])
             edited = edit(before)
             set_value(lambda _: edited.value)
             # A setter that validates or transforms the edit decides the value, so read back what it kept.
             set_value(read_value)
-            return settled(before, edited, values[-1]).cursor
+            return settled(before, edited, values[-1])
 
-        set_cursor(edit_cursor)
+        set_text(edit_text)
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
@@ -401,12 +402,12 @@ def use_text_input(
         return ()
 
     clusters = graphemes(value)
-    shown = EditableText.at(value, cursor)
+    cursor = text.cursor if value == text.value else len(clusters)
     return TextInput(
-        before_cursor="".join(clusters[: shown.cursor]),
-        at_cursor=clusters[shown.cursor] if shown.cursor < len(clusters) else " ",
-        after_cursor="".join(clusters[shown.cursor + 1 :]),
-        cursor=shown.cursor,
+        before_cursor="".join(clusters[:cursor]),
+        at_cursor=clusters[cursor] if cursor < len(clusters) else " ",
+        after_cursor="".join(clusters[cursor + 1 :]),
+        cursor=cursor,
         focus=focus,
         on_input=on_input,
     )

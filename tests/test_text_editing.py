@@ -75,8 +75,30 @@ def test_every_key_with_an_edit_is_a_named_key() -> None:
     assert all(isinstance(key, Key) for key in KEY_EDITS)
 
 
-def test_paste_inserts_its_text_with_line_breaks_as_spaces() -> None:
-    assert paste_edit("one\ntwo\n")(marked("<|>")) == marked("<one two |>")
+@pytest.mark.parametrize(
+    ("pasted", "after"),
+    [
+        pytest.param("one\ntwo\n", "<one two |>", id="line-breaks"),
+        pytest.param("a\u2028b\x85c", "<a b c|>", id="unicode-line-breaks"),
+        pytest.param("cell\tcell", "<cell cell|>", id="tab"),
+        pytest.param("a\x1b[1mb\x7fc\x9bd\x00", "<a[1mbcd|>", id="other-controls"),
+    ],
+)
+def test_paste_inserts_its_text_on_one_line(pasted: str, after: str) -> None:
+    assert paste_edit(pasted)(marked("<|>")) == marked(after)
+
+
+@pytest.mark.parametrize(
+    ("text", "value", "following"),
+    [
+        pytest.param("ab|c", "abc", "ab|c", id="unchanged"),
+        pytest.param("ab|c", "a", "a|", id="shrunk"),
+        pytest.param("a|bc", "wxyz", "wxyz|", id="grown"),
+        pytest.param("a|bc", "👩‍💻é", "👩‍💻é|", id="clusters"),
+    ],
+)
+def test_following_moves_the_cursor_to_the_end_of_a_changed_value(text: str, value: str, following: str) -> None:
+    assert marked(text).following(value) == marked(following)
 
 
 @pytest.mark.parametrize(

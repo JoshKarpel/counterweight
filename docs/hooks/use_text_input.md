@@ -72,7 +72,8 @@ which most terminal programs share:
 A character is a grapheme cluster, so the cursor steps over an emoji or an accented letter whole.
 A word is a run of letters and digits.
 
-A paste inserts its text in one edit, with each line break turned into a space,
+A paste inserts its text in one edit, with each line break and tab turned into a space
+and any other control characters dropped,
 on terminals that support [bracketed paste](../input-handling/events.md#handling-pastes).
 On others, the pasted text arrives as typed keys, and its line breaks arrive as Enter.
 
@@ -98,8 +99,9 @@ Typing `3x6` into the age field gives `36`, since the `x` would have made the va
 ![The sign-up form with a name pasted in and 36 typed as the age](../assets/text-input-sign-up-filled.svg)
 
 The cursor stays where it is when the setter rejects an edit,
-and when the value changes other than by an edit, such as when a form clears it after submitting,
-the cursor stays put, moved back to the end of the value if it's past it.
+and when the value changes other than by an edit,
+such as when a form clears it after submitting or fills in an earlier entry,
+the cursor moves to the end of the new value.
 
 ## A styled text input
 

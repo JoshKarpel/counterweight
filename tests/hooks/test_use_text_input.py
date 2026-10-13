@@ -124,33 +124,61 @@ async def test_a_setter_that_ignores_edits_leaves_the_cursor() -> None:
     assert shown[-1] == Shown(value="ab", before="a", at="b", after="")
 
 
-async def test_the_cursor_is_clamped_to_a_value_that_shrinks_underneath_it() -> None:
+async def run_replacing(
+    events: Sequence[InputEvent | AnyControl],
+    initial: str,
+    replacement: str,
+    compose: Callable[[InputHandler, InputHandler], InputHandler],
+) -> list[Shown]:
+    """
+    Runs a field whose root element takes `compose(field.on_input, replace)`,
+    where `replace` sets the value to `replacement` on any event that reaches it, other than by an edit,
+    and returns what each of the field's renders showed.
+    """
     shown: list[Shown] = []
 
     @component
     def root() -> Text:
-        value, set_value = use_state("hello")
+        value, set_value = use_state(initial)
         field = use_text_input(value, set_value, auto_focus=True)
         shown.append(Shown.of(value, field))
 
-        def shorten(event: InputEvent, _: Receiver) -> InputResponse:
-            set_value("hi")
+        def replace(event: InputEvent, _: Receiver) -> InputResponse:
+            set_value(replacement)
             return ()
 
-        return Text(content=value, on_input=first(field.on_input, shorten))
+        return Text(content=value, on_input=compose(field.on_input, replace))
 
-    await app(
-        root(),
-        headless=True,
-        dimensions=(20, 3),
-        autopilot=(KeyPressed(key=Key.Enter), *typed("!"), Quit()),
-        check_purity=True,
+    await app(root(), headless=True, dimensions=(30, 3), autopilot=(*events, Quit()), check_purity=True)
+    return shown
+
+
+async def test_a_value_changed_other_than_by_an_edit_puts_the_cursor_at_its_end() -> None:
+    shown = await run_replacing(
+        (KeyPressed(key=Key.Left), KeyPressed(key=Key.Enter), *typed("!")),
+        initial="ab",
+        replacement="hello",
+        compose=first,
     )
 
     assert [shown[-3], shown[-1]] == [
-        Shown(value="hi", before="hi", at=" ", after=""),
-        Shown(value="hi!", before="hi!", at=" ", after=""),
+        Shown(value="hello", before="hello", at=" ", after=""),
+        Shown(value="hello!", before="hello!", at=" ", after=""),
     ]
+
+
+async def test_an_edit_after_a_change_before_the_next_render_starts_from_the_end() -> None:
+    shown = await run_replacing(
+        (KeyPressed(key=Key.Enter),),
+        initial="ab",
+        replacement="hello",
+        # Enter replaces the value, then types "!" before the next render.
+        compose=lambda on_input, replace: each(
+            replace, lambda event, receiver: on_input(KeyPressed(key="!"), receiver)
+        ),
+    )
+
+    assert shown[-1] == Shown(value="hello!", before="hello!", at=" ", after="")
 
 
 async def test_keys_the_field_does_not_edit_with_bubble_to_its_parent() -> None:
