@@ -4,7 +4,7 @@ A Markdown viewer: a tree of a directory's Markdown files on the left, and the c
 Run it with `uv run python -m examples.markdown_viewer [directory]`; it shows the docs by default.
 Up and Down move through the tree, Right or Enter opens a directory or shows a file, Left closes a directory,
 and clicking a row does what Enter would.
-Documents longer than the screen are cut off at its bottom edge.
+PageUp, PageDown, Home and End scroll the document, and the wheel scrolls whichever pane is under the pointer.
 """
 
 from __future__ import annotations
@@ -18,10 +18,11 @@ from pathlib import Path
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
+from counterweight.controls import ScrollIntoView, ScrollTo
+from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
-from counterweight.handlers import on_click
-from counterweight.hooks import use_state
+from counterweight.handlers import on_click, page_down, page_up, scroll_on_wheel
+from counterweight.hooks import ElementHandle, use_scroll, use_state
 from counterweight.keys import Key
 from counterweight.markdown import markdown
 from counterweight.styles.utilities import *
@@ -75,6 +76,10 @@ def root(tree: Directory) -> Div:
     expanded, set_expanded = use_state(frozenset[Path]())
     cursor, set_cursor = use_state(0)
     shown, set_shown = use_state(first_file(tree))
+    # On the cursor's line, so moving the cursor can scroll it into view.
+    cursor_line, _ = use_state(ElementHandle)
+    document, _ = use_state(ElementHandle)
+    document_scroll = use_scroll(document)
 
     lines = list(visible_lines(tree, expanded))
 
@@ -86,14 +91,18 @@ def root(tree: Directory) -> Div:
             case File() as file:
                 set_shown(file)
 
+    def move_cursor(index: int) -> InputResponse:
+        set_cursor(index)
+        return ScrollIntoView(cursor_line, block="nearest")
+
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         if not lines:
             return None
         match event:
             case KeyPressed(key=Key.Up):
-                set_cursor(max(cursor - 1, 0))
+                return move_cursor(max(cursor - 1, 0))
             case KeyPressed(key=Key.Down):
-                set_cursor(min(cursor + 1, len(lines) - 1))
+                return move_cursor(min(cursor + 1, len(lines) - 1))
             case KeyPressed(key=Key.Right | Key.Enter):
                 match lines[cursor].entry:
                     case Directory(path=path):
@@ -105,55 +114,69 @@ def root(tree: Directory) -> Div:
                     case Directory(path=path) if path in expanded:
                         set_expanded(expanded - {path})
                     case _:
-                        set_cursor(parent_line(lines, cursor))
+                        return move_cursor(parent_line(lines, cursor))
+            case KeyPressed(key=Key.PageUp):
+                return page_up(document, document_scroll)
+            case KeyPressed(key=Key.PageDown):
+                return page_down(document, document_scroll)
+            case KeyPressed(key=Key.Home):
+                return ScrollTo(document, y=0)
+            case KeyPressed(key=Key.End):
+                return ScrollTo(document, y=document_scroll.max_offset.y)
             case _:
                 return None
         return ()
 
     return Div(
-        style=row,
+        style=row | full,
         on_input=on_input,
         children=(
-            Div(
-                style=col
-                | length(32)
-                | border
-                | border_bottom_0
-                | border_lightrounded
-                | border_color("slate", 600)
-                | pad_x(1),
-                children=(
-                    Text(content=f" {tree.path.name}/ ", style=title),
-                    *(
-                        tree_line(
-                            line,
-                            is_cursor=index == cursor,
-                            is_shown=line.entry == shown,
-                            expanded=expanded,
-                            on_press=on_click(partial(activate, index)),
-                        )
-                        for index, line in enumerate(lines)
-                    ),
+            pane(
+                f"{tree.path.name}/",
+                length(32),
+                tuple(
+                    tree_line(
+                        line,
+                        handle=cursor_line if index == cursor else None,
+                        is_shown=line.entry == shown,
+                        expanded=expanded,
+                        on_press=on_click(partial(activate, index)),
+                    )
+                    for index, line in enumerate(lines)
                 ),
             ),
+            pane(
+                str(shown.path.relative_to(tree.path)) if shown else "",
+                fill(1),
+                (markdown(shown.source) if shown else Text(content="No Markdown files here."),),
+                handle=document,
+                # Keyed by the file, so showing another remounts the pane, which starts it scrolled to its top.
+            ).with_key(str(shown.path) if shown else None),
+        ),
+    )
+
+
+@component
+def pane(name: str, width: Style, children: tuple[AnyElement, ...], handle: ElementHandle | None = None) -> Div:
+    """
+    A titled, bordered pane whose content scrolls with the wheel.
+    The border and title are on a box around the part that scrolls, so they stay put while it scrolls.
+    """
+    return Div(
+        style=col | width | border | border_lightrounded | border_color("slate", 600),
+        children=(
+            Text(content=f" {name} " if name else "", style=title),
             Div(
-                style=col
-                | fill(1)
-                | border
-                | border_bottom_0
-                | border_lightrounded
-                | border_color("slate", 600)
-                | pad_x(1),
-                children=(
-                    Text(content=f" {shown.path.relative_to(tree.path)} " if shown else "", style=title),
-                    markdown(shown.source) if shown else Text(content="No Markdown files here."),
-                ),
+                style=fill(1) | col | pad_x(1) | overflow_y_scroll,
+                handle=handle,
+                on_input=scroll_on_wheel(),
+                children=children,
             ),
         ),
     )
 
 
-title = position_absolute | inset_top(-1) | inset_left(1) | text_color("slate", 400)
+title = position_absolute | inset_top(-1) | inset_left(1) | clip_to_border | text_color("slate", 400)
 
 
 def parent_line(lines: list[Line], index: int) -> int:
@@ -162,7 +185,9 @@ def parent_line(lines: list[Line], index: int) -> int:
     return next((i for i in range(index - 1, -1, -1) if lines[i].depth < depth), index)
 
 
-def tree_line(line: Line, is_cursor: bool, is_shown: bool, expanded: frozenset[Path], on_press: InputHandler) -> Text:
+def tree_line(
+    line: Line, handle: ElementHandle | None, is_shown: bool, expanded: frozenset[Path], on_press: InputHandler
+) -> Text:
     match line.entry:
         case Directory(path=path):
             label = f"{'▾' if path in expanded else '▸'} {path.name}/"
@@ -172,7 +197,8 @@ def tree_line(line: Line, is_cursor: bool, is_shown: bool, expanded: frozenset[P
             style = text_color("slate", 50) if is_shown else text_color("slate", 300)
     return Text(
         content=f"{'  ' * line.depth}{label}",
-        style=style | (text_bg("slate", 700) if is_cursor else None),
+        style=style | (text_bg("slate", 700) if handle else None),
+        handle=handle,
         on_input=on_press,
     )
 

@@ -11,6 +11,8 @@ drawn from uniformly.
 
 The streaming block's source is cut at a word boundary every frame, so it is often unfinished Markdown,
 and is parsed again every frame, while every finished block hits `markdown`'s cache.
+As in `agent`, the transcript is a scroll container holding the newest messages, which sticks to its end,
+and which the wheel and the keyboard scroll back through in a live run.
 """
 
 import random
@@ -18,14 +20,15 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import partial
-from math import ceil
 from typing import Literal
 
-from benchmarks.agent import CODE, FILES, VOCABULARY, header, prompt, spinner
+from benchmarks.agent import CODE, FILES, KEPT_MESSAGES, VOCABULARY, header, prompt, spinner
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
+from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
 from counterweight.highlighting import code_block
+from counterweight.hooks import use_focus
 from counterweight.markdown import markdown
 from counterweight.styles.utilities import (
     border,
@@ -34,13 +37,13 @@ from counterweight.styles.utilities import (
     col,
     fill,
     gap_height,
+    overflow_y_scroll,
     pad_x,
+    stick_to_end_y,
     text_color,
 )
 
 WORDS_PER_FRAME = 3
-TRANSCRIPT_ROWS = 40
-WRAP_WIDTH = 112
 
 SUMMARY_SHARE = 0.15
 NARRATION_WORDS = (9, 14, 20, 28, 40)
@@ -88,6 +91,7 @@ type Kind = Literal["user", "assistant", "read", "edit", "bash"]
 
 @dataclass(frozen=True, slots=True)
 class Message:
+    id: int
     kind: Kind
     title: str
     body: str
@@ -100,6 +104,7 @@ class Model:
     pending: tuple[str, ...]
     """The streaming message's source still to come, word by word, each with the whitespace after it."""
     tokens: int
+    next_id: int
 
 
 def initial() -> Model:
@@ -107,11 +112,12 @@ def initial() -> Model:
     return Model(
         tick=0,
         messages=(
-            Message(kind="user", title="", body="Why is the dashboard slower since the merge-rule change?"),
-            Message(kind="assistant", title="", body=""),
+            Message(id=0, kind="user", title="", body="Why is the dashboard slower since the merge-rule change?"),
+            Message(id=1, kind="assistant", title="", body=""),
         ),
         pending=words,
         tokens=0,
+        next_id=2,
     )
 
 
@@ -120,15 +126,20 @@ def step(model: Model) -> Model:
     *earlier, streaming = model.messages
     shown, pending = model.pending[:WORDS_PER_FRAME], model.pending[WORDS_PER_FRAME:]
     messages = (*earlier, replace(streaming, body=streaming.body + "".join(shown)))
+    next_id = model.next_id
     if not pending:
-        tools = tuple(tool_call(rng) for _ in range(rng.choice(TOOL_CALLS)))
-        messages = (*messages, *tools, Message(kind="assistant", title="", body=""))
+        ids = range(next_id, next_id + rng.choice(TOOL_CALLS))
+        tools = tuple(tool_call(rng, id) for id in ids)
+        next_id += len(ids)
+        messages = (*messages, *tools, Message(id=next_id, kind="assistant", title="", body=""))
+        next_id += 1
         pending = split_words(chunk_source(rng))
     return Model(
         tick=model.tick + 1,
-        messages=visible(messages),
+        messages=messages[-KEPT_MESSAGES:],
         pending=pending,
         tokens=model.tokens + WORDS_PER_FRAME * 4 // 3,
+        next_id=next_id,
     )
 
 
@@ -191,59 +202,51 @@ def prose(rng: random.Random, words: int) -> str:
     return " ".join(out)
 
 
-def tool_call(rng: random.Random) -> Message:
+def tool_call(rng: random.Random, id: int) -> Message:
     kinds, weights = zip(*TOOL_WEIGHTS.items())
     kind: Kind = rng.choices(kinds, weights)[0]
     match kind:
         case "bash":
             command, output = rng.choice(COMMANDS)
-            return Message(kind="bash", title=f"$ {command}", body="\n".join(output))
+            return Message(id=id, kind="bash", title=f"$ {command}", body="\n".join(output))
         case "read":
             start = rng.randrange(len(CODE))
             lines = (CODE[(start + n) % len(CODE)] for n in range(rng.randrange(3, 8)))
-            return Message(kind="read", title=f"Read {rng.choice(FILES)}", body="\n".join(lines))
+            return Message(id=id, kind="read", title=f"Read {rng.choice(FILES)}", body="\n".join(lines))
         case _:
             line = rng.choice(CODE)
             return Message(
-                kind="edit", title=f"Edit {rng.choice(FILES)}", body=f"-{line}\n+{line.replace('tree', 'cached')}"
+                id=id,
+                kind="edit",
+                title=f"Edit {rng.choice(FILES)}",
+                body=f"-{line}\n+{line.replace('tree', 'cached')}",
             )
 
 
-def estimated_rows(message: Message) -> int:
-    """
-    About how many rows `message` takes: each source line wrapped, a table row and its rule, and a box's border.
-    There's no scrolling yet, so older messages fall off the top as the transcript grows.
-    """
-    rows = sum(
-        (2 if line.startswith("|") else max(1, ceil(len(line) / WRAP_WIDTH))) for line in message.body.split("\n")
-    )
-    return rows + (2 if message.kind in ("read", "edit", "bash") else 0) + 1
+type MessageComponent = Callable[[Message], Component]
 
 
-def visible(messages: tuple[Message, ...]) -> tuple[Message, ...]:
-    """The newest messages that fit in the transcript, by `estimated_rows`."""
-    kept: list[Message] = []
-    rows = 0
-    for message in reversed(messages):
-        rows += estimated_rows(message)
-        if rows > TRANSCRIPT_ROWS and kept:
-            break
-        kept.append(message)
-    return tuple(reversed(kept))
-
-
-def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
+def view(model: Model, message_component: MessageComponent) -> Div:
     return Div(
         style=col,
         children=(
             header(model.tokens),
-            Div(
-                style=fill(1) | col | gap_height(1) | pad_x(1),
-                children=tuple(message_component(message) for message in model.messages),
-            ),
+            transcript(model.messages, message_component),
             spinner(model.tick),
             prompt(),
         ),
+    )
+
+
+@component
+def transcript(messages: tuple[Message, ...], message_component: MessageComponent) -> Div:
+    # Focused, so the keys reach scroll_on_keys in a live run.
+    use_focus(auto_focus=True)
+    return Div(
+        style=fill(1) | col | gap_height(1) | pad_x(1) | overflow_y_scroll | stick_to_end_y,
+        on_input=first(scroll_on_keys(), scroll_on_wheel()),
+        # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
+        children=tuple(message_component(message).with_key(str(message.id)) for message in messages),
     )
 
 

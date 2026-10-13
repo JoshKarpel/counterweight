@@ -38,9 +38,26 @@ GitHub's extensions to CommonMark draw like this:
 Rendering is cached by the source and the styles,
 so a component can render the same document on every render without parsing it again.
 
-`markdown` doesn't scroll: a document longer than the space it's given runs past the bottom of it.
+## Scrolling
+
+A document is as tall as its content, so one longer than the space it's given runs past the bottom of it.
+Put it in a [scroll container](../layout/scrolling.md), as a browser puts a page in a scrolling viewport,
+with [`scroll_on_keys`](../input-handling/handlers.md#scrolling) and `scroll_on_wheel` to scroll it:
+
+```python
+--8 < --"markdown_document.py:scrolling"
+```
+
+=== "Before"
+
+    ![The top of a rendered document in a bordered box](../assets/markdown-scrolling.svg)
+
+=== "After PageDown"
+
+    ![The document scrolled down a page](../assets/markdown-scrolling-paged.svg)
+
 The [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
-puts a tree of a directory's Markdown files beside the one it's showing,
+puts a tree of a directory's Markdown files beside the one it's showing, each in a pane that scrolls,
 and the [Markdown gallery](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_gallery.py) example
 shows the source of each kind of block and span beside how it renders.
 

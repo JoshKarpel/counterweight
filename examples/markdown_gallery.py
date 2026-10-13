@@ -2,7 +2,7 @@
 A gallery of the Markdown that `markdown` renders: each feature's source on the left, and how it renders on the right.
 
 Run it with `uv run python -m examples.markdown_gallery`.
-The gallery is longer than most screens, so it's cut off at the bottom edge.
+The gallery is longer than most screens: the wheel, the arrow keys, PageUp, PageDown, Home and End scroll it.
 """
 
 from __future__ import annotations
@@ -12,7 +12,9 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
+from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
 from counterweight.highlighting import code_block
+from counterweight.hooks import use_focus
 from counterweight.markdown import markdown
 from counterweight.styles.utilities import *
 
@@ -171,8 +173,11 @@ Raw HTML is shown as written.
 
 @component
 def root() -> Div:
+    # Focused, so the keys reach scroll_on_keys.
+    use_focus(auto_focus=True)
     return Div(
-        style=col | gap_height(1) | pad_x(1),
+        style=col | full | gap_height(1) | pad_x(1) | overflow_y_scroll,
+        on_input=first(scroll_on_keys(), scroll_on_wheel()),
         children=tuple(section(name, source) for name, source in GALLERY),
     )
 
@@ -194,7 +199,7 @@ def section(name: str, source: str) -> Div:
     )
 
 
-title = position_absolute | inset_top(-1) | inset_left(1) | text_color("slate", 400)
+title = position_absolute | inset_top(-1) | inset_left(1) | clip_to_border | text_color("slate", 400)
 
 
 if __name__ == "__main__":
