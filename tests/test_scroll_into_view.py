@@ -36,13 +36,13 @@ from tests.test_scrolling import HANDLE, frames_of, last_rows, rows
 ITEMS = tuple(ElementHandle() for _ in range(8))
 
 
-def items(prefix: str = "item") -> list[AnyElement]:
-    return [Text(content=f"{prefix} {i}", handle=handle) for i, handle in enumerate(ITEMS)]
+def items(prefix: str = "item") -> tuple[AnyElement, ...]:
+    return tuple(Text(content=f"{prefix} {i}", handle=handle) for i, handle in enumerate(ITEMS))
 
 
 def column(*children: AnyElement, style: Style = Style()) -> Div:
     """A box 8 wide and 3 tall that scrolls vertically, so 3 rows of its children are in view."""
-    return Div(style=col | size(8, 3) | overflow_y_scroll | style, handle=HANDLE, children=list(children))
+    return Div(style=col | size(8, 3) | overflow_y_scroll | style, handle=HANDLE, children=children)
 
 
 def showing(*indexes: int) -> list[str]:
@@ -79,7 +79,7 @@ async def test_scroll_into_view_nearest_leaves_a_target_already_in_view_alone() 
 
 
 async def test_scroll_into_view_aligns_its_target_horizontally_by_inline() -> None:
-    cells = [Text(content=f"[{i}]", style=size(4, 1) | shrink(0), handle=handle) for i, handle in enumerate(ITEMS)]
+    cells = tuple(Text(content=f"[{i}]", style=size(4, 1) | shrink(0), handle=handle) for i, handle in enumerate(ITEMS))
     container = Div(style=row | size(8, 1) | overflow_x_scroll, children=cells)
 
     assert await last_rows(container, (8, 1), [ScrollIntoView(ITEMS[5], inline="start")]) == ["[5] [6] "]
@@ -87,7 +87,7 @@ async def test_scroll_into_view_aligns_its_target_horizontally_by_inline() -> No
 
 async def test_scroll_into_view_scrolls_each_container_above_its_target_from_the_innermost_out() -> None:
     inner = Div(style=col | size(8, 2) | shrink(0) | overflow_y_scroll, children=items())
-    outer = Div(style=col | size(8, 3) | overflow_y_scroll, children=[*lines_of(3, "out"), inner, *lines_of(2, "end")])
+    outer = Div(style=col | size(8, 3) | overflow_y_scroll, children=(*lines_of(3, "out"), inner, *lines_of(2, "end")))
 
     assert await last_rows(outer, (8, 3), [ScrollIntoView(ITEMS[6])]) == [*showing(6, 7), "end 0   "]
 
@@ -99,22 +99,22 @@ async def test_scroll_into_view_scrolls_each_container_above_its_target_from_the
 async def test_scroll_into_view_scrolls_nested_horizontal_containers_from_the_innermost_out(
     inline: ScrollAlignment, expected: str
 ) -> None:
-    cells = [Text(content=f"[{i}]", style=size(4, 1) | shrink(0), handle=handle) for i, handle in enumerate(ITEMS)]
+    cells = tuple(Text(content=f"[{i}]", style=size(4, 1) | shrink(0), handle=handle) for i, handle in enumerate(ITEMS))
     inner = Div(style=row | size(12, 1) | shrink(0) | overflow_x_scroll, children=cells)
     edge = Text(content="....", style=shrink(0))
-    outer = Div(style=row | size(8, 1) | overflow_x_scroll, children=[edge, inner, edge])
+    outer = Div(style=row | size(8, 1) | overflow_x_scroll, children=(edge, inner, edge))
 
     assert await last_rows(outer, (8, 1), [ScrollIntoView(ITEMS[5], inline=inline)]) == [expected]
 
 
-def lines_of(count: int, prefix: str) -> list[AnyElement]:
-    return [Text(content=f"{prefix} {i}") for i in range(count)]
+def lines_of(count: int, prefix: str) -> tuple[AnyElement, ...]:
+    return tuple(Text(content=f"{prefix} {i}") for i in range(count))
 
 
 async def test_scroll_into_view_of_a_scroll_container_scrolls_the_containers_above_it_and_not_itself() -> None:
     inner_handle = ElementHandle()
     inner = Div(style=col | size(8, 2) | shrink(0) | overflow_y_scroll, handle=inner_handle, children=items())
-    outer = Div(style=col | size(8, 2) | overflow_y_scroll, children=[*lines_of(3, "out"), inner])
+    outer = Div(style=col | size(8, 2) | overflow_y_scroll, children=(*lines_of(3, "out"), inner))
     autopilot: list[AnyEvent | AnyControl] = [ScrollTo(inner_handle, y=1), ScrollIntoView(inner_handle)]
 
     assert await last_rows(outer, (8, 2), autopilot) == showing(1, 2)
@@ -126,7 +126,7 @@ async def test_scroll_into_view_of_a_scroll_container_scrolls_the_containers_abo
     ids=["unmounted", "hidden"],
 )
 async def test_scroll_into_view_of_an_element_that_is_not_laid_out_does_nothing(target: ElementHandle) -> None:
-    hidden = Div(style=display_none, children=[Text(content="hidden", handle=ITEMS[0])])
+    hidden = Div(style=display_none, children=(Text(content="hidden", handle=ITEMS[0]),))
     container = column(*lines_of(6, "line"), hidden)
     autopilot: list[AnyEvent | AnyControl] = [ScrollTo(HANDLE, y=1), ScrollIntoView(target)]
 
@@ -156,7 +156,7 @@ async def test_scroll_into_view_scrolls_no_container_above_an_unclipped_element(
         style=position_absolute | inset_top(1) | size(8, 2) | clip_to_screen | col | overflow_y_scroll,
         children=items(),
     )
-    outer = Div(style=col | size(8, 2) | overflow_y_scroll, children=[Div(children=[Text(content="field"), popup])])
+    outer = Div(style=col | size(8, 2) | overflow_y_scroll, children=(Div(children=(Text(content="field"), popup)),))
 
     assert await last_rows(outer, (8, 3), [ScrollIntoView(ITEMS[3])]) == ["field   ", *showing(3, 4)]
 
@@ -165,10 +165,10 @@ async def test_scroll_into_view_of_a_hidden_element_leaves_later_requests_to_app
     def both(event: InputEvent, receiver: Receiver) -> InputResponse:
         return ScrollIntoView(ITEMS[0]), ScrollIntoView(ITEMS[1])
 
-    hidden = Div(style=display_none, children=[Text(content="hidden", handle=ITEMS[0])])
+    hidden = Div(style=display_none, children=(Text(content="hidden", handle=ITEMS[0]),))
     shown = Text(content="shown", handle=ITEMS[1])
     container = Div(
-        style=col | size(8, 3) | overflow_y_scroll, on_input=both, children=[*lines_of(6, "line"), hidden, shown]
+        style=col | size(8, 3) | overflow_y_scroll, on_input=both, children=(*lines_of(6, "line"), hidden, shown)
     )
 
     assert (await last_rows(container, (8, 3), [KeyPressed(key="x")]))[-1] == "shown   "
@@ -188,13 +188,13 @@ def highlighted_list() -> Div:
     return Div(
         style=col | size(8, 3) | overflow_y_scroll,
         on_input=on_input,
-        children=[
+        children=tuple(
             Text(
                 content=f"{'>' if i == highlighted and focus.is_focused else ' '}item {i}",
                 handle=handle if i == highlighted else None,
             )
             for i in range(8)
-        ],
+        ),
     )
 
 
@@ -219,14 +219,14 @@ def nested_fields(auto_focus: bool = False) -> Div:
     """Three focusable fields at the end of an inner scroll container, below an outer one's view."""
     inner = Div(
         style=col | size(8, 2) | shrink(0) | overflow_y_scroll,
-        children=[
+        children=(
             *lines_of(4, "in"),
             *(focusable_item(f"f{i}", handle, auto_focus and i == 2) for i, handle in enumerate(FIELDS)),
-        ],
+        ),
     )
     return Div(
         style=col | size(8, 3) | overflow_y_scroll,
-        children=[*lines_of(4, "out"), inner, *lines_of(2, "end")],
+        children=(*lines_of(4, "out"), inner, *lines_of(2, "end")),
     )
 
 
@@ -251,7 +251,7 @@ def revealing() -> Div:
         set_shown(True)
         return ()
 
-    return Div(on_input=on_input, children=[nested_fields(auto_focus=True)] if is_shown else [])
+    return Div(on_input=on_input, children=(nested_fields(auto_focus=True),) if is_shown else ())
 
 
 async def test_an_element_that_takes_focus_as_it_mounts_after_startup_is_scrolled_into_view() -> None:

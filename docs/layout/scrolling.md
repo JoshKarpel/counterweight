@@ -47,7 +47,7 @@ A titled pane puts its border and title on a box around the part that scrolls,
 so they stay put while the content moves:
 
 ```python
---8<-- "scrolling.py:pane"
+--8 < --"scrolling.py:pane"
 ```
 
 === "Before"
@@ -80,7 +80,7 @@ so the last lines of one page stay in view at the top of the next, to read on fr
 for apps that bind paging to other keys, such as `less`'s Space for a whole page and `d` and `u` for half of one:
 
 ```python
---8<-- "scrolling.py:keys"
+--8 < --"scrolling.py:keys"
 ```
 
 === "After PageDown"
@@ -103,7 +103,7 @@ A handler anywhere else names it by an `ElementHandle`, as a React component rea
 create one with `use_state(ElementHandle)`, and pass it to the element's `handle`.
 
 ```python
---8<-- "scrolling.py:controls"
+--8 < --"scrolling.py:controls"
 ```
 
 ![The log scrolled to its end by the Bottom button](../assets/scrolling-controls.svg)
@@ -141,7 +141,7 @@ since no container above that element clips it, so none has to scroll to show it
 A table of contents scrolls each section's heading to the top of the pane it's in:
 
 ```python
---8<-- "scrolling.py:contents"
+--8 < --"scrolling.py:contents"
 ```
 
 === "Before"
@@ -185,7 +185,7 @@ A list too long to render whole can render only the rows in view, with empty box
 so the content is as tall as every row would make it, as React's windowing libraries do:
 
 ```python
---8<-- "scrolling.py:windowed"
+--8 < --"scrolling.py:windowed"
 ```
 
 ![Rows six to nine of a hundred thousand](../assets/scrolling-windowed.svg)
@@ -236,7 +236,7 @@ and one that mounts already overflowing starts at its end.
 This log keeps its newest eight lines, adds one a second, and sticks to its end:
 
 ```python
---8<-- "scrolling.py:tail"
+--8 < --"scrolling.py:tail"
 ```
 
 === "Following"
@@ -268,7 +268,7 @@ so a reader scrolled back through a log has no sign of how far the end is.
 A button over the last line that appears once the log is scrolled back, and jumps to the end, gives them one:
 
 ```python
---8<-- "scrolling.py:jump"
+--8 < --"scrolling.py:jump"
 ```
 
 === "Scrolled back"

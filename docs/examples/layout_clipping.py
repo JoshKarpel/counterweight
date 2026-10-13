@@ -21,19 +21,19 @@ LINES = "\n".join(f"line {i} of a long paragraph" for i in range(1, 7))
 def hidden() -> Div:
     return Div(
         style=row | gap(2),
-        children=[
+        children=tuple(
             Div(
                 style=col,
-                children=[
+                children=(
                     Div(
                         style=col | border | height(4) | width(20) | overflow,
-                        children=[Text(content=f"line {i}") for i in range(1, 7)],
+                        children=tuple(Text(content=f"line {i}") for i in range(1, 7)),
                     ),
                     Text(content="below"),
-                ],
+                ),
             )
             for overflow in (overflow_visible, overflow_hidden)
-        ],
+        ),
     )
 
 
@@ -46,13 +46,13 @@ def hidden() -> Div:
 def one_axis() -> Div:
     return Div(
         style=row | gap(8),
-        children=[
+        children=tuple(
             Div(
                 style=border | height(4) | width(16) | overflow,
-                children=[Text(content=LINES, style=height(6))],
+                children=(Text(content=LINES, style=height(6)),),
             )
             for overflow in (overflow_x_hidden, overflow_y_hidden)
-        ],
+        ),
     )
 
 
@@ -65,16 +65,16 @@ def one_axis() -> Div:
 def clip_to() -> Div:
     return Div(
         style=row,
-        children=[
+        children=tuple(
             Div(
                 style=fill(1) | border | pad_x(1),
-                children=[
+                children=(
                     Text(content=f" {name} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip),
                     Text(content="fill(1) hides its overflow"),
-                ],
+                ),
             )
             for name, clip in (("clip_to_padding", clip_to_padding), ("clip_to_border", clip_to_border))
-        ],
+        ),
     )
 
 
@@ -87,19 +87,19 @@ def clip_to() -> Div:
 def raised() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=col | border | size(30, 5) | overflow_hidden,
-                children=[
+                children=(
                     Text(content="File  Edit  View"),
                     Text(
                         content="Open…\nSave\nSave As…\nQuit",
                         style=z(1) | position_absolute | inset_top(1) | inset_left(0) | border | border_heavy,
                     ),
-                ],
+                ),
             ),
             Text(content="The menu is cut off inside the box's border,\nhowever high its z."),
-        ],
+        ),
     )
 
 
@@ -112,10 +112,10 @@ def raised() -> Div:
 def unclipped() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=col | border | size(30, 5) | overflow_hidden,
-                children=[
+                children=(
                     Text(content="File  Edit  View"),
                     Text(
                         content="Open…\nSave\nSave As…\nQuit",
@@ -127,10 +127,10 @@ def unclipped() -> Div:
                         | border
                         | border_heavy,
                     ),
-                ],
+                ),
             ),
             Text(content="With clip_to_screen, the menu\nreaches past the box.", style=pad_left(11)),
-        ],
+        ),
     )
 
 
@@ -145,10 +145,10 @@ below_parent = Style(layout=waxy.Style(position=waxy.Position.Absolute, inset_to
 def percent_inset() -> Div:
     return Div(
         style=border | width(30) | pad_x(1),
-        children=[
+        children=(
             Text(content="inset_top=Percent(1.0)"),
             Text(content=" on the border row ", style=below_parent | inset_left(1) | clip_to_border),
-        ],
+        ),
     )
 
 
@@ -164,18 +164,18 @@ def scrolled_panels() -> Div:
     return Div(
         style=col | size(24, 6) | overflow_y_scroll,
         handle=PANELS,
-        children=[
+        children=tuple(
             Div(
                 style=border | border_lightrounded | height(3) | shrink(0),
-                children=[
+                children=(
                     Text(
                         content=f" {title} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border
                     ),
                     Text(content=body),
-                ],
+                ),
             )
             for title, body in (("web", "3 replicas"), ("worker", "8 replicas"), ("cron", "1 replica"))
-        ],
+        ),
     )
 
 

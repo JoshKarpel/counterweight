@@ -9,7 +9,20 @@ from traceback import TracebackException
 import pytest
 from without_logging import exception_to_dict
 
-from counterweight.logging import devlog, format_line, last_devlog, render_exception, render_line, tail_devlog
+from counterweight.app import app
+from counterweight.components import component
+from counterweight.controls import Quit
+from counterweight.elements import Text
+from counterweight.logging import (
+    BASE_LOG_LEVELS,
+    app_log_levels,
+    devlog,
+    format_line,
+    last_devlog,
+    render_exception,
+    render_line,
+    tail_devlog,
+)
 
 RECORD = {
     "timestamp": "2026-10-11T03:16:34.779176+00:00",
@@ -46,17 +59,75 @@ def test_render_line_appends_the_traceback_with_its_cause_first() -> None:
     assert lines.index("  KeyError: 'inner'") < lines.index("  The above exception led to the following exception:")
 
 
-async def test_devlog_writes_every_record_as_a_json_line(tmp_path: Path) -> None:
+def captured(path: Path) -> list[tuple[str, str, str]]:
+    return [
+        (record["logger"], record["level"], record["message"])
+        for record in map(json.loads, path.read_text().splitlines())
+    ]
+
+
+async def test_devlog_writes_each_record_as_a_json_line(tmp_path: Path) -> None:
     path = tmp_path / "devlog.jsonl"
     logger = logging.getLogger("tests.test_logging")
 
-    async with devlog(path):
+    async with devlog(path, levels={"tests": logging.DEBUG}):
         logger.debug("First", extra={"answer": 42})
         logger.info("Second")
 
     records = [json.loads(line) for line in path.read_text().splitlines()]
     assert [(record["level"], record["message"]) for record in records] == [("DEBUG", "First"), ("INFO", "Second")]
     assert records[0]["answer"] == 42
+
+
+async def test_devlog_captures_counterweight_at_every_level_and_others_from_info_by_default(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+
+    async with devlog(path):
+        logging.getLogger("counterweight.app").debug("Ours")
+        logging.getLogger("some_library.parser").debug("Chatty")
+        logging.getLogger("some_library.parser").info("Notable")
+
+    assert captured(path) == [
+        ("counterweight.app", "DEBUG", "Ours"),
+        ("some_library.parser", "INFO", "Notable"),
+    ]
+
+
+async def test_devlog_skips_records_below_their_level_before_building_them(tmp_path: Path) -> None:
+    async with devlog(tmp_path / "devlog.jsonl"):
+        assert not logging.getLogger("some_library").isEnabledFor(logging.DEBUG)
+        assert logging.getLogger("counterweight.markdown").isEnabledFor(logging.DEBUG)
+
+
+async def test_devlog_levels_override_by_logger_name(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+
+    async with devlog(path, levels=BASE_LOG_LEVELS | {"my_app": logging.DEBUG, "counterweight": logging.WARNING}):
+        logging.getLogger("my_app.views").debug("Mine")
+        logging.getLogger("counterweight.app").info("Quiet")
+        logging.getLogger("other").debug("Chatty")
+
+    assert captured(path) == [("my_app.views", "DEBUG", "Mine")]
+
+
+@pytest.mark.parametrize("levels", [{"named": logging.INFO, "other": logging.DEBUG}, {}])
+async def test_unnamed_root_captures_from_the_lowest_level(tmp_path: Path, levels: dict[str, int]) -> None:
+    path = tmp_path / "devlog.jsonl"
+
+    async with devlog(path, levels=levels):
+        logging.getLogger("anyone").debug("Debug")
+
+    assert captured(path) == [("anyone", "DEBUG", "Debug")]
+
+
+async def test_devlog_restores_logger_levels_on_exit(tmp_path: Path) -> None:
+    root, named = logging.getLogger(), logging.getLogger("counterweight")
+    before = (root.level, named.level)
+
+    async with devlog(tmp_path / "devlog.jsonl"):
+        assert (root.level, named.level) == (logging.INFO, logging.DEBUG)
+
+    assert (root.level, named.level) == before
 
 
 class StopTailing(Exception):
@@ -208,3 +279,41 @@ def test_last_devlog_renders_lines_by_default(tmp_path: Path) -> None:
     last_devlog(out, 1, path=path)
 
     assert out.getvalue() == format_line(line, raw=False) + "\n"
+
+
+@pytest.mark.parametrize(
+    ("module", "package"),
+    [("__main__", "__main__"), ("my_app", "my_app"), ("my_app.ui.screens", "my_app")],
+)
+def test_app_log_levels_capture_the_apps_top_level_package_at_debug(module: str, package: str) -> None:
+    assert app_log_levels(module, {}) == BASE_LOG_LEVELS | {package: logging.DEBUG}
+
+
+def test_app_log_levels_overrides_win_over_the_base_and_the_app() -> None:
+    overrides = {"": logging.WARNING, "my_app": logging.INFO, "some_library": logging.DEBUG}
+
+    assert app_log_levels("my_app.ui", overrides) == {
+        "": logging.WARNING,
+        "counterweight": logging.DEBUG,
+        "my_app": logging.INFO,
+        "some_library": logging.DEBUG,
+    }
+
+
+@pytest.mark.parametrize(
+    ("overrides", "is_debug_enabled"),
+    [({}, True), ({"tests": logging.INFO}, False)],
+)
+async def test_app_captures_its_root_components_package_at_debug(
+    overrides: dict[str, int], is_debug_enabled: bool
+) -> None:
+    seen: list[bool] = []
+
+    @component
+    def root() -> Text:
+        seen.append(logging.getLogger("tests.anything").isEnabledFor(logging.DEBUG))
+        return Text(content="")
+
+    await app(root(), headless=True, dimensions=(4, 1), autopilot=[Quit()], log_levels=overrides)
+
+    assert seen[0] is is_debug_enabled

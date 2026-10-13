@@ -40,11 +40,11 @@ def composer(draft: str, edit_draft: Callable[[Callable[[str], str]], None], sen
                 return None
 
     return Text(
-        content=[
+        content=(
             Chunk(content=field.before_cursor),
             Chunk(content=field.at_cursor, style=CURSOR),
             Chunk(content=field.after_cursor),
-        ],
+        ),
         style=border | border_lightrounded | border_color("amber", 400) | pad_x(1) | text_wrap_none,
         on_input=first(field.on_input, on_enter),
     )
@@ -62,17 +62,17 @@ def chat() -> Div:
 
     return Div(
         style=col | size(34, 9) | gap(1),
-        children=[
+        children=(
             Div(
                 style=fill(1) | col | justify_children_end | gap(1) | overflow_y_scroll | stick_to_end_y,
                 on_input=scroll_on_wheel(1),
-                children=[
+                children=tuple(
                     Text(content=message, style=text_wrap_pretty | text_color("slate", 400))
                     for message in conversation.messages
-                ],
+                ),
             ),
             composer(conversation.draft, edit_draft, send),
-        ],
+        ),
     )
 
 
@@ -86,7 +86,7 @@ def notes() -> Div:
     text, set_text = use_state("")
     return Div(
         style=col | width(30),
-        children=[
+        children=(
             text_area(
                 text,
                 set_text,
@@ -95,7 +95,7 @@ def notes() -> Div:
                 enter_inserts_newline=True,
                 auto_focus=True,
             ),
-        ],
+        ),
     )
 
 

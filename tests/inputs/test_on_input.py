@@ -73,12 +73,12 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(
                     on_input=lambda _, receiver: receivers.append(receiver),
                     style=position_absolute | inset_left(4) | inset_top(2) | margin(1) | border | pad(2) | size(9, 9),
-                )
-            ],
+                ),
+            ),
         )
 
     await app(

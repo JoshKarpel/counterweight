@@ -15,22 +15,22 @@ CURSOR = (text_color("slate", 900) | text_bg("slate", 100)).text_style
 # --8<-- [start:example]
 
 
-def note_line(field: TextInput) -> list[Chunk]:
-    return [
+def note_line(field: TextInput) -> tuple[Chunk, ...]:
+    return (
         Chunk(content=f"Note: {field.before_cursor}"),
         Chunk(content=field.at_cursor, style=CURSOR),
         Chunk(content=field.after_cursor),
-    ]
+    )
 
 
 @component
 def metric_card(label: str, value: str) -> Div:
     return Div(
         style=fill(1) | col | border | border_lightrounded | pad_x(1),
-        children=[
+        children=(
             Text(content=label, style=text_color("slate", 400)),
             Text(content=value),
-        ],
+        ),
     )
 
 
@@ -42,10 +42,10 @@ def dashboard() -> Div:
     return Div(
         style=col,
         on_input=field.on_input,
-        children=[
+        children=(
             Text(content=note_line(field)),
-            Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
-        ],
+            Div(style=row, children=tuple(metric_card(label, value) for label, value in METRICS)),
+        ),
     )
 
 

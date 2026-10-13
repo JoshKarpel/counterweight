@@ -120,7 +120,7 @@ def autocomplete(
         | max_height(SHOWN_ROWS + 2)
         | overflow_y_scroll,
         on_input=scroll_on_wheel(1),
-        children=[
+        children=tuple(
             Text(
                 content=match,
                 style=pad_x(1) | (text_bg("sky", 800) if index == highlighted else text_bg("slate", 900)),
@@ -128,28 +128,28 @@ def autocomplete(
                 on_input=on_click(partial(choose, match)),
             )
             for index, match in enumerate(shown)
-        ],
+        ),
     )
 
     return Div(
         style=width(24) | (text_bg("slate", 700) if field.focus.is_focused else text_bg("slate", 800)),
         on_input=first(on_input, focus_receiver_on_press),
-        children=[
+        children=(
             Text(
-                content=[
+                content=(
                     Chunk(content=field.before_cursor),
                     Chunk(content=field.at_cursor, style=CURSOR if field.focus.is_focused else CellStyle()),
                     Chunk(content=field.after_cursor),
-                ]
+                )
             ),
             *([suggestions] if is_open else []),
-        ],
+        ),
     )
 
 
 @component
 def labelled(label: str, field: Component) -> Div:
-    return Div(style=row | gap(1), children=[Text(content=f"{label:>7}"), field])
+    return Div(style=row | gap(1), children=(Text(content=f"{label:>7}"), field))
 
 
 @component
@@ -160,22 +160,22 @@ def root(list_clip: Style = clip_to_screen) -> Div:
     return Div(
         style=full | col,
         on_input=first(tab_focus, clear_focus),
-        children=[
+        children=(
             Div(
                 style=fill(1) | col | border | border_lightrounded | pad_x(1),
-                children=[
+                children=(
                     Text(content=" Add a dependency ", style=position_absolute | inset_top(-1) | clip_to_border),
                     Div(
                         style=fill(1) | col | gap(1) | overflow_y_scroll,
                         on_input=scroll_on_wheel(1),
-                        children=[
+                        children=(
                             labelled("Package", autocomplete(PACKAGES, height, auto_focus=True, list_clip=list_clip)),
                             labelled("Group", autocomplete(GROUPS, height, list_clip=list_clip)),
                             labelled("Python", autocomplete(PYTHONS, height, list_clip=list_clip)),
                             labelled("Index", autocomplete(INDEXES, height, list_clip=list_clip)),
-                        ],
+                        ),
                     ),
-                ],
+                ),
             ),
             Text(
                 content="Type to see suggestions. Down and Up move through them, "
@@ -183,7 +183,7 @@ def root(list_clip: Style = clip_to_screen) -> Div:
                 style=fill(1) | pad(1) | text_wrap_pretty | text_color("slate", 400),
             ),
             labelled("just", autocomplete(RECIPES, height, list_clip=list_clip)),
-        ],
+        ),
     )
 
 

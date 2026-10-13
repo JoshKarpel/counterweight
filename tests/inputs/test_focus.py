@@ -111,7 +111,7 @@ def rooted(
                 return ()
             return None if on_input is None else on_input(event, receiver)
 
-        return Div(style=size(20, 10), on_input=handler, children=children(flag))
+        return Div(style=size(20, 10), on_input=handler, children=tuple(children(flag)))
 
     return root()
 
@@ -143,7 +143,7 @@ async def test_a_key_reaches_the_focused_node_then_its_ancestors_and_not_its_sib
     def group() -> Div:
         return Div(
             on_input=recording("group", deliveries),
-            children=[focusable("focused", deliveries, auto_focus=True)],
+            children=(focusable("focused", deliveries, auto_focus=True),),
         )
 
     await run(rooted(deliveries, lambda _: [group(), focusable("sibling", deliveries)]), [PROBE])
@@ -174,12 +174,12 @@ async def test_a_receiver_carries_its_components_focus_handle_or_none() -> None:
     def focused_box() -> Div:
         use_focus(handle=handle)
         return Div(
-            style=box(0, 0, 10, 10), on_input=receiving("focusable"), children=[Div(on_input=receiving("inner"))]
+            style=box(0, 0, 10, 10), on_input=receiving("focusable"), children=(Div(on_input=receiving("inner")),)
         )
 
     @component
     def root() -> Div:
-        return Div(style=size(20, 10), on_input=receiving("root"), children=[focused_box()])
+        return Div(style=size(20, 10), on_input=receiving("root"), children=(focused_box(),))
 
     await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
 
@@ -230,7 +230,7 @@ async def test_focus_next_skips_a_focusable_in_a_hidden_subtree() -> None:
             deliveries,
             lambda _: [
                 focusable("a", deliveries),
-                Div(style=display_none, children=[focusable("hidden", deliveries)]),
+                Div(style=display_none, children=(focusable("hidden", deliveries),)),
                 focusable("c", deliveries),
             ],
         ),
@@ -285,7 +285,7 @@ def focus_label(name: str, auto_focus: bool = False) -> Text:
 def labels(*names: str, auto_focus: str | None = None) -> Component:
     @component
     def root() -> Div:
-        return Div(style=col, children=[focus_label(name, auto_focus=name == auto_focus) for name in names])
+        return Div(style=col, children=tuple(focus_label(name, auto_focus=name == auto_focus) for name in names))
 
     return root()
 
@@ -350,7 +350,7 @@ async def test_hiding_the_focused_component_clears_focus() -> None:
 
     def children(is_hidden: bool) -> Sequence[Component | AnyElement]:
         return [
-            Div(style=display_none if is_hidden else default, children=[focusable("a", deliveries, auto_focus=True)])
+            Div(style=display_none if is_hidden else default, children=(focusable("a", deliveries, auto_focus=True),))
         ]
 
     await run(rooted(deliveries, children), [PROBE, TOGGLE, PROBE, TOGGLE, PROBE])
@@ -507,7 +507,7 @@ async def test_scoped_movement_includes_a_subtrees_own_element_when_it_is_focusa
     @component
     def self_scoped() -> Div:
         use_focus()
-        return Div(on_input=first(recording("self", deliveries), tab_focus), children=[focusable("inner", deliveries)])
+        return Div(on_input=first(recording("self", deliveries), tab_focus), children=(focusable("inner", deliveries),))
 
     await run(
         rooted(deliveries, lambda _: [focusable("before", deliveries, auto_focus=True), self_scoped()]),
@@ -521,7 +521,7 @@ async def test_scoped_movement_includes_a_subtrees_own_element_when_it_is_focusa
     "children",
     [
         lambda deliveries: (),
-        lambda deliveries: (Div(style=display_none, children=[focusable("hidden", deliveries)]),),
+        lambda deliveries: (Div(style=display_none, children=(focusable("hidden", deliveries),)),),
         lambda deliveries: (focusable("unfocusable", deliveries, is_focusable=False),),
         lambda deliveries: (focusable("out of order", deliveries, in_focus_order=False),),
     ],
@@ -577,7 +577,7 @@ async def test_a_parent_and_child_on_one_bubble_path_receive_different_subtrees(
         return Div(
             style=size(20, 10),
             on_input=remember_subtree,
-            children=[Div(style=box(0, 0, 5, 5), on_input=remember_subtree)],
+            children=(Div(style=box(0, 0, 5, 5), on_input=remember_subtree),),
         )
 
     await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
@@ -594,7 +594,7 @@ def labelled(deliveries: list[Delivery], label_input: Callable[[FocusHandle], In
     return Div(
         style=size(20, 10),
         on_input=first(recording("root", deliveries), label_input(handle)),
-        children=[focusable("a", deliveries), focusable("child", deliveries, handle=handle)],
+        children=(focusable("a", deliveries), focusable("child", deliveries, handle=handle)),
     )
 
 

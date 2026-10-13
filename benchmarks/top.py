@@ -161,28 +161,28 @@ def view(model: Model, row_component: Callable[[Process, bool], Component]) -> D
     selected = model.tick % VISIBLE_PROCESSES
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | pad_x(1),
-                children=[
+                children=(
                     Div(
                         style=fill(2) | display_grid | grid_template_columns(fr(1), fr(1)) | gap_width(2),
-                        children=[
+                        children=(
                             *(meter(f"{index:>3}", fraction) for index, fraction in enumerate(model.cores)),
                             meter("Mem", model.memory_kib / MEMORY_KIB),
                             meter("Swp", model.swap_kib / SWAP_KIB),
-                        ],
+                        ),
                     ),
                     summary(model),
-                ],
+                ),
             ),
             table_header(),
             Div(
                 style=fill(1) | col,
-                children=[row_component(process, index == selected) for index, process in enumerate(busiest)],
+                children=tuple(row_component(process, index == selected) for index, process in enumerate(busiest)),
             ),
             footer(),
-        ],
+        ),
     )
 
 
@@ -191,7 +191,7 @@ def meter(label: str, fraction: float) -> Text:
     filled = round(fraction * METER_WIDTH)
     low = min(filled, METER_WIDTH * 2 // 3)
     return Text(
-        content=[
+        content=(
             Chunk(content=label, style=CellStyle(foreground=cyan_400)),
             Chunk(content="[", style=CellStyle(bold=True)),
             Chunk(content="|" * low, style=CellStyle(foreground=green_500)),
@@ -199,7 +199,7 @@ def meter(label: str, fraction: float) -> Text:
             Chunk(content=" " * (METER_WIDTH - filled)),
             Chunk(content=f"{fraction:6.1%}", style=CellStyle(foreground=slate_500)),
             Chunk(content="]", style=CellStyle(bold=True)),
-        ]
+        )
     )
 
 
@@ -209,7 +209,7 @@ def summary(model: Model) -> Text:
     load = sum(model.cores)
     return Text(
         style=fill(1),
-        content=[
+        content=(
             Chunk(content="Tasks: ", style=CellStyle(foreground=cyan_400)),
             Chunk(content=f"{len(model.processes)}, {running} running", style=CellStyle(bold=True)),
             Chunk.newline(),
@@ -218,7 +218,7 @@ def summary(model: Model) -> Text:
             Chunk.newline(),
             Chunk(content="Uptime: ", style=CellStyle(foreground=cyan_400)),
             Chunk(content=f"{model.tick // 3600:02}:{model.tick // 60 % 60:02}:{model.tick % 60:02}"),
-        ],
+        ),
     )
 
 
@@ -227,10 +227,10 @@ def table_header() -> Div:
     header_style = text_bg("green", 600) | Style(text_style=CellStyle(foreground=slate_950, bold=True))
     return Div(
         style=row,
-        children=[
+        children=(
             *(Text(content=name, style=length(width) | header_style | text_justify_right) for name, width in COLUMNS),
             Text(content=" Command", style=fill(1) | header_style),
-        ],
+        ),
     )
 
 
@@ -253,13 +253,13 @@ def render_process_row(process: Process, selected: bool) -> Div:
     )
     return Div(
         style=row,
-        children=[
+        children=(
             *(
                 Text(content=cell, style=length(width) | text_justify_right | cell_color(name) | background)
                 for cell, (name, width) in zip(cells, COLUMNS)
             ),
             Text(content=f" {process.command}", style=fill(1) | background),
-        ],
+        ),
     )
 
 
@@ -292,7 +292,7 @@ def footer() -> Text:
     for number, name in enumerate(keys, start=1):
         content.append(Chunk(content=f"F{number}", style=CellStyle(foreground=slate_100)))
         content.append(Chunk(content=f"{name:<6}", style=CellStyle(foreground=slate_950, background=cyan_400)))
-    return Text(content=content)
+    return Text(content=tuple(content))
 
 
 WORKLOAD = Workload(

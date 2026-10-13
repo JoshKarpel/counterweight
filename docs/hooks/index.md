@@ -41,7 +41,7 @@ def advanced_settings() -> Text:
 
 @component
 def settings(is_advanced: bool) -> Div:
-    return Div(children=[advanced_settings()] if is_advanced else [])
+    return Div(children=(advanced_settings(),) if is_advanced else ())
 ```
 
 Showing `advanced_settings` mounts it with fresh state, and hiding it unmounts it,

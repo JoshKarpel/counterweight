@@ -52,10 +52,10 @@ def process_table(processes: tuple[Process, ...]) -> Div:
     return Div(
         style=col,
         on_input=on_input,
-        children=[
+        children=tuple(
             process_row(process, process.pid == selected_pid, set_selected_pid).with_key(str(process.pid))
             for process in by_cpu
-        ],
+        ),
     )
 
 
@@ -72,7 +72,7 @@ PROCESSES = (
 
 @component
 def root() -> Div:
-    return Div(style=pad(1), children=[process_table(PROCESSES)])
+    return Div(style=pad(1), children=(process_table(PROCESSES),))
 
 
 SCREENSHOTS = [ScreenshotSpec(root(), "performance-process-table", (32, 7), events=(KeyPressed(key=Key.Down),))]

@@ -24,20 +24,20 @@ CURSOR = (text_color("slate", 900) | text_bg("slate", 100)).text_style
 def root() -> Div:
     return Div(
         style=col | full | justify_children_start | pad(1),
-        children=[
+        children=(
             Text(content="Suspend Demo", style=text_color("amber", 600) | text_justify_center | pad_bottom(1)),
             Div(
                 style=row | gap(1) | pad_bottom(1),
-                children=[
+                children=(
                     Text(content="↑ / ↓  navigate", style=text_color("slate", 400)),
                     Text(content="|", style=text_color("slate", 600)),
                     Text(content="type  edit glob", style=text_color("slate", 400)),
                     Text(content="|", style=text_color("slate", 600)),
                     Text(content="⏎  open in $EDITOR", style=text_color("slate", 400)),
-                ],
+                ),
             ),
             picker(),
-        ],
+        ),
     )
 
 
@@ -95,10 +95,10 @@ def picker() -> Div:
     return Div(
         style=col | fill(1) | justify_children_start | border_collapse,
         on_input=on_input,
-        children=[
+        children=(
             glob_input(glob=glob, set_glob=edit_glob),
             file_list(files=files, selected_idx=selected_file_idx),
-        ],
+        ),
     )
 
 
@@ -108,17 +108,17 @@ def glob_input(glob: str, set_glob: Callable[[Callable[[str], str]], None]) -> D
     return Div(
         style=row | align_self_stretch | border_collapse,
         on_input=field.on_input,
-        children=[
+        children=(
             Text(style=content_box | border | pad_x(1), content="glob"),
             Text(
                 style=content_box | border | pad_x(1) | fill(1),
-                content=[
+                content=(
                     Chunk(content=field.before_cursor),
                     Chunk(content=field.at_cursor, style=CURSOR),
                     Chunk(content=field.after_cursor),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -129,13 +129,13 @@ def file_list(files: list[Path], selected_idx: int) -> Div:
     start_idx = clamp(0, selected_idx - visible // 2, max(0, len(files) - visible))
     return Div(
         style=col | justify_children_start | pad_x(1) | border | border_lightrounded | fill(1),
-        children=[
+        children=tuple(
             Text(
                 style=text_color("cyan", 300) if idx == selected_idx else default,
                 content=str(file.relative_to(Path.cwd())),
             )
             for idx, file in enumerate(files[start_idx : start_idx + visible], start=start_idx)
-        ],
+        ),
     )
 
 

@@ -1,6 +1,6 @@
 import asyncio
 import random
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
@@ -22,7 +22,7 @@ WORDS = (
 COLUMNS = ("host", "region", "cpu", "memory", "disk", "requests", "errors", "latency p50", "latency p99", "uptime")
 
 
-def log_lines(count: int) -> list[Text]:
+def log_lines(count: int) -> tuple[Text, ...]:
     """Log entries of mixed lengths, which wrap to different heights, so no row estimate could scroll them."""
     rng = random.Random(0)
     entries = []
@@ -31,18 +31,18 @@ def log_lines(count: int) -> list[Text]:
         message = " ".join(rng.choice(WORDS) for _ in range(rng.randrange(3, 30)))
         entries.append(
             Text(
-                content=[
+                content=(
                     Chunk(content=f"{i:03} ", style=CellStyle(foreground=slate_500)),
                     Chunk(content=f"{level:<5} ", style=CellStyle(foreground=color)),
                     Chunk(content=message),
-                ],
+                ),
                 style=text_wrap_stable,
             )
         )
-    return entries
+    return tuple(entries)
 
 
-def table_rows(count: int) -> list[Text]:
+def table_rows(count: int) -> tuple[Text, ...]:
     """A table wider than its pane, so it scrolls on both axes."""
     rng = random.Random(1)
     header = Text(
@@ -68,12 +68,12 @@ def table_rows(count: int) -> list[Text]:
         )
         for i in range(count)
     ]
-    return [header, *rows]
+    return (header, *rows)
 
 
 @component
 def scrolling_body(
-    children: Sequence[AnyElement],
+    children: tuple[AnyElement, ...],
     axes: Style,
     handle: ElementHandle,
     auto_focus: bool,
@@ -127,7 +127,7 @@ def scrolling_body(
 
 @component
 def pane(
-    title: str, children: Sequence[AnyElement], axes: Style, auto_focus: bool = False, has_jump_to_end: bool = False
+    title: str, children: tuple[AnyElement, ...], axes: Style, auto_focus: bool = False, has_jump_to_end: bool = False
 ) -> Div:
     """
     A titled, bordered pane around a body that scrolls.
@@ -146,7 +146,7 @@ def pane(
     accent = border_color("sky", 400) if is_focused else border_color("slate", 600)
     return Div(
         style=fill(1) | col | border | border_lightrounded | accent,
-        children=[
+        children=(
             Text(content=f" {title} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border),
             Text(
                 content=position,
@@ -171,7 +171,7 @@ def pane(
                 if has_jump_to_end and scroll.offset.y != scroll.max_offset.y
                 else ()
             ),
-        ],
+        ),
     )
 
 
@@ -184,21 +184,21 @@ def root() -> Div:
             case _:
                 return None
 
-    panes: list[Component] = [
+    panes: tuple[Component, ...] = (
         pane("Log", log_lines(80), overflow_y_scroll | stick_to_end_y, auto_focus=True, has_jump_to_end=True),
         pane("Hosts", table_rows(40), overflow_scroll | align_children_start),
-    ]
+    )
     return Div(
         style=col | full,
         on_input=first(on_key, tab_focus),
-        children=[
+        children=(
             Div(style=row | fill(1) | gap(1), children=panes),
             Text(
                 content="wheel: scroll the pane under the pointer  ·  tab or click: focus a pane  ·  "
                 "arrows, page up/down, home/end: scroll the focused pane  ·  ctrl+c: quit",
                 style=text_justify_center | text_wrap_pretty | text_color("slate", 500),
             ),
-        ],
+        ),
     )
 
 

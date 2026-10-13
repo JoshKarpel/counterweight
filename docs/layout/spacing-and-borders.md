@@ -16,7 +16,7 @@ Every element's box is four nested rectangles:
 The example below colors each rectangle:
 
 ```python
---8<-- "box_model.py:example"
+--8 < --"box_model.py:example"
 ```
 
 ![The box model](../assets/box-model.svg)
@@ -46,7 +46,7 @@ and `content_color` fills the box inside the margin,
 so a margin otherwise leaves whatever lies beneath it visible.
 
 ```python
---8<-- "layout_spacing.py:gap-margin-pad"
+--8 < --"layout_spacing.py:gap-margin-pad"
 ```
 
 ![Gap, margin and padding](../assets/layout-gap-margin-pad.svg)
@@ -59,7 +59,7 @@ Where the shared borders meet, [border healing](../cookbook/border-healing.md)
 joins them with the right junction characters.
 
 ```python
---8<-- "layout_spacing.py:collapse"
+--8 < --"layout_spacing.py:collapse"
 ```
 
 ![Collapsed borders](../assets/layout-border-collapse.svg)
@@ -84,7 +84,7 @@ A kind with no widths draws nothing.
 `border_sides` sets all four sides at once from a set of side names.
 
 ```python
---8<-- "layout_spacing.py:sides"
+--8 < --"layout_spacing.py:sides"
 ```
 
 ![Borders on some sides](../assets/layout-border-sides.svg)
@@ -94,7 +94,7 @@ A kind with no widths draws nothing.
 `border_contract(n)` stops each edge `n` cells short at an end next to a side that isn't drawn.
 
 ```python
---8<-- "layout_spacing.py:contract"
+--8 < --"layout_spacing.py:contract"
 ```
 
 ![Contracted borders](../assets/layout-border-contract.svg)

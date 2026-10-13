@@ -12,7 +12,7 @@ A wrapping `Text` in a column is stretched to the column's width,
 and wraps to fit it, taking as many rows as it needs.
 
 ```python
---8<-- "layout_text.py:wrap-in-pane"
+--8 < --"layout_text.py:wrap-in-pane"
 ```
 
 ![Text wrapping inside a pane](../assets/layout-text-wrap-in-pane.svg)
@@ -26,7 +26,7 @@ and a wrapping `Text`'s is the width of its widest word,
 so neither needs anything set to give up the space its unwrapped line would take.
 
 ```python
---8<-- "layout_text.py:wrap-in-row"
+--8 < --"layout_text.py:wrap-in-row"
 ```
 
 ![Wrapping text in a row](../assets/layout-text-wrap-in-row.svg)
@@ -40,7 +40,7 @@ like the `align_self_start` one below, has none.
 With a wrap mode, each line is aligned separately.
 
 ```python
---8<-- "layout_text.py:justify"
+--8 < --"layout_text.py:justify"
 ```
 
 ![Justified text](../assets/layout-text-justify.svg)
@@ -55,7 +55,7 @@ Give it `min_width(0)` to keep it inside the row
 or a wrap mode to break its lines instead.
 
 ```python
---8<-- "layout_text.py:narrow"
+--8 < --"layout_text.py:narrow"
 ```
 
 ![Unwrapped text in narrow panes](../assets/layout-text-narrow.svg)

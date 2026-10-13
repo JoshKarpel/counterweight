@@ -11,7 +11,7 @@ which makes it focusable and handles typing, moving the cursor, and pasting,
 and leaves drawing the text and the list to the field.
 
 ```python
---8<-- "autocomplete.py:example"
+--8 < --"autocomplete.py:example"
 ```
 
 Typing `py` into the package field opens the list,

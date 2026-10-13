@@ -17,6 +17,9 @@ compares the paint with the previous frame's, and writes the difference to the t
 
 Every app writes a log of each frame to a file.
 Run `counterweight devlog` in another terminal to follow it as the app writes it.
+It holds counterweight's records and your app's at every level, and other loggers' from `INFO` up;
+pass `app` a `log_levels` mapping to change that by logger name,
+such as `{"some_library": logging.DEBUG}` to include a library's debug records.
 Each frame logs one line per stage, with microsecond timestamps,
 so the gaps between lines show where a slow frame went.
 Here is the [process table](#how-do-i-skip-a-component-whose-arguments-didnt-change)
@@ -78,7 +81,7 @@ The first frame, and the frames after a resize or a resume from a suspend, re-ru
 Here's a dashboard whose root holds a note you type into:
 
 ```python
---8<-- "performance_state_in_root.py:example"
+--8 < --"performance_state_in_root.py:example"
 ```
 
 Each key press changes `dashboard`'s state, so it re-runs,
@@ -98,7 +101,7 @@ flowchart TB
 Move the state down into the component that shows it:
 
 ```python
---8<-- "performance_state_moved_down.py:example"
+--8 < --"performance_state_moved_down.py:example"
 ```
 
 ![Dashboard](assets/performance-dashboard.svg)
@@ -134,7 +137,7 @@ Declare the row [`memo`](components/index.md#skipping-a-component-whose-argument
 and it's reused when its arguments equal the previous frame's:
 
 ```python
---8<-- "performance_process_table.py:example"
+--8 < --"performance_process_table.py:example"
 ```
 
 ![Process table](assets/performance-process-table.svg)
@@ -213,7 +216,7 @@ def key_log() -> Div:
         set_count(lambda count: count + 1)
         return ()
 
-    return Div(on_input=on_input, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=(key_list(keys.current),))
 ```
 
 `key_list` keeps showing the keys from when it last ran.

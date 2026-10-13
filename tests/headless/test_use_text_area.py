@@ -68,7 +68,7 @@ async def run(
 
     @component
     def parent() -> Div:
-        return Div(on_input=on_parent, children=[field()])
+        return Div(on_input=on_parent, children=(field(),))
 
     await app(parent(), headless=True, dimensions=(20, 5), autopilot=(*events, Quit()), check_purity=True)
     return shown

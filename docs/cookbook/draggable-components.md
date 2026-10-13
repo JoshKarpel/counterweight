@@ -9,7 +9,7 @@ plus how far the pointer has moved since then,
 [clamped](#keeping-it-inside-its-parent) so the component stays inside its parent.
 
 ```python
---8<-- "draggable.py:example"
+--8 < --"draggable.py:example"
 ```
 
 ![Two draggable boxes](../assets/draggable.svg)

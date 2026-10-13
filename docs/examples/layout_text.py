@@ -16,13 +16,13 @@ PARAGRAPH = "The quick brown fox jumps over the lazy dog, and then naps in the a
 def wrap_in_pane() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=length(16) | border, content="length(16)"),
             Div(
                 style=col | fill(1) | border | pad_x(1),
-                children=[Text(style=text_wrap_stable, content=PARAGRAPH)],
+                children=(Text(style=text_wrap_stable, content=PARAGRAPH),),
             ),
-        ],
+        ),
     )
 
 
@@ -35,10 +35,10 @@ def wrap_in_pane() -> Div:
 def wrap_in_row() -> Div:
     return Div(
         style=row | gap(2) | border | border_heavy,
-        children=[
+        children=(
             Text(style=text_wrap_stable | border, content=PARAGRAPH),
             Text(style=text_wrap_stable | border, content=PARAGRAPH),
-        ],
+        ),
     )
 
 
@@ -51,7 +51,7 @@ def wrap_in_row() -> Div:
 def justify() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=text_justify_center | border, content="text_justify_center, stretched"),
             Text(
                 style=text_justify_center | align_self_start | border,
@@ -62,7 +62,7 @@ def justify() -> Div:
                 content="text_justify_center | text_wrap_balance centers each line of a paragraph "
                 "within the width of the box",
             ),
-        ],
+        ),
     )
 
 
@@ -75,16 +75,16 @@ def justify() -> Div:
 def narrow() -> Div:
     return Div(
         style=row | gap(2),
-        children=[
+        children=(
             Div(
                 style=col | width(20) | border | border_heavy,
-                children=[Text(style=border, content="unwrapped text in a col")],
+                children=(Text(style=border, content="unwrapped text in a col"),),
             ),
             Div(
                 style=row | width(20) | border | border_heavy,
-                children=[Text(style=border, content="unwrapped text in a row")],
+                children=(Text(style=border, content="unwrapped text in a row"),),
             ),
-        ],
+        ),
     )
 
 

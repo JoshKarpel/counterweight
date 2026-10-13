@@ -61,13 +61,13 @@ def root() -> Div:
     if playing:
         return Div(
             style=col | align_children_center,
-            children=[
+            children=(
                 header,
                 play(
                     solution=solution,
                     stop_playing=stop_playing,
                 ).with_key(solution),
-            ],
+            ),
         )
     else:
 
@@ -98,11 +98,11 @@ def root() -> Div:
 
         return Div(
             style=col | align_children_center,
-            children=[
+            children=(
                 header,
                 Div(
                     style=col | align_children_center | gap(2) | margin_top(4),
-                    children=[
+                    children=(
                         menu_button(
                             content=f"[F1] Play Daily ({today:%Y-%m-%d})",
                             hover_style=text_color("indigo", 500) | border_color("indigo", 500),
@@ -118,9 +118,9 @@ def root() -> Div:
                             hover_style=text_color("red", 500) | border_color("red", 500),
                             on_click_action=Quit,
                         ),
-                    ],
+                    ),
                 ),
-            ],
+            ),
             on_input=on_input,
         )
 
@@ -216,14 +216,14 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     return Div(
         style=col,
         on_input=on_input,
-        children=[
+        children=(
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
-                children=guess_rows,
+                children=tuple(guess_rows),
             ),
             Div(
                 style=row | align_self_center | pad_y(1),
-                children=[Text(content=message, style=message_style)],
+                children=(Text(content=message, style=message_style),),
             ),
             keyboard(
                 submitted=submitted,
@@ -234,7 +234,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 on_clear=lambda: set_guess(""),
                 on_exit=stop_playing,
             ),
-        ],
+        ),
     )
 
 
@@ -274,7 +274,7 @@ def guess_row(
 
     return Div(
         style=row | align_children_center | gap(1),
-        children=children,
+        children=tuple(children),
     )
 
 
@@ -311,41 +311,41 @@ def keyboard(
 
     return Div(
         style=row | gap(2),
-        children=[
+        children=(
             Div(
                 style=col | justify_children_space_between | align_children_start,
-                children=[
+                children=(
                     menu_button(content="Exit [Esc]", on_click_action=on_exit, hover_style=border_color("red", 700)),
-                ],
+                ),
             ),
             Div(
                 style=col | center_children,
-                children=[
+                children=tuple(
                     Div(
                         style=row | align_children_center | gap(1),
-                        children=[
+                        children=tuple(
                             letter_box(
                                 kb_letter,
                                 style=kb_letter_styles[kb_letter],
                                 on_letter=on_letter,
                             )
                             for kb_letter in kb_row
-                        ],
+                        ),
                     )
                     for kb_row in KEYBOARD
-                ],
+                ),
             ),
             Div(
                 style=col | justify_children_space_between | align_children_end,
-                children=[
+                children=(
                     menu_button(
                         content="Submit [Enter]", on_click_action=on_submit, hover_style=border_color("green", 600)
                     ),
                     menu_button(content="Back", on_click_action=on_backspace, hover_style=border_color("yellow", 300)),
                     menu_button(content="Clear", on_click_action=on_clear, hover_style=border_color("red", 700)),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 

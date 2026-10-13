@@ -125,13 +125,14 @@ def text_area(
     )
     row_style = text_wrap_none | Style(text_style=box.text_style)
 
+    rows: tuple[Text, ...]
     if placeholder and not value:
-        rows = [Text(content=placeholder_chunks(placeholder, is_focused), style=row_style, handle=field.cursor_row)]
+        rows = (Text(content=placeholder_chunks(placeholder, is_focused), style=row_style, handle=field.cursor_row),)
     else:
         # The cursor's row is drawn on its own, to carry the handle that scrolls it into view.
         *above, before_cursor = field.before_cursor.split("\n")
         after_cursor, *below = field.after_cursor.split("\n")
-        rows = [
+        rows = (
             *([Text(content="\n".join(above), style=row_style)] if above else []),
             Text(
                 content=cursor_chunks(before_cursor, field.at_cursor, after_cursor, is_focused),
@@ -139,7 +140,7 @@ def text_area(
                 handle=field.cursor_row,
             ),
             *([Text(content="\n".join(below), style=row_style)] if below else []),
-        ]
+        )
 
     return Div(
         style=box,
@@ -148,19 +149,19 @@ def text_area(
     )
 
 
-def cursor_chunks(before_cursor: str, at_cursor: str, after_cursor: str, is_focused: bool) -> list[Chunk]:
+def cursor_chunks(before_cursor: str, at_cursor: str, after_cursor: str, is_focused: bool) -> tuple[Chunk, ...]:
     """Text split around the cursor, with the cursor highlighted while it's focused."""
-    return [
+    return (
         Chunk(content=before_cursor),
         Chunk(content=at_cursor, style=CURSOR if is_focused else CellStyle()),
         Chunk(content=after_cursor),
-    ]
+    )
 
 
-def placeholder_chunks(placeholder: str, is_focused: bool) -> list[Chunk]:
+def placeholder_chunks(placeholder: str, is_focused: bool) -> tuple[Chunk, ...]:
     """The placeholder, with the cursor on its first cluster while it's focused, where typing will start."""
     head, *tail = graphemes(placeholder)
-    return [
+    return (
         Chunk(content=head, style=CURSOR if is_focused else PLACEHOLDER),
         Chunk(content="".join(tail), style=PLACEHOLDER),
-    ]
+    )

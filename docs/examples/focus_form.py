@@ -121,13 +121,13 @@ def help_panel() -> Div:
         | pad_x(1)
         | (border_color("indigo", 400) if focus.is_focused else border_color("slate", 600)),
         on_input=first(on_input, focus_receiver_on_press),
-        children=[
+        children=(
             Text(
                 style=position_absolute | inset_left(1) | inset_top(-1) | clip_to_border,
                 content=f" {marked(focus, f'Tip {page + 1}/{len(TIPS)}')} ",
             ),
             Text(content=TIPS[page], style=text_color("slate", 400)),
-        ],
+        ),
     )
 
 
@@ -164,16 +164,16 @@ def confirmation(close: Callable[[], None], return_to: FocusHandle) -> Div:
         style=dialog_box | col | align_children_center | border | border_double | pad_x(2),
         # Tab from either button reaches this element before the form's, and cycles between the two.
         on_input=tab_focus,
-        children=[
+        children=(
             Text(content="Place this order?"),
             Div(
                 style=row | gap(1),
-                children=[
+                children=(
                     button("Confirm", close_and_return),
                     button("Cancel", close_and_return, auto_focus=True),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -181,7 +181,7 @@ def confirmation(close: Callable[[], None], return_to: FocusHandle) -> Div:
 def labelled(label: str, handle: FocusHandle, field: Component) -> Div:
     return Div(
         style=row | gap(1),
-        children=[Text(content=f"{label:<10}", on_input=focus_on_press(handle)), field],
+        children=(Text(content=f"{label:<10}", on_input=focus_on_press(handle)), field),
     )
 
 
@@ -210,20 +210,20 @@ def order_form() -> Div:
     return Div(
         style=col | gap(1) | border | border_lightrounded | pad_x(1),
         on_input=first(on_input, tab_focus),
-        children=[
+        children=(
             Div(
                 style=col,
-                children=[
+                children=(
                     labelled("Size", size, choice_field(SIZES, size, auto_focus=True)),
                     labelled("Quantity", quantity, quantity_field(quantity)),
                     labelled("Gift wrap", gift_wrap, toggle_field(is_wrapped, set_wrapped, gift_wrap)),
                     labelled("Paper", paper, choice_field(PAPERS, paper, is_focusable=is_wrapped)),
-                ],
+                ),
             ),
             help_panel(),
-            Div(style=row, children=[button("Submit", open_confirmation, handle=submit)]),
+            Div(style=row, children=(button("Submit", open_confirmation, handle=submit),)),
             *([confirmation(close=lambda: set_confirming(False), return_to=submit)] if is_confirming else []),
-        ],
+        ),
     )
 
 

@@ -1,5 +1,4 @@
 import re
-from collections.abc import Sequence
 
 import pytest
 
@@ -42,7 +41,7 @@ def test_texts_have_no_children() -> None:
     ),
 )
 def test_text_cells(
-    content: str | Sequence[Chunk],
+    content: str | tuple[Chunk, ...],
     style: Style,
     expected: tuple[StyledGrapheme],
 ) -> None:

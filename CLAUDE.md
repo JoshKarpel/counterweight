@@ -22,6 +22,14 @@ and say which of those it is.
 This applies to the API users call, not to internal structure:
 don't add abstractions to the implementation ahead of a change that needs them.
 
+## Types Are the Contract
+
+Assume users type-check their code with mypy in strict mode.
+The public API's type annotations are its contract,
+so don't add runtime checks or coercions for input the types already reject,
+such as a `list` where a `tuple` is annotated.
+They cost time on every call (often on the render path) to help only code that is already a type error.
+
 ## Ask How the Web Does It
 
 Counterweight borrows its models from browsers and React,
@@ -47,6 +55,7 @@ The framework follows a React-like architecture:
 - **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input` and `text_area`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
+- **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -121,6 +130,9 @@ read that to check a layout instead of the SVG.
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
+- **markdown-it-py**: Parses Markdown for `counterweight.markdown`
+- **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
+- **pygments**: Lexes and colors source code for `counterweight.highlighting`
 
 ## Code Style Guidelines
 - Line length: 120

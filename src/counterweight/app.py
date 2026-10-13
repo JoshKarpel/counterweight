@@ -5,7 +5,7 @@ import shutil
 import sys
 from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
-from collections.abc import Callable, Collection, Iterator
+from collections.abc import Callable, Collection, Iterator, Mapping
 from datetime import timedelta
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
@@ -62,7 +62,7 @@ from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
 from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, ScrollRequest, layout_changes, prior_scrolls
-from counterweight.logging import devlog
+from counterweight.logging import app_log_levels, devlog
 from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
@@ -142,6 +142,7 @@ async def app(
     autopilot: Iterable[AnyEvent | AnyControl] = (),
     check_purity: bool = False,
     clock: Clock = system_clock,
+    log_levels: Mapping[str, int] = frozendict(),
 ) -> None:
     """
     Parameters:
@@ -174,8 +175,15 @@ async def app(
             Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to make output that doesn't depend on
             when the application runs, such as a screenshot, and move it with the
             [`AdvanceClock`][counterweight.controls.AdvanceClock] control.
+        log_levels: Levels by logger name, with `""` the root logger, as in `logging.config`,
+            for the records the devlog captures while the app runs.
+            They're merged over a base that captures counterweight's records and the app's own at every level,
+            and everyone else's from `INFO` up, where the app's own are those of the top-level package
+            of the module that defines `root`'s function (`__main__` for an app run as a script).
+            Pass `{"some_library": logging.DEBUG}` to see a library's debug records too,
+            or `{"my_app": logging.INFO}` to hide the app's own.
     """
-    async with devlog():
+    async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
             await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock)
         except BaseExceptionGroup as group:

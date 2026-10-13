@@ -28,12 +28,12 @@ def search_box(query: str, set_query: Setter[str]) -> Text:
     field = use_text_input(query, set_query, auto_focus=True)
     cursor = CURSOR if field.focus.is_focused else CellStyle()
     return Text(
-        content=[
+        content=(
             Chunk(content="search: ", style=text_color("amber", 400).text_style),
             Chunk(content=field.before_cursor),
             Chunk(content=field.at_cursor, style=cursor),
             Chunk(content=field.after_cursor),
-        ],
+        ),
         on_input=first(field.on_input, focus_receiver_on_press),
     )
 
@@ -56,15 +56,15 @@ def search() -> Div:
     return Div(
         style=col | gap(1),
         on_input=scroll_results,
-        children=[
+        children=(
             search_box(query, set_query),
             Div(
                 style=col | max_height(5) | overflow_y_scroll,
                 handle=results,
                 on_input=scroll_on_wheel(1),
-                children=[Text(content="\n".join(matches) or "no matches", style=text_color("slate", 400))],
+                children=(Text(content="\n".join(matches) or "no matches", style=text_color("slate", 400)),),
             ),
-        ],
+        ),
     )
 
 
@@ -87,10 +87,10 @@ def sign_up() -> Div:
     return Div(
         style=col | width(30),
         on_input=tab_focus,
-        children=[
+        children=(
             text_input(name, set_name, placeholder="Name", auto_focus=True),
             text_input(age, digits_only(set_age), placeholder="Age"),
-        ],
+        ),
     )
 
 

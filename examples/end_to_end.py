@@ -58,9 +58,9 @@ def time_or_textpad() -> Div:
                 return None
 
     return Div(
-        children=[
+        children=(
             Div(
-                children=[
+                children=(
                     Text(
                         content="End-to-End Demo",
                         style=border_color_style | pad(1) | border | Style(border_kind=border_kind),
@@ -75,10 +75,10 @@ def time_or_textpad() -> Div:
                         auto_focus=True,
                         style=text_color("teal", 600) | border_color("rose", 500) | pad(1),
                     ),
-                ],
+                ),
                 style=row | border | border_lightrounded,
             ),
-        ],
+        ),
         style=col,
         on_input=on_input,
     )

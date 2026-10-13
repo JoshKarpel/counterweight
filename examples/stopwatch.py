@@ -23,14 +23,14 @@ def root() -> Div:
     return Div(
         style=col | justify_children_space_between | align_children_center,
         on_input=tab_focus,
-        children=[
+        children=(
             Text(
                 style=text_color("amber", 600),
                 content="Stopwatch",
             ),
             Div(
                 style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
-                children=[stopwatch() for _ in range(num_stopwatches)],
+                children=tuple(stopwatch() for _ in range(num_stopwatches)),
             ),
             Text(
                 style=border_color("slate", 400)
@@ -47,7 +47,7 @@ def root() -> Div:
                     """
                 ),
             ),
-        ],
+        ),
     )
 
 
@@ -68,7 +68,7 @@ def stopwatch() -> Div:
         set_banked(timedelta())
 
     # Starting or stopping swaps one face for the other, and the face that mounts takes focus from the one that left.
-    return Div(children=[running_face(banked, stop, reset) if running else stopped_face(banked, start, reset)])
+    return Div(children=(running_face(banked, stop, reset) if running else stopped_face(banked, start, reset),))
 
 
 @component

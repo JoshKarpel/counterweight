@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Sequence, Union
+from typing import Union
 
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
@@ -17,7 +17,7 @@ _DEFAULT_STYLE = Style()
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Div:
     style: Style = _DEFAULT_STYLE
-    children: Sequence[Component | AnyElement] = ()
+    children: tuple[Component | AnyElement, ...] = ()
     on_input: InputHandler | None = None
     handle: ElementHandle | None = None
     """The handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo]."""
@@ -60,7 +60,7 @@ def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Text:
-    content: str | Sequence[Chunk]
+    content: str | tuple[Chunk, ...]
     style: Style = _DEFAULT_STYLE
     on_input: InputHandler | None = None
     handle: ElementHandle | None = None
@@ -72,8 +72,7 @@ class Text:
 
     @property
     def cells(self) -> tuple[StyledGrapheme, ...]:
-        content = self.content if isinstance(self.content, str) else tuple(self.content)
-        return text_cells(content, self.style.text_style)
+        return text_cells(self.content, self.style.text_style)
 
 
 AnyElement = Union[

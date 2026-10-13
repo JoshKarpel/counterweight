@@ -580,6 +580,25 @@ def svg(paint: Paint) -> Element:
                 # optimization: don't write white, it's the default
                 if cell.style.foreground != Color.from_name("white"):
                     ts.attrib["fill"] = cell.style.foreground.hex
+                ts.attrib.update(svg_text_style(cell.style))
                 ts.text = cell.grapheme
 
     return root
+
+
+def svg_text_style(style: ResolvedCellStyle) -> dict[str, str]:
+    """The SVG attributes that draw a cell's bold, dim, italic, underline, and strikethrough, which are off by default."""
+    attributes = {}
+    if style.bold:
+        attributes["font-weight"] = "bold"
+    if style.dim:
+        attributes["fill-opacity"] = "0.5"
+    if style.italic:
+        attributes["font-style"] = "italic"
+    if decorations := " ".join(
+        decoration
+        for decoration, is_on in (("underline", style.underline), ("line-through", style.strikethrough))
+        if is_on
+    ):
+        attributes["text-decoration"] = decorations
+    return attributes

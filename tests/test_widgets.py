@@ -20,7 +20,7 @@ def field(initial: str = "", placeholder: str = "", auto_focus: bool = True, is_
         value, set_value = use_state(initial)
         return Div(
             style=col,
-            children=[
+            children=(
                 text_input(
                     value,
                     set_value,
@@ -28,8 +28,8 @@ def field(initial: str = "", placeholder: str = "", auto_focus: bool = True, is_
                     style=width(12),
                     auto_focus=auto_focus,
                     is_focusable=is_focusable,
-                )
-            ],
+                ),
+            ),
         )
 
     return root()
@@ -115,7 +115,7 @@ def area(
         value, set_value = use_state(initial)
         return Div(
             style=col,
-            children=[
+            children=(
                 text_area(
                     value,
                     set_value,
@@ -123,8 +123,8 @@ def area(
                     enter_inserts_newline=enter_inserts_newline,
                     style=width(12) | style,
                     auto_focus=True,
-                )
-            ],
+                ),
+            ),
         )
 
     return root()

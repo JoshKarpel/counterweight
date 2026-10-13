@@ -59,10 +59,10 @@ def root() -> Div:
 
     return Div(
         style=full | border | border_heavy,
-        children=[
+        children=(
             draggable("Drag me!", Position(2, 1), rects.padding),
             draggable("No, me!", Position(20, 4), rects.padding),
-        ],
+        ),
     )
 
 
