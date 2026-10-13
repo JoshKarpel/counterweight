@@ -148,6 +148,9 @@ See [Grids and wrapping](../layout/grids-and-wrapping.md) for the grid utilities
 ### Positioning and layering
 
 See [Layering](../layout/layering.md).
+The `inset_*` utilities with a `center` axis, such as `inset_bottom_center`, center a box on that axis
+only in a parent that centers its children, such as with `center_children`.
+To center a box in any parent, see [A dialog centered over the app](../layout/layering.md#a-dialog-centered-over-the-app).
 
 <!-- utilities: position_* inset inset_* z -->
 

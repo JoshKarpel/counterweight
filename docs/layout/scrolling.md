@@ -85,6 +85,9 @@ and a control whose handle names no mounted scroll container does nothing.
 
 [`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.hooks.Scroll]: how far the calling component's top-level element is scrolled,
 how far it can be, and the size of its padding box, the part of the content in view.
+Given an `ElementHandle`, it reports on the element with that handle instead,
+as a React component reads another element's `scrollTop` through a ref
+(see [Jumping to the end](#jumping-to-the-end)).
 A handler's [`Receiver`][counterweight.events.Receiver] carries the same for a receiving element that's
 a scroll container, which is how `scroll_on_wheel` knows whether its container can move any further.
 
@@ -169,6 +172,32 @@ Scrolled back two lines, it stays where the reader left it as new lines arrive b
 Scrolling back down to the end makes it follow the end again.
 The web has no property for this:
 a page puts an anchor element after the content, or reverses a column so it starts at its end.
+
+## Jumping to the end
+
+Counterweight doesn't draw scrollbars, as most terminal apps don't,
+so a reader scrolled back through a log has no sign of how far the end is.
+A button over the last line that appears once the log is scrolled back, and jumps to the end, gives them one:
+
+```python
+--8<-- "scrolling.py:jump"
+```
+
+=== "Scrolled back"
+
+    ![The log scrolled back two lines, with a Jump to end button over its last line](../assets/scrolling-jump.svg)
+
+=== "After clicking the button"
+
+    ![The log at its end again, without the button](../assets/scrolling-jump-clicked.svg)
+
+The button is a sibling of the log in a box around it, not a child of the log,
+because a scroll container moves everything inside it by its offset, absolutely positioned elements included,
+so a button inside the log would scroll away with the lines.
+Being outside the log, it reads the log's scroll with `use_scroll(log)`.
+That's the previous frame's scroll, so the button appears a frame after the scroll that should show it,
+which nobody notices for a button that comes and goes.
+A wheel event over the button goes to the box around the log, not the log, so the wheel doesn't scroll it there.
 
 ## Where scrolled boxes are
 

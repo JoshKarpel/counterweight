@@ -321,8 +321,6 @@ def rects(border_box: Region, clip: Region) -> Rects:
         padding=inner,
         border=border_box,
         margin=border_box,
-        gutter_right=Region(left=inner.right, top=inner.top, right=inner.right, bottom=inner.bottom),
-        gutter_bottom=Region(left=inner.left, top=inner.bottom, right=inner.right, bottom=inner.bottom),
         clip=clip,
         visible=border_box.intersection(clip),
     )
@@ -401,7 +399,7 @@ SCROLLING = Style(
 )
 
 
-async def test_a_scroll_containers_padding_and_content_exclude_its_scrollbar_gutter() -> None:
+async def test_a_scroll_containers_padding_and_content_exclude_the_space_its_scrollbar_width_reserves() -> None:
     recorded: list[Rects] = []
 
     def record(event: InputEvent, receiver: Receiver) -> InputResponse:
@@ -417,15 +415,13 @@ async def test_a_scroll_containers_padding_and_content_exclude_its_scrollbar_gut
     await frame_of(Div(children=[container]), (20, 6), events=[MouseDown(absolute=Position(5, 2), button=1)])
 
     (rects_seen,) = recorded
-    assert (rects_seen.padding, rects_seen.content, rects_seen.gutter_right, rects_seen.gutter_bottom) == (
+    assert (rects_seen.padding, rects_seen.content) == (
         Region(left=1, top=1, right=17, bottom=5),
         Region(left=4, top=1, right=14, bottom=5),
-        Region(left=17, top=1, right=19, bottom=5),
-        Region(left=1, top=5, right=17, bottom=5),
     )
 
 
-async def test_a_scrollbar_gutter_beside_no_border_draws_no_border_side() -> None:
+async def test_the_space_a_scrollbar_width_reserves_beside_no_border_draws_no_border_side() -> None:
     container = Div(style=SCROLLING | border_y | border_light | size(5, 3), children=[Text(content="ab")])
 
     assert await rows_of(Div(children=[container]), (5, 3)) == ["─────", "ab   ", "─────"]

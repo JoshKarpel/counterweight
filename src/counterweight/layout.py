@@ -15,6 +15,7 @@ from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
 
 if TYPE_CHECKING:
+    from counterweight.focus import ElementHandle
     from counterweight.hooks.impls import NodeKey
     from counterweight.shadow import ShadowNode, ShadowTree
 
@@ -26,8 +27,6 @@ INITIAL_RECTS = Rects(
     padding=_EMPTY_REGION,
     border=_EMPTY_REGION,
     margin=_EMPTY_REGION,
-    gutter_right=_EMPTY_REGION,
-    gutter_bottom=_EMPTY_REGION,
     clip=None,
     visible=None,
 )
@@ -193,13 +192,15 @@ class Layouts:
     """
     One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key,
     and the scroll of each visible scroll container by key, with the nodes of those scroll containers,
-    which the next layout picks anchors in.
+    which the next layout picks anchors in,
+    and the key of each element given a `handle`, by its handle, which `use_scroll` reads scrolls through.
     """
 
     in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects], ...]
     by_key: Mapping[NodeKey, Rects]
     scrolls: Mapping[NodeKey, Scroll]
     scroll_containers: tuple[ShadowNode, ...] = ()
+    handles: Mapping[ElementHandle, NodeKey] = field(default_factory=dict)
 
 
 NO_LAYOUTS = Layouts(in_paint_order=(), by_key={}, scrolls={})
@@ -332,7 +333,11 @@ class LayoutTree:
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
         return Layouts(
-            in_paint_order=in_paint_order, by_key=by_key, scrolls=scrolls, scroll_containers=scroll_containers
+            in_paint_order=in_paint_order,
+            by_key=by_key,
+            scrolls=scrolls,
+            scroll_containers=scroll_containers,
+            handles=shadow.handled,
         )
 
     def apply(self, changes: Iterable[LayoutChange]) -> None:
@@ -678,8 +683,9 @@ def _resolve_layout(
 
     Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
     integral and adjacent boxes share edges without gaps or overlaps.
-    Taffy narrows the children of a scroll container by its scrollbar gutters without saying where they are;
-    as in CSS, they lie between the border and the padding box, so the padding box excludes them.
+    A scroll container whose `scrollbar_width` isn't 0 reserves that much space for a scrollbar on each axis it scrolls,
+    which counterweight doesn't draw. Taffy narrows its children by that space without saying where it is;
+    as in CSS, it lies between the border and the padding box, so the padding box excludes it.
 
     Cached because most nodes keep their position, layout and clip from one frame to the next,
     and building the regions is most of the cost of reading layouts back.
@@ -697,14 +703,12 @@ def _resolve_layout(
     )
 
     border_widths = layout.border
-    inner_right = border.right - int(border_widths.right)
-    inner_bottom = border.bottom - int(border_widths.bottom)
-    gutters = layout.scrollbar_size
+    scrollbars = layout.scrollbar_size
     padding = Region(
         left=border.left + int(border_widths.left),
         top=border.top + int(border_widths.top),
-        right=inner_right - int(gutters.width),
-        bottom=inner_bottom - int(gutters.height),
+        right=border.right - int(border_widths.right) - int(scrollbars.width),
+        bottom=border.bottom - int(border_widths.bottom) - int(scrollbars.height),
     )
 
     padding_widths = layout.padding
@@ -720,8 +724,6 @@ def _resolve_layout(
         padding=padding,
         border=border,
         margin=margin,
-        gutter_right=Region(left=padding.right, top=padding.top, right=inner_right, bottom=padding.bottom),
-        gutter_bottom=Region(left=padding.left, top=padding.bottom, right=padding.right, bottom=inner_bottom),
         clip=clip,
         visible=None if clip is None else border.intersection(clip),
     )

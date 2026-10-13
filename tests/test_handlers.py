@@ -48,8 +48,6 @@ RECEIVER = Receiver(
         padding=BORDER,
         border=BORDER,
         margin=BORDER,
-        gutter_right=Region(left=7, top=1, right=7, bottom=4),
-        gutter_bottom=Region(left=2, top=4, right=7, bottom=4),
         clip=Region(left=0, top=0, right=20, bottom=10),
         visible=BORDER,
     ),

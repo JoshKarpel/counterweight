@@ -98,8 +98,6 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
             padding=Region(left=6, top=4, right=13, bottom=11),
             border=Region(left=5, top=3, right=14, bottom=12),
             margin=Region(left=4, top=2, right=15, bottom=13),
-            gutter_right=Region(left=13, top=4, right=13, bottom=11),
-            gutter_bottom=Region(left=6, top=11, right=13, bottom=11),
             clip=SCREEN,
             visible=Region(left=5, top=3, right=14, bottom=12),
         )
@@ -113,8 +111,6 @@ def test_receiver_relative_is_relative_to_the_content_box_top_left() -> None:
             padding=Region(left=6, top=4, right=13, bottom=11),
             border=Region(left=5, top=3, right=14, bottom=12),
             margin=Region(left=4, top=2, right=15, bottom=13),
-            gutter_right=Region(left=13, top=4, right=13, bottom=11),
-            gutter_bottom=Region(left=6, top=11, right=13, bottom=11),
             clip=SCREEN,
             visible=Region(left=5, top=3, right=14, bottom=12),
         ),

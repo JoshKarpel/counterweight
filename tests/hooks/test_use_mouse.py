@@ -21,8 +21,6 @@ NESTED_BOXES = Rects(
     padding=Region(left=2, top=2, right=9, bottom=7),
     border=Region(left=1, top=1, right=10, bottom=8),
     margin=Region(left=0, top=0, right=11, bottom=9),
-    gutter_right=Region(left=9, top=2, right=9, bottom=7),
-    gutter_bottom=Region(left=2, top=7, right=9, bottom=7),
     clip=Region(left=0, top=0, right=20, bottom=10),
     visible=Region(left=1, top=1, right=10, bottom=8),
 )

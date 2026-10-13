@@ -474,6 +474,11 @@ for width, width_suffix in ((1, ""), (0, "_0")):
 
 # --- Inset utilities (absolute positioning anchors) ---
 
+# A center axis leaves its insets auto, so the box stays where its parent's alignment puts it,
+# and centers only in a parent that centers its children.
+# CSS's insets of 0 with auto margins would center it in any parent, but taffy ignores those margins in a grid,
+# and a margin set to nudge the box would replace one of them.
+
 VERTICAL_INSETS = {
     "top": "inset_top=waxy.Length(0)",
     "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()",

@@ -336,6 +336,46 @@ async def test_use_scroll_reports_no_scroll_for_an_element_that_is_not_a_scroll_
     assert (await last_rows(plain(), (40, 1), [SHOT]))[0].strip() == f"{ORIGIN}/{ORIGIN} 0"
 
 
+async def test_use_scroll_with_a_handle_reports_that_elements_scroll_once_it_has_scrolled() -> None:
+    @component
+    def beside() -> Div:
+        scroll = use_scroll(HANDLE)
+        return Div(style=col, children=[Text(content=f"{scroll.offset.y}/{scroll.max_offset.y}"), scroller(*lines(6))])
+
+    assert (await last_rows(beside(), (8, 5), [ScrollTo(HANDLE, y=3), SHOT]))[0] == "3/4     "
+
+
+async def test_use_scroll_reports_no_scroll_for_a_handle_on_no_mounted_element() -> None:
+    @component
+    def unnamed() -> Text:
+        scroll = use_scroll(ElementHandle())
+        return Text(content=f"{scroll.max_offset.y}")
+
+    assert (await last_rows(Div(style=col, children=[unnamed(), scroller(*lines(6))]), (8, 5), [SHOT]))[0] == "0       "
+
+
+OUTER = ElementHandle()
+
+
+async def test_a_component_reading_two_scrolls_renders_again_once_either_has_scrolled() -> None:
+    reports: list[tuple[int, int]] = []
+
+    @component
+    def both() -> Div:
+        own = use_scroll()
+        inner = use_scroll(HANDLE)
+        reports.append((own.offset.y, inner.offset.y))
+        return Div(
+            style=col | size(8, 4) | overflow_y_scroll,
+            handle=OUTER,
+            children=[scroller(*lines(6), style=shrink(0)), *lines(2)],
+        )
+
+    await frames_of(both(), (8, 4), [ScrollTo(HANDLE, y=2), SHOT, ScrollTo(OUTER, y=1), SHOT], check_purity=False)
+
+    assert reports[-1] == (1, 2)
+
+
 async def test_a_receiver_carries_the_scroll_of_a_scroll_container_and_none_for_other_elements() -> None:
     scrolls: list[Scroll | None] = []
 
@@ -392,10 +432,10 @@ def test_nested_horizontal_scroll_containers_move_their_content_by_the_sum_of_th
     assert layouts.by_key[inner_node.children[0].key].border.left == -3
 
 
-def test_the_view_excludes_the_scrollbar_gutter() -> None:
-    gutter = Style(layout=waxy.Style(scrollbar_width=2))
+def test_the_view_excludes_the_space_a_scrollbar_width_reserves() -> None:
+    reserved = Style(layout=waxy.Style(scrollbar_width=2))
 
-    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow_y_scroll | gutter, children=lines(8)))
+    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow_y_scroll | reserved, children=lines(8)))
 
     assert (scroll.view_width, scroll.view_height) == (6, 3)
 

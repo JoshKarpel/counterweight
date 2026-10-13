@@ -13,7 +13,7 @@ from counterweight._context_vars import current_event_queue, current_hook_idx, c
 from counterweight.clock import Instant, tick_index, until_next_tick
 from counterweight.equivalence import equivalent
 from counterweight.events import StateSet
-from counterweight.focus import FocusHandle
+from counterweight.focus import ElementHandle, FocusHandle
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 if TYPE_CHECKING:
@@ -181,8 +181,12 @@ class Hooks:
     key: NodeKey = field(default_factory=_next_node_key)
     rects: Rects | None = None
     """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
-    scroll: Scroll | None = None
-    """What `use_scroll` last returned to this node, so the node re-renders once its scroll changes."""
+    scrolls: dict[ElementHandle | None, Scroll] | None = None
+    """
+    What each `use_scroll` call in this node's last run returned, by the handle it was given,
+    `None` for the node's own element, so the node re-renders once any of those scrolls changes.
+    It's `None` if the last run didn't call `use_scroll`.
+    """
     focus: UseFocus | None = None
     """The `use_focus` hook of this node's last run, if it called `use_focus`, which makes the node focusable."""
     clocks: list[UseClock] = field(default_factory=list)

@@ -9,6 +9,8 @@ from textwrap import dedent
 from typing import assert_never
 from xml.etree.ElementTree import Element, SubElement
 
+import waxy
+
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
 from counterweight.geometry import Position, Rects, Region
@@ -22,6 +24,7 @@ from counterweight.styles.styles import (
     JoinedBorderParts,
     ResolvedCellStyle,
     ResolvedStyle,
+    Style,
     TextJustify,
     TextWrap,
     resolve_cell_style,
@@ -189,6 +192,7 @@ class Paint:
 CellMap = dict[Position, Cell]
 BorderHealingHints = dict[Position, JoinedBorderParts]
 Fill = tuple[Region, Cell]
+BorderSides = tuple[bool, bool, bool, bool]
 Run = tuple[int, int, list[Cell]]  # cells to draw left to right from (x, y)
 
 
@@ -265,9 +269,7 @@ def paint_element(
         style.border_style,
         style.border_contract,
         resolved.border,
-        resolved.padding,
-        resolved.gutter_right.right,
-        resolved.gutter_bottom.bottom,
+        border_sides(element.style),
     )
     # A border box wholly inside the clip is its own visible part, so all of its corners are too.
     hints = (
@@ -374,33 +376,46 @@ def text_lines(
     return tuple(lines)
 
 
+_ONE_CELL = waxy.Length(1)
+
+
+@lru_cache(maxsize=2**12)
+def border_sides(style: Style) -> BorderSides:
+    """
+    Which sides of the border an element with `style` draws, left, right, top and bottom:
+    those whose width is one cell.
+    They come from the style rather than from the gap between the border and padding boxes,
+    because a scroll container's `scrollbar_width` widens that gap without drawing anything in it.
+    """
+    layout = style.layout
+    return (
+        layout.border_left == _ONE_CELL,
+        layout.border_right == _ONE_CELL,
+        layout.border_top == _ONE_CELL,
+        layout.border_bottom == _ONE_CELL,
+    )
+
+
 @lru_cache(maxsize=2**12)
 def border_fills(
     kind: BorderKind | None,
     cell_style: ResolvedCellStyle,
     contract: int,
     region: Region,
-    padding: Region,
-    inner_right: int,
-    inner_bottom: int,
+    sides: BorderSides,
 ) -> tuple[tuple[Fill, ...], tuple[tuple[Position, JoinedBorderParts], ...]]:
     """
     A border's edges and corners as one-cell-wide fills, in the order they overwrite each other,
     and the corners that border healing may join to a neighboring border.
 
-    A side is drawn where the border box `region` reaches past the border's inner edge,
-    which is the `padding` box's left and top, and `inner_right` and `inner_bottom`,
-    outside the scrollbar gutters that the padding box excludes.
+    The border runs around the edge of the border box `region`, on the `sides` (left, right, top and bottom) it's drawn on.
     """
     if kind is None:
         return (), ()
 
     bv = kind.value
 
-    draw_left = padding.left > region.left
-    draw_right = region.right > inner_right
-    draw_top = padding.top > region.top
-    draw_bottom = region.bottom > inner_bottom
+    draw_left, draw_right, draw_top, draw_bottom = sides
 
     if contract:
         contract_top = contract if not draw_top else None

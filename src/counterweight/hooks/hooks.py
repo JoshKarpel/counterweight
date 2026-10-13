@@ -13,7 +13,7 @@ from counterweight._context_vars import (
     current_use_mouse_listeners,
 )
 from counterweight._utils import forever
-from counterweight.focus import FocusHandle
+from counterweight.focus import ElementHandle, FocusHandle
 from counterweight.geometry import ORIGIN, Position, Rects, Scroll
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
@@ -147,27 +147,39 @@ def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     return layouts.by_key.get(key, INITIAL_RECTS)
 
 
-def use_scroll() -> Scroll:
+def use_scroll(handle: ElementHandle | None = None) -> Scroll:
     """
+    Parameters:
+        handle: The element to report on, by the [`ElementHandle`][counterweight.focus.ElementHandle]
+            passed to its `handle`, as a React component reads another element's `scrollTop` through a ref,
+            or `None` for the calling component's top-level element.
+
     Returns:
-        How far the calling component's top-level element is scrolled, and how far it can be,
+        How far the element is scrolled, and how far it can be,
             if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
-            A component that calls `use_scroll` renders again as soon as its scroll changes,
+            A component that calls `use_scroll` renders again as soon as that scroll changes,
             whether a control scrolled it or its content changed size.
-            It's all zeros on the initial render, and for an element that isn't a scroll container.
+            It's all zeros on the initial render, for an element that isn't a scroll container,
+            and for a `handle` that named no visible element in the previous render cycle.
     """
     hooks = current_hook_state.get()
-    scroll = scroll_in(current_layouts.get(), hooks.key)
-    hooks.scroll = scroll
+    scroll = scroll_in(current_layouts.get(), hooks.key, handle)
+    if hooks.scrolls is None:
+        hooks.scrolls = {}
+    hooks.scrolls[handle] = scroll
     return scroll
 
 
 NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0)
 
 
-def scroll_in(layouts: Layouts, key: NodeKey) -> Scroll:
-    """The scroll `use_scroll` reports for the node with `key`, given the previous frame's `layouts`."""
-    return layouts.scrolls.get(key, NO_SCROLL)
+def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -> Scroll:
+    """
+    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    the scroll of the element `handle` names, or of `reader`'s own element if it's `None`.
+    """
+    key = reader if handle is None else layouts.handles.get(handle)
+    return NO_SCROLL if key is None else layouts.scrolls.get(key, NO_SCROLL)
 
 
 @dataclass(frozen=True, slots=True)

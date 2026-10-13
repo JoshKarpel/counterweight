@@ -136,6 +136,46 @@ def tail() -> Div:
 
 # --8<-- [end:tail]
 
+# --8<-- [start:jump]
+
+
+@component
+def jump_to_end() -> Div:
+    log, _ = use_state(ElementHandle)
+    scroll = use_scroll(log)
+
+    return Div(
+        style=col | border | border_lightrounded | size(30, 6),
+        children=[
+            Div(
+                style=fill(1) | col | overflow_y_scroll | stick_to_end_y,
+                handle=log,
+                on_input=scroll_on_wheel(1),
+                children=[Text(content=f"{i:>2} {event}") for i, event in enumerate(EVENTS, start=1)],
+            ),
+            # A sibling of the log, not a child, so it stays over the last line as the log scrolls.
+            *(
+                ()
+                if scroll.offset.y == scroll.max_offset.y
+                else (
+                    Text(
+                        content=" ↓ Jump to end ",
+                        style=position_absolute
+                        | inset_bottom(0)
+                        | inset_x(0)
+                        | margin_x_auto
+                        | fit_content_width
+                        | text_bg("sky", 800),
+                        on_input=on_click(lambda: ScrollTo(log, y=scroll.max_offset.y)),
+                    ),
+                )
+            ),
+        ],
+    )
+
+
+# --8<-- [end:jump]
+
 WHEEL = MouseScrolledDown(absolute=Position(5, 2))
 
 
@@ -150,6 +190,9 @@ WHEEL_UP = MouseScrolledUp(absolute=Position(5, 2))
 TAILED = AdvanceClock(by=timedelta(seconds=10))
 READ_BACK: list[AnyEvent | AnyControl] = [TAILED, WHEEL_UP, WHEEL_UP]
 
+# `use_scroll` reports a scroll one render after it changes, so the button appears, and goes, a render later.
+JUMPED_BACK: list[AnyEvent | AnyControl] = [WHEEL_UP, WHEEL_UP, SETTLE]
+
 SCREENSHOTS = [
     ScreenshotSpec(pane(), "scrolling-pane", (30, 6)),
     ScreenshotSpec(pane(), "scrolling-pane-wheeled", (30, 6), events=[WHEEL, WHEEL]),
@@ -161,9 +204,11 @@ SCREENSHOTS = [
     ScreenshotSpec(
         tail(), "scrolling-tail-read-back-later", (30, 6), events=[*READ_BACK, AdvanceClock(by=timedelta(seconds=2))]
     ),
+    ScreenshotSpec(jump_to_end(), "scrolling-jump", (30, 6), events=JUMPED_BACK),
+    ScreenshotSpec(jump_to_end(), "scrolling-jump-clicked", (30, 6), events=[*JUMPED_BACK, *click(15, 4), SETTLE]),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (pane, controlled, windowed, tail)}
+    roots = {root.__name__: root for root in (pane, controlled, windowed, tail, jump_to_end)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else pane()))

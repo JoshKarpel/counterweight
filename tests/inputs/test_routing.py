@@ -216,8 +216,6 @@ def unclipped(box: Region, screen: Region) -> Rects:
         padding=box,
         border=box,
         margin=box,
-        gutter_right=Region(left=box.right, top=box.top, right=box.right, bottom=box.bottom),
-        gutter_bottom=Region(left=box.left, top=box.bottom, right=box.right, bottom=box.bottom),
         clip=screen,
         visible=box,
     )

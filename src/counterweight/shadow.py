@@ -96,7 +96,7 @@ class ShadowTree:
                 parents[child.key] = node.key
             if node.hooks.rects is not None:
                 measured.append(node)
-            if node.hooks.scroll is not None:
+            if node.hooks.scrolls is not None:
                 scroll_readers.append(node)
             if (handle := node.element.handle) is not None:
                 if handle in handled:
@@ -415,7 +415,7 @@ def call_component(component: Component, hooks: Hooks, reconciliation: Reconcili
     # use_rects and use_scroll aren't positional, so a run that stops calling one must stop the node re-running
     # when what it reports changes.
     hooks.rects = None
-    hooks.scroll = None
+    hooks.scrolls = None
     # use_focus raises when it's called twice in one run, which it tells by this being set.
     hooks.focus = None
     try:

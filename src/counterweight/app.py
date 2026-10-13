@@ -618,7 +618,11 @@ def scrolled_offsets(
 
 def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
     """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
-    return (node.key for node in shadow.scroll_readers if node.hooks.scroll != scroll_in(layouts, node.key))
+    return (
+        node.key
+        for node in shadow.scroll_readers
+        if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
+    )
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

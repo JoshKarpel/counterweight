@@ -17,8 +17,9 @@
   which an element takes as its `handle`, or by a receiver's `subtree`,
   and `counterweight.handlers` gains `scroll_on_wheel`, which scrolls for the wheel
   and passes the wheel on to the container outside once its own reaches an end.
-  [`use_scroll`](hooks/use_scroll.md) returns how far the calling component's element is scrolled
-  and how far it can be, and a `Receiver` carries the same as its `scroll`.
+  [`use_scroll`](hooks/use_scroll.md) returns how far the calling component's element,
+  or the element with a given `ElementHandle`, is scrolled and how far it can be,
+  and a `Receiver` carries the same as its `scroll`.
 
 - [#415](https://github.com/JoshKarpel/counterweight/pull/415)
   Added the overflow utilities `overflow_visible`, `overflow_hidden` and `overflow_clip`,
@@ -27,8 +28,7 @@
   which lets a child such as a border title draw on its parent's border when its parent clips,
   or a popup such as a dropdown escape every clip above it.
   `Rects` gains `clip`, the region an element's ancestors let it draw in,
-  `visible`, the part of its border box inside that region,
-  and `gutter_right` and `gutter_bottom`, the strips a scroll container reserves for its scrollbars.
+  and `visible`, the part of its border box inside that region.
   See [Clipping](layout/clipping.md), and the [autocomplete recipe](cookbook/autocomplete.md).
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
@@ -163,8 +163,8 @@
 
 - [#415](https://github.com/JoshKarpel/counterweight/pull/415)
   `Rects` is keyword-only, since it has more fields than are easy to keep in order.
-  A scroll container's `padding` and `content` exclude its scrollbar gutters, as taffy lays its children out,
-  where they included them.
+  A scroll container's `padding` and `content` exclude the space its `scrollbar_width` reserves,
+  as taffy lays its children out, where they included it.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),

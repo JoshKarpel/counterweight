@@ -3,12 +3,13 @@
 This plan covers clipping painting to containers with hidden overflow (#388),
 the hit testing that has to agree with it,
 a way for a popup such as an autocomplete list to escape the clip,
-and scroll containers (#389), with their input, scrollbar, keyboard scrolling (part of #390),
+and scroll containers (#389), with their input, keyboard scrolling (part of #390),
 and scroll anchoring, driven by the `agent` benchmark's transcript.
 They share one mechanism: a walk down the tree after layout that places each node on the screen,
 carrying a scroll offset and a clip.
 It also settles how border healing treats a clip edge, which touches #74.
-It doesn't cover a top layer for modals (see [Open questions](#open-questions)).
+It doesn't cover a top layer for modals (see [Open questions](#open-questions)),
+or a visible scrollbar (see [No scrollbar](#no-scrollbar)).
 
 ## Problems
 
@@ -69,7 +70,8 @@ scrollable_overflow_rect Rect(left=0, right=16, top=0, bottom=12)
   and at `y=2`, on the bottom border row, with a border of 1.
 - **`waxy.Overflow` has no `Auto`.**
   Its members are `Visible`, `Clip`, `Hidden` and `Scroll`,
-  so a scroll container always reserves its gutter, whether or not its content overflows.
+  so a scroll container whose `scrollbar_width` isn't 0 always reserves its gutter, whether or not its content overflows.
+- **`scrollbar_width` defaults to 0**, so a scroll container reserves no gutter unless its style sets one.
 - **Effects start after the frame paints.**
   `handle_effects` runs at `app.py:479`, after `paint_layout` at `app.py:446`,
   so anything an app does in an effect in response to a layout shows up a frame late.
@@ -126,10 +128,9 @@ so the routing table and the paint see the same positions.
 
 `_resolve_layout` subtracts `layout.scrollbar_size` from the right and bottom of the padding box,
 so `padding` and `content` match what taffy laid out,
-and `Rects` gains the **gutter** regions between the border and the padding box,
-where the scrollbar paints.
-`border_fills` and `edge_fills` take the padding box as the inner edge,
-so a border with a gutter inside it must still fill only the border.
+though nothing paints in the gutter (see [No scrollbar](#no-scrollbar)).
+`border_fills` takes the sides it draws from the style's border widths rather than from the padding box,
+so a gutter beside a side with no border draws no border there.
 
 ### Painting within the clip
 
@@ -268,7 +269,9 @@ Offsets of nodes that unmount are dropped.
 
 #### Reading and setting it
 
-`use_scroll()` returns a `Scroll` for the calling component's top-level element:
+`use_scroll(handle=None)` returns a `Scroll` for the calling component's top-level element,
+or for the element `handle` names (see [Naming elements](#naming-elements)),
+as a React component reads another element's `scrollTop` through a ref:
 its offset, its maximum offset, and the size of its padding box (the part of the content in view).
 `Receiver` carries the same `Scroll` for a receiving element that's a scroll container, or `None`.
 Two controls change an offset, clamped to the extent:
@@ -331,8 +334,6 @@ Library handlers, composed onto the scroll container's element like `tab_focus` 
 - **`scroll_on_keys(page=0.875)`** scrolls for arrow keys, `PageUp` and `PageDown`, and `Home` and `End`,
   when the container is focused.
   A page is `page` times the padding box's height, as `page_up` and `page_down` compute it.
-- **`scroll_on_scrollbar`** claims a press on the scrollbar: on the thumb it drags,
-  on the track it pages toward the press.
 
 The wheel and key handlers return `None` when the container can't move any further that way,
 so the event bubbles to the next scroll container out, the web's scroll chaining.
@@ -347,13 +348,29 @@ on a 24-row pane, a page is 21 rows and 3 stay in view.
 `fraction=0.5` is `less`'s half window for `d` and `Ctrl+D`,
 and `fraction=1.0` its whole window for `Space`, `f` and `Ctrl+F`, with no overlap.
 
-#### The scrollbar
+#### No scrollbar
 
-The framework paints a scrollbar into each gutter of a scroll container that can scroll on that axis:
-a track the length of the gutter, and a thumb whose length and position are the padding box's share
-of the scrollable extent and the offset's share of the maximum, at least one cell long.
-A gutter whose axis can't scroll is painted as the track.
-Style fields set the thumb and track colors, as CSS's `scrollbar-color` does.
+Counterweight doesn't draw a scrollbar (#417 tracks adding one).
+Most TUIs don't draw one either: Claude Code's transcript, `less`, and vim by default;
+Ratatui makes one an explicit widget, and Textual is the exception in showing one by default.
+A column is expensive in a terminal, and the web's default is platform-specific too:
+macOS overlay scrollbars take no space.
+An app moves with the wheel and keyboard handlers,
+and can show that the reader has scrolled back as Claude Code's transcript does:
+a "jump to end" button over the last line, shown while `use_scroll(handle)` reports the log isn't at its end.
+The button is a sibling of the scroll container, in a box around it,
+since everything inside a scroll container moves with its offset, absolutely positioned elements included.
+
+A scrollbar has several plausible designs and no app yet to choose between them,
+and it's purely additive, since nothing in the scrolling API depends on it:
+
+- **Painted by the framework** into the gutter, from the same layout as the content, so the thumb never lags,
+  with style fields for its colors and a `use_scrollbar()` hook whose handler drags the thumb,
+  keeping the drag's grab in a ref inside the hook.
+- **Headless**, like Radix's `ScrollArea`: a hook returns styles and handlers for a track and a thumb
+  that the app renders beside the container.
+  The hook would read the scroll from `use_scroll`, which reports the previous frame,
+  so the thumb would trail every scroll by a frame, since effects and re-renders come after paint.
 
 #### Scroll anchoring
 
@@ -417,7 +434,7 @@ That's the web's behavior too.
 
 Generated overflow utilities, for both axes and each axis alone:
 `overflow_visible`, `overflow_hidden`, `overflow_clip` and `overflow_scroll`, with `_x` and `_y` variants,
-the scrollbar width and colors, turning scroll anchoring off, sticking to the end on each axis,
+turning scroll anchoring off, sticking to the end on each axis,
 and a utility for each value of `clip_to`.
 
 Docs pages, with screenshot examples:
@@ -426,7 +443,7 @@ Docs pages, with screenshot examples:
   a list of titled panels in a scroll container,
   and what `inset_top=Percent(1.0)` means against a bordered parent
   (the percentage resolves against the padding box, so it lands on the bottom border row).
-- **Scrolling**: a scroll container with each of the handlers, `use_scroll`, the scrollbar styles,
+- **Scrolling**: a scroll container with each of the handlers, `use_scroll`, a "jump to end" button that reads a log's scroll by handle,
   scroll anchoring and sticking to the end, with the agent transcript's situations,
   and a titled pane that scrolls a child inside its border.
 
@@ -460,7 +477,7 @@ The recipe covers:
   comparing the field's `use_rects` with the screen's height from the root's `use_rects`.
 - **Inside a scroll container**, once phase 3 lands:
   the form scrolls, and the open list moves with its field and extends how far the form scrolls.
-- **A long list**, once phase 6 lands: the list is a scroll container with a maximum height,
+- **A long list**, once phase 5 lands: the list is a scroll container with a maximum height,
   each match carries an `ElementHandle`, and `Down` and `Up` return
   `ScrollIntoView(match, block="nearest")` beside the highlight change, while focus stays in the field.
   Until then, the recipe shows at most a fixed number of matches.
@@ -485,7 +502,7 @@ Each phase is its own PR, and each leaves the app working.
    `clip_to="screen"`, the clip reset in the walk, its utility, and the autocomplete cookbook page.
 3. **Scroll offsets (#389).**
    Offsets held by the app loop, clamped after each layout,
-   the walk's offset, `use_scroll`, `Receiver.scroll`, `ElementHandle`, `ScrollTo` and `ScrollBy`,
+   the walk's offset, `use_scroll` with and without a handle, `Receiver.scroll`, `ElementHandle`, `ScrollTo` and `ScrollBy`,
    `scroll_on_wheel`, and the `overflow_scroll` utilities.
    Rebuild the `agent` transcript as a scroll container holding a fixed number of the newest messages,
    replacing `visible`'s row estimate, so a live run (`live_root`) can wheel back through it.
@@ -498,9 +515,7 @@ Each phase is its own PR, and each leaves the app working.
    and the style field and utilities to stick to the end, which the `agent` transcript sets.
    Add an `agent` workload whose autopilot, which already takes events and controls,
    scrolls back partway, so the benchmark measures a transcript read back while it streams.
-5. **The scrollbar.**
-   Painting it, its style fields and utilities, and `scroll_on_scrollbar`.
-6. **Scrolling into view and keyboard scrolling (part of #390).**
+5. **Scrolling into view and keyboard scrolling (part of #390).**
    `ScrollIntoView`, scrolling focused elements into view,
    `scroll_on_keys`, `page_up` and `page_down`, and the scrolling docs.
    Give the live `agent` run a key that jumps to the previous prompt,
@@ -539,6 +554,8 @@ Each phase is its own PR, and each leaves the app working.
 - `ScrollIntoView` aligns its target by each of `"start"`, `"center"`, `"end"` and `"nearest"`,
   leaves an element already in view alone under `"nearest"`,
   and shows in the same frame as the state change returned beside it.
+- `use_scroll(handle)` reports the named element's scroll, and a component reading two scrolls
+  renders again once either changes.
 - Two mounted elements with the same `ElementHandle` raise,
   and a control naming an unmounted handle does nothing.
 - Run `just mutate` over the new code, and profile a render-heavy workload before and after each phase

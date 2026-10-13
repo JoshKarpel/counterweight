@@ -149,17 +149,6 @@ class Rects:
     border: Region
     margin: Region
 
-    gutter_right: Region
-    """
-    The strip between the right side of the padding box and the border, reserved for a vertical scrollbar
-    when the element's `overflow_y` is `Scroll`, and empty otherwise.
-    """
-    gutter_bottom: Region
-    """
-    The strip between the bottom of the padding box and the border, reserved for a horizontal scrollbar
-    when the element's `overflow_x` is `Scroll`, and empty otherwise.
-    """
-
     clip: Region | None
     """
     The region the element's ancestors let it draw in: its parent's clip (the screen, for the root),

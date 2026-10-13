@@ -430,20 +430,17 @@ def test_text_lines_are_empty_at_no_width() -> None:
 
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
     region = Region(left=2, top=0, right=2, bottom=3)
-    padding = Region(left=2, top=1, right=2, bottom=2)
 
-    assert border_fills(
-        BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, padding, padding.right, padding.bottom
-    ) == ((), ())
+    assert border_fills(BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, (False, False, True, True)) == (
+        (),
+        (),
+    )
 
 
 def test_a_border_kind_without_joined_parts_draws_its_edges_but_gives_no_healing_hints() -> None:
     region = Region(left=0, top=0, right=3, bottom=3)
-    padding = Region(left=1, top=1, right=2, bottom=2)
 
-    fills, hints = border_fills(
-        BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, padding, padding.right, padding.bottom
-    )
+    fills, hints = border_fills(BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, (True, True, True, True))
 
     assert (len(fills), hints) == (8, ())
 
