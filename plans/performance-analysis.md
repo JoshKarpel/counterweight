@@ -946,3 +946,150 @@ Median frame time of three interleaved rounds, with the range across rounds:
   against 38 of 275 in run 19, since a key now calls one handler rather than every visible node's.
 - **Reconciling focus doesn't show** in either profile, and `RoutingTable.of` costs 0.031 ms per frame on `top`,
   against 0.021 ms in run 19, within the noise of one profiled run.
+
+### Run 21 — Markdown and syntax highlighting in `agent` (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** two new workloads, `agent-markdown` and `agent-markdown-memo`,
+step the same models as `agent` but render assistant messages with `markdown`
+(a fixed set of words marked up as code, emphasis, strong, or a link)
+and tool calls with `code_block` (`python` for reads, `diff` for edits).
+`block_gap=0` keeps each message the height `visible` estimates.
+The streaming message's source changes every frame, so it is parsed every frame;
+every other message is a hit in `markdown`'s cache.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `r<round>-<config>`,
+and one profiled `just profile` run of each workload.
+"Quiet" is `agent-markdown` with `logging.getLogger("markdown_it")` raised to `INFO` before the run,
+set in the runner and not in counterweight.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Median | Change against its plain twin |
+|---|---|---|
+| `agent` | 1.07 ms (1.04–1.11) | |
+| `agent-markdown` | 1.52 ms (1.50–1.58) | +42% |
+| `agent-markdown`, quiet | 1.33 ms (1.30–1.36) | +24% |
+| `agent-memo` | 0.99 ms (0.97–1.05) | |
+| `agent-markdown-memo` | 1.46 ms (1.42–1.49) | +47% |
+
+- **The added cost is all in `update_shadow`** (0.21 → 0.58 ms per mean frame in the profiles):
+  paint and layout are within noise of `agent`. Of `update_shadow`, `markdown` is 22% of running samples,
+  nearly all of it `MarkdownIt.parse` of the streaming message.
+- **About half of parsing is markdown-it's own logging.** Its block rules call `LOGGER.debug` on entry,
+  and the devlog captures every logger at `DEBUG`, so each parse makes dozens of records, built in the caller
+  (`makeRecord`, `findCaller`) and encoded by the sink task (whose stage grows from 0.05 to 0.13 ms per frame).
+  Quieting that one logger takes back 0.19 ms of the 0.45 ms median difference.
+- **`memo` saves nothing extra here:** the only message that re-renders is the streaming one,
+  whose source changes every frame, and the others already hit `markdown`'s cache.
+- **Max frames of 27–41 ms** in the Markdown runs, against about 5 ms for `agent`, are first use:
+  the first `highlight` of a language takes about 19 ms (Pygments loads the lexer and style),
+  and the first `markdown` about 17 ms (markdown-it builds its rules); later calls take about 0.1 ms.
+- `agent-markdown-memo` draws the same last frame as `agent-markdown`.
+
+### Run 22 — devlog levels by logger name, and where Markdown's time goes (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** the devlog captures counterweight and the app's own top-level package at `DEBUG`
+and everything else from `INFO`, and `app`'s `log_levels` (logger name to level, `""` the root logger)
+is merged over that base.
+The devlog sets each named logger's level while the app runs, so a third-party `DEBUG` record
+is rejected by `isEnabledFor` before it's built, where run 21's markdown-it records cost most.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `lv<round>-<workload>`.
+The breakdown comes from one profiled run of `agent-markdown` with markdown-it's logger at `INFO`
+and the `python` and `diff` lexers and the parser warmed up before the first frame (`md-quiet-warm`),
+its collapsed stacks bucketed by the innermost frame that names a phase,
+and `timeit` on one 185-word streaming message.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Run 21 | Run 22 | Change against its plain twin, run 22 |
+|---|---|---|---|
+| `agent` | 1.07 ms (1.04–1.11) | 1.05 ms (1.02–1.09) | |
+| `agent-markdown` | 1.52 ms (1.50–1.58) | 1.33 ms (1.22–1.36) | +27% |
+| `agent-memo` | 0.99 ms (0.97–1.05) | 1.00 ms (0.97–1.11) | |
+| `agent-markdown-memo` | 1.46 ms (1.42–1.49) | 1.25 ms (1.24–1.26) | +25% |
+
+`render_markdown_message`, ms per mean frame (1.53 ms):
+
+| Part | ms/frame | Whose |
+|---|---|---|
+| markdown-it inline pass | 0.138 | library |
+| markdown-it block pass | 0.047 | library |
+| `SyntaxTreeNode` | 0.031 | library |
+| markdown-it core rules | 0.020 | library |
+| Converting the tree to elements | 0.025 | counterweight |
+| `code_block`, warm | 0.020 | counterweight |
+| `marked_up` | 0.036 | the workload |
+
+- **About 70% is markdown-it**, and most of that is its inline pass, which scans every paragraph
+  of the streaming message character by character in Python, every frame.
+  Under `timeit`, one 185-word message takes 273 µs to parse, 39 µs to build its `SyntaxTreeNode`,
+  and 35 µs for counterweight to turn into elements.
+- **Counterweight's own share is small:** converting the tree, and wrapping cached highlights in a `Text`
+  (0.5 µs per `code_block` on a cache hit).
+- **The levers are on our side of the call, not inside markdown-it:** only the last paragraph of a streaming message
+  changes, so caching inline parsing per paragraph would take the inline pass from O(message) to O(last paragraph);
+  walking markdown-it's tokens directly would drop the `SyntaxTreeNode` step. Neither is tried yet.
+
+### Run 23 — `agent-markdown` shaped like real agent output (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** `agent-markdown` has its own model, in `benchmarks/agent_markdown.py`, instead of marking up `agent`'s.
+Runs 21 and 22 streamed one long run of prose with sparse markup, which real agent output isn't.
+Its shapes come from the assistant text blocks in the Claude Code transcripts on the development machine
+(5,075 main-thread blocks across 29 projects; only statistics were kept, never text):
+
+| Measure | p10 | p25 | p50 | p75 | p90 | p99 |
+|---|---|---|---|---|---|---|
+| Words per block | 9 | 14 | 22 | 36 | 278 | 702 |
+| Top-level blocks per block | 1 | 1 | 1 | 1 | 6 | 14 |
+| Tool calls before a block | 0 | 1 | 2 | 5 | 9 | 26 |
+| Words per paragraph | 6 | 13 | 22 | 34 | 54 | 96 |
+| Items per list | 2 | 2 | 3 | 4 | 5 | 7 |
+| Lines per code fence | 1 | 1 | 3 | 5 | 9 | 76 |
+
+- Every block has a paragraph; 14% have a bulleted list, 3% a numbered list, 3% a code fence,
+  2% a table and 2% a heading (nearly all `##`).
+- Per 100 words: 4.7 inline code spans, 1.2 bold, 0.05 links, 0.04 italics.
+- Tool calls are 53% shell commands, 28% edits and 18% reads, among those three.
+
+The generator draws narration (85%) or a summary (15%) from those percentiles, and reproduces them closely:
+a median of 21 words and a 90th percentile of 288, a mean of 2.1 top-level blocks, and the same share of lists.
+It streams three words a frame, so the streaming block's source is often unfinished Markdown,
+and a code fence that's still streaming misses `highlight`'s cache every frame.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `real<round>-<workload>`,
+and one profiled run of `agent-markdown`, its collapsed stacks under `render_message`
+bucketed by the innermost frame that names a phase.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Median | Change against its plain twin |
+|---|---|---|
+| `agent` | 1.09 ms (1.00–1.11) | |
+| `agent-markdown` | 1.34 ms (1.29–1.34) | +23% |
+| `agent-memo` | 0.98 ms (0.94–1.00) | |
+| `agent-markdown-memo` | 1.28 ms (1.24–1.32) | +31% |
+
+`render_message` is 23% of running samples. Within it:
+
+| Part | Share | Whose |
+|---|---|---|
+| markdown-it block pass | 28% | library |
+| markdown-it inline pass | 22% | library |
+| `SyntaxTreeNode` | 12% | library |
+| markdown-it core rules | 7% | library |
+| Pygments lexing | 14% | library |
+| Pygments loading a lexer for the first time | 1% | library |
+| Converting the tree to elements | 17% | counterweight |
+
+- **About 83% is library code.** With lists and tables in the mix, markdown-it's block pass now costs more
+  than its inline pass, and Pygments re-lexes a code fence on every frame that it grows.
+- **Counterweight's share is 17%,** larger than run 22's because real output has more blocks and inline spans per word.
+- Run 22's levers still apply, but the per-paragraph inline cache would save less here:
+  most blocks are a single short paragraph, and summaries spend more in the block pass.

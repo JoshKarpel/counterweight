@@ -38,6 +38,8 @@ dependencies = [
     "without-logging>=0.0.10",
     "without-streams>=0.0.10",
     "wcwidth>=0.8",
+    "markdown-it-py>=3",
+    "pygments>=2.17",
 ]
 
 [dependency-groups]
@@ -57,6 +59,7 @@ dev = [
     "mkdocstrings[python]>=0.19.0",
     "ruff>=0.15.4",
     "mutmut>=3.8.0",
+    "types-pygments>=2.17",
 ]
 
 [project.scripts]
@@ -157,6 +160,17 @@ ignore = [
     "T203",  # pprint
     "F403",  # star imports, used for utilities
     "F405",  # star imports, used for utilities
+]
+
+
+[tool.ruff.lint.flake8-bugbear]
+# Styles are immutable values, so they're safe as dataclass defaults.
+extend-immutable-calls = [
+    "counterweight.styles.Style",
+    "counterweight.styles.CellStyle",
+    "counterweight.styles.styles.Style",
+    "counterweight.styles.styles.CellStyle",
+    "counterweight.styles.utilities.*",
 ]
 
 [tool.mutmut]

@@ -20,6 +20,9 @@ in a leaf component rather than the root: compare the two to see what skipping c
 whose state didn't change saves. Each `-memo` workload (`dashboard-memo`, `top-memo`,
 `agent-memo`) draws what its twin does with the per-item component declared `memo`:
 compare the pair to see what skipping components whose arguments didn't change saves.
+`agent-markdown` streams Markdown shaped like a real coding agent's (short narration between tool calls,
+and now and then a summary with lists, tables and code), rendered with `markdown` and `code_block`:
+compare it with `agent` to see roughly what parsing and highlighting cost.
 
 ## Profile a run
 

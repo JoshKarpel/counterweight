@@ -5,7 +5,7 @@ from types import ModuleType
 
 import pytest
 
-from benchmarks import agent, canvas, dashboard, top
+from benchmarks import agent, agent_markdown, canvas, dashboard, top
 from benchmarks.harness import run
 from benchmarks.parsing import INPUTS, InputTiming, ParsingTimings, parsing_table, time_parsing
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
@@ -31,6 +31,7 @@ async def test_workload_renders_every_frame(name: str, tmp_path: Path) -> None:
         ("dashboard-memo", "dashboard"),
         ("top-memo", "top"),
         ("agent-memo", "agent"),
+        ("agent-markdown-memo", "agent-markdown"),
     ],
 )
 async def test_workload_draws_the_same_last_frame_as_its_twin(name: str, twin: str, tmp_path: Path) -> None:
@@ -55,7 +56,7 @@ async def test_live_workload_renders_until_quit(name: str) -> None:
     assert capture.getvalue().strip()
 
 
-@pytest.mark.parametrize("module", [agent, canvas, dashboard, top], ids=lambda m: m.__name__)
+@pytest.mark.parametrize("module", [agent, agent_markdown, canvas, dashboard, top], ids=lambda m: m.__name__)
 def test_workload_steps_to_the_same_models_every_run(module: ModuleType) -> None:
     def models() -> list[object]:
         model = module.initial()

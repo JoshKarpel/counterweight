@@ -200,6 +200,7 @@ CELL_STYLE_FIELD_CASES: tuple[tuple[str, CellStyle, CellStyle], ...] = (
     ("italic", CellStyle(italic=True), CellStyle(italic=CELL_STYLE_DEFAULTS.italic)),
     ("underline", CellStyle(underline=True), CellStyle(underline=CELL_STYLE_DEFAULTS.underline)),
     ("strikethrough", CellStyle(strikethrough=True), CellStyle(strikethrough=CELL_STYLE_DEFAULTS.strikethrough)),
+    ("link", CellStyle(link="https://example.com/"), CellStyle(link=CELL_STYLE_DEFAULTS.link)),
 )
 
 

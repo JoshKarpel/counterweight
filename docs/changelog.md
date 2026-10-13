@@ -4,6 +4,22 @@
 
 ### Added
 
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added [`markdown`](rich-text/markdown.md), which renders a Markdown document (CommonMark, with GitHub's tables
+  and strikethrough) as a `Div` of elements, styled by a `MarkdownStyles` with a field for each kind of block and span.
+  Links are hyperlinks, fenced code blocks are highlighted, and the
+  [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
+  shows a directory's Markdown files beside a tree of them.
+
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added [syntax highlighting](rich-text/syntax-highlighting.md) with Pygments:
+  `highlight` returns code as styled chunks, `code_style` its theme's background and text color,
+  and `code_block` a `Text` of the highlighted code on that background.
+
+- [#330](https://github.com/JoshKarpel/counterweight/issues/330)
+  Added `link` to `CellStyle`, which makes any `Chunk` or `Text` a [hyperlink](rich-text/hyperlinks.md)
+  that the terminal opens when it's clicked.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
   It takes `auto_focus`, to take focus on mount when nothing else has it;
@@ -290,9 +306,13 @@
   so `width` and `height` count cells, and its corner properties (e.g. `top_left`) are `Position`s.
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   **Breaking:** counterweight logs through the standard library's `logging`, and no longer depends on
-  or configures structlog. While an app runs, every log record at every level, including an app's own
-  (`logging.getLogger(__name__).debug("...", extra={...})`), is written to the devlog off the render loop
-  by [without-logging](https://www.without.help/without-logging/).
+  or configures structlog. While an app runs, its log records
+  (`logging.getLogger(__name__).debug("...", extra={...})`) are written to the devlog off the render loop
+  by [without-logging](https://www.without.help/without-logging/),
+  by default, counterweight's and the app's own at every level (the app's being the top-level package
+  of the module that defines its root component), and every other logger's from `INFO` up,
+  so a library that logs at `DEBUG` on a hot path costs nothing unless an app asks for its records.
+  `app`'s `log_levels` sets levels by logger name, as `logging.config` does, over those defaults.
   The devlog is a single JSON-lines file, which `counterweight devlog` renders for reading
   (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
   to see where a frame's time goes, profile the app with Python's sampling profiler

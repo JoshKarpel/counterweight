@@ -17,6 +17,9 @@ compares the paint with the previous frame's, and writes the difference to the t
 
 Every app writes a log of each frame to a file.
 Run `counterweight devlog` in another terminal to follow it as the app writes it.
+It holds counterweight's records and your app's at every level, and other loggers' from `INFO` up;
+pass `app` a `log_levels` mapping to change that by logger name,
+such as `{"some_library": logging.DEBUG}` to include a library's debug records.
 Each frame logs one line per stage, with microsecond timestamps,
 so the gaps between lines show where a slow frame went.
 Here is the [process table](#how-do-i-skip-a-component-whose-arguments-didnt-change)

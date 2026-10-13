@@ -1,11 +1,12 @@
 """
-The devlog: every log record from a running app, written as JSON lines to one file, and the reader that renders them.
+The devlog: a running app's log records, written as JSON lines to one file, and the reader that renders them.
 
 The app only encodes JSON; rendering a record for a human happens in `counterweight devlog`,
 at read time, so the render loop pays for one encoding per record rather than one per output.
 """
 
 import json
+import logging
 from asyncio import sleep
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
@@ -26,11 +27,31 @@ TAIL_POLL = timedelta(milliseconds=10)
 
 ENVELOPE = frozenset({"timestamp", "level", "logger", "message", "exception"})
 
+# The levels every app's devlog starts from: counterweight's records at every level, and everyone else's from INFO up.
+BASE_LOG_LEVELS: frozendict[str, int] = frozendict({"": logging.INFO, PACKAGE_NAME: logging.DEBUG})
+
+
+def app_log_levels(app_module: str, overrides: Mapping[str, int]) -> frozendict[str, int]:
+    """
+    The levels the devlog captures for an app whose root component is defined in `app_module`:
+    `BASE_LOG_LEVELS`, with the top-level package of `app_module` at `DEBUG`, then `overrides`, which win.
+
+    The top-level package covers every logger an app names with `getLogger(__name__)`,
+    including `__main__` for an app run as a script.
+    """
+    return frozendict({**BASE_LOG_LEVELS, app_module.partition(".")[0]: logging.DEBUG, **overrides})
+
 
 @asynccontextmanager
-async def devlog(path: Path = DEVLOG_FILE) -> AsyncIterator[None]:
+async def devlog(path: Path = DEVLOG_FILE, levels: Mapping[str, int] = BASE_LOG_LEVELS) -> AsyncIterator[None]:
     """
-    Capture every log record, at every level, into a freshly truncated `path` for the duration of the block.
+    Capture log records into a freshly truncated `path` for the duration of the block,
+    at the levels `levels` gives by logger name, as `logging.config` does, with `""` the root logger.
+
+    A logger the mapping doesn't name inherits its level from its nearest named ancestor, as stdlib loggers do,
+    and the root logger captures from the lowest level in the mapping if it isn't named.
+    Raising a logger's level skips its records before they're built, which is where most of a record's cost is,
+    so a library that logs at `DEBUG` on a hot path costs the app nothing unless the mapping asks for it.
 
     The queue is unbounded because a dropped record is worse than a late one in a debugging aid,
     and it can't grow without bound while the loop runs: with a single sink (no `tee`),
@@ -39,9 +60,25 @@ async def devlog(path: Path = DEVLOG_FILE) -> AsyncIterator[None]:
     with path.open("w") as file:
         async with (
             offload(to_stream(file)) as write,
-            capture(compose(render_json(), write), level=Level.DEBUG, capacity=None),
+            capture(compose(render_json(), write), level=min(levels.values(), default=Level.DEBUG), capacity=None),
+            # After `capture`, which lowers the root logger to its level, so these levels win until exit.
+            logger_levels(levels),
         ):
             yield
+
+
+@asynccontextmanager
+async def logger_levels(levels: Mapping[str, int]) -> AsyncIterator[None]:
+    """Set each named logger's level for the duration of the block, then restore the levels they had."""
+    loggers = {logging.getLogger(name): level for name, level in levels.items()}
+    previous = {logger: logger.level for logger in loggers}
+    for logger, level in loggers.items():
+        logger.setLevel(level)
+    try:
+        yield
+    finally:
+        for logger, level in previous.items():
+            logger.setLevel(level)
 
 
 def render_line(record: Mapping[str, object]) -> str:

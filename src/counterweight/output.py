@@ -37,6 +37,11 @@ CLEAR_SCREEN = "\x1b[2J"
 
 RESET_STYLE = "\x1b[0m"
 
+# https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+# A hyperlink is open from its OSC 8 sequence until the next one, across cursor moves and style resets,
+# so the one with an empty URI closes it.
+HYPERLINK_END = "\x1b]8;;\x1b\\"
+
 BELL = "\x07"
 
 logger = logging.getLogger(__name__)
@@ -98,6 +103,11 @@ def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
     return sgr
 
 
+def hyperlink(link: str | None) -> str:
+    """The OSC 8 sequence that makes the cells written after it a hyperlink to `link`, or no hyperlink for `None`."""
+    return HYPERLINK_END if link is None else f"\x1b]8;;{link}\x1b\\"
+
+
 def paint_to_instructions(runs: Iterable[Run]) -> str:
     """
     Terminal instructions that draw `runs`: one cursor move per run,
@@ -108,6 +118,7 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
     """
     parts = []
     style = None
+    link = None
     for x, y, cells in runs:
         parts.append(move_to(Position(x, y)))
         for cell in cells:
@@ -117,9 +128,14 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
                 style = cell.style
                 parts.append(RESET_STYLE)
                 parts.append(sgr_from_cell_style(style))
+                if style.link != link:
+                    link = style.link
+                    parts.append(hyperlink(link))
             parts.append(cell.grapheme)
     if parts:
         parts.append(RESET_STYLE)
+    if link is not None:
+        parts.append(HYPERLINK_END)
     return "".join(parts)
 
 
@@ -141,7 +157,13 @@ def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
     """
     if ansi:
         return "\n".join(
-            "".join(f"{sgr_from_cell_style(cell.style)}{cell.grapheme}\x1b[0m" for cell in row) for row in paint.rows()
+            "".join(
+                f"{sgr_from_cell_style(cell.style)}{cell.grapheme}\x1b[0m"
+                if cell.style.link is None
+                else f"{sgr_from_cell_style(cell.style)}{hyperlink(cell.style.link)}{cell.grapheme}{HYPERLINK_END}\x1b[0m"
+                for cell in row
+            )
+            for row in paint.rows()
         )
     return "\n".join("".join(cell.grapheme for cell in row) for row in paint.rows())
 

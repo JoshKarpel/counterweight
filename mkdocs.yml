@@ -137,6 +137,10 @@ nav:
     - styles/index.md
     - styles/text-wrapping.md
     - styles/utilities.md
+  - Rich Text:
+    - rich-text/hyperlinks.md
+    - rich-text/syntax-highlighting.md
+    - rich-text/markdown.md
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md

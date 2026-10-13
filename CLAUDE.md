@@ -34,6 +34,7 @@ The framework follows a React-like architecture:
 - **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
+- **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -108,6 +109,8 @@ read that to check a layout instead of the SVG.
 - **without-logging**: The devlog, written off the render loop from stdlib `logging` records
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
+- **markdown-it-py**: Parses Markdown for `counterweight.markdown`
+- **pygments**: Lexes and colors source code for `counterweight.highlighting`
 
 ## Code Style Guidelines
 - Line length: 120
