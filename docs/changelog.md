@@ -23,6 +23,12 @@
   Added `link` to `CellStyle`, which makes any `Chunk` or `Text` a [hyperlink](rich-text/hyperlinks.md)
   that the terminal opens when it's clicked.
 
+- [#411](https://github.com/JoshKarpel/counterweight/issues/411)
+  Added the `SetTitle` control, which sets the title of the terminal window.
+  The app saves the title it started with and restores it when it quits and while it's suspended,
+  on terminals that support xterm's title stack,
+  and the `RestoreTitle` control brings it back while the app runs.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
   It takes `auto_focus`, to take focus on mount when nothing else has it;

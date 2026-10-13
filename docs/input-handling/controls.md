@@ -17,6 +17,8 @@ and returning any control or tuple stops the event, as `()` does (see [Events](e
 
 ::: counterweight.controls.Quit
 ::: counterweight.controls.Bell
+::: counterweight.controls.SetTitle
+::: counterweight.controls.RestoreTitle
 ::: counterweight.controls.Screenshot
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend
