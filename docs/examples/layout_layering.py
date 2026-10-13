@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -113,3 +117,8 @@ SCREENSHOTS = [
     ScreenshotSpec(dialog(), "layout-dialog", (60, 12)),
     ScreenshotSpec(badge(), "layout-badge", (21, 3)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {root.__name__: root for root in (relative, absolute, dialog, badge)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else relative()))

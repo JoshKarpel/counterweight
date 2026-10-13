@@ -3,9 +3,17 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import timedelta
 from itertools import chain
 
-from counterweight._context_vars import current_hook_idx, current_hook_state, current_layouts, current_purity_checked
+from counterweight._context_vars import (
+    current_hook_idx,
+    current_hook_state,
+    current_instant,
+    current_layouts,
+    current_purity_checked,
+)
+from counterweight.clock import BEGINNING, Instant
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
@@ -63,21 +71,27 @@ class ShadowTree:
     The nodes whose last run called `use_rects`.
     A node's `rects` change only when it runs, which only happens while building the next tree.
     """
+    clocked: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
+    """The nodes that call `use_clock`, which a node does on every run if it does on any."""
 
     def __post_init__(self) -> None:
         nodes = []
         parents: dict[NodeKey, NodeKey | None] = {self.root.key: None}
         measured = []
+        clocked = []
         for node in self.root.walk():
             nodes.append(node)
             for child in node.children:
                 parents[child.key] = node.key
             if node.hooks.rects is not None:
                 measured.append(node)
+            if node.hooks.clocks:
+                clocked.append(node)
 
         object.__setattr__(self, "nodes", tuple(nodes))
         object.__setattr__(self, "parents", parents)
         object.__setattr__(self, "measured", tuple(measured))
+        object.__setattr__(self, "clocked", tuple(clocked))
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,27 +118,32 @@ class ImpureComponent(Exception):
     """
 
 
-def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts) -> bool:
+def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts, instant: Instant) -> bool:
     """
     Whether `node` has to re-run whatever its parent does:
-    its state was set, or the rectangles `use_rects` last returned to it have moved since.
+    its state was set, the rectangles `use_rects` last returned to it have moved since,
+    or one of its `use_clock` hooks is due a new reading at `instant`.
     """
-    return node.key in dirty or (node.hooks.rects is not None and node.hooks.rects != rects_in(layouts, node.key))
+    return (
+        node.key in dirty
+        or (node.hooks.rects is not None and node.hooks.rects != rects_in(layouts, node.key))
+        or any(clock.is_due(instant) for clock in node.hooks.clocks)
+    )
 
 
 def dirty_paths(
-    tree: ShadowTree, dirty: frozenset[NodeKey], layouts: Layouts
+    tree: ShadowTree, dirty: frozenset[NodeKey], layouts: Layouts, instant: Instant
 ) -> tuple[frozenset[NodeKey], frozenset[NodeKey]]:
     """
     The keys of every dirty node in `tree` (see `is_dirty`),
     and the paths to them: those keys and the keys of all their ancestors.
-    Only a node in `dirty` or one that called `use_rects` can be dirty,
+    Only a node in `dirty` or one that called `use_rects` or `use_clock` can be dirty,
     so it visits only those and their ancestors, not the whole tree.
     """
     dirty_nodes = frozenset(
         chain(
             (key for key in dirty if key in tree.parents),
-            (node.key for node in tree.measured if is_dirty(node, dirty, layouts)),
+            (node.key for node in chain(tree.measured, tree.clocked) if is_dirty(node, dirty, layouts, instant)),
         )
     )
 
@@ -138,11 +157,20 @@ def dirty_paths(
     return dirty_nodes, frozenset(paths)
 
 
+def until_due(tree: ShadowTree, instant: Instant) -> timedelta | None:
+    """
+    How long after `instant` some node's `use_clock` is due a new reading,
+    or `None` if no node calls `use_clock`, so nothing in the tree changes with time alone.
+    """
+    return min((clock.until_due(instant) for node in tree.clocked for clock in node.hooks.clocks), default=None)
+
+
 @dataclass(frozen=True, slots=True)
 class Reconciliation:
     """What one `update_shadow` call reads, and the hooks it collects as it goes."""
 
     layouts: Layouts
+    instant: Instant
     dirty_nodes: frozenset[NodeKey]
     paths: frozenset[NodeKey]
     check_purity: bool
@@ -156,22 +184,29 @@ def update_shadow(
     layouts: Layouts,
     dirty: frozenset[NodeKey] = frozenset(),
     check_purity: bool = False,
+    instant: Instant = BEGINNING,
 ) -> ShadowUpdate:
     """
     Builds the next shadow tree from `previous`, re-running only the components that have to:
-    those in `dirty` or whose rectangles moved (see `is_dirty`), and those whose parent passed them a new `Component`,
+    those in `dirty`, whose rectangles moved, or whose clock is due (see `is_dirty`),
+    and those whose parent passed them a new `Component`,
     unless it's a `memo` component equal to its previous one (see `continues`).
     A component that doesn't re-run keeps its previous node, whole subtree included,
     unless a dirty node is below it, in which case its children are reconciled again to reach it.
     `layouts` are the previous frame's, which `use_rects` reads.
+    `instant` is this frame's, which `use_clock` reads, with its monotonic time measured from the app's start.
     With `check_purity`, the tree is then built again with every component re-run (see `check_is_pure`).
     """
-    dirty_nodes, paths = (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts)
-    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=dirty_nodes, paths=paths, check_purity=False)
+    dirty_nodes, paths = (
+        (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts, instant)
+    )
+    reconciliation = Reconciliation(
+        layouts=layouts, instant=instant, dirty_nodes=dirty_nodes, paths=paths, check_purity=False
+    )
     tree = ShadowTree(root=update_node(next, None if previous is None else previous.root, reconciliation))
 
     if check_purity:
-        check_is_pure(next, tree, layouts)
+        check_is_pure(next, tree, layouts, instant)
 
     return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
 
@@ -198,9 +233,7 @@ def update_node(
         ):
             if not continues(next_component, previous_component) or previous_node.key in reconciliation.dirty_nodes:
                 previous_hook_count = len(previous_hooks.data)
-                element, hook_count = call_component(
-                    next_component, previous_hooks, reconciliation.layouts, reconciliation.check_purity
-                )
+                element, hook_count = call_component(next_component, previous_hooks, reconciliation)
                 reconciliation.ran.append(previous_hooks)
 
                 if hook_count != previous_hook_count:
@@ -227,7 +260,7 @@ def update_node(
                 )
         case Component() as next_component, _:
             hook_state = Hooks()
-            element, _ = call_component(next_component, hook_state, reconciliation.layouts, reconciliation.check_purity)
+            element, _ = call_component(next_component, hook_state, reconciliation)
             reconciliation.ran.append(hook_state)
 
             new = ShadowNode(
@@ -278,7 +311,7 @@ def continues(next: Component, previous: Component) -> bool:
     return next is previous or (next.memo and next == previous)
 
 
-def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layouts) -> None:
+def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layouts, instant: Instant) -> None:
     """
     Builds `tree` again from `next`, re-running every component against a `ShadowNode.detached` copy of it,
     and raises `ImpureComponent` naming the component that owns the first node whose element isn't `equivalent`.
@@ -287,7 +320,9 @@ def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layou
     and each `use_memo` that keeps its cached value (see `Hooks.use_memo`).
     """
     every_key = frozenset(tree.parents)
-    reconciliation = Reconciliation(layouts=layouts, dirty_nodes=every_key, paths=every_key, check_purity=True)
+    reconciliation = Reconciliation(
+        layouts=layouts, instant=instant, dirty_nodes=every_key, paths=every_key, check_purity=True
+    )
     rerun = update_node(next, tree.root.detached(), reconciliation)
 
     pairs: list[tuple[ShadowNode, ShadowNode, Component | None]] = [(tree.root, rerun, tree.root.component)]
@@ -305,17 +340,19 @@ def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layou
         pairs.extend((k, a, owner) for k, a in reversed(tuple(zip(kept.children, again.children, strict=True))))
 
 
-def call_component(component: Component, hooks: Hooks, layouts: Layouts, check_purity: bool) -> tuple[AnyElement, int]:
+def call_component(component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:
     """
-    Calls a component function with `hooks` as the current hook state and the previous frame's `layouts`,
+    Calls a component function with `hooks` as the current hook state,
+    and the previous frame's layouts and this frame's instant from `reconciliation`,
     restoring the outer hook context even if it raises.
     With `check_purity`, each `use_memo` that keeps its cached value also checks it (see `Hooks.use_memo`).
     Returns the element and how many hooks it called.
     """
     reset_current_hook_idx = current_hook_idx.set(0)
     reset_current_hook_state = current_hook_state.set(hooks)
-    reset_current_layouts = current_layouts.set(layouts)
-    reset_current_purity_checked = current_purity_checked.set(component if check_purity else None)
+    reset_current_layouts = current_layouts.set(reconciliation.layouts)
+    reset_current_instant = current_instant.set(reconciliation.instant)
+    reset_current_purity_checked = current_purity_checked.set(component if reconciliation.check_purity else None)
     # use_rects isn't positional, so a run that stops calling it must stop the node re-running when its layout moves.
     hooks.rects = None
     try:
@@ -325,6 +362,7 @@ def call_component(component: Component, hooks: Hooks, layouts: Layouts, check_p
         current_hook_idx.reset(reset_current_hook_idx)
         current_hook_state.reset(reset_current_hook_state)
         current_layouts.reset(reset_current_layouts)
+        current_instant.reset(reset_current_instant)
         current_purity_checked.reset(reset_current_purity_checked)
 
 

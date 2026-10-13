@@ -1,13 +1,15 @@
 import asyncio
 import logging
+from collections.abc import Callable
+from dataclasses import replace
+from datetime import timedelta
 from textwrap import dedent
-from time import monotonic
 
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import KeyPressed
-from counterweight.hooks import use_effect, use_state
+from counterweight.hooks import use_clock, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -59,35 +61,46 @@ def root() -> Div:
 
 
 @component
-def stopwatch(selected: bool) -> Text:
+def stopwatch(selected: bool) -> Div:
     running, set_running = use_state(False)
-    elapsed_time, set_elapsed_time = use_state(0.0)
+    banked, set_banked = use_state(timedelta())
+
+    def stop(elapsed: timedelta) -> None:
+        set_running(False)
+        set_banked(elapsed)
 
     def on_key(event: KeyPressed) -> None:
         if not selected:
             return
 
         match event.key:
-            case Key.Space:
-                set_running(not running)
+            case Key.Space if not running:
+                set_running(True)
             case Key.Backspace:
                 set_running(False)
-                set_elapsed_time(0)
+                set_banked(timedelta())
 
-    async def tick() -> None:
-        if running:
-            previous = monotonic()
-            while True:
-                now = monotonic()
-                set_elapsed_time(lambda e: e + (now - previous))
-                previous = now
+    return Div(
+        on_key=on_key,
+        children=[running_face(selected, banked, stop) if running else face(selected, running, banked)],
+    )
 
-                await asyncio.sleep(0.01)
 
-    use_effect(tick, deps=(running,))
+@component
+def running_face(selected: bool, banked: timedelta, stop: Callable[[timedelta], None]) -> Text:
+    # Starting the stopwatch mounts this component, so the time since it mounted is the time since it started.
+    elapsed = banked + use_clock(timedelta(milliseconds=10)).since_mount
 
+    def on_key(event: KeyPressed) -> None:
+        if selected and event.key == Key.Space:
+            stop(elapsed)
+
+    return replace(face(selected, True, elapsed), on_key=on_key)
+
+
+def face(selected: bool, running: bool, elapsed: timedelta) -> Text:
     return Text(
-        content=f"{elapsed_time:.6f}",
+        content=f"{elapsed.total_seconds():.2f}",
         style=(
             (border_color("emerald", 600) if selected else border_color("emerald", 300))
             if running
@@ -96,7 +109,6 @@ def stopwatch(selected: bool) -> Text:
         | (border | border_heavy if selected else border | border_double)
         | pad_x(2)
         | pad_y(1),
-        on_key=on_key,
     )
 
 

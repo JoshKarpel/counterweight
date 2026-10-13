@@ -1,3 +1,7 @@
+import asyncio
+import sys
+
+from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.styles.utilities import *
@@ -107,3 +111,10 @@ SCREENSHOTS = [
     ScreenshotSpec(automatic_minimum(), "layout-automatic-minimum", (60, 10)),
     ScreenshotSpec(wrapping(), "layout-wrapping", (48, 7)),
 ]
+
+
+if __name__ == "__main__":
+    roots = {
+        root.__name__: root for root in (row_defaults, col_defaults, root_fills_screen, automatic_minimum, wrapping)
+    }
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else row_defaults()))

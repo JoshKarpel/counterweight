@@ -111,6 +111,7 @@ nav:
     - hooks/use_effect.md
     - hooks/use_ref.md
     - hooks/use_memo.md
+    - hooks/use_clock.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
     - hooks/use_hovered.md
@@ -137,6 +138,7 @@ nav:
   - Cookbook:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+    - cookbook/spinners.md
   - performance.md
   - utilities.md
   - Under the Hood:
