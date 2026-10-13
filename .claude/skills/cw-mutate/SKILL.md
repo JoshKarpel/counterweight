@@ -70,7 +70,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **Diagnostic prose.** `XX` wraps and case changes of the fixed sentences in `InconsistentHookExecution`
   (`update_node`), `ImpureComponent` (`check_is_pure`), `StaleMemo` (`Hooks.use_memo`),
-  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`,
+  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`, `scroll_on_keys`' `ValueError`,
   the exception groups of `cancel_tasks`, and `teardown_failure`'s `RuntimeError`.
   Tests pin what each message names (the component, the hook types, the key, the size), not its wording.
 
@@ -105,6 +105,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **The warmup's `instant=read_clock()` dropped** (reading `BEGINNING`). `use_clock` uses its mount reading
   only through its monotonic time, which is zero at the start either way,
   and the first painted frame's wall time is in a later tick, so it takes a fresh reading.
+- **`focus_into_view` without `inline="nearest"`.** `ScrollIntoView`'s `inline` defaults to `"nearest"`.
 - **`layout_changes(None, shadow)` in place of the previous shadow.** Every node is created again,
   which lays out the same; it only throws away taffy's cached layout.
 
@@ -118,6 +119,11 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **`scroll_of`'s `offset=None`** in the unclamped `Scroll`: it's only read through `max_offset`,
   and `replace` sets the clamped offset before the `Scroll` leaves the function.
+- **`settled_scroll`'s `_resolve_layout(..., 1, 0)`.** It reads only the padding box's top, width and height,
+  which a horizontal shift doesn't change.
+- **`aligned`'s `"nearest"` boundaries** (`<=` for `is_cut_at_start`, `>=` for `is_cut_at_end`, `<` for `fits`).
+  A box exactly at a view edge, or exactly the view's size, gets the same offset from either branch:
+  aligning the edge it already sits on leaves the offset where it is.
 - **`_append_style_change`'s `and` as `or`.** `layout_style` is cached, so equal styles are the same object
   and the identity test already decides; they differ only after an eviction, which costs a redundant `SetStyle`.
 - **`MeasurableText.of`'s `text_cells(content, None)`.** Measuring reads only the cells' widths.

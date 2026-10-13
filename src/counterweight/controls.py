@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO, Union
+from typing import TYPE_CHECKING, Literal, TextIO, Union
 
 from counterweight.focus import ElementHandle, FocusHandle, Subtree
 from counterweight.geometry import Position
@@ -238,6 +238,38 @@ class ScrollBy(_Control):
         return Position(offset.x + self.x, offset.y + self.y)
 
 
+ScrollAlignment = Literal["start", "center", "end", "nearest"]
+
+
+@dataclass(frozen=True, slots=True)
+class ScrollIntoView(_Control):
+    """
+    Scroll each scroll container above the element `target` names so the element's border box is in view,
+    from the innermost container out, as the web's
+    [`scrollIntoView`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) does,
+    aligning it as `block` says vertically and as `inline` says horizontally, with the web's defaults.
+    On each axis, `"start"` puts the element's start edge at the start edge of the container's view,
+    `"center"` its center at the view's center, and `"end"` its end edge at the view's end edge.
+    `"nearest"` does whichever of `"start"` and `"end"` scrolls least,
+    and doesn't scroll at all if the element is already wholly in view, or covers the whole view.
+    Each offset is clamped to the range its container scrolls through.
+
+    It applies to the layout of the next render, before that render paints,
+    so a handler that returns it beside a state change, such as moving a highlight through a long list,
+    shows the scroll in the same frame as the change.
+    The element `target` names is the one with that handle in the next render,
+    so a handle moved onto a newly highlighted element names the new one.
+    It does nothing if `target` names no mounted, visible element then.
+    """
+
+    target: ElementHandle | Subtree
+    """The element, named as [`ScrollTo`][counterweight.controls.ScrollTo] names a scroll container."""
+    block: ScrollAlignment = "start"
+    """Where to put the element vertically."""
+    inline: ScrollAlignment = "nearest"
+    """Where to put the element horizontally."""
+
+
 AnyControl = Union[
     Quit,
     Bell,
@@ -251,4 +283,5 @@ AnyControl = Union[
     AdvanceClock,
     ScrollTo,
     ScrollBy,
+    ScrollIntoView,
 ]

@@ -7,11 +7,12 @@ import waxy
 
 from counterweight.app import app
 from counterweight.components import Component, component
+from counterweight.controls import ScrollIntoView
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseScrolledDown, MouseUp, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
-from counterweight.hooks import use_focus, use_rects, use_state
+from counterweight.hooks import ElementHandle, use_focus, use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
@@ -38,7 +39,7 @@ PYTHONS = ("3.13", "3.14", "3.15", "3.15t")
 INDEXES = ("pypi", "testpypi", "pytorch-cpu", "pytorch-cu128")
 RECIPES = ("codegen", "devlog", "docs-build", "docs-serve", "mutate", "pre-commit", "profile", "test", "upgrade")
 
-MOST_SHOWN = 5
+SHOWN_ROWS = 5
 
 below = Style(layout=waxy.Style(inset_top=waxy.Percent(1.0)))
 above = Style(layout=waxy.Style(inset_bottom=waxy.Percent(1.0)))
@@ -61,8 +62,9 @@ def autocomplete(
     text, set_text = use_state("")
     highlighted, set_highlighted = use_state(0)
     is_dismissed, set_dismissed = use_state(False)
+    highlighted_match, _ = use_state(ElementHandle)
 
-    shown = matches(text, candidates)[:MOST_SHOWN] if text else []
+    shown = matches(text, candidates) if text else []
     is_open = focus.is_focused and not is_dismissed and bool(shown)
 
     def edit(new_text: str) -> None:
@@ -90,7 +92,7 @@ def autocomplete(
                 edit(text + typed)
             case _:
                 return None
-        return ()
+        return ScrollIntoView(highlighted_match, block="nearest")
 
     room_above = rects.border.top
     room_below = screen_height - rects.border.bottom
@@ -103,11 +105,15 @@ def autocomplete(
         | col
         | border
         | border_lightrounded
-        | border_color("sky", 400),
+        | border_color("sky", 400)
+        | max_height(SHOWN_ROWS + 2)
+        | overflow_y_scroll,
+        on_input=scroll_on_wheel(1),
         children=[
             Text(
                 content=match,
                 style=pad_x(1) | (text_bg("sky", 800) if index == highlighted else text_bg("slate", 900)),
+                handle=highlighted_match if index == highlighted else None,
                 on_input=on_click(partial(choose, match)),
             )
             for index, match in enumerate(shown)
@@ -183,6 +189,7 @@ SCREENSHOTS = [
     ScreenshotSpec(root(), "autocomplete-open", DIMENSIONS, events=typed("py")),
     ScreenshotSpec(root(list_clip=clip_to_padding), "autocomplete-clipped", DIMENSIONS, events=typed("py")),
     ScreenshotSpec(root(), "autocomplete-highlighted", DIMENSIONS, events=(*typed("py"), DOWN, DOWN)),
+    ScreenshotSpec(root(), "autocomplete-long", DIMENSIONS, events=(*typed("py"), *(DOWN for _ in range(5)))),
     ScreenshotSpec(
         root(), "autocomplete-chosen", DIMENSIONS, events=(*typed("py"), DOWN, DOWN, KeyPressed(key=Key.Enter))
     ),

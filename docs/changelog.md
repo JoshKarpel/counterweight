@@ -15,8 +15,13 @@
   keep a container that's scrolled to its end there as its content grows, as a log or a chat transcript wants.
   The controls `ScrollTo` and `ScrollBy` scroll a container named by an `ElementHandle`,
   which an element takes as its `handle`, or by a receiver's `subtree`,
-  and `counterweight.handlers` gains `scroll_on_wheel`, which scrolls for the wheel
-  and passes the wheel on to the container outside once its own reaches an end.
+  and `ScrollIntoView` scrolls every container above an element until it's in view,
+  as the web's `scrollIntoView` does, in the same frame as any state change returned beside it.
+  Moving focus scrolls the newly focused element into view.
+  `counterweight.handlers` gains `scroll_on_wheel` and `scroll_on_keys`, which scroll for the wheel
+  and for the arrow keys, PageUp, PageDown, Home and End,
+  and pass the event on to the container outside once their own reaches an end,
+  and `page_down` and `page_up`, which return the `ScrollBy` for a page of any fraction of the view.
   [`use_scroll`](hooks/use_scroll.md) returns how far the calling component's element,
   or the element with a given `ElementHandle`, is scrolled and how far it can be,
   and a `Receiver` carries the same as its `scroll`.

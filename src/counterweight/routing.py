@@ -187,13 +187,7 @@ class RoutingTable:
 
     def key_of(self, target: ElementHandle | Subtree) -> NodeKey | None:
         """The key of the element `target` names, or `None` for a handle that names no mounted element."""
-        match target:
-            case ElementHandle():
-                return self.element_keys.get(target)
-            case Subtree(key=key):
-                return key
-            case _ as unreachable:
-                assert_never(unreachable)
+        return named_key(target, self.element_keys)
 
     def can_focus(self, key: NodeKey) -> bool:
         """Whether the node with `key` is visible, and its last run called `use_focus` with `is_focusable=True`."""
@@ -238,6 +232,20 @@ class RoutingTable:
             (key for key, focus in self.focus.items() if focus.auto_focus and focus.is_focusable and key in mounted),
             None,
         )
+
+
+def named_key(target: ElementHandle | Subtree, element_keys: Mapping[ElementHandle, NodeKey]) -> NodeKey | None:
+    """
+    The key of the element `target` names, given the key of every mounted element with a handle, by its handle,
+    or `None` for a handle that names no mounted element.
+    """
+    match target:
+        case ElementHandle():
+            return element_keys.get(target)
+        case Subtree(key=key):
+            return key
+        case _ as unreachable:
+            assert_never(unreachable)
 
 
 def route_key(event: KeyPressed, focused: NodeKey | None, table: RoutingTable) -> tuple[AnyControl, ...]:

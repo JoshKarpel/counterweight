@@ -5,7 +5,8 @@ Older messages don't change, but each new word reflows the streaming message's w
 and moves everything below it, so this measures wrapping, text measurement and paint
 on a screen full of prose, code and diffs.
 The transcript is a scroll container holding the newest messages, which sticks to its end as they stream in,
-and which the wheel scrolls back through in a live run, anchored so what's in view stays put.
+and which the wheel and the keyboard scroll back through in a live run, anchored so what's in view stays put.
+There, `[` jumps back to the start of each earlier tool call in turn, and End returns to the end.
 """
 
 import random
@@ -16,10 +17,13 @@ from typing import Literal
 
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
-from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollBy, ScrollIntoView
 from counterweight.elements import Chunk, Div, Text
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
 from counterweight.focus import ElementHandle
-from counterweight.handlers import scroll_on_wheel
+from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
+from counterweight.hooks import use_focus, use_state
+from counterweight.keys import Key
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
     amber_400,
@@ -74,6 +78,8 @@ CODE = (
 )
 
 type Kind = Literal["user", "assistant", "read", "edit"]
+
+TOOL_CALLS: frozenset[Kind] = frozenset({"read", "edit"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,20 +158,52 @@ def tool_call(rng: random.Random, id: int) -> Message:
 TRANSCRIPT = ElementHandle()
 
 
-def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
+type MessageComponent = Callable[[Message, ElementHandle | None], Component]
+
+
+def view(model: Model, message_component: MessageComponent) -> Div:
     return Div(
         style=col,
         children=[
             header(model.tokens),
-            Div(
-                style=fill(1) | col | pad_x(1) | overflow_y_scroll | stick_to_end_y,
-                handle=TRANSCRIPT,
-                on_input=scroll_on_wheel(),
-                # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
-                children=[message_component(message).with_key(str(message.id)) for message in model.messages],
-            ),
+            transcript(model.messages, message_component),
             spinner(model.tick),
             prompt(),
+        ],
+    )
+
+
+@component
+def transcript(messages: tuple[Message, ...], message_component: MessageComponent) -> Div:
+    use_focus(auto_focus=True)
+    no_jump: int | None = None
+    jumped_to, set_jumped_to = use_state(no_jump)
+    # On the message last jumped to, so ScrollIntoView names it once the render that moves it there is laid out.
+    landmark, _ = use_state(ElementHandle)
+
+    def jump(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key="["):
+                earlier = [m.id for m in messages if m.kind in TOOL_CALLS and (jumped_to is None or m.id < jumped_to)]
+                if not earlier:
+                    return ()
+                set_jumped_to(earlier[-1])
+                return ScrollIntoView(landmark)
+            case KeyPressed(key=Key.End):
+                # Start the next jump from the newest tool call again, and let scroll_on_keys scroll to the end.
+                set_jumped_to(None)
+                return None
+            case _:
+                return None
+
+    return Div(
+        style=fill(1) | col | pad_x(1) | overflow_y_scroll | stick_to_end_y,
+        handle=TRANSCRIPT,
+        on_input=first(jump, scroll_on_keys(), scroll_on_wheel()),
+        # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
+        children=[
+            message_component(message, landmark if message.id == jumped_to else None).with_key(str(message.id))
+            for message in messages
         ],
     )
 
@@ -181,20 +219,23 @@ def header(tokens: int) -> Div:
     )
 
 
-def render_message(message: Message) -> Div:
+def render_message(message: Message, handle: ElementHandle | None = None) -> Div:
     match message.kind:
         case "user":
             return Div(
-                children=[Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300))]
+                handle=handle,
+                children=[Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300))],
             )
         case "assistant":
             return Div(
                 style=col,
+                handle=handle,
                 children=[Text(content=line or " ", style=text_wrap_stable) for line in message.lines],
             )
         case "read":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
+                handle=handle,
                 children=[
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(Text(content=line, style=text_color("slate", 300)) for line in message.lines),
@@ -203,6 +244,7 @@ def render_message(message: Message) -> Div:
         case "edit":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
+                handle=handle,
                 children=[
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(

@@ -28,7 +28,7 @@ each escaped with `glob.escape`, so a typed `[` or `?` matches itself rather tha
 It lowercases both sides and compares them with `fnmatchcase`,
 since `fnmatch` folds case only where `os.path.normcase` does, which is on Windows alone.
 
-The list shows at most `MOST_SHOWN` matches, in the order of the candidates.
+The list shows every match, in the order of the candidates.
 
 ## The list
 
@@ -42,6 +42,7 @@ so it doesn't push the fields below it down.
 `inset_top=Percent(1.0)` puts its top edge at the bottom of the field,
 and `inset_x(0)` makes it as wide as the field.
 It's raised with `z(1)`, so it's drawn over the fields and text that follow it.
+It's at most `SHOWN_ROWS` matches tall, and [scrolls](#a-long-list) the rest.
 
 ## Choosing a match
 
@@ -60,6 +61,32 @@ so with it closed, Tab moves focus and Enter bubbles to whatever handles it outs
 
 A press on a match chooses it, through [`on_click`](../input-handling/handlers.md).
 `on_click` claims the press, so it never reaches the root's `clear_focus`, and focus stays in the field.
+
+## A long list
+
+The list is a [scroll container](../layout/scrolling.md) with a maximum height,
+so a long list of matches stays a few rows tall, and the wheel scrolls it.
+Down and Up have to keep the highlighted match in view as they move it past either end,
+but focus stays in the field, so moving focus can't do it, as it does for a list whose options take focus.
+
+The field gives one [`ElementHandle`][counterweight.focus.ElementHandle] to whichever match is highlighted,
+and every key it handles returns
+[`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view) for that handle, with `block="nearest"`,
+beside whatever state the key changed.
+`ScrollIntoView` applies to the layout of the render that change causes, before it paints,
+and names the element that has the handle in that render: the newly highlighted match.
+So the list scrolls in the same frame the highlight moves, and only as far as it takes:
+
+![The last match highlighted, with the list scrolled one row to show it](../assets/autocomplete-long.svg)
+
+A key that resets the highlight, by changing the text, scrolls the first match back into view the same way,
+and one that closes the list names no element, so it scrolls nothing.
+The list is unclipped, so `ScrollIntoView` scrolls only the list, not the form around it:
+no container above an element with `clip_to_screen` clips it, so none has to scroll to show it.
+
+This is how a web combobox does it, keeping focus in its input,
+marking the highlighted option with `aria-activedescendant`,
+and calling `scrollIntoView({block: "nearest"})` on it each time the highlight moves.
 
 ## Escaping the panel
 

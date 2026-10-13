@@ -76,12 +76,17 @@ leaves focus where it was, unless the element composes `clear_focus` in too.
 ## Scrolling
 
 Nothing scrolls a [scroll container](../layout/scrolling.md) unless a handler returns a control that does,
-so a container the wheel scrolls composes `scroll_on_wheel` in:
+so a container the wheel scrolls composes `scroll_on_wheel` in,
+and one the keyboard scrolls composes `scroll_on_keys` in, on a focusable component's element:
 
 ```python
-from counterweight.handlers import scroll_on_wheel
+from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
 
-Div(style=fill(1) | col | overflow_y_scroll, on_input=scroll_on_wheel(), children=...)
+use_focus()
+Div(style=fill(1) | col | overflow_y_scroll, on_input=first(scroll_on_keys(), scroll_on_wheel()), children=...)
 ```
 
 ::: counterweight.handlers.scroll_on_wheel
+::: counterweight.handlers.scroll_on_keys
+::: counterweight.handlers.page_down
+::: counterweight.handlers.page_up

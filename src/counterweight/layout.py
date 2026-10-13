@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Container, Iterable, Iterator, Mapping
+from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from itertools import repeat
@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
+from counterweight.controls import ScrollAlignment
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
@@ -314,10 +315,12 @@ class LayoutTree:
         width: int,
         height: int,
         priors: Mapping[NodeKey, PriorScroll],
+        into_view: Sequence[IntoView] = (),
     ) -> Layouts:
         """
         Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen,
-        with each scroll container scrolled as `place` scrolls it from how it was scrolled before, in `priors`.
+        with each scroll container scrolled as `place` scrolls it from how it was scrolled before, in `priors`,
+        and then scrolled to bring each node in `into_view` into view, in order.
         """
         self.apply(changes)
 
@@ -328,7 +331,11 @@ class LayoutTree:
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
         by_key, scrolls, scroll_containers = place(
-            shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height), priors
+            shadow.root,
+            boxes,
+            Region(left=0, top=0, right=width, bottom=height),
+            priors,
+            scrolled_into_view(into_view, shadow, boxes, priors),
         )
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
@@ -388,6 +395,7 @@ def place(
     boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
     screen: Region,
     priors: Mapping[NodeKey, PriorScroll],
+    scrolled: Mapping[NodeKey, Scroll],
 ) -> tuple[dict[NodeKey, Rects], dict[NodeKey, Scroll], tuple[ShadowNode, ...]]:
     """
     Where each node with a box in `boxes` is on `screen`, given its absolute position and layout,
@@ -396,8 +404,8 @@ def place(
     and each node is moved by the offsets of the scroll containers above it.
     A node without a box is hidden, and so is every node beneath it.
 
-    A scroll container's offset is where `requested_offset` puts it, from how it was scrolled before in `priors`,
-    clamped to how far it scrolls in this layout.
+    A scroll container's scroll is its scroll in `scrolled`, if it has one there,
+    and otherwise its `settled_scroll` from how it was scrolled before, in `priors`.
 
     The walk follows the tree, not paint order, because a raised descendant paints after nodes
     outside its ancestors, and must still be clipped by those ancestors.
@@ -421,14 +429,9 @@ def place(
                     "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
                     "put it in a Div whose overflow is Scroll, which scrolls it."
                 )
-            max_offset = Position(
-                int(layout.scroll_width()) if scrolls_x else 0,
-                int(layout.scroll_height()) if scrolls_y else 0,
-            )
-            requested = requested_offset(
-                priors.get(node.key), boxes, rects.padding.top + scrolled_y, max_offset, style.resolved
-            )
-            scroll = scrolls[node.key] = scroll_of(requested, max_offset, rects.padding)
+            if (scroll := scrolled.get(node.key)) is None:
+                scroll = settled_scroll(style, position, layout, priors.get(node.key), boxes)
+            scrolls[node.key] = scroll
             scroll_containers.append(node)
             scrolled_x += scroll.offset.x
             scrolled_y += scroll.offset.y
@@ -456,6 +459,110 @@ def scrolled_axes(style: Style) -> tuple[bool, bool]:
     """Whether an element with `style` is a scroll container horizontally and vertically: its overflow is `Scroll`."""
     layout = style.layout
     return layout.overflow_x == waxy.Overflow.Scroll, layout.overflow_y == waxy.Overflow.Scroll
+
+
+def settled_scroll(
+    style: Style,
+    position: waxy.Point,
+    layout: waxy.Layout,
+    prior: PriorScroll | None,
+    boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
+) -> Scroll:
+    """
+    The scroll of a scroll container with `style`, laid out at `position` with `layout`,
+    after a layout that put every node at its box in `boxes`, given how it was scrolled before (`None` if it's new):
+    its `requested_offset`, clamped to how far it scrolls on each axis it scrolls.
+    """
+    scrolls_x, scrolls_y = scrolled_axes(style)
+    max_offset = Position(
+        int(layout.scroll_width()) if scrolls_x else 0,
+        int(layout.scroll_height()) if scrolls_y else 0,
+    )
+    padding = _resolve_layout(position, layout, None, 0, 0).padding
+    return scroll_of(requested_offset(prior, boxes, padding.top, max_offset, style.resolved), max_offset, padding)
+
+
+@dataclass(frozen=True, slots=True)
+class IntoView:
+    """A node to scroll into view, aligned in each scroll container above it as `block` and `inline` say."""
+
+    key: NodeKey
+    block: ScrollAlignment
+    inline: ScrollAlignment
+
+
+def scrolled_into_view(
+    requests: Iterable[IntoView],
+    shadow: ShadowTree,
+    boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
+    priors: Mapping[NodeKey, PriorScroll],
+) -> dict[NodeKey, Scroll]:
+    """
+    The scroll of each scroll container that `requests` move, applied in order,
+    each scrolling the containers above its node from the innermost out, as the web's `scrollIntoView` does:
+    each container is scrolled to bring the node's border box into its view as the containers inside it left it,
+    and clamped, from its `settled_scroll`, or from where an earlier request left it.
+    The walk stops at an unclipped node, since no container above it clips it, or anything inside it,
+    as the web doesn't scroll a container to show a fixed element that its clip doesn't cut off.
+    A request for a node without a box in `boxes`, because it's hidden or unmounted, moves nothing.
+    """
+    scrolled: dict[NodeKey, Scroll] = {}
+    nodes: dict[NodeKey, ShadowNode] | None = None
+    for request in requests:
+        try:
+            position, layout = boxes[request.key]
+        except KeyError:
+            continue
+        if nodes is None:
+            nodes = {node.key: node for node in shadow.nodes}
+        left, top = int(position.x), int(position.y)
+        right, bottom = left + int(layout.size.width), top + int(layout.size.height)
+        child = request.key
+        while nodes[child].element.style.resolved.clip_to != "screen" and (key := shadow.parents[child]) is not None:
+            style = nodes[key].element.style
+            if any(scrolled_axes(style)):
+                container_position, container_layout = boxes[key]
+                if (scroll := scrolled.get(key)) is None:
+                    scroll = settled_scroll(style, container_position, container_layout, priors.get(key), boxes)
+                view = _resolve_layout(container_position, container_layout, None, 0, 0).padding
+                offset = scroll.clamp(
+                    Position(
+                        aligned(request.inline, left, right, view.left, view.right, scroll.offset.x),
+                        aligned(request.block, top, bottom, view.top, view.bottom, scroll.offset.y),
+                    )
+                )
+                scrolled[key] = replace(scroll, offset=offset)
+                left, right = left - offset.x, right - offset.x
+                top, bottom = top - offset.y, bottom - offset.y
+            child = key
+    return scrolled
+
+
+def aligned(alignment: ScrollAlignment, start: int, end: int, view_start: int, view_end: int, offset: int) -> int:
+    """
+    The offset on one axis that aligns a box from `start` to `end` in a view from `view_start` to `view_end`
+    as `alignment` says, where every edge is where it is with no offset, and the container is scrolled to `offset` now.
+    `"nearest"` follows the [CSSOM View spec](https://drafts.csswg.org/cssom-view/#determine-the-scroll-into-view-position):
+    a box that's wholly in view, or covers the whole view, stays where it is;
+    otherwise the edge on the side it's cut off is aligned, if the box fits in the view,
+    and the edge on the other side if it doesn't, which scrolls least either way.
+    """
+    match alignment:
+        case "start":
+            return start - view_start
+        case "end":
+            return end - view_end
+        case "center":
+            return (start + end - view_start - view_end) // 2
+        case "nearest":
+            is_cut_at_start = start - offset < view_start
+            is_cut_at_end = end - offset > view_end
+            if is_cut_at_start == is_cut_at_end:
+                return offset
+            fits = end - start <= view_end - view_start
+            return start - view_start if is_cut_at_start == fits else end - view_end
+        case _ as unreachable:
+            assert_never(unreachable)
 
 
 def requested_offset(

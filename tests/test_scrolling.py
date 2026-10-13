@@ -21,9 +21,10 @@ from counterweight.events import (
 )
 from counterweight.focus import ElementHandle, Subtree
 from counterweight.geometry import ORIGIN, Position, Scroll
-from counterweight.handlers import scroll_on_wheel
-from counterweight.hooks import use_scroll, use_state
+from counterweight.handlers import scroll_on_keys, scroll_on_wheel
+from counterweight.hooks import use_focus, use_scroll, use_state
 from counterweight.hooks.impls import NodeKey
+from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, PriorScroll, layout_changes
 from counterweight.output import Frame
 from counterweight.routing import RoutingTable
@@ -537,3 +538,36 @@ async def test_a_wheel_event_to_the_right_scrolls_a_container_horizontally() -> 
     container = Div(style=size(4, 1) | overflow_x_scroll, on_input=scroll_on_wheel(2), children=[wide])
 
     assert await last_rows(container, (4, 1), [MouseScrolledRight(absolute=ORIGIN)]) == ["cdef"]
+
+
+@component
+def keyed_scroller(*children: Component | AnyElement) -> Div:
+    """A focusable box 6 wide and 4 tall that the keys scroll vertically, and that takes focus as it mounts."""
+    use_focus(auto_focus=True)
+    return Div(
+        style=col | size(6, 4) | shrink(0) | overflow_y_scroll,
+        on_input=scroll_on_keys(),
+        children=list(children),
+    )
+
+
+async def test_page_down_clamps_at_the_end_of_the_range() -> None:
+    page_down = KeyPressed(key=Key.PageDown)
+
+    assert await last_rows(keyed_scroller(*lines(9)), (6, 4), [page_down, page_down]) == [
+        "line 5",
+        "line 6",
+        "line 7",
+        "line 8",
+    ]
+
+
+async def test_a_key_at_the_end_of_a_containers_range_scrolls_the_container_outside_it() -> None:
+    outer = Div(
+        style=col | size(6, 4) | overflow_y_scroll,
+        on_input=scroll_on_keys(),
+        children=[keyed_scroller(*lines(5, "in")), *lines(2)],
+    )
+    down = KeyPressed(key=Key.Down)
+
+    assert await last_rows(outer, (6, 4), [down, down]) == ["in 2  ", "in 3  ", "in 4  ", "line 0"]

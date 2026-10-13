@@ -24,8 +24,8 @@ from counterweight.events import (
     Receiver,
     response_controls,
 )
-from counterweight.focus import FocusHandle
-from counterweight.geometry import Position
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
+from counterweight.geometry import Position, Scroll
 from counterweight.keys import Key
 
 
@@ -194,3 +194,93 @@ def scroll_on_wheel(lines: int = 3) -> InputHandler:
         return ScrollBy(receiver.subtree, x=delta.x, y=delta.y)
 
     return handler
+
+
+# How much of the view a page scrolls by default: Chrome's page step,
+# `kMinFractionToStepWhenPaging` in Chromium's `ScrollableArea`,
+# which keeps the last eighth of one page in view at the top of the next, to read on from.
+PAGE_FRACTION = 0.875
+
+
+def scroll_on_keys(page: float = PAGE_FRACTION) -> InputHandler:
+    """
+    A handler that scrolls the scroll container it's on for the keys that scroll a page in a browser:
+    `Up` and `Down` by a row, `Left` and `Right` by a column,
+    `PageUp` and `PageDown` by `page` times the height of the view (see [`page_down`][counterweight.handlers.page_down]),
+    and `Home` and `End` to the start and the end of the content.
+    A key press reaches it while the container, or an element inside it, is focused,
+    so the container is usually the top-level element of a component that calls
+    [`use_focus`][counterweight.hooks.use_focus], and a focused element inside that handles a key itself stops it first.
+    It returns `None` for a key that would move the container past the end of its range,
+    so the key bubbles to the next scroll container out, as `scroll_on_wheel` does with the wheel,
+    and for anything else.
+
+    Raises:
+        ValueError: For one of those keys when its receiver isn't a [scroll container](../layout/scrolling.md).
+    """
+
+    def handler(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not isinstance(event, KeyPressed) or event.key not in SCROLL_KEYS:
+            return None
+        if (scroll := receiver.scroll) is None:
+            raise ValueError(
+                "scroll_on_keys received a key press on an element that isn't a scroll container. "
+                "Put it on an element whose overflow is Scroll, such as with overflow_y_scroll."
+            )
+        match event.key:
+            case Key.Up:
+                control = ScrollBy(receiver.subtree, y=-1)
+            case Key.Down:
+                control = ScrollBy(receiver.subtree, y=1)
+            case Key.Left:
+                control = ScrollBy(receiver.subtree, x=-1)
+            case Key.Right:
+                control = ScrollBy(receiver.subtree, x=1)
+            case Key.PageUp:
+                control = page_up(receiver.subtree, scroll, page)
+            case Key.PageDown:
+                control = page_down(receiver.subtree, scroll, page)
+            case Key.Home:
+                control = ScrollBy(receiver.subtree, y=-scroll.offset.y)
+            case _:  # Key.End, the last of SCROLL_KEYS
+                control = ScrollBy(receiver.subtree, y=scroll.max_offset.y - scroll.offset.y)
+        if scroll.clamp(control.destination(scroll.offset)) == scroll.offset:
+            return None
+        return control
+
+    return handler
+
+
+SCROLL_KEYS = frozenset({Key.Up, Key.Down, Key.Left, Key.Right, Key.PageUp, Key.PageDown, Key.Home, Key.End})
+
+
+def page_down(target: ElementHandle | Subtree, scroll: Scroll, fraction: float = PAGE_FRACTION) -> ScrollBy:
+    """
+    The `ScrollBy` that scrolls the scroll container `target` names, scrolled as `scroll` says,
+    down by `fraction` of the height of its view, rounded down, and at least one row.
+
+    The default is Chrome's, so on a 24-row view a page is 21 rows, and 3 stay in view.
+    `fraction=0.5` is `less`'s half page for `d`, and `fraction=1.0` its whole page for `Space`, with nothing kept.
+
+    Raises:
+        ValueError: If `fraction` isn't positive.
+    """
+    return ScrollBy(target, y=page_rows(scroll, fraction))
+
+
+def page_up(target: ElementHandle | Subtree, scroll: Scroll, fraction: float = PAGE_FRACTION) -> ScrollBy:
+    """
+    The `ScrollBy` that scrolls the scroll container `target` names up by a page,
+    as [`page_down`][counterweight.handlers.page_down] scrolls it down.
+
+    Raises:
+        ValueError: If `fraction` isn't positive.
+    """
+    return ScrollBy(target, y=-page_rows(scroll, fraction))
+
+
+def page_rows(scroll: Scroll, fraction: float) -> int:
+    """How many rows a page of `fraction` of `scroll`'s view is: rounded down, and at least one."""
+    if fraction <= 0:
+        raise ValueError(f"A page must be a positive fraction of the view, but got {fraction!r}")
+    return max(1, int(scroll.view_height * fraction))

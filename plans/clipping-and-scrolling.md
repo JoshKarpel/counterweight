@@ -304,6 +304,13 @@ it scrolls each scroll container above `target` so the target's border box is in
 aligned on each axis by `"start"`, `"center"`, `"end"`, or `"nearest"`
 (the least scroll that brings it into view, or none if it's already in view),
 with the web's defaults.
+It works from the innermost container out, as the CSSOM View algorithm does,
+each container bringing the box into view where the containers inside it left it.
+It stops at an unclipped element, since no container above one clips it:
+the autocomplete list's highlighted match scrolls the list, not the form around it,
+as the web doesn't scroll a container to show a fixed element its clip doesn't cut off.
+The target is resolved against the next render's tree,
+so a handle that moves onto the newly highlighted element names that one.
 
 It applies after the next layout and before that layout paints,
 after anchoring and before the final clamp.
@@ -332,7 +339,7 @@ Library handlers, composed onto the scroll container's element like `tab_focus` 
 
 - **`scroll_on_wheel(lines)`** scrolls by `lines` for each `MouseScrolledUp`, `Down`, `Left` and `Right`.
 - **`scroll_on_keys(page=0.875)`** scrolls for arrow keys, `PageUp` and `PageDown`, and `Home` and `End`,
-  when the container is focused.
+  when the container, or an element inside it, is focused, since keys bubble from the focused element.
   A page is `page` times the padding box's height, as `page_up` and `page_down` compute it.
 
 The wheel and key handlers return `None` when the container can't move any further that way,
@@ -340,8 +347,10 @@ so the event bubbles to the next scroll container out, the web's scroll chaining
 Each raises, as `focus_receiver_on_press` does, when its receiver isn't a scroll container.
 
 Paging is also available on its own, for apps that bind it to other keys:
-`page_down(scroll, fraction=0.875)` and `page_up(scroll, fraction=0.875)` return the `ScrollBy`
-that moves `scroll` by `fraction` of its padding box's height, rounded down and at least one line.
+`page_down(target, scroll, fraction=0.875)` and `page_up(target, scroll, fraction=0.875)` return the `ScrollBy`
+that moves the container `target` names, scrolled as `scroll` says,
+by `fraction` of its padding box's height, rounded down and at least one line.
+They take the target as `ScrollBy` does, since a `Scroll` doesn't say which container it describes.
 The default is Chrome's page step (`kMinFractionToStepWhenPaging` in Chromium's `ScrollableArea`),
 so the last lines of one page stay in view at the top of the next to read on from:
 on a 24-row pane, a page is 21 rows and 3 stay in view.
@@ -475,12 +484,13 @@ The recipe covers:
 - **Opening upward.** A field near the bottom of the screen puts the list above it,
   at `inset_bottom=Percent(1.0)`, when there's more room above than below,
   comparing the field's `use_rects` with the screen's height from the root's `use_rects`.
-- **Inside a scroll container**, once phase 3 lands:
+- **Inside a scroll container**:
   the form scrolls, and the open list moves with its field and extends how far the form scrolls.
-- **A long list**, once phase 5 lands: the list is a scroll container with a maximum height,
-  each match carries an `ElementHandle`, and `Down` and `Up` return
-  `ScrollIntoView(match, block="nearest")` beside the highlight change, while focus stays in the field.
-  Until then, the recipe shows at most a fixed number of matches.
+- **A long list**: the list is a scroll container with a maximum height,
+  one `ElementHandle` sits on whichever match is highlighted,
+  and every key the field handles returns `ScrollIntoView(handle, block="nearest")` beside its state change,
+  while focus stays in the field.
+  The handle names the newly highlighted match because the control resolves it after the render.
 
 ## Steps
 
@@ -518,8 +528,11 @@ Each phase is its own PR, and each leaves the app working.
 5. **Scrolling into view and keyboard scrolling (part of #390).**
    `ScrollIntoView`, scrolling focused elements into view,
    `scroll_on_keys`, `page_up` and `page_down`, and the scrolling docs.
-   Give the live `agent` run a key that jumps to the previous prompt,
+   Give the live `agent` run a key that jumps back through earlier messages,
    and the autocomplete recipe its long list.
+   The workload's only user prompt is its first message, which drops off once the transcript is full,
+   so the key, `[`, steps back through the tool calls instead, the transcript's other landmarks,
+   rather than changing `step` and with it the benchmark's baseline.
 
 ## Testing
 

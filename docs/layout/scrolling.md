@@ -2,8 +2,8 @@
 
 A box whose overflow is `Scroll` is a **scroll container**:
 its content can be larger than it, and it shows the part its offset scrolls into view.
-This page covers making one, scrolling it with the wheel and from handlers,
-and reading how far it's scrolled.
+This page covers making one, scrolling it with the wheel, the keyboard and from handlers,
+scrolling an element into view, and reading how far it's scrolled.
 [Clipping](clipping.md) covers how a scroll container cuts off what's outside its padding box,
 which it does as a box with hidden overflow does.
 
@@ -64,6 +64,36 @@ so of nested scroll containers, the innermost under the pointer scrolls.
 so once the inner one reaches its end, the wheel scrolls the one around it,
 as the web chains scrolling from one container to the next.
 
+## Scrolling with the keyboard
+
+[`scroll_on_keys`](../input-handling/handlers.md#scrolling) scrolls for the keys that scroll a page in a browser:
+the arrow keys by a row or a column, PageUp and PageDown by a page, and Home and End to the start and the end.
+A key press goes to the [focused](../hooks/use_focus.md) element and bubbles from there,
+so a container the keys scroll is usually a focusable component's top-level element,
+and the keys scroll it while it, or anything inside it, is focused.
+Like `scroll_on_wheel`, it lets a key that would move its container past either end of its range bubble on,
+to the next container out.
+
+A page is 87.5% of the height of the view, rounded down, as in Chrome,
+so the last lines of one page stay in view at the top of the next, to read on from.
+[`page_down`](../input-handling/handlers.md#scrolling) and `page_up` return the `ScrollBy` for a page of any size,
+for apps that bind paging to other keys, such as `less`'s Space for a whole page and `d` and `u` for half of one:
+
+```python
+--8<-- "scrolling.py:keys"
+```
+
+=== "After PageDown"
+
+    ![The pager a page down, with its last line from the first page at the top](../assets/scrolling-keys.svg)
+
+=== "Then d"
+
+    ![The pager half a page further down](../assets/scrolling-keys-half.svg)
+
+`less_keys` comes first, so its keys win over any `scroll_on_keys` binds,
+and anything it doesn't handle falls through to the others.
+
 ## Scrolling from a handler
 
 The [`ScrollTo`](../input-handling/controls.md#scrolling) and `ScrollBy` controls scroll a container
@@ -80,6 +110,49 @@ create one with `use_state(ElementHandle)`, and pass it to the element's `handle
 
 Two mounted elements given the same handle raise `DuplicateElementHandle`,
 and a control whose handle names no mounted scroll container does nothing.
+
+## Scrolling an element into view
+
+[`ScrollIntoView`](../input-handling/controls.md#scrolling) scrolls to an element rather than to an offset,
+as the web's [`scrollIntoView`](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) does:
+it scrolls each scroll container above the element, from the innermost out, until the element is in view.
+Its `block` says where the element goes vertically: `"start"`, the default, puts its top at the top of the view,
+`"center"` in the middle, `"end"` at the bottom,
+and `"nearest"` scrolls as little as it takes, and not at all if the element is already in view.
+`inline` says the same horizontally, and is `"nearest"` by default.
+It stops at an element with [`clip_to_screen`](clipping.md#escaping-every-clip),
+since no container above that element clips it, so none has to scroll to show it.
+
+A table of contents scrolls each section's heading to the top of the pane it's in:
+
+```python
+--8<-- "scrolling.py:contents"
+```
+
+=== "Before"
+
+    ![A table of contents beside the start of a document](../assets/scrolling-contents.svg)
+
+=== "After clicking Hooks"
+
+    ![The Hooks section at the top of the document](../assets/scrolling-contents-jumped.svg)
+
+It applies to the layout of the render after the handler that returns it, before that render paints,
+as React's `useLayoutEffect` would call `scrollIntoView` after the DOM updates and before the browser paints.
+So a handler that changes state and returns `ScrollIntoView` beside it shows both in the same frame,
+and the handle names the element that has it in that render, not the one before.
+A list that moves a highlight with Down puts one handle on whichever item is highlighted,
+and returns `ScrollIntoView(handle, block="nearest")` beside the state change that moves it:
+the handle has moved to the new item by the time the control applies
+(see the [autocomplete recipe](../cookbook/autocomplete.md#a-long-list)).
+
+Moving [focus](../hooks/use_focus.md) scrolls the newly focused element into view with `block="nearest"`,
+as browsers do, so Tab never leaves focus on something out of sight.
+That includes a component that takes focus with `auto_focus` as it mounts.
+
+`ScrollIntoView` scrolls in one step.
+The web's `behavior: "smooth"` animates the scroll across frames,
+which counterweight has no design for yet: a fixed number of frames and a fixed duration are both plausible.
 
 ## Reading the scroll
 

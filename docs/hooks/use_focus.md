@@ -121,6 +121,10 @@ Unmounting it, hiding it, or making it [unfocusable](#taking-a-component-out-of-
 rather than moving it to whichever component took the departed one's place.
 A component that mounts with `auto_focus=True` in the same render can then take focus.
 
+Wherever focus moves, the newly focused component's element is
+[scrolled into view](../layout/scrolling.md#scrolling-an-element-into-view) in any scroll container it's in,
+by as little as it takes, as browsers do.
+
 ## Focusing a component you render
 
 A [`FocusHandle`][counterweight.focus.FocusHandle] names a focusable component for `FocusOn`.

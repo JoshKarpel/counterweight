@@ -1,15 +1,27 @@
 import asyncio
 import sys
 from datetime import timedelta
+from functools import partial
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AdvanceClock, AnyControl, Screenshot, ScrollTo
+from counterweight.controls import AdvanceClock, AnyControl, Screenshot, ScrollIntoView, ScrollTo
 from counterweight.elements import Div, Text
-from counterweight.events import AnyEvent, MouseDown, MouseScrolledDown, MouseScrolledUp, MouseUp
+from counterweight.events import (
+    AnyEvent,
+    InputEvent,
+    InputResponse,
+    KeyPressed,
+    MouseDown,
+    MouseScrolledDown,
+    MouseScrolledUp,
+    MouseUp,
+    Receiver,
+)
 from counterweight.geometry import Position
-from counterweight.handlers import on_click, scroll_on_wheel
-from counterweight.hooks import ElementHandle, use_clock, use_scroll, use_state
+from counterweight.handlers import first, on_click, page_down, page_up, scroll_on_keys, scroll_on_wheel
+from counterweight.hooks import ElementHandle, use_clock, use_focus, use_scroll, use_state
+from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -176,6 +188,90 @@ def jump_to_end() -> Div:
 
 # --8<-- [end:jump]
 
+# --8<-- [start:keys]
+
+
+def less_keys(event: InputEvent, receiver: Receiver) -> InputResponse:
+    # Receiver.scroll is None only off a scroll container, and this handler is only on one.
+    if receiver.scroll is None:
+        return None
+    match event:
+        case KeyPressed(key=" "):
+            return page_down(receiver.subtree, receiver.scroll, fraction=1.0)
+        case KeyPressed(key="d"):
+            return page_down(receiver.subtree, receiver.scroll, fraction=0.5)
+        case KeyPressed(key="u"):
+            return page_up(receiver.subtree, receiver.scroll, fraction=0.5)
+        case _:
+            return None
+
+
+@component
+def pager() -> Div:
+    focus = use_focus(auto_focus=True)
+
+    return Div(
+        style=col
+        | border
+        | border_lightrounded
+        | size(30, 8)
+        | overflow_y_scroll
+        | (border_color("sky", 400) if focus.is_focused else border_color("slate", 600)),
+        on_input=first(less_keys, scroll_on_keys(), scroll_on_wheel()),
+        children=[Text(content=f"{i:>2} {EVENTS[i % len(EVENTS)]}") for i in range(30)],
+    )
+
+
+# --8<-- [end:keys]
+
+# --8<-- [start:contents]
+
+SECTIONS = (
+    ("Install", "Add counterweight to your project with uv."),
+    ("Components", "A component is a function that returns an element."),
+    ("Hooks", "Hooks keep state and run effects for a component."),
+    ("Styles", "Styles are merged from small utilities with |."),
+)
+
+
+@component
+def contents() -> Div:
+    headings, _ = use_state(lambda: tuple(ElementHandle() for _ in SECTIONS))
+
+    return Div(
+        style=row | size(40, 6),
+        children=[
+            Div(
+                style=col | width(14) | border_right | border_lightrounded | pad_x(1),
+                children=[
+                    Text(
+                        content=title,
+                        style=text_color("sky", 300),
+                        on_input=on_click(partial(ScrollIntoView, heading)),
+                    )
+                    for (title, _), heading in zip(SECTIONS, headings, strict=True)
+                ],
+            ),
+            Div(
+                style=fill(1) | col | gap(1) | pad_x(1) | overflow_y_scroll,
+                on_input=scroll_on_wheel(1),
+                children=[
+                    Div(
+                        style=col,
+                        children=[
+                            Text(content=title, style=text_color("amber", 400), handle=heading),
+                            Text(content=body, style=text_wrap_pretty),
+                        ],
+                    )
+                    for (title, body), heading in zip(SECTIONS, headings, strict=True)
+                ],
+            ),
+        ],
+    )
+
+
+# --8<-- [end:contents]
+
 WHEEL = MouseScrolledDown(absolute=Position(5, 2))
 
 
@@ -185,6 +281,8 @@ def click(x: int, y: int) -> tuple[MouseDown, MouseUp]:
 
 # `use_scroll` reports a scroll one render after it changes, so this gives `windowed` that render.
 SETTLE = Screenshot(handler=lambda frame: None)
+
+PAGE_DOWN = KeyPressed(key=Key.PageDown)
 
 WHEEL_UP = MouseScrolledUp(absolute=Position(5, 2))
 TAILED = AdvanceClock(by=timedelta(seconds=10))
@@ -206,9 +304,13 @@ SCREENSHOTS = [
     ),
     ScreenshotSpec(jump_to_end(), "scrolling-jump", (30, 6), events=JUMPED_BACK),
     ScreenshotSpec(jump_to_end(), "scrolling-jump-clicked", (30, 6), events=[*JUMPED_BACK, *click(15, 4), SETTLE]),
+    ScreenshotSpec(pager(), "scrolling-keys", (30, 8), events=[PAGE_DOWN]),
+    ScreenshotSpec(pager(), "scrolling-keys-half", (30, 8), events=[PAGE_DOWN, KeyPressed(key="d")]),
+    ScreenshotSpec(contents(), "scrolling-contents", (40, 6)),
+    ScreenshotSpec(contents(), "scrolling-contents-jumped", (40, 6), events=click(2, 2)),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (pane, controlled, windowed, tail, jump_to_end)}
+    roots = {root.__name__: root for root in (pane, controlled, windowed, tail, jump_to_end, pager, contents)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else pane()))

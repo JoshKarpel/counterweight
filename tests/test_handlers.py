@@ -26,7 +26,7 @@ from counterweight.events import (
     MouseUp,
     Receiver,
 )
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.focus import ElementHandle, FocusHandle, Subtree
 from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.handlers import (
     clear_focus,
@@ -35,6 +35,9 @@ from counterweight.handlers import (
     focus_on_press,
     focus_receiver_on_press,
     on_click,
+    page_down,
+    page_up,
+    scroll_on_keys,
     scroll_on_wheel,
     tab_focus,
 )
@@ -289,3 +292,87 @@ def test_scroll_on_wheel_raises_for_a_wheel_event_on_a_receiver_that_is_not_a_sc
 @pytest.mark.parametrize("event", [KEY, MouseDown(absolute=INSIDE, button=1)])
 def test_scroll_on_wheel_does_not_handle_other_events(event: InputEvent) -> None:
     assert scroll_on_wheel()(event, SCROLLED) is None
+
+
+TALL = replace(
+    RECEIVER, scroll=Scroll(offset=Position(4, 30), max_offset=Position(9, 80), view_width=5, view_height=24)
+)
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        (Key.Up, ScrollBy(TALL.subtree, y=-1)),
+        (Key.Down, ScrollBy(TALL.subtree, y=1)),
+        (Key.Left, ScrollBy(TALL.subtree, x=-1)),
+        (Key.Right, ScrollBy(TALL.subtree, x=1)),
+        (Key.PageUp, ScrollBy(TALL.subtree, y=-12)),
+        (Key.PageDown, ScrollBy(TALL.subtree, y=12)),
+        (Key.Home, ScrollBy(TALL.subtree, y=-30)),
+        (Key.End, ScrollBy(TALL.subtree, y=50)),
+    ],
+    ids=["up", "down", "left", "right", "page up", "page down", "home", "end"],
+)
+def test_scroll_on_keys_scrolls_its_receiver_for_each_scrolling_key(key: str, expected: ScrollBy) -> None:
+    assert scroll_on_keys(page=0.5)(KeyPressed(key=key), TALL) == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "offset"),
+    [
+        (Key.Up, Position(4, 0)),
+        (Key.Down, Position(4, 80)),
+        (Key.Left, Position(0, 30)),
+        (Key.Right, Position(9, 30)),
+        (Key.PageUp, Position(4, 0)),
+        (Key.PageDown, Position(4, 80)),
+        (Key.Home, Position(4, 0)),
+        (Key.End, Position(4, 80)),
+    ],
+    ids=["up", "down", "left", "right", "page up", "page down", "home", "end"],
+)
+def test_scroll_on_keys_does_not_handle_a_key_past_the_end_of_the_range(key: str, offset: Position) -> None:
+    assert TALL.scroll is not None
+    at_end = replace(TALL, scroll=replace(TALL.scroll, offset=offset))
+
+    assert scroll_on_keys()(KeyPressed(key=key), at_end) is None
+
+
+def test_scroll_on_keys_pages_by_seven_eighths_of_the_view_by_default() -> None:
+    assert scroll_on_keys()(KeyPressed(key=Key.PageDown), TALL) == ScrollBy(TALL.subtree, y=21)
+
+
+def test_scroll_on_keys_raises_for_a_scrolling_key_on_a_receiver_that_is_not_a_scroll_container() -> None:
+    with pytest.raises(ValueError, match="isn't a scroll container"):
+        scroll_on_keys()(KeyPressed(key=Key.Down), RECEIVER)
+
+
+@pytest.mark.parametrize("event", [KEY, KeyPressed(key=Key.Enter), MouseScrolledDown(absolute=INSIDE)])
+def test_scroll_on_keys_does_not_handle_other_events(event: InputEvent) -> None:
+    assert scroll_on_keys()(event, RECEIVER) is None
+
+
+@pytest.mark.parametrize(
+    ("fraction", "rows"), [(0.875, 21), (0.5, 12), (1.0, 24), (0.01, 1)], ids=["chrome", "half", "whole", "tiny"]
+)
+def test_page_down_scrolls_down_by_a_fraction_of_the_view_rounded_down_and_at_least_one_row(
+    fraction: float, rows: int
+) -> None:
+    assert TALL.scroll is not None
+    handle = ElementHandle()
+
+    assert page_down(handle, TALL.scroll, fraction) == ScrollBy(handle, y=rows)
+
+
+def test_page_up_scrolls_up_by_as_much_as_page_down_scrolls_down() -> None:
+    assert TALL.scroll is not None
+
+    assert page_up(TALL.subtree, TALL.scroll, 0.5) == ScrollBy(TALL.subtree, y=-12)
+
+
+@pytest.mark.parametrize("fraction", [0.0, -0.5])
+def test_a_page_that_is_not_a_positive_fraction_raises(fraction: float) -> None:
+    assert TALL.scroll is not None
+
+    with pytest.raises(ValueError, match="positive fraction"):
+        page_down(TALL.subtree, TALL.scroll, fraction)

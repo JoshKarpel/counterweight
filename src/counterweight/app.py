@@ -31,6 +31,7 @@ from counterweight.controls import (
     Quit,
     Screenshot,
     ScrollBy,
+    ScrollIntoView,
     ScrollTo,
     Suspend,
     ToggleBorderHealing,
@@ -51,12 +52,13 @@ from counterweight.events import (
     StateSet,
     TerminalResized,
 )
+from counterweight.focus import Subtree
 from counterweight.geometry import Position, Scroll
 from counterweight.hooks import Mouse
 from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, layout_changes, prior_scrolls
+from counterweight.layout import NO_LAYOUTS, IntoView, Layouts, LayoutTree, layout_changes, prior_scrolls
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -69,7 +71,7 @@ from counterweight.output import (
     synchronized,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
+from counterweight.routing import Press, RoutingTable, UnsettledFocus, named_key, route_key, route_mouse
 from counterweight.shadow import ShadowTree, until_due, update_shadow
 from counterweight.styles import Style
 
@@ -275,6 +277,8 @@ async def render_loop(
         offsets = offsets_of(layouts)
         routing = RoutingTable.of(shadow, layouts)
         focused = routing.reconciled_focus(None, warmup.mounted)
+        # The elements to scroll into view in the next layout, from ScrollIntoView and from focus moving.
+        pending_into_view: list[ScrollIntoView] = [] if focused is None else [focus_into_view(focused)]
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
@@ -298,6 +302,8 @@ async def render_loop(
                 if changed is not None:
                     event_queue.put_nowait(StateSet(key=changed))
             focused = key
+            if key is not None:
+                pending_into_view.append(focus_into_view(key))
 
         def handle_control(control: AnyControl) -> None:
             nonlocal should_render
@@ -338,6 +344,9 @@ async def render_loop(
                     if scrolled is not offsets:
                         offsets = scrolled
                         should_render = True
+                case ScrollIntoView():
+                    pending_into_view.append(control)
+                    should_render = True
                 case _ as unreachable:
                     assert_never(unreachable)
 
@@ -421,7 +430,14 @@ async def render_loop(
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, priors)
+                    layouts = layout_tree.compute(
+                        layout_changes(previous_shadow, shadow),
+                        shadow,
+                        w,
+                        h,
+                        priors,
+                        into_view(pending_into_view, shadow),
+                    )
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
@@ -440,7 +456,16 @@ async def render_loop(
                             instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
-                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, priors)
+                        if settled is not None:
+                            pending_into_view.append(focus_into_view(settled))
+                        layouts = layout_tree.compute(
+                            layout_changes(previous_shadow, shadow),
+                            shadow,
+                            w,
+                            h,
+                            priors,
+                            into_view(pending_into_view, shadow),
+                        )
                         routing = RoutingTable.of(shadow, layouts)
                         if routing.reconciled_focus(settled, refocused.mounted) != settled:
                             raise UnsettledFocus(
@@ -451,6 +476,7 @@ async def render_loop(
                         focused = settled
                         logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
 
+                    pending_into_view.clear()
                     offsets = offsets_of(layouts)
                     for key in stale_scroll_readers(shadow, layouts):
                         event_queue.put_nowait(StateSet(key=key))
@@ -587,6 +613,20 @@ async def render_loop(
             stop_handling_interrupt_signal(previous_interrupt_handler)
 
         logger.info("Application stopped")
+
+
+def focus_into_view(key: NodeKey) -> ScrollIntoView:
+    """What focusing the node with `key` scrolls into view: the node, by as little as it takes, as browsers do."""
+    return ScrollIntoView(Subtree(key=key), block="nearest", inline="nearest")
+
+
+def into_view(pending: Iterable[ScrollIntoView], shadow: ShadowTree) -> list[IntoView]:
+    """The nodes `pending` scroll into view in a layout of `shadow`, skipping a handle that names no mounted element."""
+    return [
+        IntoView(key=key, block=control.block, inline=control.inline)
+        for control in pending
+        if (key := named_key(control.target, shadow.handled)) is not None
+    ]
 
 
 def offsets_of(layouts: Layouts) -> Mapping[NodeKey, Position]:
