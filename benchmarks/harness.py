@@ -7,8 +7,8 @@ so each run renders exactly `frames` frames after the first, and two runs of the
 do the same work frame for frame, whatever the machine's speed.
 
 A frame's time is the interval between two consecutive key presses, as seen by a key handler on the
-root element. The autopilot presses one key per loop iteration, and the render loop calls every element's
-key handler whether or not its component re-ran, so the interval covers one whole iteration:
+root element. The autopilot presses one key per loop iteration, and the render loop passes every key to every element's
+input handler whether or not its component re-ran, so the interval covers one whole iteration:
 the shadow tree, layout, paint, output, effects and events. `frames` key presses time `frames - 1` frames.
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """
@@ -29,7 +29,7 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot
 from counterweight.elements import Div
-from counterweight.events import AnyEvent, KeyPressed
+from counterweight.events import AnyEvent, InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_effect, use_state
 from counterweight.output import Frame
 
@@ -75,11 +75,13 @@ class Workload[M]:
         def benchmark_root() -> Div:
             model, set_model = use_state(self.initial)
 
-            def on_key(_: KeyPressed) -> None:
+            def on_input(event: InputEvent, _: Receiver) -> None:
+                if not isinstance(event, KeyPressed):
+                    return
                 key_press_times.append(perf_counter_ns())
                 set_model(self.step)
 
-            return replace(self.view(model), on_key=on_key)
+            return replace(self.view(model), on_input=on_input)
 
         return benchmark_root
 

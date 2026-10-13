@@ -38,6 +38,7 @@ from counterweight.events import (
     MouseScrolledDown,
     MouseScrolledUp,
     MouseUp,
+    Receiver,
     StateSet,
     TerminalResized,
 )
@@ -398,15 +399,15 @@ async def render_loop(
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed():
-                            for element, _ in reversed(layouts.in_paint_order):
-                                if element.on_key:
-                                    handle_control(element.on_key(event))
+                            for element, resolved in reversed(layouts.in_paint_order):
+                                if element.on_input:
+                                    handle_control(element.on_input(event, Receiver(rects=resolved.rects)))
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
                             for element, resolved in reversed(layouts.in_paint_order):
                                 # Send mouse events if the current *or previous* position is in the border region
                                 if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
-                                    if element.on_mouse:
-                                        handle_control(element.on_mouse(event))
+                                    if element.on_input:
+                                        handle_control(element.on_input(m, Receiver(rects=resolved.rects)))
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(

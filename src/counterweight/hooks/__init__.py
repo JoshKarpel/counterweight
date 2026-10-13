@@ -1,7 +1,7 @@
+from counterweight.geometry import Rects
 from counterweight.hooks.hooks import (
     Hovered,
     Mouse,
-    Rects,
     use_effect,
     use_hovered,
     use_memo,

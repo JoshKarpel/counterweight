@@ -95,7 +95,7 @@ Beyond the language:
   a Counterweight effect is cancelled when its dependencies change or its component unmounts,
   so cleanup goes in a `try`/`finally` block (see [`use_effect`](hooks/use_effect.md)).
 - Counterweight lays out with grid as well as flexbox.
-- Counterweight has mouse input, through `on_mouse` handlers and the
+- Counterweight has mouse input, through `on_input` handlers and the
   [`use_mouse`](hooks/use_mouse.md) and [`use_hovered`](hooks/use_hovered.md) hooks.
   Ink has none.
 
@@ -139,7 +139,7 @@ These are the gaps you're most likely to hit, with what to do instead:
   it paints over the container's border and whatever lies beyond it.
   Keep an offset in `use_state` and render only the slice of your data that fits.
   Tracked in [#388](https://github.com/JoshKarpel/counterweight/issues/388) (clipping) and [#389](https://github.com/JoshKarpel/counterweight/issues/389) (scroll containers).
-- **Focus.** Every element's `on_key` handler receives every key press.
+- **Focus.** Every element's `on_input` handler receives every key press.
   Keep which item is focused in state, and have the other handlers ignore keys.
   Tracked in [#390](https://github.com/JoshKarpel/counterweight/issues/390).
 - **Wide characters.** Counterweight counts every character as one cell,

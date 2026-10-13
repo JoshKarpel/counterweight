@@ -12,7 +12,7 @@ Read and write `current` in handlers and effects, which run after a render, not 
 ```python
 from counterweight.components import component
 from counterweight.elements import Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_ref, use_state
 from counterweight.keys import Key
 
@@ -22,14 +22,17 @@ def line_entry() -> Text:
     typed = use_ref(list[str]())
     line, set_line = use_state("")
 
-    def on_key(event: KeyPressed) -> None:
-        if event.key == Key.Enter:
-            set_line("".join(typed.current))
-            typed.current.clear()
-        else:
-            typed.current.append(event.key)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Enter):
+                set_line("".join(typed.current))
+                typed.current.clear()
+            case KeyPressed(key=key):
+                typed.current.append(key)
+            case _:
+                pass
 
-    return Text(content=line, on_key=on_key)
+    return Text(content=line, on_input=on_input)
 ```
 
 `line_entry` collects keys without rendering, and renders only when Enter sets `line`.

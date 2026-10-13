@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, assert_never
 import waxy
 
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
-from counterweight.geometry import Region
+from counterweight.geometry import Rects, Region
 from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
 
@@ -24,6 +24,10 @@ class ResolvedLayout:
     border: Region
     margin: Region
     order: int
+
+    @property
+    def rects(self) -> Rects:
+        return Rects(content=self.content, padding=self.padding, border=self.border, margin=self.margin)
 
 
 _EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)

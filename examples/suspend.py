@@ -9,7 +9,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Suspend
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -67,28 +67,30 @@ def picker() -> Div:
 
     files = _list_files(glob)
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match event.key:
-            case Key.Enter:
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case KeyPressed(key=Key.Enter):
                 return Suspend(handler=partial(open_editor, files[selected_file_idx]))
-            case Key.Down:
+            case KeyPressed(key=Key.Down):
                 set_selected_file_idx(lambda i: clamp(0, i + 1, len(files) - 1))
-            case Key.Up:
+            case KeyPressed(key=Key.Up):
                 set_selected_file_idx(lambda i: clamp(0, i - 1, len(files) - 1))
-            case Key.Backspace:
+            case KeyPressed(key=Key.Backspace):
                 new_glob = glob[:-1]
                 set_selected_file_idx(0)
                 set_glob(new_glob)
-            case c if c.isprintable() and len(c) == 1:
+            case KeyPressed(key=c) if c.isprintable() and len(c) == 1:
                 new_glob = glob + c
                 set_selected_file_idx(0)
                 set_glob(new_glob)
+            case _:
+                pass
 
         return None
 
     return Div(
         style=col | fill(1) | justify_children_start | border_collapse,
-        on_key=on_key,
+        on_input=on_input,
         children=[
             glob_input(glob=glob),
             file_list(files=files, selected_idx=selected_file_idx),

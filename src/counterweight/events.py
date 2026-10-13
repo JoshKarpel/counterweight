@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
-from counterweight.geometry import Position
+from counterweight.controls import AnyControl
+from counterweight.geometry import Position, Rects
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -87,6 +89,30 @@ MouseEvent = Union[
     MouseScrolledDown,
     MouseScrolledUp,
 ]
+
+InputEvent = Union[
+    KeyPressed,
+    MouseMoved,
+    MouseDown,
+    MouseUp,
+    MouseScrolledDown,
+    MouseScrolledUp,
+]
+
+
+@dataclass(frozen=True, slots=True)
+class Receiver:
+    """The element an input event is being delivered to."""
+
+    rects: Rects
+    """The receiving element's rectangles, as [`use_rects`][counterweight.hooks.use_rects] returns them."""
+
+    def relative(self, position: Position) -> Position:
+        """`position` relative to the top-left corner of the receiving element's content box."""
+        return position - self.rects.content.top_left
+
+
+InputHandler = Callable[[InputEvent, Receiver], AnyControl | None]
 
 AnyEvent = Union[
     TerminalResized,

@@ -621,7 +621,7 @@ including the code blocks written inline in the docs' Markdown, which no build o
 
 ### 1. Replace `on_key` and `on_mouse` with `on_input`
 
-**Status:** Not started
+**Status:** Done
 
 Add `InputEvent`, `InputHandler`, and `Receiver`, rename the fields, and keep routing exactly as it is:
 keys to every handler, mouse events to every element under the current or previous position.
@@ -782,7 +782,7 @@ if the capturing node unmounts mid-press, the rest of the press reaches no handl
 a wheel event during a capture routes by position, and the capture continues;
 a `MouseDown` during a capture routes by position;
 a `MouseMoved` with no button held during a capture routes by position and ends the capture.
-The "previous position" case in `test_on_mouse.py` is replaced by the capture tests.
+The "previous position" case in `tests/inputs/test_on_input.py` is replaced by the capture tests.
 The library handlers are pure, so their tests call them directly:
 `first` stops at the first response that isn't `None`, `()` included, and returns `None` when none respond;
 `each` calls every handler and collects their controls in order, and returns `()` when every response is `()`;

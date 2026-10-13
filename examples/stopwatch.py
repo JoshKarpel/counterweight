@@ -6,7 +6,7 @@ from time import monotonic
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_effect, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -20,12 +20,14 @@ def root() -> Div:
 
     selected_stopwatch, set_selected_stopwatch = use_state(0)
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Tab:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Tab):
                 set_selected_stopwatch(lambda s: (s + 1) % num_stopwatches)
-            case Key.BackTab:
+            case KeyPressed(key=Key.BackTab):
                 set_selected_stopwatch(lambda s: (s - 1) % num_stopwatches)
+            case _:
+                pass
 
     return Div(
         style=col | justify_children_space_between | align_children_center,
@@ -36,7 +38,7 @@ def root() -> Div:
             ),
             Div(
                 style=row | align_self_stretch | align_children_center | justify_children_space_evenly,
-                on_key=on_key,
+                on_input=on_input,
                 children=[stopwatch(selected=selected_stopwatch == n) for n in range(num_stopwatches)],
             ),
             Text(
@@ -63,16 +65,18 @@ def stopwatch(selected: bool) -> Text:
     running, set_running = use_state(False)
     elapsed_time, set_elapsed_time = use_state(0.0)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         if not selected:
             return
 
-        match event.key:
-            case Key.Space:
+        match event:
+            case KeyPressed(key=Key.Space):
                 set_running(not running)
-            case Key.Backspace:
+            case KeyPressed(key=Key.Backspace):
                 set_running(False)
                 set_elapsed_time(0)
+            case _:
+                pass
 
     async def tick() -> None:
         if running:
@@ -96,7 +100,7 @@ def stopwatch(selected: bool) -> Text:
         | (border | border_heavy if selected else border | border_double)
         | pad_x(2)
         | pad_y(1),
-        on_key=on_key,
+        on_input=on_input,
     )
 
 

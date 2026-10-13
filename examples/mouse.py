@@ -7,7 +7,7 @@ from more_itertools import intersperse
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
-from counterweight.events import MouseDown, MouseEvent, MouseMoved, MouseUp
+from counterweight.events import InputEvent, MouseDown, MouseMoved, MouseUp, Receiver
 from counterweight.geometry import Position
 from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
 from counterweight.styles.utilities import *
@@ -91,18 +91,19 @@ def tracking_box() -> Text:
 
 @component
 def last_clicked_box() -> Text:
-    rects = use_rects()
     hovered = use_hovered()
 
     clicked, set_clicked = use_state(Position(0, 0))
 
-    def on_mouse(event: MouseEvent) -> None:
+    def on_input(event: InputEvent, receiver: Receiver) -> None:
         match event:
             case MouseUp(absolute=p, button=1):
-                set_clicked(p - rects.content.top_left)
+                set_clicked(receiver.relative(p))
+            case _:
+                pass
 
     return Text(
-        on_mouse=on_mouse,
+        on_input=on_input,
         style=canvas_style | (hover_style if hovered.border else None),
         content=canvas(
             20,
@@ -116,24 +117,23 @@ def last_clicked_box() -> Text:
 
 @component
 def last_dragged_box() -> Text:
-    rects = use_rects()
     hovered = use_hovered()
 
     start, set_start = use_state(Position(0, 0))
     end, set_end = use_state(Position(0, 0))
 
-    def on_mouse(event: MouseEvent) -> None:
+    def on_input(event: InputEvent, receiver: Receiver) -> None:
         match event:
             case MouseDown(absolute=a, button=1):
-                set_start(a - rects.content.top_left)
-                set_end(a - rects.content.top_left)
-            case MouseUp(absolute=a, button=1):
-                set_end(a - rects.content.top_left)
-            case MouseMoved(absolute=a, button=1):
-                set_end(a - rects.content.top_left)
+                set_start(receiver.relative(a))
+                set_end(receiver.relative(a))
+            case MouseUp(absolute=a, button=1) | MouseMoved(absolute=a, button=1):
+                set_end(receiver.relative(a))
+            case _:
+                pass
 
     return Text(
-        on_mouse=on_mouse,
+        on_input=on_input,
         style=canvas_style | (hover_style if hovered.border else None),
         content=canvas(
             20,
@@ -162,13 +162,15 @@ def draggable_text(content: str, init_x: int, init_y: int) -> Text:
     offset, set_offset = use_state(Position(init_x, init_y))
 
     # TODO: if you don't go slow, your mouse can easily outrun the render speed
-    def on_mouse(event: MouseEvent) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         match event:
             case MouseMoved(absolute=a, button=1):
                 set_offset(lambda o: o + (a - mouse.absolute))
+            case _:
+                pass
 
     return Text(
-        on_mouse=on_mouse,
+        on_input=on_input,
         style=position_absolute | inset_left(offset.x) | inset_top(offset.y),
         content=content,
     )

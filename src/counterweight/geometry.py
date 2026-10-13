@@ -115,3 +115,13 @@ class Region:
             bottom=min(self.bottom, other.bottom),
         )
         return None if overlap.is_empty else overlap
+
+
+@dataclass(frozen=True, slots=True)
+class Rects:
+    """The regions an element's box model occupies, from its content box out to its margin box."""
+
+    content: Region
+    padding: Region
+    border: Region
+    margin: Region

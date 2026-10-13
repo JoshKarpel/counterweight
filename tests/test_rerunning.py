@@ -13,7 +13,7 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed, TerminalResized
+from counterweight.events import AnyEvent, InputEvent, Receiver, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
@@ -421,16 +421,16 @@ def handler_capturing_setting(argument: object, calls: Calls) -> Text:
     calls.names.append("handler_capturing_setting")
     label = SETTINGS["label"]
 
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         print(label)
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component(memo=True)
 def inline_handler(argument: object, calls: Calls) -> Text:
     calls.names.append("inline_handler")
-    return Text(content="", on_key=lambda _: None)
+    return Text(content="", on_input=lambda event, _: None)
 
 
 @component

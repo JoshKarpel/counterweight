@@ -14,7 +14,7 @@ from counterweight.events import StateSet
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 
 if TYPE_CHECKING:
-    from counterweight.hooks.hooks import Rects
+    from counterweight.geometry import Rects
 
 # Identifies one mounted node across frames, for as long as its hooks carry over.
 NodeKey = NewType("NodeKey", int)

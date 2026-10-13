@@ -13,7 +13,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseEvent, MouseUp
+from counterweight.events import InputEvent, KeyPressed, MouseUp, Receiver
 from counterweight.hooks import Setter, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
@@ -82,14 +82,16 @@ def root() -> Div:
             set_solution(s)
             set_playing(True)
 
-        def on_key(event: KeyPressed) -> AnyControl | None:
-            match event.key:
-                case Key.F1:
+        def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+            match event:
+                case KeyPressed(key=Key.F1):
                     play_today()
-                case Key.F2:
+                case KeyPressed(key=Key.F2):
                     play_random()
-                case "q":
+                case KeyPressed(key="q"):
                     return Quit()
+                case _:
+                    pass
 
             return None
 
@@ -103,22 +105,22 @@ def root() -> Div:
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             hover_style=text_color("indigo", 500) | border_color("indigo", 500),
-                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click=play_today,
                         ),
                         menu_button(
                             content="[F2] Play Random",
                             hover_style=text_color("emerald", 500) | border_color("emerald", 500),
-                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click=play_random,
                         ),
                         menu_button(
                             content="[q] Quit",
                             hover_style=text_color("red", 500) | border_color("red", 500),
-                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click=Quit,
                         ),
                     ],
                 ),
             ],
-            on_key=on_key,
+            on_input=on_input,
         )
 
 
@@ -128,15 +130,22 @@ button_style = pad_x(1) | border | border_lightrounded
 @component
 def menu_button(
     content: str,
-    on_mouse: Callable[[MouseEvent], AnyControl | None],
+    on_click: Callable[[], AnyControl | None],
     hover_style: Style,
 ) -> Text:
     hovered = use_hovered()
 
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case MouseUp(button=1):
+                return on_click()
+            case _:
+                return None
+
     return Text(
         content=content,
         style=button_style | (hover_style if hovered.border else None),
-        on_mouse=on_mouse,
+        on_input=on_input,
     )
 
 
@@ -150,30 +159,42 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match state, event.key:
-            case _, Key.Escape:
-                stop_playing()
-            case "playing", Key.Backspace:
-                if len(guess) > 0:
-                    set_guess(guess[:-1])
-                else:
-                    return Bell()
-            case "playing", Key.Enter:
-                if guess in GUESSABLE_WORDS:
-                    set_guess("")
-                    set_submitted(lambda s: [*s, guess])
-                else:
-                    return Bell()
-            case "playing", letter if letter in ascii_letters:
-                if len(guess) < 5:
-                    set_guess(lambda g: g + letter.upper())
-                else:
-                    return Bell()
-            case "win" | "loss", letter if letter in ascii_letters:
-                return Bell()
-
+    def type_letter(letter: str) -> AnyControl | None:
+        if state != "playing" or len(guess) >= 5:
+            return Bell()
+        set_guess(lambda g: g + letter.upper())
         return None
+
+    def delete_letter() -> AnyControl | None:
+        if state != "playing":
+            return None
+        if not guess:
+            return Bell()
+        set_guess(guess[:-1])
+        return None
+
+    def submit_guess() -> AnyControl | None:
+        if state != "playing":
+            return None
+        if guess not in GUESSABLE_WORDS:
+            return Bell()
+        set_guess("")
+        set_submitted(lambda s: [*s, guess])
+        return None
+
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case KeyPressed(key=Key.Escape):
+                stop_playing()
+                return None
+            case KeyPressed(key=Key.Backspace):
+                return delete_letter()
+            case KeyPressed(key=Key.Enter):
+                return submit_guess()
+            case KeyPressed(key=letter) if letter in ascii_letters:
+                return type_letter(letter)
+            case _:
+                return None
 
     guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
     if state == "playing":
@@ -202,7 +223,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
                 children=guess_rows,
-                on_key=on_key,
+                on_input=on_input,
             ),
             Div(
                 style=row | align_self_center | pad_y(1),
@@ -211,7 +232,9 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
             keyboard(
                 submitted=submitted,
                 solution=solution,
-                on_key=on_key,
+                on_letter=type_letter,
+                on_submit=submit_guess,
+                on_backspace=delete_letter,
                 on_clear=lambda: set_guess(""),
                 on_exit=stop_playing,
             ),
@@ -260,7 +283,9 @@ KEYBOARD = (
 def keyboard(
     submitted: list[str],
     solution: str,
-    on_key: Callable[[KeyPressed], AnyControl | None],
+    on_letter: Callable[[str], AnyControl | None],
+    on_submit: Callable[[], AnyControl | None],
+    on_backspace: Callable[[], AnyControl | None],
     on_clear: Callable[[], None],
     on_exit: Callable[[], None],
 ) -> Div:
@@ -278,33 +303,13 @@ def keyboard(
             if guess_letter == solution_letter:
                 kb_letter_styles[guess_letter] = border_color("green", 600)
 
-    def on_submit(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            return on_key(KeyPressed(key=Key.Enter))
-        return None
-
-    def on_backspace(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            return on_key(KeyPressed(key=Key.Backspace))
-        return None
-
-    def on_clear_click(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            on_clear()
-        return None
-
-    def on_exit_click(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            on_exit()
-        return None
-
     return Div(
         style=row | gap(2),
         children=[
             Div(
                 style=col | justify_children_space_between | align_children_start,
                 children=[
-                    menu_button(content="Exit [Esc]", on_mouse=on_exit_click, hover_style=border_color("red", 700)),
+                    menu_button(content="Exit [Esc]", on_click=on_exit, hover_style=border_color("red", 700)),
                 ],
             ),
             Div(
@@ -316,7 +321,7 @@ def keyboard(
                             letter_box(
                                 kb_letter,
                                 style=kb_letter_styles[kb_letter],
-                                on_key=on_key,
+                                on_click=on_letter,
                             )
                             for kb_letter in kb_row
                         ],
@@ -327,9 +332,9 @@ def keyboard(
             Div(
                 style=col | justify_children_space_between | align_children_end,
                 children=[
-                    menu_button(content="Submit [Enter]", on_mouse=on_submit, hover_style=border_color("green", 600)),
-                    menu_button(content="Back", on_mouse=on_backspace, hover_style=border_color("yellow", 300)),
-                    menu_button(content="Clear", on_mouse=on_clear_click, hover_style=border_color("red", 700)),
+                    menu_button(content="Submit [Enter]", on_click=on_submit, hover_style=border_color("green", 600)),
+                    menu_button(content="Back", on_click=on_backspace, hover_style=border_color("yellow", 300)),
+                    menu_button(content="Clear", on_click=on_clear, hover_style=border_color("red", 700)),
                 ],
             ),
         ],
@@ -337,17 +342,20 @@ def keyboard(
 
 
 @component
-def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyControl | None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_click: Callable[[str], AnyControl | None] | None = None) -> Text:
     hovered = use_hovered()
 
-    def on_mouse(event: MouseEvent) -> None:
-        if on_key and isinstance(event, MouseUp) and event.button == 1:
-            on_key(KeyPressed(key=letter))
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case MouseUp(button=1) if on_click:
+                return on_click(letter)
+            case _:
+                return None
 
     return Text(
         content=letter,
         style=style | pad_x(1) | pad_y(0) | (border | border_double if hovered.border else border | border_heavy),
-        on_mouse=on_mouse,
+        on_input=on_input,
     )
 
 

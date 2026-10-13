@@ -98,6 +98,14 @@
 
 ### Changed
 
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** `Div` and `Text` take one `on_input` handler in place of `on_key` and `on_mouse`.
+  It receives both key presses and mouse events, so one `match` case can handle `Down` and the scroll wheel alike,
+  and a `Receiver` describing the element, whose `rects` and `relative` locate a mouse event inside it.
+  A handler that takes only the event, or annotates it as `KeyPressed` or `MouseEvent`, fails to type-check;
+  annotate it as `InputEvent` and match on the event's class.
+  `Rects` lives in `counterweight.geometry`, and `counterweight.hooks` still exports it.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   An error raised while the app runs, in a component, a handler or an effect,
   propagates out of `app` as itself rather than wrapped in an `ExceptionGroup`,

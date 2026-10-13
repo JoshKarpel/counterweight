@@ -6,7 +6,7 @@ from typing import overload
 
 from counterweight._context_vars import current_hook_state, current_layouts, current_use_mouse_listeners
 from counterweight._utils import forever
-from counterweight.geometry import Position, Region
+from counterweight.geometry import Position, Rects
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
 from counterweight.layout import INITIAL_RESOLVED_LAYOUT, Layouts
@@ -91,14 +91,6 @@ def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T:
     return current_hook_state.get().use_memo(compute, deps)
 
 
-@dataclass(frozen=True, slots=True)
-class Rects:
-    content: Region
-    padding: Region
-    border: Region
-    margin: Region
-
-
 def use_rects() -> Rects:
     """
     Returns:
@@ -119,14 +111,7 @@ def use_rects() -> Rects:
 def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
-    dims = layouts.by_key.get(key, INITIAL_RESOLVED_LAYOUT)
-
-    return Rects(
-        content=dims.content,
-        padding=dims.padding,
-        border=dims.border,
-        margin=dims.margin,
-    )
+    return layouts.by_key.get(key, INITIAL_RESOLVED_LAYOUT).rects
 
 
 @dataclass(frozen=True, slots=True)

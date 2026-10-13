@@ -15,7 +15,7 @@ from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_effect, use_state
 
 
@@ -32,10 +32,11 @@ class LocalDashboard:
 
         @component
         def dashboard_local_root() -> Div:
-            def on_key(_: KeyPressed) -> None:
-                key_press_times.append(perf_counter_ns())
+            def on_input(event: InputEvent, _: Receiver) -> None:
+                if isinstance(event, KeyPressed):
+                    key_press_times.append(perf_counter_ns())
 
-            return replace(layout(key_frame_counter(), metric_card), on_key=on_key)
+            return replace(layout(key_frame_counter(), metric_card), on_input=on_input)
 
         return dashboard_local_root
 
@@ -53,10 +54,11 @@ class LocalDashboard:
 def key_frame_counter() -> Text:
     tick, set_tick = use_state(0)
 
-    def on_key(_: KeyPressed) -> None:
-        set_tick(lambda previous: previous + 1)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        if isinstance(event, KeyPressed):
+            set_tick(lambda previous: previous + 1)
 
-    return replace(frame_text(tick), on_key=on_key)
+    return replace(frame_text(tick), on_input=on_input)
 
 
 @component

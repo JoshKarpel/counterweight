@@ -50,7 +50,7 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
   loop itself, with each stage's share of the mean frame time.
   Stages come from the call stack, so splitting a stage into named functions inside
   `render_loop` is how to get a finer breakdown.
-  `harness.py:...on_key` is the workload's own `step`, not framework time.
+  `harness.py:...on_input` is the workload's own `step`, not framework time.
   Work moved off the render loop onto another task still costs frame time in these
   saturated runs; it only comes for free in an app with idle time between frames.
 - **Self and inclusive samples** per function below each stage's root.

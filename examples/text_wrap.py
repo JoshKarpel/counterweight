@@ -5,7 +5,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseEvent, MouseUp
+from counterweight.events import InputEvent, KeyPressed, MouseUp, Receiver
 from counterweight.hooks import use_hovered, use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles.styles import TextWrap
@@ -32,23 +32,25 @@ def root() -> Div:
     input_text, set_input_text = use_state(SAMPLE)
     wrap_idx, set_wrap_idx = use_state(2)  # start on "pretty"
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match event.key:
-            case Key.ControlC:
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case KeyPressed(key=Key.ControlC):
                 return Quit()
-            case Key.Tab:
+            case KeyPressed(key=Key.Tab):
                 set_wrap_idx(lambda i: (i + 1) % len(WRAP_MODES))
-            case Key.BackTab:
+            case KeyPressed(key=Key.BackTab):
                 set_wrap_idx(lambda i: (i - 1) % len(WRAP_MODES))
-            case Key.Backspace:
+            case KeyPressed(key=Key.Backspace):
                 set_input_text(lambda t: t[:-1])
-            case char if len(char) == 1 and char.isprintable():
+            case KeyPressed(key=char) if len(char) == 1 and char.isprintable():
                 set_input_text(lambda t: t + char)
+            case _:
+                pass
         return None
 
     return Div(
         style=col | full,
-        on_key=on_key,
+        on_input=on_input,
         children=[
             toolbar(WRAP_MODES[wrap_idx], set_wrap_idx),
             Div(
@@ -144,10 +146,12 @@ def display_pane(content: str, mode: TextWrap) -> Div:
 def mode_button(label: str, active: bool, on_click: Callable[[], None]) -> Text:
     hovered = use_hovered()
 
-    def on_mouse(event: MouseEvent) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         match event:
             case MouseUp(button=1):
                 on_click()
+            case _:
+                pass
 
     if active:
         style = border | border_heavy | border_color("violet", 400) | text_color("violet", 100)
@@ -158,7 +162,7 @@ def mode_button(label: str, active: bool, on_click: Callable[[], None]) -> Text:
 
     return Text(
         content=f" {label} ",
-        on_mouse=on_mouse,
+        on_input=on_input,
         style=style,
     )
 

@@ -6,7 +6,7 @@ from itertools import cycle
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import Setter, use_effect, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
@@ -41,14 +41,16 @@ def toggle() -> Div:
 
     toggled, set_toggled = use_state(False)
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Tab:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Tab):
                 set_toggled(not toggled)
-            case Key.F1:
+            case KeyPressed(key=Key.F1):
                 set_border_kind(advance_border())
-            case Key.F2:
+            case KeyPressed(key=Key.F2):
                 set_border_color_style(advance_border_color())
+            case _:
+                pass
 
     return Div(
         children=[
@@ -64,7 +66,7 @@ def toggle() -> Div:
             ),
         ],
         style=col,
-        on_key=on_key,
+        on_input=on_input,
     )
 
 
@@ -91,20 +93,21 @@ def textpad() -> Text:
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Backspace:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Backspace):
                 set_buffer(buffer[:-1])
-            case _ if event.key.isprintable() and len(event.key) == 1:  # TODO: gross
-                s = [*buffer, event.key]
-                set_buffer(s)
+            case KeyPressed(key=key) if key.isprintable() and len(key) == 1:
+                set_buffer([*buffer, key])
+            case _:
+                pass
 
     content = "".join(buffer) or "..."
 
     return Text(
         content=content,
         style=text_color("teal", 600) | border_color("rose", 500) | pad(1) | border | border_lightrounded,
-        on_key=on_key,
+        on_input=on_input,
     )
 
 
