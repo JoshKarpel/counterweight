@@ -16,8 +16,11 @@
 - Added [`use_text_area`](headless/use_text_area.md), which edits text that wraps onto rows and leaves drawing it to its caller.
   It wraps the value itself, at the width the caller gives it, filling each row as text editors do
   and keeping a cell for the cursor wherever it is,
-  and returns the rows split around the cursor, so Up and Down move between the rows on screen, keeping their column,
+  and returns the rows split around the cursor, so Up and Down (and Ctrl+P and Ctrl+N) move between the rows on screen, keeping their column,
   and Home, End, Ctrl+U and Ctrl+K act on the cursor's row.
+  Ctrl+A and Ctrl+E move to the start and end of the row too,
+  and pressed again there, go on to the start and end of the value,
+  which Ctrl+Home and Ctrl+End reach in one press.
   Ctrl+J inserts a line break, and so does Enter with `enter_inserts_newline=True`;
   otherwise Enter bubbles, as for a form or a chat that submits on it.
   A paste keeps its line breaks.

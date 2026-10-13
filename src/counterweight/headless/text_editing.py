@@ -133,6 +133,19 @@ def insert(inserted: str) -> Edit:
     return edit
 
 
+def transpose(text: EditableText) -> EditableText:
+    """
+    Swap the cluster before the cursor with the one at it, and move the cursor past both,
+    or at the end, swap the last two clusters, as Readline's `transpose-chars` does.
+    """
+    clusters = graphemes(text.value)
+    end = min(text.cursor + 1, len(clusters))
+    if text.cursor == 0 or end < 2:
+        return text
+    before = "".join([*clusters[: end - 2], clusters[end - 1], clusters[end - 2]])
+    return EditableText.at(value=before + "".join(clusters[end:]), cursor=len(graphemes(before)))
+
+
 def settled(before: EditableText, edited: EditableText, value: str) -> EditableText:
     """
     The text after an edit from `before` to `edited`, once whoever owns the value has settled it at `value`:
@@ -153,6 +166,8 @@ KEY_EDITS: Mapping[str, Edit] = {
     Key.ControlA: move_to(line_start),
     Key.End: move_to(line_end),
     Key.ControlE: move_to(line_end),
+    Key.ControlHome: move_to(line_start),
+    Key.ControlEnd: move_to(line_end),
     Key.ControlLeft: move_to(word_start),
     Key.ControlRight: move_to(word_end),
     Key.Backspace: delete_to(previous_cluster),
@@ -162,6 +177,7 @@ KEY_EDITS: Mapping[str, Edit] = {
     Key.ControlDelete: delete_to(word_end),
     Key.ControlU: delete_to(line_start),
     Key.ControlK: delete_to(line_end),
+    Key.ControlT: transpose,
 }
 
 # The `KeyPressed.key` of every key that isn't text, which is every `Key` but Space.

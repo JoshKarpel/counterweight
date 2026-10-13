@@ -65,10 +65,12 @@ The keys are [`use_text_input`'s](use_text_input.md#keys), with these acting on 
 
 | Key            | Edit                                                                  |
 |----------------|-----------------------------------------------------------------------|
-| Up             | Move to the row above, at the same column, or to the start from the first row |
-| Down           | Move to the row below, at the same column, or to the end from the last row    |
-| Home, Ctrl+A   | Move to the start of the row                                          |
-| End, Ctrl+E    | Move to the end of the row                                            |
+| Up, Ctrl+P     | Move to the row above, at the same column, or to the start from the first row |
+| Down, Ctrl+N   | Move to the row below, at the same column, or to the end from the last row    |
+| Home           | Move to the start of the row                                          |
+| Ctrl+A         | Move to the start of the row, or to the start from the start of a row |
+| End            | Move to the end of the row                                            |
+| Ctrl+E         | Move to the end of the row, or to the end from the end of a row       |
 | Ctrl+U         | Delete to the start of the row                                        |
 | Ctrl+K         | Delete to the end of the row                                          |
 | Ctrl+J         | Insert a line break                                                   |
@@ -80,6 +82,7 @@ The end of a row that wraps is the start of the next,
 so End on one moves to its last character, usually the whitespace it wrapped at.
 Left, Right, Backspace and Delete step over a line break as one character,
 and the word keys treat it as whitespace.
+Ctrl+T swaps characters within a line, so it does nothing at the start of one.
 
 ## Validating and transforming
 

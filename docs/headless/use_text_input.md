@@ -59,8 +59,8 @@ which most terminal programs share:
 | Text                        | Insert it at the cursor                                |
 | Left, Ctrl+B                | Move one character left                                |
 | Right, Ctrl+F               | Move one character right                               |
-| Home, Ctrl+A                | Move to the start                                      |
-| End, Ctrl+E                 | Move to the end                                        |
+| Home, Ctrl+A, Ctrl+Home     | Move to the start                                      |
+| End, Ctrl+E, Ctrl+End       | Move to the end                                        |
 | Ctrl+Left                   | Move to the start of this word or the previous one     |
 | Ctrl+Right                  | Move to the end of this word or the next one           |
 | Backspace                   | Delete the character before the cursor                 |
@@ -69,6 +69,7 @@ which most terminal programs share:
 | Ctrl+Delete                 | Delete to the end of this word or the next one         |
 | Ctrl+U                      | Delete to the start                                    |
 | Ctrl+K                      | Delete to the end                                      |
+| Ctrl+T                      | Swap the characters before and at the cursor, or the last two at the end |
 
 A character is a grapheme cluster, so the cursor steps over an emoji or an accented letter whole.
 A word is a run of letters and digits.

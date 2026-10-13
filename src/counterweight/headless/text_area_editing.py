@@ -296,6 +296,22 @@ def insert(inserted: str) -> AreaEdit:
     return edit
 
 
+def transpose(area: EditableArea) -> EditableArea:
+    """
+    Swap the cluster before the cursor with the one at it, and move the cursor past both,
+    or at the end of a line, swap its last two clusters, as Readline's `transpose-chars` does,
+    without moving a line break.
+    """
+    value = area.value
+    end = area.cursor if area.cursor == line_end_at(value, area.cursor) else next_cluster(value, area.cursor)
+    middle = previous_cluster(value, end)
+    start = previous_cluster(value, middle)
+    if middle <= line_start_at(value, area.cursor):
+        return area
+    swapped = value[:start] + value[middle:end] + value[start:middle] + value[end:]
+    return EditableArea(value=swapped, cursor=at_boundary(swapped, end), goal_column=None)
+
+
 def value_start(value: str, cursor: int) -> int:
     """The start of the value."""
     return 0
@@ -304,6 +320,16 @@ def value_start(value: str, cursor: int) -> int:
 def value_end(value: str, cursor: int) -> int:
     """The end of the value."""
     return len(value)
+
+
+def or_further(target: AreaTarget, further: AreaTarget) -> AreaTarget:
+    """`target`, or `further` if the cursor is already at `target`, so pressing the same key again goes on."""
+
+    def combined(value: str, cursor: int) -> int:
+        position = target(value, cursor)
+        return further(value, cursor) if position == cursor else position
+
+    return combined
 
 
 def move_vertically(width: int, neighbor: Callable[[str, Row, int], Row | None], edge: AreaTarget) -> AreaEdit:
@@ -348,10 +374,14 @@ def key_edits(width: int, enter_inserts_newline: bool) -> Mapping[str, AreaEdit]
         Key.ControlF: move_to(next_cluster),
         Key.Up: move_vertically(width, previous_row, value_start),
         Key.Down: move_vertically(width, next_row, value_end),
+        Key.ControlP: move_vertically(width, previous_row, value_start),
+        Key.ControlN: move_vertically(width, next_row, value_end),
         Key.Home: move_to(row_start(width)),
-        Key.ControlA: move_to(row_start(width)),
+        Key.ControlA: move_to(or_further(row_start(width), value_start)),
         Key.End: move_to(row_end(width)),
-        Key.ControlE: move_to(row_end(width)),
+        Key.ControlE: move_to(or_further(row_end(width), value_end)),
+        Key.ControlHome: move_to(value_start),
+        Key.ControlEnd: move_to(value_end),
         Key.ControlLeft: move_to(word_start),
         Key.ControlRight: move_to(word_end),
         Key.Backspace: delete_to(previous_cluster),
@@ -361,6 +391,7 @@ def key_edits(width: int, enter_inserts_newline: bool) -> Mapping[str, AreaEdit]
         Key.ControlDelete: delete_to(word_end),
         Key.ControlU: delete_to(row_start(width)),
         Key.ControlK: delete_to(row_text_end(width)),
+        Key.ControlT: transpose,
     }
 
 
