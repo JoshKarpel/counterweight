@@ -23,6 +23,11 @@ CURSOR_OFF = "\x1b[?25l"
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
 
+# https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md
+# Terminals that don't support mode 2026 ignore it, as they do any private mode they don't recognize.
+SYNCHRONIZED_OUTPUT_ON = "\x1b[?2026h"
+SYNCHRONIZED_OUTPUT_OFF = "\x1b[?2026l"
+
 # 1003 = any event
 # 1006 = sgr format
 SET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003h\x1b[?1006h"
@@ -116,6 +121,15 @@ def paint_to_instructions(runs: Iterable[Run]) -> str:
     if parts:
         parts.append(RESET_STYLE)
     return "".join(parts)
+
+
+def synchronized(instructions: str) -> str:
+    """
+    Terminal instructions that apply `instructions` as one update,
+    so the terminal shows the screen as it was before them until it has applied all of them,
+    instead of showing a partly drawn frame.
+    """
+    return f"{SYNCHRONIZED_OUTPUT_ON}{instructions}{SYNCHRONIZED_OUTPUT_OFF}"
 
 
 def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:

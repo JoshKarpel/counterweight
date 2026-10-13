@@ -63,6 +63,7 @@ from counterweight.output import (
     start_output_control,
     stop_mouse_tracking,
     stop_output_control,
+    synchronized,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
 from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
@@ -189,15 +190,17 @@ async def render_loop(
     check_purity: bool,
     clock: Clock,
 ) -> None:
+    # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
+    # instead of drawing only the cells that changed.
+    should_clear = True
+
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
+        nonlocal should_clear
+
         w, h = override or dimensions or shutil.get_terminal_size()
+        should_clear = True
 
-        cp = Paint.blank(w, h)
-
-        if not headless:
-            output_stream.write(CLEAR_SCREEN + paint_to_instructions(runs_of(cp)))
-
-        return screen(screen_element_style(w, h)), cp, w, h
+        return screen(screen_element_style(w, h)), Paint.blank(w, h), w, h
 
     @component
     def screen(style: Style) -> Div:
@@ -454,14 +457,16 @@ async def render_loop(
                             extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
                         )
 
-                    diff = diff_paint(new_paint, current_paint)
+                    diff = runs_of(new_paint) if should_clear else diff_paint(new_paint, current_paint)
                     current_paint = new_paint
                     logger.debug(
                         "Diffed new paint from current paint",
                         extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
                     )
 
-                    instructions = paint_to_instructions(diff)
+                    # The clear goes in the same synchronized update as the frame, so the blank screen never shows.
+                    instructions = synchronized((CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff))
+                    should_clear = False
                     logger.debug("Generated instructions from paint diff")
 
                     if not headless:
