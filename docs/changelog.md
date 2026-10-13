@@ -4,6 +4,30 @@
 
 ### Added
 
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
+  It takes `auto_focus`, to take focus on mount when nothing else has it;
+  `handle`, a `FocusHandle` a parent creates to focus a child it renders;
+  `is_focusable=False`, to disable it; and `in_focus_order=False`, to leave it out of Tab order.
+  The controls `FocusNext`, `FocusPrevious`, `FocusOn(handle)` and `ClearFocus` move focus,
+  and `FocusNext` and `FocusPrevious` take a `within` subtree to move only inside one element.
+  `counterweight.handlers` gains `tab_focus`, `focus_receiver_on_press`, `focus_on_press` and `clear_focus`,
+  which return them for Tab and for presses; nothing moves focus unless a handler does.
+  A `Receiver` carries the element's `focus_handle`, whether it `is_focused`, and its `subtree`.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added `counterweight.handlers`, with `on_click(action)`, which calls `action` when a press on its element
+  is released inside it, and `first` and `each`, which compose several handlers into the one an element takes.
+  A handler can return a tuple of controls, applied in order and skipping any `None`,
+  or `()` to stop an event with nothing more to do.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added `inset(n)`, `inset_x(n)` and `inset_y(n)`, which set all four, the left and right, or the top and bottom insets;
+  `inset_sides`, `margin_sides` and `pad_sides`, which set each side separately in the order of CSS's four-value shorthands;
+  and `auto` margins for every side and pair of sides, from `margin_auto` to `margin_right_auto`.
+  `position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height`
+  centers a box over its parent at its own size, as in CSS.
+
 - [#400](https://github.com/JoshKarpel/counterweight/issues/400)
   Added [`use_clock`](hooks/use_clock.md), which gives a component the time
   (the wall-clock time, and how long since the app started and since the component mounted)
@@ -41,6 +65,9 @@
 
 - Documented what [`use_ref`](hooks/use_ref.md) is for,
   and why a component shouldn't read or write a ref while rendering.
+
+- Documented how to make a component draggable and keep it inside its parent,
+  in [Draggable Components](cookbook/draggable-components.md).
 
 - Documented every style utility on the [utilities page](styles/utilities.md),
   grouped by family: what each constant sets, each function's signature,
@@ -106,6 +133,56 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** a key press goes to the focused element, or to the root component's element when nothing is focused,
+  then bubbles through its ancestors until a handler returns something other than `None`.
+  Previously every handler received every key press, whatever the others returned.
+  A component that handles keys below the root calls `use_focus`, with `auto_focus=True` to have keys from the start,
+  and puts its handler on the element it returns;
+  one that should act on keys wherever focus is moves its handler to the root component's element.
+  Tab has no built-in meaning: put `tab_focus` on the root for Tab navigation.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** a mouse event goes to one target, the element drawn on top at the pointer,
+  then bubbles through its ancestors until a handler returns something other than `None`.
+  A press runs from the first button going down to the last coming up,
+  and is captured by the element whose handler stops its first `MouseDown`:
+  its moves, and every button's presses and releases while it lasts, go to that element alone,
+  wherever the pointer is, and reach no handler if nothing stopped the first `MouseDown`.
+  Previously every element under the pointer's current or previous position received every mouse event,
+  so a drag that outran a render lost its element.
+  A handler that acts on a release or a drag returns `()` for the `MouseDown`,
+  or uses `on_click`, and one that acts on any mouse event returns `()` to keep its ancestors from acting on it too.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  `z` follows CSS's stacking contexts.
+  An element that sets `z`, `z(0)` included, paints with its descendants as one layer at its `z`,
+  and its descendants' `z` orders them only among each other,
+  while an element that sets no `z` leaves its descendants to be layered alongside it.
+  Previously every element was sorted by `z` in one flat order,
+  so an element with a higher `z` than its children painted over them,
+  and an element with a negative `z` painted beneath every element, its own parent included;
+  now children always paint over their parent, and a negative `z` paints beneath the rest of its stacking context
+  but over the element that forms it.
+  An app that sets `z` on nested elements may layer differently.
+  `STYLE_DEFAULTS.z` is `None`, for an element that sets no `z`, rather than `0`.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  An element's margin is painted only where its style sets `margin_color`,
+  and its `content_color` fills its border box rather than its margin box,
+  so a margin leaves whatever lies beneath it visible, as on the web.
+  Previously every margin painted black over what was beneath it,
+  so an absolutely positioned box with large margins blanked out its parent.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** `Div` and `Text` take one `on_input` handler in place of `on_key` and `on_mouse`.
+  It receives both key presses and mouse events, so one `match` case can handle `Down` and the scroll wheel alike,
+  and a `Receiver` describing the element, whose `rects` and `relative` locate a mouse event inside it,
+  and whose `is_target` tells the event's target from an ancestor it bubbled to.
+  A handler that takes only the event, or annotates it as `KeyPressed` or `MouseEvent`, fails to type-check;
+  annotate it as `InputEvent` and match on the event's class.
+  `Rects` lives in `counterweight.geometry`, and `counterweight.hooks` still exports it.
 
 - Cancelling the task running `app` raises `CancelledError` out of it once the terminal is restored,
   as asyncio expects, so `asyncio.timeout` and `wait_for` around an app can tell it was cancelled.
@@ -240,6 +317,23 @@
 
 ### Fixed
 
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Scrolling the mouse wheel up is reported as `MouseScrolledUp` and down as `MouseScrolledDown`,
+  as xterm defines them; previously the two were swapped.
+  The mouse wheel scrolled with Shift, Alt or Control held is reported as a scroll,
+  and the horizontal wheel as `MouseScrolledLeft` and `MouseScrolledRight`, new events.
+  Previously all of these were reported as presses of buttons 1 to 3,
+  so a sideways trackpad swipe clicked whatever was under the pointer.
+  Buttons 8 to 11, such as back and forward, are reported by their own numbers
+  rather than as buttons 1 to 4.
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Home, Page Up and Page Down are reported, as the new `Key.Home`, `Key.PageUp` and `Key.PageDown`,
+  and so is every key the `Key` enum names with Shift, Control, or both,
+  such as `Key.ShiftHome`, `Key.ControlPageDown` and `Key.ControlF5`,
+  with Shift and F1 to F12 reported as F13 to F24, as xterm does.
+  Previously only the arrow keys were reported with modifiers.
+  Control+Shift+Delete is reported as `Key.ControlShiftDelete` rather than `Key.ControlShiftInsert`.
+  **Breaking:** `Key.ControlSpace` is `"ctrl+space"`, like every other key, rather than `"ctrl-space"`.
 - [#392](https://github.com/JoshKarpel/counterweight/issues/392)
   Text is measured, wrapped and painted by grapheme cluster and its display width, as measured by
   [wcwidth](https://github.com/jquast/wcwidth), a new dependency,

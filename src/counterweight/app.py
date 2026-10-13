@@ -24,6 +24,10 @@ from counterweight.controls import (
     AdvanceClock,
     AnyControl,
     Bell,
+    ClearFocus,
+    FocusNext,
+    FocusOn,
+    FocusPrevious,
     Quit,
     Screenshot,
     Suspend,
@@ -38,6 +42,8 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
     StateSet,
@@ -59,6 +65,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
+from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
 from counterweight.shadow import until_due, update_shadow
 from counterweight.styles import Style
 
@@ -256,17 +263,36 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock()).tree
+        warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
+        shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+        routing = RoutingTable.of(shadow, layouts)
+        focused = routing.reconciled_focus(None, warmup.mounted)
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
             dirty.update(node.key for node in shadow.nodes)
 
         # The warmup started no effects, so the first painted frame has to re-run every component to start them.
+        # It re-runs them with the focus the warmup reconciled, too.
         rerun_everything()
 
-        def handle_control(control: AnyControl | None) -> None:
+        def refocus(key: NodeKey | None) -> None:
+            """
+            Focuses the node with `key`, or nothing if it's `None`,
+            and re-renders the mounted nodes that gain and lose focus, as a `use_state` setter would.
+            """
+            nonlocal focused
+
+            if key == focused:
+                return
+
+            for changed in (focused, key):
+                if changed is not None:
+                    event_queue.put_nowait(StateSet(key=changed))
+            focused = key
+
+        def handle_control(control: AnyControl) -> None:
             nonlocal should_render
 
             nonlocal should_quit
@@ -277,8 +303,6 @@ async def render_loop(
             nonlocal clock_offset
 
             match control:
-                case None:
-                    pass
                 case Quit():
                     should_quit = True
                 case Bell():
@@ -291,12 +315,21 @@ async def render_loop(
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+                case FocusNext(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=True))
+                case FocusPrevious(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=False))
+                case FocusOn(handle=handle):
+                    refocus(routing.focus_keys.get(handle, focused))
+                case ClearFocus():
+                    refocus(None)
                 case AdvanceClock(by=by):
                     clock_offset += by
                 case _ as unreachable:
                     assert_never(unreachable)
 
         mouse_position = Position(x=-1, y=-1)
+        press: Press | None = None
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):  # pragma: no branch
@@ -359,7 +392,16 @@ async def render_loop(
 
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
-                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity, instant)
+                    previous_layouts = layouts
+                    update = update_shadow(
+                        root_component,
+                        shadow,
+                        layouts,
+                        frozenset(dirty),
+                        check_purity,
+                        focused=focused,
+                        instant=instant,
+                    )
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
@@ -371,7 +413,36 @@ async def render_loop(
                     layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
                     logger.debug("Calculated layout")
 
-                    new_paint, border_healing_hints = paint_layout(layouts.in_paint_order, w, h)
+                    routing = RoutingTable.of(shadow, layouts)
+                    settled = routing.reconciled_focus(focused, update.mounted)
+
+                    # Re-render the components whose focus changed before painting,
+                    # so no frame shows focus where it was before the render moved it.
+                    if settled != focused:
+                        refocused = update_shadow(
+                            root_component,
+                            shadow,
+                            previous_layouts,
+                            frozenset(key for key in (focused, settled) if key is not None),
+                            check_purity,
+                            focused=settled,
+                            instant=instant,
+                        )
+                        previous_shadow, shadow = shadow, refocused.tree
+                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
+                        routing = RoutingTable.of(shadow, layouts)
+                        if routing.reconciled_focus(settled, refocused.mounted) != settled:
+                            raise UnsettledFocus(
+                                "Focus changed again after re-rendering the components that gained and lost it, "
+                                "so a component hid itself because it gained focus."
+                            )
+                        update = update.followed_by(refocused)
+                        focused = settled
+                        logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+
+                    new_paint, border_healing_hints = paint_layout(
+                        ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
+                    )
                     logger.debug("Generated new paint")
 
                     if do_heal_borders:
@@ -446,15 +517,20 @@ async def render_loop(
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed():
-                            for element, _ in reversed(layouts.in_paint_order):
-                                if element.on_key:
-                                    handle_control(element.on_key(event))
-                        case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            for element, resolved in reversed(layouts.in_paint_order):
-                                # Send mouse events if the current *or previous* position is in the border region
-                                if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
-                                    if element.on_mouse:
-                                        handle_control(element.on_mouse(event))
+                            for control in route_key(event, focused, routing):
+                                handle_control(control)
+                        case (
+                            MouseMoved()
+                            | MouseDown()
+                            | MouseUp()
+                            | MouseScrolledDown()
+                            | MouseScrolledUp()
+                            | MouseScrolledLeft()
+                            | MouseScrolledRight()
+                        ) as m:
+                            press, controls = route_mouse(m, press, focused, routing)
+                            for control in controls:
+                                handle_control(control)
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(

@@ -17,11 +17,12 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed
+from counterweight.events import AnyEvent, InputEvent, InputHandler, KeyPressed, Receiver
+from counterweight.focus import Subtree
 from counterweight.hooks import Setter, use_memo, use_ref, use_state
 from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
-from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
@@ -81,9 +82,18 @@ def content(node: ShadowNode) -> object:
 
 
 def press(node: ShadowNode, key: str) -> None:
-    on_key = node.element.on_key
-    assert on_key is not None
-    on_key(KeyPressed(key=key))
+    on_input = node.element.on_input
+    assert on_input is not None
+    on_input(
+        KeyPressed(key=key),
+        Receiver(
+            rects=INITIAL_RECTS,
+            is_target=True,
+            focus_handle=None,
+            is_focused=False,
+            subtree=Subtree(key=node.key),
+        ),
+    )
 
 
 # Which components run in a frame?
@@ -145,12 +155,12 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
     by_cpu = use_memo(lambda: sorted(processes, key=lambda process: process.cpu, reverse=True), deps=(processes,))
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         pids = [process.pid for process in by_cpu]
         set_selected_pid(pids[min(pids.index(selected_pid) + 1, len(pids) - 1)])
 
     return Div(
-        on_key=on_key,
+        on_input=on_input,
         children=[
             # The wrapping lambda is the mistake under test: a new object every render.
             process_row(
@@ -199,11 +209,12 @@ def key_log_mutating() -> Div:
     keys = use_ref(list[str]())
     count, set_count = use_state(0)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        assert isinstance(event, KeyPressed)
         keys.current.append(event.key)
         set_count(count + 1)
 
-    return Div(on_key=on_key, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=[key_list(keys.current)])
 
 
 @component(memo=True)
@@ -215,10 +226,11 @@ def key_tuple(keys: tuple[str, ...]) -> Text:
 def key_log_with_tuple() -> Div:
     keys, set_keys = use_state(tuple[str, ...]())
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        assert isinstance(event, KeyPressed)
         set_keys((*keys, event.key))
 
-    return Div(on_key=on_key, children=[key_tuple(keys)])
+    return Div(on_input=on_input, children=[key_tuple(keys)])
 
 
 @pytest.mark.parametrize("check_purity", [False, True], ids=["stale", "check-purity"])
@@ -259,7 +271,7 @@ def title_with_accent(text: str, accent: str) -> Text:
 def page(use_argument: bool) -> Div:
     count, set_count = use_state(0)
     child = title_with_accent("Processes", SETTINGS["accent"]) if use_argument else title("Processes")
-    return Div(on_key=lambda _: set_count(count + 1), children=[child, Text(content=str(count))])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=[child, Text(content=str(count))])
 
 
 @pytest.mark.parametrize(("use_argument", "is_stale"), [(False, True), (True, False)], ids=["hidden", "argument"])
@@ -307,7 +319,7 @@ def log_view(lines: tuple[str, ...], comparisons: list[str], keep: bool) -> Div:
         return tuple(Line(text=line.upper(), comparisons=comparisons) for line in lines)
 
     argument = use_memo(upper, deps=(lines,)) if keep else upper()
-    return Div(on_key=lambda _: set_count(count + 1), children=[line_list(argument)])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=[line_list(argument)])
 
 
 @pytest.mark.parametrize(("keep", "expected"), [(False, 3), (True, 0)], ids=["rebuilt", "kept"])
@@ -357,15 +369,15 @@ def test_a_dependency_missing_from_use_memo_keeps_its_value_stale(
 @component
 def counter_capturing() -> Text:
     count, set_count = use_state(0)
-    on_key = use_memo(lambda: lambda _: set_count(count + 1), deps=())
-    return Text(content=str(count), on_key=on_key)
+    on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
+    return Text(content=str(count), on_input=on_input)
 
 
 @component
 def counter() -> Text:
     count, set_count = use_state(0)
-    on_key = use_memo(lambda: lambda _: set_count(lambda count: count + 1), deps=())
-    return Text(content=str(count), on_key=on_key)
+    on_input = use_memo(lambda: lambda event, _: set_count(lambda count: count + 1), deps=())
+    return Text(content=str(count), on_input=on_input)
 
 
 def test_a_cached_handler_that_captured_state_keeps_acting_on_it() -> None:
@@ -401,11 +413,16 @@ def test_a_cached_handler_with_a_functional_update_counts_every_press() -> None:
 
 @component
 def search(on_submit: Callable[[str], None], log: list[str]) -> Text:
-    def submit() -> Callable[[KeyPressed], None]:
+    def submit() -> InputHandler:
         log.append("compute")
-        return lambda event: on_submit(event.key)
 
-    return Text(content="", on_key=use_memo(submit, deps=(on_submit,)))
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            assert isinstance(event, KeyPressed)
+            on_submit(event.key)
+
+        return on_input
+
+    return Text(content="", on_input=use_memo(submit, deps=(on_submit,)))
 
 
 @component

@@ -11,9 +11,10 @@ from counterweight.clock import Instant, frozen_clock, system_clock, tick_index,
 from counterweight.components import component
 from counterweight.controls import AdvanceClock, Quit, Screenshot
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import KeyPressed, Receiver
+from counterweight.focus import Subtree
 from counterweight.hooks import use_clock, use_state
-from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
 from counterweight.output import Frame
 from counterweight.shadow import ShadowUpdate, until_due, update_shadow
 from tests.rendering import state_set_keys, state_sets
@@ -89,7 +90,7 @@ def clock_with_counter() -> Div:
     count, set_count = use_state(0)
     tick = use_clock(timedelta(minutes=1))
     return Div(
-        on_key=lambda _: set_count(count + 1),
+        on_input=lambda event, receiver: set_count(count + 1),
         children=[Text(content=f"{count} {tick.now:%H:%M:%S}")],
     )
 
@@ -98,9 +99,18 @@ def test_rerunning_for_another_reason_within_a_tick_keeps_the_reading() -> None:
     root = clock_with_counter()
     with state_sets() as queue:
         first = update_shadow(root, None, NO_LAYOUTS, check_purity=True, instant=MOUNTED)
-        on_key = first.tree.root.element.on_key
-        assert on_key is not None
-        on_key(KeyPressed(key="a"))
+        on_input = first.tree.root.element.on_input
+        assert on_input is not None
+        on_input(
+            KeyPressed(key="a"),
+            Receiver(
+                rects=INITIAL_RECTS,
+                is_target=True,
+                focus_handle=None,
+                is_focused=False,
+                subtree=Subtree(key=first.tree.root.key),
+            ),
+        )
 
         update = update_shadow(
             root,

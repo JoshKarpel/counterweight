@@ -14,7 +14,6 @@ from counterweight.styles.styles import (
     StyleFragment,
     merge,
     resolve_cell_style,
-    resolve_style,
 )
 from counterweight.styles.utilities import (
     border,
@@ -180,8 +179,8 @@ EXPLICIT_DEFAULT_CELL_STYLE = CellStyle(
 )
 
 # Each field, a style that sets it to a non-default value, and one that sets it to its default.
+# `z` isn't here, since leaving it unset forms no stacking context, which no value it can be set to does.
 STYLE_FIELD_CASES: tuple[tuple[str, Style, Style], ...] = (
-    ("z", Style(z=5), Style(z=STYLE_DEFAULTS.z)),
     ("margin_color", Style(margin_color=RED), Style(margin_color=STYLE_DEFAULTS.margin_color)),
     ("padding_color", Style(padding_color=GREEN), Style(padding_color=STYLE_DEFAULTS.padding_color)),
     ("content_color", Style(content_color=BLUE), Style(content_color=STYLE_DEFAULTS.content_color)),
@@ -209,7 +208,7 @@ def init_field_names(cls: type) -> set[str]:
 
 
 def test_style_cases_cover_every_field() -> None:
-    assert {name for name, _, _ in STYLE_FIELD_CASES} == init_field_names(Style) - {"layout"}
+    assert {name for name, _, _ in STYLE_FIELD_CASES} == init_field_names(Style) - {"layout", "z"}
 
 
 def test_cell_style_cases_cover_every_field() -> None:
@@ -218,12 +217,28 @@ def test_cell_style_cases_cover_every_field() -> None:
 
 @pytest.mark.parametrize(("name", "non_default", "explicit_default"), STYLE_FIELD_CASES)
 def test_style_explicit_default_overrides_non_default(name: str, non_default: Style, explicit_default: Style) -> None:
-    assert getattr(resolve_style(non_default | explicit_default), name) == getattr(STYLE_DEFAULTS, name)
+    assert getattr((non_default | explicit_default).resolved, name) == getattr(STYLE_DEFAULTS, name)
 
 
 @pytest.mark.parametrize(("name", "non_default", "explicit_default"), STYLE_FIELD_CASES)
 def test_style_hash_depends_on_field(name: str, non_default: Style, explicit_default: Style) -> None:
     assert hash(non_default) != hash(Style())
+
+
+def test_style_z_set_to_zero_overrides_and_stays_set() -> None:
+    assert (Style(z=5) | Style(z=0)).resolved.z == 0
+
+
+def test_style_unset_z_keeps_left_value() -> None:
+    assert (Style(z=-3) | Style()).resolved.z == -3
+
+
+def test_style_unset_z_resolves_to_none() -> None:
+    assert Style().resolved.z is None
+
+
+def test_style_hash_depends_on_z() -> None:
+    assert hash(Style(z=0)) != hash(Style())
 
 
 def test_style_hash_depends_on_layout() -> None:
@@ -232,9 +247,9 @@ def test_style_hash_depends_on_layout() -> None:
 
 @pytest.mark.parametrize(("name", "non_default", "explicit_default"), STYLE_FIELD_CASES)
 def test_style_unset_field_keeps_left_value(name: str, non_default: Style, explicit_default: Style) -> None:
-    resolved = getattr(resolve_style(non_default | Style()), name)
+    resolved = getattr((non_default | Style()).resolved, name)
 
-    assert resolved == getattr(resolve_style(non_default), name)
+    assert resolved == getattr(non_default.resolved, name)
     assert resolved != getattr(STYLE_DEFAULTS, name)
 
 
@@ -255,8 +270,14 @@ def test_cell_style_unset_field_keeps_left_value(
     assert resolved != getattr(CELL_STYLE_DEFAULTS, name)
 
 
+def test_style_is_resolved_once() -> None:
+    style = Style(z=2, text_wrap="balance")
+
+    assert style.resolved is style.resolved
+
+
 def test_resolving_empty_style_gives_defaults() -> None:
-    assert resolve_style(Style()) == STYLE_DEFAULTS
+    assert Style().resolved == STYLE_DEFAULTS
 
 
 def test_resolving_empty_cell_style_gives_defaults() -> None:

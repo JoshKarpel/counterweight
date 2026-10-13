@@ -492,6 +492,24 @@ for v_name, v_insets in VERTICAL_INSETS.items():
 
 generated_lines.append("")
 
+# --- Auto margin utilities ---
+
+# An auto margin takes the free space on its side, so a box with auto margins on opposite sides centers between them.
+MARGIN_AUTO_TARGETS = {
+    "": ["top", "bottom", "left", "right"],
+    "_x": ["left", "right"],
+    "_y": ["top", "bottom"],
+    "_top": ["top"],
+    "_bottom": ["bottom"],
+    "_left": ["left"],
+    "_right": ["right"],
+}
+for target_suffix, sides in MARGIN_AUTO_TARGETS.items():
+    margins = ", ".join(f"margin_{side}=waxy.Auto()" for side in sides)
+    generated_lines.append(f"margin{target_suffix}_auto = Style(layout=waxy.Style({margins}))")
+
+generated_lines.append("")
+
 # --- Text justify ---
 
 for j in get_args(TextJustify):

@@ -32,7 +32,7 @@ and over Ratatui to have the framework own the state, the event loop and the lay
 | Event loop | Counterweight's | Textual's | Ink's | Yours |
 | Screen | Full screen (inline: [#393](https://github.com/JoshKarpel/counterweight/issues/393)) | Full screen or inline | Inline or full screen | Full screen, inline or a fixed area |
 | Mouse | Yes | Yes | No | Through the backend's events |
-| Focus | No ([#390](https://github.com/JoshKarpel/counterweight/issues/390)) | Yes | Yes | No |
+| Focus | Yes | Yes | Yes | No |
 | Text input | No ([#391](https://github.com/JoshKarpel/counterweight/issues/391)) | Built in | Third-party packages | Third-party crates |
 | Scrolling | No ([#388](https://github.com/JoshKarpel/counterweight/issues/388), [#389](https://github.com/JoshKarpel/counterweight/issues/389)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
 | Wide characters | No ([#392](https://github.com/JoshKarpel/counterweight/issues/392)) | Yes | Yes | Yes |
@@ -95,7 +95,7 @@ Beyond the language:
   a Counterweight effect is cancelled when its dependencies change or its component unmounts,
   so cleanup goes in a `try`/`finally` block (see [`use_effect`](hooks/use_effect.md)).
 - Counterweight lays out with grid as well as flexbox.
-- Counterweight has mouse input, through `on_mouse` handlers and the
+- Counterweight has mouse input, through `on_input` handlers and the
   [`use_mouse`](hooks/use_mouse.md) and [`use_hovered`](hooks/use_hovered.md) hooks.
   Ink has none.
 
@@ -132,16 +132,14 @@ or when frame time is the constraint: Counterweight renders in Python, and Ratat
 These are the gaps you're most likely to hit, with what to do instead:
 
 - **Text input.** There's no text input element.
-  Build one from a `KeyPressed` handler that edits a string in `use_state`.
+  Build one from a component that calls [`use_focus`](hooks/use_focus.md)
+  and edits a string in `use_state` from its handler's `KeyPressed` cases.
   Tracked in [#391](https://github.com/JoshKarpel/counterweight/issues/391).
 - **Scrolling and clipping.** There are no scroll containers,
   and content that overflows its container isn't clipped:
   it paints over the container's border and whatever lies beyond it.
   Keep an offset in `use_state` and render only the slice of your data that fits.
   Tracked in [#388](https://github.com/JoshKarpel/counterweight/issues/388) (clipping) and [#389](https://github.com/JoshKarpel/counterweight/issues/389) (scroll containers).
-- **Focus.** Every element's `on_key` handler receives every key press.
-  Keep which item is focused in state, and have the other handlers ignore keys.
-  Tracked in [#390](https://github.com/JoshKarpel/counterweight/issues/390).
 - **Wide characters.** Counterweight counts every character as one cell,
   so CJK characters and most emoji, which terminals draw two cells wide, push the rest of their line out of alignment.
   Tracked in [#392](https://github.com/JoshKarpel/counterweight/issues/392).

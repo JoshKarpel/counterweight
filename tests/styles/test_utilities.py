@@ -299,3 +299,53 @@ def test_int_track_stands_for_length() -> None:
 
 def test_int_grid_line_stands_for_grid_line() -> None:
     assert grid_row(2, span(3)) == grid_row(waxy.GridLine(2), waxy.GridSpan(3))
+
+
+AUTO = waxy.Auto()
+
+
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (inset(2), {f"inset_{side}": waxy.Length(2) for side in ("top", "right", "bottom", "left")}),
+        (inset_x(3), {"inset_left": waxy.Length(3), "inset_right": waxy.Length(3)}),
+        (inset_y(4), {"inset_top": waxy.Length(4), "inset_bottom": waxy.Length(4)}),
+        (
+            inset_sides(1, 2, 3, -4),
+            {
+                "inset_top": waxy.Length(1),
+                "inset_right": waxy.Length(2),
+                "inset_bottom": waxy.Length(3),
+                "inset_left": waxy.Length(-4),
+            },
+        ),
+        (
+            margin_sides(5, 6, -7, 8),
+            {
+                "margin_top": waxy.Length(5),
+                "margin_right": waxy.Length(6),
+                "margin_bottom": waxy.Length(-7),
+                "margin_left": waxy.Length(8),
+            },
+        ),
+        (
+            pad_sides(9, 10, 11, 12),
+            {
+                "padding_top": waxy.Length(9),
+                "padding_right": waxy.Length(10),
+                "padding_bottom": waxy.Length(11),
+                "padding_left": waxy.Length(12),
+            },
+        ),
+        (margin_auto, {f"margin_{side}": AUTO for side in ("top", "right", "bottom", "left")}),
+        (margin_x_auto, {"margin_left": AUTO, "margin_right": AUTO}),
+        (margin_y_auto, {"margin_top": AUTO, "margin_bottom": AUTO}),
+        (margin_top_auto, {"margin_top": AUTO}),
+        (margin_bottom_auto, {"margin_bottom": AUTO}),
+        (margin_left_auto, {"margin_left": AUTO}),
+        (margin_right_auto, {"margin_right": AUTO}),
+    ],
+)
+def test_side_utility_sets_only_its_own_sides(utility: Style, expected: dict[str, object]) -> None:
+    assert utility.layout.fields_set == expected.keys()
+    assert {field: getattr(utility.layout, field) for field in expected} == expected

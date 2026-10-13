@@ -13,8 +13,8 @@ from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
-from counterweight.hooks import use_clock, use_state
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.hooks import use_clock, use_focus, use_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,10 +29,11 @@ class LocalDashboard:
     def root(self, key_press_times: list[int]) -> Div:
         """A root component whose key handler only appends the time to `key_press_times`; the counter steps itself."""
 
-        def on_key(_: KeyPressed) -> None:
-            key_press_times.append(perf_counter_ns())
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            if isinstance(event, KeyPressed):
+                key_press_times.append(perf_counter_ns())
 
-        return replace(layout(key_frame_counter(), metric_card), on_key=on_key)
+        return replace(layout(key_frame_counter(), metric_card), on_input=on_input)
 
     @component
     def live_root(self, frame_interval: timedelta) -> Div:
@@ -42,12 +43,15 @@ class LocalDashboard:
 
 @component
 def key_frame_counter() -> Text:
+    # Focused so keys reach it, and returning None so each key still bubbles to the root that times it.
+    use_focus(auto_focus=True)
     tick, set_tick = use_state(0)
 
-    def on_key(_: KeyPressed) -> None:
-        set_tick(lambda previous: previous + 1)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        if isinstance(event, KeyPressed):
+            set_tick(lambda previous: previous + 1)
 
-    return replace(frame_text(tick), on_key=on_key)
+    return replace(frame_text(tick), on_input=on_input)
 
 
 @component

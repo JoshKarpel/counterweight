@@ -14,7 +14,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit, Screenshot, Suspend
 from counterweight.elements import Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse, use_effect, use_mouse
 from counterweight.output import (
@@ -57,7 +57,15 @@ def hi() -> Text:
 @component
 def interrupt_on_key() -> Text:
     """Sends an interrupt for each key pressed, as ctrl+c would."""
-    return Text(content="hi", style=text_black, on_key=lambda event: raise_signal(SIGINT))
+    return Text(content="hi", style=text_black, on_input=lambda event, _: raise_signal(SIGINT))
+
+
+def quit_on_q(event: InputEvent, _: Receiver) -> Quit | None:
+    match event:
+        case KeyPressed(key="q"):
+            return Quit()
+        case _:
+            return None
 
 
 @pytest.fixture
@@ -116,13 +124,14 @@ async def test_suspend_hands_the_terminal_back_while_its_handler_runs(terminal: 
 async def test_app_reads_keys_from_the_terminal(terminal: Terminal) -> None:
     pressed: list[KeyPressed] = []
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        assert isinstance(event, KeyPressed)
         pressed.append(event)
         return Quit() if event.key == "q" else None
 
     @component
     def root() -> Text:
-        return Text(content="hi", on_key=on_key)
+        return Text(content="hi", on_input=on_input)
 
     os.write(terminal.keyboard, b"aq")
 
@@ -173,7 +182,7 @@ async def test_mouse_input_from_the_terminal_reaches_use_mouse(
         seen.append(mouse)
         if mouse.absolute == expected.absolute:
             os.write(terminal.keyboard, b"q")
-        return Text(content="", on_key=lambda event: Quit() if event.key == "q" else None)
+        return Text(content="", on_input=quit_on_q)
 
     await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(9, 6)), TIMEOUT)
 
@@ -203,7 +212,7 @@ async def test_a_resize_signal_redraws_the_screen(
             os.write(terminal.keyboard, b"q")
 
         use_effect(resize_then_quit, deps=())
-        return Text(content="hi", style=text_black, on_key=lambda event: Quit() if event.key == "q" else None)
+        return Text(content="hi", style=text_black, on_input=quit_on_q)
 
     await wait_for(
         app(root(), output_stream=output, input_stream=terminal.stream, dimensions=(3, 1), autopilot=autopilot),
@@ -216,13 +225,14 @@ async def test_a_resize_signal_redraws_the_screen(
 async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> None:
     pressed: list[KeyPressed] = []
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        assert isinstance(event, KeyPressed)
         pressed.append(event)
         return Quit()
 
     @component
     def root() -> Text:
-        return Text(content="hi", on_key=on_key)
+        return Text(content="hi", on_input=on_input)
 
     def type_quit_while_suspended() -> None:
         os.write(terminal.keyboard, b"q")
@@ -284,13 +294,13 @@ async def test_an_interrupt_quits_the_app_and_hands_the_terminal_back(
 async def test_a_second_interrupt_reaches_the_handler_the_app_replaced(
     terminal: Terminal, replaced_interrupts: list[int]
 ) -> None:
-    def interrupt_twice(event: KeyPressed) -> None:
+    def interrupt_twice(event: InputEvent, _: Receiver) -> None:
         raise_signal(SIGINT)
         raise_signal(SIGINT)
 
     @component
     def root() -> Text:
-        return Text(content="hi", on_key=interrupt_twice)
+        return Text(content="hi", on_input=interrupt_twice)
 
     os.write(terminal.keyboard, b"i")
 

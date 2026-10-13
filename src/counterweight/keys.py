@@ -13,6 +13,8 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
 )
@@ -60,9 +62,12 @@ class Key(str, Enum):
     Right = "right"
     Up = "up"
     Down = "down"
+    Home = "home"
     End = "end"
     Insert = "insert"
     Delete = "delete"
+    PageUp = "pageup"
+    PageDown = "pagedown"
 
     ControlLeft = "ctrl+left"
     ControlRight = "ctrl+right"
@@ -151,7 +156,7 @@ class Key(str, Enum):
     ControlF23 = "ctrl+f23"
     ControlF24 = "ctrl+f24"
 
-    ControlSpace = "ctrl-space"
+    ControlSpace = "ctrl+space"
     Tab = "tab"
     Space = " "
     Enter = "enter"
@@ -210,30 +215,139 @@ left_bracket = match_item(b"[")
 
 @generate
 def escape_sequence() -> Generator[Parser, AnyEvent, AnyEvent]:
-    keys = yield esc >> (f1to4 | (left_bracket >> (mouse | two_params | zero_or_one_params)))
+    keys = yield esc >> (ss3 | (left_bracket >> (mouse | two_params | zero_or_one_params)))
 
     return keys
 
 
-F1TO4 = {
+# The keys whose sequences end in a letter: `CSI <letter>`, `SS3 <letter>`, or `CSI 1 ; <modifier> <letter>`.
+LETTER_KEYS: Mapping[bytes, Key] = {
+    b"A": Key.Up,
+    b"B": Key.Down,
+    b"C": Key.Right,
+    b"D": Key.Left,
+    b"H": Key.Home,
+    b"F": Key.End,
     b"P": Key.F1,
     b"Q": Key.F2,
     b"R": Key.F3,
     b"S": Key.F4,
 }
 
-O_PQRS = match_item(b"O") >> char_from(b"PQRS")
+# The keys whose sequences are `CSI <number> ~` or `CSI <number> ; <modifier> ~`.
+# Home and End have two numbers each, from the VT220 and rxvt, and F1 through F4 have numbers besides their letters.
+NUMBERED_KEYS: Mapping[bytes, Key] = {
+    b"1": Key.Home,
+    b"2": Key.Insert,
+    b"3": Key.Delete,
+    b"4": Key.End,
+    b"5": Key.PageUp,
+    b"6": Key.PageDown,
+    b"7": Key.Home,
+    b"8": Key.End,
+    b"11": Key.F1,
+    b"12": Key.F2,
+    b"13": Key.F3,
+    b"14": Key.F4,
+    b"15": Key.F5,
+    b"17": Key.F6,
+    b"18": Key.F7,
+    b"19": Key.F8,
+    b"20": Key.F9,
+    b"21": Key.F10,
+    b"23": Key.F11,
+    b"24": Key.F12,
+    b"25": Key.F13,
+    b"26": Key.F14,
+    b"28": Key.F15,
+    b"29": Key.F16,
+    b"31": Key.F17,
+    b"32": Key.F18,
+    b"33": Key.F19,
+    b"34": Key.F20,
+}
+
+FUNCTION_KEYS = [Key(f"f{number}") for number in range(1, 25)]
+
+# xterm's modifier parameter is 1 plus the sum of Shift (1), Alt (2) and Control (4).
+SHIFT = b"2"
+ALT = b"3"
+CONTROL = b"5"
+CONTROL_SHIFT = b"6"
+
+
+def modified(key: Key, modifier: bytes) -> Key | None:
+    """
+    The key xterm reports for `key` pressed with `modifier`, or `None` if `Key` has no member for it.
+
+    xterm reports Shift with F1 through F12 as F13 through F24.
+    """
+    if key in FUNCTION_KEYS:
+        number = FUNCTION_KEYS.index(key) + 1
+        if number > 12:
+            return None
+        match modifier:
+            case b"2":
+                return FUNCTION_KEYS[number + 11]
+            case b"5":
+                return Key(f"ctrl+{key.value}")
+            case b"6":
+                return Key(f"ctrl+{FUNCTION_KEYS[number + 11].value}")
+            case _:
+                return None
+
+    match modifier:
+        case b"2":
+            return Key(f"shift+{key.value}")
+        case b"5":
+            return Key(f"ctrl+{key.value}")
+        case b"6":
+            return Key(f"ctrl+shift+{key.value}")
+        case b"3" if key is Key.Delete:
+            return Key.AltDelete
+        case _:
+            return None
+
+
+def csi_lookup() -> dict[tuple[bytes, ...], Key]:
+    """Every `CSI` key sequence's parameters and final byte, and the key it reports."""
+    lookup: dict[tuple[bytes, ...], Key] = {(b"", b"Z"): Key.BackTab}
+    for modifier in (None, SHIFT, ALT, CONTROL, CONTROL_SHIFT):
+        for final, key in LETTER_KEYS.items():
+            if modifier is None:
+                # Unmodified F1 through F4 are only ever `SS3 <letter>`.
+                if key not in FUNCTION_KEYS:
+                    lookup[(b"", final)] = key
+            elif (modified_key := modified(key, modifier)) is not None:
+                lookup[(b"1", modifier, final)] = modified_key
+        for number, key in NUMBERED_KEYS.items():
+            if modifier is None:
+                lookup[(number, b"~")] = key
+            elif (modified_key := modified(key, modifier)) is not None:
+                lookup[(number, modifier, b"~")] = modified_key
+    return lookup
+
+
+ss3_prefix = match_item(b"O")
 
 
 @generate
-def f1to4() -> Generator[Parser, bytes, AnyEvent]:
-    final = yield O_PQRS
+def ss3() -> Generator[Parser, bytes, AnyEvent]:
+    final = yield ss3_prefix >> char_from(b"".join(LETTER_KEYS))
 
-    return KeyPressed(key=F1TO4[final])
+    return KeyPressed(key=LETTER_KEYS[final])
 
 
 left_angle = match_item(b"<")
 mM = char_from(b"mM")
+
+# The wheel event for each value of the low two bits of an SGR code with bit 64 set.
+WHEEL_EVENTS: tuple[type[MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight], ...] = (
+    MouseScrolledUp,
+    MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+)
 
 
 @generate
@@ -254,14 +368,16 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
     y = int(y_) - 1
 
     pos = Position(x=x, y=y)
-    moving = button_info & 32
-    button = (button_info & 0b11) + 1
+    # Bits 4, 8, and 16 report Shift, Meta, and Control, which no event carries yet,
+    # so every check below masks them off rather than comparing the whole code.
+    low_bits = button_info & 0b11
 
-    if button_info == 65:
-        return MouseScrolledUp(absolute=pos)
-    elif button_info == 64:
-        return MouseScrolledDown(absolute=pos)
-    elif moving:
+    if button_info & 64:
+        return WHEEL_EVENTS[low_bits](absolute=pos)
+
+    # Bit 128 marks buttons 8 through 11 (back, forward, ...), numbered by the same low bits as buttons 1 through 4.
+    button = low_bits + (8 if button_info & 128 else 1)
+    if button_info & 32:
         return MouseMoved(absolute=pos, button=button if button != 4 else None)  # raw 3 is released, becomes 4 above
     elif m == b"m":
         return MouseUp(absolute=pos, button=button)
@@ -269,58 +385,7 @@ def mouse() -> Generator[Parser, bytes, AnyEvent]:
         return MouseDown(absolute=pos, button=button)
 
 
-CSI_LOOKUP: Mapping[tuple[bytes, ...], str] = {
-    # 0 params
-    (b"", b"A"): Key.Up,
-    (b"", b"B"): Key.Down,
-    (b"", b"C"): Key.Right,
-    (b"", b"D"): Key.Left,
-    (b"", b"F"): Key.End,
-    (b"", b"Z"): Key.BackTab,
-    # 1 param
-    (b"2", b"~"): Key.Insert,
-    (b"3", b"~"): Key.Delete,
-    (b"11", b"~"): Key.F1,
-    (b"12", b"~"): Key.F2,
-    (b"13", b"~"): Key.F3,
-    (b"14", b"~"): Key.F4,
-    (b"15", b"~"): Key.F5,
-    # skip 16
-    (b"17", b"~"): Key.F6,
-    (b"18", b"~"): Key.F7,
-    (b"19", b"~"): Key.F8,
-    (b"20", b"~"): Key.F9,
-    (b"21", b"~"): Key.F10,
-    # skip 22
-    (b"23", b"~"): Key.F11,
-    (b"24", b"~"): Key.F12,
-    (b"25", b"~"): Key.F13,
-    (b"26", b"~"): Key.F14,
-    # skip 27
-    (b"28", b"~"): Key.F15,
-    (b"29", b"~"): Key.F16,
-    # skip 30
-    (b"31", b"~"): Key.F17,
-    (b"32", b"~"): Key.F18,
-    (b"33", b"~"): Key.F19,
-    (b"34", b"~"): Key.F20,
-    # 2 params
-    (b"1", b"2", b"A"): Key.ShiftUp,
-    (b"1", b"2", b"B"): Key.ShiftDown,
-    (b"1", b"2", b"C"): Key.ShiftRight,
-    (b"1", b"2", b"D"): Key.ShiftLeft,
-    (b"1", b"5", b"A"): Key.ControlUp,
-    (b"1", b"5", b"B"): Key.ControlDown,
-    (b"1", b"5", b"C"): Key.ControlRight,
-    (b"1", b"5", b"D"): Key.ControlLeft,
-    (b"1", b"6", b"A"): Key.ControlShiftUp,
-    (b"1", b"6", b"B"): Key.ControlShiftDown,
-    (b"1", b"6", b"C"): Key.ControlShiftRight,
-    (b"1", b"6", b"D"): Key.ControlShiftLeft,
-    (b"3", b"3", b"~"): Key.AltDelete,
-    (b"3", b"5", b"~"): Key.ControlDelete,
-    (b"3", b"6", b"~"): Key.ControlShiftInsert,
-}
+CSI_LOOKUP: Mapping[tuple[bytes, ...], Key] = csi_lookup()
 
 final_csi_char = char_from(b"".join(sorted(set(key[-1] for key in CSI_LOOKUP))))
 semicolon = match_item(b";")

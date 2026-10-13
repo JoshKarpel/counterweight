@@ -3,7 +3,7 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -28,13 +28,13 @@ def metric_card(label: str, value: str) -> Div:
 def dashboard() -> Div:
     note, set_note = use_state("")
 
-    def on_key(event: KeyPressed) -> None:
-        if len(event.key) == 1:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        if isinstance(event, KeyPressed) and len(event.key) == 1:
             set_note(note + event.key)
 
     return Div(
         style=col,
-        on_key=on_key,
+        on_input=on_input,
         children=[
             Text(content=f"Note: {note}"),
             Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),

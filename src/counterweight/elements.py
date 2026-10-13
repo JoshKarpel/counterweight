@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Callable, Sequence, Union
+from typing import Sequence, Union
 
 from counterweight._utils import flyweight
-from counterweight.controls import AnyControl
-from counterweight.events import KeyPressed, MouseEvent
+from counterweight.events import InputHandler
 from counterweight.graphemes import grapheme_width, graphemes, visible
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
@@ -18,8 +17,7 @@ _DEFAULT_STYLE = Style()
 class Div:
     style: Style = _DEFAULT_STYLE
     children: Sequence[Component | AnyElement] = ()
-    on_key: Callable[[KeyPressed], AnyControl | None] | None = None
-    on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    on_input: InputHandler | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -61,8 +59,7 @@ def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple
 class Text:
     content: str | Sequence[Chunk]
     style: Style = _DEFAULT_STYLE
-    on_key: Callable[[KeyPressed], AnyControl | None] | None = None
-    on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    on_input: InputHandler | None = None
 
     @property
     def children(self) -> tuple[Component | AnyElement, ...]:

@@ -8,7 +8,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Screenshot
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -40,16 +40,17 @@ class PieceCharacter(Enum):
 
 @component
 def root() -> Div:
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        if event.key == Key.Enter:
-            return Screenshot.to_file(Path("chess.svg"))
-        else:
-            return None
+    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        match event:
+            case KeyPressed(key=Key.Enter):
+                return Screenshot.to_file(Path("chess.svg"))
+            case _:
+                return None
 
     return Div(
         style=row | align_self_stretch | align_children_center,
         children=[board()],
-        on_key=on_key,
+        on_input=on_input,
     )
 
 

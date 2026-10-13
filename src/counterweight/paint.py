@@ -11,8 +11,8 @@ from xml.etree.ElementTree import Element, SubElement
 
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
-from counterweight.geometry import Position, Region
-from counterweight.layout import ResolvedLayout, cells_width, wrap_cells
+from counterweight.geometry import Position, Rects, Region
+from counterweight.layout import cells_width, wrap_cells
 from counterweight.styles.styles import (
     UNSET,
     BorderKind,
@@ -25,7 +25,6 @@ from counterweight.styles.styles import (
     TextJustify,
     TextWrap,
     resolve_cell_style,
-    resolve_style,
 )
 
 logger = logging.getLogger(__name__)
@@ -188,19 +187,15 @@ Run = tuple[int, int, list[Cell]]  # cells to draw left to right from (x, y)
 
 
 def paint_layout(
-    elements: Iterable[tuple[AnyElement, ResolvedLayout]],
+    elements: Iterable[tuple[AnyElement, Rects]],
     width: int,
     height: int,
 ) -> tuple[Paint, BorderHealingHints]:
-    styled = sorted(
-        ((element, resolve_style(element.style), resolved) for element, resolved in elements),
-        # Stable, so elements with the same z keep their paint order.
-        key=lambda esr: esr[1].z,
-    )
+    """Paint `elements` in the order given, which is paint order, so later elements are drawn over earlier ones."""
     paint = Paint.blank(width, height)
     hints: BorderHealingHints = {}
-    for element, style, resolved in styled:
-        hints.update(paint_element(paint, element, style, resolved))
+    for element, resolved in elements:
+        hints.update(paint_element(paint, element, element.style.resolved, resolved))
     return paint, hints
 
 
@@ -239,24 +234,27 @@ def runs_of(paint: Paint) -> list[Run]:
 
 
 def paint_element(
-    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: ResolvedLayout
+    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: Rects
 ) -> tuple[tuple[Position, JoinedBorderParts], ...]:
     """
     Paint one element onto `paint`, returning its border healing hints.
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
-    An element with none of them and no `content_color` of its own paints nothing, not even its background,
-    so an undecorated container laid over other elements leaves them visible.
+    The background fills the border box, and the margin is painted only where the element's own style
+    sets `margin_color`, so a margin leaves whatever lies beneath it visible, as on the web.
+    An element with no border, padding, text, `margin_color` or `content_color` paints nothing,
+    not even its background, so an undecorated container laid over other elements leaves them visible.
     """
     border, hints = border_fills(
         style.border_kind, style.border_style, style.border_contract, resolved.border, resolved.padding
     )
-    fills = (
+    margin = (
         edge_fills(resolved.margin, resolved.border, style.margin_color)
-        + border
-        + edge_fills(resolved.padding, resolved.content, style.padding_color)
+        if element.style.margin_color is not UNSET
+        else ()
     )
+    fills = margin + border + edge_fills(resolved.padding, resolved.content, style.padding_color)
 
     match element:
         case Div():
@@ -272,7 +270,7 @@ def paint_element(
     if not fills and not lines and element.style.content_color is UNSET:
         return hints
 
-    paint.fill(resolved.margin, Cell.blank(color=style.content_color))
+    paint.fill(resolved.border, Cell.blank(color=style.content_color))
     for region, cell in fills:
         paint.fill(region, cell)
     for y, line in enumerate(lines, start=resolved.content.top):

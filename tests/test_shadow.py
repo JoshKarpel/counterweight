@@ -17,10 +17,10 @@ from counterweight._context_vars import (
 from counterweight._utils import cancel_tasks, forever
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.hooks import Mouse, Setter, use_clock, use_effect, use_memo, use_mouse, use_ref, use_state
+from counterweight.hooks import Mouse, Setter, use_clock, use_effect, use_focus, use_memo, use_mouse, use_ref, use_state
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import DuplicateKey, ShadowNode, update_shadow
+from counterweight.shadow import DuplicateKey, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from tests.rendering import effect_tasks, render, state_sets
 
 
@@ -153,6 +153,35 @@ def test_walk_handles_trees_deeper_than_the_recursion_limit() -> None:
         tree = leaf("link", tree)
 
     assert sum(1 for _ in tree.walk()) == depth + 1
+
+
+def shadow_update(ran: list[Hooks], unmounted: list[Hooks], mounted: list[Hooks]) -> ShadowUpdate:
+    return ShadowUpdate(
+        tree=ShadowTree(root=leaf("root")),
+        ran=tuple(ran),
+        unmounted=tuple(unmounted),
+        mounted=frozenset(hooks.key for hooks in mounted),
+    )
+
+
+def test_a_node_that_ran_in_both_updates_ran_once_in_the_combined_update() -> None:
+    first, both, later = Hooks(), Hooks(), Hooks()
+
+    combined = shadow_update([first, both], [], []).followed_by(shadow_update([both, later], [], []))
+
+    assert [hooks.key for hooks in combined.ran] == [first.key, both.key, later.key]
+
+
+def test_a_node_mounted_by_the_first_update_and_unmounted_by_the_later_neither_ran_nor_mounted() -> None:
+    kept, dropped = Hooks(), Hooks()
+
+    combined = shadow_update([kept, dropped], [], [kept, dropped]).followed_by(shadow_update([], [dropped], []))
+
+    assert ([hooks.key for hooks in combined.ran], combined.mounted, [hooks.key for hooks in combined.unmounted]) == (
+        [kept.key],
+        {kept.key},
+        [dropped.key],
+    )
 
 
 @component
@@ -409,6 +438,7 @@ HOOK_CALLS: dict[str, Callable[[], object]] = {
     "UseEffect": lambda: use_effect(never_runs, deps=()),
     "UseMemo": lambda: use_memo(lambda: 0, deps=()),
     "UseClock": lambda: use_clock(timedelta(seconds=1)),
+    "UseFocus": use_focus,
 }
 
 
@@ -425,7 +455,8 @@ def calls_hook(name: str) -> Text:
         pytest.param("UseEffect", "UseRef", id="use_ref"),
         pytest.param("UseMemo", "UseEffect", id="use_effect"),
         pytest.param("UseClock", "UseMemo", id="use_memo"),
-        pytest.param("UseState", "UseClock", id="use_clock"),
+        pytest.param("UseFocus", "UseClock", id="use_clock"),
+        pytest.param("UseState", "UseFocus", id="use_focus"),
     ],
 )
 def test_calling_a_different_hook_in_the_same_place_raises_naming_both(first: str, second: str) -> None:

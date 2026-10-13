@@ -202,14 +202,18 @@ def key_list(keys: list[str]) -> Text:
 
 @component
 def key_log() -> Div:
+    use_focus(auto_focus=True)
     keys = use_ref(list[str]())
     count, set_count = use_state(0)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        if not isinstance(event, KeyPressed):
+            return None
         keys.current.append(event.key)
         set_count(count + 1)
+        return ()
 
-    return Div(on_key=on_key, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=[key_list(keys.current)])
 ```
 
 `key_list` keeps showing the keys from when it last ran.
@@ -265,7 +269,7 @@ List every value `compute` reads: `deps=(processes, threshold)`.
 
 ```python
 count, set_count = use_state(0)
-on_key = use_memo(lambda: lambda event: set_count(count + 1), deps=())
+on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
 ```
 
 Every key press sets `count` to 1.
@@ -276,7 +280,12 @@ so the handler captures nothing that changes:
 **A dependency that's new every render** never equals the previous one:
 
 ```python
-on_key = use_memo(lambda: lambda event: on_submit(event.key), deps=(on_submit,))
+def submit(event: InputEvent, _: Receiver) -> None:
+    if isinstance(event, KeyPressed):
+        on_submit(event.key)
+
+
+on_input = use_memo(lambda: submit, deps=(on_submit,))
 ```
 
 When the parent passes `on_submit=lambda text: set_query(text)`,

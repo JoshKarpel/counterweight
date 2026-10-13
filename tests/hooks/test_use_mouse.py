@@ -8,14 +8,14 @@ from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import cancel_tasks
 from counterweight.components import component
 from counterweight.elements import Text
-from counterweight.geometry import Position, Region
+from counterweight.geometry import Position, Rects, Region
 from counterweight.hooks import Hovered, Mouse, use_hovered, use_mouse
-from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
+from counterweight.layout import NO_LAYOUTS, Layouts
 from counterweight.shadow import update_shadow
 from tests.rendering import effect_tasks, render, state_sets
 
 # Each box is a cell inside the next.
-NESTED_BOXES = ResolvedLayout(
+NESTED_BOXES = Rects(
     content=Region(left=3, top=3, right=8, bottom=6),
     padding=Region(left=2, top=2, right=9, bottom=7),
     border=Region(left=1, top=1, right=10, bottom=8),
