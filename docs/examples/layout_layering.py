@@ -1,5 +1,6 @@
 from counterweight.components import component
 from counterweight.elements import Div, Text
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -68,6 +69,41 @@ def dialog() -> Div:
 
 # --8<-- [end:dialog]
 
+# --8<-- [start:dropdown]
+
+
+def menu_bar(toolbar_style: Style) -> Div:
+    return Div(
+        style=col,
+        children=[
+            Div(
+                style=toolbar_style | row | gap(2) | border | pad_x(1),
+                children=[
+                    Text(content="file"),
+                    Text(content="edit"),
+                    Text(
+                        style=z(1) | position_absolute | inset_top(2) | inset_left(0) | border | border_heavy,
+                        content="new\nopen\nsave\nquit",
+                    ),
+                ],
+            ),
+            Text(style=border, content="The page's content"),
+        ],
+    )
+
+
+@component
+def dropdown_escapes() -> Div:
+    return menu_bar(toolbar_style=Style())
+
+
+@component
+def dropdown_scoped() -> Div:
+    return menu_bar(toolbar_style=z(0))
+
+
+# --8<-- [end:dropdown]
+
 # --8<-- [start:badge]
 
 
@@ -106,5 +142,7 @@ SCREENSHOTS = [
     ScreenshotSpec(relative, "layout-relative", (39, 7)),
     ScreenshotSpec(absolute, "layout-absolute", (50, 9)),
     ScreenshotSpec(dialog, "layout-dialog", (60, 12)),
+    ScreenshotSpec(dropdown_escapes, "layout-dropdown-escapes", (30, 9)),
+    ScreenshotSpec(dropdown_scoped, "layout-dropdown-scoped", (30, 9)),
     ScreenshotSpec(badge, "layout-badge", (21, 3)),
 ]

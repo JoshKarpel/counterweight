@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Container, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import TYPE_CHECKING, assert_never
@@ -10,7 +10,7 @@ import waxy
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Rects, Region
 from counterweight.graphemes import LINE_BREAKS
-from counterweight.styles.styles import CellStyle, Style, TextWrap, resolve_style
+from counterweight.styles.styles import CellStyle, Style, TextWrap
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -23,7 +23,6 @@ class ResolvedLayout:
     padding: Region
     border: Region
     margin: Region
-    order: int
 
     @property
     def rects(self) -> Rects:
@@ -37,7 +36,6 @@ INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
     padding=_EMPTY_REGION,
     border=_EMPTY_REGION,
     margin=_EMPTY_REGION,
-    order=0,
 )
 
 
@@ -48,7 +46,7 @@ type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
 def text_source(text: Text) -> TextSource:
     """Everything `text`'s measured size depends on, normalized so that equal sources compare equal."""
     content = text.content if isinstance(text.content, str) else tuple(text.content)
-    return content, text.style.text_style, resolve_style(text.style).text_wrap
+    return content, text.style.text_style, text.style.resolved.text_wrap
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,16 +228,13 @@ class LayoutTree:
         root = self.nodes[shadow.root.key]
         self.tree.compute_layout(root, available, measure=_measure_text)
 
-        shadows = {self.nodes[node.key]: node for node in shadow.nodes}
-        in_paint_order: list[tuple[AnyElement, ResolvedLayout]] = []
-        by_key: dict[NodeKey, ResolvedLayout] = {}
-        for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
-            visible = shadows[node]
-            resolved = _resolve_layout(position, layout, order)
-            in_paint_order.append((visible.element, resolved))
-            by_key[visible.key] = resolved
+        keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
+        by_key = {
+            keys[node]: _resolve_layout(position, layout) for node, position, layout in self.tree.absolute_layouts(root)
+        }
+        in_paint_order = tuple((node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
-        return Layouts(in_paint_order=tuple(in_paint_order), by_key=by_key)
+        return Layouts(in_paint_order=in_paint_order, by_key=by_key)
 
     def apply(self, changes: Iterable[LayoutChange]) -> None:
         """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
@@ -279,9 +274,60 @@ def layout_style(style: Style) -> waxy.Style:
     The waxy style an element is laid out with: its `layout`, without border widths
     when its `border_kind` is `None`, as CSS's `border-style: none` makes border widths compute to 0.
     """
-    if resolve_style(style).border_kind is None:
+    if style.resolved.border_kind is None:
         return style.layout | _NO_BORDER
     return style.layout
+
+
+def paint_order(root: ShadowNode, visible: Container[NodeKey]) -> list[ShadowNode]:
+    """
+    The nodes of `root`'s subtree whose keys are in `visible`, in the order they're painted,
+    with `root` forming a stacking context whatever its style sets, as CSS's root element does.
+
+    A node whose style sets `z` forms a stacking context:
+    it and its descendants paint as a unit at its `z`, and its descendants' `z` orders them only within it.
+    A node that doesn't set `z` forms none, so its descendants join the nearest context above it, alongside it.
+    A node outside `visible` is hidden, and so is every node beneath it.
+    """
+    ordered: list[ShadowNode] = []
+    _paint_context(root, visible, ordered)
+    return ordered
+
+
+def _paint_context(context: ShadowNode, visible: Container[NodeKey], ordered: list[ShadowNode]) -> None:
+    """
+    Appends `context` and then its members, sorted by their `z`, where a member that sets none counts as 0.
+    The sort is stable, so members with equal `z` keep tree order, and a member that forms a context
+    appends its whole context in its place.
+    """
+    ordered.append(context)
+    for member in sorted(_members(context, visible), key=_stacking_z):
+        if member.element.style.resolved.z is None:
+            ordered.append(member)
+        else:
+            _paint_context(member, visible, ordered)
+
+
+def _members(context: ShadowNode, visible: Container[NodeKey]) -> list[ShadowNode]:
+    """
+    The visible nodes that belong to `context`'s stacking context, in tree order,
+    with an explicit stack, since nested generators would pass each node up through every ancestor's.
+    """
+    members = []
+    stack = list(reversed(context.children))
+    while stack:
+        node = stack.pop()
+        if node.key not in visible:
+            continue
+        members.append(node)
+        if node.element.style.resolved.z is None:
+            stack.extend(reversed(node.children))
+    return members
+
+
+def _stacking_z(node: ShadowNode) -> int:
+    """The `z` a member sorts by within its stacking context, which is 0 for a member that sets none."""
+    return node.element.style.resolved.z or 0
 
 
 UNMEASURED = sentinel("UNMEASURED")
@@ -373,7 +419,7 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 @lru_cache(maxsize=2**12)
-def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> ResolvedLayout:
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> ResolvedLayout:
     """
     The cell regions of one node's boxes, from its absolute border-box position.
 
@@ -411,7 +457,7 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> Re
         bottom=padding.bottom - int(padding_widths.bottom),
     )
 
-    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
+    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin)
 
 
 def cells_width(cells: Iterable[StyledGrapheme]) -> int:

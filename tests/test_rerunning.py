@@ -188,7 +188,6 @@ MOVED = ResolvedLayout(
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
     margin=Region(left=1, top=2, right=3, bottom=4),
-    order=0,
 )
 
 

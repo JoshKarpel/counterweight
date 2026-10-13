@@ -860,7 +860,10 @@ def inset_sides(top: int, right: int, bottom: int, left: int) -> Style:
 
 @lru_cache(maxsize=256)
 def z(z: int = 0) -> Style:
-    """Draw the box on layer `z`: where boxes overlap, the higher `z` is drawn on top."""
+    """
+    Draw the box and its descendants as one layer at `z` among the boxes of the stacking context it belongs to,
+    where the higher `z` is drawn on top, and make it a stacking context for its descendants' own `z`.
+    """
     return Style(z=z)
 
 

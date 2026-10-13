@@ -45,13 +45,49 @@ Margins push the box away from where it was placed.
 ## Controlling overlap with `z`
 
 Where boxes overlap, the one with the higher `z` is drawn on top.
-Boxes with equal `z` are drawn in the order they appear.
+Boxes with equal `z` are drawn in the order they appear in the tree, each parent before its children,
+and a box that sets no `z` counts as 0.
 
 ```python
 --8<-- "z.py:example"
 ```
 
 ![Z layers](../assets/z.svg)
+
+### Stacking contexts
+
+`z` only orders boxes within a **stacking context**, as CSS's
+[`z-index`](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Stacking_context) does.
+A box that sets `z`, `z(0)` included, forms one:
+it and everything inside it are drawn together, as one layer at its `z`,
+and the `z` of a box inside it orders that box only among the others inside it.
+A box that sets no `z` forms none, so the boxes inside it are layered alongside it,
+among the boxes of the nearest stacking context around it.
+The app's root always forms one.
+
+So a box is always drawn beneath the boxes inside it, whatever `z` they set.
+A negative `z` puts a box beneath the other boxes of its stacking context,
+but still over the box that forms the context.
+
+A `z(1)` dropdown inside a toolbar that sets no `z` joins the stacking context around the toolbar,
+so it's drawn over the content below the toolbar:
+
+```python
+--8<-- "layout_layering.py:dropdown"
+```
+
+=== "Toolbar without `z`"
+
+    ![A dropdown over the page](../assets/layout-dropdown-escapes.svg)
+
+=== "Toolbar with `z(0)`"
+
+    ![A dropdown beneath the page](../assets/layout-dropdown-scoped.svg)
+
+Give the toolbar `z(0)` and it forms a stacking context of its own,
+so the dropdown's `z(1)` raises it only over the toolbar's own content.
+The whole toolbar is drawn at 0, and the page's content, which comes after it in the tree, is drawn over the dropdown,
+leaving only the part of the dropdown that hangs below the page visible.
 
 ## A dialog centered over the app
 

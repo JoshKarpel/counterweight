@@ -106,6 +106,19 @@
 ### Changed
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  `z` follows CSS's stacking contexts.
+  An element that sets `z`, `z(0)` included, paints with its descendants as one layer at its `z`,
+  and its descendants' `z` orders them only among each other,
+  while an element that sets no `z` leaves its descendants to be layered alongside it.
+  Previously every element was sorted by `z` in one flat order,
+  so an element with a higher `z` than its children painted over them,
+  and an element with a negative `z` painted beneath every element, its own parent included;
+  now children always paint over their parent, and a negative `z` paints beneath the rest of its stacking context
+  but over the element that forms it.
+  An app that sets `z` on nested elements may layer differently.
+  `STYLE_DEFAULTS.z` is `None`, for an element that sets no `z`, rather than `0`.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   An element's margin is painted only where its style sets `margin_color`,
   and its `content_color` fills its border box rather than its margin box,
   so a margin leaves whatever lies beneath it visible, as on the web.

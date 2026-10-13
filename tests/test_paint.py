@@ -335,6 +335,48 @@ async def test_dialog_recipe_centers_over_a_parent_that_does_not_center_and_leav
     assert graphemes(paint) == ["abcdefg", "ab┌─┐fg", "ab│x│fg", "ab└─┘fg", "abcdefg"]
 
 
+async def test_child_with_content_color_paints_over_its_raised_parents_content_color() -> None:
+    green = Color.from_name("green")
+    blue = Color.from_name("blue")
+    paint = await render(
+        Div(
+            style=z(1) | Style(content_color=green) | size(4, 2),
+            children=[Div(style=Style(content_color=blue) | size(2, 1))],
+        )
+    )
+
+    assert backgrounds(paint, blue) == [
+        [True, True, False, False, False, False],
+        [False, False, False, False, False, False],
+    ]
+    assert backgrounds(paint, green) == [
+        [False, False, True, True, False, False],
+        [True, True, True, True, False, False],
+    ]
+
+
+DROPDOWN = Text(content="menu", style=z(1) | position_absolute | inset_top(1) | inset_left(0))
+
+
+@pytest.mark.parametrize(
+    ("toolbar_style", "expected"),
+    [(Style(), "menuef"), (z(0), "abcdef")],
+    ids=["toolbar-without-z", "toolbar-with-z-0"],
+)
+async def test_dropdown_escapes_a_toolbar_only_when_the_toolbar_sets_no_z(toolbar_style: Style, expected: str) -> None:
+    paint = await render(
+        Div(
+            style=col,
+            children=[
+                Div(style=toolbar_style | size(6, 1), children=[DROPDOWN]),
+                Text(content="abcdef", style=size(6, 1)),
+            ],
+        )
+    )
+
+    assert graphemes(paint)[1] == expected
+
+
 async def test_wide_characters_take_two_cells_each() -> None:
     paint = await render(
         Div(style=border | border_light | size(10, 3), children=[Text(content="日本語ab")]),

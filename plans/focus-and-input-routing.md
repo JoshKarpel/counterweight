@@ -692,7 +692,7 @@ and leaves the parent's other children visible around it.
 
 ### 3. Scope `z` to stacking contexts
 
-**Status:** Not started
+**Status:** Done
 
 `paint_layout` orders every element in one flat sort by `(z, order)` (`paint.py:195`),
 so a `z(1)` element paints after its own children, whose `z` defaults to 0,

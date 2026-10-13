@@ -25,7 +25,6 @@ from counterweight.styles.styles import (
     TextJustify,
     TextWrap,
     resolve_cell_style,
-    resolve_style,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,14 +191,11 @@ def paint_layout(
     width: int,
     height: int,
 ) -> tuple[Paint, BorderHealingHints]:
-    styled = sorted(
-        ((element, resolve_style(element.style), resolved) for element, resolved in elements),
-        key=lambda esr: (esr[1].z, esr[2].order),
-    )
+    """Paint `elements` in the order given, which is paint order, so later elements are drawn over earlier ones."""
     paint = Paint.blank(width, height)
     hints: BorderHealingHints = {}
-    for element, style, resolved in styled:
-        hints.update(paint_element(paint, element, style, resolved))
+    for element, resolved in elements:
+        hints.update(paint_element(paint, element, element.style.resolved, resolved))
     return paint, hints
 
 
