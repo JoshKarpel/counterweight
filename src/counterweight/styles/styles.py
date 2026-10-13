@@ -66,10 +66,15 @@ class Color(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
-        """A color from `#rrggbb` or the CSS shorthand `#rgb`, with or without the `#`."""
+        """
+        A color from `#rrggbb` or the CSS shorthand `#rgb`, with or without the `#`.
+        Any other number of digits, like `#rrggbbaa`'s alpha, raises `ValueError`.
+        """
         hex = hex.lstrip("#")
         if len(hex) == 3:
             hex = "".join(digit * 2 for digit in hex)
+        if len(hex) != 6:
+            raise ValueError(f"A hex color has 3 or 6 digits, not {hex!r}")
         return cls(
             int(hex[0:2], 16),
             int(hex[2:4], 16),

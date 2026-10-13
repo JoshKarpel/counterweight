@@ -84,8 +84,8 @@ from functools import lru_cache
 
 
 @lru_cache(maxsize=64)
-def sorted_paths(paths: tuple[str, ...], descending: bool) -> list[str]:
-    return sorted(paths, reverse=descending)
+def sorted_paths(paths: tuple[str, ...], descending: bool) -> tuple[str, ...]:
+    return tuple(sorted(paths, reverse=descending))
 
 
 @component

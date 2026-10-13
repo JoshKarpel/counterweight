@@ -188,6 +188,22 @@ def test_image_alt_text_is_a_hyperlink_to_the_image() -> None:
     assert image.style == MarkdownStyles().image | CellStyle(link="cat.png")
 
 
+@pytest.mark.parametrize(
+    ("description", "text"),
+    [
+        ("www.example.com", "www.example.com"),
+        ("https://example.com", "https://example.com"),
+        ("someone@example.com", "someone@example.com"),
+        ("[a cat](https://example.com/cats)", "a cat"),
+        ("*see www.example.com*", "www.example.com"),
+    ],
+)
+def test_link_in_image_description_is_drawn_as_the_rest_of_the_description(description: str, text: str) -> None:
+    image = chunk_for(f"![{description}](cat.png)\n", text)
+
+    assert image.style == MarkdownStyles().image | CellStyle(link="cat.png")
+
+
 def test_inline_html_is_shown_as_written() -> None:
     assert "".join(chunk.content for chunk in chunks("a <b>b</b>\n")) == "a <b>b</b>"
 

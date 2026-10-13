@@ -108,7 +108,7 @@
 
 - [#315](https://github.com/JoshKarpel/counterweight/pull/315)
   Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
-  half-block pixel art in a terminal canvas using `▀` characters.
+  half-block pixel art in a terminal canvas using `▀` characters, as a tuple of chunks for a `Text`.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
@@ -163,7 +163,11 @@
   **Breaking:** a `Div`'s `children` is a tuple, and so is a `Text`'s `content` when it's chunks,
   so an element is a value that can be cached and shared without anything changing it afterwards.
   Pass `(a, b)` or `tuple(...)` where you passed a list.
-  `canvas` returns a tuple of chunks.
+
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  `Color.from_hex` accepts the CSS shorthand `#rgb` as well as `#rrggbb`,
+  and raises `ValueError` for any other number of digits
+  instead of dropping the extra digits of a color like `#rrggbbaa`.
 
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),

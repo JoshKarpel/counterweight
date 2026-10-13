@@ -22,6 +22,14 @@ and say which of those it is.
 This applies to the API users call, not to internal structure:
 don't add abstractions to the implementation ahead of a change that needs them.
 
+## Types Are the Contract
+
+Assume users type-check their code with mypy in strict mode.
+The public API's type annotations are its contract,
+so don't add runtime checks or coercions for input the types already reject,
+such as a `list` where a `tuple` is annotated.
+They cost time on every call (often on the render path) to help only code that is already a type error.
+
 ## Architecture
 
 The framework follows a React-like architecture:

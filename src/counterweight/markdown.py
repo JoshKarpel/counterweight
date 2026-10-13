@@ -66,6 +66,7 @@ def unmatched_when_silent(rule: RuleFuncInlineType) -> RuleFuncInlineType:
     mdit-py-plugins' GFM autolink rules match in silent mode without moving past the match,
     so `see [www.example.com](https://example.com)` loops forever skipping the same token.
     Autolinks are never made inside a link's text anyway, so skipping them a character at a time loses nothing.
+    (An image's description is parsed on its own, so it can hold autolinks; `span` draws them as plain text.)
     """
 
     def wrapped(state: StateInline, silent: bool) -> bool:
@@ -74,9 +75,14 @@ def unmatched_when_silent(rule: RuleFuncInlineType) -> RuleFuncInlineType:
     return wrapped
 
 
-INLINE_RULES = dict(zip(PARSER.inline.ruler.get_active_rules(), PARSER.inline.ruler.getRules(""), strict=True))
-for name in ("gfm_autolink_www", "gfm_autolink_protocol", "gfm_autolink_email"):
-    PARSER.inline.ruler.at(name, unmatched_when_silent(INLINE_RULES[name]))
+def wrap_gfm_autolink_rules(parser: MarkdownIt) -> None:
+    """Replace `parser`'s GFM autolink rules with `unmatched_when_silent` ones."""
+    rules = dict(zip(parser.inline.ruler.get_active_rules(), parser.inline.ruler.getRules(""), strict=True))
+    for name in ("gfm_autolink_www", "gfm_autolink_protocol", "gfm_autolink_email"):
+        parser.inline.ruler.at(name, unmatched_when_silent(rules[name]))
+
+
+wrap_gfm_autolink_rules(PARSER)
 
 BOLD = CellStyle(bold=True)
 
@@ -459,6 +465,8 @@ def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> tuple
             return spans(node.children, styles, text | styles.strong)
         case "s":
             return spans(node.children, styles, text | styles.strikethrough)
+        case "link" if is_in_image(node):
+            return spans(node.children, styles, text)
         case "link":
             return spans(node.children, styles, text | styles.link | CellStyle(link=str(node.attrs["href"]) or None))
         case "image":
@@ -467,3 +475,11 @@ def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> tuple
             return (Chunk(content=footnote_number(node), style=text | styles.footnote_ref),)
         case _:  # pragma: no cover, PARSER enables no rule that makes any other inline span
             raise ValueError(f"Unexpected Markdown inline span {node.type!r}")
+
+
+def is_in_image(node: SyntaxTreeNode) -> bool:
+    """
+    Whether `node` is part of an image's description, whose text links to the image,
+    so a link in it, written out or a bare URL, is drawn as the rest of the description is.
+    """
+    return node.parent is not None and (node.parent.type == "image" or is_in_image(node.parent))
