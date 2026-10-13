@@ -317,6 +317,19 @@
 
 ### Fixed
 
+- [#407](https://github.com/JoshKarpel/counterweight/issues/407)
+  Terminal input is parsed incrementally, so typed and pasted text arrives intact:
+  - Text beyond ASCII is decoded as UTF-8, one `KeyPressed` per grapheme cluster (`"é"`, `"日"`).
+    Previously it was dropped, along with everything else read alongside it.
+  - An escape sequence Counterweight doesn't recognize (such as Ctrl+digit in some terminals)
+    is skipped. Previously it arrived as an Escape key press followed by its characters.
+  - An escape sequence or UTF-8 character split between two reads is held over and completed by the next one,
+    and a lone `ESC` is the Escape key once no more input follows for 50 milliseconds.
+    Previously a split sequence turned into stray key presses, most often during a flood of mouse motion.
+  - A carriage return is `Key.Enter`.
+
+  `parsy` is no longer a dependency.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Scrolling the mouse wheel up is reported as `MouseScrolledUp` and down as `MouseScrolledDown`,
   as xterm defines them; previously the two were swapped.

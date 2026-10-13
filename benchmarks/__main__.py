@@ -1,9 +1,10 @@
 """
 The benchmark CLI: `uv run python -m benchmarks --help`.
 
-A run named `NAME` leaves its files in the output directory: `NAME.json` (frame times),
+A workload run named `NAME` leaves its files in the output directory: `NAME.json` (frame times),
 `NAME.txt` (the last frame), and, under `just profile`, `NAME.bin` (the Tachyon profile)
-and `NAME.html` (its flamegraph). `report` and `compare` read runs back by name.
+and `NAME.html` (its flamegraph). A `parse` run leaves `NAME.parsing.json` (time per read of input).
+`report` and `compare` read runs back by name.
 """
 
 import subprocess
@@ -32,6 +33,7 @@ from without_cli import (
 from without_cli import run as run_cli
 
 from benchmarks.harness import Runnable, Timings, run
+from benchmarks.parsing import INPUTS, ParsingTimings, parsing_table, time_parsing
 from benchmarks.stacks import STARTUP, Summary, parse_collapsed, summarize
 from benchmarks.tables import Column, render_table
 from benchmarks.workloads import WORKLOADS
@@ -112,6 +114,20 @@ async def show(streams: Streams, workload: Runnable, fps: float, fixed_size: boo
 
 
 @command(
+    "parse",
+    option("--name", default("parse", STR), summary="The run's name (default parse)."),
+    option("--repeat", default(5, INT), summary="Rounds to time each input, keeping the best (default 5)."),
+    OUTPUT,
+)
+async def parse(streams: Streams, name: str, repeat: int, output: Path) -> int:
+    """Time parsing reads of terminal input, then write and print the time per read."""
+    timings = time_parsing(INPUTS, repeat=repeat)
+    timings.dump(output / f"{name}.parsing.json")
+    streams.stdout.write(parsing_table({name: timings}))
+    return 0
+
+
+@command(
     "report",
     argument("name", once(STR), summary="The run to report on."),
     option("--top", default(25, INT), summary="Functions to show in each hotspot table (default 25)."),
@@ -152,7 +168,15 @@ async def report(streams: Streams, name: str, top: int, output: Path) -> int:
     OUTPUT,
 )
 async def compare(streams: Streams, before: str, after: str, output: Path) -> int:
-    """Compare two runs' frame times and, if both were profiled, their stages."""
+    """
+    Compare two workload runs' frame times and, if both were profiled, their stages,
+    or two `parse` runs' times per read.
+    """
+    parsing = {name: output / f"{name}.parsing.json" for name in (before, after)}
+    if all(path.exists() for path in parsing.values()):
+        streams.stdout.write(parsing_table({name: ParsingTimings.load(path) for name, path in parsing.items()}))
+        return 0
+
     timings = {name: Timings.load(output / f"{name}.json") for name in (before, after)}
     streams.stdout.write(frames_table(timings))
 
@@ -247,8 +271,8 @@ def percent(part: float, whole: float) -> str:
 
 cli = group(
     "benchmarks",
-    commands=(list_workloads, run_workload, show, report, compare),
-    summary="Run, profile, and compare the render-loop benchmark workloads.",
+    commands=(list_workloads, run_workload, show, parse, report, compare),
+    summary="Run, profile, and compare the render-loop benchmark workloads, and time input parsing.",
 )
 
 raise SystemExit(run_cli(cli))

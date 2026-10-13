@@ -1,4 +1,6 @@
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from counterweight.events import (
     AnyEvent,
@@ -12,7 +14,8 @@ from counterweight.events import (
     MouseUp,
 )
 from counterweight.geometry import Position
-from counterweight.keys import Key, vt_inputs
+from counterweight.input_parsing import ParsedInput, parse_input
+from counterweight.keys import Key
 
 
 @pytest.mark.parametrize(
@@ -51,6 +54,16 @@ from counterweight.keys import Key, vt_inputs
         (b"\x19", [KeyPressed(key=Key.ControlY)]),
         (b"\x1a", [KeyPressed(key=Key.ControlZ)]),
         (b"\x7f", [KeyPressed(key=Key.Backspace)]),
+        (b"\r", [KeyPressed(key=Key.Enter)]),
+        # text beyond ASCII, one event per grapheme cluster
+        ("aé".encode(), [KeyPressed(key="a"), KeyPressed(key="é")]),
+        ("日本".encode(), [KeyPressed(key="日"), KeyPressed(key="本")]),
+        ("e\u0301".encode(), [KeyPressed(key="e\u0301")]),
+        ("👩‍💻!".encode(), [KeyPressed(key="👩‍💻"), KeyPressed(key="!")]),
+        # an ESC that doesn't begin a sequence is the Escape key
+        (b"\x1bx", [KeyPressed(key=Key.Escape), KeyPressed(key="x")]),
+        (b"\x1b\x1b", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.Escape)]),
+        (b"\x1b\x1b[A", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.Up)]),
         # f1 to f4
         (b"\x1bOP", [KeyPressed(key=Key.F1)]),
         (b"\x1bOQ", [KeyPressed(key=Key.F2)]),
@@ -96,6 +109,7 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[1;6A", [KeyPressed(key=Key.ControlShiftUp)]),
         (b"\x1b[1;6B", [KeyPressed(key=Key.ControlShiftDown)]),
         (b"\x1b[1;6C", [KeyPressed(key=Key.ControlShiftRight)]),
+        (b"\x1b[1;6D", [KeyPressed(key=Key.ControlShiftLeft)]),
         (b"\x1b[3;3~", [KeyPressed(key=Key.AltDelete)]),
         (b"\x1b[3;5~", [KeyPressed(key=Key.ControlDelete)]),
         (b"\x1b[3;6~", [KeyPressed(key=Key.ControlShiftDelete)]),
@@ -168,8 +182,178 @@ from counterweight.keys import Key, vt_inputs
         (b"\x1b[<160;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=8)]),
     ],
 )
-def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:
-    assert vt_inputs.parse(buffer) == expected
+def test_known_input_parses_to_its_events(buffer: bytes, expected: list[AnyEvent]) -> None:
+    assert parse_input(buffer, is_final=True) == ParsedInput(events=tuple(expected), skipped=(), remainder=b"")
+
+
+@pytest.mark.parametrize(
+    "buffer, expected",
+    [
+        # well-formed CSI and SS3 sequences we don't know the meaning of
+        (b"\x1b[1;5p", ParsedInput(events=(), skipped=(b"\x1b[1;5p",), remainder=b"")),
+        (b"\x1b[5^", ParsedInput(events=(), skipped=(b"\x1b[5^",), remainder=b"")),
+        (b"\x1b[a", ParsedInput(events=(), skipped=(b"\x1b[a",), remainder=b"")),
+        (b"\x1b[I", ParsedInput(events=(), skipped=(b"\x1b[I",), remainder=b"")),
+        (b"\x1b[200~", ParsedInput(events=(), skipped=(b"\x1b[200~",), remainder=b"")),
+        (b"\x1b[1 q", ParsedInput(events=(), skipped=(b"\x1b[1 q",), remainder=b"")),
+        (b"\x1bOx", ParsedInput(events=(), skipped=(b"\x1bOx",), remainder=b"")),
+        (b"\x1b[<35;1M", ParsedInput(events=(), skipped=(b"\x1b[<35;1M",), remainder=b"")),
+        (
+            b"a\x1b[1;5pb",
+            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\x1b[1;5p",), remainder=b""),
+        ),
+        # a sequence cut short by a byte that can't be in one is skipped up to that byte
+        (
+            b"\x1b[1;\x03",
+            ParsedInput(events=(KeyPressed(key=Key.ControlC),), skipped=(b"\x1b[1;",), remainder=b""),
+        ),
+        (
+            "\x1b[1;é".encode(),
+            ParsedInput(events=(KeyPressed(key="é"),), skipped=(b"\x1b[1;",), remainder=b""),
+        ),
+        # control bytes with no key
+        (b"\x1c", ParsedInput(events=(), skipped=(b"\x1c",), remainder=b"")),
+        # bytes that aren't UTF-8 are skipped, and everything around them kept
+        (
+            b"a\xffb",
+            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key="b")), skipped=(b"\xff",), remainder=b""),
+        ),
+        (
+            b"a\xc3\x1b[A",
+            ParsedInput(events=(KeyPressed(key="a"), KeyPressed(key=Key.Up)), skipped=(b"\xc3",), remainder=b""),
+        ),
+        (
+            b"\xff\xcc\x81",
+            ParsedInput(events=(KeyPressed(key="\u0301"),), skipped=(b"\xff",), remainder=b""),
+        ),
+    ],
+)
+def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: ParsedInput) -> None:
+    assert parse_input(buffer, is_final=True) == expected
+
+
+@pytest.mark.parametrize(
+    "buffer, expected",
+    [
+        (b"\x1b", ParsedInput(events=(), skipped=(), remainder=b"\x1b")),
+        (b"a\x1b", ParsedInput(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\x1b")),
+        (b"\x1b[", ParsedInput(events=(), skipped=(), remainder=b"\x1b[")),
+        (b"\x1b[<35;1", ParsedInput(events=(), skipped=(), remainder=b"\x1b[<35;1")),
+        (b"\x1bO", ParsedInput(events=(), skipped=(), remainder=b"\x1bO")),
+        (b"a\xc3", ParsedInput(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\xc3")),
+        (b"\xf0\x9f\x98", ParsedInput(events=(), skipped=(), remainder=b"\xf0\x9f\x98")),
+    ],
+)
+def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expected: ParsedInput) -> None:
+    assert parse_input(buffer, is_final=False) == expected
+
+
+@pytest.mark.parametrize(
+    "buffer, expected",
+    [
+        (b"\x1b", ParsedInput(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
+        (
+            b"\x1b[",
+            ParsedInput(events=(KeyPressed(key=Key.Escape), KeyPressed(key="[")), skipped=(), remainder=b""),
+        ),
+        (
+            b"\x1bO",
+            ParsedInput(events=(KeyPressed(key=Key.Escape), KeyPressed(key="O")), skipped=(), remainder=b""),
+        ),
+        (b"a\xc3", ParsedInput(events=(KeyPressed(key="a"),), skipped=(b"\xc3",), remainder=b"")),
+    ],
+)
+def test_final_input_is_not_held_over(buffer: bytes, expected: ParsedInput) -> None:
+    assert parse_input(buffer, is_final=True) == expected
+
+
+def parse_reads(reads: list[bytes]) -> ParsedInput:
+    """Parse `reads` one after another, the way the input reader does, carrying each remainder into the next read."""
+    events: list[AnyEvent] = []
+    skipped: list[bytes] = []
+    pending = b""
+    for index, read in enumerate(reads):
+        parsed = parse_input(pending + read, is_final=index == len(reads) - 1)
+        events.extend(parsed.events)
+        skipped.extend(parsed.skipped)
+        pending = parsed.remainder
+    return ParsedInput(events=tuple(events), skipped=(b"".join(skipped),), remainder=pending)
+
+
+SPLIT_CORPUS = b"".join(
+    [
+        b"\x1b[<35;12;4M",
+        "aé日😀".encode(),
+        b"\x1b[1;5p",
+        b"\x1bOP",
+        b"\x1b",
+        b"\x1b[3;5~",
+        b"\xff",
+        b"\x03",
+    ]
+)
+
+
+@pytest.mark.parametrize("offset", range(1, len(SPLIT_CORPUS)))
+def test_input_split_across_reads_parses_the_same_as_one_read(offset: int) -> None:
+    assert parse_reads([SPLIT_CORPUS[:offset], SPLIT_CORPUS[offset:]]) == parse_reads([SPLIT_CORPUS])
+
+
+def test_grapheme_cluster_split_across_reads_is_two_key_presses() -> None:
+    assert parse_reads([b"e", "\u0301".encode()]).events == (KeyPressed(key="e"), KeyPressed(key="\u0301"))
+
+
+@given(st.binary())
+def test_final_parse_of_any_bytes_holds_nothing_over(buffer: bytes) -> None:
+    assert parse_input(buffer, is_final=True).remainder == b""
+
+
+@given(st.binary())
+def test_held_over_bytes_are_a_suffix_of_the_input(buffer: bytes) -> None:
+    assert buffer.endswith(parse_input(buffer, is_final=False).remainder)
+
+
+TOKENS = st.one_of(
+    st.sampled_from(
+        [
+            b"\x1b",
+            b"\x1b[",
+            b"\x1b[A",
+            b"\x1b[1;5p",
+            b"\x1bOP",
+            b"\x1b[<0;3;7m",
+            b"\x1b[<64;1;1M",
+            b"\x03",
+            b"\x1c",
+            b"\xc3",
+            b"\xff",
+            b";",
+            b"~",
+        ]
+    ),
+    st.text().map(str.encode),
+)
+
+
+def join_text(parsed: ParsedInput) -> tuple[object, ...]:
+    """The events in `parsed`, with each run of text joined into one string, since reads may split a grapheme cluster."""
+    joined: list[object] = []
+    for event in parsed.events:
+        if not isinstance(event, KeyPressed) or isinstance(event.key, Key):
+            joined.append(event)
+        elif joined and isinstance(previous := joined[-1], str):
+            joined[-1] = previous + event.key
+        else:
+            joined.append(event.key)
+    return (*joined, parsed.skipped, parsed.remainder)
+
+
+@given(st.lists(TOKENS).map(b"".join), st.lists(st.integers(min_value=0)))
+def test_input_split_anywhere_parses_to_the_same_text_and_events(buffer: bytes, offsets: list[int]) -> None:
+    cuts = sorted({offset % (len(buffer) + 1) for offset in offsets})
+    reads = [buffer[start:end] for start, end in zip([0, *cuts], [*cuts, len(buffer)], strict=True)]
+
+    assert join_text(parse_reads(reads)) == join_text(parse_reads([buffer]))
 
 
 def test_key_repr_is_its_qualified_name() -> None:

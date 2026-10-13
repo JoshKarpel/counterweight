@@ -228,13 +228,13 @@ async def render_loop(
     if not headless:
         original = start_input_control(stream=input_stream)
         previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
+        key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
     try:
         if not headless:
             start_handling_resize_signal(put_event=put_event)
             start_output_control(stream=output_stream)
             start_mouse_tracking(stream=output_stream)
-            start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
         root_component, current_paint, w, h = handle_screen_size_change()
 
@@ -361,7 +361,7 @@ async def render_loop(
                     logger.debug("Suspending application", extra={"handler": should_suspend.handler})
 
                     if not headless:
-                        stop_reading_keys(stream=input_stream)
+                        stop_reading_keys(key_reader)
                         stop_mouse_tracking(stream=output_stream)
                         stop_output_control(stream=output_stream)
                         stop_input_control(stream=input_stream, original=original)
@@ -381,7 +381,7 @@ async def render_loop(
                         start_handling_resize_signal(put_event=put_event)
                         start_output_control(stream=output_stream)
                         start_mouse_tracking(stream=output_stream)
-                        start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
+                        key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
                     root_component, current_paint, w, h = handle_screen_size_change()
                     rerun_everything()
@@ -562,7 +562,7 @@ async def render_loop(
 
         if not headless:
             # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
-            stop_reading_keys(stream=input_stream)
+            stop_reading_keys(key_reader)
             stop_mouse_tracking(stream=output_stream)
             stop_output_control(stream=output_stream)
             stop_input_control(stream=input_stream, original=original)
