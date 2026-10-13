@@ -25,7 +25,7 @@ from counterweight.hooks import use_focus, use_state
 from counterweight.hooks.impls import ChangedFocusHandle, DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.routing import DuplicateFocusHandle
+from counterweight.routing import DuplicateFocusHandle, UnsettledFocus
 from counterweight.styles import Style
 from counterweight.styles.utilities import col, default, display_none, inset_left, inset_top, position_absolute, size
 
@@ -311,6 +311,27 @@ async def test_a_focus_change_re_renders_so_is_focused_is_current() -> None:
     )
 
     assert lines(frames) == [["a:off", "b:on"], ["a:off", "b:off"]]
+
+
+async def test_an_auto_focus_component_that_mounts_later_is_focused_in_the_first_frame_that_shows_it() -> None:
+    frames: list[Frame] = []
+
+    await run(
+        rooted([], lambda is_mounted: [focus_label("late", auto_focus=True)] if is_mounted else []),
+        [TOGGLE, Screenshot(handler=frames.append)],
+    )
+
+    assert lines(frames) == [["late:on"]]
+
+
+async def test_a_component_that_hides_itself_when_it_gains_focus_raises() -> None:
+    @component
+    def hides() -> Text:
+        focus = use_focus(auto_focus=True)
+        return Text(content="hides", style=display_none if focus.is_focused else default)
+
+    with pytest.raises(UnsettledFocus):
+        await run(rooted([], lambda is_mounted: [hides()] if is_mounted else []), [TOGGLE])
 
 
 async def test_unmounting_the_focused_component_clears_focus() -> None:

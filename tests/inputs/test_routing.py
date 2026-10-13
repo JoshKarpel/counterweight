@@ -22,7 +22,15 @@ from counterweight.handlers import on_click
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.styles import Style
-from counterweight.styles.utilities import inset_left, inset_top, position_absolute, size, z
+from counterweight.styles.utilities import (
+    inset_left,
+    inset_top,
+    margin,
+    margin_color,
+    position_absolute,
+    size,
+    z,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +150,23 @@ async def test_a_pointer_outside_the_root_components_element_targets_the_root(po
     assert [(receiver.is_target, receiver.rects.border) for receiver in receivers] == [
         (True, Region(left=0, top=0, right=5, bottom=5))
     ]
+
+
+@pytest.mark.parametrize("child_style", [margin(1), margin(1) | margin_color("red", 600)], ids=["plain", "colored"])
+async def test_a_press_in_a_childs_margin_targets_what_lies_beneath_it(child_style: Style) -> None:
+    deliveries: list[Delivery] = []
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=size(20, 10),
+            on_input=recording("parent", deliveries, ()),
+            children=[Div(style=box(2, 1, 5, 3) | child_style, on_input=recording("child", deliveries, ()))],
+        )
+
+    await run(root, click(2, 1))
+
+    assert [(delivery.name, delivery.is_target) for delivery in deliveries] == [("parent", True), ("parent", True)]
 
 
 async def test_an_event_on_a_child_bubbles_to_its_parent() -> None:

@@ -132,7 +132,8 @@ or when frame time is the constraint: Counterweight renders in Python, and Ratat
 These are the gaps you're most likely to hit, with what to do instead:
 
 - **Text input.** There's no text input element.
-  Build one from a `KeyPressed` handler that edits a string in `use_state`.
+  Build one from a component that calls [`use_focus`](hooks/use_focus.md)
+  and edits a string in `use_state` from its handler's `KeyPressed` cases.
   Tracked in [#391](https://github.com/JoshKarpel/counterweight/issues/391).
 - **Scrolling and clipping.** There are no scroll containers,
   and content that overflows its container isn't clipped:

@@ -11,7 +11,8 @@ from counterweight.handlers import each, first, on_click
 # A button that sends a message when clicked.
 Text(content="Send", on_input=on_click(send))
 
-# A row that both selects itself when clicked and handles its own keys.
+# A row that selects itself when clicked, and handles keys while focused
+# (it's the top-level element of a component that calls use_focus).
 Div(children=..., on_input=first(row_keys, on_click(select)))
 ```
 

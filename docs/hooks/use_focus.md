@@ -194,10 +194,14 @@ so a Tab followed by a letter delivers the letter to the newly focused component
 A key press that mounts an `auto_focus` component doesn't send the next key press in its batch there,
 since the component doesn't exist until the next render.
 
-A focus change re-renders the components that gained and lost focus, as a state change would,
+A control that moves focus re-renders the components that gained and lost focus, as a state change would,
 so `is_focused` is current on the next frame.
-An `auto_focus` component present when the app starts is focused on the first frame,
-while one that mounts later draws one frame unfocused, before the render its focus starts.
+When a render moves focus itself, to an `auto_focus` component that mounted,
+or away from a focused component that unmounted, hid, or became unfocusable,
+the components that gained and lost focus re-render before the frame is drawn,
+so an `auto_focus` component is focused in the first frame that shows it.
+A component that hides itself because it gained focus would move focus again,
+so it raises `UnsettledFocus` instead.
 
 ## API
 

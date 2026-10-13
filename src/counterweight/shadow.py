@@ -105,6 +105,21 @@ class ShadowUpdate:
     unmounted: tuple[Hooks, ...]
     mounted: frozenset[NodeKey]
 
+    def followed_by(self, later: ShadowUpdate) -> ShadowUpdate:
+        """
+        One update for this one and a `later` one built from its tree before any effects ran,
+        so a node that ran in both runs its effects once,
+        and one that mounted here but `later` unmounted counts as neither ran nor mounted.
+        """
+        unmounted_later = {hooks.key for hooks in later.unmounted}
+        ran = {hooks.key: hooks for hooks in chain(self.ran, later.ran) if hooks.key not in unmounted_later}
+        return ShadowUpdate(
+            tree=later.tree,
+            ran=tuple(ran.values()),
+            unmounted=self.unmounted + later.unmounted,
+            mounted=(self.mounted | later.mounted) - unmounted_later,
+        )
+
 
 class DuplicateKey(Exception):
     """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""

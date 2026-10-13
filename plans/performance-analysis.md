@@ -878,7 +878,7 @@ cells and styles that interning still pays where they're compared.
 
 **Date:** 2026-10-13
 
-**Change:** step 4 of `plans/focus-and-input-routing.md`. Each render builds a `RoutingTable`
+**Change:** mouse events route to one target and bubble. Each render builds a `RoutingTable`
 (`routing.py:RoutingTable.of`): a map from each visible node's key to its handler, beside references to the
 layouts and the shadow tree's parent map. Mouse events hit-test the paint order and bubble through
 `ShadowTree.parents`; keys still go to every handler, now through `route_key`, which looks each visible
@@ -917,7 +917,7 @@ Both workloads' last frames are identical before and after.
 
 **Date:** 2026-10-13
 
-**Change:** step 5 of `plans/focus-and-input-routing.md`. A key press bubbles from the focused node,
+**Change:** a key press bubbles from the focused node,
 or from the root component's node when nothing is focused, instead of reaching every visible handler.
 `RoutingTable.of` also records each visible node that called `use_focus`, and checks that no two mounted
 components share a `FocusHandle`. After each render, `RoutingTable.reconciled_focus` clears focus that can no

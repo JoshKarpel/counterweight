@@ -61,7 +61,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.routing import RoutingTable, route_key, route_mouse
+from counterweight.routing import RoutingTable, UnsettledFocus, route_key, route_mouse
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -352,6 +352,7 @@ async def render_loop(
                     should_suspend = None
 
                 if should_render:
+                    previous_layouts = layouts
                     update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity, focused)
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
@@ -365,7 +366,30 @@ async def render_loop(
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
-                    refocus(routing.reconciled_focus(focused, update.mounted))
+                    settled = routing.reconciled_focus(focused, update.mounted)
+
+                    # Re-render the components whose focus changed before painting,
+                    # so no frame shows focus where it was before the render moved it.
+                    if settled != focused:
+                        refocused = update_shadow(
+                            root_component,
+                            shadow,
+                            previous_layouts,
+                            frozenset(key for key in (focused, settled) if key is not None),
+                            check_purity,
+                            settled,
+                        )
+                        previous_shadow, shadow = shadow, refocused.tree
+                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
+                        routing = RoutingTable.of(shadow, layouts)
+                        if routing.reconciled_focus(settled, refocused.mounted) != settled:
+                            raise UnsettledFocus(
+                                "Focus changed again after re-rendering the components that gained and lost it, "
+                                "so a component hid itself because it gained focus."
+                            )
+                        update = update.followed_by(refocused)
+                        focused = settled
+                        logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
 
                     new_paint, border_healing_hints = paint_layout(
                         ((element, layout) for _, element, layout in layouts.in_paint_order), w, h

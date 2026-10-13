@@ -14,7 +14,9 @@
   <rect x="0.00em" y="5.65em" width="22.00em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="6.78em" width="22.00em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="7.91em" width="22.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="9.04em" width="22.00em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="9.04em" width="13.20em" height="1.13em" fill="#000000" />
+  <rect x="13.20em" y="9.04em" width="4.40em" height="1.13em" fill="#4338ca" />
+  <rect x="17.60em" y="9.04em" width="4.40em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="10.17em" width="22.00em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="11.30em" width="22.00em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="12.43em" width="22.00em" height="1.13em" fill="#000000" />
@@ -236,12 +238,13 @@
    <tspan x="9.90em" fill="#cbd5e1">m</tspan>
    <tspan x="11.00em">│</tspan>
    <tspan x="12.10em">│</tspan>
-   <tspan x="14.30em" fill="#cbd5e1">C</tspan>
-   <tspan x="14.85em" fill="#cbd5e1">a</tspan>
-   <tspan x="15.40em" fill="#cbd5e1">n</tspan>
-   <tspan x="15.95em" fill="#cbd5e1">c</tspan>
-   <tspan x="16.50em" fill="#cbd5e1">e</tspan>
-   <tspan x="17.05em" fill="#cbd5e1">l</tspan>
+   <tspan x="13.20em" fill="#f8fafc">▸</tspan>
+   <tspan x="14.30em" fill="#f8fafc">C</tspan>
+   <tspan x="14.85em" fill="#f8fafc">a</tspan>
+   <tspan x="15.40em" fill="#f8fafc">n</tspan>
+   <tspan x="15.95em" fill="#f8fafc">c</tspan>
+   <tspan x="16.50em" fill="#f8fafc">e</tspan>
+   <tspan x="17.05em" fill="#f8fafc">l</tspan>
    <tspan x="18.15em">│</tspan>
    <tspan x="19.80em">║</tspan>
    <tspan x="20.35em" fill="#475569">╯</tspan>

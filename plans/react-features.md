@@ -167,7 +167,7 @@ a ticker subscription dispatches until its component is removed from the view.
 
 ### 5. Route key and mouse events
 
-**Status:** Designed in `plans/focus-and-input-routing.md`
+**Status:** Done (#402)
 
 ### 6. Add context
 
