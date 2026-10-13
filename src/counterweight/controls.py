@@ -40,6 +40,24 @@ class Bell(_Control):
     """
 
 
+@dataclass(frozen=True, slots=True)
+class SetTitle(_Control):
+    """
+    Set the title of the terminal window.
+
+    The title is set at the beginning of the next render cycle,
+    so all other events that are due to be processed in the current cycle
+    will be processed before it changes.
+    Line breaks in the title show as spaces, and other control characters as symbols, such as `␛` for an escape.
+
+    The application saves the title it started with, and restores it when it quits and while it's suspended,
+    on terminals that support [xterm's title stack](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+    (those that don't keep the last title set).
+    """
+
+    title: str
+
+
 # How Screenshot.to_file encodes a frame, by the suffix of the path it writes to.
 SCREENSHOT_ENCODINGS: dict[str, Callable[[Frame], str]] = {
     ".svg": lambda frame: frame.svg(),
@@ -195,6 +213,7 @@ class AdvanceClock(_Control):
 AnyControl = Union[
     Quit,
     Bell,
+    SetTitle,
     Screenshot,
     Suspend,
     ToggleBorderHealing,

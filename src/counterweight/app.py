@@ -30,6 +30,7 @@ from counterweight.controls import (
     FocusPrevious,
     Quit,
     Screenshot,
+    SetTitle,
     Suspend,
     ToggleBorderHealing,
     _Control,
@@ -59,6 +60,7 @@ from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
     paint_to_instructions,
+    set_title,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
@@ -249,6 +251,10 @@ async def render_loop(
         pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
+        # The title the app has set, and the one the terminal shows, which is the one it started with if it's None.
+        title: str | None = None
+        shown_title: str | None = None
+
         do_heal_borders = True
 
         started = clock()
@@ -301,6 +307,7 @@ async def render_loop(
             nonlocal should_quit
             nonlocal should_bell
             nonlocal should_suspend
+            nonlocal title
 
             nonlocal do_heal_borders
             nonlocal clock_offset
@@ -310,6 +317,8 @@ async def render_loop(
                     should_quit = True
                 case Bell():
                     should_bell = True
+                case SetTitle():
+                    title = control.title
                 case Screenshot():
                     pending_screenshots.append(control)
                 case Suspend():
@@ -388,10 +397,17 @@ async def render_loop(
 
                     root_component, current_paint, w, h = handle_screen_size_change()
                     rerun_everything()
+                    shown_title = None
 
                     logger.debug("Resuming application", extra={"handler": should_suspend.handler})
 
                     should_suspend = None
+
+                # After a suspension, so the app that resumes sets its title again.
+                if not headless and title is not None and title != shown_title:
+                    output_stream.write(set_title(title))
+                    output_stream.flush()
+                    shown_title = title
 
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
