@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, assert_never
 import waxy
 
 from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
-from counterweight.geometry import ORIGIN, Position, Rects, Region, Scroll
+from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
-from counterweight.styles.styles import CellStyle, ClipTo, Style, TextWrap
+from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -192,15 +192,107 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 class Layouts:
     """
     One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key,
-    and the scroll of each visible scroll container by key.
+    and the scroll of each visible scroll container by key, with the nodes of those scroll containers,
+    which the next layout picks anchors in.
     """
 
     in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects], ...]
     by_key: Mapping[NodeKey, Rects]
     scrolls: Mapping[NodeKey, Scroll]
+    scroll_containers: tuple[ShadowNode, ...] = ()
 
 
 NO_LAYOUTS = Layouts(in_paint_order=(), by_key={}, scrolls={})
+
+
+@dataclass(frozen=True, slots=True)
+class Anchor:
+    """
+    The node a scroll container keeps in place as its content changes, as CSS's scroll anchoring does,
+    and how far its border box's top edge was below the top of the container's padding box.
+    """
+
+    key: NodeKey
+    distance: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PriorScroll:
+    """How a scroll container was scrolled before a layout, which decides how it's scrolled after it."""
+
+    offset: Position
+    is_at_end_x: bool
+    is_at_end_y: bool
+    anchor: Anchor | None
+
+
+def prior_scrolls(layouts: Layouts, offsets: Mapping[NodeKey, Position]) -> dict[NodeKey, PriorScroll]:
+    """
+    How each scroll container in `layouts` is scrolled before the next layout,
+    at its offset in `offsets`, which scroll controls may have moved since `layouts` was laid out.
+    """
+    by_key = layouts.by_key
+    priors = {}
+    for container in layouts.scroll_containers:
+        key = container.key
+        scroll = layouts.scrolls[key]
+        offset = offsets[key]
+        is_at_end_y = offset.y == scroll.max_offset.y
+        # The spec skips anchoring at the top, so content added above the top pushes the rest down,
+        # and a container that doesn't scroll vertically is always at the top.
+        # One that will be scrolled to its end has no use for an anchor.
+        is_anchored = offset.y != 0 and not (is_at_end_y and container.element.style.resolved.stick_to_end_y)
+        priors[key] = PriorScroll(
+            offset=offset,
+            is_at_end_x=offset.x == scroll.max_offset.x,
+            is_at_end_y=is_at_end_y,
+            anchor=anchor_of(container, by_key, offset.y - scroll.offset.y) if is_anchored else None,
+        )
+    return priors
+
+
+def anchor_of(container: ShadowNode, by_key: Mapping[NodeKey, Rects], scrolled: int) -> Anchor | None:
+    """
+    The anchor of the scroll `container`, laid out at `by_key` and since scrolled down by `scrolled` rows,
+    picked as the [spec](https://drafts.csswg.org/css-scroll-anchoring/#anchor-node-selection) picks one,
+    or `None` if its anchoring is off or nothing in it is in view.
+    """
+    if container.element.style.resolved.overflow_anchor == "none":
+        return None
+    view = by_key[container.key].padding
+    anchor = _anchor_among(container.children, by_key, scrolled, view.top, view.bottom)
+    if anchor is None:
+        return None
+    return Anchor(key=anchor, distance=by_key[anchor].border.top - scrolled - view.top)
+
+
+def _anchor_among(
+    nodes: Iterable[ShadowNode], by_key: Mapping[NodeKey, Rects], scrolled: int, top: int, bottom: int
+) -> NodeKey | None:
+    """
+    The first of `nodes`, in tree order, that's in the rows from `top` to `bottom` once moved up by `scrolled`,
+    where one wholly in them is the anchor, and one partly in them is descended into for a better one,
+    unless it's a scroll container, and is the anchor if none of its children is in them.
+    A hidden or unclipped node, or one whose anchoring is off, is never the anchor, nor is anything inside it.
+    """
+    for node in nodes:
+        style = node.element.style
+        resolved = style.resolved
+        if (
+            (rects := by_key.get(node.key)) is None
+            or resolved.clip_to == "screen"
+            or resolved.overflow_anchor == "none"
+        ):
+            continue
+        node_top = rects.border.top - scrolled
+        node_bottom = rects.border.bottom - scrolled
+        if node_bottom <= top or node_top >= bottom:
+            continue
+        if (top <= node_top and node_bottom <= bottom) or any(scrolled_axes(style)):
+            return node.key
+        descendant = _anchor_among(node.children, by_key, scrolled, top, bottom)
+        return node.key if descendant is None else descendant
+    return None
 
 
 @dataclass(eq=False, slots=True)
@@ -220,11 +312,11 @@ class LayoutTree:
         shadow: ShadowTree,
         width: int,
         height: int,
-        offsets: Mapping[NodeKey, Position],
+        priors: Mapping[NodeKey, PriorScroll],
     ) -> Layouts:
         """
         Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen,
-        with each scroll container scrolled to its offset in `offsets`, clamped to how far it can scroll.
+        with each scroll container scrolled as `place` scrolls it from how it was scrolled before, in `priors`.
         """
         self.apply(changes)
 
@@ -234,10 +326,14 @@ class LayoutTree:
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
-        by_key, scrolls = place(shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height), offsets)
+        by_key, scrolls, scroll_containers = place(
+            shadow.root, boxes, Region(left=0, top=0, right=width, bottom=height), priors
+        )
         in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
-        return Layouts(in_paint_order=in_paint_order, by_key=by_key, scrolls=scrolls)
+        return Layouts(
+            in_paint_order=in_paint_order, by_key=by_key, scrolls=scrolls, scroll_containers=scroll_containers
+        )
 
     def apply(self, changes: Iterable[LayoutChange]) -> None:
         """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
@@ -286,16 +382,16 @@ def place(
     root: ShadowNode,
     boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
     screen: Region,
-    offsets: Mapping[NodeKey, Position],
-) -> tuple[dict[NodeKey, Rects], dict[NodeKey, Scroll]]:
+    priors: Mapping[NodeKey, PriorScroll],
+) -> tuple[dict[NodeKey, Rects], dict[NodeKey, Scroll], tuple[ShadowNode, ...]]:
     """
     Where each node with a box in `boxes` is on `screen`, given its absolute position and layout,
-    and the scroll of each scroll container among them,
+    and the scroll and node of each scroll container among them,
     walking down from `root` so each node's clip is built from its parent's,
     and each node is moved by the offsets of the scroll containers above it.
     A node without a box is hidden, and so is every node beneath it.
 
-    A scroll container's offset is the one in `offsets`, or 0 for one that has none,
+    A scroll container's offset is where `requested_offset` puts it, from how it was scrolled before in `priors`,
     clamped to how far it scrolls in this layout.
 
     The walk follows the tree, not paint order, because a raised descendant paints after nodes
@@ -303,6 +399,7 @@ def place(
     """
     placed: dict[NodeKey, Rects] = {}
     scrolls: dict[NodeKey, Scroll] = {}
+    scroll_containers: list[ShadowNode] = []
     stack: list[tuple[ShadowNode, Region | None, int, int]] = [(root, screen, 0, 0)]
     while stack:
         node, clip, scrolled_x, scrolled_y = stack.pop()
@@ -319,9 +416,15 @@ def place(
                     "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
                     "put it in a Div whose overflow is Scroll, which scrolls it."
                 )
-            scroll = scrolls[node.key] = scroll_of(
-                offsets.get(node.key, ORIGIN), layout, rects.padding, scrolls_x, scrolls_y
+            max_offset = Position(
+                int(layout.scroll_width()) if scrolls_x else 0,
+                int(layout.scroll_height()) if scrolls_y else 0,
             )
+            requested = requested_offset(
+                priors.get(node.key), boxes, rects.padding.top + scrolled_y, max_offset, style.resolved
+            )
+            scroll = scrolls[node.key] = scroll_of(requested, max_offset, rects.padding)
+            scroll_containers.append(node)
             scrolled_x += scroll.offset.x
             scrolled_y += scroll.offset.y
         if not (children := node.children):
@@ -340,7 +443,7 @@ def place(
                 )
                 for child in reversed(children)
             )
-    return placed, scrolls
+    return placed, scrolls, tuple(scroll_containers)
 
 
 @lru_cache(maxsize=2**12)
@@ -350,22 +453,42 @@ def scrolled_axes(style: Style) -> tuple[bool, bool]:
     return layout.overflow_x == waxy.Overflow.Scroll, layout.overflow_y == waxy.Overflow.Scroll
 
 
-def scroll_of(requested: Position, layout: waxy.Layout, padding: Region, scrolls_x: bool, scrolls_y: bool) -> Scroll:
+def requested_offset(
+    prior: PriorScroll | None,
+    boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
+    padding_top: int,
+    max_offset: Position,
+    style: ResolvedStyle,
+) -> Position:
     """
-    The scroll of a container with `layout` and `padding` box, scrolled to `requested`
-    on each axis it scrolls, clamped to how far it can scroll there.
-    Taffy's scroll width and height are how far the content reaches past the padding box,
-    absolutely positioned descendants included.
+    Where a scroll container with `style` is scrolled after a layout, before clamping,
+    given how it was scrolled before (`None` if it's new), taffy's unscrolled absolute positions in `boxes`,
+    its padding box's top among them, `padding_top`, and how far it can scroll, `max_offset`.
+
+    On an axis it sticks to its end on, it's at its end if it was before, or is new.
+    Otherwise it's vertically wherever puts its anchor's top edge as far below `padding_top` as it was,
+    if its anchor is still laid out, and otherwise where it was.
     """
-    unclamped = Scroll(
-        offset=requested,
-        max_offset=Position(
-            int(layout.scroll_width()) if scrolls_x else 0,
-            int(layout.scroll_height()) if scrolls_y else 0,
-        ),
-        view_width=padding.width,
-        view_height=padding.height,
-    )
+    if prior is None:
+        return Position(max_offset.x if style.stick_to_end_x else 0, max_offset.y if style.stick_to_end_y else 0)
+    x = max_offset.x if style.stick_to_end_x and prior.is_at_end_x else prior.offset.x
+    if style.stick_to_end_y and prior.is_at_end_y:
+        y = max_offset.y
+    elif (anchor := prior.anchor) is not None and (box := boxes.get(anchor.key)) is not None:
+        y = int(box[0].y) - padding_top - anchor.distance
+    else:
+        y = prior.offset.y
+    return Position(x, y)
+
+
+def scroll_of(requested: Position, max_offset: Position, padding: Region) -> Scroll:
+    """
+    The scroll of a container with `padding` box that scrolls up to `max_offset`, scrolled to `requested`,
+    clamped to how far it can scroll.
+    Taffy's scroll width and height, which `max_offset` comes from, are how far the content reaches
+    past the padding box, absolutely positioned descendants included.
+    """
+    unclamped = Scroll(offset=requested, max_offset=max_offset, view_width=padding.width, view_height=padding.height)
     return replace(unclamped, offset=unclamped.clamp(requested))
 
 

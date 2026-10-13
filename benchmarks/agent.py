@@ -4,7 +4,8 @@ Lots of streaming text: a coding-agent transcript, where the newest message grow
 Older messages don't change, but each new word reflows the streaming message's wrapped text
 and moves everything below it, so this measures wrapping, text measurement and paint
 on a screen full of prose, code and diffs.
-The transcript is a scroll container holding the newest messages, which the wheel scrolls through in a live run.
+The transcript is a scroll container holding the newest messages, which sticks to its end as they stream in,
+and which the wheel scrolls back through in a live run, anchored so what's in view stays put.
 """
 
 import random
@@ -15,7 +16,9 @@ from typing import Literal
 
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
+from counterweight.controls import ScrollBy
 from counterweight.elements import Chunk, Div, Text
+from counterweight.focus import ElementHandle
 from counterweight.handlers import scroll_on_wheel
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
@@ -34,12 +37,15 @@ from counterweight.styles.utilities import (
     row,
     slate_400,
     slate_500,
+    stick_to_end_y,
     text_color,
     text_wrap_stable,
 )
 
 WORDS_PER_FRAME = 3
 KEPT_MESSAGES = 12
+SCROLLED_BACK_AT = 150
+SCROLLED_BACK_ROWS = 20
 
 VOCABULARY = (
     "the layout tree component render frame cell style border paint diff text wrap measure width height "
@@ -72,6 +78,7 @@ type Kind = Literal["user", "assistant", "read", "edit"]
 
 @dataclass(frozen=True, slots=True)
 class Message:
+    id: int
     kind: Kind
     title: str
     lines: tuple[str, ...]
@@ -83,17 +90,19 @@ class Model:
     messages: tuple[Message, ...]
     target_words: int
     tokens: int
+    next_id: int
 
 
 def initial() -> Model:
     return Model(
         tick=0,
         messages=(
-            Message(kind="user", title="", lines=("Why is the dashboard slower since the merge-rule change?",)),
-            Message(kind="assistant", title="", lines=("",)),
+            Message(id=0, kind="user", title="", lines=("Why is the dashboard slower since the merge-rule change?",)),
+            Message(id=1, kind="assistant", title="", lines=("",)),
         ),
         target_words=60,
         tokens=0,
+        next_id=2,
     )
 
 
@@ -109,25 +118,38 @@ def step(model: Model) -> Model:
     if len(" ".join(grown.lines).split()) < model.target_words:
         messages = (*earlier, grown)
         target_words = model.target_words
+        next_id = model.next_id
     else:
-        messages = (*earlier, grown, tool_call(rng), Message(kind="assistant", title="", lines=("",)))
+        messages = (
+            *earlier,
+            grown,
+            tool_call(rng, model.next_id),
+            Message(id=model.next_id + 1, kind="assistant", title="", lines=("",)),
+        )
         target_words = rng.randrange(30, 120)
+        next_id = model.next_id + 2
 
     return Model(
         tick=model.tick + 1,
         messages=messages[-KEPT_MESSAGES:],
         target_words=target_words,
         tokens=model.tokens + WORDS_PER_FRAME * 4 // 3,
+        next_id=next_id,
     )
 
 
-def tool_call(rng: random.Random) -> Message:
+def tool_call(rng: random.Random, id: int) -> Message:
     path = rng.choice(FILES)
     start = rng.randrange(len(CODE))
     lines = tuple(CODE[(start + offset) % len(CODE)] for offset in range(rng.randrange(3, 8)))
     if rng.random() < 0.5:
-        return Message(kind="read", title=f"Read {path}", lines=lines)
-    return Message(kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}"))
+        return Message(id=id, kind="read", title=f"Read {path}", lines=lines)
+    return Message(
+        id=id, kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}")
+    )
+
+
+TRANSCRIPT = ElementHandle()
 
 
 def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
@@ -136,9 +158,11 @@ def view(model: Model, message_component: Callable[[Message], Component]) -> Div
         children=[
             header(model.tokens),
             Div(
-                style=fill(1) | col | pad_x(1) | overflow_y_scroll,
+                style=fill(1) | col | pad_x(1) | overflow_y_scroll | stick_to_end_y,
+                handle=TRANSCRIPT,
                 on_input=scroll_on_wheel(),
-                children=[message_component(message) for message in model.messages],
+                # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
+                children=[message_component(message).with_key(str(message.id)) for message in model.messages],
             ),
             spinner(model.tick),
             prompt(),
@@ -248,4 +272,17 @@ Messages are only appended, and only the newest one grows, so every other messag
 this measures what reusing all but one message saves.
 """,
     view=partial(view, message_component=memo_message_view),
+)
+
+SCROLLED_WORKLOAD = replace(
+    WORKLOAD,
+    name="agent-scrolled",
+    description=f"""
+`agent`, scrolled back {SCROLLED_BACK_ROWS} rows at frame {SCROLLED_BACK_AT}, once the transcript overflows,
+so the rest of the run reads back while the newest message streams in below the view
+and older messages drop off above it.
+
+This measures picking each frame's scroll anchor and keeping it in place.
+""",
+    interjections={SCROLLED_BACK_AT: (ScrollBy(TRANSCRIPT, y=-SCROLLED_BACK_ROWS),)},
 )

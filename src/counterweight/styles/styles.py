@@ -13,6 +13,7 @@ from counterweight._utils import flyweight
 TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
 ClipTo = Literal["padding", "border", "screen"]
+OverflowAnchor = Literal["auto", "none"]
 
 
 UNSET = sentinel("UNSET")
@@ -621,12 +622,16 @@ BORDER_WIDTHS = (waxy.Length(0), waxy.Length(1))
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ResolvedStyle:
     """
-    The drawing fields of a [`Style`][counterweight.styles.Style], every one filled in, as paint reads them,
+    The fields of a [`Style`][counterweight.styles.Style] other than `layout`, every one filled in,
+    as paint and the placement of scrolled boxes read them,
     except `z`, which stays `None` when unset, because an element that sets no `z` forms no stacking context.
     """
 
     z: int | None
     clip_to: ClipTo
+    overflow_anchor: OverflowAnchor
+    stick_to_end_x: bool
+    stick_to_end_y: bool
     margin_color: Color
     padding_color: Color
     content_color: Color
@@ -643,6 +648,9 @@ class ResolvedStyle:
 STYLE_DEFAULTS = ResolvedStyle(
     z=None,
     clip_to="padding",
+    overflow_anchor="auto",
+    stick_to_end_x=False,
+    stick_to_end_y=False,
     margin_color=_BLACK,
     padding_color=_BLACK,
     content_color=_BLACK,
@@ -679,12 +687,24 @@ class Style(StyleFragment):
     `"border"` lets a title be drawn on its parent's border.
     With `"screen"`, the element is unclipped: no ancestor clips it, so a popup can reach past them,
     though its own overflow still clips its descendants.
+
+    `overflow_anchor` and `stick_to_end_x` and `stick_to_end_y` choose how a scroll container's offset follows
+    its content when the content changes.
+    With `overflow_anchor` `"auto"`, the default, a scroll container keeps the content in view where it was,
+    as CSS's [`overflow-anchor`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-anchor) does;
+    with `"none"`, a scroll container keeps its offset, and nothing inside an element that sets it is
+    an anchor for the scroll container around it.
+    A scroll container that sticks to its end on an axis and is scrolled to its end there
+    stays scrolled to its end when its content grows.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)
 
     z: int | UNSET = UNSET
     clip_to: ClipTo | UNSET = UNSET
+    overflow_anchor: OverflowAnchor | UNSET = UNSET
+    stick_to_end_x: bool | UNSET = UNSET
+    stick_to_end_y: bool | UNSET = UNSET
     margin_color: Color | UNSET = UNSET
     padding_color: Color | UNSET = UNSET
     content_color: Color | UNSET = UNSET
@@ -720,6 +740,9 @@ class Style(StyleFragment):
                     self.layout,
                     self.z,
                     self.clip_to,
+                    self.overflow_anchor,
+                    self.stick_to_end_x,
+                    self.stick_to_end_y,
                     self.margin_color,
                     self.padding_color,
                     self.content_color,
@@ -743,6 +766,9 @@ class Style(StyleFragment):
         return ResolvedStyle(
             z=or_default(self.z, defaults.z),
             clip_to=or_default(self.clip_to, defaults.clip_to),
+            overflow_anchor=or_default(self.overflow_anchor, defaults.overflow_anchor),
+            stick_to_end_x=or_default(self.stick_to_end_x, defaults.stick_to_end_x),
+            stick_to_end_y=or_default(self.stick_to_end_y, defaults.stick_to_end_y),
             margin_color=or_default(self.margin_color, defaults.margin_color),
             padding_color=or_default(self.padding_color, defaults.padding_color),
             content_color=or_default(self.content_color, defaults.content_color),

@@ -70,6 +70,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **Diagnostic prose.** `XX` wraps and case changes of the fixed sentences in `InconsistentHookExecution`
   (`update_node`), `ImpureComponent` (`check_is_pure`), `StaleMemo` (`Hooks.use_memo`),
+  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`,
   the exception groups of `cancel_tasks`, and `teardown_failure`'s `RuntimeError`.
   Tests pin what each message names (the component, the hook types, the key, the size), not its wording.
 
@@ -115,6 +116,8 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 ### Layout
 
+- **`scroll_of`'s `offset=None`** in the unclamped `Scroll`: it's only read through `max_offset`,
+  and `replace` sets the clamped offset before the `Scroll` leaves the function.
 - **`_append_style_change`'s `and` as `or`.** `layout_style` is cached, so equal styles are the same object
   and the identity test already decides; they differ only after an eviction, which costs a redundant `SetStyle`.
 - **`MeasurableText.of`'s `text_cells(content, None)`.** Measuring reads only the cells' widths.

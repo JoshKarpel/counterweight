@@ -24,7 +24,7 @@ from counterweight.geometry import ORIGIN, Position, Scroll
 from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_scroll, use_state
 from counterweight.hooks.impls import NodeKey
-from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, layout_changes
+from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, PriorScroll, layout_changes
 from counterweight.output import Frame
 from counterweight.routing import RoutingTable
 from counterweight.shadow import DuplicateElementHandle, update_shadow
@@ -94,6 +94,11 @@ def lines(count: int, prefix: str = "line") -> list[Text]:
 HANDLE = ElementHandle()
 
 
+def scrolled_to(offset: Position) -> PriorScroll:
+    """A container scrolled to `offset` before a layout, with no anchor, and not at its end."""
+    return PriorScroll(offset=offset, is_at_end_x=False, is_at_end_y=False, anchor=None)
+
+
 def scroller(*children: Component | AnyElement, style: Style = Style(), handle: ElementHandle = HANDLE) -> Div:
     """A bordered box 8 wide and 4 tall that scrolls vertically, so 2 rows of its children are in view."""
     return Div(
@@ -129,7 +134,9 @@ def test_layout_reports_a_scrolled_containers_descendants_where_they_are_painted
     shadow = update_shadow(container, None, NO_LAYOUTS).tree
     (first, second, nested_div) = shadow.root.children
 
-    layouts = LayoutTree().compute(layout_changes(None, shadow), shadow, 6, 2, {shadow.root.key: Position(0, 1)})
+    layouts = LayoutTree().compute(
+        layout_changes(None, shadow), shadow, 6, 2, {shadow.root.key: scrolled_to(Position(0, 1))}
+    )
 
     assert [layouts.by_key[node.key].border.top for node in (first, second, nested_div, nested_div.children[0])] == [
         -1,
@@ -352,7 +359,7 @@ def test_a_text_whose_overflow_is_scroll_raises() -> None:
 
 def scroll_of_root(container: Div, offset: Position = ORIGIN) -> Scroll:
     shadow = update_shadow(container, None, NO_LAYOUTS).tree
-    layouts = LayoutTree().compute(layout_changes(None, shadow), shadow, 10, 10, {shadow.root.key: offset})
+    layouts = LayoutTree().compute(layout_changes(None, shadow), shadow, 10, 10, {shadow.root.key: scrolled_to(offset)})
     return layouts.scrolls[shadow.root.key]
 
 
@@ -362,6 +369,27 @@ def test_a_container_cannot_scroll_on_an_axis_whose_overflow_is_not_scroll() -> 
     scroll = scroll_of_root(Div(style=size(4, 3) | overflow_y_scroll, children=[wide_and_tall]), Position(2, 2))
 
     assert (scroll.offset, scroll.max_offset) == (Position(0, 2), Position(0, 3))
+
+
+def test_a_container_that_scrolls_only_horizontally_cannot_scroll_vertically() -> None:
+    wide_and_tall = Text(content="\n".join(["abcdefgh"] * 6), style=size(8, 6))
+
+    scroll = scroll_of_root(Div(style=size(4, 3) | overflow_x_scroll, children=[wide_and_tall]), Position(2, 2))
+
+    assert (scroll.offset, scroll.max_offset) == (Position(2, 0), Position(4, 0))
+
+
+def test_nested_horizontal_scroll_containers_move_their_content_by_the_sum_of_their_offsets() -> None:
+    wide = Text(content="abcdefghij", style=size(10, 1))
+    inner = Div(style=size(6, 1) | shrink(0) | overflow_x_scroll, children=[wide])
+    outer = Div(style=size(4, 1) | overflow_x_scroll, children=[inner])
+    shadow = update_shadow(outer, None, NO_LAYOUTS).tree
+    inner_node = shadow.root.children[0]
+    priors = {shadow.root.key: scrolled_to(Position(1, 0)), inner_node.key: scrolled_to(Position(2, 0))}
+
+    layouts = LayoutTree().compute(layout_changes(None, shadow), shadow, 4, 1, priors)
+
+    assert layouts.by_key[inner_node.children[0].key].border.left == -3
 
 
 def test_the_view_excludes_the_scrollbar_gutter() -> None:

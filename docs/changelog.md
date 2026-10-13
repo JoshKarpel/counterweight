@@ -8,7 +8,11 @@
   Added [scroll containers](layout/scrolling.md): a box whose overflow is `Scroll`,
   with the utilities `overflow_scroll`, `overflow_x_scroll` and `overflow_y_scroll`,
   shows the part of its content its offset scrolls into view.
-  Counterweight holds each container's offset and clamps it to how far the content reaches after every layout.
+  Counterweight holds each container's offset, and after every layout keeps the content in view where it was,
+  as CSS's scroll anchoring does, and clamps the offset to how far the content reaches.
+  The `overflow_anchor` style field, with `overflow_anchor_auto` and `overflow_anchor_none`, turns anchoring off,
+  and the `stick_to_end_x` and `stick_to_end_y` style fields, with `stick_to_end` and `unstick` and their `_x` and `_y` forms,
+  keep a container that's scrolled to its end there as its content grows, as a log or a chat transcript wants.
   The controls `ScrollTo` and `ScrollBy` scroll a container named by an `ElementHandle`,
   which an element takes as its `handle`, or by a receiver's `subtree`,
   and `counterweight.handlers` gains `scroll_on_wheel`, which scrolls for the wheel

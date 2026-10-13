@@ -56,7 +56,7 @@ from counterweight.hooks import Mouse
 from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
 from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, layout_changes
+from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, layout_changes, prior_scrolls
 from counterweight.logging import devlog
 from counterweight.output import (
     CLEAR_SCREEN,
@@ -406,6 +406,8 @@ async def render_loop(
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
                     previous_layouts = layouts
+                    # Picked from the frame on screen, before the update below changes what's in it.
+                    priors = prior_scrolls(layouts, offsets)
                     update = update_shadow(
                         root_component,
                         shadow,
@@ -419,7 +421,7 @@ async def render_loop(
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, offsets)
+                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, priors)
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
@@ -438,7 +440,7 @@ async def render_loop(
                             instant=instant,
                         )
                         previous_shadow, shadow = shadow, refocused.tree
-                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, offsets)
+                        layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, w, h, priors)
                         routing = RoutingTable.of(shadow, layouts)
                         if routing.reconciled_focus(settled, refocused.mounted) != settled:
                             raise UnsettledFocus(

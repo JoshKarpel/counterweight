@@ -17,7 +17,10 @@ and moves them up and left by its offset.
 
 Counterweight holds each scroll container's offset, as a browser holds an element's `scrollTop`,
 so a box scrolls without any state in the component that renders it.
-It starts at 0, the start of the content, and is clamped after every layout to how far the content reaches,
+It starts at 0, the start of the content.
+After every layout, it moves to keep the content in view where it was
+(see [Keeping the content in view](#keeping-the-content-in-view)),
+and is clamped to how far the content reaches,
 so when the content shrinks, the box scrolls back as far as it has to.
 A scroll container that unmounts or is hidden loses its offset, and starts at 0 again when it comes back.
 
@@ -98,6 +101,74 @@ so the content is as tall as every row would make it, as React's windowing libra
 
 The rows on each side of the view cover the frame between a scroll and the render that follows it,
 which would otherwise show the empty boxes.
+The rows are keyed components, so each keeps its place as the window moves
+(see [Keeping the content in view](#keeping-the-content-in-view)).
+
+## Keeping the content in view
+
+When content changes above what's in view, an offset that stayed put would show different content:
+a message dropped from the top of a transcript would pull everything up by its height.
+So a scroll container keeps what's in view where it is, as browsers do with
+[scroll anchoring](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-anchor).
+Before each layout, it picks an **anchor**: the first node in view,
+or, for a node only partly in view, the first of its descendants in view.
+After the layout, it moves its offset so the anchor's top edge is as far from the top of the view as it was.
+Content that changes below the anchor, or inside it, doesn't move the view;
+content that changes above it moves the view with it.
+
+The anchor is a node, so it follows what each node shows from one render to the next.
+Siblings without keys continue the sibling at the same index,
+so when items drop off the front of an unkeyed list, every node shows the item after the one it did,
+and the view lurches forward by however far that moved the anchor.
+Give each item of a list whose front changes its own key, as React asks of a list
+(see [When position isn't identity](../components/index.md#when-position-isnt-identity)).
+
+As on the web:
+
+- A container scrolled to the top doesn't anchor, so content added above the top pushes the rest down into view.
+- Anchoring moves only the vertical offset.
+- `overflow_anchor_none` turns it off: on a scroll container, its offset only gets clamped,
+  and on an element inside one, neither it nor anything inside it is picked as the anchor.
+  An element with `clip_to_screen` is never picked either.
+- A container whose anchor unmounted or was hidden only clamps its offset.
+
+## Following the end
+
+A log or a transcript should stay scrolled to its end as lines arrive, so the newest is always in view,
+until the reader scrolls back to read something earlier.
+`stick_to_end_y` does that: a container that's scrolled to its end before a layout is scrolled to its end after it,
+and one that isn't is anchored as usual.
+`stick_to_end_x` does the same horizontally, `stick_to_end` on both axes, and `unstick` turns it off.
+A container whose content fits is at its end, so a log that starts short follows its end from its first line,
+and one that mounts already overflowing starts at its end.
+
+This log keeps its newest eight lines, adds one a second, and sticks to its end:
+
+```python
+--8<-- "scrolling.py:tail"
+```
+
+=== "Following"
+
+    ![The log at its end](../assets/scrolling-tail.svg)
+
+=== "Two seconds later"
+
+    ![The log still at its end, two lines further on](../assets/scrolling-tail-later.svg)
+
+Scrolled back two lines, it stays where the reader left it as new lines arrive below and old ones drop off above:
+
+=== "Scrolled back"
+
+    ![The log scrolled back two lines](../assets/scrolling-tail-read-back.svg)
+
+=== "Two seconds later"
+
+    ![The same lines in view](../assets/scrolling-tail-read-back-later.svg)
+
+Scrolling back down to the end makes it follow the end again.
+The web has no property for this:
+a page puts an anchor element after the content, or reverses a column so it starts at its end.
 
 ## Where scrolled boxes are
 

@@ -16,8 +16,8 @@ Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 import asyncio
 import json
 import statistics
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -46,6 +46,9 @@ class Runnable(Protocol):
     @property
     def dimensions(self) -> tuple[int, int]: ...
 
+    @property
+    def interjections(self) -> Mapping[int, tuple[AnyEvent | AnyControl, ...]]: ...
+
     def root(self, key_press_times: list[int]) -> Component: ...
 
     def live_root(self, frame_interval: timedelta) -> Component: ...
@@ -64,6 +67,11 @@ class Workload[M]:
     step: Callable[[M], M]
     view: Callable[[M], Div]
     dimensions: tuple[int, int]
+    interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]] = field(default_factory=dict)
+    """
+    Events and controls the autopilot sends before the key press that steps the model to each frame, by frame,
+    such as a scroll partway through a run.
+    """
 
     @component
     def root(self, key_press_times: list[int]) -> Div:
@@ -146,12 +154,17 @@ class Timings:
         return max(self.frame_ms)
 
 
-def autopilot(frames: int, snapshot: Path | None) -> list[AnyEvent | AnyControl]:
-    """One key press per frame, then an optional text snapshot of the last frame, then quit."""
+def autopilot(
+    frames: int, snapshot: Path | None, interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]]
+) -> list[AnyEvent | AnyControl]:
+    """
+    One key press per frame, each after that frame's `interjections`,
+    then an optional text snapshot of the last frame, then quit.
+    """
     end: list[AnyEvent | AnyControl] = [Quit()]
     if snapshot is not None:
         end.insert(0, Screenshot(handler=lambda frame: write_snapshot(frame, snapshot)))
-    return [*(KeyPressed(key="n") for _ in range(frames)), *end]
+    return [*(item for frame in range(frames) for item in (*interjections.get(frame, ()), KeyPressed(key="n"))), *end]
 
 
 def write_snapshot(frame: Frame, path: Path) -> None:
@@ -177,7 +190,7 @@ async def run(
         workload.root(key_press_times),
         headless=True,
         dimensions=dims,
-        autopilot=autopilot(frames, snapshot),
+        autopilot=autopilot(frames, snapshot, workload.interjections),
         check_purity=check_purity,
     )
     frame_ms = [(end - start) / 1e6 for start, end in pairwise(key_press_times)]

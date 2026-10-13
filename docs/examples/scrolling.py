@@ -1,14 +1,15 @@
 import asyncio
 import sys
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Screenshot, ScrollTo
+from counterweight.controls import AdvanceClock, AnyControl, Screenshot, ScrollTo
 from counterweight.elements import Div, Text
-from counterweight.events import MouseDown, MouseScrolledDown, MouseUp
+from counterweight.events import AnyEvent, MouseDown, MouseScrolledDown, MouseScrolledUp, MouseUp
 from counterweight.geometry import Position
 from counterweight.handlers import on_click, scroll_on_wheel
-from counterweight.hooks import ElementHandle, use_scroll, use_state
+from counterweight.hooks import ElementHandle, use_clock, use_scroll, use_state
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -80,6 +81,11 @@ ROWS = 100_000
 
 
 @component
+def windowed_row(i: int) -> Text:
+    return Text(content=f"row {i:,} of {ROWS:,}")
+
+
+@component
 def windowed() -> Div:
     scroll = use_scroll()
 
@@ -95,13 +101,40 @@ def windowed() -> Div:
         on_input=scroll_on_wheel(),
         children=[
             Div(style=height(first) | shrink(0)),
-            *(Text(content=f"row {i:,} of {ROWS:,}") for i in range(first, last)),
+            # Keyed, so a row keeps its node as the window moves, and scroll anchoring follows the row.
+            *(windowed_row(i).with_key(str(i)) for i in range(first, last)),
             Div(style=height(ROWS - last) | shrink(0)),
         ],
     )
 
 
 # --8<-- [end:windowed]
+
+# --8<-- [start:tail]
+
+KEPT_LINES = 8
+
+
+@component
+def request_line(number: int) -> Text:
+    return Text(content=f"{number:>3} GET /items/{number} 200")
+
+
+@component
+def tail() -> Div:
+    tick = use_clock(timedelta(seconds=1))
+    # A line a second, keeping the newest few.
+    newest = 4 + int(tick.since_mount.total_seconds())
+
+    return Div(
+        style=col | border | border_lightrounded | size(30, 6) | overflow_y_scroll | stick_to_end_y,
+        on_input=scroll_on_wheel(1),
+        # Keyed, so a line keeps its node, which anchoring follows, as older lines drop off the top.
+        children=[request_line(n).with_key(str(n)) for n in range(max(0, newest - KEPT_LINES), newest)],
+    )
+
+
+# --8<-- [end:tail]
 
 WHEEL = MouseScrolledDown(absolute=Position(5, 2))
 
@@ -113,14 +146,24 @@ def click(x: int, y: int) -> tuple[MouseDown, MouseUp]:
 # `use_scroll` reports a scroll one render after it changes, so this gives `windowed` that render.
 SETTLE = Screenshot(handler=lambda frame: None)
 
+WHEEL_UP = MouseScrolledUp(absolute=Position(5, 2))
+TAILED = AdvanceClock(by=timedelta(seconds=10))
+READ_BACK: list[AnyEvent | AnyControl] = [TAILED, WHEEL_UP, WHEEL_UP]
+
 SCREENSHOTS = [
     ScreenshotSpec(pane(), "scrolling-pane", (30, 6)),
     ScreenshotSpec(pane(), "scrolling-pane-wheeled", (30, 6), events=[WHEEL, WHEEL]),
     ScreenshotSpec(controlled(), "scrolling-controls", (30, 7), events=click(12, 0)),
     ScreenshotSpec(windowed(), "scrolling-windowed", (30, 6), events=[WHEEL, WHEEL, SETTLE]),
+    ScreenshotSpec(tail(), "scrolling-tail", (30, 6), events=[TAILED]),
+    ScreenshotSpec(tail(), "scrolling-tail-later", (30, 6), events=[TAILED, AdvanceClock(by=timedelta(seconds=2))]),
+    ScreenshotSpec(tail(), "scrolling-tail-read-back", (30, 6), events=READ_BACK),
+    ScreenshotSpec(
+        tail(), "scrolling-tail-read-back-later", (30, 6), events=[*READ_BACK, AdvanceClock(by=timedelta(seconds=2))]
+    ),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (pane, controlled, windowed)}
+    roots = {root.__name__: root for root in (pane, controlled, windowed, tail)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else pane()))

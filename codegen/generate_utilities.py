@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind, ClipTo, TextJustify, TextWrap
+from counterweight.styles.styles import BorderKind, ClipTo, OverflowAnchor, TextJustify, TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -534,6 +534,23 @@ generated_lines.append("")
 
 for c in get_args(ClipTo):
     generated_lines.append(f'clip_to_{c} = Style(clip_to="{c}")')
+
+generated_lines.append("")
+
+# --- Scroll anchoring and sticking to the end ---
+
+for a in get_args(OverflowAnchor):
+    generated_lines.append(f'overflow_anchor_{a} = Style(overflow_anchor="{a}")')
+
+STICK_AXES = {
+    "": ["x", "y"],
+    "_x": ["x"],
+    "_y": ["y"],
+}
+for name, value in {"stick_to_end": True, "unstick": False}.items():
+    for axis_suffix, axes in STICK_AXES.items():
+        sticks = ", ".join(f"stick_to_end_{axis}={value}" for axis in axes)
+        generated_lines.append(f"{name}{axis_suffix} = Style({sticks})")
 
 generated_lines.append("")
 

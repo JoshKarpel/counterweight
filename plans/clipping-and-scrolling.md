@@ -380,22 +380,29 @@ A flag that pins a container to its end fixes the left column and nothing in the
 The right column needs **scroll anchoring**, CSS's
 [`overflow-anchor`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-anchor):
 
-- Before each layout, the framework picks each scroll container's **anchor**:
-  the first node in tree order whose border box is at least partly in view,
-  descending into it while one of its children is, and not descending into a nested scroll container.
+- Before each layout, the framework picks each scroll container's **anchor**
+  from the last frame's layout, moved by any scroll since:
+  the first node in tree order whose border box is in view,
+  where a node wholly in view is the anchor, a node partly in view is descended into for a better one
+  (and is the anchor if none of its children is in view),
+  and a nested scroll container is never descended into.
   Unclipped nodes are never anchors.
-- After the layout, it adjusts the offset so the anchor's top edge is where it was on the screen,
-  then clamps.
-- If the anchor unmounted, the offset is only clamped.
+- After the layout, it adjusts the offset so the anchor's top edge is as far from the top of the container's
+  padding box as it was, then clamps.
+- If the anchor unmounted or was hidden, the offset is only clamped.
+- A container scrolled to the top doesn't anchor, so content added above it pushes the rest down,
+  as the [spec](https://drafts.csswg.org/css-scroll-anchoring/) skips anchor selection at a zero offset.
+- Only the vertical offset is anchored, as the spec anchors only the block axis.
 
-Browsers anchor by default, and so does this, with a style field to turn it off for a container,
-as `overflow-anchor: none` does.
-A container that turns it off only clamps.
+Browsers anchor by default, and so does this, with a style field to turn it off, as `overflow-anchor: none` does:
+a scroll container that sets it only clamps,
+and a node inside one that sets it is never an anchor, nor is anything inside it.
 
 The left column is opt-in, through a second style field that makes a container **stick to its end** on an axis:
 when it's scrolled to its end before a layout, it's scrolled to its end after.
 A container whose content fits is at its end, since its offset and its maximum are both zero,
-so a transcript that starts short follows its end from the first message.
+so a transcript that starts short follows its end from the first message,
+and a container that mounts already overflowing starts at its end.
 Sticking by default would make every list or document that starts short and then grows follow its end,
 which is right for a transcript or a log and wrong for most other things.
 The web has no property for it either:

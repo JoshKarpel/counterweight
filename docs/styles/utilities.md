@@ -151,7 +151,7 @@ See [Layering](../layout/layering.md).
 
 <!-- utilities: position_* inset inset_* z -->
 
-### Overflow and clipping
+### Overflow, clipping and scrolling
 
 `overflow_hidden`, `overflow_clip` and `overflow_scroll` clip a box's children to its padding box, on both axes or, with `_x` or `_y`, on one,
 and `overflow_scroll` makes the box a [scroll container](../layout/scrolling.md) there.
@@ -159,7 +159,11 @@ and `overflow_scroll` makes the box a [scroll container](../layout/scrolling.md)
 and `clip_to_screen` lets one, such as a dropdown, escape every clip above it.
 See [Clipping](../layout/clipping.md).
 
-<!-- utilities: overflow_* clip_to_* -->
+`overflow_anchor_none` turns off [scroll anchoring](../layout/scrolling.md#keeping-the-content-in-view),
+and `stick_to_end` makes a scroll container [follow its end](../layout/scrolling.md#following-the-end),
+on both axes or, with `_x` or `_y`, on one; `unstick` undoes it.
+
+<!-- utilities: overflow_* clip_to_* stick_to_end* unstick* -->
 
 ### Text
 

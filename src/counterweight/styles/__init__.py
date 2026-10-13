@@ -6,6 +6,7 @@ from counterweight.styles.styles import (
     CellStyle,
     ClipTo,
     Color,
+    OverflowAnchor,
     Style,
     merge,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "CellStyle",
     "ClipTo",
     "Color",
+    "OverflowAnchor",
     "Style",
     "merge",
 ]
