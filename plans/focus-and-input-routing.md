@@ -648,7 +648,7 @@ the existing `tests/inputs/test_on_key.py` and `test_on_mouse.py` port to `on_in
 
 ### 2. Paint margins only where they're colored
 
-**Status:** Not started
+**Status:** Done
 
 `paint_element` fills an element's whole margin box with its background (`paint.py:274`),
 and its margin strips with `margin_color`, which resolves to black when unset,

@@ -55,19 +55,36 @@ Boxes with equal `z` are drawn in the order they appear.
 
 ## A dialog centered over the app
 
-To draw a box over the rest of the app, put it inside an absolutely positioned overlay
-whose insets of 0 stretch it over its whole parent,
-and let the overlay center the box with ordinary alignment.
-The overlay has no border, padding or margin, so it draws nothing itself,
-and the app's content shows around the dialog.
+To center a box over its parent, as CSS does,
+position it absolutely with insets of 0, `auto` margins, and a fit-content size.
+The insets make its whole parent the space to place it in,
+the fit-content size keeps it as small as its content,
+and the `auto` margins split the space left over evenly on each side,
+whether or not the parent centers its children.
+A margin paints nothing unless its element sets `margin_color`,
+so the app's content shows around the dialog.
 The dialog is drawn over the content because it comes after it;
 a dialog that comes earlier in the tree needs a higher `z`.
+
+An absolutely positioned box is always placed in its own parent, never a more distant ancestor or the screen,
+so a dialog centers over the whole app only when it's a child of an element that fills the screen,
+such as the root component's element here.
+A dialog rendered deeper in the tree centers over its own parent.
 
 ```python
 --8<-- "layout_layering.py:dialog"
 ```
 
 ![A dialog over the app](../assets/layout-dialog.svg)
+
+!!! warning "Known issue: parents with a border, and grids"
+
+    The layout engine, [Taffy](https://github.com/DioxusLabs/taffy), mismeasures `auto` margins
+    on an absolutely positioned box in two kinds of parent.
+    In a flex parent with a border, the dialog lands one cell right of and below center,
+    because the space its margins split includes the parent's border.
+    In a grid parent, the `auto` margins are ignored, so the dialog sits at the parent's top-left corner.
+    A parent with padding and no border centers it correctly.
 
 ## A badge pinned to a corner
 

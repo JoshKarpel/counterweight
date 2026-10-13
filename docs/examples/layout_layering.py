@@ -45,7 +45,7 @@ def absolute() -> Div:
 
 # --8<-- [start:dialog]
 
-overlay = position_absolute | inset_top(0) | inset_bottom(0) | inset_left(0) | inset_right(0) | center_children
+dialog_box = position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height
 
 
 @component
@@ -58,14 +58,9 @@ def dialog() -> Div:
                 style=fill(1) | border | text_wrap_stable,
                 content="The app's content stays where it is, and the dialog draws over it. " * 4,
             ),
-            Div(
-                style=overlay,
-                children=[
-                    Text(
-                        style=border | border_double | pad_x(2) | pad_y(1),
-                        content="a dialog centered over the app",
-                    ),
-                ],
+            Text(
+                style=dialog_box | border | border_double | pad_x(2) | pad_y(1),
+                content="a dialog centered over the app",
             ),
         ],
     )

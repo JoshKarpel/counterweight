@@ -122,7 +122,7 @@ See [Sizing one box](../layout/sizing-one-box.md).
 
 See [Gap, margin and padding](../layout/spacing-and-borders.md#gap-margin-and-padding).
 
-<!-- utilities: margin margin_x margin_y margin_top margin_bottom margin_left margin_right gap gap_width gap_height pad pad_* -->
+<!-- utilities: margin margin_x margin_y margin_top margin_bottom margin_left margin_right margin_sides margin_*auto gap gap_width gap_height pad pad_* -->
 
 ### Borders
 
@@ -149,7 +149,7 @@ See [Grids and wrapping](../layout/grids-and-wrapping.md) for the grid utilities
 
 See [Layering](../layout/layering.md).
 
-<!-- utilities: position_* inset_* z -->
+<!-- utilities: position_* inset inset_* z -->
 
 ### Text
 

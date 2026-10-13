@@ -245,17 +245,20 @@ def paint_element(
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
-    An element with none of them and no `content_color` of its own paints nothing, not even its background,
-    so an undecorated container laid over other elements leaves them visible.
+    The background fills the border box, and the margin is painted only where the element's own style
+    sets `margin_color`, so a margin leaves whatever lies beneath it visible, as on the web.
+    An element with no border, padding, text, `margin_color` or `content_color` paints nothing,
+    not even its background, so an undecorated container laid over other elements leaves them visible.
     """
     border, hints = border_fills(
         style.border_kind, style.border_style, style.border_contract, resolved.border, resolved.padding
     )
-    fills = (
+    margin = (
         edge_fills(resolved.margin, resolved.border, style.margin_color)
-        + border
-        + edge_fills(resolved.padding, resolved.content, style.padding_color)
+        if element.style.margin_color is not UNSET
+        else ()
     )
+    fills = margin + border + edge_fills(resolved.padding, resolved.content, style.padding_color)
 
     match element:
         case Div():
@@ -271,7 +274,7 @@ def paint_element(
     if not fills and not lines and element.style.content_color is UNSET:
         return hints
 
-    paint.fill(resolved.margin, Cell.blank(color=style.content_color))
+    paint.fill(resolved.border, Cell.blank(color=style.content_color))
     for region, cell in fills:
         paint.fill(region, cell)
     for y, line in enumerate(lines, start=resolved.content.top):

@@ -4,6 +4,13 @@
 
 ### Added
 
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added `inset(n)`, `inset_x(n)` and `inset_y(n)`, which set all four, the left and right, or the top and bottom insets;
+  `inset_sides`, `margin_sides` and `pad_sides`, which set each side separately in the order of CSS's four-value shorthands;
+  and `auto` margins for every side and pair of sides, from `margin_auto` to `margin_right_auto`.
+  `position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height`
+  centers a box over its parent at its own size, as in CSS.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
@@ -97,6 +104,13 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  An element's margin is painted only where its style sets `margin_color`,
+  and its `content_color` fills its border box rather than its margin box,
+  so a margin leaves whatever lies beneath it visible, as on the web.
+  Previously every margin painted black over what was beneath it,
+  so an absolutely positioned box with large margins blanked out its parent.
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   **Breaking:** `Div` and `Text` take one `on_input` handler in place of `on_key` and `on_mouse`.
