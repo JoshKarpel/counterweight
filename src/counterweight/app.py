@@ -8,7 +8,8 @@ from collections import deque
 from collections.abc import Callable, Collection
 from datetime import timedelta
 from itertools import chain, repeat
-from signal import SIG_DFL, SIGWINCH, signal
+from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
+from types import FrameType
 from typing import Iterable, TextIO, assert_never
 from weakref import WeakSet
 
@@ -70,6 +71,29 @@ def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
 
 def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
+
+
+type SignalHandler = Callable[[int, FrameType | None], object] | int | None
+
+
+def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> SignalHandler:
+    """
+    Makes the first interrupt `request_quit`, so ctrl+c quits the app and `app` returns,
+    and returns the handler it replaced, which takes any interrupt after that,
+    so a second ctrl+c still stops an app whose render loop is stuck and can't quit.
+    """
+    previous = getsignal(SIGINT)
+
+    def interrupted(signum: int, frame: FrameType | None) -> None:
+        signal(SIGINT, previous)
+        request_quit()
+
+    signal(SIGINT, interrupted)
+    return previous
+
+
+def stop_handling_interrupt_signal(previous: SignalHandler) -> None:
+    signal(SIGINT, previous)
 
 
 def screen_element_style(width: int, height: int) -> Style:
@@ -185,8 +209,18 @@ async def render_loop(
     def put_event(event: AnyEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
+    def quit_from_signal() -> None:
+        """Quits as an autopilot `Quit` does, from a signal handler, which runs outside the loop."""
+
+        def apply_quit() -> None:
+            handle_control(Quit())
+            event_queue.put_nowait(Dummy())
+
+        loop.call_soon_threadsafe(apply_quit)
+
     if not headless:
         original = start_input_control(stream=input_stream)
+        previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
 
     try:
         if not headless:
@@ -299,6 +333,7 @@ async def render_loop(
                         stop_output_control(stream=output_stream)
                         stop_input_control(stream=input_stream, original=original)
                         stop_handling_resize_signal()
+                        stop_handling_interrupt_signal(previous_interrupt_handler)
 
                     try:
                         await maybe_await(should_suspend.handler())
@@ -309,6 +344,7 @@ async def render_loop(
 
                     if not headless:
                         original = start_input_control(stream=input_stream)
+                        previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
                         start_handling_resize_signal(put_event=put_event)
                         start_output_control(stream=output_stream)
                         start_mouse_tracking(stream=output_stream)
@@ -455,6 +491,7 @@ async def render_loop(
             stop_output_control(stream=output_stream)
             stop_input_control(stream=input_stream, original=original)
             stop_handling_resize_signal()
+            stop_handling_interrupt_signal(previous_interrupt_handler)
 
         logger.info("Application stopped")
 

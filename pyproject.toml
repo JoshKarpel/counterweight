@@ -90,8 +90,8 @@ show_missing = true
 skip_covered = true
 skip_empty = true
 sort = "-cover"
-# Checked only where `--cov` is passed (`just test` and CI), never in `addopts`: mutmut runs pytest itself,
-# against a copy of the source that `source` doesn't name and with only some tests per mutant,
+# Checked only where `--cov` is passed (`just test` with no arguments, and CI), never in `addopts`:
+# mutmut runs pytest itself, against a copy of the source that `source` doesn't name and with only some tests per mutant,
 # so a gate there would fail mutmut's baseline and count every mutant as killed.
 fail_under = 100
 exclude_also = [

@@ -60,7 +60,7 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   `tests/test_devlog.py` and `test_performance_guide.py` for the render loop's,
   `tests/inputs/test_terminal_input.py` for `read_keys`'.
   Their message, field, and value mutants are killed rather than documented.
-- **Keep `--cov` out of `addopts`.** Coverage is gated at 100% through `just test` and CI, which pass `--cov`.
+- **Keep `--cov` out of `addopts`.** Coverage is gated at 100% through a bare `just test` and CI, which pass `--cov`.
   mutmut runs pytest itself, against a copy of the source the coverage config doesn't name and with only the tests
   that reach each mutant, so a gate there fails the baseline and counts every mutant as killed.
 - `tests/test_mkdocs_utility_tables.py` is skipped under mutmut: it lists the utilities module's public names,

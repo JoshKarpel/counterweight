@@ -6,7 +6,8 @@ import io
 import os
 import termios
 from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
-from signal import SIGWINCH, raise_signal
+from collections.abc import Iterator
+from signal import SIGINT, SIGWINCH, raise_signal, signal
 
 import pytest
 
@@ -52,6 +53,21 @@ class Output(io.StringIO):
 @component
 def hi() -> Text:
     return Text(content="hi", style=text_black)
+
+
+@component
+def interrupt_on_key() -> Text:
+    """Sends an interrupt for each key pressed, as ctrl+c would."""
+    return Text(content="hi", style=text_black, on_key=lambda event: raise_signal(SIGINT))
+
+
+@pytest.fixture
+def replaced_interrupts() -> Iterator[list[int]]:
+    """Installs an interrupt handler for the app to replace, and records the interrupts that reach it."""
+    received: list[int] = []
+    previous = signal(SIGINT, lambda signum, frame: received.append(signum))
+    yield received
+    signal(SIGINT, previous)
 
 
 async def test_app_takes_over_the_terminal_draws_rings_the_bell_and_hands_it_back(terminal: Terminal) -> None:
@@ -111,7 +127,7 @@ async def test_app_reads_keys_from_the_terminal(terminal: Terminal) -> None:
 
     os.write(terminal.keyboard, b"aq")
 
-    await app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1))
+    await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT)
 
     assert pressed == [KeyPressed(key="a"), KeyPressed(key="q")]
 
@@ -248,3 +264,80 @@ async def test_cancelling_an_app_hands_the_terminal_back_and_cancels_the_caller(
     assert output.getvalue().endswith(HAND_BACK)
     assert termios.tcgetattr(terminal.stream) == before
     assert not get_running_loop().remove_reader(terminal.stream.fileno())
+
+
+async def test_an_interrupt_quits_the_app_and_hands_the_terminal_back(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    before = termios.tcgetattr(terminal.stream)
+    output = Output()
+    os.write(terminal.keyboard, b"i")
+
+    await wait_for(
+        app(interrupt_on_key(), output_stream=output, input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT
+    )
+
+    assert output.getvalue().endswith(HAND_BACK)
+    assert termios.tcgetattr(terminal.stream) == before
+    assert replaced_interrupts == []
+
+
+async def test_a_second_interrupt_reaches_the_handler_the_app_replaced(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    def interrupt_twice(event: KeyPressed) -> None:
+        raise_signal(SIGINT)
+        raise_signal(SIGINT)
+
+    @component
+    def root() -> Text:
+        return Text(content="hi", on_key=interrupt_twice)
+
+    os.write(terminal.keyboard, b"i")
+
+    await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT)
+
+    assert replaced_interrupts == [SIGINT]
+
+
+async def test_the_app_puts_back_the_interrupt_handler_it_replaced_when_it_returns(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    await app(hi(), output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1), autopilot=[Quit()])
+    raise_signal(SIGINT)
+
+    assert replaced_interrupts == [SIGINT]
+
+
+async def test_a_suspension_puts_back_the_interrupt_handler_while_its_handler_runs(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    await app(
+        hi(),
+        output_stream=Output(),
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[Suspend(handler=lambda: raise_signal(SIGINT)), Quit()],
+    )
+
+    assert replaced_interrupts == [SIGINT]
+
+
+async def test_an_interrupt_quits_the_app_after_a_suspension(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    def type_while_suspended() -> None:
+        os.write(terminal.keyboard, b"i")
+
+    await wait_for(
+        app(
+            interrupt_on_key(),
+            output_stream=Output(),
+            input_stream=terminal.stream,
+            dimensions=(3, 1),
+            autopilot=[Suspend(handler=type_while_suspended)],
+        ),
+        TIMEOUT,
+    )
+
+    assert replaced_interrupts == []

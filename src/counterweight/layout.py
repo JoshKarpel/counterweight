@@ -621,7 +621,6 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
 
     n = len(flat_words)
-    INF = inf
 
     # Precompute prefix sums of word widths so line_length is O(1).
     # prefix[i] = sum of the widths of flat_words[0] .. flat_words[i-1]
@@ -644,7 +643,7 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
     # dp[i] = min cost to break flat_words[i..n-1], bp[i] = best j for first break after i.
     # bp[i] is always set to j > i before use because every word may occupy a line of its own,
     # even the one-cluster chunks _flatten_long_words leaves wider than width (a wide cluster at width 1).
-    dp: list[float] = [INF] * (n + 1)
+    dp: list[float] = [inf] * (n + 1)
     bp: list[int] = [0] * (n + 1)
     dp[n] = 0.0
 
