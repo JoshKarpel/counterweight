@@ -2,16 +2,19 @@ import subprocess
 import sys
 
 import pytest
-from typer.testing import CliRunner
+from without_cli import Streams, run
 
 from counterweight.cli import cli
 from counterweight.constants import PACKAGE_NAME
 
 
-def test_help(runner: CliRunner) -> None:
-    result = runner.invoke(cli, ("--help",))
+def test_help() -> None:
+    capture = Streams.captured()
 
-    assert result.exit_code == 0
+    code = run(cli, argv=("--help",), streams=capture.streams)
+
+    assert code == 0
+    assert "check-input" in capture.stdout
 
 
 @pytest.mark.slow

@@ -6,7 +6,6 @@ A run named `NAME` leaves its files in the output directory: `NAME.json` (frame 
 and `NAME.html` (its flamegraph). `report` and `compare` read runs back by name.
 """
 
-import asyncio
 import subprocess
 import sys
 from collections import Counter
@@ -14,107 +13,157 @@ from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from rich.console import Console
-from rich.table import Table
-from typer import Argument, Option, Typer
+from without_cli import (
+    FLOAT,
+    INT,
+    PATH,
+    STR,
+    Converter,
+    Streams,
+    argument,
+    command,
+    default,
+    flag,
+    group,
+    once,
+    option,
+    optional,
+)
+from without_cli import run as run_cli
 
-from benchmarks.harness import Timings, run
+from benchmarks.harness import Runnable, Timings, run
 from benchmarks.stacks import STARTUP, Summary, parse_collapsed, summarize
+from benchmarks.tables import Column, render_table
 from benchmarks.workloads import WORKLOADS
 from counterweight.app import app
 
-OUTPUT = Option(Path("profiles"), help="Where runs are written and read.")
 
-cli = Typer(no_args_is_help=True, add_completion=False)
-console = Console(width=None if sys.stdout.isatty() else 160)
+def parse_workload(name: str) -> Runnable:
+    """Look up a workload by name, rejecting an unknown one as a bad command line rather than a crash."""
+    try:
+        return WORKLOADS[name]
+    except KeyError:
+        raise ValueError(name) from None
 
 
-@cli.command("list")
-def list_workloads() -> None:
+WORKLOAD = Converter("WORKLOAD", parse_workload)
+OUTPUT = option(
+    "--output", default(Path("profiles"), PATH), summary="Where runs are written and read (default profiles)."
+)
+
+
+@command("list")
+async def list_workloads(streams: Streams) -> int:
     """List the workloads."""
-    table = Table("Workload", "Dimensions", "Description")
-    for workload in WORKLOADS.values():
-        width, height = workload.dimensions
-        table.add_row(workload.name, f"{width}x{height}", workload.description.strip())
-    console.print(table)
-
-
-@cli.command("run")
-def run_workload(
-    workload: str = Argument(help="The workload to run (see `list`)."),
-    name: str | None = Option(None, help="The run's name. Defaults to the workload's."),
-    frames: int = Option(500, help="Frames to render after the first."),
-    warmup: int = Option(20, help="Leading frames left out of the timings."),
-    width: int | None = Option(None, help="Override the workload's width."),
-    height: int | None = Option(None, help="Override the workload's height."),
-    output: Path = OUTPUT,
-) -> None:
-    """Run a workload headless, then write and print its frame times."""
-    chosen = WORKLOADS[workload]
-    name = name or workload
-    dimensions = (width or chosen.dimensions[0], height or chosen.dimensions[1])
-    timings = asyncio.run(
-        run(chosen, frames=frames, warmup=warmup, dimensions=dimensions, snapshot=output / f"{name}.txt")
-    )
-    timings.dump(output / f"{name}.json")
-    console.print(frames_table({name: timings}))
-
-
-@cli.command()
-def show(
-    workload: str = Argument(help="The workload to show (see `list`)."),
-    fps: float = Option(30, help="Frames to step the workload per second."),
-    fixed_size: bool = Option(False, help="Use the workload's own dimensions rather than the terminal's."),
-) -> None:
-    """Run a workload in this terminal, stepping it on a timer, to see what it draws. Quit with Ctrl-C."""
-    chosen = WORKLOADS[workload]
-    asyncio.run(
-        app(
-            chosen.live_root(timedelta(seconds=1 / fps)),
-            dimensions=chosen.dimensions if fixed_size else None,
+    streams.stdout.write(
+        render_table(
+            (Column("Workload"), Column("Dimensions"), Column("Description")),
+            (
+                (workload.name, f"{workload.dimensions[0]}x{workload.dimensions[1]}", workload.description.strip())
+                for workload in WORKLOADS.values()
+            ),
         )
     )
+    return 0
 
 
-@cli.command()
-def report(
-    name: str = Argument(help="The run to report on."),
-    top: int = Option(25, help="Functions to show in each hotspot table."),
-    output: Path = OUTPUT,
-) -> None:
+@command(
+    "run",
+    argument("workload", once(WORKLOAD), summary="The workload to run (see `list`)."),
+    option("--name", optional(STR), summary="The run's name. Defaults to the workload's."),
+    option("--frames", default(500, INT), summary="Frames to render after the first (default 500)."),
+    option("--warmup", default(20, INT), summary="Leading frames left out of the timings (default 20)."),
+    option("--width", optional(INT), summary="Override the workload's width."),
+    option("--height", optional(INT), summary="Override the workload's height."),
+    OUTPUT,
+)
+async def run_workload(
+    streams: Streams,
+    workload: Runnable,
+    name: str | None,
+    frames: int,
+    warmup: int,
+    width: int | None,
+    height: int | None,
+    output: Path,
+) -> int:
+    """Run a workload headless, then write and print its frame times."""
+    name = name or workload.name
+    dimensions = (width or workload.dimensions[0], height or workload.dimensions[1])
+    timings = await run(workload, frames=frames, warmup=warmup, dimensions=dimensions, snapshot=output / f"{name}.txt")
+    timings.dump(output / f"{name}.json")
+    streams.stdout.write(frames_table({name: timings}))
+    return 0
+
+
+@command(
+    "show",
+    argument("workload", once(WORKLOAD), summary="The workload to show (see `list`)."),
+    option("--fps", default(30.0, FLOAT), summary="Frames to step the workload per second (default 30)."),
+    flag("--fixed-size", summary="Use the workload's own dimensions rather than the terminal's."),
+)
+async def show(streams: Streams, workload: Runnable, fps: float, fixed_size: bool) -> int:
+    """Run a workload in this terminal, stepping it on a timer, to see what it draws. Quit with Ctrl-C."""
+    await app(
+        workload.live_root(timedelta(seconds=1 / fps)),
+        dimensions=workload.dimensions if fixed_size else None,
+    )
+    return 0
+
+
+@command(
+    "report",
+    argument("name", once(STR), summary="The run to report on."),
+    option("--top", default(25, INT), summary="Functions to show in each hotspot table (default 25)."),
+    OUTPUT,
+)
+async def report(streams: Streams, name: str, top: int, output: Path) -> int:
     """Show a run's frame times and, if it was profiled, where the time went."""
     timings = Timings.load(output / f"{name}.json")
-    console.print(frames_table({name: timings}))
+    streams.stdout.write(frames_table({name: timings}))
 
     profile = output / f"{name}.bin"
     if not profile.exists():
-        return
+        return 0
     summary = summarize(parse_collapsed(collapsed_stacks(profile)))
-    console.print(stages_table({name: (timings, summary)}))
+    streams.stdout.write(stages_table({name: (timings, summary)}))
     for title, counter in (("Self", summary.self_samples), ("Inclusive", summary.inclusive_samples)):
-        table = Table("Function", "Samples", "% of running", title=f"{title} samples while running")
-        for label, samples in counter.most_common(top):
-            table.add_row(label, str(samples), percent(samples, summary.running_samples))
-        console.print(table)
+        streams.stdout.write(
+            render_table(
+                (
+                    Column("Function"),
+                    Column("Samples", is_right_aligned=True),
+                    Column("% of running", is_right_aligned=True),
+                ),
+                (
+                    (label, str(samples), percent(samples, summary.running_samples))
+                    for label, samples in counter.most_common(top)
+                ),
+                title=f"{title} samples while running",
+            )
+        )
+    return 0
 
 
-@cli.command()
-def compare(
-    before: str = Argument(help="The run to compare against."),
-    after: str = Argument(help="The run to compare."),
-    output: Path = OUTPUT,
-) -> None:
+@command(
+    "compare",
+    argument("before", once(STR), summary="The run to compare against."),
+    argument("after", once(STR), summary="The run to compare."),
+    OUTPUT,
+)
+async def compare(streams: Streams, before: str, after: str, output: Path) -> int:
     """Compare two runs' frame times and, if both were profiled, their stages."""
     timings = {name: Timings.load(output / f"{name}.json") for name in (before, after)}
-    console.print(frames_table(timings))
+    streams.stdout.write(frames_table(timings))
 
     profiles = {name: output / f"{name}.bin" for name in (before, after)}
     if all(profile.exists() for profile in profiles.values()):
-        console.print(
+        streams.stdout.write(
             stages_table(
                 {name: (timings[name], summarize(parse_collapsed(collapsed_stacks(p)))) for name, p in profiles.items()}
             )
         )
+    return 0
 
 
 def collapsed_stacks(profile: Path) -> str:
@@ -129,25 +178,36 @@ def collapsed_stacks(profile: Path) -> str:
         return stacks.read_text()
 
 
-def frames_table(runs: dict[str, Timings]) -> Table:
-    table = Table("Run", "Workload", "Size", "Frames", "Median", "Mean", "P95", "Max", "Frames/s", title="Frame times")
-    for name, timings in runs.items():
-        width, height = timings.dimensions
-        table.add_row(
-            name,
-            timings.workload,
-            f"{width}x{height}",
-            str(len(timings.frame_ms)),
-            ms(timings.median_ms),
-            ms(timings.mean_ms),
-            ms(timings.p95_ms),
-            ms(timings.max_ms),
-            f"{1000 / timings.mean_ms:.1f}",
-        )
-    return table
+def frames_table(runs: dict[str, Timings]) -> str:
+    return render_table(
+        (
+            Column("Run"),
+            Column("Workload"),
+            Column("Size"),
+            *(
+                Column(header, is_right_aligned=True)
+                for header in ("Frames", "Median", "Mean", "P95", "Max", "Frames/s")
+            ),
+        ),
+        (
+            (
+                name,
+                timings.workload,
+                f"{timings.dimensions[0]}x{timings.dimensions[1]}",
+                str(len(timings.frame_ms)),
+                ms(timings.median_ms),
+                ms(timings.mean_ms),
+                ms(timings.p95_ms),
+                ms(timings.max_ms),
+                f"{1000 / timings.mean_ms:.1f}",
+            )
+            for name, timings in runs.items()
+        ),
+        title="Frame times",
+    )
 
 
-def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> Table:
+def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> str:
     """
     Each stage's share of the samples taken while the app ran, and that share of the mean frame time.
     Every frame does the same work in every run, so the per-frame times compare across runs.
@@ -156,13 +216,13 @@ def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> Table:
     for _, summary in runs.values():
         stages.update({stage: samples for stage, samples in summary.stages.items() if stage != STARTUP})
 
-    table = Table("Stage", title="Stages: share of samples while running, and of the mean frame")
+    columns = [Column("Stage")]
     for name in runs:
-        table.add_column(f"{name} %", justify="right")
-        table.add_column(f"{name} ms/frame", justify="right")
+        columns += [Column(f"{name} %", is_right_aligned=True), Column(f"{name} ms/frame", is_right_aligned=True)]
     if len(runs) == 2:
-        table.add_column("Change", justify="right")
+        columns.append(Column("Change", is_right_aligned=True))
 
+    rows = []
     for stage, _ in stages.most_common():
         cells = []
         per_frame = []
@@ -173,8 +233,8 @@ def stages_table(runs: dict[str, tuple[Timings, Summary]]) -> Table:
         if len(runs) == 2:
             before, after = per_frame
             cells.append(f"{(after - before) / before:+.0%}" if before else "new")
-        table.add_row(stage, *cells)
-    return table
+        rows.append((stage, *cells))
+    return render_table(columns, rows, title="Stages: share of samples while running, and of the mean frame")
 
 
 def ms(value: float) -> str:
@@ -185,4 +245,10 @@ def percent(part: float, whole: float) -> str:
     return f"{part / whole:.1%}" if whole else "—"
 
 
-cli()
+cli = group(
+    "benchmarks",
+    commands=(list_workloads, run_workload, show, report, compare),
+    summary="Run, profile, and compare the render-loop benchmark workloads.",
+)
+
+raise SystemExit(run_cli(cli))
