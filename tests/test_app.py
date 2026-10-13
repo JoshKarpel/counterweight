@@ -5,7 +5,16 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, SetTitle, Suspend, ToggleBorderHealing
+from counterweight.controls import (
+    AnyControl,
+    Bell,
+    Quit,
+    RestoreTitle,
+    Screenshot,
+    SetTitle,
+    Suspend,
+    ToggleBorderHealing,
+)
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, Receiver, TerminalResized
 from counterweight.geometry import Position
@@ -151,9 +160,13 @@ async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
         await wait_for(app(raises_in_two_effects(), headless=True, dimensions=(10, 2), check_purity=True), timeout=5)
 
 
-@pytest.mark.parametrize("control", [Bell(), SetTitle(title="hi")], ids=["bell", "title"])
+@pytest.mark.parametrize(
+    "controls",
+    [[Bell()], [SetTitle(title="hi")], [SetTitle(title="hi"), RestoreTitle()]],
+    ids=["bell", "title", "restored-title"],
+)
 async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_the_terminal(
-    control: AnyControl,
+    controls: list[AnyControl],
 ) -> None:
     @component
     def root() -> Text:
@@ -161,6 +174,6 @@ async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_t
 
     output = io.StringIO()
 
-    await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[control, Quit()])
+    await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[*controls, Quit()])
 
     assert output.getvalue() == ""

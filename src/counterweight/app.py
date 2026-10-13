@@ -29,6 +29,7 @@ from counterweight.controls import (
     FocusOn,
     FocusPrevious,
     Quit,
+    RestoreTitle,
     Screenshot,
     SetTitle,
     Suspend,
@@ -60,12 +61,12 @@ from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
     paint_to_instructions,
-    set_title,
     start_mouse_tracking,
     start_output_control,
     stop_mouse_tracking,
     stop_output_control,
     synchronized,
+    title_instructions,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
 from counterweight.routing import Press, RoutingTable, UnsettledFocus, route_key, route_mouse
@@ -233,11 +234,17 @@ async def render_loop(
     if not headless:
         original = start_input_control(stream=input_stream)
         previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
+        start_handling_resize_signal(put_event=put_event)
         key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
+    # Whether a suspension has handed the terminal back, so a suspend handler that raises an interrupt
+    # doesn't hand it back again: restoring the title a second time would pop a title the app never saved.
+    is_suspended = False
+
+    # Taking output control is the first thing the try does, since the finally block hands it back,
+    # and restoring a title the app never saved would pop one off the terminal's title stack that isn't the app's.
     try:
         if not headless:
-            start_handling_resize_signal(put_event=put_event)
             start_output_control(stream=output_stream)
             start_mouse_tracking(stream=output_stream)
 
@@ -319,6 +326,8 @@ async def render_loop(
                     should_bell = True
                 case SetTitle():
                     title = control.title
+                case RestoreTitle():
+                    title = None
                 case Screenshot():
                     pending_screenshots.append(control)
                 case Suspend():
@@ -379,6 +388,7 @@ async def render_loop(
                         stop_input_control(stream=input_stream, original=original)
                         stop_handling_resize_signal()
                         stop_handling_interrupt_signal(previous_interrupt_handler)
+                    is_suspended = True
 
                     try:
                         await maybe_await(should_suspend.handler())
@@ -387,6 +397,7 @@ async def render_loop(
                             "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}
                         )
 
+                    is_suspended = False
                     if not headless:
                         original = start_input_control(stream=input_stream)
                         previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
@@ -404,8 +415,8 @@ async def render_loop(
                     should_suspend = None
 
                 # After a suspension, so the app that resumes sets its title again.
-                if not headless and title is not None and title != shown_title:
-                    output_stream.write(set_title(title))
+                if not headless and title != shown_title:
+                    output_stream.write(title_instructions(title))
                     output_stream.flush()
                     shown_title = title
 
@@ -581,7 +592,7 @@ async def render_loop(
     finally:
         logger.info("Application stopping...")
 
-        if not headless:
+        if not headless and not is_suspended:
             # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
             stop_reading_keys(key_reader)
             stop_mouse_tracking(stream=output_stream)

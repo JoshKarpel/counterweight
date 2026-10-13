@@ -1,6 +1,6 @@
 import pytest
 
-from counterweight.output import set_title
+from counterweight.output import title_instructions
 
 
 @pytest.mark.parametrize(
@@ -13,5 +13,11 @@ from counterweight.output import set_title
         pytest.param("x\x9cy", "\x1b]2;x\N{REPLACEMENT CHARACTER}y\x1b\\", id="c1-controls-become-replacements"),
     ],
 )
-def test_set_title_makes_control_characters_visible_so_the_title_cannot_end_early(title: str, expected: str) -> None:
-    assert set_title(title) == expected
+def test_title_instructions_make_control_characters_visible_so_the_title_cannot_end_early(
+    title: str, expected: str
+) -> None:
+    assert title_instructions(title) == expected
+
+
+def test_title_instructions_for_none_restore_the_saved_title_and_save_it_again() -> None:
+    assert title_instructions(None) == "\x1b[23;0t\x1b[22;0t"

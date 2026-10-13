@@ -12,7 +12,7 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Bell, Quit, Screenshot, SetTitle, Suspend
+from counterweight.controls import AnyControl, Bell, Quit, RestoreTitle, Screenshot, SetTitle, Suspend
 from counterweight.elements import Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.geometry import Position
@@ -29,7 +29,7 @@ from counterweight.output import (
     SYNCHRONIZED_OUTPUT_OFF,
     SYNCHRONIZED_OUTPUT_ON,
     UNSET_ANY_EVENT_MOUSE_SGR_FORMAT,
-    set_title,
+    title_instructions,
 )
 from counterweight.styles.utilities import text_black
 from tests.devlog import devlog_lines
@@ -161,7 +161,21 @@ async def test_set_title_sets_the_title_once_for_each_change(terminal: Terminal)
         autopilot=[SetTitle(title="one"), SetTitle(title="one"), SetTitle(title="two"), Quit()],
     )
 
-    assert output.getvalue() == TAKE_OVER + HI + set_title("one") + set_title("two") + HAND_BACK
+    assert output.getvalue() == TAKE_OVER + HI + title_instructions("one") + title_instructions("two") + HAND_BACK
+
+
+async def test_restore_title_restores_the_original_title_only_after_another_was_set(terminal: Terminal) -> None:
+    output = Output()
+
+    await app(
+        hi(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[RestoreTitle(), SetTitle(title="mine"), RestoreTitle(), RestoreTitle(), Quit()],
+    )
+
+    assert output.getvalue() == TAKE_OVER + HI + title_instructions("mine") + RESTORE_TITLE + SAVE_TITLE + HAND_BACK
 
 
 async def test_a_suspension_restores_the_title_while_its_handler_runs_then_sets_it_again(terminal: Terminal) -> None:
@@ -176,9 +190,28 @@ async def test_a_suspension_restores_the_title_while_its_handler_runs_then_sets_
         autopilot=[SetTitle(title="mine"), Suspend(handler=lambda: during.append(output.getvalue())), Quit()],
     )
 
-    titled = TAKE_OVER + HI + set_title("mine") + HAND_BACK
+    titled = TAKE_OVER + HI + title_instructions("mine") + HAND_BACK
     assert during == [titled]
-    assert output.getvalue() == titled + TAKE_OVER + set_title("mine") + HI + HAND_BACK
+    assert output.getvalue() == titled + TAKE_OVER + title_instructions("mine") + HI + HAND_BACK
+
+
+async def test_an_interrupt_in_a_suspend_handler_quits_without_handing_the_terminal_back_twice(
+    terminal: Terminal,
+) -> None:
+    output = Output()
+
+    def interrupted() -> None:
+        raise KeyboardInterrupt
+
+    await app(
+        hi(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[Suspend(handler=interrupted)],
+    )
+
+    assert output.getvalue() == TAKE_OVER + HI + HAND_BACK
 
 
 async def test_app_reads_keys_from_the_terminal(terminal: Terminal) -> None:

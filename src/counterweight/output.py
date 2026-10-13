@@ -140,13 +140,19 @@ def synchronized(instructions: str) -> str:
     return f"{SYNCHRONIZED_OUTPUT_ON}{instructions}{SYNCHRONIZED_OUTPUT_OFF}"
 
 
-def set_title(title: str) -> str:
+def title_instructions(title: str | None) -> str:
     """
     Terminal instructions that set the window title to `title`,
     with its line breaks as spaces and its other control characters as the symbols `visible` draws for them,
     since a control character in the title, like an escape or a bell, would end it early
     and run the rest as instructions.
+
+    For `None`, they restore the title the app saved when it took over the terminal, and save it again,
+    so the title stack still holds it for when the app hands the terminal back.
     """
+    if title is None:
+        return RESTORE_TITLE + SAVE_TITLE
+
     shown = "".join(" " if grapheme in LINE_BREAKS else visible(grapheme) for grapheme in graphemes(title))
     return f"\x1b]2;{shown}\x1b\\"
 
