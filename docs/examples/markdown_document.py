@@ -1,4 +1,5 @@
 import asyncio
+import sys
 
 from counterweight.app import app
 from counterweight.components import component
@@ -41,8 +42,38 @@ def root() -> Div:
 
 # --8<-- [end:example]
 
-SCREENSHOTS = [ScreenshotSpec(root(), "markdown-document", (60, 25))]
+# --8<-- [start:github]
+
+EXPEDITION = """\
+---
+peak: K2
+---
+
+- [x] Reach base camp
+- [ ] Summit, weather permitting[^window]
+
+> [!WARNING]
+> Bottlenecks form above camp four.
+
+Forecasts are at www.mountain-forecast.com.
+
+[^window]: Usually in late July.
+"""
+
+
+@component
+def github() -> Div:
+    return Div(style=col | pad_x(1), children=[markdown(EXPEDITION)])
+
+
+# --8<-- [end:github]
+
+SCREENSHOTS = [
+    ScreenshotSpec(root(), "markdown-document", (60, 25)),
+    ScreenshotSpec(github(), "markdown-github", (60, 12)),
+]
 
 
 if __name__ == "__main__":
-    asyncio.run(app(root()))
+    roots = {root.__name__: root for root in (root, github)}
+    asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else root()))

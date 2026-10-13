@@ -5,11 +5,14 @@
 ### Added
 
 - [#330](https://github.com/JoshKarpel/counterweight/issues/330)
-  Added [`markdown`](rich-text/markdown.md), which renders a Markdown document (CommonMark, with GitHub's tables
-  and strikethrough) as a `Div` of elements, styled by a `MarkdownStyles` with a field for each kind of block and span.
-  Links are hyperlinks, fenced code blocks are highlighted, and the
-  [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
-  shows a directory's Markdown files beside a tree of them.
+  Added [`markdown`](rich-text/markdown.md), which renders a Markdown document
+  (GitHub Flavored Markdown, with its task lists, alerts, footnotes, bare URLs, and math, and YAML front matter)
+  as a `Div` of elements, styled by a `MarkdownStyles` with a field for each kind of block and span.
+  Links are hyperlinks, and fenced code blocks and front matter are highlighted.
+  The [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
+  shows a directory's Markdown files beside a tree of them, and the
+  [Markdown gallery](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_gallery.py) example
+  shows each kind of block and span beside its source.
 
 - [#330](https://github.com/JoshKarpel/counterweight/issues/330)
   Added [syntax highlighting](rich-text/syntax-highlighting.md) with Pygments:

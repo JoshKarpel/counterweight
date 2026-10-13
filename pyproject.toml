@@ -38,8 +38,9 @@ dependencies = [
     "without-logging>=0.0.10",
     "without-streams>=0.0.10",
     "wcwidth>=0.8",
-    "markdown-it-py>=3",
+    "markdown-it-py>=4.1",
     "pygments>=2.17",
+    "mdit-py-plugins>=0.5",
 ]
 
 [dependency-groups]

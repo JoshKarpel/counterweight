@@ -86,6 +86,14 @@ def test_what_the_theme_does_not_set_is_left_unset() -> None:
     assert style.bold is UNSET
 
 
+def test_token_type_the_theme_does_not_name_is_styled_as_its_nearest_named_ancestor() -> None:
+    assert cell_style_for_token(LoudStyle, Keyword.Unnamed.Deeper) == cell_style_for_token(LoudStyle, Keyword)
+
+
+def test_yaml_highlights_although_its_lexer_makes_token_types_no_theme_names() -> None:
+    assert "".join(contents("key: value\n", "yaml")) == "key: value\n"
+
+
 def test_ansi_color_names_become_their_hex_approximations() -> None:
     expected = LoudStyle.style_for_token(Comment)["color"]
 

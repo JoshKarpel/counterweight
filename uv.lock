@@ -204,6 +204,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "markdown-it-py" },
+    { name = "mdit-py-plugins" },
     { name = "more-itertools" },
     { name = "pygments" },
     { name = "waxy" },
@@ -235,7 +236,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "markdown-it-py", specifier = ">=3" },
+    { name = "markdown-it-py", specifier = ">=4.1" },
+    { name = "mdit-py-plugins", specifier = ">=0.5" },
     { name = "more-itertools", specifier = ">=9.1" },
     { name = "pygments", specifier = ">=2.17" },
     { name = "waxy", specifier = ">=0.7.1" },

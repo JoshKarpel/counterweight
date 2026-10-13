@@ -1,6 +1,6 @@
 """
 Markdown rendering: a Markdown document as a tree of elements, parsed by
-[markdown-it-py](https://markdown-it-py.readthedocs.io/) as CommonMark with GitHub's tables and strikethrough.
+[markdown-it-py](https://markdown-it-py.readthedocs.io/) as GitHub Flavored Markdown, with math and YAML front matter.
 
 Rendering is a pure function of the source and the styles, so the result is cached,
 and a component can render the same document on every render without parsing it again.
@@ -15,6 +15,8 @@ from typing import Literal
 import waxy
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
+from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.gfm import gfm_plugin
 from pygments.util import ClassNotFound
 
 from counterweight.elements import Chunk, Div, Text
@@ -45,7 +47,14 @@ from counterweight.styles.utilities import (
     text_wrap_stable,
 )
 
-PARSER = MarkdownIt("commonmark").enable(["table", "strikethrough"])
+# Math is enabled here rather than by `gfm_plugin(dollarmath=True)`, whose defaults parse `$5 and $10` as math.
+# These options follow Pandoc's rule instead (no space just inside the dollars, no digit right after the closing one),
+# which keeps prices as text.
+PARSER = (
+    MarkdownIt("commonmark")
+    .use(gfm_plugin, front_matter=True)
+    .use(dollarmath_plugin, allow_space=False, allow_digits=False, double_inline=True, allow_blank_lines=False)
+)
 
 BOLD = CellStyle(bold=True)
 
@@ -80,13 +89,45 @@ class MarkdownStyles:
     list_marker: Style = text_color("slate", 400)
     bullets: tuple[str, ...] = ("•", "◦", "▪")
     """The bullet for each depth of nested bullet lists, starting again from the first past the last."""
+    unchecked_task: str = "☐"
+    """The box of a task list item that isn't done, which takes the place of its bullet, or follows its number."""
+    checked_task: str = "☑"
+    """The box of a task list item that is done."""
+    checked_task_marker: Style = text_color("emerald", 400)
+    """Merged over `list_marker` for the box of a task list item that is done."""
+
+    alert: Style = border_light | border_left | pad_left(1)
+    """A GitHub alert (`> [!NOTE]`), which is a block quote with a title."""
+    alert_title: Style = text_wrap_stable | Style(text_style=BOLD)
+    alert_note: Style = border_color("blue", 400) | text_color("blue", 400)
+    """
+    Merged over `alert` for a `NOTE` alert, and over `alert_title` for its title,
+    so its border color colors the alert's bar and its text color the title.
+    """
+    alert_tip: Style = border_color("green", 400) | text_color("green", 400)
+    """Merged over `alert` and `alert_title` for a `TIP` alert, like `alert_note`."""
+    alert_important: Style = border_color("violet", 400) | text_color("violet", 400)
+    """Merged over `alert` and `alert_title` for an `IMPORTANT` alert, like `alert_note`."""
+    alert_warning: Style = border_color("amber", 400) | text_color("amber", 400)
+    """Merged over `alert` and `alert_title` for a `WARNING` alert, like `alert_note`."""
+    alert_caution: Style = border_color("red", 400) | text_color("red", 400)
+    """Merged over `alert` and `alert_title` for a `CAUTION` alert, like `alert_note`."""
 
     code_block: Style = pad_x(1)
     """Merged over the code theme's background, from [`code_style`][counterweight.highlighting.code_style]."""
     code_theme: CodeTheme = DEFAULT_CODE_THEME
     """The theme fenced code blocks are highlighted with, when their info string names a language Pygments knows."""
+    front_matter: Style = Style(text_style=CellStyle(dim=True))
+    """
+    Merged over `code_block` for the document's YAML front matter, which is highlighted as YAML.
+    Pass `display_none` to hide it.
+    """
 
     thematic_break: Style = border_light | border_top | border_color("slate", 600)
+    math_block: Style = text_wrap_stable | text_justify_center | text_color("violet", 300)
+    """Display math, between `$$` lines, which is shown as written, since a terminal can't typeset it."""
+    math_label: Style = text_color("slate", 400)
+    """The label of display math written `$$...$$ (label)`, shown as `(label)` to its right."""
     html_block: Style = Style(text_style=CellStyle(dim=True))
     """Raw HTML blocks, which are shown as written."""
 
@@ -101,10 +142,17 @@ class MarkdownStyles:
     strong: CellStyle = BOLD
     strikethrough: CellStyle = CellStyle(strikethrough=True)
     code_inline: CellStyle = text_color("rose", 300).text_style | text_bg("slate", 800).text_style
+    math_inline: CellStyle = text_color("violet", 300).text_style
+    """Math within a line, between `$`s or `$$`s, which is shown as written."""
     link: CellStyle = CellStyle(underline=True) | text_color("sky", 300).text_style
     """Merged under the `CellStyle(link=...)` that makes a link's text a hyperlink to its destination."""
     image: CellStyle = CellStyle(italic=True) | text_color("sky", 300).text_style
     """An image's alt text, which links to the image, since a terminal can't show it."""
+
+    footnote_ref: CellStyle = text_color("sky", 300).text_style
+    """A footnote's number, `[1]`, where it's referenced and beside its definition."""
+    footnotes: Style = border_light | border_top | border_color("slate", 600)
+    """The footnotes' definitions, which follow the rest of the document, numbered in the order they're referenced."""
 
 
 @lru_cache(maxsize=2**6)
@@ -112,10 +160,10 @@ def markdown(source: str, styles: MarkdownStyles = MarkdownStyles()) -> Div:
     """
     `source`, a Markdown document, as a `Div` of its blocks, drawn with `styles`.
 
-    Links and images are [hyperlinks][counterweight.styles.CellStyle] to their destinations.
+    Links, bare URLs, and images are [hyperlinks][counterweight.styles.CellStyle] to their destinations.
     Fenced code blocks are highlighted as the language their info string names,
     or shown as written if it names none or one [Pygments](https://pygments.org/) doesn't know.
-    Raw HTML is shown as written, too.
+    Math and raw HTML are shown as written, too.
     """
     document = SyntaxTreeNode(PARSER.parse(source))
     return Div(
@@ -140,12 +188,30 @@ def block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_de
                 style=col | gap_height(styles.block_gap) | styles.block_quote,
                 children=blocks(node.children, styles, text | styles.block_quote_text, list_depth),
             )
+        case "alert":
+            return alert(node, styles, text, list_depth)
         case "bullet_list" | "ordered_list":
             return list_block(node, styles, text, list_depth)
+        case "footnote_block":
+            return footnotes(node, styles, text, list_depth)
         case "fence" | "code_block":
             return fenced_code(node.content.removesuffix("\n"), node.info.split(maxsplit=1), styles)
+        case "front_matter":
+            return code_block(
+                node.content, "yaml", theme=styles.code_theme, style=styles.code_block | styles.front_matter
+            )
         case "hr":
             return Div(style=styles.thematic_break)
+        case "math_block":
+            return Text(content=node.content.strip("\n"), style=styles.math_block)
+        case "math_block_label":
+            return Div(
+                style=row | gap_width(1),
+                children=[
+                    Text(content=node.content.strip("\n"), style=fill(1) | styles.math_block),
+                    Text(content=f"({node.info})", style=styles.math_label),
+                ],
+            )
         case "html_block":
             return Text(content=node.content.removesuffix("\n"), style=styles.html_block)
         case "table":
@@ -179,19 +245,45 @@ def fenced_code(code: str, info: list[str], styles: MarkdownStyles) -> Text:
         return code_block(code, "text", theme=styles.code_theme, style=styles.code_block)
 
 
+def alert(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div:
+    """A GitHub alert: its title, then its blocks, beside a bar colored for its kind."""
+    title, *body = node.children
+    kind = alert_style(styles, node.meta["kind"])
+    return Div(
+        style=col | styles.alert | kind,
+        children=[
+            Text(content=inline(title, styles, text), style=styles.alert_title | kind),
+            Div(style=col | gap_height(styles.block_gap), children=blocks(body, styles, text, list_depth)),
+        ],
+    )
+
+
+def alert_style(styles: MarkdownStyles, kind: str) -> Style:
+    match kind:
+        case "NOTE":
+            return styles.alert_note
+        case "TIP":
+            return styles.alert_tip
+        case "IMPORTANT":
+            return styles.alert_important
+        case "WARNING":
+            return styles.alert_warning
+        case _:
+            return styles.alert_caution
+
+
 def list_block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div:
     """
-    A list, with each item's marker in a column beside its blocks.
+    A list, with each item's markers in columns beside its blocks.
 
     A list is loose, with a blank line between its items, when any of its paragraphs are separated by one,
     which markdown-it records by not hiding its items' paragraphs.
     """
     items = node.children
-    if node.type == "ordered_list":
+    is_ordered = node.type == "ordered_list"
+    if is_ordered:
         start = int(node.attrs.get("start", 1))
-        numbers = [f"{n}." for n in range(start, start + len(items))]
-        marker_width = max(len(number) for number in numbers)
-        markers = [number.rjust(marker_width) for number in numbers]
+        markers = right_aligned([f"{n}." for n in range(start, start + len(items))])
     else:
         markers = [styles.bullets[list_depth % len(styles.bullets)]] * len(items)
 
@@ -200,18 +292,67 @@ def list_block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, li
     return Div(
         style=col | gap,
         children=[
-            Div(
-                style=row | gap_width(1),
-                children=[
-                    Text(content=marker, style=styles.list_marker),
-                    Div(
-                        style=col | gap | fill(1),
-                        children=blocks(item.children, styles, text, list_depth + 1),
-                    ),
-                ],
+            marked(
+                item_markers(marker, item.meta.get("checked"), is_ordered, styles),
+                blocks(item.children, styles, text, list_depth + 1),
+                gap,
             )
             for marker, item in zip(markers, items, strict=True)
         ],
+    )
+
+
+def item_markers(marker: str, checked: bool | None, is_ordered: bool, styles: MarkdownStyles) -> list[Text]:
+    """A list item's bullet or number, and its box if it's a task, which takes the place of a bullet."""
+    if checked is None:
+        return [Text(content=marker, style=styles.list_marker)]
+
+    box = (
+        Text(content=styles.checked_task, style=styles.list_marker | styles.checked_task_marker)
+        if checked
+        else Text(content=styles.unchecked_task, style=styles.list_marker)
+    )
+    return [Text(content=marker, style=styles.list_marker), box] if is_ordered else [box]
+
+
+def footnotes(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div:
+    """
+    The footnotes' definitions, each beside the number its references show.
+
+    A footnote that doesn't end in a paragraph has its `footnote_anchor`s as blocks of their own, which are dropped,
+    as they are from the end of a paragraph by `inline`.
+    """
+    numbers = right_aligned([footnote_number(footnote) for footnote in node.children])
+    return Div(
+        style=col | styles.footnotes,
+        children=[
+            marked(
+                [Text(content=[Chunk(content=number, style=styles.footnote_ref)])],
+                blocks(
+                    [child for child in footnote.children if child.type != "footnote_anchor"], styles, text, list_depth
+                ),
+                gap_height(styles.block_gap),
+            )
+            for number, footnote in zip(numbers, node.children, strict=True)
+        ],
+    )
+
+
+def footnote_number(node: SyntaxTreeNode) -> str:
+    """A footnote's number, counting from one in the order the footnotes are first referenced."""
+    return f"[{node.meta['id'] + 1}]"
+
+
+def right_aligned(markers: list[str]) -> list[str]:
+    width = max(len(marker) for marker in markers)
+    return [marker.rjust(width) for marker in markers]
+
+
+def marked(markers: list[Text], children: list[Div | Text], gap: Style) -> Div:
+    """`children` in a column beside `markers`, as a list item is beside its bullet."""
+    return Div(
+        style=row | gap_width(1),
+        children=[*markers, Div(style=col | gap | fill(1), children=children)],
     )
 
 
@@ -262,7 +403,13 @@ def cell_alignment(cell: SyntaxTreeNode) -> Alignment:
 
 
 def inline(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[Chunk]:
-    """The chunks of the inline content of a paragraph, heading, or table cell."""
+    """
+    The chunks of the inline content of a paragraph, heading, or table cell.
+
+    The last paragraph of a footnote also holds `footnote_anchor`s beside its inline content:
+    links back to the footnote's references, which a terminal can't follow.
+    They have no children, so they add no chunks.
+    """
     return [chunk for child in node.children for chunk in spans(child.children, styles, text)]
 
 
@@ -278,6 +425,8 @@ def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[
             return [Chunk(content=" ", style=text)]
         case "hardbreak":
             return [Chunk(content="\n", style=text)]
+        case "math_inline" | "math_inline_double":
+            return [Chunk(content=node.content, style=text | styles.math_inline)]
         case "code_inline":
             return [Chunk(content=node.content, style=text | styles.code_inline)]
         case "em":
@@ -290,5 +439,7 @@ def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[
             return spans(node.children, styles, text | styles.link | CellStyle(link=str(node.attrs["href"]) or None))
         case "image":
             return spans(node.children, styles, text | styles.image | CellStyle(link=str(node.attrs["src"]) or None))
+        case "footnote_ref":
+            return [Chunk(content=footnote_number(node), style=text | styles.footnote_ref)]
         case _:  # pragma: no cover, PARSER enables no rule that makes any other inline span
             raise ValueError(f"Unexpected Markdown inline span {node.type!r}")

@@ -82,12 +82,14 @@ def resolve_theme(theme: CodeTheme) -> type[PygmentsStyle]:
 @lru_cache(maxsize=2**12)
 def cell_style_for_token(pygments_style: type[PygmentsStyle], token: _TokenType) -> CellStyle:
     """
-    How `pygments_style` draws `token`.
+    How `pygments_style` draws `token`, or its nearest ancestor that the style knows,
+    since a lexer can make token types no style names, like YAML's `Token.Literal.Scalar.Plain`.
 
     Pygments leaves a color it doesn't set as `None` (and gives a hex approximation for an ANSI color name),
     and a cell style leaves it `UNSET`, so the text's own style shows through.
     """
-    definition = pygments_style.style_for_token(token)
+    styled = next(ancestor for ancestor in reversed(token.split()) if pygments_style.styles_token(ancestor))
+    definition = pygments_style.style_for_token(styled)
     color = definition["color"]
     background = definition["bgcolor"]
     return CellStyle(

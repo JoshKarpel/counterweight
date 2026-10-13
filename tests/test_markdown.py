@@ -11,7 +11,7 @@ from counterweight.elements import AnyElement, Chunk, Div, Text
 from counterweight.highlighting import code_block, highlight
 from counterweight.markdown import MarkdownStyles, markdown
 from counterweight.styles import CellStyle
-from counterweight.styles.utilities import col, pad_x, text_justify_left, text_wrap_none
+from counterweight.styles.utilities import col, display_none, pad_x, text_justify_left, text_wrap_none
 
 
 async def render(source: str, width: int, styles: MarkdownStyles = MarkdownStyles()) -> str:
@@ -97,11 +97,46 @@ def test_nested_emphasis_merges_styles() -> None:
         ("*a*\n", "a", "emphasis"),
         ("**a**\n", "a", "strong"),
         ("~~a~~\n", "a", "strikethrough"),
+        ("~a~\n", "a", "strikethrough"),
         ("`a`\n", "a", "code_inline"),
     ],
 )
 def test_inline_spans_are_styled(source: str, content: str, field: str) -> None:
     assert chunk_for(source, content).style == getattr(MarkdownStyles(), field)
+
+
+@pytest.mark.parametrize("source", ["$a*b*c$\n", "$$a*b*c$$\n"])
+def test_inline_math_is_shown_as_written(source: str) -> None:
+    assert chunks(f"x {source}") == [Chunk(content="x "), Chunk(content="a*b*c", style=MarkdownStyles().math_inline)]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "It costs $5 and $10.",
+        "Between $20,000 and $30,000.",
+        "$x$5",
+        "$ x $",
+    ],
+)
+def test_dollars_that_pandoc_would_not_parse_as_math_are_text(source: str) -> None:
+    assert chunks(f"{source}\n") == [Chunk(content=source)]
+
+
+async def test_display_math_is_shown_as_written_and_centered() -> None:
+    source = """\
+        $$
+        a^2 + b^2
+        $$
+        """
+
+    assert await render(source, 15) == "   a^2 + b^2"
+    (math,) = texts(source)
+    assert math.style == MarkdownStyles().math_block
+
+
+async def test_display_math_label_is_to_its_right() -> None:
+    assert await render("$$x = 1$$ (eq)\n", 15) == "   x = 1   (eq)"
 
 
 def test_link_text_is_a_hyperlink_to_its_destination() -> None:
@@ -116,6 +151,20 @@ def test_link_destination_is_percent_encoded() -> None:
 
 def test_autolink_is_a_hyperlink() -> None:
     assert chunk_for("<https://example.com>\n", "https://example.com").style.link == "https://example.com"
+
+
+@pytest.mark.parametrize(
+    ("text", "destination"),
+    [
+        ("https://example.com/a", "https://example.com/a"),
+        ("www.example.com", "http://www.example.com"),
+        ("someone@example.com", "mailto:someone@example.com"),
+    ],
+)
+def test_bare_url_is_a_hyperlink(text: str, destination: str) -> None:
+    link = chunk_for(f"see {text} here\n", text)
+
+    assert link.style == MarkdownStyles().link | CellStyle(link=destination)
 
 
 def test_empty_link_destination_is_not_a_hyperlink() -> None:
@@ -195,6 +244,120 @@ async def test_ordered_list_counts_from_its_start_with_markers_aligned_right() -
     source = "".join(f"{n}. item\n" for n in range(9, 12))
 
     assert await render(source, 20) == " 9. item\n10. item\n11. item"
+
+
+async def test_task_boxes_take_the_place_of_bullets() -> None:
+    source = """\
+        - [x] done
+        - [ ] not done
+        - plain
+        """
+
+    assert await render(source, 20) == "☑ done\n☐ not done\n• plain"
+
+
+async def test_task_boxes_follow_numbers() -> None:
+    assert await render("1. [x] done\n2. [ ] not done\n", 20) == "1. ☑ done\n2. ☐ not done"
+
+
+async def test_task_boxes_are_configurable() -> None:
+    styles = MarkdownStyles(unchecked_task="[ ]", checked_task="[x]")
+
+    assert await render("- [x] a\n- [ ] b\n", 20, styles) == "[x] a\n[ ] b"
+
+
+def test_checked_task_box_is_styled() -> None:
+    checked, _, unchecked, _ = texts("- [x] a\n- [ ] b\n")
+
+    styles = MarkdownStyles()
+    assert checked.style == styles.list_marker | styles.checked_task_marker
+    assert unchecked.style == styles.list_marker
+
+
+@pytest.mark.parametrize("kind", ["note", "tip", "important", "warning", "caution"])
+def test_alert_is_styled_by_its_kind(kind: str) -> None:
+    alert = markdown(f"> [!{kind.upper()}]\n> body\n").children[0]
+    assert isinstance(alert, Div)
+    title = alert.children[0]
+
+    styles = MarkdownStyles()
+    kind_style = getattr(styles, f"alert_{kind}")
+    assert alert.style == col | styles.alert | kind_style
+    assert title == Text(content=[Chunk(content=kind.title())], style=styles.alert_title | kind_style)
+
+
+async def test_alert_shows_its_title_above_its_blocks() -> None:
+    assert await render("> [!tip]\n> one\n>\n> two\n", 20) == "│ Tip\n│ one\n│\n│ two"
+
+
+async def test_unknown_alert_kind_is_a_block_quote() -> None:
+    assert await render("> [!HINT]\n> body\n", 20) == "│ [!HINT] body"
+
+
+async def test_footnotes_are_numbered_in_the_order_they_are_referenced() -> None:
+    source = """\
+        b[^b] a[^a] b[^b]
+
+        [^a]: A.
+        [^b]: B.
+        """
+
+    assert await render(source, 12) == dedent(
+        """\
+        b[1] a[2]
+        b[1]
+
+        ────────────
+        [1] B.
+        [2] A."""
+    )
+
+
+def test_footnote_numbers_are_styled() -> None:
+    paragraph, number, definition = texts("a[^x]\n\n[^x]: X.\n")
+
+    footnote_ref = MarkdownStyles().footnote_ref
+    assert paragraph.content == [Chunk(content="a"), Chunk(content="[1]", style=footnote_ref)]
+    assert number.content == [Chunk(content="[1]", style=footnote_ref)]
+    assert definition.content == [Chunk(content="X.")]
+
+
+async def test_footnote_ending_in_code_drops_its_back_link() -> None:
+    source = """\
+        a[^x]
+
+        [^x]:
+            ```
+            code
+            ```
+        """
+
+    assert await render(source, 10) == "a[1]\n\n──────────\n[1]  code"
+
+
+async def test_footnote_paragraphs_are_separated_by_a_blank_line() -> None:
+    source = """\
+        a[^x]
+
+        [^x]: one
+
+            two
+        """
+
+    assert await render(source, 10) == "a[1]\n\n──────────\n[1] one\n\n    two"
+
+
+def test_front_matter_is_dim_yaml() -> None:
+    (front_matter, _) = texts("---\nkey: value\n---\n\nbody\n")
+
+    styles = MarkdownStyles()
+    assert front_matter == code_block(
+        "key: value", "yaml", theme=styles.code_theme, style=styles.code_block | styles.front_matter
+    )
+
+
+async def test_front_matter_can_be_hidden() -> None:
+    assert await render("---\nkey: value\n---\n\nbody\n", 20, MarkdownStyles(front_matter=display_none)) == "body"
 
 
 async def test_fenced_code_is_highlighted_in_its_language() -> None:

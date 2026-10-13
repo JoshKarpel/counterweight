@@ -110,6 +110,7 @@ read that to check a layout instead of the SVG.
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
 - **markdown-it-py**: Parses Markdown for `counterweight.markdown`
+- **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
 - **pygments**: Lexes and colors source code for `counterweight.highlighting`
 
 ## Code Style Guidelines
