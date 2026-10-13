@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from asyncio import Event, create_task, wait_for
+from asyncio import CancelledError, Event, create_task, wait_for
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
@@ -249,6 +250,34 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
         await wait_for(ticked_three_times.wait(), timeout=5)
     finally:
         task.cancel()
-        await task
+        with suppress(CancelledError):
+            await task
 
     assert ticked_three_times.is_set()
+
+
+async def test_advances_add_up_and_time_since_start_counts_from_the_first_reading() -> None:
+    frames: list[str] = []
+
+    def capture(frame: Frame) -> None:
+        frames.append(frame.text(ansi=False).strip())
+
+    await app(
+        clock_text(timedelta(seconds=1)),
+        headless=True,
+        dimensions=(50, 1),
+        autopilot=[
+            Screenshot(handler=capture),
+            AdvanceClock(by=timedelta(seconds=30)),
+            AdvanceClock(by=timedelta(seconds=60)),
+            Screenshot(handler=capture),
+            Quit(),
+        ],
+        check_purity=True,
+        clock=lambda: MOUNTED,
+    )
+
+    assert frames == [
+        "15:09:26.000000 start=0 mount=0",
+        "15:10:56.000000 start=90 mount=90",
+    ]

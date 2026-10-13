@@ -18,11 +18,11 @@ def indent_by(n: int) -> Style:
 
     Only the first paragraph is shown.
     """
-    return Style(layout=waxy.Style(padding_left=waxy.Length(n)))
+    return Style(layout=waxy.Style(padding_left=waxy.Length(n)))  # pragma: never runs
 
 
 def undocumented(n: int) -> Style:
-    return Style(z=n)
+    return Style(z=n)  # pragma: never runs
 
 
 WIDE = Style(layout=waxy.Style(size_width=waxy.Length(7)))

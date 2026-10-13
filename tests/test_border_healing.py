@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import io
 
+import pytest
+
 from counterweight.app import app
+from counterweight.border_healing import heal_borders
 from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot
+from counterweight.controls import Quit, Screenshot, ToggleBorderHealing
 from counterweight.elements import Div, Text
+from counterweight.geometry import Position
+from counterweight.paint import BLANK, Cell, Paint
+from counterweight.styles.styles import CellStyle, JoinedBorderKind, resolve_cell_style
 from counterweight.styles.utilities import (
     align_self_stretch,
     border,
@@ -189,3 +195,67 @@ async def test_doc_example_border_healing() -> None:
             "╚═════════════════════════════╩════════╩═════════╩═════════╝",
         ]
     )
+
+
+LIGHT = JoinedBorderKind.Light.value
+STYLE = resolve_cell_style(CellStyle())
+
+
+def paint_of(*rows: str) -> Paint:
+    """A paint with one cell per character of `rows`, where `.` is a blank cell."""
+    return Paint(
+        width=len(rows[0]),
+        height=len(rows),
+        cells=[BLANK if grapheme == "." else Cell(grapheme, STYLE) for line in rows for grapheme in line],
+    )
+
+
+def healed(paint: Paint, *corners: Position) -> dict[Position, str]:
+    return {position: cell.grapheme for position, cell in heal_borders(paint, dict.fromkeys(corners, LIGHT)).items()}
+
+
+@pytest.mark.parametrize(
+    ("rows", "expected"),
+    [
+        pytest.param(("...", "─┌.", "..."), "┬", id="joins-the-left-neighbor-to-the-corners-own-sides"),
+        pytest.param(("...", ".┐─", "..."), "┬", id="joins-the-right-neighbor"),
+        pytest.param(("...", ".└.", ".│."), "├", id="joins-the-neighbor-below"),
+        pytest.param((".│.", ".┌.", "..."), "├", id="joins-the-neighbor-above"),
+    ],
+)
+def test_heal_borders_joins_a_corner_to_the_borders_beside_it(rows: tuple[str, ...], expected: str) -> None:
+    assert healed(paint_of(*rows), Position(1, 1)) == {Position(1, 1): expected}
+
+
+def test_heal_borders_skips_corners_drawn_over_or_off_screen_and_heals_the_rest() -> None:
+    paint = paint_of("...", "─T─", "─┐─")
+
+    assert healed(paint, Position(5, 5), Position(1, 1), Position(1, 2)) == {Position(1, 2): "┬"}
+
+
+async def test_toggling_border_healing_redraws_borders_healed_or_not() -> None:
+    frames: list[str] = []
+
+    @component
+    def root() -> Div:
+        return Div(
+            style=row | border_collapse, children=[Div(style=border | size(5, 3)), Div(style=border | size(5, 3))]
+        )
+
+    await app(
+        root(),
+        headless=True,
+        dimensions=(9, 3),
+        autopilot=[
+            ToggleBorderHealing(),
+            Screenshot(handler=lambda frame: frames.append(frame.text(ansi=False))),
+            ToggleBorderHealing(),
+            Screenshot(handler=lambda frame: frames.append(frame.text(ansi=False))),
+            Quit(),
+        ],
+    )
+
+    assert frames == [
+        "┌───┌───┐\n│   │   │\n└───└───┘",
+        "┌───┬───┐\n│   │   │\n└───┴───┘",
+    ]

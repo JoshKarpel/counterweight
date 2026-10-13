@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
+from math import inf
 from typing import TYPE_CHECKING, assert_never
 
 import waxy
@@ -23,7 +24,6 @@ class ResolvedLayout:
     padding: Region
     border: Region
     margin: Region
-    order: int
 
 
 _EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)
@@ -33,7 +33,6 @@ INITIAL_RESOLVED_LAYOUT = ResolvedLayout(
     padding=_EMPTY_REGION,
     border=_EMPTY_REGION,
     margin=_EMPTY_REGION,
-    order=0,
 )
 
 
@@ -229,9 +228,9 @@ class LayoutTree:
         shadows = {self.nodes[node.key]: node for node in shadow.nodes}
         in_paint_order: list[tuple[AnyElement, ResolvedLayout]] = []
         by_key: dict[NodeKey, ResolvedLayout] = {}
-        for order, (node, position, layout) in enumerate(self.tree.absolute_layouts(root)):
+        for node, position, layout in self.tree.absolute_layouts(root):
             visible = shadows[node]
-            resolved = _resolve_layout(position, layout, order)
+            resolved = _resolve_layout(position, layout)
             in_paint_order.append((visible.element, resolved))
             by_key[visible.key] = resolved
 
@@ -369,7 +368,7 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 @lru_cache(maxsize=2**12)
-def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> ResolvedLayout:
+def _resolve_layout(position: waxy.Point, layout: waxy.Layout) -> ResolvedLayout:
     """
     The cell regions of one node's boxes, from its absolute border-box position.
 
@@ -407,7 +406,7 @@ def _resolve_layout(position: waxy.Point, layout: waxy.Layout, order: int) -> Re
         bottom=padding.bottom - int(padding_widths.bottom),
     )
 
-    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin, order=order)
+    return ResolvedLayout(content=content, padding=padding, border=border, margin=margin)
 
 
 def cells_width(cells: Iterable[StyledGrapheme]) -> int:
@@ -622,7 +621,6 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
     flat_words, flat_spaces = _flatten_long_words(words, spaces, width)
 
     n = len(flat_words)
-    INF = float("inf")
 
     # Precompute prefix sums of word widths so line_length is O(1).
     # prefix[i] = sum of the widths of flat_words[0] .. flat_words[i-1]
@@ -645,7 +643,7 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
     # dp[i] = min cost to break flat_words[i..n-1], bp[i] = best j for first break after i.
     # bp[i] is always set to j > i before use because every word may occupy a line of its own,
     # even the one-cluster chunks _flatten_long_words leaves wider than width (a wide cluster at width 1).
-    dp: list[float] = [INF] * (n + 1)
+    dp: list[float] = [inf] * (n + 1)
     bp: list[int] = [0] * (n + 1)
     dp[n] = 0.0
 
@@ -673,13 +671,12 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
         for k in range(i, j):
             if k > i:
                 # Insert the actual space run between flat_words[k-1] and flat_words[k].
-                if k - 1 < len(flat_spaces):
-                    line.extend(flat_spaces[k - 1])
+                line.extend(flat_spaces[k - 1])
             line.extend(flat_words[k])
         lines.append(line)
         i = j
 
-    return lines if lines else [[]]
+    return lines
 
 
 def wrap_cells(

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from asyncio import Event, Queue, TaskGroup, create_task, wait_for
+from asyncio import CancelledError, Event, Queue, TaskGroup, create_task, wait_for
 from collections.abc import Callable
+from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -191,7 +192,6 @@ MOVED = ResolvedLayout(
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
     margin=Region(left=1, top=2, right=3, bottom=4),
-    order=0,
 )
 
 
@@ -297,7 +297,8 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
         await wait_for(started.wait(), timeout=5)
     finally:
         running.cancel()
-        await running
+        with suppress(CancelledError):
+            await running
 
     assert started.is_set()
 
@@ -432,7 +433,7 @@ def handler_capturing_setting(argument: object, calls: Calls) -> Text:
     label = SETTINGS["label"]
 
     def on_key(_: KeyPressed) -> None:
-        print(label)
+        print(label)  # pragma: never runs
 
     return Text(content="", on_key=on_key)
 
@@ -511,7 +512,7 @@ def has_effect(argument: object, calls: Calls) -> Text:
     calls.names.append("has_effect")
 
     async def setup() -> None:
-        await forever()
+        await forever()  # pragma: never runs
 
     use_effect(setup)
     return Text(content="")

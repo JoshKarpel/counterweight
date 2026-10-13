@@ -45,8 +45,8 @@ async def test_cancel_tasks_propagates_cancellation_of_the_caller() -> None:
             await forever()
         except CancelledError:
             ct = current_task()
-            if ct:
-                ct.uncancel()
+            assert ct is not None
+            ct.uncancel()
             inner_resisting.set()
             await forever()
 
@@ -129,7 +129,7 @@ async def test_cancel_tasks_with_task_that_returns_after_cancellation() -> None:
     task = create_task(t())
     await started.wait()
 
-    with pytest.RaisesGroup(RuntimeError):
+    with pytest.RaisesGroup(pytest.RaisesExc(RuntimeError, match="did not end with an exception")):
         await cancel_tasks([task])
 
 

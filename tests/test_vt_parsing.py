@@ -127,3 +127,7 @@ from counterweight.keys import Key, vt_inputs
 )
 def test_vt_input_parsing(buffer: bytes, expected: list[AnyEvent]) -> None:
     assert vt_inputs.parse(buffer) == expected
+
+
+def test_key_repr_is_its_qualified_name() -> None:
+    assert repr(Key.Up) == "Key.Up"
