@@ -39,7 +39,7 @@ FRAME = [
     "DEBUG    counterweight.app Calculated layout",
     "DEBUG    counterweight.app Generated new paint",
     "DEBUG    counterweight.app Healed borders in new paint hint_cells=6 diff_cells=2",
-    "DEBUG    counterweight.app Diffed new paint from current paint diff_runs=5 diff_cells=21",
+    "DEBUG    counterweight.app Diffed new paint from current paint diff_runs=3 diff_cells=27",
     "DEBUG    counterweight.app Generated instructions from paint diff",
     "DEBUG    counterweight.app Reconciled effects",
     "DEBUG    counterweight.app Completed render cycle",

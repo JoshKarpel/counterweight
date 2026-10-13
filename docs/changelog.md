@@ -134,6 +134,11 @@
 
 ### Changed
 
+- [#176](https://github.com/JoshKarpel/counterweight/issues/176)
+  Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
+  so terminals that support it show the whole frame at once instead of tearing partway through drawing it,
+  and redrawing the screen after a resize or a suspension no longer flashes it blank first.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   **Breaking:** a key press goes to the focused element, or to the root component's element when nothing is focused,
   then bubbles through its ancestors until a handler returns something other than `None`.
