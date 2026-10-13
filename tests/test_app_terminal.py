@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import os
-import termios
 from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
 from collections.abc import Iterator
 from signal import SIGINT, SIGWINCH, raise_signal, signal
@@ -71,7 +70,7 @@ def replaced_interrupts() -> Iterator[list[int]]:
 
 
 async def test_app_takes_over_the_terminal_draws_rings_the_bell_and_hands_it_back(terminal: Terminal) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
     output = Output()
 
     with devlog_lines() as lines:
@@ -89,17 +88,17 @@ async def test_app_takes_over_the_terminal_draws_rings_the_bell_and_hands_it_bac
     ]
     assert output.getvalue() == drawn + "\a" + HAND_BACK
     assert output.flushed[2:4] == [drawn, drawn + "\a"]
-    assert termios.tcgetattr(terminal.stream) == before
+    assert terminal.settings() == before
 
 
 async def test_suspend_hands_the_terminal_back_while_its_handler_runs(terminal: Terminal) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
     output = Output()
     during: list[tuple[str, object, bool]] = []
 
     def handler() -> None:
         is_read = get_running_loop().remove_reader(terminal.stream.fileno())
-        during.append((output.getvalue(), termios.tcgetattr(terminal.stream), is_read))
+        during.append((output.getvalue(), terminal.settings(), is_read))
 
     await app(
         hi(),
@@ -243,7 +242,7 @@ async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> No
 
 
 async def test_cancelling_an_app_hands_the_terminal_back_and_cancels_the_caller(terminal: Terminal) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
     output = Output()
     started = Event()
 
@@ -262,14 +261,14 @@ async def test_cancelling_an_app_hands_the_terminal_back_and_cancels_the_caller(
     with pytest.raises(CancelledError):
         await running
     assert output.getvalue().endswith(HAND_BACK)
-    assert termios.tcgetattr(terminal.stream) == before
+    assert terminal.settings() == before
     assert not get_running_loop().remove_reader(terminal.stream.fileno())
 
 
 async def test_an_interrupt_quits_the_app_and_hands_the_terminal_back(
     terminal: Terminal, replaced_interrupts: list[int]
 ) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
     output = Output()
     os.write(terminal.keyboard, b"i")
 
@@ -278,7 +277,7 @@ async def test_an_interrupt_quits_the_app_and_hands_the_terminal_back(
     )
 
     assert output.getvalue().endswith(HAND_BACK)
-    assert termios.tcgetattr(terminal.stream) == before
+    assert terminal.settings() == before
     assert replaced_interrupts == []
 
 

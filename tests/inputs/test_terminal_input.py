@@ -26,26 +26,28 @@ TIMEOUT = 5
 
 
 def test_input_control_turns_off_echo_and_line_buffering_and_reads_each_byte_at_once(terminal: Terminal) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
 
     original = start_input_control(terminal.stream)
-    during = termios.tcgetattr(terminal.stream)
+    during = terminal.settings()
 
     lflag = during[3]
+    cc = during[6]
     assert isinstance(lflag, int)
+    assert isinstance(cc, list)
     assert original == before
     assert not lflag & (termios.ECHO | termios.ICANON)
     assert lflag & termios.ISIG
-    assert during[6][termios.VMIN] == 1
-    assert during[6][termios.VTIME] == 0
+    assert cc[termios.VMIN] == 1
+    assert cc[termios.VTIME] == 0
 
 
 def test_stopping_input_control_restores_the_original_attributes(terminal: Terminal) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
 
     stop_input_control(terminal.stream, start_input_control(terminal.stream))
 
-    assert termios.tcgetattr(terminal.stream) == before
+    assert terminal.settings() == before
 
 
 class QueueHandler(logging.Handler):

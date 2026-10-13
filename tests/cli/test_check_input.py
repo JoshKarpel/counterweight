@@ -1,7 +1,6 @@
 import io
 import os
 import sys
-import termios
 from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
 from signal import SIGINT
 
@@ -39,7 +38,7 @@ class Output(io.StringIO):
 async def test_check_input_prints_each_input_until_cancelled_then_stops_reading_it_and_restores_it(
     terminal: Terminal, mouse: bool, mouse_on: str, mouse_off: str
 ) -> None:
-    before = termios.tcgetattr(terminal.stream)
+    before = terminal.settings()
     output = Output()
 
     task = create_task(_check_input(mouse=mouse, input_stream=terminal.stream, output_stream=output))
@@ -50,7 +49,7 @@ async def test_check_input_prints_each_input_until_cancelled_then_stops_reading_
         await task
 
     assert output.getvalue() == f"{mouse_on}{WAITING}KeyPressed(key='q')\n{WAITING}{mouse_off}"
-    assert termios.tcgetattr(terminal.stream) == before
+    assert terminal.settings() == before
     assert not get_running_loop().remove_reader(terminal.stream.fileno())
 
 
