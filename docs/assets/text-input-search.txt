@@ -3,6 +3,6 @@ search:
 apple                         
 banana                        
 cherry                        
-mango                         
-orange                        
-papaya                        
+grape                         
+lemon                         
+                              

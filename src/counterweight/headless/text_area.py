@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from counterweight.controls import ScrollIntoView
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Pasted, Receiver
-from counterweight.focus import FocusHandle
+from counterweight.focus import ElementHandle, FocusHandle
 from counterweight.headless.text_area_editing import AreaEdit, EditableArea, drawn, key_edit, paste_edit, settled
 from counterweight.hooks import Focus, use_focus, use_state
 
@@ -30,13 +31,21 @@ class TextArea:
     cursor: int
     """How many of the value's code points come before the cursor, so `value[:cursor]` is the text before it."""
 
+    cursor_row: ElementHandle
+    """
+    The handle for the calling component to give the element it draws the cursor's row in,
+    which `on_input` scrolls into view as the cursor moves,
+    so a text area in a [scroll container](../layout/scrolling.md) keeps the cursor in view.
+    """
+
     focus: Focus
     """Whether the calling component is focused, and its handle, as [`use_focus`][counterweight.hooks.use_focus] returns them."""
 
     on_input: InputHandler
     """
     The handler that edits the value, for the calling component to put on the element it returns.
-    It returns `None` for every event while that element isn't focused,
+    It returns [`ScrollIntoView`][counterweight.controls.ScrollIntoView] for `cursor_row` for each event it edits with,
+    and `None` for every event while that element isn't focused,
     and for the key presses it doesn't edit with, such as Tab, Escape, and Enter unless it inserts a line break,
     so they bubble to the element's ancestors.
     """
@@ -88,6 +97,7 @@ def use_text_area(
     focus = use_focus(auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order)
     # The value the cursor was last placed in, so a value that differs from it was changed other than by an edit.
     area, set_area = use_state(lambda: EditableArea(value=value, cursor=len(value), goal_column=None))
+    cursor_row, _ = use_state(ElementHandle)
 
     def apply(edit: AreaEdit) -> None:
         # As in use_text_input: read the latest value, write the edited one, and read back what the setter kept.
@@ -123,7 +133,7 @@ def use_text_area(
             return None
 
         apply(edit)
-        return ()
+        return ScrollIntoView(cursor_row, block="nearest")
 
     cursor = area.following(value).cursor
     shown = drawn(value, cursor, width)
@@ -132,6 +142,7 @@ def use_text_area(
         at_cursor=shown.at_cursor,
         after_cursor=shown.after_cursor,
         cursor=cursor,
+        cursor_row=cursor_row,
         focus=focus,
         on_input=on_input,
     )

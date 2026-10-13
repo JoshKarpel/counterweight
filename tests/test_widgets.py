@@ -4,11 +4,13 @@ from counterweight import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot
 from counterweight.elements import Div
-from counterweight.events import InputEvent, KeyPressed, MouseDown
+from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseScrolledUp
 from counterweight.geometry import Position
 from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.styles.utilities import col, width
+from counterweight.styles import Style
+from counterweight.styles.utilities import col, default, max_height, width
 from counterweight.widgets import CURSOR, text_area, text_input
 
 
@@ -105,7 +107,9 @@ async def test_an_unfocusable_text_input_takes_no_keys() -> None:
     assert (lines(frame)[1], cursor_cells(frame)) == ("│ hi       │", [])
 
 
-def area(initial: str = "", placeholder: str = "", enter_inserts_newline: bool = False) -> Component:
+def area(
+    initial: str = "", placeholder: str = "", enter_inserts_newline: bool = False, style: Style = default
+) -> Component:
     @component
     def root() -> Div:
         value, set_value = use_state(initial)
@@ -117,7 +121,7 @@ def area(initial: str = "", placeholder: str = "", enter_inserts_newline: bool =
                     set_value,
                     placeholder=placeholder,
                     enter_inserts_newline=enter_inserts_newline,
-                    style=width(12),
+                    style=width(12) | style,
                     auto_focus=True,
                 )
             ],
@@ -152,3 +156,39 @@ async def test_text_area_passes_on_whether_enter_inserts_a_line_break() -> None:
     )
 
     assert lines(frame)[1:3] == ["│ ab       │", "│ c        │"]
+
+
+async def test_text_area_past_its_max_height_scrolls_to_keep_the_cursor_in_view_as_it_types() -> None:
+    frame = await screenshot(
+        area(style=max_height(4)),
+        events=tuple(KeyPressed(key=c) for c in "aaaaaa bbbbbb cccccc dd"),
+        dimensions=(14, 5),
+    )
+
+    assert (lines(frame)[:4], cursor_cells(frame)) == (
+        ["╭──────────╮", "│ cccccc   │", "│ dd       │", "╰──────────╯"],
+        [(4, 2, " ")],
+    )
+
+
+async def test_text_area_past_its_max_height_scrolls_to_keep_the_cursor_in_view_as_it_moves() -> None:
+    frame = await screenshot(
+        area(initial="aaaaaa bbbbbb cccccc dd", style=max_height(4)),
+        events=(KeyPressed(key=Key.Left),),
+        dimensions=(14, 5),
+    )
+
+    assert lines(frame)[1:3] == ["│ cccccc   │", "│ dd       │"]
+
+
+async def test_the_wheel_scrolls_a_text_area_past_its_max_height() -> None:
+    frame = await screenshot(
+        area(style=max_height(4)),
+        events=(
+            *(KeyPressed(key=c) for c in "aaaaaa bbbbbb cccccc dd"),
+            MouseScrolledUp(absolute=Position(x=3, y=1)),
+        ),
+        dimensions=(14, 5),
+    )
+
+    assert lines(frame)[1:3] == ["│ aaaaaa   │", "│ bbbbbb   │"]

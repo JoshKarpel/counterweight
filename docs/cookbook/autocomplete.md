@@ -6,9 +6,9 @@ The list has to reach past the box the field is in,
 which here is a form that [scrolls](../layout/scrolling.md) inside a [`fill(1)`](../layout/splitting-space.md) panel,
 and so clips its children.
 
-Counterweight has no text input element, so the recipe builds a minimal one:
-a [focusable](../hooks/use_focus.md) component that keeps its text in state,
-and appends each typed grapheme to it or, for Backspace, removes the last one.
+The field edits its text with [`use_text_input`](../headless/use_text_input.md),
+which makes it focusable and handles typing, moving the cursor, and pasting,
+and leaves drawing the text and the list to the field.
 
 ```python
 --8<-- "autocomplete.py:example"
@@ -47,7 +47,10 @@ It's at most `SHOWN_ROWS` matches tall, and [scrolls](#a-long-list) the rest.
 ## Choosing a match
 
 Down and Up move the highlight through the list, wrapping at the ends.
-The field keeps which match is highlighted in state, and resets it whenever the text changes:
+The field keeps its text in one state with which match is highlighted and whether the list is dismissed,
+and the setter it passes to `use_text_input` applies each edit to that state,
+resetting the highlight whenever the edit changes the text,
+so moving the cursor leaves it where it was:
 
 ![The third match highlighted after Down twice](../assets/autocomplete-highlighted.svg)
 
@@ -56,8 +59,9 @@ Enter or Tab replaces the text with the highlighted match, and closes the list:
 ![The package field holding pydantic-settings](../assets/autocomplete-chosen.svg)
 
 Escape closes the list too, and it stays closed until the text changes.
-Each of these keys is handled only while the list is open,
-so with it closed, Tab moves focus and Enter bubbles to whatever handles it outside the field.
+Each of these keys is handled only while the list is open.
+Every other event goes to `use_text_input`'s handler, which passes on the keys it doesn't edit with,
+so with the list closed, Tab moves focus and Enter bubbles to whatever handles it outside the field.
 
 A press on a match chooses it, through [`on_click`](../input-handling/handlers.md).
 `on_click` claims the press, so it never reaches the root's `clear_focus`, and focus stays in the field.

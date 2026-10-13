@@ -43,6 +43,12 @@ The handler ignores everything while that element isn't focused,
 and returns `None` for the keys it doesn't edit with, such as Enter, Tab, Up and Down,
 so they [bubble](../input-handling/events.md#routing-input-events) on to a form that submits on Enter
 or moves focus on Tab.
+Here the search takes Up and Down as they bubble past the box,
+and [scrolls](../layout/scrolling.md#scrolling-from-a-handler) the list of matches,
+which is at most five rows tall:
+
+![The list of fruits scrolled down two rows](../assets/text-input-search-scrolled.svg)
+
 Compose it with [`focus_receiver_on_press`](../input-handling/handlers.md#focus)
 for the component to take focus when it's pressed,
 and with handlers of your own:

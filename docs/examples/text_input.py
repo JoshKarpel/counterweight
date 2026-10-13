@@ -4,11 +4,12 @@ from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import component
+from counterweight.controls import ScrollBy
 from counterweight.elements import Chunk, Div, Text
-from counterweight.events import KeyPressed, Pasted
-from counterweight.handlers import first, focus_receiver_on_press, tab_focus
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
+from counterweight.handlers import first, focus_receiver_on_press, scroll_on_wheel, tab_focus
 from counterweight.headless import use_text_input
-from counterweight.hooks import Setter, use_state
+from counterweight.hooks import ElementHandle, Setter, use_state
 from counterweight.keys import Key
 from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
@@ -17,7 +18,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:hook]
 
-FRUITS = ("apple", "banana", "cherry", "mango", "orange", "papaya")
+FRUITS = ("apple", "banana", "cherry", "grape", "lemon", "mango", "orange", "papaya")
 
 CURSOR = (text_color("slate", 900) | text_bg("amber", 300)).text_style
 
@@ -40,12 +41,29 @@ def search_box(query: str, set_query: Setter[str]) -> Text:
 @component
 def search() -> Div:
     query, set_query = use_state("")
+    results, _ = use_state(ElementHandle)
     matches = [fruit for fruit in FRUITS if query in fruit]
+
+    def scroll_results(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Up):
+                return ScrollBy(results, y=-1)
+            case KeyPressed(key=Key.Down):
+                return ScrollBy(results, y=1)
+            case _:
+                return None
+
     return Div(
         style=col | gap(1),
+        on_input=scroll_results,
         children=[
             search_box(query, set_query),
-            Text(content="\n".join(matches) or "no matches", style=text_color("slate", 400)),
+            Div(
+                style=col | max_height(5) | overflow_y_scroll,
+                handle=results,
+                on_input=scroll_on_wheel(1),
+                children=[Text(content="\n".join(matches) or "no matches", style=text_color("slate", 400))],
+            ),
         ],
     )
 
@@ -87,6 +105,9 @@ TAB = KeyPressed(key=Key.Tab)
 
 SCREENSHOTS = [
     ScreenshotSpec(search(), "text-input-search", (30, 8)),
+    ScreenshotSpec(
+        search(), "text-input-search-scrolled", (30, 8), events=(KeyPressed(key=Key.Down), KeyPressed(key=Key.Down))
+    ),
     ScreenshotSpec(search(), "text-input-search-typed", (30, 8), events=(*typed("an"),)),
     ScreenshotSpec(
         search(),

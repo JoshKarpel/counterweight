@@ -25,7 +25,10 @@
   otherwise Enter bubbles, as for a form or a chat that submits on it.
   A paste keeps its line breaks.
   Each line's wrapping is cached, so an edit rewraps only the line it changes.
-  `counterweight.widgets.text_area` is a bordered box built on it, which wraps at its own width and grows to fit its rows.
+  It returns a `cursor_row` handle for the element the cursor's row is drawn in,
+  which its handler scrolls into view with each edit, so a text area in a scroll container keeps the cursor in view.
+  `counterweight.widgets.text_area` is a bordered box built on it, which wraps at its own width
+  and grows to fit its rows up to a `max_height`, past which it scrolls.
 
 - Added `toggle`, which flips a flag through a `use_state` setter (`set_open(toggle)`),
   so toggles that land before the next render each flip the latest value,

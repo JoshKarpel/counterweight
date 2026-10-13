@@ -8,7 +8,7 @@ so the cursor moves between the rows the value is drawn on.
 For a ready-made box, use [`text_area`](#a-styled-text-area), which is built on this hook.
 
 This page covers the hook and that component.
-Selection and scrolling aren't supported yet: a text area grows to fit its rows.
+Selection isn't supported yet.
 
 ## Using the hook
 
@@ -39,6 +39,13 @@ The conversation holds the messages and the draft together,
 so `send` reads the latest draft from the conversation it updates,
 rather than the draft this render saw, which misses keys typed since.
 
+The messages are in a [scroll container](../layout/scrolling.md) that fills the space above the composer,
+with [`stick_to_end_y`](../layout/scrolling.md#following-the-end), so it stays scrolled to the newest message,
+and `justify_children_end`, so the first few messages sit just above the composer, as chats show them.
+Older messages scroll up out of view, and the wheel scrolls back to them:
+
+![Three sent messages, the first scrolled partly out of view](../assets/text-area-chat-scrolled.svg)
+
 ## Line breaks
 
 Pass `enter_inserts_newline=True` for Enter to insert a line break, as in a text editor,
@@ -58,6 +65,25 @@ The whitespace at a break stays at the end of its row, taking its cells,
 and a cell is kept after the end of each line,
 so wherever the cursor is, there's a cell to draw it in:
 a line that exactly fills its rows puts the cursor at its end on a row of its own.
+
+## Keeping the cursor in view
+
+A text area in a scroll container, such as one with a `max_height`, has to scroll as the cursor moves past its edge.
+The hook returns a `cursor_row` [`ElementHandle`][counterweight.focus.ElementHandle]
+for the element the component draws the cursor's row in,
+and its handler returns [`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view)
+for that handle, with `block="nearest"`, for each key press and paste it handles.
+That applies to the layout of the render the edit causes,
+so the container scrolls in the same frame the cursor moves, and only as far as it takes,
+as a browser's `<textarea>` scrolls to its caret.
+
+To use it, draw the cursor's row as an element of its own and give it the handle.
+`before_cursor` and `after_cursor` separate rows with line breaks,
+so the rows above the cursor's are everything in `before_cursor` up to its last line break,
+and the rows below are everything in `after_cursor` after its first.
+The [styled text area](#a-styled-text-area) draws those as a `Text` each, around the cursor's row.
+A component that draws all the rows in one element can leave out the handle,
+and `ScrollIntoView` then scrolls nothing.
 
 ## Keys
 
@@ -100,7 +126,8 @@ with the cursor highlighted while it's focused,
 and takes focus when it's pressed.
 It takes the hook's parameters, other than `width`, a `placeholder` to show in an empty box,
 and a `style` merged over its own.
-It's as wide as its parent or its `style` makes it, and grows to fit its rows:
+It's as wide as its parent or its `style` makes it, and grows to fit its rows,
+up to a `max_height` in its `style`:
 
 ```python
 --8<-- "text_area.py:widget"
@@ -109,6 +136,11 @@ It's as wide as its parent or its `style` makes it, and grows to fit its rows:
 ![An empty notes box showing its placeholder](../assets/text-area-notes.svg)
 
 ![The notes box holding three lines](../assets/text-area-notes-filled.svg)
+
+Past its `max_height` it scrolls, [keeping the cursor in view](#keeping-the-cursor-in-view),
+and the wheel scrolls it too:
+
+![The notes box scrolled to its last four of six lines, with the cursor on the last](../assets/text-area-notes-scrolled.svg)
 
 ## API
 

@@ -11,4 +11,4 @@
  chooses│ docs-build           │them.   
         │ docs-serve           │        
         ╰──────────────────────╯        
-   just dc▏                             
+   just dc                              

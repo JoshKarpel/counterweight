@@ -7,7 +7,9 @@
  <g shape-rendering="crispEdges">
   <rect x="0.00em" y="0.00em" width="22.00em" height="15.82em" fill="#000000" />
   <rect x="0.00em" y="0.00em" width="22.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="1.13em" width="22.00em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="1.13em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="6.60em" y="1.13em" width="0.55em" height="1.13em" fill="#7dd3fc" />
+  <rect x="7.15em" y="1.13em" width="14.85em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="2.26em" width="22.00em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="3.39em" width="6.60em" height="1.13em" fill="#000000" />
   <rect x="6.60em" y="3.39em" width="11.00em" height="1.13em" fill="#075985" />
@@ -77,7 +79,6 @@
    <tspan x="4.40em">e</tspan>
    <tspan x="5.50em">p</tspan>
    <tspan x="6.05em">y</tspan>
-   <tspan x="6.60em">▏</tspan>
    <tspan x="21.45em">│</tspan>
   </tspan>
   <tspan y="2.26em">

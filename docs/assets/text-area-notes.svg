@@ -1,17 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16.50em" height="4.52em">
+<svg xmlns="http://www.w3.org/2000/svg" width="16.50em" height="6.78em">
  <style>svg {
   dominant-baseline: hanging;
   font-size: 1rem;
 }
 </style>
  <g shape-rendering="crispEdges">
-  <rect x="0.00em" y="0.00em" width="16.50em" height="4.52em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="16.50em" height="6.78em" fill="#000000" />
   <rect x="0.00em" y="0.00em" width="16.50em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="1.13em" width="1.10em" height="1.13em" fill="#000000" />
   <rect x="1.10em" y="1.13em" width="0.55em" height="1.13em" fill="#f1f5f9" />
   <rect x="1.65em" y="1.13em" width="14.85em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="2.26em" width="16.50em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="3.39em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="4.52em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="5.65em" width="16.50em" height="1.13em" fill="#000000" />
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em">
@@ -88,5 +90,7 @@
    <tspan x="15.95em" fill="#818cf8">╯</tspan>
   </tspan>
   <tspan y="3.39em" />
+  <tspan y="4.52em" />
+  <tspan y="5.65em" />
  </text>
 </svg>

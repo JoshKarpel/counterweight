@@ -34,7 +34,7 @@ and over Ratatui to have the framework own the state, the event loop and the lay
 | Mouse | Yes | Yes | No | Through the backend's events |
 | Focus | Yes | Yes | Yes | No |
 | Text input | One line or wrapped rows, as [headless components](headless/index.md) | Built in | Third-party packages | Third-party crates |
-| Scrolling | No ([#388](https://github.com/JoshKarpel/counterweight/issues/388), [#389](https://github.com/JoshKarpel/counterweight/issues/389)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
+| Scrolling | [Scroll containers](layout/scrolling.md), without a visible scrollbar ([#417](https://github.com/JoshKarpel/counterweight/issues/417)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
 | Wide characters | No ([#392](https://github.com/JoshKarpel/counterweight/issues/392)) | Yes | Yes | Yes |
 | Platforms | Linux, macOS | Linux, macOS, Windows | Not stated | Linux, macOS, Windows |
 
@@ -131,15 +131,10 @@ or when frame time is the constraint: Counterweight renders in Python, and Ratat
 
 These are the gaps you're most likely to hit, with what to do instead:
 
-- **Text selection and scrolling text.** [`use_text_input`](headless/use_text_input.md)
+- **Text selection, and scrolling a long line.** [`use_text_input`](headless/use_text_input.md)
   and [`use_text_area`](headless/use_text_area.md) have no selection,
-  a single-line value wider than its box wraps rather than scrolling,
-  and a text area grows to fit its rows rather than scrolling.
-- **Scrolling and clipping.** There are no scroll containers,
-  and content that overflows its container isn't clipped:
-  it paints over the container's border and whatever lies beyond it.
-  Keep an offset in `use_state` and render only the slice of your data that fits.
-  Tracked in [#388](https://github.com/JoshKarpel/counterweight/issues/388) (clipping) and [#389](https://github.com/JoshKarpel/counterweight/issues/389) (scroll containers).
+  and a single-line value wider than its box doesn't scroll to keep the cursor in view.
+  Tracked in [#420](https://github.com/JoshKarpel/counterweight/issues/420) (scrolling a long line).
 - **Wide characters.** Counterweight counts every character as one cell,
   so CJK characters and most emoji, which terminals draw two cells wide, push the rest of their line out of alignment.
   Tracked in [#392](https://github.com/JoshKarpel/counterweight/issues/392).

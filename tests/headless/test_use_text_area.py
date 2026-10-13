@@ -3,13 +3,13 @@ from dataclasses import dataclass
 
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit
+from counterweight.controls import AnyControl, Quit, ScrollIntoView
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import each, first
 from counterweight.headless import TextArea, use_text_area
-from counterweight.hooks import use_state
+from counterweight.hooks import ElementHandle, use_state
 from counterweight.keys import Key
 
 type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]
@@ -263,3 +263,26 @@ async def test_the_field_reports_its_focus() -> None:
     await app(root(), headless=True, dimensions=(20, 3), autopilot=(Quit(),))
 
     assert focused[-1]
+
+
+async def test_each_edit_scrolls_the_element_with_the_cursor_rows_handle_into_view() -> None:
+    handles: list[ElementHandle] = []
+    responses: list[InputResponse] = []
+
+    def recorded(handler: InputHandler) -> InputHandler:
+        def record(event: InputEvent, receiver: Receiver) -> InputResponse:
+            responses.append(response := handler(event, receiver))
+            return response
+
+        return record
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_area(value, set_value, width=WIDTH, auto_focus=True)
+        handles.append(field.cursor_row)
+        return Text(content=value, on_input=recorded(field.on_input))
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(*typed("a"), *pressed(Key.Left), Quit()))
+
+    assert responses == [ScrollIntoView(handles[0], block="nearest")] * 2

@@ -23,7 +23,9 @@
   <rect x="5.50em" y="12.43em" width="11.00em" height="1.13em" fill="#0f172a" />
   <rect x="16.50em" y="12.43em" width="5.50em" height="1.13em" fill="#000000" />
   <rect x="0.00em" y="13.56em" width="22.00em" height="1.13em" fill="#000000" />
-  <rect x="0.00em" y="14.69em" width="22.00em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="14.69em" width="5.50em" height="1.13em" fill="#000000" />
+  <rect x="5.50em" y="14.69em" width="0.55em" height="1.13em" fill="#7dd3fc" />
+  <rect x="6.05em" y="14.69em" width="15.95em" height="1.13em" fill="#000000" />
  </g>
  <text fill="#ffffff" font-family="monospace">
   <tspan y="0.00em">
@@ -281,7 +283,6 @@
    <tspan x="3.30em">t</tspan>
    <tspan x="4.40em">d</tspan>
    <tspan x="4.95em">c</tspan>
-   <tspan x="5.50em">▏</tspan>
   </tspan>
  </text>
 </svg>

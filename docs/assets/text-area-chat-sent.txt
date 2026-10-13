@@ -1,3 +1,5 @@
+                                  
+                                  
 Rows wrap to fit the box as you   
 type                              
 and Ctrl+J starts a line          
@@ -5,4 +7,3 @@ and Ctrl+J starts a line
 ╭────────────────────────────────╮
 │                                │
 ╰────────────────────────────────╯
-                                  
