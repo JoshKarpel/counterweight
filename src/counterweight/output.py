@@ -9,6 +9,7 @@ from xml.etree.ElementTree import indent as indent_svg
 from xml.etree.ElementTree import tostring
 
 from counterweight.geometry import Position
+from counterweight.graphemes import LINE_BREAKS, graphemes, visible
 from counterweight.paint import Paint, Run, svg
 from counterweight.styles.styles import ResolvedCellStyle
 
@@ -35,6 +36,11 @@ UNSET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003l\x1b[?1006l"
 
 CLEAR_SCREEN = "\x1b[2J"
 
+# xterm's title stack: the app saves the title it found, and restores it when it hands the terminal back.
+# Terminals without a title stack ignore these, and keep the last title the app set.
+SAVE_TITLE = "\x1b[22;0t"
+RESTORE_TITLE = "\x1b[23;0t"
+
 RESET_STYLE = "\x1b[0m"
 
 BELL = "\x07"
@@ -46,6 +52,7 @@ def start_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_ON)
     stream.write(CURSOR_OFF)
     stream.write(CLEAR_SCREEN)
+    stream.write(SAVE_TITLE)
 
     stream.flush()
 
@@ -53,6 +60,7 @@ def start_output_control(stream: TextIO) -> None:
 def stop_output_control(stream: TextIO) -> None:
     stream.write(ALT_SCREEN_OFF)
     stream.write(CURSOR_ON)
+    stream.write(RESTORE_TITLE)
 
     stream.flush()
 
@@ -130,6 +138,23 @@ def synchronized(instructions: str) -> str:
     instead of showing a partly drawn frame.
     """
     return f"{SYNCHRONIZED_OUTPUT_ON}{instructions}{SYNCHRONIZED_OUTPUT_OFF}"
+
+
+def title_instructions(title: str | None) -> str:
+    """
+    Terminal instructions that set the window title to `title`,
+    with its line breaks as spaces and its other control characters as the symbols `visible` draws for them,
+    since a control character in the title, like an escape or a bell, would end it early
+    and run the rest as instructions.
+
+    For `None`, they restore the title the app saved when it took over the terminal, and save it again,
+    so the title stack still holds it for when the app hands the terminal back.
+    """
+    if title is None:
+        return RESTORE_TITLE + SAVE_TITLE
+
+    shown = "".join(" " if grapheme in LINE_BREAKS else visible(grapheme) for grapheme in graphemes(title))
+    return f"\x1b]2;{shown}\x1b\\"
 
 
 def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
