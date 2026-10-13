@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import shutil
 import sys
-from asyncio import CancelledError, Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
+from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
 from collections.abc import Callable, Collection
 from datetime import timedelta
@@ -443,7 +443,7 @@ async def render_loop(
 
                 logger.debug("Handled events", extra={"num_events": num_events_handled})
 
-    except (KeyboardInterrupt, CancelledError) as ex:
+    except KeyboardInterrupt as ex:
         logger.debug(f"Caught {ex!r}")
     finally:
         logger.info("Application stopping...")

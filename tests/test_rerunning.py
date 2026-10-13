@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from asyncio import Event, Queue, TaskGroup, create_task, wait_for
+from asyncio import CancelledError, Event, Queue, TaskGroup, create_task, wait_for
 from collections.abc import Callable
+from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -296,7 +297,8 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
         await wait_for(started.wait(), timeout=5)
     finally:
         running.cancel()
-        await running
+        with suppress(CancelledError):
+            await running
 
     assert started.is_set()
 

@@ -107,6 +107,10 @@
 
 ### Changed
 
+- Cancelling the task running `app` raises `CancelledError` out of it once the terminal is restored,
+  as asyncio expects, so `asyncio.timeout` and `wait_for` around an app can tell it was cancelled.
+  Previously `app` returned as if the app had quit.
+
 - [#271](https://github.com/JoshKarpel/counterweight/issues/271)
   `app` takes the root component already called, as `app(root())` rather than `app(root)`,
   so a root component can take arguments like any other: `app(root(Path(sys.argv[1])))`.

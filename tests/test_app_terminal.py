@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import os
 import termios
-from asyncio import get_running_loop, wait_for
+from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
 from signal import SIGWINCH, raise_signal
 
 import pytest
@@ -196,3 +196,55 @@ async def test_a_resize_signal_redraws_the_screen(
     )
 
     assert output.getvalue().startswith(before_resize + BLANK_SCREEN)
+
+
+async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> None:
+    pressed: list[KeyPressed] = []
+
+    def on_key(event: KeyPressed) -> AnyControl | None:
+        pressed.append(event)
+        return Quit()
+
+    @component
+    def root() -> Text:
+        return Text(content="hi", on_key=on_key)
+
+    def type_quit_while_suspended() -> None:
+        os.write(terminal.keyboard, b"q")
+
+    await wait_for(
+        app(
+            root(),
+            output_stream=Output(),
+            input_stream=terminal.stream,
+            dimensions=(3, 1),
+            autopilot=[Suspend(handler=type_quit_while_suspended)],
+        ),
+        TIMEOUT,
+    )
+
+    assert pressed == [KeyPressed(key="q")]
+
+
+async def test_cancelling_an_app_hands_the_terminal_back_and_cancels_the_caller(terminal: Terminal) -> None:
+    before = termios.tcgetattr(terminal.stream)
+    output = Output()
+    started = Event()
+
+    @component
+    def root() -> Text:
+        async def signal_started() -> None:
+            started.set()
+
+        use_effect(signal_started, deps=())
+        return Text(content="hi", style=text_black)
+
+    running = create_task(app(root(), output_stream=output, input_stream=terminal.stream, dimensions=(3, 1)))
+    await wait_for(started.wait(), TIMEOUT)
+    running.cancel()
+
+    with pytest.raises(CancelledError):
+        await running
+    assert output.getvalue().endswith(HAND_BACK)
+    assert termios.tcgetattr(terminal.stream) == before
+    assert not get_running_loop().remove_reader(terminal.stream.fileno())

@@ -155,3 +155,15 @@ async def test_read_keys_stops_reading_at_the_end_of_its_input() -> None:
 
         assert events == [KeyPressed(key="a")]
         assert not is_read(stream)
+
+
+def test_read_keys_lets_an_error_putting_an_event_propagate() -> None:
+    read_end, write_end = os.pipe()
+    os.write(write_end, b"a")
+
+    def put_event(event: AnyEvent) -> None:
+        raise ValueError("the queue is gone")
+
+    with os.fdopen(read_end) as stream, pytest.raises(ValueError, match="the queue is gone"):
+        read_keys(stream, put_event)
+    os.close(write_end)

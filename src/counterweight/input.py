@@ -44,13 +44,13 @@ def read_keys(stream: TextIO, put_event: Callable[[AnyEvent], None]) -> None:
 
     try:
         inputs = vt_inputs.parse(bytes)
-
-        for i in inputs:
-            put_event(i)
-
-        logger.debug("Parsed user input", extra={"inputs": inputs, "bytes": bytes})
     except Exception as e:
         logger.error("Failed to parse input", extra={"error": repr(e), "bytes": bytes})
+        return
+
+    logger.debug("Parsed user input", extra={"inputs": inputs, "bytes": bytes})
+    for i in inputs:
+        put_event(i)
 
 
 LFLAG = 3
