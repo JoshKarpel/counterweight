@@ -44,18 +44,22 @@ def frames(tree: LayoutTree, elements: Sequence[AnyElement]) -> ShadowTree:
 def panes(*texts: str) -> Div:
     return Div(
         style=col,
-        children=[
-            Div(style=row | border, children=[Text(content=text, style=fill(1) | text_wrap_stable)]) for text in texts
-        ],
+        children=tuple(
+            Div(style=row | border, children=(Text(content=text, style=fill(1) | text_wrap_stable),)) for text in texts
+        ),
     )
 
 
 def canvas(colors: Sequence[str]) -> Div:
     return Div(
-        children=[
-            Text(content=[Chunk(content="▀", style=CellStyle(foreground=Color.from_name(color))) for color in colors]),
+        children=(
+            Text(
+                content=tuple(
+                    Chunk(content="▀", style=CellStyle(foreground=Color.from_name(color))) for color in colors
+                )
+            ),
             Text(content="label"),
-        ]
+        )
     )
 
 
@@ -65,7 +69,7 @@ def labeled(label: str) -> Text:
 
 
 def keyed(*labels: str) -> Div:
-    return Div(children=[labeled(label).with_key(label) for label in labels])
+    return Div(children=tuple(labeled(label).with_key(label) for label in labels))
 
 
 def ancestors(tree: LayoutTree, node: waxy.NodeId) -> list[waxy.NodeId]:
@@ -122,8 +126,8 @@ def test_changed_text_is_one_set_text() -> None:
 
 def test_reused_subtree_is_not_descended_into(mocker: MockerFixture) -> None:
     unchanging = panes("alpha", "beta")
-    previous = update_shadow(Div(children=[Text(content="before"), unchanging]), None, NO_LAYOUTS).tree
-    next = update_shadow(Div(children=[Text(content="after"), unchanging]), previous, NO_LAYOUTS).tree
+    previous = update_shadow(Div(children=(Text(content="before"), unchanging)), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Text(content="after"), unchanging)), previous, NO_LAYOUTS).tree
     assert next.root.children[1] is previous.root.children[1]
     text_source = mocker.spy(layout, "text_source")
 
@@ -169,8 +173,8 @@ def test_moved_keyed_child_is_one_set_children() -> None:
 
 def test_text_becoming_a_div_keeps_its_key() -> None:
     nested_text = Text(content="nested")
-    previous = update_shadow(Div(children=[Text(content="leaf")]), None, NO_LAYOUTS).tree
-    next = update_shadow(Div(children=[Div(children=[nested_text])]), previous, NO_LAYOUTS).tree
+    previous = update_shadow(Div(children=(Text(content="leaf"),)), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Div(children=(nested_text,)),)), previous, NO_LAYOUTS).tree
 
     [was_text], [now_div] = previous.root.children, next.root.children
     [nested] = now_div.children
@@ -185,8 +189,8 @@ def test_text_becoming_a_div_keeps_its_key() -> None:
 
 
 def test_unmounted_subtree_removes_every_node_in_it() -> None:
-    previous = update_shadow(Div(children=[Text(content="sibling"), panes("deep", "deeper")]), None, NO_LAYOUTS).tree
-    next = update_shadow(Div(children=[Text(content="sibling")]), previous, NO_LAYOUTS).tree
+    previous = update_shadow(Div(children=(Text(content="sibling"), panes("deep", "deeper"))), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Text(content="sibling"),)), previous, NO_LAYOUTS).tree
 
     removed = [change.key for change in layout_changes(previous, next) if isinstance(change, Remove)]
 
@@ -196,17 +200,17 @@ def test_unmounted_subtree_removes_every_node_in_it() -> None:
 SEQUENCES = {
     "grow and shrink": [panes("a"), panes("a", "b", "c"), panes("a"), panes(), panes("a", "b")],
     "text becomes a div and back": [
-        Div(children=[Text(content="leaf")]),
-        Div(children=[Div(style=border, children=[Text(content="nested"), Text(content="twice")])]),
-        Div(children=[Text(content="leaf again")]),
+        Div(children=(Text(content="leaf"),)),
+        Div(children=(Div(style=border, children=(Text(content="nested"), Text(content="twice"))),)),
+        Div(children=(Text(content="leaf again"),)),
     ],
     "text becomes an empty div": [
-        Div(children=[Text(content="leaf"), Text(content="sibling")]),
-        Div(children=[Div(), Text(content="sibling")]),
+        Div(children=(Text(content="leaf"), Text(content="sibling"))),
+        Div(children=(Div(), Text(content="sibling"))),
     ],
     "unmount a nested subtree": [
-        Div(children=[panes("deep", "deeper"), Text(content="sibling")]),
-        Div(children=[Text(content="sibling")]),
+        Div(children=(panes("deep", "deeper"), Text(content="sibling"))),
+        Div(children=(Text(content="sibling"),)),
     ],
     "reorder keyed children": [keyed("a", "b", "c"), keyed("c", "a"), keyed("b", "c", "a")],
     "replace the root": [Text(content="root"), labeled("root"), panes("root")],

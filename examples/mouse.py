@@ -27,8 +27,8 @@ def canvas(
     width: int,
     height: int,
     cells: dict[Position, Color],
-) -> list[Chunk]:
-    return list(
+) -> tuple[Chunk, ...]:
+    return tuple(
         intersperse(
             Chunk.newline(),
             (canvas_chunk(cells.get(Position(x, y), BLACK)) for y in range(height) for x in range(width)),
@@ -41,23 +41,21 @@ def canvas(
 def root() -> Div:
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
-        children=[
+        children=(
             header(),
             Div(
                 style=row | gap(1),
-                children=[
+                children=(
                     tracking_box(),
                     last_clicked_box(),
                     last_dragged_box(),
-                ],
+                ),
             ),
             Div(
                 style=row | gap(1),
-                children=[
-                    drag_text_box(),
-                ],
+                children=(drag_text_box(),),
             ),
-        ],
+        ),
     )
 
 
@@ -152,10 +150,10 @@ def drag_text_box() -> Div:
 
     return Div(
         style=canvas_style | (hover_style if hovered.border else None) | size(20, 10),
-        children=[
+        children=(
             draggable_text("Drag me!", 0, 0),
             draggable_text("No, me!", 8, 5),
-        ],
+        ),
     )
 
 

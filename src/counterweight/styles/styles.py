@@ -66,7 +66,10 @@ class Color(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
+        """A color from `#rrggbb` or the CSS shorthand `#rgb`, with or without the `#`."""
         hex = hex.lstrip("#")
+        if len(hex) == 3:
+            hex = "".join(digit * 2 for digit in hex)
         return cls(
             int(hex[0:2], 16),
             int(hex[2:4], 16),
@@ -232,6 +235,7 @@ COLORS_BY_NAME = {
 }
 
 _WHITE = COLORS_BY_NAME["white"]
+_BLACK = COLORS_BY_NAME["black"]
 
 
 def is_osc_8_uri(uri: str) -> bool:
@@ -240,9 +244,6 @@ def is_osc_8_uri(uri: str) -> bool:
     since any other character could end the escape sequence early or start another one.
     """
     return bool(uri) and all(" " <= c <= "~" for c in uri)
-
-
-_BLACK = COLORS_BY_NAME["black"]
 
 
 @flyweight(maxsize=2**10)

@@ -37,7 +37,7 @@ tallest = max(peaks, key=lambda p: p.height)
 
 @component
 def root() -> Div:
-    return Div(style=col | pad_x(1), children=[markdown(README)])
+    return Div(style=col | pad_x(1), children=(markdown(README),))
 
 
 # --8<-- [end:example]
@@ -63,7 +63,7 @@ Forecasts are at www.mountain-forecast.com.
 
 @component
 def github() -> Div:
-    return Div(style=col | pad_x(1), children=[markdown(EXPEDITION)])
+    return Div(style=col | pad_x(1), children=(markdown(EXPEDITION),))
 
 
 # --8<-- [end:github]

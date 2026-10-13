@@ -69,41 +69,41 @@ def layout(counter: Component, card_component: Callable[[str, str], Component]) 
     """
     return Div(
         style=col | pad(1),
-        children=[
+        children=(
             header(),
-            Div(style=row | justify_children_space_between, children=[status(), counter]),
+            Div(style=row | justify_children_space_between, children=(status(), counter)),
             Div(
                 style=fill(1) | col | border_collapse,
-                children=[
+                children=(
                     Div(
                         style=fill(1) | row | border_collapse,
-                        children=[card_component(label, value) for label, value in METRICS[:6]],
+                        children=tuple(card_component(label, value) for label, value in METRICS[:6]),
                     ),
                     Div(
                         style=fill(1) | row | border_collapse,
-                        children=[card_component(label, value) for label, value in METRICS[6:]],
+                        children=tuple(card_component(label, value) for label, value in METRICS[6:]),
                     ),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
 @component
 def header() -> Text:
     return Text(
-        content=[
+        content=(
             Chunk(content="System", style=CellStyle(foreground=amber_400, bold=True)),
             Chunk.space(),
             Chunk(content="Dashboard", style=CellStyle(foreground=cyan_400, bold=True)),
-        ],
+        ),
         style=text_justify_center,
     )
 
 
 @component
 def status() -> Text:
-    return Text(content=[Chunk(content="All systems normal", style=CellStyle(foreground=slate_400))])
+    return Text(content=(Chunk(content="All systems normal", style=CellStyle(foreground=slate_400)),))
 
 
 @component
@@ -112,16 +112,16 @@ def frame_counter(tick: int) -> Text:
 
 
 def frame_text(tick: int) -> Text:
-    return Text(content=[Chunk(content=f"Frame: {tick:,}", style=CellStyle(foreground=slate_400))])
+    return Text(content=(Chunk(content=f"Frame: {tick:,}", style=CellStyle(foreground=slate_400)),))
 
 
 def render_metric_card(label: str, value: str) -> Div:
     return Div(
         style=fill(1) | col | border | border_color("slate", 700) | pad(1),
-        children=[
-            Text(content=[Chunk(content=label, style=CellStyle(foreground=slate_400))]),
-            Text(content=[Chunk(content=value, style=CellStyle(foreground=slate_100, bold=True))]),
-        ],
+        children=(
+            Text(content=(Chunk(content=label, style=CellStyle(foreground=slate_400)),)),
+            Text(content=(Chunk(content=value, style=CellStyle(foreground=slate_100, bold=True)),)),
+        ),
     )
 
 

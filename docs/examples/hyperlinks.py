@@ -16,15 +16,15 @@ LINK = CellStyle(underline=True) | text_color("sky", 300).text_style
 def root() -> Div:
     return Div(
         style=col | gap(1) | pad_x(1),
-        children=[
+        children=(
             Text(
-                content=[
+                content=(
                     Chunk(content="Counterweight is on "),
                     Chunk(content="GitHub", style=LINK | CellStyle(link="https://github.com/JoshKarpel/counterweight")),
                     Chunk(content=", and its docs are at "),
                     Chunk(content="counterweight.dev", style=LINK | CellStyle(link="https://www.counterweight.dev")),
                     Chunk(content="."),
-                ],
+                ),
                 style=text_wrap_pretty,
             ),
             Text(
@@ -34,7 +34,7 @@ def root() -> Div:
                 | border_lightrounded
                 | Style(text_style=CellStyle(link="https://pygments.org")),
             ),
-        ],
+        ),
     )
 
 

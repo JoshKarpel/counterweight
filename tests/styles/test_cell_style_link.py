@@ -43,12 +43,34 @@ def test_hash_depends_on_link() -> None:
     assert hash(CellStyle(link="https://example.com/a")) != hash(CellStyle(link="https://example.com/b"))
 
 
-def test_ansi_text_wraps_each_linked_cell_in_its_hyperlink() -> None:
-    linked = resolve_cell_style(CellStyle(link="https://example.com/"))
-    plain = resolve_cell_style(CellStyle())
-    paint = Paint(2, 1, [Cell("a", linked), Cell("b", plain)])
+A = resolve_cell_style(CellStyle(link="https://example.com/a"))
+B = resolve_cell_style(CellStyle(link="https://example.com/b"))
+PLAIN = resolve_cell_style(CellStyle())
 
-    assert paint_to_str(paint) == (
-        f"{sgr_from_cell_style(linked)}{hyperlink('https://example.com/')}a{HYPERLINK_END}\x1b[0m"
-        f"{sgr_from_cell_style(plain)}b\x1b[0m"
+
+def styled(cell: Cell) -> str:
+    return f"{sgr_from_cell_style(cell.style)}{cell.grapheme}\x1b[0m"
+
+
+def test_ansi_text_wraps_a_run_of_cells_with_the_same_link_in_one_hyperlink() -> None:
+    cells = [Cell("x", A), Cell("y", A), Cell("z", PLAIN)]
+
+    assert paint_to_str(Paint(3, 1, cells)) == (
+        f"{hyperlink(A.link)}{styled(cells[0])}{styled(cells[1])}{HYPERLINK_END}{styled(cells[2])}"
+    )
+
+
+def test_ansi_text_switches_directly_between_adjacent_links() -> None:
+    cells = [Cell("x", A), Cell("y", B)]
+
+    assert paint_to_str(Paint(2, 1, cells)) == (
+        f"{hyperlink(A.link)}{styled(cells[0])}{hyperlink(B.link)}{styled(cells[1])}{HYPERLINK_END}"
+    )
+
+
+def test_ansi_text_closes_a_hyperlink_at_the_end_of_each_row() -> None:
+    cells = [Cell("x", A), Cell("y", A)]
+
+    assert paint_to_str(Paint(1, 2, cells)) == (
+        f"{hyperlink(A.link)}{styled(cells[0])}{HYPERLINK_END}\n{hyperlink(A.link)}{styled(cells[1])}{HYPERLINK_END}"
     )

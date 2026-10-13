@@ -31,7 +31,7 @@ def broken_suspension() -> None:
 
 @component
 def boxes() -> Div:
-    return Div(style=row | border_collapse, children=[Div(style=border | size(5, 3)), Div(style=border | size(5, 3))])
+    return Div(style=row | border_collapse, children=(Div(style=border | size(5, 3)), Div(style=border | size(5, 3))))
 
 
 FRAME = [

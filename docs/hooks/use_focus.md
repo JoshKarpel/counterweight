@@ -133,10 +133,10 @@ and passes it down:
 def labelled_input(label: str) -> Div:
     input_handle, _ = use_state(FocusHandle)
     return Div(
-        children=[
+        children=(
             Text(content=label, on_input=focus_on_press(input_handle)),
             text_input(focus_handle=input_handle),
-        ],
+        ),
     )
 ```
 

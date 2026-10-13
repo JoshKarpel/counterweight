@@ -216,7 +216,7 @@ def key_log() -> Div:
         set_count(count + 1)
         return ()
 
-    return Div(on_input=on_input, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=(key_list(keys.current),))
 ```
 
 `key_list` keeps showing the keys from when it last ran.

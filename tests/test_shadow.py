@@ -68,8 +68,8 @@ async def test_unmounted_effect_stops_before_sibling_rerun_starts() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow = await render(Div(children=[logs_effect_per_dep("A", 1, log), logs_effect("B", log)]), None, tg)
-        shadow = await render(Div(children=[logs_effect_per_dep("A", 2, log)]), shadow, tg)
+        shadow = await render(Div(children=(logs_effect_per_dep("A", 1, log), logs_effect("B", log))), None, tg)
+        shadow = await render(Div(children=(logs_effect_per_dep("A", 2, log),)), shadow, tg)
         log_after_rerender = log.copy()
         await cancel_tasks(effect_tasks(shadow))
 
@@ -80,8 +80,8 @@ async def test_component_replaced_by_element_stops_its_effect() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow = await render(Div(children=[logs_effect("A", log)]), None, tg)
-        shadow = await render(Div(children=[Div()]), shadow, tg)
+        shadow = await render(Div(children=(logs_effect("A", log),)), None, tg)
+        shadow = await render(Div(children=(Div(),)), shadow, tg)
         log_after_replacement = log.copy()
         await cancel_tasks(effect_tasks(shadow))
 
@@ -101,13 +101,13 @@ async def test_component_nested_under_replaced_component_starts_with_initial_sta
 
     @component
     def wrapper() -> Div:
-        return Div(children=[counter()])
+        return Div(children=(counter(),))
 
     with state_sets():
         async with TaskGroup() as tg:
-            shadow = await render(Div(children=[wrapper()]), None, tg)
+            shadow = await render(Div(children=(wrapper(),)), None, tg)
             setters[-1](7)
-            await render(Div(children=[Div(children=[counter()])]), shadow, tg)
+            await render(Div(children=(Div(children=(counter(),)),)), shadow, tg)
 
     assert seen == [3, 3]
 
@@ -123,9 +123,9 @@ async def test_use_mouse_listener_removed_when_component_replaced_by_element() -
 
     try:
         async with TaskGroup() as tg:
-            shadow = await render(Div(children=[tracks_mouse()]), None, tg)
+            shadow = await render(Div(children=(tracks_mouse(),)), None, tg)
             listener_count_while_mounted = len(listeners)
-            shadow = await render(Div(children=[Div()]), shadow, tg)
+            shadow = await render(Div(children=(Div(),)), shadow, tg)
             listener_count_after_replacement = len(listeners)
             await cancel_tasks(effect_tasks(shadow))
     finally:
@@ -199,12 +199,12 @@ async def test_reordered_keyed_children_keep_their_state() -> None:
     with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("x", "y"))), None, tg
             )
             setters["x"]("x was set")
             setters["y"]("y was set")
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, tg
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("y", "x"))), shadow, tg
             )
 
     assert seen == {"x": "x was set", "y": "y was set"}
@@ -214,8 +214,12 @@ async def test_reordered_keyed_children_keep_their_effects_running() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, tg)
-        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("y", "x")]), shadow, tg)
+        shadow = await render(
+            Div(children=tuple(logs_effect(name, log).with_key(name) for name in ("x", "y"))), None, tg
+        )
+        shadow = await render(
+            Div(children=tuple(logs_effect(name, log).with_key(name) for name in ("y", "x"))), shadow, tg
+        )
         log_after_reorder = log.copy()
         await cancel_tasks(effect_tasks(shadow))
 
@@ -229,13 +233,13 @@ async def test_keyed_children_after_a_removed_keyed_child_keep_their_state() -> 
     with state_sets():
         async with TaskGroup() as tg:
             shadow = await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "b", "c")]),
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("a", "b", "c"))),
                 None,
                 tg,
             )
             setters["c"]("c was set")
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("a", "c")]), shadow, tg
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("a", "c"))), shadow, tg
             )
 
     assert seen["c"] == "c was set"
@@ -245,9 +249,11 @@ async def test_inserting_a_keyed_child_at_the_front_mounts_only_that_child() -> 
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow = await render(Div(children=[logs_effect(name, log).with_key(name) for name in ("x", "y")]), None, tg)
         shadow = await render(
-            Div(children=[logs_effect(name, log).with_key(name) for name in ("w", "x", "y")]), shadow, tg
+            Div(children=tuple(logs_effect(name, log).with_key(name) for name in ("x", "y"))), None, tg
+        )
+        shadow = await render(
+            Div(children=tuple(logs_effect(name, log).with_key(name) for name in ("w", "x", "y"))), shadow, tg
         )
         log_after_insert = log.copy()
         await cancel_tasks(effect_tasks(shadow))
@@ -259,8 +265,8 @@ async def test_unkeyed_child_after_a_removed_keyed_sibling_remounts() -> None:
     log: list[str] = []
 
     async with TaskGroup() as tg:
-        shadow = await render(Div(children=[logs_effect("a", log).with_key("a"), logs_effect("u", log)]), None, tg)
-        shadow = await render(Div(children=[logs_effect("u", log)]), shadow, tg)
+        shadow = await render(Div(children=(logs_effect("a", log).with_key("a"), logs_effect("u", log))), None, tg)
+        shadow = await render(Div(children=(logs_effect("u", log),)), shadow, tg)
         log_after_removal = log.copy()
         await cancel_tasks(effect_tasks(shadow))
 
@@ -272,7 +278,7 @@ def test_duplicate_sibling_keys_raise() -> None:
 
     with pytest.raises(DuplicateKey, match=r"^Sibling components share the key 'k'$"):
         update_shadow(
-            Div(children=[logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k")]), None, NO_LAYOUTS
+            Div(children=(logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k"))), None, NO_LAYOUTS
         )
 
 
@@ -319,39 +325,39 @@ async def test_effect_with_setter_in_deps_runs_once_across_renders() -> None:
 
 @component
 def wraps_remembers(setters: dict[str, Setter[str]], seen: dict[str, str]) -> Div:
-    return Div(children=[remembers("nested", setters, seen)])
+    return Div(children=(remembers("nested", setters, seen),))
 
 
 @pytest.mark.parametrize(
     ("before", "after", "name"),
     [
         pytest.param(
-            lambda s, v: Div(children=[remembers("a", s, v)]),
-            lambda s, v: Div(children=[Div()]),
+            lambda s, v: Div(children=(remembers("a", s, v),)),
+            lambda s, v: Div(children=(Div(),)),
             "a",
             id="replaced-by-element",
         ),
         pytest.param(
-            lambda s, v: Div(children=[remembers("a", s, v).with_key("a"), remembers("b", s, v).with_key("b")]),
-            lambda s, v: Div(children=[remembers("b", s, v).with_key("b")]),
+            lambda s, v: Div(children=(remembers("a", s, v).with_key("a"), remembers("b", s, v).with_key("b"))),
+            lambda s, v: Div(children=(remembers("b", s, v).with_key("b"),)),
             "a",
             id="removed-keyed-sibling",
         ),
         pytest.param(
-            lambda s, v: Div(children=[remembers("a", s, v), remembers("b", s, v)]),
-            lambda s, v: Div(children=[remembers("a", s, v)]),
+            lambda s, v: Div(children=(remembers("a", s, v), remembers("b", s, v))),
+            lambda s, v: Div(children=(remembers("a", s, v),)),
             "b",
             id="removed-trailing-unkeyed-child",
         ),
         pytest.param(
-            lambda s, v: Div(children=[remembers("a", s, v)]),
-            lambda s, v: Div(children=[wraps_remembers(s, v)]),
+            lambda s, v: Div(children=(remembers("a", s, v),)),
+            lambda s, v: Div(children=(wraps_remembers(s, v),)),
             "a",
             id="replaced-by-other-component",
         ),
         pytest.param(
-            lambda s, v: Div(children=[wraps_remembers(s, v)]),
-            lambda s, v: Div(children=[Div()]),
+            lambda s, v: Div(children=(wraps_remembers(s, v),)),
+            lambda s, v: Div(children=(Div(),)),
             "nested",
             id="nested-under-replaced-component",
         ),
@@ -377,12 +383,12 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
-    shadow = update_shadow(Div(children=[remembers("a", setters, seen)]), None, NO_LAYOUTS).tree
+    shadow = update_shadow(Div(children=(remembers("a", setters, seen),)), None, NO_LAYOUTS).tree
     state = ref(shadow.root.children[0].hooks.data[0])
 
     gc.disable()
     try:
-        shadow = update_shadow(Div(children=[Div()]), shadow, NO_LAYOUTS).tree
+        shadow = update_shadow(Div(children=(Div(),)), shadow, NO_LAYOUTS).tree
         is_freed = state() is None
     finally:
         gc.enable()
@@ -397,10 +403,10 @@ async def test_setter_of_moved_keyed_child_still_enqueues() -> None:
     with state_sets() as queue:
         async with TaskGroup() as tg:
             shadow = await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("x", "y")]), None, tg
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("x", "y"))), None, tg
             )
             await render(
-                Div(children=[remembers(name, setters, seen).with_key(name) for name in ("y", "x")]), shadow, tg
+                Div(children=tuple(remembers(name, setters, seen).with_key(name) for name in ("y", "x"))), shadow, tg
             )
             setters["x"]("set after move")
 

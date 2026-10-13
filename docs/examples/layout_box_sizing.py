@@ -14,11 +14,11 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def fixed() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=size(24, 4) | border, content="size(24, 4)"),
             Text(style=width(36) | border, content="width(36)"),
             Text(style=height(4) | border, content="height(4)"),
-        ],
+        ),
     )
 
 
@@ -31,10 +31,10 @@ def fixed() -> Div:
 def fit() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=border, content="stretched by its col"),
             Text(style=align_self_start | border, content="align_self_start"),
-        ],
+        ),
     )
 
 
@@ -55,13 +55,13 @@ KEYWORDS = {
 def content_keywords() -> Div:
     return Div(
         style=col,
-        children=[
+        children=tuple(
             Div(
                 style=row,
-                children=[Text(style=keyword | border | text_wrap_stable, content=f"{name} sizes this")],
+                children=(Text(style=keyword | border | text_wrap_stable, content=f"{name} sizes this"),),
             )
             for name, keyword in KEYWORDS.items()
-        ],
+        ),
     )
 
 
@@ -74,10 +74,10 @@ def content_keywords() -> Div:
 def content_keywords_col() -> Div:
     return Div(
         style=col,
-        children=[
+        children=tuple(
             Text(style=keyword | border | text_wrap_stable, content=f"{name} sizes this")
             for name, keyword in KEYWORDS.items()
-        ],
+        ),
     )
 
 
@@ -90,14 +90,14 @@ def content_keywords_col() -> Div:
 def filling() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=border, content="content height"),
             Text(style=fill(1) | border, content="fill(1): the rest of the col"),
             Div(
                 style=row,
-                children=[Text(style=full_width | border, content="full_width: the whole row")],
+                children=(Text(style=full_width | border, content="full_width: the whole row"),),
             ),
-        ],
+        ),
     )
 
 
@@ -110,22 +110,22 @@ def filling() -> Div:
 def clamped() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row,
-                children=[
+                children=(
                     Text(style=fill(1) | max_width(20) | border, content="fill(1)\nmax_width(20)"),
                     Text(style=fill(1) | border, content="fill(1)"),
-                ],
+                ),
             ),
             Div(
                 style=row | width(40) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=width(30) | min_width(24) | border, content="width(30)\nmin_width(24)"),
                     Text(style=width(30) | border, content="width(30)"),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -138,10 +138,10 @@ def clamped() -> Div:
 def aspect() -> Div:
     return Div(
         style=row | align_children_start,
-        children=[
+        children=(
             Text(style=width(18) | aspect_ratio(1) | border, content="width(18)\naspect_ratio(1)"),
             Text(style=width(18) | aspect_ratio(2) | border, content="width(18)\naspect_ratio(2)"),
-        ],
+        ),
     )
 
 
@@ -154,10 +154,10 @@ def aspect() -> Div:
 def box_sizing() -> Div:
     return Div(
         style=col | align_children_start,
-        children=[
+        children=(
             Text(style=width(24) | pad_x(2) | border, content="width(24)"),
             Text(style=content_box | width(24) | pad_x(2) | border, content="content_box | width(24)"),
-        ],
+        ),
     )
 
 

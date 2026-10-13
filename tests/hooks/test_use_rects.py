@@ -32,7 +32,7 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
                 case _:
                     set_renders(renders + 1)
 
-        return Div(children=[measured(is_hidden, recorded)], on_input=on_input)
+        return Div(children=(measured(is_hidden, recorded),), on_input=on_input)
 
     await app(
         root(),

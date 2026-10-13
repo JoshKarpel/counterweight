@@ -235,22 +235,22 @@ def visible(messages: tuple[Message, ...]) -> tuple[Message, ...]:
 def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             header(model.tokens),
             Div(
                 style=fill(1) | col | gap_height(1) | pad_x(1),
-                children=[message_component(message) for message in model.messages],
+                children=tuple(message_component(message) for message in model.messages),
             ),
             spinner(model.tick),
             prompt(),
-        ],
+        ),
     )
 
 
 def render_message(message: Message) -> Div:
     match message.kind:
         case "user":
-            return Div(children=[Text(content=f"> {message.body}", style=text_color("cyan", 300))])
+            return Div(children=(Text(content=f"> {message.body}", style=text_color("cyan", 300)),))
         case "assistant":
             return markdown(message.body)
         case "bash":
@@ -261,7 +261,7 @@ def render_message(message: Message) -> Div:
             body = code_block(message.body, "diff")
     return Div(
         style=col | border | border_lightrounded | border_color("slate", 600),
-        children=[Text(content=message.title, style=text_color("amber", 400)), body],
+        children=(Text(content=message.title, style=text_color("amber", 400)), body),
     )
 
 

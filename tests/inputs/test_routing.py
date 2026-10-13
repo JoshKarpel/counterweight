@@ -77,7 +77,7 @@ def parent_and_child(deliveries: list[Delivery], child_response: InputResponse) 
         return Div(
             style=size(20, 10),
             on_input=recording("parent", deliveries),
-            children=[Div(style=box(2, 1, 5, 3), on_input=recording("child", deliveries, child_response))],
+            children=(Div(style=box(2, 1, 5, 3), on_input=recording("child", deliveries, child_response)),),
         )
 
     return root()
@@ -90,10 +90,10 @@ async def test_of_two_overlapping_siblings_only_the_topmost_receives_a_click() -
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(style=box(0, 0, 5, 5), on_input=recording("below", deliveries, ())),
                 Div(style=box(2, 2, 5, 5), on_input=recording("above", deliveries, ())),
-            ],
+            ),
         )
 
     await run(root(), click(3, 3))
@@ -108,10 +108,10 @@ async def test_a_sibling_raised_with_z_receives_a_click_over_a_later_sibling() -
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(style=box(0, 0, 5, 5) | z(1), on_input=recording("raised", deliveries, ())),
                 Div(style=box(2, 2, 5, 5), on_input=recording("later", deliveries, ())),
-            ],
+            ),
         )
 
     await run(root(), click(3, 3))
@@ -126,13 +126,13 @@ async def test_a_child_of_an_element_raised_with_z_receives_a_click_over_its_par
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(
                     style=box(0, 0, 10, 10) | z(1),
                     on_input=recording("parent", deliveries),
-                    children=[Div(style=box(1, 1, 3, 3), on_input=recording("child", deliveries))],
-                )
-            ],
+                    children=(Div(style=box(1, 1, 3, 3), on_input=recording("child", deliveries)),),
+                ),
+            ),
         )
 
     await run(root(), [MouseScrolledDown(absolute=Position(2, 2))])
@@ -164,7 +164,7 @@ async def test_a_press_in_a_childs_margin_targets_what_lies_beneath_it(child_sty
         return Div(
             style=size(20, 10),
             on_input=recording("parent", deliveries, ()),
-            children=[Div(style=box(2, 1, 5, 3) | child_style, on_input=recording("child", deliveries, ()))],
+            children=(Div(style=box(2, 1, 5, 3) | child_style, on_input=recording("child", deliveries, ())),),
         )
 
     await run(root(), click(2, 1))
@@ -188,14 +188,14 @@ async def test_the_parent_receives_the_same_event_with_its_own_receiver() -> Non
         return Div(
             style=size(20, 10),
             on_input=lambda event, receiver: receivers.append(("parent", event, receiver.rects, receiver.is_target)),
-            children=[
+            children=(
                 Div(
                     style=box(2, 1, 5, 3),
                     on_input=lambda event, receiver: receivers.append(
                         ("child", event, receiver.rects, receiver.is_target)
                     ),
-                )
-            ],
+                ),
+            ),
         )
 
     event = MouseScrolledDown(absolute=Position(3, 2))
@@ -275,11 +275,11 @@ async def test_a_drag_keeps_reaching_the_element_that_claimed_it_until_the_relea
             set_handled(handled + 1)
             return ()
 
-        return Div(style=box(0, 0, 3, 3), on_input=on_input, children=[Text(content=str(handled))])
+        return Div(style=box(0, 0, 3, 3), on_input=on_input, children=(Text(content=str(handled)),))
 
     @component
     def root() -> Div:
-        return Div(style=size(20, 10), on_input=recording("root", deliveries), children=[dragged()])
+        return Div(style=size(20, 10), on_input=recording("root", deliveries), children=(dragged(),))
 
     await run(
         root(),
@@ -302,7 +302,7 @@ async def test_after_the_release_an_event_outside_the_element_does_not_reach_it(
         return Div(
             style=size(20, 10),
             on_input=recording("root", deliveries),
-            children=[Div(style=box(0, 0, 3, 3), on_input=recording("box", deliveries, ()))],
+            children=(Div(style=box(0, 0, 3, 3), on_input=recording("box", deliveries, ())),),
         )
 
     await run(
@@ -329,13 +329,13 @@ async def test_the_rest_of_a_press_goes_to_the_node_that_claimed_it_alone() -> N
         return Div(
             style=size(20, 10),
             on_input=recording("root", deliveries),
-            children=[
+            children=(
                 Div(
                     style=box(0, 0, 10, 10),
                     on_input=claim_presses,
-                    children=[Div(style=box(1, 1, 3, 3), on_input=recording("landed on", deliveries))],
-                )
-            ],
+                    children=(Div(style=box(1, 1, 3, 3), on_input=recording("landed on", deliveries)),),
+                ),
+            ),
         )
 
     await run(
@@ -359,7 +359,9 @@ async def test_the_rest_of_a_press_nothing_claimed_reaches_no_handler() -> None:
         return Div(
             style=size(20, 10),
             on_input=recording("root", deliveries),
-            children=[Text(content="click", style=box(10, 0, 5, 1), on_input=on_click(lambda: clicks.append("click")))],
+            children=(
+                Text(content="click", style=box(10, 0, 5, 1), on_input=on_click(lambda: clicks.append("click"))),
+            ),
         )
 
     await run(
@@ -376,7 +378,9 @@ async def test_a_press_and_release_on_an_on_click_element_calls_its_action() -> 
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[Text(content="click", style=box(10, 0, 5, 1), on_input=on_click(lambda: clicks.append("click")))],
+            children=(
+                Text(content="click", style=box(10, 0, 5, 1), on_input=on_click(lambda: clicks.append("click"))),
+            ),
         )
 
     await run(root(), click(11, 0))
@@ -399,7 +403,7 @@ async def test_the_rest_of_a_press_whose_captor_unmounted_reaches_no_handler() -
         return Div(
             style=size(20, 10),
             on_input=recording("root", deliveries),
-            children=[Div(style=box(0, 0, 5, 5), on_input=unmount_on_press)] if is_shown else [],
+            children=(Div(style=box(0, 0, 5, 5), on_input=unmount_on_press),) if is_shown else (),
         )
 
     await run(
@@ -414,10 +418,10 @@ def captor_and_other(deliveries: list[Delivery]) -> Component:
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(style=box(0, 0, 5, 5), on_input=recording("captor", deliveries, ())),
                 Div(style=box(10, 0, 5, 5), on_input=recording("other", deliveries, ())),
-            ],
+            ),
         )
 
     return root()
@@ -488,10 +492,10 @@ async def test_a_press_that_another_element_claims_a_second_button_of_still_belo
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            children=[
+            children=(
                 Div(style=box(0, 0, 5, 5), on_input=on_click(lambda: clicks.append("first"))),
                 Div(style=box(10, 0, 5, 5), on_input=each(on_click(lambda: clicks.append("second")), claim_presses)),
-            ],
+            ),
         )
 
     await run(

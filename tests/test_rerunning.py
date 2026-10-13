@@ -42,7 +42,7 @@ def counted(name: str, children: Shape, calls: Calls) -> Div:
     _, set_count = use_state(0)
     calls.names.append(name)
     calls.setters[name] = set_count
-    return Div(children=[counted(child, grandchildren, calls) for child, grandchildren in children])
+    return Div(children=tuple(counted(child, grandchildren, calls) for child, grandchildren in children))
 
 
 def set_state(calls: Calls, queue: Queue[AnyEvent], *names: str) -> frozenset[NodeKey]:
@@ -117,7 +117,7 @@ def holds(child: Component, calls: Calls) -> Div:
     _, set_count = use_state(0)
     calls.names.append("holder")
     calls.setters["holder"] = set_count
-    return Div(children=[child])
+    return Div(children=(child,))
 
 
 def test_component_object_reused_by_its_rerun_parent_is_not_rerun() -> None:
@@ -142,7 +142,7 @@ def starts_every_render(log: list[str]) -> Text:
 async def test_effect_without_deps_of_a_reused_component_does_not_rerun() -> None:
     log: list[str] = []
     calls = Calls()
-    root = Div(children=[starts_every_render(log), counted("sibling", (), calls)])
+    root = Div(children=(starts_every_render(log), counted("sibling", (), calls)))
 
     with state_sets() as queue:
         async with TaskGroup() as tg:
@@ -170,7 +170,7 @@ def shows(log: list[str], setters: dict[str, Setter[bool]]) -> Div:
         use_effect(setup, deps=())
         return Text(content="child")
 
-    return Div(children=[child()] if is_shown else [])
+    return Div(children=(child(),) if is_shown else ())
 
 
 async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() -> None:
@@ -266,7 +266,7 @@ async def test_whole_tree_rerenders_only_on_resize(
 
     @component
     def root() -> Div:
-        return Div(children=[leaf()])
+        return Div(children=(leaf(),))
 
     await app(root(), headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()))
 
@@ -289,7 +289,7 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[starts()])
+        return Div(children=(starts(),))
 
     # Nothing yields to the event loop while an autopilot runs, so the app runs with none until the effect starts.
     running = create_task(app(root(), headless=True, dimensions=(20, 10)))
@@ -369,7 +369,7 @@ def passes(calls: Calls, child: Callable[[int, Calls], Component]) -> Div:
     count, set_count = use_state(0)
     calls.names.append("parent")
     calls.setters["parent"] = set_count
-    return Div(children=[child(count, calls)])
+    return Div(children=(child(count, calls),))
 
 
 @component(memo=True)
@@ -445,7 +445,7 @@ def inline_handler(argument: object, calls: Calls) -> Text:
 
 @component
 def reads_setting_around(child: Component, calls: Calls) -> Div:
-    return Div(children=[child, Text(content=SETTINGS["label"])])
+    return Div(children=(child, Text(content=SETTINGS["label"])))
 
 
 @pytest.mark.parametrize(
@@ -470,7 +470,7 @@ def reads_setting_around(child: Component, calls: Calls) -> Div:
             id="passed-through-to-a-dirty-child",
         ),
         pytest.param(
-            lambda calls: Div(children=[Div(children=[reads_setting("same", calls)]), counted("sibling", (), calls)]),
+            lambda calls: Div(children=(Div(children=(reads_setting("same", calls),)), counted("sibling", (), calls))),
             ("sibling",),
             "reads_setting",
             id="inside-a-reused-element",
@@ -587,7 +587,7 @@ def test_check_purity_leaves_a_ref_that_a_reused_component_writes_while_renderin
 
 @component(memo=True)
 def one_child_per_setting_letter(argument: object, calls: Calls) -> Div:
-    return Div(children=[Text(content=letter) for letter in SETTINGS["label"]])
+    return Div(children=tuple(Text(content=letter) for letter in SETTINGS["label"]))
 
 
 def test_check_purity_leaves_every_node_mounted_when_running_again_unmounts_one(

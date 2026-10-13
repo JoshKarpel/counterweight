@@ -16,11 +16,11 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def equal_flex() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(1) | border, content="fill(1)"),
-        ],
+        ),
     )
 
 
@@ -33,11 +33,11 @@ def equal_flex() -> Div:
 def equal_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(fr(1), fr(1), fr(1)),
-        children=[
+        children=(
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
-        ],
+        ),
     )
 
 
@@ -50,10 +50,10 @@ def equal_grid() -> Div:
 def sidebar_flex() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=length(20) | border, content="length(20)"),
             Text(style=fill(1) | border, content="fill(1)"),
-        ],
+        ),
     )
 
 
@@ -66,10 +66,10 @@ def sidebar_flex() -> Div:
 def sidebar_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(20, fr(1)),
-        children=[
+        children=(
             Text(style=border, content="20"),
             Text(style=border, content="fr(1)"),
-        ],
+        ),
     )
 
 
@@ -82,10 +82,10 @@ def sidebar_grid() -> Div:
 def ratio_flex() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=fill(1) | border, content="fill(1)"),
             Text(style=fill(2) | border, content="fill(2)"),
-        ],
+        ),
     )
 
 
@@ -98,10 +98,10 @@ def ratio_flex() -> Div:
 def ratio_exact() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=ratio(1, 3) | border, content="ratio(1, 3)"),
             Text(style=ratio(2, 3) | border, content="ratio(2, 3)"),
-        ],
+        ),
     )
 
 
@@ -114,10 +114,10 @@ def ratio_exact() -> Div:
 def ratio_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(fr(1), fr(2)),
-        children=[
+        children=(
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(2)"),
-        ],
+        ),
     )
 
 
@@ -130,16 +130,16 @@ def ratio_grid() -> Div:
 def nested_flex() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=length(20) | border, content="length(20)"),
             Div(
                 style=col | fill(1),
-                children=[
+                children=(
                     Text(style=fill(1) | border, content="fill(1)"),
                     Text(style=fill(1) | border, content="fill(1)"),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -152,14 +152,14 @@ def nested_flex() -> Div:
 def nested_grid() -> Div:
     return Div(
         style=display_grid | grid_template_columns(20, fr(1)) | grid_template_rows(fr(1), fr(1)),
-        children=[
+        children=(
             Text(
                 style=grid_row(1, span(2)) | border,
                 content="grid_row(\n  1, span(2),\n)",
             ),
             Text(style=border, content="fr(1)"),
             Text(style=border, content="fr(1)"),
-        ],
+        ),
     )
 
 
@@ -174,22 +174,22 @@ LONG = "a line of text much longer than half the grid"
 def overflow_grid() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=display_grid | grid_template_columns(waxy.Fraction(1), waxy.Fraction(1)) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=border, content=LONG),
                     Text(style=border, content=LONG),
-                ],
+                ),
             ),
             Div(
                 style=display_grid | grid_template_columns(fr(1), fr(1)) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=border, content=LONG),
                     Text(style=border, content=LONG),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -202,22 +202,22 @@ def overflow_grid() -> Div:
 def percent_gap() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | gap(2) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=percentage(50) | shrink(1) | border, content="percentage(50) | shrink(1)"),
                     Text(style=percentage(50) | shrink(1) | border, content="percentage(50) | shrink(1)"),
-                ],
+                ),
             ),
             Div(
                 style=row | gap(2) | border | border_heavy,
-                children=[
+                children=(
                     Text(style=percentage(50) | border, content="percentage(50)"),
                     Text(style=percentage(50) | border, content="percentage(50)"),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 

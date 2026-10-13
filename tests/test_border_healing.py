@@ -48,10 +48,10 @@ async def test_row_collapse_two_siblings_heals_seam() -> None:
     def root() -> Div:
         return Div(
             style=row | border_collapse,
-            children=[
+            children=(
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
-            ],
+            ),
         )
 
     assert await _render(root(), (9, 3)) == "\n".join(
@@ -68,11 +68,11 @@ async def test_row_collapse_three_siblings_heals_both_seams() -> None:
     def root() -> Div:
         return Div(
             style=row | border_collapse,
-            children=[
+            children=(
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
-            ],
+            ),
         )
 
     assert await _render(root(), (13, 3)) == "\n".join(
@@ -94,10 +94,10 @@ async def test_col_collapse_two_siblings_heals_seam() -> None:
     def root() -> Div:
         return Div(
             style=col | border_collapse,
-            children=[
+            children=(
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
-            ],
+            ),
         )
 
     assert await _render(root(), (5, 5)) == "\n".join(
@@ -116,11 +116,11 @@ async def test_col_collapse_three_siblings_heals_both_seams() -> None:
     def root() -> Div:
         return Div(
             style=col | border_collapse,
-            children=[
+            children=(
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
                 Div(style=border | size(5, 3)),
-            ],
+            ),
         )
 
     assert await _render(root(), (5, 7)) == "\n".join(
@@ -150,25 +150,25 @@ async def test_doc_example_border_healing() -> None:
         def box(label: str) -> Div:
             return Div(
                 style=box_style | border | border_double,
-                children=[Text(content=label, style=text_justify_center)],
+                children=(Text(content=label, style=text_justify_center),),
             )
 
         return Div(
             style=row | container_style,
-            children=[
+            children=(
                 Div(
                     style=col | container_style,
-                    children=[box("A1"), box("A2")],
+                    children=(box("A1"), box("A2")),
                 ),
                 Div(
                     style=col | container_style,
-                    children=[
-                        Div(style=row | container_style, children=[box("B1"), box("B2")]),
-                        Div(style=row | container_style, children=[box("C1"), box("C2"), box("C3"), box("C4")]),
-                        Div(style=row | container_style, children=[box("D1"), box("D2"), box("D3")]),
-                    ],
+                    children=(
+                        Div(style=row | container_style, children=(box("B1"), box("B2"))),
+                        Div(style=row | container_style, children=(box("C1"), box("C2"), box("C3"), box("C4"))),
+                        Div(style=row | container_style, children=(box("D1"), box("D2"), box("D3"))),
+                    ),
                 ),
-            ],
+            ),
         )
 
     assert await _render(root(), (60, 20)) == "\n".join(
@@ -239,7 +239,7 @@ async def test_toggling_border_healing_redraws_borders_healed_or_not() -> None:
     @component
     def root() -> Div:
         return Div(
-            style=row | border_collapse, children=[Div(style=border | size(5, 3)), Div(style=border | size(5, 3))]
+            style=row | border_collapse, children=(Div(style=border | size(5, 3)), Div(style=border | size(5, 3)))
         )
 
     await app(

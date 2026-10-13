@@ -87,6 +87,8 @@ def root(tree: Directory) -> Div:
                 set_shown(file)
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        if not lines:
+            return None
         match event:
             case KeyPressed(key=Key.Up):
                 set_cursor(max(cursor - 1, 0))
@@ -111,7 +113,7 @@ def root(tree: Directory) -> Div:
     return Div(
         style=row,
         on_input=on_input,
-        children=[
+        children=(
             Div(
                 style=col
                 | length(32)
@@ -120,7 +122,7 @@ def root(tree: Directory) -> Div:
                 | border_lightrounded
                 | border_color("slate", 600)
                 | pad_x(1),
-                children=[
+                children=(
                     Text(content=f" {tree.path.name}/ ", style=title),
                     *(
                         tree_line(
@@ -132,7 +134,7 @@ def root(tree: Directory) -> Div:
                         )
                         for index, line in enumerate(lines)
                     ),
-                ],
+                ),
             ),
             Div(
                 style=col
@@ -142,12 +144,12 @@ def root(tree: Directory) -> Div:
                 | border_lightrounded
                 | border_color("slate", 600)
                 | pad_x(1),
-                children=[
+                children=(
                     Text(content=f" {shown.path.relative_to(tree.path)} " if shown else "", style=title),
                     markdown(shown.source) if shown else Text(content="No Markdown files here."),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 

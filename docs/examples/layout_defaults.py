@@ -14,11 +14,11 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def row_defaults() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=border, content="one"),
             Text(style=border, content="two two"),
             Text(style=border, content="three three three"),
-        ],
+        ),
     )
 
 
@@ -31,11 +31,11 @@ def row_defaults() -> Div:
 def col_defaults() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=border, content="one"),
             Text(style=border, content="two two"),
             Text(style=border, content="three three three"),
-        ],
+        ),
     )
 
 
@@ -50,7 +50,7 @@ WIDE = "this line is wider than the fifty-column screen it is drawn on"
 def root_fills_screen() -> Div:
     return Div(
         style=col | border | border_heavy,
-        children=[Text(content="root: col | border | border_heavy"), Text(content=WIDE)],
+        children=(Text(content="root: col | border | border_heavy"), Text(content=WIDE)),
     )
 
 
@@ -65,22 +65,22 @@ LONG = "a line of text much longer than half the row"
 def automatic_minimum() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | border | border_heavy,
-                children=[
+                children=(
                     Text(style=grow(1) | border, content=LONG),
                     Text(style=grow(1) | border, content=LONG),
-                ],
+                ),
             ),
             Div(
                 style=row | border | border_heavy,
-                children=[
+                children=(
                     Text(style=fill(1) | border, content=LONG),
                     Text(style=fill(1) | border, content=LONG),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -95,10 +95,10 @@ PARAGRAPH = "Text stays on one line unless its style sets a wrap mode, however n
 def wrapping() -> Div:
     return Div(
         style=row,
-        children=[
+        children=(
             Text(style=width(24) | border, content=PARAGRAPH),
             Text(style=width(24) | border | text_wrap_stable, content=PARAGRAPH),
-        ],
+        ),
     )
 
 

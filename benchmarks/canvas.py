@@ -74,27 +74,27 @@ def walk(walkers: Walkers, rng: random.Random) -> Walkers:
 
 
 def view(model: Model) -> Div:
-    canvases = [walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers)]
+    canvases = tuple(walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
-        children=[
+        children=(
             header(),
             Div(style=row | justify_children_space_evenly, children=canvases[:2]),
             Div(style=row | justify_children_space_evenly, children=canvases[2:]),
-        ],
+        ),
     )
 
 
 @component
 def header() -> Text:
     return Text(
-        content=[
+        content=(
             Chunk(content="Canvas", style=CellStyle(foreground=amber_600)),
             Chunk.space(),
             Chunk(content="Demo", style=CellStyle(foreground=cyan_600)),
             Chunk.newline(),
             Chunk(content="App", style=CellStyle(foreground=pink_600)),
-        ],
+        ),
         style=text_justify_center,
     )
 

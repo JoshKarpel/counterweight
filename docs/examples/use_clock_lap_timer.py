@@ -35,11 +35,11 @@ def lap_timer() -> Div:
     return Div(
         style=row | gap(1),
         on_input=on_input,
-        children=[
+        children=(
             Text(content=f"Lap {laps}:", style=text_color("slate", 400)),
             # A new key each lap remounts lap_time, so its time since mounting starts again from zero.
             lap_time().with_key(str(laps)),
-        ],
+        ),
     )
 
 

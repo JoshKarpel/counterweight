@@ -289,10 +289,10 @@ async def test_undecorated_element_with_content_color_paints_its_background() ->
 async def test_undecorated_element_over_another_leaves_it_visible() -> None:
     paint = await render(
         Div(
-            children=[
+            children=(
                 Text(content="under", style=size(6, 1)),
                 Div(style=z(1) | position_absolute | inset_top(0) | inset_left(0) | size(6, 2)),
-            ]
+            )
         )
     )
 
@@ -312,14 +312,14 @@ OVER = position_absolute | inset_top(0) | inset_left(0) | margin_left(3)
 
 
 async def test_margin_without_margin_color_leaves_what_lies_beneath_it_visible() -> None:
-    paint = await render(Div(children=[UNDER, Text(content="x", style=OVER)]))
+    paint = await render(Div(children=(UNDER, Text(content="x", style=OVER))))
 
     assert graphemes(paint)[0] == "abcxef"
 
 
 async def test_margin_with_margin_color_paints_it() -> None:
     red = Color.from_name("red")
-    paint = await render(Div(children=[UNDER, Text(content="x", style=OVER | Style(margin_color=red))]))
+    paint = await render(Div(children=(UNDER, Text(content="x", style=OVER | Style(margin_color=red)))))
 
     assert graphemes(paint)[0] == "   xef"
     assert backgrounds(paint, red)[0] == [True, True, True, False, False, False]
@@ -340,10 +340,10 @@ async def test_dialog_recipe_centers_over_a_parent_that_does_not_center_and_leav
     paint = await render(
         Div(
             style=col | full,
-            children=[
+            children=(
                 Text(content="\n".join(["abcdefg"] * 5)),
                 Text(content="x", style=dialog | border | border_light),
-            ],
+            ),
         ),
         dimensions=(7, 5),
     )
@@ -357,7 +357,7 @@ async def test_child_with_content_color_paints_over_its_raised_parents_content_c
     paint = await render(
         Div(
             style=z(1) | Style(content_color=green) | size(4, 2),
-            children=[Div(style=Style(content_color=blue) | size(2, 1))],
+            children=(Div(style=Style(content_color=blue) | size(2, 1)),),
         )
     )
 
@@ -383,10 +383,10 @@ async def test_dropdown_escapes_a_toolbar_only_when_the_toolbar_sets_no_z(toolba
     paint = await render(
         Div(
             style=col,
-            children=[
-                Div(style=toolbar_style | size(6, 1), children=[DROPDOWN]),
+            children=(
+                Div(style=toolbar_style | size(6, 1), children=(DROPDOWN,)),
                 Text(content="abcdef", style=size(6, 1)),
-            ],
+            ),
         )
     )
 
@@ -395,7 +395,7 @@ async def test_dropdown_escapes_a_toolbar_only_when_the_toolbar_sets_no_z(toolba
 
 async def test_wide_characters_take_two_cells_each() -> None:
     paint = await render(
-        Div(style=border | border_light | size(10, 3), children=[Text(content="日本語ab")]),
+        Div(style=border | border_light | size(10, 3), children=(Text(content="日本語ab"),)),
         dimensions=(10, 3),
     )
 
@@ -407,7 +407,7 @@ async def test_text_taller_than_its_content_box_is_cut_off_at_the_box() -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[Text(content="a\nb", style=size(3, 1))])
+        return Div(children=(Text(content="a\nb", style=size(3, 1)),))
 
     await app(
         root(),

@@ -21,16 +21,16 @@ def greeting(name: str) -> Text:
 def root() -> Div:
     return Div(
         style=col | gap(1),
-        children=[
+        children=tuple(
             Div(
                 style=col,
-                children=[
+                children=(
                     Text(content=f" {theme} ", style=text_color("slate", 400)),
                     code_block(SOURCE.rstrip("\n"), "python", theme=theme, style=pad(1)),
-                ],
+                ),
             )
             for theme in ("github-dark", "monokai", "solarized-light")
-        ],
+        ),
     )
 
 

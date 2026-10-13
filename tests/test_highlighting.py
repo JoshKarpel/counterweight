@@ -110,6 +110,13 @@ def test_code_style_draws_on_the_theme_background_in_its_text_color() -> None:
     assert style.text_style == CellStyle(foreground=Color.from_hex("#aabbcc"), background=background)
 
 
+def test_code_style_reads_a_shorthand_background() -> None:
+    class ShorthandStyle(PygmentsStyle):
+        background_color = "#123"
+
+    assert code_style(ShorthandStyle).content_color == Color.from_hex("#112233")
+
+
 def test_code_block_merges_its_style_over_the_code_style() -> None:
     block = code_block("x = 1", "python", theme=LoudStyle, style=pad_x(2))
 

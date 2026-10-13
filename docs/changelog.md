@@ -159,6 +159,12 @@
 
 ### Changed
 
+- [#414](https://github.com/JoshKarpel/counterweight/pull/414)
+  **Breaking:** a `Div`'s `children` is a tuple, and so is a `Text`'s `content` when it's chunks,
+  so an element is a value that can be cached and shared without anything changing it afterwards.
+  Pass `(a, b)` or `tuple(...)` where you passed a list.
+  `canvas` returns a tuple of chunks.
+
 - [#176](https://github.com/JoshKarpel/counterweight/issues/176)
   Each frame is written as one [synchronized update](https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md),
   so terminals that support it show the whole frame at once instead of tearing partway through drawing it,

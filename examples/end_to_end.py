@@ -56,18 +56,18 @@ def toggle() -> Div:
                 return None
 
     return Div(
-        children=[
+        children=(
             Div(
-                children=[
+                children=(
                     Text(
                         content="End-to-End Demo",
                         style=border_color_style | pad(1) | border | Style(border_kind=border_kind),
                     ),
                     time() if toggled else textpad(),
-                ],
+                ),
                 style=row | border | border_lightrounded,
             ),
-        ],
+        ),
         style=col,
         on_input=on_input,
     )

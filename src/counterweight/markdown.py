@@ -14,6 +14,8 @@ from typing import Literal
 
 import waxy
 from markdown_it import MarkdownIt
+from markdown_it.parser_inline import RuleFuncInlineType
+from markdown_it.rules_inline import StateInline
 from markdown_it.tree import SyntaxTreeNode
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.gfm import gfm_plugin
@@ -55,6 +57,26 @@ PARSER = (
     .use(gfm_plugin, front_matter=True)
     .use(dollarmath_plugin, allow_space=False, allow_digits=False, double_inline=True, allow_blank_lines=False)
 )
+
+
+def unmatched_when_silent(rule: RuleFuncInlineType) -> RuleFuncInlineType:
+    """
+    `rule`, but never matching in silent mode, which is how markdown-it skips a token inside a link's text.
+
+    mdit-py-plugins' GFM autolink rules match in silent mode without moving past the match,
+    so `see [www.example.com](https://example.com)` loops forever skipping the same token.
+    Autolinks are never made inside a link's text anyway, so skipping them a character at a time loses nothing.
+    """
+
+    def wrapped(state: StateInline, silent: bool) -> bool:
+        return not silent and rule(state, silent)
+
+    return wrapped
+
+
+INLINE_RULES = dict(zip(PARSER.inline.ruler.get_active_rules(), PARSER.inline.ruler.getRules(""), strict=True))
+for name in ("gfm_autolink_www", "gfm_autolink_protocol", "gfm_autolink_email"):
+    PARSER.inline.ruler.at(name, unmatched_when_silent(INLINE_RULES[name]))
 
 BOLD = CellStyle(bold=True)
 
@@ -172,9 +194,11 @@ def markdown(source: str, styles: MarkdownStyles = MarkdownStyles()) -> Div:
     )
 
 
-def blocks(nodes: list[SyntaxTreeNode], styles: MarkdownStyles, text: CellStyle, list_depth: int) -> list[Div | Text]:
+def blocks(
+    nodes: list[SyntaxTreeNode], styles: MarkdownStyles, text: CellStyle, list_depth: int
+) -> tuple[Div | Text, ...]:
     """The elements for a sequence of block nodes, whose inline text is styled over `text`."""
-    return [block(node, styles, text, list_depth) for node in nodes]
+    return tuple(block(node, styles, text, list_depth) for node in nodes)
 
 
 def block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div | Text:
@@ -207,10 +231,10 @@ def block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_de
         case "math_block_label":
             return Div(
                 style=row | gap_width(1),
-                children=[
+                children=(
                     Text(content=node.content.strip("\n"), style=fill(1) | styles.math_block),
                     Text(content=f"({node.info})", style=styles.math_label),
-                ],
+                ),
             )
         case "html_block":
             return Text(content=node.content.removesuffix("\n"), style=styles.html_block)
@@ -251,10 +275,10 @@ def alert(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_de
     kind = alert_style(styles, node.meta["kind"])
     return Div(
         style=col | styles.alert | kind,
-        children=[
+        children=(
             Text(content=inline(title, styles, text), style=styles.alert_title | kind),
             Div(style=col | gap_height(styles.block_gap), children=blocks(body, styles, text, list_depth)),
-        ],
+        ),
     )
 
 
@@ -291,28 +315,28 @@ def list_block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, li
     gap = gap_height(styles.block_gap if is_loose else 0)
     return Div(
         style=col | gap,
-        children=[
+        children=tuple(
             marked(
                 item_markers(marker, item.meta.get("checked"), is_ordered, styles),
                 blocks(item.children, styles, text, list_depth + 1),
                 gap,
             )
             for marker, item in zip(markers, items, strict=True)
-        ],
+        ),
     )
 
 
-def item_markers(marker: str, checked: bool | None, is_ordered: bool, styles: MarkdownStyles) -> list[Text]:
+def item_markers(marker: str, checked: bool | None, is_ordered: bool, styles: MarkdownStyles) -> tuple[Text, ...]:
     """A list item's bullet or number, and its box if it's a task, which takes the place of a bullet."""
     if checked is None:
-        return [Text(content=marker, style=styles.list_marker)]
+        return (Text(content=marker, style=styles.list_marker),)
 
     box = (
         Text(content=styles.checked_task, style=styles.list_marker | styles.checked_task_marker)
         if checked
         else Text(content=styles.unchecked_task, style=styles.list_marker)
     )
-    return [Text(content=marker, style=styles.list_marker), box] if is_ordered else [box]
+    return (Text(content=marker, style=styles.list_marker), box) if is_ordered else (box,)
 
 
 def footnotes(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div:
@@ -325,16 +349,16 @@ def footnotes(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, lis
     numbers = right_aligned([footnote_number(footnote) for footnote in node.children])
     return Div(
         style=col | styles.footnotes,
-        children=[
+        children=tuple(
             marked(
-                [Text(content=[Chunk(content=number, style=styles.footnote_ref)])],
+                (Text(content=(Chunk(content=number, style=styles.footnote_ref),)),),
                 blocks(
                     [child for child in footnote.children if child.type != "footnote_anchor"], styles, text, list_depth
                 ),
                 gap_height(styles.block_gap),
             )
             for number, footnote in zip(numbers, node.children, strict=True)
-        ],
+        ),
     )
 
 
@@ -348,11 +372,11 @@ def right_aligned(markers: list[str]) -> list[str]:
     return [marker.rjust(width) for marker in markers]
 
 
-def marked(markers: list[Text], children: list[Div | Text], gap: Style) -> Div:
+def marked(markers: tuple[Text, ...], children: tuple[Div | Text, ...], gap: Style) -> Div:
     """`children` in a column beside `markers`, as a list item is beside its bullet."""
     return Div(
         style=row | gap_width(1),
-        children=[*markers, Div(style=col | gap | fill(1), children=children)],
+        children=(*markers, Div(style=col | gap | fill(1), children=children)),
     )
 
 
@@ -362,23 +386,23 @@ def table(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> Div:
     columns = len(rows[0].children)
     return Div(
         style=display_grid | grid_template_columns(*[waxy.AUTO] * columns) | border_collapse | styles.table,
-        children=[
+        children=tuple(
             # The border is on a Div around the Text, not on the Text itself,
             # because a grid row is too short for a wrapped Text with both a border and padding.
             Div(
                 style=col | styles.table_cell,
-                children=[
+                children=(
                     Text(
                         content=inline(cell, styles, text),
                         style=styles.table_cell_text
                         | (styles.table_header if cell.type == "th" else None)
                         | JUSTIFY[cell_alignment(cell)],
-                    )
-                ],
+                    ),
+                ),
             )
             for tr in rows
             for cell in tr.children
-        ],
+        ),
     )
 
 
@@ -402,7 +426,7 @@ def cell_alignment(cell: SyntaxTreeNode) -> Alignment:
             return "left"
 
 
-def inline(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[Chunk]:
+def inline(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> tuple[Chunk, ...]:
     """
     The chunks of the inline content of a paragraph, heading, or table cell.
 
@@ -410,25 +434,25 @@ def inline(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> lis
     links back to the footnote's references, which a terminal can't follow.
     They have no children, so they add no chunks.
     """
-    return [chunk for child in node.children for chunk in spans(child.children, styles, text)]
+    return tuple(chunk for child in node.children for chunk in spans(child.children, styles, text))
 
 
-def spans(nodes: list[SyntaxTreeNode], styles: MarkdownStyles, text: CellStyle) -> list[Chunk]:
-    return [chunk for node in nodes for chunk in span(node, styles, text)]
+def spans(nodes: list[SyntaxTreeNode], styles: MarkdownStyles, text: CellStyle) -> tuple[Chunk, ...]:
+    return tuple(chunk for node in nodes for chunk in span(node, styles, text))
 
 
-def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[Chunk]:
+def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> tuple[Chunk, ...]:
     match node.type:
         case "text" | "html_inline":
-            return [Chunk(content=node.content, style=text)]
+            return (Chunk(content=node.content, style=text),)
         case "softbreak":
-            return [Chunk(content=" ", style=text)]
+            return (Chunk(content=" ", style=text),)
         case "hardbreak":
-            return [Chunk(content="\n", style=text)]
+            return (Chunk(content="\n", style=text),)
         case "math_inline" | "math_inline_double":
-            return [Chunk(content=node.content, style=text | styles.math_inline)]
+            return (Chunk(content=node.content, style=text | styles.math_inline),)
         case "code_inline":
-            return [Chunk(content=node.content, style=text | styles.code_inline)]
+            return (Chunk(content=node.content, style=text | styles.code_inline),)
         case "em":
             return spans(node.children, styles, text | styles.emphasis)
         case "strong":
@@ -440,6 +464,6 @@ def span(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> list[
         case "image":
             return spans(node.children, styles, text | styles.image | CellStyle(link=str(node.attrs["src"]) or None))
         case "footnote_ref":
-            return [Chunk(content=footnote_number(node), style=text | styles.footnote_ref)]
+            return (Chunk(content=footnote_number(node), style=text | styles.footnote_ref),)
         case _:  # pragma: no cover, PARSER enables no rule that makes any other inline span
             raise ValueError(f"Unexpected Markdown inline span {node.type!r}")

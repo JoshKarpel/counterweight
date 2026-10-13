@@ -10,7 +10,7 @@ from xml.etree.ElementTree import tostring
 
 from counterweight.geometry import Position
 from counterweight.graphemes import LINE_BREAKS, graphemes, visible
-from counterweight.paint import Paint, Run, svg
+from counterweight.paint import Cell, Paint, Run, svg
 from counterweight.styles.styles import ResolvedCellStyle
 
 if TYPE_CHECKING:
@@ -181,16 +181,25 @@ def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
             If `False`, produce a plain character grid.
     """
     if ansi:
-        return "\n".join(
-            "".join(
-                f"{sgr_from_cell_style(cell.style)}{cell.grapheme}\x1b[0m"
-                if cell.style.link is None
-                else f"{sgr_from_cell_style(cell.style)}{hyperlink(cell.style.link)}{cell.grapheme}{HYPERLINK_END}\x1b[0m"
-                for cell in row
-            )
-            for row in paint.rows()
-        )
+        return "\n".join(ansi_row(row) for row in paint.rows())
     return "\n".join("".join(cell.grapheme for cell in row) for row in paint.rows())
+
+
+def ansi_row(row: Iterable[Cell]) -> str:
+    """
+    One row of `paint_to_str`'s ANSI output: each cell's style around its grapheme,
+    and one hyperlink for each run of cells that link to the same URI, closed by the end of the row.
+    """
+    parts = []
+    link = None
+    for cell in row:
+        if cell.style.link != link:
+            link = cell.style.link
+            parts.append(hyperlink(link))
+        parts.append(f"{sgr_from_cell_style(cell.style)}{cell.grapheme}{RESET_STYLE}")
+    if link is not None:
+        parts.append(HYPERLINK_END)
+    return "".join(parts)
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,14 +15,14 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def relative() -> Div:
     return Div(
         style=row | align_children_start | gap(3),
-        children=[
+        children=(
             Text(style=border, content="first"),
             Text(
                 style=position_relative | inset_top(2) | inset_left(2) | border | border_heavy,
                 content="position_relative\ninset_top(2)\ninset_left(2)",
             ),
             Text(style=border, content="third"),
-        ],
+        ),
     )
 
 
@@ -35,14 +35,14 @@ def relative() -> Div:
 def absolute() -> Div:
     return Div(
         style=col | border,
-        children=[
+        children=(
             Text(content="first, in flow"),
             Text(
                 style=position_absolute | inset_top(2) | inset_left(10) | border | border_heavy,
                 content="position_absolute\ninset_top(2)\ninset_left(10)",
             ),
             Text(content="second, in flow"),
-        ],
+        ),
     )
 
 
@@ -57,7 +57,7 @@ dialog_box = position_absolute | inset(0) | margin_auto | fit_content_width | fi
 def dialog() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(style=border, content="header"),
             Text(
                 style=fill(1) | border | text_wrap_stable,
@@ -67,7 +67,7 @@ def dialog() -> Div:
                 style=dialog_box | border | border_double | pad_x(2) | pad_y(1),
                 content="a dialog centered over the app",
             ),
-        ],
+        ),
     )
 
 
@@ -79,20 +79,20 @@ def dialog() -> Div:
 def menu_bar(toolbar_style: Style) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=toolbar_style | row | gap(2) | border | pad_x(1),
-                children=[
+                children=(
                     Text(content="file"),
                     Text(content="edit"),
                     Text(
                         style=z(1) | position_absolute | inset_top(2) | inset_left(0) | border | border_heavy,
                         content="new\nopen\nsave\nquit",
                     ),
-                ],
+                ),
             ),
             Text(style=border, content="The page's content"),
-        ],
+        ),
     )
 
 
@@ -115,28 +115,28 @@ def dropdown_scoped() -> Div:
 def badge() -> Div:
     return Div(
         style=row | align_children_start | gap(2),
-        children=[
+        children=(
             Div(
                 style=border | pad_x(1),
-                children=[
+                children=(
                     Text(content="inbox"),
                     Text(
                         style=position_absolute | inset_top(-1) | inset_right(1) | text_color("red", 500),
                         content="3",
                     ),
-                ],
+                ),
             ),
             Div(
                 style=border | pad_x(1),
-                children=[
+                children=(
                     Text(content="alerts"),
                     Text(
                         style=position_absolute | inset_top(-1) | inset_right(-1) | text_bg("red", 600),
                         content="!",
                     ),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 

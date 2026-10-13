@@ -17,10 +17,10 @@ METRICS = (("CPU", "23.4%"), ("Memory", "1.21 GB"), ("Disk", "44.8 MB/s"), ("Net
 def metric_card(label: str, value: str) -> Div:
     return Div(
         style=fill(1) | col | border | border_lightrounded | pad_x(1),
-        children=[
+        children=(
             Text(content=label, style=text_color("slate", 400)),
             Text(content=value),
-        ],
+        ),
     )
 
 
@@ -35,10 +35,10 @@ def dashboard() -> Div:
     return Div(
         style=col,
         on_input=on_input,
-        children=[
+        children=(
             Text(content=f"Note: {note}"),
-            Div(style=row, children=[metric_card(label, value) for label, value in METRICS]),
-        ],
+            Div(style=row, children=tuple(metric_card(label, value) for label, value in METRICS)),
+        ),
     )
 
 

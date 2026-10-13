@@ -13,7 +13,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def root() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Text(
                 style=z(1)
                 | position_absolute
@@ -58,7 +58,7 @@ def root() -> Div:
                 | margin_color("amber", 600),
                 content="z = +2",
             ),
-        ],
+        ),
     )
 
 

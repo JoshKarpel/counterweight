@@ -52,20 +52,20 @@ def root() -> Div:
     return Div(
         style=col | full,
         on_input=on_input,
-        children=[
+        children=(
             toolbar(WRAP_MODES[wrap_idx], set_wrap_idx),
             Div(
                 style=row | fill(1) | gap(1) | pad_x(1),
-                children=[
+                children=(
                     input_pane(input_text),
                     display_pane(input_text, WRAP_MODES[wrap_idx]),
-                ],
+                ),
             ),
             Text(
                 content="type to edit  ·  tab / shift+tab: cycle wrap mode  ·  ctrl+c: quit",
                 style=text_justify_center | text_color("slate", 500) | pad_y(1),
             ),
-        ],
+        ),
     )
 
 
@@ -76,23 +76,23 @@ def toolbar(
 ) -> Div:
     return Div(
         style=row | pad_x(1) | pad_y(1),
-        children=[
+        children=(
             Text(
                 content="Text Wrap Demo",
                 style=fill(1) | text_color("amber", 400),
             ),
             Div(
                 style=row | justify_children_space_evenly,
-                children=[
+                children=tuple(
                     mode_button(
                         label=m,
                         active=(m == mode),
                         select=_make_select(set_wrap_idx, i),
                     )
                     for i, m in enumerate(WRAP_MODES)
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
@@ -103,7 +103,7 @@ def input_pane(content: str) -> Div:
 
     return Div(
         style=fill(1) | col | border | border_lightrounded | border_color("sky", 600) | pad_x(1),
-        children=[
+        children=(
             Text(
                 content=f" {w}c " if w > 0 else "",
                 style=position_absolute | inset_top(-1) | inset_right(1) | text_color("sky", 600),
@@ -112,7 +112,7 @@ def input_pane(content: str) -> Div:
                 content=content,
                 style=fill(1) | text_wrap_stable | text_color("sky", 200),
             ),
-        ],
+        ),
     )
 
 
@@ -130,7 +130,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
 
     return Div(
         style=fill(1) | col | border | border_lightrounded | border_color("violet", 600) | pad_x(1),
-        children=[
+        children=(
             Text(
                 content=f" {w}c " if w > 0 else "",
                 style=position_absolute | inset_top(-1) | inset_right(1) | text_color("violet", 600),
@@ -139,7 +139,7 @@ def display_pane(content: str, mode: TextWrap) -> Div:
                 content=content or " ",
                 style=fill(1) | wrap_style | text_color("violet", 200),
             ),
-        ],
+        ),
     )
 
 

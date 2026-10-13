@@ -173,7 +173,7 @@ Raw HTML is shown as written.
 def root() -> Div:
     return Div(
         style=col | gap_height(1) | pad_x(1),
-        children=[section(name, source) for name, source in GALLERY],
+        children=tuple(section(name, source) for name, source in GALLERY),
     )
 
 
@@ -186,11 +186,11 @@ def section(name: str, source: str) -> Div:
         | border_lightrounded
         | border_color("slate", 600)
         | pad_x(1),
-        children=[
+        children=(
             Text(content=f" {name} ", style=title),
             code_block(source.removesuffix("\n"), "markdown", style=pad_x(1)),
             markdown(source),
-        ],
+        ),
     )
 
 

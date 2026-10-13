@@ -17,7 +17,7 @@ from counterweight.styles.utilities import col, display_none, pad_x, text_justif
 async def render(source: str, width: int, styles: MarkdownStyles = MarkdownStyles()) -> str:
     @component
     def root() -> Div:
-        return Div(style=col, children=[markdown(dedent(source), styles)])
+        return Div(style=col, children=(markdown(dedent(source), styles),))
 
     capture = io.StringIO()
     await app(
@@ -84,7 +84,7 @@ def test_each_heading_level_has_its_own_style(level: int) -> None:
     (heading,) = texts(f"{'#' * level} Title\n")
 
     assert heading.style == getattr(MarkdownStyles(), f"heading_{level}")
-    assert heading.content == [Chunk(content="Title")]
+    assert heading.content == (Chunk(content="Title"),)
 
 
 def test_nested_emphasis_merges_styles() -> None:
@@ -165,6 +165,13 @@ def test_bare_url_is_a_hyperlink(text: str, destination: str) -> None:
     link = chunk_for(f"see {text} here\n", text)
 
     assert link.style == MarkdownStyles().link | CellStyle(link=destination)
+
+
+@pytest.mark.parametrize("text", ["www.example.com", "https://example.com", "someone@example.com"])
+def test_link_whose_text_is_a_bare_url_links_to_its_destination(text: str) -> None:
+    link = chunk_for(f"see [{text}](https://example.com/docs) here\n", text)
+
+    assert link.style == MarkdownStyles().link | CellStyle(link="https://example.com/docs")
 
 
 def test_empty_link_destination_is_not_a_hyperlink() -> None:
@@ -283,7 +290,7 @@ def test_alert_is_styled_by_its_kind(kind: str) -> None:
     styles = MarkdownStyles()
     kind_style = getattr(styles, f"alert_{kind}")
     assert alert.style == col | styles.alert | kind_style
-    assert title == Text(content=[Chunk(content=kind.title())], style=styles.alert_title | kind_style)
+    assert title == Text(content=(Chunk(content=kind.title()),), style=styles.alert_title | kind_style)
 
 
 async def test_alert_shows_its_title_above_its_blocks() -> None:
@@ -317,9 +324,9 @@ def test_footnote_numbers_are_styled() -> None:
     paragraph, number, definition = texts("a[^x]\n\n[^x]: X.\n")
 
     footnote_ref = MarkdownStyles().footnote_ref
-    assert paragraph.content == [Chunk(content="a"), Chunk(content="[1]", style=footnote_ref)]
-    assert number.content == [Chunk(content="[1]", style=footnote_ref)]
-    assert definition.content == [Chunk(content="X.")]
+    assert paragraph.content == (Chunk(content="a"), Chunk(content="[1]", style=footnote_ref))
+    assert number.content == (Chunk(content="[1]", style=footnote_ref),)
+    assert definition.content == (Chunk(content="X."),)
 
 
 async def test_footnote_ending_in_code_drops_its_back_link() -> None:

@@ -23,7 +23,7 @@ WRAP_STYLE: dict[TextWrap, Style] = {
 def wrap_pane(mode: TextWrap) -> Div:
     return Div(
         style=fill(1) | col | border | pad_x(1),
-        children=[
+        children=(
             Text(
                 content=f" {mode} ",
                 style=position_absolute | inset_top(-1) | inset_left(1),
@@ -32,7 +32,7 @@ def wrap_pane(mode: TextWrap) -> Div:
                 content=SAMPLE,
                 style=fill(1) | WRAP_STYLE[mode],
             ),
-        ],
+        ),
     )
 
 
@@ -40,12 +40,12 @@ def wrap_pane(mode: TextWrap) -> Div:
 def root() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | fill(1),
-                children=[wrap_pane(mode) for mode in WRAP_STYLE],
+                children=tuple(wrap_pane(mode) for mode in WRAP_STYLE),
             ),
-        ],
+        ),
     )
 
 
