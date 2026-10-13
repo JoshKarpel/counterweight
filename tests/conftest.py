@@ -4,8 +4,10 @@ import pty
 import resource
 import sys
 from collections.abc import Iterator
+from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
+from threading import Thread
 
 import pytest
 
@@ -52,9 +54,25 @@ def cap_address_space(headroom: int) -> None:  # pragma: no cover
     resource.setrlimit(resource.RLIMIT_AS, (pages * resource.getpagesize() + headroom, hard))
 
 
+def read_until_closed(keyboard: int) -> None:
+    """
+    Reads everything the program side of a pseudo-terminal writes, as a terminal emulator would,
+    until the program side closes.
+    That includes the echo of keys a test types before input control turns echo off,
+    and on macOS `tcsetattr(..., TCSADRAIN)` waits for that echo to be read, so without this it blocks forever.
+    """
+    # Linux raises EIO once the program side closes, rather than reading the end of the input.
+    with suppress(OSError):
+        while os.read(keyboard, 2**10):  # pragma: no branch
+            pass
+
+
 @pytest.fixture
 def terminal() -> Iterator[Terminal]:
     keyboard, program = pty.openpty()
+    screen = Thread(target=read_until_closed, args=(keyboard,))
+    screen.start()
     with os.fdopen(program) as stream:
         yield Terminal(stream=stream, keyboard=keyboard)
+    screen.join()
     os.close(keyboard)

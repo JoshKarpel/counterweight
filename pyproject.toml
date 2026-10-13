@@ -81,6 +81,11 @@ markers = ["slow"]
 
 asyncio_mode = "auto"
 
+# A test stuck in a system call (such as a `tcsetattr` waiting on a pty nobody reads) can't be timed out by asyncio,
+# so dump every thread's traceback and exit, rather than hanging silently until CI cancels the job.
+faulthandler_timeout = 30
+faulthandler_exit_on_timeout = true
+
 [tool.coverage.run]
 branch = true
 source = ["src/counterweight/", "tests/"]
