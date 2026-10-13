@@ -117,6 +117,7 @@ nav:
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md
+    - input-handling/handlers.md
     - input-handling/controls.md
   - Layout:
     - layout/index.md

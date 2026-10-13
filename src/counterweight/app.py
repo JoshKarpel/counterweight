@@ -10,7 +10,7 @@ from collections.abc import Callable, Collection
 from itertools import chain, repeat
 from signal import SIG_DFL, SIGWINCH, signal
 from threading import Event, Thread
-from typing import Iterable, TextIO
+from typing import Iterable, TextIO, assert_never
 from weakref import WeakSet
 
 import waxy
@@ -38,7 +38,6 @@ from counterweight.events import (
     MouseScrolledDown,
     MouseScrolledUp,
     MouseUp,
-    Receiver,
     StateSet,
     TerminalResized,
 )
@@ -58,6 +57,7 @@ from counterweight.output import (
     stop_output_control,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
+from counterweight.routing import RoutingTable, route_key, route_mouse
 from counterweight.shadow import ShadowNode, update_shadow
 from counterweight.styles import Style
 
@@ -222,6 +222,7 @@ async def render_loop(
         layout_tree = LayoutTree()
         shadow = update_shadow(root_component, None, NO_LAYOUTS).tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+        routing = RoutingTable.of(shadow, layouts)
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
@@ -230,7 +231,7 @@ async def render_loop(
         # The warmup started no effects, so the first painted frame has to re-run every component to start them.
         rerun_everything()
 
-        def handle_control(control: AnyControl | None) -> None:
+        def handle_control(control: AnyControl) -> None:
             nonlocal should_render
 
             nonlocal should_quit
@@ -240,8 +241,6 @@ async def render_loop(
             nonlocal do_heal_borders
 
             match control:
-                case None:
-                    pass
                 case Quit():
                     should_quit = True
                 case Bell():
@@ -254,8 +253,11 @@ async def render_loop(
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+                case _ as unreachable:
+                    assert_never(unreachable)
 
         mouse_position = Position(x=-1, y=-1)
+        captor: NodeKey | None = None
 
         async with TaskGroup() as tg:
             for ap in chain(autopilot, repeat(None)):
@@ -332,7 +334,11 @@ async def render_loop(
                     layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
                     logger.debug("Calculated layout")
 
-                    new_paint, border_healing_hints = paint_layout(layouts.in_paint_order, w, h)
+                    routing = RoutingTable.of(shadow, layouts)
+
+                    new_paint, border_healing_hints = paint_layout(
+                        ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
+                    )
                     logger.debug("Generated new paint")
 
                     if do_heal_borders:
@@ -399,15 +405,12 @@ async def render_loop(
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed():
-                            for element, resolved in reversed(layouts.in_paint_order):
-                                if element.on_input:
-                                    handle_control(element.on_input(event, Receiver(rects=resolved.rects)))
+                            for control in route_key(event, routing):
+                                handle_control(control)
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            for element, resolved in reversed(layouts.in_paint_order):
-                                # Send mouse events if the current *or previous* position is in the border region
-                                if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
-                                    if element.on_input:
-                                        handle_control(element.on_input(m, Receiver(rects=resolved.rects)))
+                            captor, controls = route_mouse(m, captor, routing)
+                            for control in controls:
+                                handle_control(control)
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(

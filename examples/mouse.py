@@ -7,7 +7,7 @@ from more_itertools import intersperse
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, MouseDown, MouseMoved, MouseUp, Receiver
+from counterweight.events import InputEvent, InputResponse, MouseDown, MouseMoved, MouseUp, Receiver
 from counterweight.geometry import Position
 from counterweight.hooks import use_hovered, use_mouse, use_rects, use_state
 from counterweight.styles.utilities import *
@@ -95,12 +95,13 @@ def last_clicked_box() -> Text:
 
     clicked, set_clicked = use_state(Position(0, 0))
 
-    def on_input(event: InputEvent, receiver: Receiver) -> None:
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
-            case MouseUp(absolute=p, button=1):
+            case MouseDown(absolute=p, button=1):
                 set_clicked(receiver.relative(p))
+                return ()
             case _:
-                pass
+                return None
 
     return Text(
         on_input=on_input,
@@ -122,15 +123,17 @@ def last_dragged_box() -> Text:
     start, set_start = use_state(Position(0, 0))
     end, set_end = use_state(Position(0, 0))
 
-    def on_input(event: InputEvent, receiver: Receiver) -> None:
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
             case MouseDown(absolute=a, button=1):
                 set_start(receiver.relative(a))
                 set_end(receiver.relative(a))
+                return ()
             case MouseUp(absolute=a, button=1) | MouseMoved(absolute=a, button=1):
                 set_end(receiver.relative(a))
+                return ()
             case _:
-                pass
+                return None
 
     return Text(
         on_input=on_input,
@@ -158,16 +161,21 @@ def drag_text_box() -> Div:
 
 @component
 def draggable_text(content: str, init_x: int, init_y: int) -> Text:
-    mouse = use_mouse()
     offset, set_offset = use_state(Position(init_x, init_y))
+    grab, set_grab = use_state(Position(0, 0))
 
-    # TODO: if you don't go slow, your mouse can easily outrun the render speed
-    def on_input(event: InputEvent, _: Receiver) -> None:
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
+            case MouseDown(absolute=a, button=1):
+                set_grab(receiver.relative(a))
+                return ()
             case MouseMoved(absolute=a, button=1):
-                set_offset(lambda o: o + (a - mouse.absolute))
+                # Not a functional update: every move in a batch sees this render's offset and rects,
+                # so each sets the same absolute target rather than adding its delta again.
+                set_offset(offset + (a - grab - receiver.rects.content.top_left))
+                return ()
             case _:
-                pass
+                return None
 
     return Text(
         on_input=on_input,

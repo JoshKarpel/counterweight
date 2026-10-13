@@ -196,9 +196,9 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 
 @dataclass(frozen=True, slots=True)
 class Layouts:
-    """One frame's layouts: each visible element's, in paint order, and each visible node's, by key."""
+    """One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key."""
 
-    in_paint_order: tuple[tuple[AnyElement, ResolvedLayout], ...]
+    in_paint_order: tuple[tuple[NodeKey, AnyElement, ResolvedLayout], ...]
     by_key: Mapping[NodeKey, ResolvedLayout]
 
 
@@ -232,7 +232,7 @@ class LayoutTree:
         by_key = {
             keys[node]: _resolve_layout(position, layout) for node, position, layout in self.tree.absolute_layouts(root)
         }
-        in_paint_order = tuple((node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
+        in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
         return Layouts(in_paint_order=in_paint_order, by_key=by_key)
 

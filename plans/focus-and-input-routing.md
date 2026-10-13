@@ -38,7 +38,7 @@ though all three depend on it and the design is checked against them below.
 
 ```python
 InputEvent = Union[KeyPressed, MouseEvent]
-InputResponse = Union[AnyControl, tuple[AnyControl, ...], None]
+InputResponse = Union[AnyControl, tuple[AnyControl | None, ...], None]
 InputHandler = Callable[[InputEvent, Receiver], InputResponse]
 
 on_input: InputHandler | None = None
@@ -48,11 +48,9 @@ A handler takes the event and a `Receiver`, which describes the element the even
 (see [What a handler receives](#what-a-handler-receives)).
 `InputEvent` and `InputResponse` are `Union` assignments like `MouseEvent` and `AnyEvent` in `events.py`,
 rather than PEP 695 `type` statements, which `isinstance` can't take.
-That keeps `InputEvent` usable with `isinstance`, but not `InputResponse`:
-`isinstance(response, InputResponse)` raises `TypeError` for `None`, `()`, and anything else that isn't a control,
-because the union contains the parameterized `tuple[AnyControl, ...]`,
-and it passes for a control only because the check stops at the first member that matches.
-Dispatch checks a response by hand instead: `None`, an `AnyControl`, or a `tuple` whose every item is an `AnyControl`.
+That keeps `InputEvent` usable with `isinstance`.
+`InputResponse` isn't, since the union contains the parameterized `tuple[AnyControl | None, ...]`,
+and dispatch doesn't check a response at runtime: the handler's type says what it returns.
 `TerminalResized` and `StateSet` aren't in `InputEvent` and never reach a handler.
 A later `Pasted` event (#391) joins the union and routes like a key.
 
@@ -105,13 +103,15 @@ A handler's return value decides whether the event keeps bubbling:
   That is a control (`return Quit()`),
   a tuple of controls applied in order (`return Bell(), Screenshot.to_file(path)`),
   or `()`, a tuple of no controls, when there's nothing else to do.
+  A `None` inside a tuple is skipped, as `merge` skips `None` styles,
+  so a control can be conditional (`return Bell() if is_full else None, Screenshot.to_file(path)`),
+  and a tuple of only `None`s still stops the event.
 
 `()` is the one way to write the commonest response, "I changed some state and this event is mine".
 A no-op control named for it would be a second spelling of the same thing.
 Dispatch and the combinators below test a response with `is not None`, never for truthiness,
 because `()` is falsy; for the same reason,
 the docs should warn against chaining handlers with `or`, which treats `()` as unhandled.
-Dispatch raises on any other return value, such as a list, rather than ignoring it.
 
 One rule covers when an event stops: whenever the response isn't `None`.
 So a handler can't return a control and let the event keep bubbling.
@@ -741,7 +741,7 @@ The `z.py` and layering screenshots are regenerated and checked for changes.
 
 ### 4. Route mouse events to a target and bubble them
 
-**Status:** Not started
+**Status:** Done
 
 Add tuple responses, the routing table, the bubbling dispatch, hit-testing, press capture,
 and `Receiver.is_target`.
@@ -769,7 +769,7 @@ an event on a child reaches its parent's handler;
 `()` from the child keeps it from the parent;
 a single control from the child is applied and keeps it from the parent;
 a tuple of two controls applies both, in order, and stops the event;
-a handler returning a list raises, and so does one returning a tuple containing something that isn't a control;
+a `None` in a tuple of controls is skipped, and a tuple of only `None`s still stops the event;
 the parent receives the same event as the child, with a receiver carrying the parent's rects and `is_target=False`;
 a drag whose `MouseMoved` lands outside the element still reaches it until `MouseUp`,
 including when each move re-renders the element;

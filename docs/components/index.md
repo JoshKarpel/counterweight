@@ -44,7 +44,7 @@ Here each row of a to-do list holds its own checkmark:
 ```python
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, MouseUp, Receiver
+from counterweight.handlers import on_click
 from counterweight.hooks import use_state
 
 
@@ -52,14 +52,7 @@ from counterweight.hooks import use_state
 def todo_row(title: str) -> Text:
     done, set_done = use_state(False)
 
-    def on_input(event: InputEvent, _: Receiver) -> None:
-        match event:
-            case MouseUp(button=1):
-                set_done(not done)
-            case _:
-                pass
-
-    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_input)
+    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_click(lambda: set_done(not done)))
 
 
 @component

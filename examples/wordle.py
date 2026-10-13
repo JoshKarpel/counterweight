@@ -13,7 +13,8 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, MouseUp, Receiver
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.handlers import on_click
 from counterweight.hooks import Setter, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
@@ -105,17 +106,17 @@ def root() -> Div:
                         menu_button(
                             content=f"[F1] Play Daily ({datetime.today().strftime('%Y-%m-%d')})",
                             hover_style=text_color("indigo", 500) | border_color("indigo", 500),
-                            on_click=play_today,
+                            on_click_action=play_today,
                         ),
                         menu_button(
                             content="[F2] Play Random",
                             hover_style=text_color("emerald", 500) | border_color("emerald", 500),
-                            on_click=play_random,
+                            on_click_action=play_random,
                         ),
                         menu_button(
                             content="[q] Quit",
                             hover_style=text_color("red", 500) | border_color("red", 500),
-                            on_click=Quit,
+                            on_click_action=Quit,
                         ),
                     ],
                 ),
@@ -130,22 +131,15 @@ button_style = pad_x(1) | border | border_lightrounded
 @component
 def menu_button(
     content: str,
-    on_click: Callable[[], AnyControl | None],
+    on_click_action: Callable[[], AnyControl | None],
     hover_style: Style,
 ) -> Text:
     hovered = use_hovered()
 
-    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
-        match event:
-            case MouseUp(button=1):
-                return on_click()
-            case _:
-                return None
-
     return Text(
         content=content,
         style=button_style | (hover_style if hovered.border else None),
-        on_input=on_input,
+        on_input=on_click(on_click_action),
     )
 
 
@@ -309,7 +303,7 @@ def keyboard(
             Div(
                 style=col | justify_children_space_between | align_children_start,
                 children=[
-                    menu_button(content="Exit [Esc]", on_click=on_exit, hover_style=border_color("red", 700)),
+                    menu_button(content="Exit [Esc]", on_click_action=on_exit, hover_style=border_color("red", 700)),
                 ],
             ),
             Div(
@@ -321,7 +315,7 @@ def keyboard(
                             letter_box(
                                 kb_letter,
                                 style=kb_letter_styles[kb_letter],
-                                on_click=on_letter,
+                                on_letter=on_letter,
                             )
                             for kb_letter in kb_row
                         ],
@@ -332,9 +326,11 @@ def keyboard(
             Div(
                 style=col | justify_children_space_between | align_children_end,
                 children=[
-                    menu_button(content="Submit [Enter]", on_click=on_submit, hover_style=border_color("green", 600)),
-                    menu_button(content="Back", on_click=on_backspace, hover_style=border_color("yellow", 300)),
-                    menu_button(content="Clear", on_click=on_clear, hover_style=border_color("red", 700)),
+                    menu_button(
+                        content="Submit [Enter]", on_click_action=on_submit, hover_style=border_color("green", 600)
+                    ),
+                    menu_button(content="Back", on_click_action=on_backspace, hover_style=border_color("yellow", 300)),
+                    menu_button(content="Clear", on_click_action=on_clear, hover_style=border_color("red", 700)),
                 ],
             ),
         ],
@@ -342,20 +338,13 @@ def keyboard(
 
 
 @component
-def letter_box(letter: str, style: Style, on_click: Callable[[str], AnyControl | None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_letter: Callable[[str], AnyControl | None] | None = None) -> Text:
     hovered = use_hovered()
-
-    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
-        match event:
-            case MouseUp(button=1) if on_click:
-                return on_click(letter)
-            case _:
-                return None
 
     return Text(
         content=letter,
         style=style | pad_x(1) | pad_y(0) | (border | border_double if hovered.border else border | border_heavy),
-        on_input=on_input,
+        on_input=None if on_letter is None else on_click(lambda: on_letter(letter)),
     )
 
 

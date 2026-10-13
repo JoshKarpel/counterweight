@@ -84,7 +84,7 @@ def content(node: ShadowNode) -> object:
 def press(node: ShadowNode, key: str) -> None:
     on_input = node.element.on_input
     assert on_input is not None
-    on_input(KeyPressed(key=key), Receiver(rects=INITIAL_RESOLVED_LAYOUT.rects))
+    on_input(KeyPressed(key=key), Receiver(rects=INITIAL_RESOLVED_LAYOUT.rects, is_target=True))
 
 
 # Which components run in a frame?

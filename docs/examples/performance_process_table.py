@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, MouseUp, Receiver
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.handlers import on_click
 from counterweight.hooks import Setter, use_memo, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -20,17 +21,10 @@ class Process:
 
 @component(memo=True)
 def process_row(process: Process, is_selected: bool, select: Setter[int]) -> Text:
-    def on_input(event: InputEvent, _: Receiver) -> None:
-        match event:
-            case MouseUp(button=1):
-                select(process.pid)
-            case _:
-                pass
-
     return Text(
         content=f"{process.pid:>6}  {process.name:<10} {process.cpu:>5.1f}%",
         style=text_bg("slate", 700) if is_selected else text_color("slate", 300),
-        on_input=on_input,
+        on_input=on_click(lambda: select(process.pid)),
     )
 
 

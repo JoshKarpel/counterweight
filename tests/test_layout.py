@@ -76,7 +76,7 @@ def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
-    return _layouts(root, w, h).in_paint_order
+    return tuple((element, layout) for _, element, layout in _layouts(root, w, h).in_paint_order)
 
 
 def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:

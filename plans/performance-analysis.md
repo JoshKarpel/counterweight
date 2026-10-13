@@ -873,3 +873,42 @@ Every `@flyweight` stays: each one's ranges don't overlap interning on for at le
 `Cell` on `canvas`, `top` and `agent`; `CellStyle` on `top`, `top-memo` and `agent`; `StyledChar` on `top`.
 Reused subtrees construct fewer values per frame, but the workloads that change most per frame build enough
 cells and styles that interning still pays where they're compared.
+
+### Run 19 — mouse routing and the per-render routing table (PR #402)
+
+**Date:** 2026-10-13
+
+**Change:** step 4 of `plans/focus-and-input-routing.md`. Each render builds a `RoutingTable`
+(`routing.py:RoutingTable.of`): a map from each visible node's key to its handler, beside references to the
+layouts and the shadow tree's parent map. Mouse events hit-test the paint order and bubble through
+`ShadowTree.parents`; keys still go to every handler, now through `route_key`, which looks each visible
+node up in the handler map instead of reading its element.
+
+**Method:** the baseline is `HEAD` (`9ea3c2b`) in a separate worktree. One profiled `just profile` run of
+`dashboard-memo` on each side (`routing-before`, `routing-after`), chosen because it does the least other work
+per frame, so a fixed per-render cost shows most there. Then three interleaved unprofiled `benchmarks run`
+rounds of `top` (`top-routing-before`, `top-routing-after`), which has the most nodes,
+and one profiled run of `top` after the change (`top-routing-profiled`).
+Both workloads' last frames are identical before and after.
+
+`dashboard-memo`, one profiled run each:
+
+| Run | Median | Mean | P95 | `RoutingTable.of` | `route_key` |
+|---|---|---|---|---|---|
+| before | 0.757 ms | 0.865 ms | 1.217 ms | | |
+| after | 0.710 ms | 0.845 ms | 1.049 ms | 0.002 ms/frame | 0.002 ms/frame |
+
+`top`, median frame time of three interleaved rounds, with the range across rounds:
+
+| Run | Median |
+|---|---|
+| before | 11.77 ms (11.02–12.37) |
+| after | 12.30 ms (11.55–12.46) |
+
+- **Building the table** costs 0.002 ms per frame on `dashboard-memo` and 0.021 ms on `top`,
+  0.2% of each, so rebuilding it every render needs no caching.
+- **`top`'s rounds overlap**, and the machine was noisy (the first round's "after" was the slowest of all six).
+  The profile accounts for the difference without a regression: of `route_key`'s 0.53 ms per frame,
+  237 of its 275 samples are the workload's own `step`, the root key handler that the loop used to call directly.
+  Routing's own share is about 0.07 ms per frame, for a key delivered to every visible node,
+  which step 5 replaces with one bubble path.

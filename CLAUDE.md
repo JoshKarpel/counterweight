@@ -30,6 +30,8 @@ The framework follows a React-like architecture:
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
 - **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
+- **Routing** (src/counterweight/routing.py): Which handlers an input event reaches: its target, bubbling, and press capture
+- **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`) and combinators (`first`, `each`)
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
 

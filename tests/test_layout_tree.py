@@ -11,6 +11,7 @@ from counterweight.layout import (
     NO_LAYOUTS,
     ClearText,
     CreateLeaf,
+    Layouts,
     LayoutTree,
     MeasurableText,
     Remove,
@@ -221,9 +222,14 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
     assert tree.tree.total_node_count() == len(tree.nodes) == len(shadow.nodes)
 
 
+def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+    """Each element and its layout in paint order, without the node keys, which differ between two trees."""
+    return tuple((element, layout) for _, element, layout in layouts.in_paint_order)
+
+
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
     shadow = update_shadow(element, None, NO_LAYOUTS).tree
-    return LayoutTree().compute(layout_changes(None, shadow), shadow, AVAILABLE).in_paint_order
+    return without_keys(LayoutTree().compute(layout_changes(None, shadow), shadow, AVAILABLE))
 
 
 @pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
@@ -233,7 +239,7 @@ def test_reused_tree_lays_out_each_frame_as_a_fresh_tree_does(elements: list[Any
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
 
-        assert tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE).in_paint_order == fresh_layout(
+        assert without_keys(tree.compute(layout_changes(shadow, next_shadow), next_shadow, AVAILABLE)) == fresh_layout(
             element
         )
 

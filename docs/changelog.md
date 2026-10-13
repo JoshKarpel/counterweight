@@ -5,6 +5,12 @@
 ### Added
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added `counterweight.handlers`, with `on_click(action)`, which calls `action` when a press on its element
+  is released inside it, and `first` and `each`, which compose several handlers into the one an element takes.
+  A handler can return a tuple of controls, applied in order and skipping any `None`,
+  or `()` to stop an event with nothing more to do.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added `inset(n)`, `inset_x(n)` and `inset_y(n)`, which set all four, the left and right, or the top and bottom insets;
   `inset_sides`, `margin_sides` and `pad_sides`, which set each side separately in the order of CSS's four-value shorthands;
   and `auto` margins for every side and pair of sides, from `margin_auto` to `margin_right_auto`.
@@ -106,6 +112,17 @@
 ### Changed
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** a mouse event goes to one target, the element drawn on top at the pointer,
+  then bubbles through its ancestors until a handler returns something other than `None`.
+  A press is captured by the element whose handler stops its `MouseDown`:
+  its moves and release go to that element alone, wherever the pointer is,
+  and reach no handler if nothing stopped the `MouseDown`.
+  Previously every element under the pointer's current or previous position received every mouse event,
+  so a drag that outran a render lost its element.
+  A handler that acts on a release or a drag returns `()` for the `MouseDown`,
+  or uses `on_click`, and one that acts on any mouse event returns `()` to keep its ancestors from acting on it too.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   `z` follows CSS's stacking contexts.
   An element that sets `z`, `z(0)` included, paints with its descendants as one layer at its `z`,
   and its descendants' `z` orders them only among each other,
@@ -128,7 +145,8 @@
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   **Breaking:** `Div` and `Text` take one `on_input` handler in place of `on_key` and `on_mouse`.
   It receives both key presses and mouse events, so one `match` case can handle `Down` and the scroll wheel alike,
-  and a `Receiver` describing the element, whose `rects` and `relative` locate a mouse event inside it.
+  and a `Receiver` describing the element, whose `rects` and `relative` locate a mouse event inside it,
+  and whose `is_target` tells the event's target from an ancestor it bubbled to.
   A handler that takes only the event, or annotates it as `KeyPressed` or `MouseEvent`, fails to type-check;
   annotate it as `InputEvent` and match on the event's class.
   `Rects` lives in `counterweight.geometry`, and `counterweight.hooks` still exports it.
