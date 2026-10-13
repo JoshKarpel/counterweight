@@ -17,6 +17,7 @@ from counterweight.components import Component, component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import AnyEvent, InputEvent, InputHandler, KeyPressed, Receiver
+from counterweight.focus import Subtree
 from counterweight.hooks import Setter, use_memo, use_ref, use_state
 from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
@@ -84,7 +85,16 @@ def content(node: ShadowNode) -> object:
 def press(node: ShadowNode, key: str) -> None:
     on_input = node.element.on_input
     assert on_input is not None
-    on_input(KeyPressed(key=key), Receiver(rects=INITIAL_RESOLVED_LAYOUT.rects, is_target=True))
+    on_input(
+        KeyPressed(key=key),
+        Receiver(
+            rects=INITIAL_RESOLVED_LAYOUT.rects,
+            is_target=True,
+            focus_handle=None,
+            is_focused=False,
+            subtree=Subtree(key=node.key),
+        ),
+    )
 
 
 # Which components run in a frame?

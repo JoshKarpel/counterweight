@@ -6,8 +6,8 @@ from itertools import cycle
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import Setter, use_effect, use_ref, use_state
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.hooks import Setter, use_effect, use_focus, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
@@ -41,16 +41,19 @@ def toggle() -> Div:
 
     toggled, set_toggled = use_state(False)
 
-    def on_input(event: InputEvent, _: Receiver) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Tab):
                 set_toggled(not toggled)
+                return ()
             case KeyPressed(key=Key.F1):
                 set_border_kind(advance_border())
+                return ()
             case KeyPressed(key=Key.F2):
                 set_border_color_style(advance_border_color())
+                return ()
             case _:
-                pass
+                return None
 
     return Div(
         children=[
@@ -89,18 +92,22 @@ def time() -> Text:
 
 @component
 def textpad() -> Text:
+    # Takes focus each time it mounts, which is each time the root swaps it back in.
+    use_focus(auto_focus=True)
     buffer: list[str]
     set_buffer: Setter[list[str]]
     buffer, set_buffer = use_state([])
 
-    def on_input(event: InputEvent, _: Receiver) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Backspace):
                 set_buffer(buffer[:-1])
+                return ()
             case KeyPressed(key=key) if key.isprintable() and len(key) == 1:
                 set_buffer([*buffer, key])
+                return ()
             case _:
-                pass
+                return None
 
     content = "".join(buffer) or "..."
 

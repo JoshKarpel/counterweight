@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import Setter, use_memo, use_state
+from counterweight.hooks import Setter, use_focus, use_memo, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -30,19 +30,22 @@ def process_row(process: Process, is_selected: bool, select: Setter[int]) -> Tex
 
 @component
 def process_table(processes: tuple[Process, ...]) -> Div:
+    use_focus(auto_focus=True)
     by_cpu = use_memo(lambda: sorted(processes, key=lambda process: process.cpu, reverse=True), deps=(processes,))
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
-    def on_input(event: InputEvent, _: Receiver) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         pids = [process.pid for process in by_cpu]
         index = pids.index(selected_pid) if selected_pid in pids else 0
         match event:
             case KeyPressed(key=Key.Up):
                 set_selected_pid(pids[max(index - 1, 0)])
+                return ()
             case KeyPressed(key=Key.Down):
                 set_selected_pid(pids[min(index + 1, len(pids) - 1)])
+                return ()
             case _:
-                pass
+                return None
 
     return Div(
         style=col,

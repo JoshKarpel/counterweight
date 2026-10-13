@@ -21,3 +21,14 @@ and returning any control or tuple stops the event, as `()` does (see [Events](e
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
+
+### Focus
+
+These controls move [focus](../hooks/use_focus.md),
+which decides the element that key presses go to.
+The [focus handlers](handlers.md#focus) return them for Tab and for presses.
+
+::: counterweight.controls.FocusNext
+::: counterweight.controls.FocusPrevious
+::: counterweight.controls.FocusOn
+::: counterweight.controls.ClearFocus

@@ -7,10 +7,10 @@ from pathlib import Path
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Suspend
+from counterweight.controls import Suspend
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_rects, use_state
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.hooks import use_focus, use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
@@ -62,31 +62,34 @@ def open_editor(file: Path) -> None:
 
 @component
 def picker() -> Div:
+    use_focus(auto_focus=True)
     glob, set_glob = use_state("**/*.py")
     selected_file_idx, set_selected_file_idx = use_state(0)
 
     files = _list_files(glob)
 
-    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Enter):
                 return Suspend(handler=partial(open_editor, files[selected_file_idx]))
             case KeyPressed(key=Key.Down):
                 set_selected_file_idx(lambda i: clamp(0, i + 1, len(files) - 1))
+                return ()
             case KeyPressed(key=Key.Up):
                 set_selected_file_idx(lambda i: clamp(0, i - 1, len(files) - 1))
+                return ()
             case KeyPressed(key=Key.Backspace):
                 new_glob = glob[:-1]
                 set_selected_file_idx(0)
                 set_glob(new_glob)
+                return ()
             case KeyPressed(key=c) if c.isprintable() and len(c) == 1:
                 new_glob = glob + c
                 set_selected_file_idx(0)
                 set_glob(new_glob)
+                return ()
             case _:
-                pass
-
-        return None
+                return None
 
     return Div(
         style=col | fill(1) | justify_children_start | border_collapse,

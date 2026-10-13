@@ -8,7 +8,9 @@ from counterweight.events import (
     MouseScrolledDown,
     Receiver,
 )
+from counterweight.focus import Subtree
 from counterweight.geometry import Position, Rects, Region
+from counterweight.hooks.impls import NodeKey
 from counterweight.styles.utilities import border, inset_left, inset_top, margin, pad, position_absolute, size
 
 
@@ -80,22 +82,20 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
     await app(
         root,
         headless=True,
+        dimensions=(20, 20),
         autopilot=(
-            KeyPressed(key="x"),
+            MouseScrolledDown(absolute=Position(9, 7)),
             Quit(),
         ),
         check_purity=True,
     )
 
-    assert receivers == [
-        Receiver(
-            rects=Rects(
-                content=Region(left=8, top=6, right=11, bottom=9),
-                padding=Region(left=6, top=4, right=13, bottom=11),
-                border=Region(left=5, top=3, right=14, bottom=12),
-                margin=Region(left=4, top=2, right=15, bottom=13),
-            ),
-            is_target=True,
+    assert [receiver.rects for receiver in receivers] == [
+        Rects(
+            content=Region(left=8, top=6, right=11, bottom=9),
+            padding=Region(left=6, top=4, right=13, bottom=11),
+            border=Region(left=5, top=3, right=14, bottom=12),
+            margin=Region(left=4, top=2, right=15, bottom=13),
         )
     ]
 
@@ -109,6 +109,9 @@ def test_receiver_relative_is_relative_to_the_content_box_top_left() -> None:
             margin=Region(left=4, top=2, right=15, bottom=13),
         ),
         is_target=True,
+        focus_handle=None,
+        is_focused=False,
+        subtree=Subtree(key=NodeKey(3)),
     )
 
     assert receiver.relative(Position(x=10, y=7)) == Position(x=2, y=1)

@@ -11,11 +11,11 @@ from more_itertools import padded
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Bell, Quit
+from counterweight.controls import Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import Setter, use_state
+from counterweight.hooks import Setter, use_focus, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -83,18 +83,18 @@ def root() -> Div:
             set_solution(s)
             set_playing(True)
 
-        def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
             match event:
                 case KeyPressed(key=Key.F1):
                     play_today()
+                    return ()
                 case KeyPressed(key=Key.F2):
                     play_random()
+                    return ()
                 case KeyPressed(key="q"):
                     return Quit()
                 case _:
-                    pass
-
-            return None
+                    return None
 
         return Div(
             style=col | align_children_center,
@@ -131,7 +131,7 @@ button_style = pad_x(1) | border | border_lightrounded
 @component
 def menu_button(
     content: str,
-    on_click_action: Callable[[], AnyControl | None],
+    on_click_action: Callable[[], InputResponse],
     hover_style: Style,
 ) -> Text:
     hovered = use_hovered()
@@ -145,6 +145,7 @@ def menu_button(
 
 @component
 def play(solution: str, stop_playing: Callable[[], None]) -> Div:
+    use_focus(auto_focus=True)
     guess, set_guess = use_state("")
 
     submitted: list[str]
@@ -153,34 +154,34 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
 
-    def type_letter(letter: str) -> AnyControl | None:
+    def type_letter(letter: str) -> InputResponse:
         if state != "playing" or len(guess) >= 5:
             return Bell()
         set_guess(lambda g: g + letter.upper())
-        return None
+        return ()
 
-    def delete_letter() -> AnyControl | None:
+    def delete_letter() -> InputResponse:
         if state != "playing":
-            return None
+            return ()
         if not guess:
             return Bell()
         set_guess(guess[:-1])
-        return None
+        return ()
 
-    def submit_guess() -> AnyControl | None:
+    def submit_guess() -> InputResponse:
         if state != "playing":
-            return None
+            return ()
         if guess not in GUESSABLE_WORDS:
             return Bell()
         set_guess("")
         set_submitted(lambda s: [*s, guess])
-        return None
+        return ()
 
-    def on_input(event: InputEvent, _: Receiver) -> AnyControl | None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Escape):
                 stop_playing()
-                return None
+                return ()
             case KeyPressed(key=Key.Backspace):
                 return delete_letter()
             case KeyPressed(key=Key.Enter):
@@ -192,7 +193,8 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
     if state == "playing":
-        guess_rows.append(guess_row(guess, solution=solution, type="current"))
+        known_bad = frozenset("".join(submitted)) - frozenset(solution)
+        guess_rows.append(guess_row(guess, solution=solution, type="current", known_bad=known_bad))
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
@@ -213,11 +215,11 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     return Div(
         style=col,
+        on_input=on_input,
         children=[
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
                 children=guess_rows,
-                on_input=on_input,
             ),
             Div(
                 style=row | align_self_center | pad_y(1),
@@ -237,7 +239,12 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
 
 @component
-def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "pending"]) -> Div:
+def guess_row(
+    guess: str,
+    solution: str,
+    type: Literal["submitted", "current", "pending"],
+    known_bad: frozenset[str] = frozenset(),
+) -> Div:
     children = []
     for guess_letter, solution_letter in zip(padded(guess, fillvalue=" ", n=5), solution):
         style = {
@@ -256,7 +263,12 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
         elif type == "pending":
             style |= border_color("gray", 700)
         elif type == "current":
-            style |= border_color("gray", 300) if guess_letter != " " else border_color("gray", 500)
+            if guess_letter in known_bad:
+                style |= border_color("red", 700)
+            elif guess_letter != " ":
+                style |= border_color("gray", 300)
+            else:
+                style |= border_color("gray", 500)
 
         children.append(letter_box(letter=guess_letter, style=style))
 
@@ -277,9 +289,9 @@ KEYBOARD = (
 def keyboard(
     submitted: list[str],
     solution: str,
-    on_letter: Callable[[str], AnyControl | None],
-    on_submit: Callable[[], AnyControl | None],
-    on_backspace: Callable[[], AnyControl | None],
+    on_letter: Callable[[str], InputResponse],
+    on_submit: Callable[[], InputResponse],
+    on_backspace: Callable[[], InputResponse],
     on_clear: Callable[[], None],
     on_exit: Callable[[], None],
 ) -> Div:
@@ -338,7 +350,7 @@ def keyboard(
 
 
 @component
-def letter_box(letter: str, style: Style, on_letter: Callable[[str], AnyControl | None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_letter: Callable[[str], InputResponse] | None = None) -> Text:
     hovered = use_hovered()
 
     return Text(

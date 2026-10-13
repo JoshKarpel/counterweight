@@ -912,3 +912,37 @@ Both workloads' last frames are identical before and after.
   237 of its 275 samples are the workload's own `step`, the root key handler that the loop used to call directly.
   Routing's own share is about 0.07 ms per frame, for a key delivered to every visible node,
   which step 5 replaces with one bubble path.
+
+### Run 20 — key routing through focus, and focus reconciliation (PR #402)
+
+**Date:** 2026-10-13
+
+**Change:** step 5 of `plans/focus-and-input-routing.md`. A key press bubbles from the focused node,
+or from the root component's node when nothing is focused, instead of reaching every visible handler.
+`RoutingTable.of` also records each visible node that called `use_focus`, and checks that no two mounted
+components share a `FocusHandle`. After each render, `RoutingTable.reconciled_focus` clears focus that can no
+longer be held and applies `auto_focus` to the components that mounted.
+
+**Method:** the baseline is `HEAD` (`c362220`) in a separate worktree. One profiled `just profile` run of
+`dashboard-memo` on each side (`focus-before`, `focus-after`), then three interleaved unprofiled
+`benchmarks run` rounds of `dashboard-memo` and `top` on each side (`dm-focus-*`, `top-focus-i-*`),
+and one profiled run of `top` after the change (`top-focus-profiled`).
+`dashboard-memo`'s last frame is identical before and after.
+Neither workload has a focusable component, so every key goes to the root's handler.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | Before | After |
+|---|---|---|
+| `dashboard-memo` | 0.741 ms (0.721–0.854) | 0.801 ms (0.729–0.803) |
+| `top` | 12.57 ms (12.52–12.68) | 12.04 ms (11.43–12.10) |
+
+- **The rounds overlap on `dashboard-memo`**, and the profiled "after" run was slower in every stage,
+  paint and layout included, which this change doesn't touch, so the machine was noisy during it.
+  Its routing stages stay small: `RoutingTable.of` at 0.002 ms per frame on both sides,
+  and `route_key` at 0.007 and 0.012 ms per frame, from a handful of samples each.
+- **Routing's own cost on `top` falls** from about 0.07 ms per frame to about 0.014 ms:
+  of `route_key`'s 288 samples, 279 are the workload's root handler and 9 are routing,
+  against 38 of 275 in run 19, since a key now calls one handler rather than every visible node's.
+- **Reconciling focus doesn't show** in either profile, and `RoutingTable.of` costs 0.031 ms per frame on `top`,
+  against 0.021 ms in run 19, within the noise of one profiled run.

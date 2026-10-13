@@ -4,8 +4,14 @@ import logging
 from dataclasses import dataclass
 from typing import overload
 
-from counterweight._context_vars import current_hook_state, current_layouts, current_use_mouse_listeners
+from counterweight._context_vars import (
+    current_focused,
+    current_hook_state,
+    current_layouts,
+    current_use_mouse_listeners,
+)
 from counterweight._utils import forever
+from counterweight.focus import FocusHandle
 from counterweight.geometry import Position, Rects
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup
@@ -178,3 +184,58 @@ def use_hovered() -> Hovered:
         border=rects.border.contains(mouse.absolute),
         margin=rects.margin.contains(mouse.absolute),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Focus:
+    is_focused: bool
+    """Whether the calling component is focused, so it receives key presses, as of this render."""
+
+    handle: FocusHandle
+    """The handle that names the calling component, for [`FocusOn`][counterweight.controls.FocusOn]."""
+
+
+def use_focus(
+    auto_focus: bool = False,
+    handle: FocusHandle | None = None,
+    is_focusable: bool = True,
+    in_focus_order: bool = True,
+) -> Focus:
+    """
+    Makes the calling component focusable.
+    Its top-level element, the one it returns, is the one that's focused,
+    so a component that handles key presses puts its handler on that element.
+    A component can call it only once.
+
+    Parameters:
+        auto_focus: Whether the component takes focus when it mounts visible and focusable while nothing is focused.
+            When several mount in the same render, the first in tree order takes focus.
+            A component that mounts hidden or unfocusable doesn't take focus when it's shown or made focusable later.
+
+        handle: The handle that names the component, which a parent creates with `use_state(FocusHandle)`
+            to focus a child it renders with [`FocusOn`][counterweight.controls.FocusOn].
+            If `None`, `use_focus` creates one on the first render and keeps it.
+            Every render MUST pass the same handle as the first,
+            or `use_focus` raises `ChangedFocusHandle`,
+            and two mounted components given the same handle raise `DuplicateFocusHandle`.
+
+        is_focusable: Whether the component can be focused, like a browser's `disabled` attribute when `False`.
+            Nothing can focus an unfocusable component,
+            and making the focused component unfocusable clears focus.
+            It still receives the mouse events routed to it.
+
+        in_focus_order: Whether [`FocusNext`][counterweight.controls.FocusNext]
+            and [`FocusPrevious`][counterweight.controls.FocusPrevious] stop on the component,
+            like a browser's `tabindex="-1"` when `False`.
+            A component out of the focus order can still be focused with
+            [`FocusOn`][counterweight.controls.FocusOn], `auto_focus`, or a press,
+            and keeps focus once it has it.
+
+    Returns:
+        Whether the component is focused, and its handle, which is the same object on every render.
+    """
+    hooks = current_hook_state.get()
+    focus = hooks.use_focus(
+        auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order
+    )
+    return Focus(is_focused=is_focusable and current_focused.get() == hooks.key, handle=focus.handle)

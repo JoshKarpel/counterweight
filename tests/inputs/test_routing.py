@@ -153,17 +153,19 @@ async def test_an_event_on_a_child_bubbles_to_its_parent() -> None:
 
 
 async def test_the_parent_receives_the_same_event_with_its_own_receiver() -> None:
-    receivers: list[tuple[str, InputEvent, Receiver]] = []
+    receivers: list[tuple[str, InputEvent, Rects, bool]] = []
 
     @component
     def root() -> Div:
         return Div(
             style=size(20, 10),
-            on_input=lambda event, receiver: receivers.append(("parent", event, receiver)),
+            on_input=lambda event, receiver: receivers.append(("parent", event, receiver.rects, receiver.is_target)),
             children=[
                 Div(
                     style=box(2, 1, 5, 3),
-                    on_input=lambda event, receiver: receivers.append(("child", event, receiver)),
+                    on_input=lambda event, receiver: receivers.append(
+                        ("child", event, receiver.rects, receiver.is_target)
+                    ),
                 )
             ],
         )
@@ -174,16 +176,8 @@ async def test_the_parent_receives_the_same_event_with_its_own_receiver() -> Non
     child = Region(left=2, top=1, right=7, bottom=4)
     parent = Region(left=0, top=0, right=20, bottom=10)
     assert receivers == [
-        (
-            "child",
-            event,
-            Receiver(rects=Rects(content=child, padding=child, border=child, margin=child), is_target=True),
-        ),
-        (
-            "parent",
-            event,
-            Receiver(rects=Rects(content=parent, padding=parent, border=parent, margin=parent), is_target=False),
-        ),
+        ("child", event, Rects(content=child, padding=child, border=child, margin=child), True),
+        ("parent", event, Rects(content=parent, padding=parent, border=parent, margin=parent), False),
     ]
 
 

@@ -113,6 +113,7 @@ nav:
     - hooks/use_memo.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_focus.md
     - hooks/use_hovered.md
   - Input Handling:
     - input-handling/index.md

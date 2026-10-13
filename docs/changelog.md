@@ -5,6 +5,17 @@
 ### Added
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
+  It takes `auto_focus`, to take focus on mount when nothing else has it;
+  `handle`, a `FocusHandle` a parent creates to focus a child it renders;
+  `is_focusable=False`, to disable it; and `in_focus_order=False`, to leave it out of Tab order.
+  The controls `FocusNext`, `FocusPrevious`, `FocusOn(handle)` and `ClearFocus` move focus,
+  and `FocusNext` and `FocusPrevious` take a `within` subtree to move only inside one element.
+  `counterweight.handlers` gains `tab_focus`, `focus_receiver_on_press`, `focus_on_press` and `clear_focus`,
+  which return them for Tab and for presses; nothing moves focus unless a handler does.
+  A `Receiver` carries the element's `focus_handle`, whether it `is_focused`, and its `subtree`.
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added `counterweight.handlers`, with `on_click(action)`, which calls `action` when a press on its element
   is released inside it, and `first` and `each`, which compose several handlers into the one an element takes.
   A handler can return a tuple of controls, applied in order and skipping any `None`,
@@ -110,6 +121,15 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [#402](https://github.com/JoshKarpel/counterweight/pull/402)
+  **Breaking:** a key press goes to the focused element, or to the root component's element when nothing is focused,
+  then bubbles through its ancestors until a handler returns something other than `None`.
+  Previously every handler received every key press, whatever the others returned.
+  A component that handles keys below the root calls `use_focus`, with `auto_focus=True` to have keys from the start,
+  and puts its handler on the element it returns;
+  one that should act on keys wherever focus is moves its handler to the root component's element.
+  Tab has no built-in meaning: put `tab_focus` on the root for Tab navigation.
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   **Breaking:** a mouse event goes to one target, the element drawn on top at the pointer,

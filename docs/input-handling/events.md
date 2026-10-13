@@ -22,7 +22,7 @@ def on_input(event: InputEvent, _: Receiver) -> InputResponse:
 
 A handler's return value says whether the event was its to handle:
 
-- `None` means it wasn't, and the event [bubbles](#routing-mouse-events) on to the element's parent.
+- `None` means it wasn't, and the event [bubbles](#routing-input-events) on to the element's parent.
 - Anything else means it was, and the event stops there.
   That is a [control](controls.md) for Counterweight to apply (`return Quit()`),
   a tuple of controls applied in order (`return Bell(), Screenshot.to_file(path)`),
@@ -59,8 +59,8 @@ def on_input(event: InputEvent, _: Receiver) -> InputResponse:
             return None
 ```
 
-The receiver carries the element's rectangles,
-so a handler can tell where in the element a mouse event landed:
+The receiver describes the element the event is delivered to.
+Its rectangles tell a handler where in the element a mouse event landed:
 
 ```python
 def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
@@ -72,14 +72,18 @@ def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
             return None
 ```
 
+Its `is_focused`, `focus_handle` and `subtree` serve the [focus](../hooks/use_focus.md) handlers:
+whether the element is focused, the handle that names its component if the component is focusable,
+and the element and its descendants, for moving focus among them.
+
 ::: counterweight.events.InputEvent
 ::: counterweight.events.InputResponse
 ::: counterweight.events.InputHandler
 ::: counterweight.events.Receiver
 
-## Routing Mouse Events
+## Routing Input Events
 
-Each mouse event has one **target** element.
+Each input event has one **target** element.
 Counterweight calls the target's `on_input` handler,
 then each of its ancestors' in turn, up to the root component's element,
 until one returns something other than `None`.
@@ -88,6 +92,24 @@ so an absolutely positioned child bubbles to its parent even where it's drawn ou
 Each element receives the same event, with its own receiver:
 a parent's `rects` are its own, and its `is_target` is `False`.
 
+### Key Presses
+
+The target of a key press is the [focused](../hooks/use_focus.md) element,
+or the root component's element when nothing is focused.
+A key press bubbles from the focused element through its ancestors, and never reaches its siblings,
+so two components that handle the same keys don't both act on one press.
+When nothing is focused, only the root component's handler receives key presses,
+and its receiver's `is_target` is `True`, though its `is_focused` is `False`.
+
+A focusable component's key handler goes on the element the component returns,
+which is the one that's focused.
+Handlers on the elements inside it never receive key presses,
+and a component deep in the tree can't own a global shortcut:
+put the shortcut on the root component's element, which every key press bubbles to
+unless a handler on the way stops it.
+
+### Mouse Events
+
 The target of a mouse event is the element drawn on top at the pointer:
 the last element in [paint order](../layout/layering.md) whose border box contains it.
 An element's margin isn't part of it, so a press in a margin reaches whatever lies beneath.
@@ -95,7 +117,7 @@ A pointer over none of the root component's elements,
 when the root's element is smaller than the terminal,
 targets the root's element, though its rectangles don't contain the pointer.
 
-### Presses
+#### Presses
 
 A **press** runs from a `MouseDown` to its `MouseUp`.
 The `MouseDown` is routed like any mouse event,
@@ -137,11 +159,8 @@ a press on a button inside a draggable panel clicks the button and doesn't drag 
 
 ## Handling Keyboard Events
 
-Each time a key is pressed,
-Counterweight calls the `on_input` handler of every element with a `KeyPressed` event
-that holds information about which key was pressed,
-whatever the other handlers return, and applies all their controls.
-Each receives it with `is_target` set.
+Each time a key is pressed, Counterweight emits a `KeyPressed` event that holds which key was pressed,
+and [routes](#key-presses) it to the focused element.
 
 ::: counterweight.events.KeyPressed
 
@@ -193,4 +212,4 @@ For example, consider the following series of mouse actions and corresponding ev
     (e.g., the current position, or whether a button is currently pressed),
     while `on_input` is more convenient when a component needs to respond to *changes* in the mouse state,
     (e.g., a button release [`MouseUp`][counterweight.events.MouseUp]).
-    `use_mouse` sees every change, while a handler sees only the events [routed](#routing-mouse-events) to its element.
+    `use_mouse` sees every change, while a handler sees only the events [routed](#routing-input-events) to its element.

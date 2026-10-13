@@ -795,7 +795,7 @@ Per event, walking an ancestor path costs no more than today's flat list.
 
 ### 5. Add `use_focus` and route keys to the focused node
 
-**Status:** Not started
+**Status:** Done
 
 Add the `UseFocus` slot, the hook with its `handle`, `is_focusable`, and `in_focus_order` parameters,
 the focused key as an input to `update_shadow`, `Focus`, `FocusHandle`, `Subtree`,

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
 from counterweight.controls import AnyControl
+from counterweight.focus import FocusHandle, Subtree
 from counterweight.geometry import Position, Rects
 
 if TYPE_CHECKING:
@@ -109,6 +110,27 @@ class Receiver:
 
     is_target: bool
     """Whether the receiving element is the event's target, rather than an ancestor the event bubbled to."""
+
+    focus_handle: FocusHandle | None
+    """
+    The [`FocusHandle`][counterweight.focus.FocusHandle] of the receiving element's component,
+    if the element is the one its component returned and the component called
+    [`use_focus`][counterweight.hooks.use_focus], or `None`.
+    """
+
+    is_focused: bool
+    """
+    Whether the receiving element is the focused one.
+    For a key press it's the same as `is_target`, except when nothing is focused:
+    the root component's element is then the target, and no receiver is focused.
+    """
+
+    subtree: Subtree
+    """
+    The receiving element and its descendants,
+    for [`FocusNext`][counterweight.controls.FocusNext] and [`FocusPrevious`][counterweight.controls.FocusPrevious]
+    to move focus within.
+    """
 
     def relative(self, position: Position) -> Position:
         """`position` relative to the top-left corner of the receiving element's content box."""

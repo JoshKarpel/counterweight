@@ -16,7 +16,7 @@ from benchmarks.dashboard import frame_text, layout, metric_card
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_effect, use_state
+from counterweight.hooks import use_effect, use_focus, use_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +52,8 @@ class LocalDashboard:
 
 @component
 def key_frame_counter() -> Text:
+    # Focused so keys reach it, and returning None so each key still bubbles to the root that times it.
+    use_focus(auto_focus=True)
     tick, set_tick = use_state(0)
 
     def on_input(event: InputEvent, _: Receiver) -> None:

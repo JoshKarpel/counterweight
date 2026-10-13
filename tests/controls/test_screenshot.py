@@ -71,10 +71,8 @@ async def test_screenshots_requested_in_one_cycle_receive_the_same_frame() -> No
     @component
     def root() -> Div:
         return Div(
-            children=[
-                Text(content="a", on_input=lambda event, _: Screenshot(handler=frames.append)),
-                Text(content="b", on_input=lambda event, _: Screenshot(handler=frames.append)),
-            ]
+            children=[Text(content="a")],
+            on_input=lambda event, _: (Screenshot(handler=frames.append), Screenshot(handler=frames.append)),
         )
 
     await app(root, headless=True, dimensions=(5, 2), autopilot=[KeyPressed(key="x"), Quit()], check_purity=True)
@@ -93,7 +91,7 @@ async def test_frame_does_not_change_after_later_renders() -> None:
         def on_input(event: InputEvent, _: Receiver) -> None:
             set_content("after")
 
-        return Div(children=[Text(content=content, on_input=on_input)])
+        return Div(children=[Text(content=content)], on_input=on_input)
 
     await app(
         root,

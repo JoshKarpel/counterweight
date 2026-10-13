@@ -22,6 +22,10 @@ from counterweight.components import Component, component
 from counterweight.controls import (
     AnyControl,
     Bell,
+    ClearFocus,
+    FocusNext,
+    FocusOn,
+    FocusPrevious,
     Quit,
     Screenshot,
     Suspend,
@@ -220,16 +224,34 @@ async def render_loop(
         # returns real dimensions on the first visible render.
         warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(root_component, None, NO_LAYOUTS).tree
+        warmup = update_shadow(root_component, None, NO_LAYOUTS)
+        shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
         routing = RoutingTable.of(shadow, layouts)
+        focused = routing.reconciled_focus(None, warmup.mounted)
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
             dirty.update(node.key for node in shadow.nodes)
 
         # The warmup started no effects, so the first painted frame has to re-run every component to start them.
+        # It re-runs them with the focus the warmup reconciled, too.
         rerun_everything()
+
+        def refocus(key: NodeKey | None) -> None:
+            """
+            Focuses the node with `key`, or nothing if it's `None`,
+            and re-renders the mounted nodes that gain and lose focus, as a `use_state` setter would.
+            """
+            nonlocal focused
+
+            if key == focused:
+                return
+
+            for changed in (focused, key):
+                if changed is not None and changed in routing.parents:
+                    event_queue.put_nowait(StateSet(key=changed))
+            focused = key
 
         def handle_control(control: AnyControl) -> None:
             nonlocal should_render
@@ -253,6 +275,14 @@ async def render_loop(
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+                case FocusNext(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=True))
+                case FocusPrevious(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=False))
+                case FocusOn(handle=handle):
+                    refocus(routing.focus_keys.get(handle, focused))
+                case ClearFocus():
+                    refocus(None)
                 case _ as unreachable:
                     assert_never(unreachable)
 
@@ -322,7 +352,7 @@ async def render_loop(
                     should_suspend = None
 
                 if should_render:
-                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity)
+                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity, focused)
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
@@ -335,6 +365,7 @@ async def render_loop(
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
+                    refocus(routing.reconciled_focus(focused, update.mounted))
 
                     new_paint, border_healing_hints = paint_layout(
                         ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
@@ -405,10 +436,10 @@ async def render_loop(
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed():
-                            for control in route_key(event, routing):
+                            for control in route_key(event, focused, routing):
                                 handle_control(control)
                         case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            captor, controls = route_mouse(m, captor, routing)
+                            captor, controls = route_mouse(m, captor, focused, routing)
                             for control in controls:
                                 handle_control(control)
 

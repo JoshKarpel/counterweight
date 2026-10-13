@@ -199,14 +199,16 @@ def key_list(keys: list[str]) -> Text:
 
 @component
 def key_log() -> Div:
+    use_focus(auto_focus=True)
     keys = use_ref(list[str]())
     count, set_count = use_state(0)
 
-    def on_input(event: InputEvent, _: Receiver) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         if not isinstance(event, KeyPressed):
-            return
+            return None
         keys.current.append(event.key)
         set_count(count + 1)
+        return ()
 
     return Div(on_input=on_input, children=[key_list(keys.current)])
 ```
