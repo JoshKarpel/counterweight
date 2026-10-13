@@ -7,7 +7,8 @@ from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import KeyPressed, Pasted
 from counterweight.handlers import first, focus_receiver_on_press, tab_focus
-from counterweight.hooks import Setter, use_state, use_text_input
+from counterweight.headless import use_text_input
+from counterweight.hooks import Setter, use_state
 from counterweight.keys import Key
 from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *

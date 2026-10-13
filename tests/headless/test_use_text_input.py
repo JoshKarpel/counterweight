@@ -8,7 +8,8 @@ from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import each, first
-from counterweight.hooks import TextInput, use_state, use_text_input
+from counterweight.headless import TextInput, use_text_input
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 
 type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]

@@ -167,6 +167,9 @@ a press on a button inside a draggable panel clicks the button and doesn't drag 
 
 Each time a key is pressed, Counterweight emits a `KeyPressed` event that holds which key was pressed,
 and [routes](#key-presses) it to the focused element.
+Enter and Ctrl+J are different keys, `Key.Enter` and `Key.ControlJ`,
+so a [text area](../headless/use_text_area.md) can insert a line break on Ctrl+J
+while Enter submits a form.
 
 ::: counterweight.events.KeyPressed
 
@@ -178,9 +181,10 @@ rather than as a key press per character,
 and it's [routed](#key-presses) to the focused element, as a key press is.
 A handler that only matches key presses never sees it,
 so a paste can't trigger a binding by holding the binding's key.
-[`use_text_input`](../hooks/use_text_input.md) inserts it in one edit.
+[`use_text_input`](../headless/use_text_input.md) and [`use_text_area`](../headless/use_text_area.md)
+insert it in one edit.
 Terminals without bracketed paste send pasted text as typed keys,
-with its line breaks as Enter.
+with its line breaks as Enter, or as Ctrl+J from a terminal that sends them as line feeds.
 
 ::: counterweight.events.Pasted
 

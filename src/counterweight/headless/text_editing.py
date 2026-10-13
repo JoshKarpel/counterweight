@@ -1,5 +1,5 @@
 """
-Editing one line of text at a cursor, the pure core of [`use_text_input`][counterweight.hooks.use_text_input]:
+Editing one line of text at a cursor, the pure core of [`use_text_input`][counterweight.headless.use_text_input]:
 which edit each key press or paste makes, and what each edit does to a value and a cursor.
 The cursor counts grapheme clusters, so it never lands inside one.
 """

@@ -9,7 +9,7 @@ from counterweight.geometry import Position
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.styles.utilities import col, width
-from counterweight.widgets import CURSOR, text_input
+from counterweight.widgets import CURSOR, text_area, text_input
 
 
 def field(initial: str = "", placeholder: str = "", auto_focus: bool = True, is_focusable: bool = True) -> Component:
@@ -33,12 +33,14 @@ def field(initial: str = "", placeholder: str = "", auto_focus: bool = True, is_
     return root()
 
 
-async def screenshot(root: Component, events: Sequence[InputEvent | AnyControl] = ()) -> Frame:
+async def screenshot(
+    root: Component, events: Sequence[InputEvent | AnyControl] = (), dimensions: tuple[int, int] = (14, 3)
+) -> Frame:
     frames: list[Frame] = []
     await app(
         root,
         headless=True,
-        dimensions=(14, 3),
+        dimensions=dimensions,
         autopilot=(*events, Screenshot(handler=frames.append), Quit()),
         check_purity=True,
     )
@@ -101,3 +103,52 @@ async def test_an_unfocusable_text_input_takes_no_keys() -> None:
     frame = await screenshot(field(initial="hi", is_focusable=False), events=(KeyPressed(key="!"),))
 
     assert (lines(frame)[1], cursor_cells(frame)) == ("│ hi       │", [])
+
+
+def area(initial: str = "", placeholder: str = "", enter_inserts_newline: bool = False) -> Component:
+    @component
+    def root() -> Div:
+        value, set_value = use_state(initial)
+        return Div(
+            style=col,
+            children=[
+                text_area(
+                    value,
+                    set_value,
+                    placeholder=placeholder,
+                    enter_inserts_newline=enter_inserts_newline,
+                    style=width(12),
+                    auto_focus=True,
+                )
+            ],
+        )
+
+    return root()
+
+
+async def test_text_area_wraps_its_value_to_its_box_and_grows_to_fit_its_rows() -> None:
+    frame = await screenshot(area(initial="hello world foo"), dimensions=(14, 6))
+
+    assert lines(frame) == ["╭──────────╮", "│ hello    │", "│ world    │", "│ foo      │", "╰──────────╯", ""]
+
+
+async def test_text_area_draws_the_cursor_after_the_last_row() -> None:
+    frame = await screenshot(area(initial="hello world foo"), dimensions=(14, 6))
+
+    assert cursor_cells(frame) == [(5, 3, " ")]
+
+
+async def test_text_area_shows_its_placeholder_while_empty_with_the_cursor_on_its_first_character() -> None:
+    frame = await screenshot(area(placeholder="Notes"))
+
+    assert (lines(frame)[1], cursor_cells(frame)) == ("│ Notes    │", [(2, 1, "N")])
+
+
+async def test_text_area_passes_on_whether_enter_inserts_a_line_break() -> None:
+    frame = await screenshot(
+        area(initial="ab", enter_inserts_newline=True),
+        events=(KeyPressed(key="enter"), KeyPressed(key="c")),
+        dimensions=(14, 5),
+    )
+
+    assert lines(frame)[1:3] == ["│ ab       │", "│ c        │"]

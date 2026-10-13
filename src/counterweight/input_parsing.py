@@ -44,7 +44,7 @@ CONTROL_KEYS: Mapping[int, Key] = {
     0x07: Key.ControlG,
     0x08: Key.Backspace,
     0x09: Key.Tab,
-    0x0A: Key.Enter,
+    0x0A: Key.ControlJ,
     0x0B: Key.ControlK,
     0x0C: Key.ControlL,
     0x0D: Key.Enter,

@@ -111,6 +111,7 @@ def put_parsed_keys(reader: KeyReader, read: bytes, is_final: bool) -> None:
         reader.put_event(event)
 
 
+IFLAG = 0
 LFLAG = 3
 CC = 6
 
@@ -122,6 +123,8 @@ def start_input_control(stream: TextIO) -> TCGetAttr:
 
     modified = deepcopy(original)
 
+    # Enter sends a carriage return and Ctrl+J a line feed, so neither is translated into the other.
+    modified[IFLAG] = original[IFLAG] & ~(termios.ICRNL | termios.INLCR | termios.IGNCR)
     modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)
     modified[CC][termios.VMIN] = 1
     modified[CC][termios.VTIME] = 0

@@ -11,7 +11,8 @@ from counterweight.components import component
 from counterweight.controls import Suspend
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import use_rects, use_state, use_text_input
+from counterweight.headless import use_text_input
+from counterweight.hooks import use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp

@@ -7,7 +7,8 @@ from counterweight.controls import AnyControl, Quit
 from counterweight.elements import Chunk, Div, Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import Setter, use_hovered, use_rects, use_state, use_text_input
+from counterweight.headless import use_text_area
+from counterweight.hooks import Setter, use_hovered, use_rects, use_state
 from counterweight.keys import Key
 from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import *
@@ -60,7 +61,7 @@ def root() -> Div:
                 ],
             ),
             Text(
-                content="type to edit  ·  tab / shift+tab: cycle wrap mode  ·  ctrl+c: quit",
+                content="type to edit  ·  arrows: move  ·  tab / shift+tab: cycle wrap mode  ·  ctrl+c: quit",
                 style=text_justify_center | text_color("slate", 500) | pad_y(1),
             ),
         ],
@@ -96,9 +97,9 @@ def toolbar(
 
 @component
 def input_pane(content: str, set_content: Setter[str]) -> Div:
-    field = use_text_input(content, set_content, auto_focus=True)
     rects = use_rects()
     w = rects.content.width
+    field = use_text_area(content, set_content, width=w, enter_inserts_newline=True, auto_focus=True)
 
     return Div(
         style=fill(1) | col | border | border_lightrounded | border_color("sky", 600) | pad_x(1),
@@ -114,7 +115,7 @@ def input_pane(content: str, set_content: Setter[str]) -> Div:
                     Chunk(content=field.at_cursor, style=CURSOR),
                     Chunk(content=field.after_cursor),
                 ],
-                style=fill(1) | text_wrap_stable | text_color("sky", 200),
+                style=fill(1) | text_wrap_none | text_color("sky", 200),
             ),
         ],
     )

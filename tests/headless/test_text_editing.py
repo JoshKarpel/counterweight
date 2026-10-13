@@ -1,8 +1,8 @@
 import pytest
 
 from counterweight.graphemes import graphemes
+from counterweight.headless.text_editing import KEY_EDITS, EditableText, key_edit, paste_edit, settled
 from counterweight.keys import Key
-from counterweight.text_editing import KEY_EDITS, EditableText, key_edit, paste_edit, settled
 
 
 def marked(text: str) -> EditableText:

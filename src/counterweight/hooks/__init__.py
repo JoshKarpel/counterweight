@@ -4,7 +4,6 @@ from counterweight.hooks.hooks import (
     Focus,
     Hovered,
     Mouse,
-    TextInput,
     toggle,
     use_clock,
     use_effect,
@@ -15,7 +14,6 @@ from counterweight.hooks.hooks import (
     use_rects,
     use_ref,
     use_state,
-    use_text_input,
 )
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
@@ -30,7 +28,6 @@ __all__ = [
     "Ref",
     "Setter",
     "Setup",
-    "TextInput",
     "Tick",
     "toggle",
     "use_clock",
@@ -42,5 +39,4 @@ __all__ = [
     "use_rects",
     "use_ref",
     "use_state",
-    "use_text_input",
 ]

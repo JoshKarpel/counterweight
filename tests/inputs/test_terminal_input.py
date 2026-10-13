@@ -35,11 +35,14 @@ def test_input_control_turns_off_echo_and_line_buffering_and_reads_each_byte_at_
     original = start_input_control(terminal.stream)
     during = terminal.settings()
 
+    iflag = during[0]
     lflag = during[3]
     cc = during[6]
+    assert isinstance(iflag, int)
     assert isinstance(lflag, int)
     assert isinstance(cc, list)
     assert original == before
+    assert not iflag & (termios.ICRNL | termios.INLCR | termios.IGNCR)
     assert not lflag & (termios.ECHO | termios.ICANON)
     assert lflag & termios.ISIG
     assert cc[termios.VMIN] == 1
@@ -111,6 +114,15 @@ async def test_read_keys_puts_each_parsed_input(terminal: Terminal, key_reading:
     assert [await next_in(key_reading.events), await next_in(key_reading.events)] == [
         KeyPressed(key="a"),
         KeyPressed(key=Key.Up),
+    ]
+
+
+async def test_enter_and_ctrl_j_reach_the_app_as_different_keys(terminal: Terminal, key_reading: KeyReading) -> None:
+    os.write(terminal.keyboard, b"\r\n")
+
+    assert [await next_in(key_reading.events), await next_in(key_reading.events)] == [
+        KeyPressed(key=Key.Enter),
+        KeyPressed(key=Key.ControlJ),
     ]
 
 

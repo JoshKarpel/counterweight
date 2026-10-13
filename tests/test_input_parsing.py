@@ -44,7 +44,7 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         # single bytes, transformed
         (b"\x1b", [KeyPressed(key=Key.Escape)]),
         (b"\t", [KeyPressed(key=Key.Tab)]),
-        (b"\n", [KeyPressed(key=Key.Enter)]),
+        (b"\n", [KeyPressed(key=Key.ControlJ)]),
         (b" ", [KeyPressed(key=Key.Space)]),
         (b"\x00", [KeyPressed(key=Key.ControlSpace)]),
         (b"\x01", [KeyPressed(key=Key.ControlA)]),

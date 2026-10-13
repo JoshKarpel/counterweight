@@ -3,7 +3,8 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
-from counterweight.hooks import TextInput, use_state, use_text_input
+from counterweight.headless import TextInput, use_text_input
+from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 

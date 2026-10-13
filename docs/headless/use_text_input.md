@@ -8,13 +8,14 @@ in whatever layout it's part of.
 For a ready-made box, use [`text_input`](#a-styled-text-input), which is built on this hook.
 
 This page covers the hook and that component.
-Multi-line editing, selection, and scrolling a value wider than its box aren't supported yet.
+For text that wraps onto rows, use [`use_text_area`](use_text_area.md).
+Selection, and scrolling a value wider than its box, aren't supported yet.
 
 ## Using the hook
 
 The calling component owns the value, as with React's controlled `<input>`,
 and passes it to the hook with its setter.
-The hook owns the cursor, makes the component [focusable](use_focus.md),
+The hook owns the cursor, makes the component [focusable](../hooks/use_focus.md),
 and returns the value split around the cursor, with the handler that edits it:
 
 ```python
@@ -84,7 +85,7 @@ rather than with the edited value.
 Several key presses can arrive between renders, as when typing fast,
 and each edit has to apply to the result of the one before,
 which the value the component rendered with doesn't have yet.
-A [`use_state`](use_state.md) setter takes such a function and applies it right away.
+A [`use_state`](../hooks/use_state.md) setter takes such a function and applies it right away.
 
 To validate or transform an edit, wrap the setter in one that applies the edit itself
 and decides what to keep.
@@ -116,6 +117,6 @@ The sign-up form above uses it, and shows its placeholders when it starts:
 
 ## API
 
-::: counterweight.hooks.use_text_input
-::: counterweight.hooks.TextInput
+::: counterweight.headless.use_text_input
+::: counterweight.headless.TextInput
 ::: counterweight.widgets.text_input

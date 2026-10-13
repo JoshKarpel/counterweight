@@ -17,7 +17,8 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent, KeyPressed, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import first
-from counterweight.hooks import Mouse, use_effect, use_mouse, use_state, use_text_input
+from counterweight.headless import use_text_input
+from counterweight.hooks import Mouse, use_effect, use_mouse, use_state
 from counterweight.output import (
     ALT_SCREEN_OFF,
     ALT_SCREEN_ON,

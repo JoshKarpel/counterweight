@@ -5,12 +5,24 @@
 ### Added
 
 - [#391](https://github.com/JoshKarpel/counterweight/issues/391)
-  Added [`use_text_input`](hooks/use_text_input.md), which edits one line of text and leaves drawing it to its caller.
+  Added [headless components](headless/index.md) in `counterweight.headless`,
+  starting with [`use_text_input`](headless/use_text_input.md), which edits one line of text and leaves drawing it to its caller.
   The caller owns the value and passes its setter; the hook owns the cursor, makes the component focusable,
   and returns the value split around the cursor with an `on_input` handler for Readline's editing keys and pastes.
   Each edit applies to the latest value through the setter, so keys typed faster than the app renders all land,
   and a setter that validates or transforms edits decides where the cursor goes.
   `counterweight.widgets.text_input` is a bordered box built on it, with a placeholder.
+
+- Added [`use_text_area`](headless/use_text_area.md), which edits text that wraps onto rows and leaves drawing it to its caller.
+  It wraps the value itself, at the width the caller gives it, filling each row as text editors do
+  and keeping a cell for the cursor wherever it is,
+  and returns the rows split around the cursor, so Up and Down move between the rows on screen, keeping their column,
+  and Home, End, Ctrl+U and Ctrl+K act on the cursor's row.
+  Ctrl+J inserts a line break, and so does Enter with `enter_inserts_newline=True`;
+  otherwise Enter bubbles, as for a form or a chat that submits on it.
+  A paste keeps its line breaks.
+  Each line's wrapping is cached, so an edit rewraps only the line it changes.
+  `counterweight.widgets.text_area` is a bordered box built on it, which wraps at its own width and grows to fit its rows.
 
 - Added `toggle`, which flips a flag through a `use_state` setter (`set_open(toggle)`),
   so toggles that land before the next render each flip the latest value,
@@ -153,6 +165,10 @@
   Add styling for content area background color.
 
 ### Changed
+
+- **Breaking:** Ctrl+J is `Key.ControlJ`, rather than `Key.Enter`.
+  The app stops the terminal turning the carriage return Enter sends into a line feed,
+  so the two keys arrive as different `KeyPressed` events, and a text area can take Ctrl+J for a line break.
 
 - [#391](https://github.com/JoshKarpel/counterweight/issues/391)
   **Breaking:** the app turns on the terminal's bracketed paste mode,
