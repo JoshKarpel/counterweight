@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
@@ -11,9 +10,6 @@ from counterweight.focus import ElementHandle
 from counterweight.graphemes import grapheme_width, graphemes, visible
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
-
-if TYPE_CHECKING:
-    from counterweight.paint import Cell
 
 _DEFAULT_STYLE = Style()
 
@@ -85,43 +81,9 @@ class Text:
         return text_cells(self.content, self.style.text_style)
 
 
-# Rows of cells, top to bottom, each drawn left to right from the left edge of a canvas's content box.
-type Rows = Sequence[Sequence[Cell]]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Canvas:
-    """
-    A leaf element that paints its content box itself, instead of laying out text.
-
-    After layout, `draw` is called with the width and height of the content box and returns the rows of cells
-    to put there. Rows (or cells in a row) past the box overflow it, as a `Text`'s do, for the clip to cut off,
-    and a box it leaves short shows the background beneath it.
-
-    `draw` must be pure, since its rows are cached by `(draw, width, height)`:
-    a frozen dataclass with a `__call__` that is equal from one render to the next is drawn once,
-    while a new closure each render is drawn every frame.
-
-    Like HTML's `<canvas>`, a `Canvas` is sized by its style, and `width` and `height` give its
-    intrinsic size, which it takes on each axis its style leaves `auto`. Without them, its intrinsic size is 0.
-    """
-
-    draw: Callable[[int, int], Rows]
-    width: int = 0
-    height: int = 0
-    style: Style = _DEFAULT_STYLE
-    on_input: InputHandler | None = None
-    handle: ElementHandle | None = None
-
-    @property
-    def children(self) -> tuple[Component | AnyElement, ...]:
-        return ()
-
-
 AnyElement = Union[
     Div,
     Text,
-    Canvas,
 ]
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import

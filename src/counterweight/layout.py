@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, assert_never
 import waxy
 
 from counterweight.controls import ScrollAlignment, ScrollBy, ScrollIntoView, ScrollTo
-from counterweight.elements import AnyElement, Canvas, Chunk, Div, StyledGrapheme, Text, text_cells
+from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
 from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
@@ -44,32 +44,10 @@ def text_source(text: Text) -> TextSource:
 
 
 @dataclass(frozen=True, slots=True)
-class IntrinsicSize:
-    """A `Canvas`'s intrinsic size, which it takes on each axis its style leaves `auto`, as a replaced element does."""
-
-    width: int
-    height: int
-
-
-type LeafSource = TextSource | IntrinsicSize
-
-
-def leaf_source(leaf: Text | Canvas) -> LeafSource:
-    """Everything a leaf's measured size depends on: its text, or its intrinsic size."""
-    match leaf:
-        case Text():
-            return text_source(leaf)
-        case Canvas():
-            return IntrinsicSize(leaf.width, leaf.height)
-        case _ as unreachable:
-            assert_never(unreachable)
-
-
-@dataclass(frozen=True, slots=True)
 class CreateLeaf:
     key: NodeKey
     style: waxy.Style
-    text: LeafSource
+    text: TextSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +66,7 @@ class SetStyle:
 @dataclass(frozen=True, slots=True)
 class SetText:
     key: NodeKey
-    text: LeafSource
+    text: TextSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,16 +133,16 @@ def _reconcile(
     # Taffy discards a node's cached layout when its text or children are set, even to equal values,
     # so each is set only when it changed.
     match element:
-        case Text() | Canvas():
-            source = leaf_source(element)
+        case Text():
+            source = text_source(element)
             if previous is None:
                 changes.append(CreateLeaf(key=key, style=style, text=source))
                 return
 
             _append_style_change(previous, key, style, changes)
             match previous.element:
-                case Text() | Canvas() as previous_leaf:
-                    if leaf_source(previous_leaf) != source:
+                case Text() as previous_text:
+                    if text_source(previous_text) != source:
                         changes.append(SetText(key=key, text=source))
                 case Div():
                     for child in previous.children:
@@ -186,7 +164,7 @@ def _reconcile(
 
             _append_style_change(previous, key, style, changes)
             match previous.element:
-                case Text() | Canvas():
+                case Text():
                     changes.append(ClearText(key=key))
                     changes.append(SetChildren(key=key, children=child_keys))
                 case Div():
@@ -324,7 +302,7 @@ class LayoutTree:
     Only `apply` and `compute` read or write its taffy nodes.
     """
 
-    tree: waxy.TaffyTree[MeasurableText | IntrinsicSize] = field(default_factory=waxy.TaffyTree)
+    tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
 
     def compute(
@@ -373,13 +351,13 @@ class LayoutTree:
         for change in changes:
             match change:
                 case CreateLeaf(key=key, style=style, text=text):
-                    nodes[key] = tree.new_leaf_with_context(style, measurable(text))
+                    nodes[key] = tree.new_leaf_with_context(style, MeasurableText.of(text))
                 case CreateContainer(key=key, style=style, children=children):
                     nodes[key] = tree.new_with_children(style, [nodes[child] for child in children])
                 case SetStyle(key=key, style=style):
                     tree.set_style(nodes[key], style)
                 case SetText(key=key, text=text):
-                    tree.set_node_context(nodes[key], measurable(text))
+                    tree.set_node_context(nodes[key], MeasurableText.of(text))
                 case ClearText(key=key):
                     tree.set_node_context(nodes[key], None)
                 case SetChildren(key=key, children=children):
@@ -443,7 +421,7 @@ def place(
         style = node.element.style
         scrolls_x, scrolls_y = scrolled_axes(style)
         if scrolls_x or scrolls_y:
-            if isinstance(node.element, Text | Canvas):
+            if isinstance(node.element, Text):
                 raise ValueError(
                     "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
                     "put it in a Div whose overflow is Scroll, which scrolls it."
@@ -772,26 +750,13 @@ class MeasurableText:
         return self.min_content_width
 
 
-def measurable(source: LeafSource) -> MeasurableText | IntrinsicSize:
-    """What a leaf's layout node holds for `_measure_text` to size it by."""
-    if isinstance(source, IntrinsicSize):
-        return source
-    return MeasurableText.of(source)
-
-
 def _measure_text(
     known: waxy.KnownSize,
     available: waxy.AvailableSize,
-    context: MeasurableText | IntrinsicSize,
+    context: MeasurableText,
 ) -> waxy.Size:
     known_width = known.width
     known_height = known.height
-
-    if isinstance(context, IntrinsicSize):
-        return waxy.Size(
-            known_width if known_width is not None else float(context.width),
-            known_height if known_height is not None else float(context.height),
-        )
 
     width: int | None
     if known_width is not None:

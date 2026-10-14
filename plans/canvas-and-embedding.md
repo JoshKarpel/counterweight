@@ -1,33 +1,42 @@
-# Spike: Canvas and Embedding Terminals
+# Plan: Canvas and Embedding Terminals
 
-This spike asks two questions.
-Can a pixel-grid canvas skip text layout, through a new element whose callback paints cells directly?
-And what would it take to build a terminal multiplexer in counterweight:
-to run programs on pseudo-terminals and show each one in a box, with input routed to it?
-It answers the second with a survey of how tmux and zellij work,
-and a working prototype (`examples/multiplexer.py`) built on three new layers.
+This plan lands two features that turned out to be one stack.
+A `Canvas` element paints cells directly, skipping text layout.
+An embedded terminal runs a program on a pseudo-terminal and shows it in a box, with input routed to it,
+which is enough to build a terminal multiplexer in counterweight.
+The embed needs no element of its own: it is a `Canvas` whose painter draws an emulator's screen.
+
+It lands in three phases, each of which stands alone:
+
+1. [**Canvas**](#phase-1-canvas): the element, painters, and pixel images.
+2. [**Framework fixes**](#phase-2-framework-fixes-for-the-embed): the changes to counterweight itself that the embed needs,
+   each useful to any app with modal keys or dynamic panes.
+3. [**Embed**](#phase-3-embedding-terminals): choose an emulator, then land `use_pty`, `use_terminal` and a `terminal` widget.
+
 It doesn't cover detaching sessions, scrollback or copy mode, or graphics protocols (sixel, kitty images).
 
-The two ideas turned out to be one stack.
-The paint-callback element is the primitive the embed needs:
-an embedded terminal is just a painter whose rows come from an emulator's screen.
-They can land separately, `Canvas` first.
+## The spike
 
-## The code
+A spike answered whether each phase is feasible.
+Its code is in [the appendix](#appendix-the-spike-code):
+diffs against `main` for the files it changed, and the full source of the files it added.
+It ran with `uv run --with pyghostty==0.1.3 ...`, since the dependency wasn't in `pyproject.toml`.
+The existing tests passed and mypy was clean; the new code had no tests.
 
-All of it is uncommitted on the `embed` branch.
-The spike runs with `uv run --with pyghostty==0.1.3 ...`: the dependency isn't in `pyproject.toml`.
-The existing tests pass and mypy is clean; the new code has no tests yet, so coverage would fail.
+| Code | What it is | Phase |
+| --- | --- | --- |
+| `elements.py`, `layout.py`, `paint.py` | the `Canvas` element | 1 |
+| `utils.py` | `HalfBlocks`, a `Canvas` painter equivalent to `canvas()` | 1 |
+| `benchmarks/canvas.py` | a `canvas-element` workload: `canvas` redrawn with `Canvas` and `HalfBlocks` | 1 |
+| `emulator.py` | libghostty-vt behind `Emulator`, which produces immutable `Screen` values | 3 |
+| `input_encoding.py` | pure functions from key, paste and mouse events back to the bytes a terminal sends | 3 |
+| `headless/terminal.py` | `use_pty` and `use_terminal` | 3 |
+| `examples/multiplexer.py` | shells side by side, with a tmux-style `Ctrl+B` prefix | 3 |
 
-- `elements.py`, `layout.py`, `paint.py`: the `Canvas` element.
-- `utils.py`: `HalfBlocks`, a `Canvas` painter equivalent to `canvas()`.
-- `benchmarks/canvas.py`: a `canvas-element` workload, `canvas` redrawn with `Canvas` and `HalfBlocks`.
-- `emulator.py`: libghostty-vt behind `Emulator`, which produces immutable `Screen` values.
-- `input_encoding.py`: pure functions from key, paste and mouse events back to the bytes a terminal sends.
-- `headless/terminal.py`: `use_pty` and `use_terminal`.
-- `examples/multiplexer.py`: shells side by side, with a tmux-style `Ctrl+B` prefix.
+All three phases land on this branch, in order, starting from `main`'s code.
+Each phase writes its code fresh, with tests, using the appendix as a reference.
 
-## Part 1: the `Canvas` element
+## Phase 1: Canvas
 
 ### What text layout costs a canvas
 
@@ -51,20 +60,37 @@ The stage ratios held across runs.
 Every walker moves every frame in this workload, so the painter's cache never hits;
 a canvas that changes less often skips its painter entirely.
 
-### Design
+### The element and its painter
 
 ```python
+class Painter(Protocol):
+    @property
+    def natural_size(self) -> tuple[int, int]: ...  # (columns, rows): the intrinsic size
+
+    def draw(self, width: int, height: int) -> Rows: ...  # the content box's size -> rows of Cell
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Canvas:
-    draw: Callable[[int, int], Rows]  # (content width, content height) -> rows of Cell
-    width: int = 0   # intrinsic size, used on each axis the style leaves auto
-    height: int = 0
+    painter: Painter
     style: Style = _DEFAULT_STYLE
     on_input: InputHandler | None = None
     handle: ElementHandle | None = None
 ```
 
-Prior art splits on two questions:
+The spike's `Canvas` took a bare callable, `draw: Callable[[int, int], Rows]`, and `width` and `height` fields beside it.
+A protocol fixes two problems with that:
+
+- **The size was stated twice.**
+  A painter knows its natural size, but the spike makes the caller repeat it on the element
+  (`width, height = painter.cells`, then `Canvas(draw=painter, width=width, height=height)`).
+  Taking it from the painter keeps it in one place, as an `<img>` takes its natural size from its image.
+- **Hooks treat callables as initializers.**
+  `use_state(painter)` calls a callable painter, and `set_state(painter)` treats it as an updater.
+  The spike hit both (`Screen` was callable at first; `use_ref(on_output)` was called).
+  A painter with a named `draw` method isn't callable, so it can be held in state like any other value.
+
+Prior art splits on two questions, and `Canvas` takes the same side as Textual and Flutter on both:
 
 - **Who owns the buffer?**
   [ratatui](https://github.com/ratatui/ratatui)'s `Widget::render(self, area, &mut Buffer)` hands the widget the whole screen buffer
@@ -73,57 +99,227 @@ Prior art splits on two questions:
   Its changelog shows built-in widgets learning to clip one by one (#1670, #1996, #2368).
   [Textual](https://github.com/Textualize/textual)'s `render_line(y) -> Strip` returns immutable values instead,
   and caches them per line.
-  `Canvas` follows Textual:
   `draw` returns rows of cells in local coordinates, and the framework places and clips them,
   through the same `write_row` and clip that `Text` uses.
   A painter can't draw outside its box, and the result is a value that can be cached.
 - **When does the painter re-run?**
   Ratatui re-renders everything every frame and saves only terminal output through its buffer diff.
   Flutter's `CustomPainter.shouldRepaint(old)` and Compose's `drawWithCache` skip the painter when its inputs are unchanged.
-  `Canvas` caches `draw(width, height)` by `(draw, width, height)` (`paint.canvas_rows`),
+  The spike caches `draw(width, height)` by `(painter, width, height)` (`paint.canvas_rows`),
   so a painter that's a frozen dataclass equal to last frame's isn't called at all.
   This is Flutter's `shouldRepaint` with `==` as the test, which is already how counterweight decides everything else.
 
-Sizing follows HTML's `<canvas>`, a replaced element:
-`width` and `height` give the intrinsic size,
-which layout uses on each axis the style leaves `auto`.
-The style can size the box to anything, and `draw` is called with the box's real content size.
-Unlike a browser canvas there's no bitmap to scale, so the painter decides what to draw at that size.
+### Sizing
+
+Sizing follows HTML's replaced elements (`<img>`, `<canvas>`).
+The painter's natural size is the canvas's intrinsic size,
+which layout uses on each axis the style or the parent's layout leaves undetermined.
+A styled or stretched size wins on its axis, and `draw` is called with the box's real content size.
+Unlike a browser `<canvas>`, there's no bitmap to stretch to the box, so the painter decides what to draw at that size.
 Rows that overflow the box are clipped, and a box with fewer rows shows the background, as `Text` does.
-Flutter and Compose default the intrinsic size to zero, and an invisible canvas is a known complaint.
-HTML defaults to 300×150.
-`Canvas` defaults to 0×0 for now, which is the decision to revisit.
 
-### Open decisions before `Canvas` lands
+A probe of the spike's `Canvas` in a 12-cell bordered row beside a `Text("TXT")` showed it behaves as an `<img>` does in flexbox:
 
-- **Painters must be hashable.**
-  The cache is an `lru_cache`, so a frozen dataclass holding a `dict` raises `TypeError` at paint time.
-  `HalfBlocks` holds its pixels as a tuple for this reason.
-  The alternatives are a per-node cache that needs only `==`
-  (kept across frames the way `LayoutTree` is),
-  or falling back to calling an unhashable painter every frame.
-  A per-node cache is the one I'd pick: it is also what makes a closure painter cheap when its key is stable.
-- **Painters are callables, and hooks treat callables as initializers.**
-  `use_state(painter)` calls the painter, and `set_state(painter)` treats it as an updater.
-  The spike hit both (`Screen` was callable at first; `use_ref(on_output)` was called).
-  Keeping painters out of state is enough, as `ScreenView` does,
-  but it should be documented, or `draw` should take a `Painter` protocol with a named method.
+```text
+intrinsic 6x2, style auto            intrinsic 20x1 in a 12-cell row
+│aaaaaaTXT   │                       │aaaaaaaaaaaaa
+│aaaaaa      │                       │aaaaaaaaaaaaa
+
+intrinsic 6x2, style width(10)       intrinsic 20x1, min_width(0)
+│aaaaaaaaaTXT│                       │aaaaaaaaaTXT│
+│aaaaaaaaa   │                       │aaaaaaaaa   │
+```
+
+- A styled width is a flex basis: `width(10)` beside `TXT` shrank to 9.
+- **The intrinsic size is a floor in a flex row.**
+  Flex items get `min-width: auto`, which for a replaced element resolves to its intrinsic size,
+  so a 20-cell canvas overflowed its row, drew over the border, and pushed `TXT` out of view.
+  `min_width(0)` lets it shrink, as `min-width: 0` does for an `<img>`.
+  The `Canvas` docstring and docs need to say so.
+- Every canvas drew 2 rows even with an intrinsic height of 1: the row stretches its children (`align-items: stretch`).
+
+Two changes complete the replaced-element model:
+
+- **Transfer the aspect ratio.**
+  An `<img>` with only `width` set scales its height to keep its natural aspect ratio.
+  The spike's `_measure_text` returns the intrinsic height whatever the width.
+  A canvas should transfer a known size through its painter's natural ratio,
+  most likely by giving its taffy node an `aspect_ratio` when the style doesn't set one,
+  so that taffy also applies the ratio through min and max sizes.
+  That taffy does this for leaf nodes with a measure function needs checking.
+- **A painter with no natural size.**
+  Flutter and Compose default the intrinsic size to zero, and an invisible canvas is a known complaint.
+  HTML's `<canvas>` defaults to 300×150.
+  Under the protocol every painter states its size,
+  so the question becomes what an unsized painter (a terminal, which takes whatever box it gets) should report.
+  Zero with a documented "size it with its style" is the simplest answer.
+
+### Pixels and images
+
+The two common uses of a canvas both start from a grid of pixels:
+drawing (walkers, a paint program, plots), and showing an image loaded from disk or memory.
+The web separates the pixels from how they're drawn into a box, and `Canvas` should too:
+
+| Web | Counterweight |
+| --- | --- |
+| `ImageData(data, width, height)`, RGBA bytes | `Pixels`, a frozen value holding `width`, `height` and RGBA `bytes` |
+| `ctx.drawImage(image, dx, dy, dw, dh)`, which scales into a box | `HalfBlocks(pixels, fit=...)`, a painter that scales to the size `draw` is given |
+| `object-fit: fill / contain / cover / none / scale-down` and `object-position` | `fit` and `position` on `HalfBlocks`, centered by default as on the web |
+| an image's natural size and ratio | `HalfBlocks.natural_size`: one column per pixel, one row per two pixels |
+
+```python
+@dataclass(frozen=True, slots=True)
+class Pixels:
+    width: int
+    height: int
+    rgba: bytes  # row-major, width * height * 4
+
+    @classmethod
+    def blank(cls, width: int, height: int, color: Color) -> Pixels: ...
+    @classmethod
+    def from_points(cls, width: int, height: int, points: Mapping[tuple[int, int], Color], default: Color) -> Pixels: ...
+    @classmethod
+    def from_rgba(cls, width: int, height: int, rgba: bytes) -> Pixels: ...  # raises unless len(rgba) == width * height * 4
+    @classmethod
+    def from_image(cls, image: SupportsRGBA) -> Pixels: ...  # Pillow, matched structurally
+    def with_points(self, points: Mapping[tuple[int, int], Color]) -> Pixels: ...
+```
+
+Drawing and loading then share one painter:
+
+```python
+pixels = Pixels.from_points(30, 30, {walker: color for walker, color in ...}, default=black)
+Canvas(painter=HalfBlocks(pixels), style=border)  # 30x15 cells, from the painter
+
+image = PIL.Image.open(path)
+Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1))
+```
+
+- **Bytes, not tuples of `Color`.**
+  The paint cache hashes its key on every lookup and compares it on every hit.
+  CPython caches a `bytes` object's hash, and comparing equal copies is a `memcmp`:
+  on a 4 MiB buffer the first hash took 0.73 ms, the next 0.4 µs, and comparing equal copies 0.14 ms.
+  The spike's `HalfBlocks` holds a tuple of `((x, y), Color)` pairs,
+  which costs a Python-level `Color.__hash__` per pixel whenever the painter is rebuilt,
+  and is the wrong shape for a dense image.
+- **No Pillow dependency.**
+  `from_rgba` takes raw bytes, so Pillow, numpy, or any decoder reaches `Pixels` the same way.
+  `from_image` takes a `Protocol` with Pillow's `size`, `convert` and `tobytes`,
+  which gives the one-liner without importing PIL.
+  The docs say to decode before `app()` or in an effect that sets state, never in render.
+- **Scaling.**
+  `HalfBlocks` resamples when the box size changes, and the result is cached with the rest of `draw`.
+  Nearest-neighbor reads only the pixels it outputs, which keeps it cheap,
+  but it's rough when shrinking a photo a long way.
+  Averaging reads every source pixel, which in Python is too slow for a large image.
+  `HalfBlocks` uses nearest-neighbor, and the docs point to Pillow's `Image.thumbnail` for quality.
+  These costs are estimates to measure in the benchmark.
+- **Pixel aspect.**
+  A cell is about twice as tall as it is wide, so two pixels to a cell makes pixels roughly square,
+  and an image keeps its proportions without correction.
+  The exact ratio depends on the user's font.
+
+Deferred, each for a different reason:
+
+- **Shapes** (lines, rectangles, circles, as ratatui's `Canvas` draws):
+  several plausible designs, such as pure functions from shapes to `Pixels` or an immutable path builder,
+  and no way yet to choose between them.
+- **Other cell encodings** (braille, quadrants, sextants): each is another painter over the same `Pixels`,
+  cheap once `HalfBlocks` sets the pattern, and best added together.
+
+### Open decisions
+
+- **The paint cache.**
+  `paint.canvas_rows` is a shared `lru_cache`, so a painter must be hashable,
+  and a frozen dataclass holding a `dict` raises `TypeError` at paint time.
+  It also holds 256 entries for every canvas in the app, so many canvases evict each other.
+  A per-node cache, kept across frames the way `LayoutTree` is, needs only `==` and holds one entry per canvas.
+  I'd pick the per-node cache.
+- **What `draw` knows about its element's style.**
+  Painters build resolved styles, so they can't inherit the element's `text_style` the way a `Chunk` does,
+  and a transparent pixel can't show the background behind the canvas.
+  The spike's terminal painter gets its defaults from the emulator instead.
+  Passing the resolved text style to `draw` as a third argument would fix both.
+  It's cheap to add now and a breaking change to the protocol later.
+- **Building cells by hand.**
+  `Rows` exposes `paint.Cell` and `ResolvedCellStyle` as public API,
+  and a `Cell` needs a fully resolved style
+  (`Cell("▀", replace(CELL_STYLE_DEFAULTS, foreground=top, background=bottom))`).
+  A painter that doesn't go through `Pixels` needs a shorter way to build one.
 - **Wide graphemes.**
   `Paint` requires every two-cell grapheme to be followed by its continuation cell (`Cell("")`).
   Painters must emit it, and the docstring should say so.
   Ratatui leaves the trailing cell blank instead, and its diff special-cases replacing wide glyphs.
-- **`Rows` exposes `paint.Cell` and `ResolvedCellStyle` as public API.**
-  Painters build resolved styles, so they can't inherit the element's `text_style` the way a `Chunk` does.
-  `ScreenView` gets its defaults from the emulator instead.
-  If inheriting matters, `draw` could take the resolved text style as a third argument.
-- **`utils.canvas` and `HalfBlocks` overlap.**
-  `canvas()` could become a thin wrapper that returns a `Canvas`, or be deprecated.
+- **`utils.canvas`.**
+  `examples/canvas.py` and `examples/mouse.py` each carry their own copy of it.
+  Once they draw with `Pixels` and `HalfBlocks`, `canvas()` can be deprecated.
 
-## Part 2: how terminal multiplexers work
+### Phase 1 work
+
+1. `Painter`, `Canvas` taking its intrinsic size and aspect ratio from the painter,
+   and the per-node paint cache.
+2. `Pixels` and `HalfBlocks(pixels, fit, position)`.
+3. Port `examples/canvas.py`, `examples/mouse.py` and the `canvas-element` benchmark,
+   and deprecate `utils.canvas`.
+4. Docs: a `Canvas` page covering sizing (the shrink floor and `min_width(0)`), writing a painter, and loading an image,
+   with screenshots from `docs/examples/`.
+   Whether the image example makes Pillow a docs dependency or decodes a bundled file another way is open.
+5. Tests to 100% coverage, and a mutation testing pass over the new code.
+
+## Phase 2: Framework fixes for the embed
+
+The spike hit these limits in counterweight itself, which a multiplexer can't work around.
+Each is also useful to apps that never embed a terminal.
+
+### Needed for the embed
+
+1. **Ctrl+C quits the host.**
+   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
+   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
+   and Ctrl+S/Ctrl+Q are eaten as flow control.
+   None of them can reach an embedded program.
+   The spike's test session died this way.
+   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
+   with Ctrl+C then arriving as a key the app can bind to `Quit`.
+2. **`FocusOn` can't focus a component that mounts in the same update.**
+   The routing table doesn't know the new handle yet, so the control is dropped.
+   The spike's multiplexer works around it with `ClearFocus` and `auto_focus`.
+   React's answer is an effect after mount that calls `ref.focus()`.
+   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
+   that mounts its target, or a way for an effect to send a control.
+3. **A mode that changes routing must be readable synchronously.**
+   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
+   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
+   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
+   `use_text_input` hits the same thing and solves it with updater functions.
+   This needs a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
+
+### Fidelity, which can follow phase 3
+
+The embed works without these, but each makes embedded programs look or behave less like they do in a real terminal.
+
+4. **Colors are truecolor only.**
+   `Color` is RGB, so a program's palette indices and its "default" foreground and background
+   are resolved to fixed RGB values (libghostty's default palette, and the `Emulator`'s defaults).
+   An embedded `ls --color` uses xterm's red, not the user's theme's red.
+   tmux keeps palette indices and default colors through to the outer terminal.
+   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
+5. **The cursor is drawn, not placed.**
+   Counterweight hides the real cursor, so the terminal painter draws a reversed cell.
+   That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.
+   A framework way for the focused element to place the real cursor would serve `use_text_input` too.
+6. **The key model is legacy.**
+   `KeyPressed` can't represent what the kitty keyboard protocol adds
+   (Ctrl+Shift+letter, key release, Ctrl+I distinct from Tab), so neither can the embed's encoder.
+   libghostty's key encoder could produce kitty encodings once the input side carries the information.
+
+## Phase 3: Embedding terminals
+
+### How terminal multiplexers work
 
 The research behind this section read tmux at [`f0a2ed3001`](https://github.com/tmux/tmux/tree/f0a2ed3001)
 and zellij at [`dfa40f44a4`](https://github.com/zellij-org/zellij/tree/dfa40f44a4).
-Both make the same pipeline, with the same stages:
+Both build the same pipeline, with the same stages:
 
 ```text
 child program <-> PTY master fd <-> parser (VT state machine) -> grid/screen model -> renderer -> outer terminal
@@ -166,7 +362,7 @@ child program <-> PTY master fd <-> parser (VT state machine) -> grid/screen mod
   A resize is `ioctl(TIOCSWINSZ)` on the master, which sends the child `SIGWINCH`.
   Closing the master hangs up the session.
 
-### Emulators you can embed
+### Choosing an emulator
 
 The grid model is the part not to write.
 Several are libraries that take bytes in and hand out cells, a cursor and modes:
@@ -182,25 +378,39 @@ At pyte's speed, `cat` of a 5 MB log freezes the pane for about nine seconds.
 it rebuilds every row as Rich text on every read, drops UTF-8 split across reads,
 always sends application-mode cursor keys, and never answers DA or CPR.
 
-## Part 3: embedding in counterweight
+libghostty-vt fits best.
+It is Ghostty's core, has the fidelity of a real terminal, and its API was designed for this kind of embedding.
+That API covers dirty rows with stable ids, key, mouse, paste and focus encoders that read the terminal's modes,
+reply callbacks, and color callbacks.
+The cost is supply chain:
+
+- `pyghostty` has had three releases since July 2026, the latest 0.1.3.
+- It bundles a prebuilt `libghostty-vt` from a pinned Ghostty revision, and libghostty-vt is pre-1.0.
+- It is cffi in ABI mode: no compiler at install time, but no type information, and several calls per cell.
+
+The alternative fits counterweight's own pattern.
+waxy is PyO3 bindings to taffy, and the same could wrap an emulator crate
+(`libghostty-rs`, `alacritty_terminal`, or `vt100`).
+The binding would expose a snapshot that returns whole rows as Python tuples in one call.
+That removes the 3 to 10 ms snapshot cost (see [Output](#output-places-in-the-effect-values-in-the-render))
+and gives typed stubs, at the price of building and maintaining another binding.
+I'd keep the `Emulator`/`Screen` boundary either way: nothing outside `emulator.py` touches the emulator.
 
 ### The layers
 
 ```text
-Canvas(draw=ScreenView(screen, show_cursor))            element: paints the snapshot, no text layout
+Canvas(painter=ScreenView(screen, show_cursor))         element: paints the snapshot, no text layout
   ^
 use_terminal(argv, columns, rows) -> EmbeddedTerminal   headless: emulator, snapshots, input forwarding, focus
   ^
 use_pty(argv, columns, rows, on_output) -> Pty          headless: PTY, child process, writes, resize, exit status
   ^
-Emulator (place) -> Screen (value)                      emulator.py: the only module that knows about libghostty
+Emulator (place) -> Screen (value)                      emulator.py: the only module that knows about the emulator
 ```
-
-`use_subprocess` (pipes, no PTY) wasn't built; it is `use_pty` without the terminal, and needs no emulator.
 
 The embed needs no element of its own:
 a component calls `use_terminal`, measures its own content box with `use_rects`, and returns a `Canvas`.
-From `examples/multiplexer.py`:
+From the spike's [`examples/multiplexer.py`](#examplesmultiplexerpy), which predates the `Painter` protocol:
 
 ```python
 @component
@@ -214,6 +424,8 @@ def pane(pane_id: int, prefix: InputHandler, handle: FocusHandle, on_title: Call
 The pane's size feeds back into the program's terminal size.
 `use_rects` reports last frame's box, and an effect keyed on `(columns, rows)` resizes the PTY and the emulator.
 So a resize shows the old screen, cropped or padded, for one frame, as tmux does.
+Because the box sizes the terminal rather than the other way round,
+the terminal painter is one with no natural size (see [Sizing](#sizing)).
 
 ### Output: places in the effect, values in the render
 
@@ -230,7 +442,7 @@ Rendering only ever sees `Screen` values:
   A read schedules a snapshot at most every `SNAPSHOT_INTERVAL` (1/60 s).
   The snapshot sets state, which re-renders the component.
   This is the coalescing zellij (8 ms), neovim (10 ms) and wezterm (3 ms) do.
-  In the multiplexer, `seq 1 300000` took 0.18 s of wall time, and the UI stayed responsive.
+  In the spike's multiplexer, `seq 1 300000` took 0.18 s of wall time, and the UI stayed responsive.
 - **Share unchanged rows.**
   `Screen` compares by identity, so a `Canvas` redraws only when the program's output changed.
   The emulator keeps each converted row by libghostty's row id while it isn't dirty.
@@ -238,7 +450,7 @@ Rendering only ever sees `Screen` values:
   which holds only a codepoint and a width when the cell has no style.
   A styled cell's raw value holds a page-local style id, so those can't be cached.
 
-Reading cells through cffi costs several calls per cell, and that is now the bottleneck.
+Reading cells through cffi costs several calls per cell, and that is the bottleneck.
 These are medians on a 120×40 screen after one line scrolls, when libghostty marks every row dirty:
 
 | Output | Snapshot |
@@ -246,8 +458,6 @@ These are medians on a 120×40 screen after one line scrolls, when libghostty ma
 | plain text | 2.8 ms |
 | every line colored | 10.5 ms |
 | nothing changed | 0.1 ms |
-
-A native binding that converts a row in one call would remove most of this cost (see [the emulator decision](#the-emulator-decision)).
 
 ### Input: when keys reach the program
 
@@ -274,12 +484,12 @@ so nothing bubbles past it.
   the multiplexer puts its prefix handler before the terminal's with `first(prefix, terminal.on_input)`.
   The embed exposes its handler, and composition does the rest.
 - **Queries** are answered by libghostty from emulator state, and the replies are written back to the PTY.
-  This covers CPR, DA1, DA2 and the other locally answerable queries, which is tier 1 of the three tiers in Part 2.
+  This covers CPR, DA1, DA2 and the other queries a multiplexer answers from its own state.
   Forwarding to the outer terminal is deferred: it has several plausible designs, and nothing has needed it yet.
 
 ### What the spike verified
 
-The checks below ran `examples/multiplexer.py` inside a detached tmux session,
+These checks ran `examples/multiplexer.py` inside a detached tmux session,
 driving it with `send-keys` and reading the screen with `capture-pane`:
 
 - bash with a starship prompt, colors, CJK and emoji widths.
@@ -293,73 +503,1427 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
   `\x1b[<0;20;7M`, `\x1b[<32;22;7M`, `\x1b[<0;22;7m`: pane-local, 1-based, button tracking.
 - The app idled at 0.6% CPU with two shells open.
 
-### Framework gaps the spike hit
+### Phase 3 work
 
-These are changes to counterweight itself, which a multiplexer can't work around:
-
-1. **Ctrl+C quits the host.**
-   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
-   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
-   and Ctrl+S/Ctrl+Q are eaten as flow control.
-   None of them can reach an embedded program.
-   The spike's test session died this way.
-   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
-   with Ctrl+C then arriving as a key the app can bind to `Quit`.
-2. **`FocusOn` can't focus a component that mounts in the same update.**
-   The routing table doesn't know the new handle yet, so the control is dropped.
-   The multiplexer works around it with `ClearFocus` and `auto_focus`.
-   React's answer is an effect after mount that calls `ref.focus()`.
-   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
-   that mounts its target, or a way for an effect to send a control.
-3. **A mode that changes routing must be readable synchronously.**
-   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
-   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
-   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
-   `use_text_input` hits the same thing and solves it with updater functions.
-   That's worth a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
-4. **Colors are truecolor only.**
-   `Color` is RGB, so the program's palette indices and its "default" foreground and background
-   are resolved to fixed RGB values (libghostty's default palette, and the `Emulator`'s defaults).
-   An embedded `ls --color` uses xterm's red, not the user's theme's red.
-   tmux keeps palette indices and default colors through to the outer terminal.
-   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
-5. **The cursor is drawn, not placed.**
-   Counterweight hides the real cursor, so `ScreenView` draws a reversed cell.
-   That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.
-   A framework way for the focused element to place the real cursor would serve `use_text_input` too.
-6. **The key model is legacy.**
-   `KeyPressed` can't represent what the kitty keyboard protocol adds
-   (Ctrl+Shift+letter, key release, Ctrl+I distinct from Tab), so neither can the embed's encoder.
-   libghostty's key encoder could produce kitty encodings once the input side carries the information.
-7. **No focus events.**
-   The embed doesn't send `CSI I`/`CSI O` under `?1004` when it gains and loses focus.
-   This is cheap to add, with an effect keyed on `focus.is_focused`.
-
-### The emulator decision
-
-libghostty-vt fits best.
-It is Ghostty's core, has the fidelity of a real terminal, and its API was designed for this kind of embedding.
-That API covers dirty rows with stable ids, key, mouse, paste and focus encoders that read the terminal's modes,
-reply callbacks, and color callbacks.
-The cost is supply chain:
-
-- `pyghostty` has had three releases since July 2026, the latest 0.1.3 two weeks ago.
-- It bundles a prebuilt `libghostty-vt` from a pinned Ghostty revision, and libghostty-vt is pre-1.0.
-- It is cffi in ABI mode: no compiler at install time, but no type information, and several calls per cell.
-
-The alternative fits counterweight's own pattern.
-waxy is PyO3 bindings to taffy, and the same could wrap an emulator crate
-(`libghostty-rs`, `alacritty_terminal`, or `vt100`).
-The binding would expose a snapshot that returns whole rows as Python tuples in one call.
-That removes the 3 to 10 ms snapshot cost and gives typed stubs, at the price of building and maintaining another binding.
-I'd keep the `Emulator`/`Screen` boundary either way: nothing outside `emulator.py` touches libghostty.
-
-## Next steps
-
-1. Land `Canvas` on its own, with tests, docs and a decision on the [open questions](#open-decisions-before-canvas-lands).
-   It stands alone, and it is the prerequisite for everything else.
-2. Fix [framework gaps](#framework-gaps-the-spike-hit) 1 to 3, which any app with modal keys or dynamic panes needs anyway.
-3. Choose between `pyghostty` and an owned binding, then harden `use_pty`:
-   EOF and exit together (tmux's `window_pane_destroy_ready`),
+1. Choose between `pyghostty` and an owned binding, and add the dependency.
+2. Port the spike's layers to the phase 1 `Painter` protocol and the phase 2 fixes,
+   dropping the multiplexer's `ClearFocus` and closure-state workarounds.
+3. Harden `use_pty`: EOF and exit together (tmux's `window_pane_destroy_ready`),
    a configurable `TERM`, and grandchildren that hold the PTY open.
-4. Then `use_terminal` as a public headless component, and a `terminal` widget on top of it.
+4. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
+   with an effect keyed on `focus.is_focused`.
+5. `use_terminal` as a public headless component, and a `terminal` widget on top of it,
+   with tests, docs, and the multiplexer as an example.
+
+`use_subprocess` (pipes, no PTY) is `use_pty` without the terminal and needs no emulator.
+It can land beside `use_pty` or after it.
+
+## Appendix: the spike code
+
+The spike's code, kept here as a reference for writing each phase.
+Changed files are diffs against `main`; added files are in full.
+
+### Phase 1: Canvas
+
+#### `src/counterweight/elements.py`
+
+````diff
+diff --git a/src/counterweight/elements.py b/src/counterweight/elements.py
+index 398c142..d586c78 100644
+--- a/src/counterweight/elements.py
++++ b/src/counterweight/elements.py
+@@ -1,8 +1,9 @@
+ from __future__ import annotations
+
++from collections.abc import Callable, Sequence
+ from dataclasses import dataclass, field
+ from functools import lru_cache
+-from typing import Union
++from typing import TYPE_CHECKING, Union
+
+ from counterweight._utils import flyweight
+ from counterweight.events import InputHandler
+@@ -11,6 +12,9 @@ from counterweight.graphemes import grapheme_width, graphemes, visible
+ from counterweight.styles import CellStyle, Style
+ from counterweight.styles.styles import _DEFAULT_CELL_STYLE
+
++if TYPE_CHECKING:
++    from counterweight.paint import Cell
++
+ _DEFAULT_STYLE = Style()
+
+
+@@ -81,9 +85,43 @@ class Text:
+         return text_cells(self.content, self.style.text_style)
+
+
++# Rows of cells, top to bottom, each drawn left to right from the left edge of a canvas's content box.
++type Rows = Sequence[Sequence[Cell]]
++
++
++@dataclass(frozen=True, slots=True, kw_only=True)
++class Canvas:
++    """
++    A leaf element that paints its content box itself, instead of laying out text.
++
++    After layout, `draw` is called with the width and height of the content box and returns the rows of cells
++    to put there. Rows (or cells in a row) past the box overflow it, as a `Text`'s do, for the clip to cut off,
++    and a box it leaves short shows the background beneath it.
++
++    `draw` must be pure, since its rows are cached by `(draw, width, height)`:
++    a frozen dataclass with a `__call__` that is equal from one render to the next is drawn once,
++    while a new closure each render is drawn every frame.
++
++    Like HTML's `<canvas>`, a `Canvas` is sized by its style, and `width` and `height` give its
++    intrinsic size, which it takes on each axis its style leaves `auto`. Without them, its intrinsic size is 0.
++    """
++
++    draw: Callable[[int, int], Rows]
++    width: int = 0
++    height: int = 0
++    style: Style = _DEFAULT_STYLE
++    on_input: InputHandler | None = None
++    handle: ElementHandle | None = None
++
++    @property
++    def children(self) -> tuple[Component | AnyElement, ...]:
++        return ()
++
++
+ AnyElement = Union[
+     Div,
+     Text,
++    Canvas,
+ ]
+
+ from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
+````
+
+#### `src/counterweight/layout.py`
+
+````diff
+diff --git a/src/counterweight/layout.py b/src/counterweight/layout.py
+index 0bb9c2a..98dddab 100644
+--- a/src/counterweight/layout.py
++++ b/src/counterweight/layout.py
+@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, assert_never
+ import waxy
+
+ from counterweight.controls import ScrollAlignment, ScrollBy, ScrollIntoView, ScrollTo
+-from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
++from counterweight.elements import AnyElement, Canvas, Chunk, Div, StyledGrapheme, Text, text_cells
+ from counterweight.geometry import Position, Rects, Region, Scroll
+ from counterweight.graphemes import LINE_BREAKS
+ from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
+@@ -43,11 +43,33 @@ def text_source(text: Text) -> TextSource:
+     return content, text.style.text_style, text.style.resolved.text_wrap
+
+
++@dataclass(frozen=True, slots=True)
++class IntrinsicSize:
++    """A `Canvas`'s intrinsic size, which it takes on each axis its style leaves `auto`, as a replaced element does."""
++
++    width: int
++    height: int
++
++
++type LeafSource = TextSource | IntrinsicSize
++
++
++def leaf_source(leaf: Text | Canvas) -> LeafSource:
++    """Everything a leaf's measured size depends on: its text, or its intrinsic size."""
++    match leaf:
++        case Text():
++            return text_source(leaf)
++        case Canvas():
++            return IntrinsicSize(leaf.width, leaf.height)
++        case _ as unreachable:
++            assert_never(unreachable)
++
++
+ @dataclass(frozen=True, slots=True)
+ class CreateLeaf:
+     key: NodeKey
+     style: waxy.Style
+-    text: TextSource
++    text: LeafSource
+
+
+ @dataclass(frozen=True, slots=True)
+@@ -66,7 +88,7 @@ class SetStyle:
+ @dataclass(frozen=True, slots=True)
+ class SetText:
+     key: NodeKey
+-    text: TextSource
++    text: LeafSource
+
+
+ @dataclass(frozen=True, slots=True)
+@@ -133,16 +155,16 @@ def _reconcile(
+     # Taffy discards a node's cached layout when its text or children are set, even to equal values,
+     # so each is set only when it changed.
+     match element:
+-        case Text():
+-            source = text_source(element)
++        case Text() | Canvas():
++            source = leaf_source(element)
+             if previous is None:
+                 changes.append(CreateLeaf(key=key, style=style, text=source))
+                 return
+
+             _append_style_change(previous, key, style, changes)
+             match previous.element:
+-                case Text() as previous_text:
+-                    if text_source(previous_text) != source:
++                case Text() | Canvas() as previous_leaf:
++                    if leaf_source(previous_leaf) != source:
+                         changes.append(SetText(key=key, text=source))
+                 case Div():
+                     for child in previous.children:
+@@ -164,7 +186,7 @@ def _reconcile(
+
+             _append_style_change(previous, key, style, changes)
+             match previous.element:
+-                case Text():
++                case Text() | Canvas():
+                     changes.append(ClearText(key=key))
+                     changes.append(SetChildren(key=key, children=child_keys))
+                 case Div():
+@@ -302,7 +324,7 @@ class LayoutTree:
+     Only `apply` and `compute` read or write its taffy nodes.
+     """
+
+-    tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
++    tree: waxy.TaffyTree[MeasurableText | IntrinsicSize] = field(default_factory=waxy.TaffyTree)
+     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
+
+     def compute(
+@@ -351,13 +373,13 @@ class LayoutTree:
+         for change in changes:
+             match change:
+                 case CreateLeaf(key=key, style=style, text=text):
+-                    nodes[key] = tree.new_leaf_with_context(style, MeasurableText.of(text))
++                    nodes[key] = tree.new_leaf_with_context(style, measurable(text))
+                 case CreateContainer(key=key, style=style, children=children):
+                     nodes[key] = tree.new_with_children(style, [nodes[child] for child in children])
+                 case SetStyle(key=key, style=style):
+                     tree.set_style(nodes[key], style)
+                 case SetText(key=key, text=text):
+-                    tree.set_node_context(nodes[key], MeasurableText.of(text))
++                    tree.set_node_context(nodes[key], measurable(text))
+                 case ClearText(key=key):
+                     tree.set_node_context(nodes[key], None)
+                 case SetChildren(key=key, children=children):
+@@ -421,7 +443,7 @@ def place(
+         style = node.element.style
+         scrolls_x, scrolls_y = scrolled_axes(style)
+         if scrolls_x or scrolls_y:
+-            if isinstance(node.element, Text):
++            if isinstance(node.element, Text | Canvas):
+                 raise ValueError(
+                     "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
+                     "put it in a Div whose overflow is Scroll, which scrolls it."
+@@ -750,14 +772,27 @@ class MeasurableText:
+         return self.min_content_width
+
+
++def measurable(source: LeafSource) -> MeasurableText | IntrinsicSize:
++    """What a leaf's layout node holds for `_measure_text` to size it by."""
++    if isinstance(source, IntrinsicSize):
++        return source
++    return MeasurableText.of(source)
++
++
+ def _measure_text(
+     known: waxy.KnownSize,
+     available: waxy.AvailableSize,
+-    context: MeasurableText,
++    context: MeasurableText | IntrinsicSize,
+ ) -> waxy.Size:
+     known_width = known.width
+     known_height = known.height
+
++    if isinstance(context, IntrinsicSize):
++        return waxy.Size(
++            known_width if known_width is not None else float(context.width),
++            known_height if known_height is not None else float(context.height),
++        )
++
+     width: int | None
+     if known_width is not None:
+         width = int(known_width)
+````
+
+#### `src/counterweight/paint.py`
+
+````diff
+diff --git a/src/counterweight/paint.py b/src/counterweight/paint.py
+index e6d82be..f636eec 100644
+--- a/src/counterweight/paint.py
++++ b/src/counterweight/paint.py
+@@ -1,7 +1,7 @@
+ from __future__ import annotations
+
+ import logging
+-from collections.abc import Iterable, Iterator, Sequence
++from collections.abc import Callable, Iterable, Iterator, Sequence
+ from dataclasses import dataclass
+ from functools import lru_cache
+ from itertools import groupby
+@@ -12,7 +12,7 @@ from xml.etree.ElementTree import Element, SubElement
+ import waxy
+
+ from counterweight._utils import flyweight, halve_integer
+-from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
++from counterweight.elements import AnyElement, Canvas, Div, Rows, StyledGrapheme, Text
+ from counterweight.geometry import Position, Rects, Region
+ from counterweight.layout import cells_width, child_clip, clipped_axes, wrap_cells
+ from counterweight.styles.styles import (
+@@ -286,9 +286,11 @@ def paint_element(
+
+     match element:
+         case Div():
+-            lines: tuple[tuple[Cell, ...], ...] = ()
++            lines: Rows = ()
+         case Text() as e:
+             lines = text_lines(e.cells, style.text_wrap, style.text_justify, style.text_style, resolved.content.width)
++        case Canvas() as e:
++            lines = canvas_rows(e.draw, resolved.content.width, resolved.content.height)
+         case _:
+             assert_never(element)
+
+@@ -309,6 +311,14 @@ def paint_element(
+     return hints
+
+
++@lru_cache(maxsize=2**8)
++def canvas_rows(draw: Callable[[int, int], Rows], width: int, height: int) -> Rows:
++    """What a `Canvas` with `draw` paints in a `width` by `height` content box, cached because `draw` is pure."""
++    if width <= 0 or height <= 0:
++        return ()
++    return draw(width, height)
++
++
+ @lru_cache(maxsize=2**12)
+ def edge_fills(outer: Region, inner: Region, color: Color) -> tuple[Fill, ...]:
+     """The parts of `outer` outside `inner`, as up to four strips filled with blank cells of `color`."""
+````
+
+#### `src/counterweight/utils.py`
+
+````diff
+diff --git a/src/counterweight/utils.py b/src/counterweight/utils.py
+index f1b0af0..771fcdd 100644
+--- a/src/counterweight/utils.py
++++ b/src/counterweight/utils.py
+@@ -1,11 +1,13 @@
+ from __future__ import annotations
+
++from dataclasses import dataclass, replace
+ from functools import lru_cache
+
+ from more_itertools import grouper
+
+-from counterweight.elements import NEWLINE, Chunk
+-from counterweight.styles.styles import CellStyle, Color
++from counterweight.elements import NEWLINE, Chunk, Rows
++from counterweight.paint import Cell
++from counterweight.styles.styles import CELL_STYLE_DEFAULTS, CellStyle, Color
+
+ _BLACK = Color.from_name("black")
+
+@@ -53,4 +55,41 @@ def canvas(
+     return tuple(chunks)
+
+
+-__all__ = ["canvas", "clamp"]
++@lru_cache(maxsize=2**12)
++def _half_block(top: Color, bottom: Color) -> Cell:
++    return Cell("▀", replace(CELL_STYLE_DEFAULTS, foreground=top, background=bottom))
++
++
++@dataclass(frozen=True, slots=True)
++class HalfBlocks:
++    """
++    A `Canvas` painter for a pixel grid drawn with half blocks (▀), two pixels to a cell, as `canvas` draws it.
++
++    `pixels` pairs `(x, y)` positions with colors (a later pair wins over an earlier one at the same position),
++    and every other pixel of the `width` by `height` grid is `default`.
++    It's a tuple rather than a dict so the painter is hashable, which caches what it draws.
++    """
++
++    width: int
++    height: int
++    pixels: tuple[tuple[tuple[int, int], Color], ...]
++    default: Color = _BLACK
++
++    @property
++    def cells(self) -> tuple[int, int]:
++        """The canvas's intrinsic size, in cells."""
++        return self.width, (self.height + 1) // 2
++
++    def __call__(self, width: int, height: int) -> Rows:
++        colors = dict(self.pixels)
++        default = self.default
++        get = colors.get
++        return tuple(
++            tuple(
++                _half_block(get((x, top), default), get((x, top + 1), default)) for x in range(min(width, self.width))
++            )
++            for top in range(0, min(height * 2, self.height), 2)
++        )
++
++
++__all__ = ["HalfBlocks", "canvas", "clamp"]
+````
+
+#### `benchmarks/canvas.py`
+
+````diff
+diff --git a/benchmarks/canvas.py b/benchmarks/canvas.py
+index 2546c25..88968ed 100644
+--- a/benchmarks/canvas.py
++++ b/benchmarks/canvas.py
+@@ -10,8 +10,8 @@ from dataclasses import dataclass
+ from itertools import product
+
+ from benchmarks.harness import Workload
+-from counterweight.components import component
+-from counterweight.elements import Chunk, Div, Text
++from counterweight.components import Component, component
++from counterweight.elements import Canvas, Chunk, Div, Text
+ from counterweight.styles.styles import COLORS_BY_NAME, CellStyle, Color
+ from counterweight.styles.utilities import (
+     align_children_center,
+@@ -26,7 +26,7 @@ from counterweight.styles.utilities import (
+     row,
+     text_justify_center,
+ )
+-from counterweight.utils import canvas, clamp
++from counterweight.utils import HalfBlocks, canvas, clamp
+
+ WIDTH = 30
+ HEIGHT = 30
+@@ -75,6 +75,15 @@ def walk(walkers: Walkers, rng: random.Random) -> Walkers:
+
+ def view(model: Model) -> Div:
+     canvases = tuple(walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
++    return layout(canvases)
++
++
++def element_view(model: Model) -> Div:
++    canvases = tuple(walker_canvas_element(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
++    return layout(canvases)
++
++
++def layout(canvases: tuple[Component, ...]) -> Div:
+     return Div(
+         style=col | align_children_center | justify_children_space_evenly,
+         children=(
+@@ -107,6 +116,27 @@ def walker_canvas(colors: tuple[Color, ...], walkers: Walkers) -> Text:
+     )
+
+
++@component
++def walker_canvas_element(colors: tuple[Color, ...], walkers: Walkers) -> Canvas:
++    painter = HalfBlocks(WIDTH, HEIGHT, tuple(zip(walkers, colors)))
++    width, height = painter.cells
++    return Canvas(
++        draw=painter,
++        width=width,
++        height=height,
++        style=border | border_heavy | border_color("slate", 400),
++    )
++
++
++ELEMENT_WORKLOAD = Workload(
++    name="canvas-element",
++    description="`canvas` drawn with `Canvas` elements and a `HalfBlocks` painter instead of `Text` chunks.",
++    initial=initial,
++    step=step,
++    view=element_view,
++    dimensions=(80, 40),
++)
++
+ WORKLOAD = Workload(
+     name="canvas",
+     description=__doc__ or "",
+````
+
+#### `benchmarks/workloads.py`
+
+````diff
+diff --git a/benchmarks/workloads.py b/benchmarks/workloads.py
+index 37747ae..379daa7 100644
+--- a/benchmarks/workloads.py
++++ b/benchmarks/workloads.py
+@@ -7,6 +7,7 @@ WORKLOADS: dict[str, Runnable] = {
+     workload.name: workload
+     for workload in (
+         canvas.WORKLOAD,
++        canvas.ELEMENT_WORKLOAD,
+         top.WORKLOAD,
+         top.MEMO_WORKLOAD,
+         agent.WORKLOAD,
+````
+
+### Phase 3: embedding terminals
+
+#### `src/counterweight/emulator.py`
+
+````python
+"""
+A terminal emulator for embedding a program's output, and the immutable `Screen` values it produces.
+
+Spike: the emulator is [libghostty-vt](https://ghostty.org), through `pyghostty`'s cffi bindings.
+Everything outside this module sees only `Screen` and `Modes`, so the emulator behind them can be swapped.
+The emulator object is a place (bytes fed to it change it); `snapshot` turns it into a value once per frame.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from typing import Literal
+
+from pyghostty import Terminal
+from pyghostty._ffi import check, ffi, lib
+from pyghostty.core import init_sized
+
+from counterweight.elements import Rows
+from counterweight.geometry import Position
+from counterweight.paint import Cell
+from counterweight.styles.styles import CELL_STYLE_DEFAULTS, Color, ResolvedCellStyle
+
+type MouseTracking = Literal["none", "x10", "normal", "button", "any"]
+
+
+@dataclass(frozen=True, slots=True)
+class Modes:
+    """The modes the embedded program has set that change how input must be encoded for it."""
+
+    application_cursor_keys: bool = False
+    """DECCKM (`?1`): cursor keys send `ESC O A` rather than `ESC [ A`."""
+    bracketed_paste: bool = False
+    """`?2004`: pastes are wrapped in `ESC [ 200 ~` and `ESC [ 201 ~`."""
+    mouse_tracking: MouseTracking = "none"
+    """Which mouse events the program asked for (`?9`, `?1000`, `?1002`, `?1003`), if any."""
+    sgr_mouse: bool = False
+    """`?1006`: mouse events are reported in SGR format."""
+    focus_events: bool = False
+    """`?1004`: the program wants `ESC [ I` and `ESC [ O` when it gains and loses focus."""
+    alternate_screen: bool = False
+    """`?1049` (or `?47`, `?1047`): the program is drawing on the alternate screen, as full-screen programs do."""
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class Screen:
+    """
+    What an embedded program's terminal shows at one moment: its rows of cells, its cursor, its modes and its title.
+
+    Compared by identity: each snapshot of a changed terminal is a new `Screen`,
+    so a `Canvas` drawing one is drawn again only when the program's output changed it.
+    Rows the program didn't change are the same tuples as in the previous snapshot.
+    """
+
+    columns: int
+    rows: int
+    lines: tuple[tuple[Cell, ...], ...]
+    cursor: Position | None
+    """Where the cursor is, or `None` if the program hid it."""
+    modes: Modes
+    title: str
+
+
+@dataclass(frozen=True, slots=True)
+class ScreenView:
+    """A `Canvas` painter for a `Screen`, drawing its cursor as a reversed cell when `show_cursor`."""
+
+    screen: Screen
+    show_cursor: bool
+
+    def __call__(self, width: int, height: int) -> Rows:
+        lines = self.screen.lines[:height]
+        cursor = self.screen.cursor
+        if not self.show_cursor or cursor is None or cursor.y >= len(lines) or cursor.x >= len(lines[cursor.y]):
+            return lines
+        line = lines[cursor.y]
+        under = line[cursor.x]
+        if under.is_continuation:
+            return lines
+        reversed_style = replace(under.style, foreground=under.style.background, background=under.style.foreground)
+        cursor_line = (*line[: cursor.x], Cell(under.grapheme, reversed_style), *line[cursor.x + 1 :])
+        return (*lines[: cursor.y], cursor_line, *lines[cursor.y + 1 :])
+
+
+BLANK_SCREEN = Screen(columns=0, rows=0, lines=(), cursor=None, modes=Modes(), title="")
+
+
+class Emulator:
+    """
+    A terminal emulator fed an embedded program's output.
+
+    `replies` receives the bytes the emulator answers the program's queries with (cursor position reports,
+    device attributes), which belong on the program's input, as a terminal would send them.
+    """
+
+    def __init__(
+        self,
+        columns: int,
+        rows: int,
+        replies: Callable[[bytes], None],
+        defaults: ResolvedCellStyle = CELL_STYLE_DEFAULTS,
+    ) -> None:
+        self.terminal = Terminal(cols=columns, rows=rows)
+        self.terminal.on_reply(replies)
+        self.defaults = defaults
+        self.state = ffi.new("GhosttyRenderState*")
+        check(lib.ghostty_render_state_new(ffi.NULL, self.state), "render_state_new")
+        self.row_iterator = ffi.new("GhosttyRenderStateRowIterator*")
+        check(lib.ghostty_render_state_row_iterator_new(ffi.NULL, self.row_iterator), "row_iterator_new")
+        self.cells = ffi.new("GhosttyRenderStateRowCells*")
+        check(lib.ghostty_render_state_row_cells_new(ffi.NULL, self.cells), "row_cells_new")
+        self.style = init_sized("GhosttyStyle")
+        self.rgb = ffi.new("GhosttyColorRgb*")
+        self.raw = ffi.new("GhosttyCell*")
+        self.wide = ffi.new("int*")
+        self.grapheme_length = ffi.new("uint32_t*")
+        self.grapheme_buffer = ffi.new("uint32_t[32]")
+        self.dirty = ffi.new("bool*")
+        # An unstyled cell's raw value holds only its codepoint and width, so it maps to one Cell for good.
+        # A styled cell's raw value holds a style id that only means something within its page, so it can't be cached.
+        self.plain: dict[int, Cell] = {}
+        self.has_styling = ffi.new("bool*")
+        self.content_tag = ffi.new("int*")
+        self.codepoint = ffi.new("uint32_t*")
+        self.classify_keys = ffi.new(
+            "GhosttyCellData[4]",
+            [
+                lib.GHOSTTY_CELL_DATA_WIDE,
+                lib.GHOSTTY_CELL_DATA_HAS_STYLING,
+                lib.GHOSTTY_CELL_DATA_CONTENT_TAG,
+                lib.GHOSTTY_CELL_DATA_CODEPOINT,
+            ],
+        )
+        self.classify_values = ffi.new(
+            "void*[4]",
+            [
+                ffi.cast("void*", self.wide),
+                ffi.cast("void*", self.has_styling),
+                ffi.cast("void*", self.content_tag),
+                ffi.cast("void*", self.codepoint),
+            ],
+        )
+        self.row_id = ffi.new("GhosttyRenderStateRowId*")
+        self.title_out = ffi.new("GhosttyString*")
+        # Converted rows by libghostty's row id, kept from one snapshot to the next for rows that aren't dirty,
+        # so a program scrolling by a line converts one row rather than all of them.
+        self.converted: dict[tuple[int, int], tuple[Cell, ...]] = {}
+        self.colors: dict[tuple[int, int, int], Color] = {}
+        self.last: Screen = BLANK_SCREEN
+
+    def feed(self, data: bytes) -> None:
+        self.terminal.feed(data)
+
+    def resize(self, columns: int, rows: int) -> None:
+        self.terminal.resize(columns, rows)
+
+    def snapshot(self) -> Screen:
+        """The screen as the emulator shows it now."""
+        terminal = self.terminal._t[0]
+        state = self.state[0]
+        check(lib.ghostty_render_state_update(state, terminal), "render_state_update")
+        check(
+            lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, self.row_iterator), "rows"
+        )
+        rows = self.row_iterator[0]
+        converted: dict[tuple[int, int], tuple[Cell, ...]] = {}
+        lines = []
+        while lib.ghostty_render_state_row_iterator_next(rows):
+            lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_DIRTY, self.dirty)
+            lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_ID, self.row_id)
+            key = (self.row_id.bits[0], self.row_id.bits[1])
+            line = None if self.dirty[0] else self.converted.get(key)
+            if line is None:
+                line = self.convert_row(rows)
+            converted[key] = line
+            lines.append(line)
+        lib.ghostty_render_state_clean(state)
+        self.converted = converted
+
+        columns, row_count = self.terminal.size
+        x, y = self.terminal.cursor
+        screen = Screen(
+            columns=columns,
+            rows=row_count,
+            lines=tuple(lines),
+            cursor=Position(x, y) if self.terminal.mode(25) else None,
+            modes=self.modes(),
+            title=self.title(),
+        )
+        self.last = screen
+        return screen
+
+    def convert_row(self, rows: object) -> tuple[Cell, ...]:
+        cells_handle = self.cells
+        check(lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, cells_handle), "cells")
+        cells = cells_handle[0]
+        style = self.style
+        rgb = self.rgb
+        defaults = self.defaults
+        row: list[Cell] = []
+        get = lib.ghostty_render_state_row_cells_get
+        plain = self.plain
+        while lib.ghostty_render_state_row_cells_next(cells):
+            get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW, self.raw)
+            raw = self.raw[0]
+            if (cell := plain.get(raw)) is not None:
+                row.append(cell)
+                continue
+            lib.ghostty_cell_get_multi(raw, 4, self.classify_keys, self.classify_values, ffi.NULL)
+            wide = self.wide[0]
+            is_plain = not self.has_styling[0] and self.content_tag[0] == lib.GHOSTTY_CELL_CONTENT_CODEPOINT
+            if is_plain and wide != lib.GHOSTTY_CELL_WIDE_SPACER_TAIL:
+                cell = plain[raw] = Cell(chr(self.codepoint[0]) if self.codepoint[0] else " ", defaults)
+                row.append(cell)
+                continue
+            if wide == lib.GHOSTTY_CELL_WIDE_SPACER_TAIL:
+                row.append(Cell("", row[-1].style if row else defaults))
+                continue
+            get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN, self.grapheme_length)
+            length = self.grapheme_length[0]
+            if length:
+                get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF, self.grapheme_buffer)
+                grapheme = "".join(map(chr, self.grapheme_buffer[0:length]))
+            else:
+                grapheme = " "
+            foreground = (
+                self.color(rgb)
+                if get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_FG_COLOR, rgb) == lib.GHOSTTY_SUCCESS
+                else defaults.foreground
+            )
+            background = (
+                self.color(rgb)
+                if get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR, rgb) == lib.GHOSTTY_SUCCESS
+                else defaults.background
+            )
+            get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, style)
+            if style.inverse:
+                foreground, background = background, foreground
+            if style.invisible:
+                foreground = background
+            row.append(
+                Cell(
+                    grapheme,
+                    cell_style(
+                        foreground,
+                        background,
+                        style.bold,
+                        style.faint,
+                        style.italic,
+                        style.underline != 0,
+                        style.strikethrough,
+                    ),
+                )
+            )
+        return tuple(row)
+
+    def color(self, rgb: object) -> Color:
+        key = (rgb.r, rgb.g, rgb.b)  # type: ignore[attr-defined]
+        try:
+            return self.colors[key]
+        except KeyError:
+            color = self.colors[key] = Color(*key)
+            return color
+
+    def modes(self) -> Modes:
+        mode = self.terminal.mode
+        # The most detailed tracking mode set wins, as in xterm.
+        tracking: MouseTracking = (
+            "any"
+            if mode(1003)
+            else "button"
+            if mode(1002)
+            else "normal"
+            if mode(1000)
+            else "x10"
+            if mode(9)
+            else "none"
+        )
+        return Modes(
+            application_cursor_keys=mode(1),
+            bracketed_paste=mode(2004),
+            mouse_tracking=tracking,
+            sgr_mouse=mode(1006),
+            focus_events=mode(1004),
+            alternate_screen=mode(1049) or mode(1047) or mode(47),
+        )
+
+    def title(self) -> str:
+        result = lib.ghostty_terminal_get(self.terminal._t[0], lib.GHOSTTY_TERMINAL_DATA_TITLE, self.title_out)
+        if result != lib.GHOSTTY_SUCCESS or not self.title_out.len:
+            return ""
+        return bytes(ffi.buffer(self.title_out.ptr, self.title_out.len)).decode(errors="replace")
+
+    def close(self) -> None:
+        lib.ghostty_render_state_row_cells_free(self.cells[0])
+        lib.ghostty_render_state_row_iterator_free(self.row_iterator[0])
+        lib.ghostty_render_state_free(self.state[0])
+        self.terminal.close()
+
+
+_STYLES: dict[tuple[Color, Color, bool, bool, bool, bool, bool], ResolvedCellStyle] = {}
+
+
+def cell_style(
+    foreground: Color, background: Color, bold: bool, dim: bool, italic: bool, underline: bool, strikethrough: bool
+) -> ResolvedCellStyle:
+    key = (foreground, background, bold, dim, italic, underline, strikethrough)
+    try:
+        return _STYLES[key]
+    except KeyError:
+        style = _STYLES[key] = ResolvedCellStyle(
+            foreground=foreground,
+            background=background,
+            bold=bold,
+            dim=dim,
+            italic=italic,
+            underline=underline,
+            strikethrough=strikethrough,
+            link=None,
+        )
+        return style
+````
+
+#### `src/counterweight/input_encoding.py`
+
+````python
+"""
+Pure encoding of input events back into the bytes a terminal would send a program, for an embedded program's input.
+
+The inverse of `input_parsing`: the key tables are recovered from its tables, so the two can't drift apart.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import assert_never
+
+from counterweight.emulator import Modes
+from counterweight.events import (
+    MouseDown,
+    MouseEvent,
+    MouseMoved,
+    MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
+    MouseScrolledUp,
+    MouseUp,
+)
+from counterweight.geometry import Position
+from counterweight.input_parsing import CONTROL_KEYS, LETTER_KEYS, PASTE_END, PASTE_START, SEQUENCE_KEYS
+from counterweight.keys import Key
+
+ESC = b"\x1b"
+
+
+def key_sequences() -> dict[str, bytes]:
+    """
+    The bytes for each key `input_parsing` recognizes, choosing among a key's several spellings
+    the one xterm sends by default: `DEL` for Backspace, `CSI` rather than `SS3` for cursor keys.
+    """
+    sequences: dict[str, bytes] = {}
+    for sequence, key in SEQUENCE_KEYS.items():
+        # Prefer CSI over SS3, and the shorter of two CSI spellings (Home is both `CSI H` and `CSI 1 ~`).
+        if (existing := sequences.get(key)) is None or (
+            existing.startswith(b"\x1bO") and sequence.startswith(b"\x1b[")
+        ):
+            sequences[key] = sequence
+        elif existing.startswith(b"\x1b[") and sequence.startswith(b"\x1b[") and len(sequence) < len(existing):
+            sequences[key] = sequence
+    for byte, key in CONTROL_KEYS.items():
+        sequences.setdefault(key, bytes([byte]))
+    sequences[Key.Backspace] = b"\x7f"
+    sequences[Key.Escape] = ESC
+    sequences[Key.Space] = b" "
+    return sequences
+
+
+KEY_SEQUENCES: Mapping[str, bytes] = key_sequences()
+
+# DECCKM's cursor keys, which a program in application cursor key mode expects as `SS3 <letter>`.
+APPLICATION_CURSOR_KEYS: Mapping[str, bytes] = {
+    key: b"\x1bO" + final
+    for final, key in LETTER_KEYS.items()
+    if key in (Key.Up, Key.Down, Key.Right, Key.Left, Key.Home, Key.End)
+}
+
+
+def encode_key(key: str, modes: Modes) -> bytes | None:
+    """
+    The bytes a terminal sends for a `KeyPressed` with `key`, given the program's `modes`,
+    or `None` for a key there's no legacy encoding for.
+    """
+    if modes.application_cursor_keys and (sequence := APPLICATION_CURSOR_KEYS.get(key)) is not None:
+        return sequence
+    if (sequence := KEY_SEQUENCES.get(key)) is not None:
+        return sequence
+    if key.startswith("ctrl+alt+") and (control := KEY_SEQUENCES.get(f"ctrl+{key.removeprefix('ctrl+alt+')}")):
+        return ESC + control
+    if key.startswith("alt+"):
+        rest = key.removeprefix("alt+")
+        inner = KEY_SEQUENCES.get(rest) or (rest.encode() if len(rest) == 1 or not rest.isascii() else None)
+        return None if inner is None else ESC + inner
+    if key in Key.__members__.values():
+        return None
+    return key.encode()
+
+
+def encode_paste(text: str, modes: Modes) -> bytes:
+    """
+    The bytes a terminal sends for a paste of `text`: line breaks as carriage returns, as terminals send them,
+    wrapped in bracketed paste markers if the program asked for them.
+    An end marker inside the text is dropped, so a paste can't end itself early and type the rest as keys.
+    """
+    body = text.replace("\r\n", "\r").replace("\n", "\r").encode()
+    if not modes.bracketed_paste:
+        return body
+    return PASTE_START + body.replace(PASTE_END, b"") + PASTE_END
+
+
+WHEEL_CODES: Mapping[type[MouseEvent], int] = {
+    MouseScrolledUp: 64,
+    MouseScrolledDown: 65,
+    MouseScrolledLeft: 66,
+    MouseScrolledRight: 67,
+}
+
+
+def encode_mouse(event: MouseEvent, position: Position, modes: Modes) -> bytes | None:
+    """
+    The bytes a terminal sends for `event` at `position` in the program's screen,
+    given the mouse tracking the program asked for, or `None` if it didn't ask for this event.
+    """
+    tracking = modes.mouse_tracking
+    if tracking == "none":
+        return None
+
+    match event:
+        case MouseDown(button=button):
+            code, is_release = button_code(button), False
+        case MouseUp(button=button):
+            if tracking == "x10":
+                return None
+            code, is_release = button_code(button), True
+        case MouseMoved(button=held):
+            if held is None:
+                if tracking != "any":
+                    return None
+                code, is_release = 3 + 32, False
+            else:
+                if tracking not in ("button", "any"):
+                    return None
+                code, is_release = button_code(held) + 32, False
+        case MouseScrolledUp() | MouseScrolledDown() | MouseScrolledLeft() | MouseScrolledRight():
+            code, is_release = WHEEL_CODES[type(event)], False
+        case _ as unreachable:
+            assert_never(unreachable)
+
+    if tracking != "x10":
+        code |= (
+            (4 if event.is_shift_held else 0) | (8 if event.is_alt_held else 0) | (16 if event.is_control_held else 0)
+        )
+
+    x, y = position.x + 1, position.y + 1
+    if modes.sgr_mouse:
+        return b"\x1b[<%d;%d;%d%s" % (code, x, y, b"m" if is_release else b"M")
+    if x > 223 or y > 223:
+        return None
+    # The legacy encoding has no release per button: a release is button code 3.
+    legacy = (3 | (code & ~0b11)) if is_release else code
+    return b"\x1b[M" + bytes([32 + legacy, 32 + x, 32 + y])
+
+
+def button_code(button: int) -> int:
+    """The low bits (and bit 128 for buttons 8 to 11) of a mouse report's code for `button`, numbered from 1."""
+    if button >= 8:
+        return 128 | (button - 8)
+    return button - 1
+````
+
+#### `src/counterweight/headless/terminal.py`
+
+````python
+"""
+[`use_pty`][counterweight.headless.terminal.use_pty], which runs a program on a pseudo-terminal,
+and [`use_terminal`][counterweight.headless.terminal.use_terminal], which emulates the terminal that program draws on,
+leaving where and how to show it to the calling component.
+
+Spike: Linux and macOS only.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import fcntl
+import logging
+import os
+import signal
+import struct
+import termios
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import timedelta
+
+from counterweight.controls import FocusOn
+from counterweight.emulator import BLANK_SCREEN, Emulator, Screen, ScreenView
+from counterweight.events import (
+    InputEvent,
+    InputHandler,
+    InputResponse,
+    KeyPressed,
+    MouseDown,
+    MouseEvent,
+    Pasted,
+    Receiver,
+)
+from counterweight.focus import FocusHandle
+from counterweight.hooks import Focus, Ref, use_effect, use_focus, use_ref, use_state
+from counterweight.input_encoding import encode_key, encode_mouse, encode_paste
+
+logger = logging.getLogger(__name__)
+
+READ_SIZE = 2**16
+
+# The shortest time between two snapshots of a busy terminal, so a program writing as fast as it can
+# (`cat` of a big file) costs one snapshot per frame rather than one per read.
+SNAPSHOT_INTERVAL = timedelta(milliseconds=1000 / 60)
+
+
+@dataclass(slots=True)
+class PtyConnection:
+    """
+    The master side of a running program's pseudo-terminal, which `use_pty`'s effect owns.
+    Writes that the program isn't reading yet are buffered and flushed when the master is writable,
+    so a handler never blocks the event loop.
+    """
+
+    master: int
+    pid: int
+    pending: bytearray = field(default_factory=bytearray)
+    is_writing: bool = False
+
+    def write(self, data: bytes) -> None:
+        if not data:
+            return
+        self.pending += data
+        self.flush()
+
+    def flush(self) -> None:
+        loop = asyncio.get_running_loop()
+        try:
+            written = os.write(self.master, self.pending)
+        except BlockingIOError:
+            written = 0
+        except OSError:
+            # The program exited and the slave side closed, so there's no one left to read this.
+            self.pending.clear()
+            written = 0
+        del self.pending[:written]
+        if self.pending and not self.is_writing:
+            loop.add_writer(self.master, self.flush)
+            self.is_writing = True
+        elif not self.pending and self.is_writing:
+            loop.remove_writer(self.master)
+            self.is_writing = False
+
+    def resize(self, columns: int, rows: int) -> None:
+        """Sets the terminal's size, which sends the program `SIGWINCH`, as resizing a terminal window does."""
+        fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
+
+
+def make_controlling_terminal() -> None:
+    """In the child, after `setsid`: make its stdin, the pty's slave side, its controlling terminal."""
+    fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+
+
+async def run_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    env: Mapping[str, str] | None,
+    on_output: Callable[[bytes], None],
+    on_connect: Callable[[PtyConnection | None], None],
+) -> int:
+    """
+    Runs `argv` on a new pseudo-terminal `columns` by `rows` in its own session, as its controlling terminal,
+    calling `on_output` with what it writes, until it exits, returning its exit status.
+    Cancelled, it hangs the program up (`SIGHUP` to its process group), as closing a terminal window does.
+    """
+    master, slave = os.openpty()
+    os.set_blocking(master, False)
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
+    environment = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor", **(env or {})}
+    process = await asyncio.create_subprocess_exec(
+        *argv,
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=environment,
+        start_new_session=True,
+        preexec_fn=make_controlling_terminal,
+    )
+    os.close(slave)
+    connection = PtyConnection(master=master, pid=process.pid)
+    loop = asyncio.get_running_loop()
+    closed = loop.create_future()
+
+    def read() -> None:
+        try:
+            data = os.read(master, READ_SIZE)
+        except BlockingIOError:
+            return
+        except OSError:  # EIO once the slave side closes, on Linux
+            data = b""
+        if not data:
+            loop.remove_reader(master)
+            if not closed.done():
+                closed.set_result(None)
+            return
+        on_output(data)
+
+    loop.add_reader(master, read)
+    on_connect(connection)
+    try:
+        status = await process.wait()
+        # Drain what the program wrote just before it exited.
+        await asyncio.wait_for(asyncio.shield(closed), timeout=0.5)
+        return status
+    except asyncio.CancelledError, TimeoutError:
+        if process.returncode is None:
+            try:
+                os.killpg(process.pid, signal.SIGHUP)
+            except ProcessLookupError:
+                pass
+        raise
+    finally:
+        on_connect(None)
+        loop.remove_reader(master)
+        if connection.is_writing:
+            loop.remove_writer(master)
+        os.close(master)
+
+
+@dataclass(frozen=True, slots=True)
+class Pty:
+    """What `use_pty` returns: how to write to the program and resize its terminal, and whether it exited."""
+
+    write: Callable[[bytes], None]
+    exit_status: int | None
+    """The program's exit status, or `None` while it's running (or before it starts)."""
+
+
+def use_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    env: Mapping[str, str] | None = None,
+) -> Pty:
+    """
+    Runs `argv` on a pseudo-terminal while the calling component is mounted, and again if `argv` changes,
+    calling `on_output` with the bytes it writes (from an effect, not during a render),
+    and keeping its terminal `columns` by `rows`.
+    """
+    connection: Ref[PtyConnection | None] = use_ref(None)
+    initial_status: int | None = None
+    exit_status, set_exit_status = use_state(initial_status)
+    size = use_ref((columns, rows))
+    size.current = (columns, rows)
+
+    # Wrapped in a getter, since use_ref would call a bare callable as its initializer.
+    def initial_output() -> Callable[[bytes], None]:
+        return on_output
+
+    output: Ref[Callable[[bytes], None]] = use_ref(initial_output)
+    output.current = on_output
+
+    def connect(c: PtyConnection | None) -> None:
+        connection.current = c
+
+    def forward(data: bytes) -> None:
+        # Through the ref, so the latest render's callback gets the output, not the first one's.
+        output.current(data)
+
+    async def run() -> None:
+        set_exit_status(None)
+        status = await run_pty(argv, *size.current, env, on_output=forward, on_connect=connect)
+        set_exit_status(status)
+
+    use_effect(run, deps=(tuple(argv),))
+
+    async def resize() -> None:
+        if (c := connection.current) is not None and columns > 0 and rows > 0:
+            c.resize(columns, rows)
+
+    use_effect(resize, deps=(columns, rows))
+
+    def write(data: bytes) -> None:
+        if (c := connection.current) is not None:
+            c.write(data)
+
+    return Pty(write=write, exit_status=exit_status)
+
+
+@dataclass(frozen=True, slots=True)
+class EmbeddedTerminal:
+    """What `use_terminal` returns to the calling component."""
+
+    screen: Screen
+    """What the program's terminal shows, as of the last snapshot."""
+
+    view: ScreenView
+    """The painter for the `Canvas` the calling component shows the terminal in, with the cursor drawn when focused."""
+
+    exit_status: int | None
+    focus: Focus
+
+    on_input: InputHandler
+    """
+    The handler for the `Canvas`: while it's focused, it sends the program every key press and paste
+    it has an encoding for, and claims them, so they don't bubble.
+    It sends mouse events in the canvas to the program when the program asked for them,
+    and focuses the canvas on a press.
+    Put a handler before it with `first` to take keys before the program sees them, as a multiplexer's prefix key does.
+    """
+
+    write: Callable[[bytes], None]
+
+
+def use_terminal(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    env: Mapping[str, str] | None = None,
+    auto_focus: bool = False,
+    handle: FocusHandle | None = None,
+) -> EmbeddedTerminal:
+    """
+    Runs `argv` on a pseudo-terminal `columns` by `rows`, emulating the terminal it draws on.
+
+    The emulator is fed on the event loop as the program writes, and snapshotted into a `Screen` value at most once
+    per `SNAPSHOT_INTERVAL`, which re-renders the calling component.
+    """
+    focus = use_focus(auto_focus=auto_focus, handle=handle)
+    screen, set_screen = use_state(BLANK_SCREEN)
+    emulator_ref: Ref[Emulator | None] = use_ref(None)
+    scheduled = use_ref(False)
+    last_snapshot = use_ref(0.0)
+
+    def publish() -> None:
+        scheduled.current = False
+        if (emulator := emulator_ref.current) is not None:
+            last_snapshot.current = asyncio.get_running_loop().time()
+            set_screen(emulator.snapshot())
+
+    def schedule_snapshot() -> None:
+        if scheduled.current:
+            return
+        scheduled.current = True
+        loop = asyncio.get_running_loop()
+        wait = last_snapshot.current + SNAPSHOT_INTERVAL.total_seconds() - loop.time()
+        if wait <= 0:
+            loop.call_soon(publish)
+        else:
+            loop.call_later(wait, publish)
+
+    def on_output(data: bytes) -> None:
+        if (emulator := emulator_ref.current) is None:
+            return
+        emulator.feed(data)
+        schedule_snapshot()
+
+    pty = use_pty(argv, columns, rows, on_output=on_output, env=env)
+
+    async def own_emulator() -> None:
+        emulator = emulator_ref.current = Emulator(max(columns, 1), max(rows, 1), replies=pty.write)
+        try:
+            await asyncio.Event().wait()
+        finally:
+            emulator.close()
+            emulator_ref.current = None
+
+    use_effect(own_emulator, deps=(tuple(argv),))
+
+    async def resize() -> None:
+        if (emulator := emulator_ref.current) is not None and columns > 0 and rows > 0:
+            emulator.resize(columns, rows)
+            schedule_snapshot()
+
+    use_effect(resize, deps=(columns, rows))
+
+    modes = screen.modes
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=key):
+                if not receiver.is_focused or (encoded := encode_key(key, modes)) is None:
+                    return None
+                pty.write(encoded)
+                return ()
+            case Pasted(text=text):
+                if not receiver.is_focused:
+                    return None
+                pty.write(encode_paste(text, modes))
+                return ()
+            case _:
+                return on_mouse(event, receiver)
+
+    def on_mouse(event: MouseEvent, receiver: Receiver) -> InputResponse:
+        position = receiver.relative(event.absolute)
+        if not (0 <= position.x < screen.columns and 0 <= position.y < screen.rows) and not isinstance(
+            event, MouseDown
+        ):
+            return None
+        if (encoded := encode_mouse(event, position, modes)) is not None:
+            pty.write(encoded)
+            return FocusOn(focus.handle) if isinstance(event, MouseDown) else ()
+        if isinstance(event, MouseDown):
+            return FocusOn(focus.handle)
+        return None
+
+    return EmbeddedTerminal(
+        screen=screen,
+        view=ScreenView(screen=screen, show_cursor=focus.is_focused),
+        exit_status=pty.exit_status,
+        focus=focus,
+        on_input=on_input,
+        write=pty.write,
+    )
+````
+
+#### `examples/multiplexer.py`
+
+````python
+"""
+A tiny terminal multiplexer: shells side by side, each on its own pseudo-terminal.
+
+Ctrl+B is the prefix, as in tmux. After it:
+  %  split: open another shell to the right
+  o  focus the next pane
+  x  close the focused pane
+  q  quit
+Ctrl+B Ctrl+B sends a Ctrl+B to the focused program.
+"""
+
+import asyncio
+import os
+from collections.abc import Callable
+
+from counterweight.app import app
+from counterweight.components import component
+from counterweight.controls import ClearFocus, FocusNext, Quit
+from counterweight.elements import Canvas, Div, Text
+from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
+from counterweight.handlers import first
+from counterweight.headless.terminal import use_terminal
+from counterweight.hooks import FocusHandle, use_effect, use_rects, use_ref, use_state
+from counterweight.keys import Key
+from counterweight.styles.utilities import *
+
+SHELL = (os.environ.get("SHELL", "/bin/sh"),)
+
+
+@component
+def root() -> Div:
+    panes, set_panes = use_state((0,))
+    next_id, set_next_id = use_state(1)
+    # A ref, not state: keys in one read are all handled before the next render, so each must see the last one's effect.
+    armed = use_ref(False)
+    is_armed, set_shown_armed = use_state(False)
+
+    def set_armed(value: bool) -> None:
+        armed.current = value
+        set_shown_armed(value)
+
+    titles, set_titles = use_state({})
+    handles, _ = use_state(dict)
+
+    def handle_of(pane_id: int) -> FocusHandle:
+        return handles.setdefault(pane_id, FocusHandle())
+
+    def prefix(pane_id: int) -> InputHandler:
+        def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+            if not isinstance(event, KeyPressed) or not receiver.is_focused:
+                return None
+            if not armed.current:
+                if event.key == Key.ControlB:
+                    set_armed(True)
+                    return ()
+                return None
+            set_armed(False)
+            match event.key:
+                case Key.ControlB:
+                    return None  # the pane's own handler sends it on
+                case "%":
+                    set_panes(lambda p: (*p, next_id))
+                    set_next_id(lambda n: n + 1)
+                    # FocusOn can't name a pane that mounts in this update, so clear focus for the new pane's auto_focus.
+                    return ClearFocus()
+                case "o":
+                    return FocusNext()
+                case "x":
+                    set_panes(lambda p: tuple(i for i in p if i != pane_id) or p)
+                    return FocusNext()
+                case "q":
+                    return Quit()
+                case _:
+                    return ()
+
+        return on_input
+
+    def set_title(pane_id: int) -> Callable[[str], None]:
+        return lambda title: set_titles(lambda t: t if t.get(pane_id) == title else {**t, pane_id: title})
+
+    status = "  ".join(f"[{i}] {titles.get(i, '')}" for i in panes)
+    return Div(
+        style=col | full,
+        children=(
+            Div(
+                style=row | grow(1),
+                children=tuple(
+                    pane(pane_id, prefix(pane_id), handle_of(pane_id), set_title(pane_id)).with_key(str(pane_id))
+                    for pane_id in panes
+                ),
+            ),
+            Text(
+                content=("PREFIX " if is_armed else "") + status,
+                style=text_color("slate", 900) | text_bg("amber", 400 if is_armed else 200) | text_wrap_none,
+            ),
+        ),
+    )
+
+
+@component
+def pane(pane_id: int, prefix: InputHandler, handle: FocusHandle, on_title: Callable[[str], None]) -> Canvas:
+    content = use_rects().content
+    terminal = use_terminal(SHELL, content.width, content.height, auto_focus=True, handle=handle)
+    title = terminal.screen.title if terminal.exit_status is None else f"exited {terminal.exit_status}"
+
+    async def report_title() -> None:
+        on_title(title)
+
+    use_effect(report_title, deps=(title,))
+    return Canvas(
+        draw=terminal.view,
+        style=fill(1)
+        | border
+        | border_lightrounded
+        | (border_color("amber", 400) if terminal.focus.is_focused else border_color("slate", 600)),
+        on_input=first(prefix, terminal.on_input),
+    )
+
+
+if __name__ == "__main__":
+    asyncio.run(app(root()))
+````

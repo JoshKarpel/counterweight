@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from functools import lru_cache
 
 from more_itertools import grouper
 
-from counterweight.elements import NEWLINE, Chunk, Rows
-from counterweight.paint import Cell
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS, CellStyle, Color
+from counterweight.elements import NEWLINE, Chunk
+from counterweight.styles.styles import CellStyle, Color
 
 _BLACK = Color.from_name("black")
 
@@ -55,41 +53,4 @@ def canvas(
     return tuple(chunks)
 
 
-@lru_cache(maxsize=2**12)
-def _half_block(top: Color, bottom: Color) -> Cell:
-    return Cell("▀", replace(CELL_STYLE_DEFAULTS, foreground=top, background=bottom))
-
-
-@dataclass(frozen=True, slots=True)
-class HalfBlocks:
-    """
-    A `Canvas` painter for a pixel grid drawn with half blocks (▀), two pixels to a cell, as `canvas` draws it.
-
-    `pixels` pairs `(x, y)` positions with colors (a later pair wins over an earlier one at the same position),
-    and every other pixel of the `width` by `height` grid is `default`.
-    It's a tuple rather than a dict so the painter is hashable, which caches what it draws.
-    """
-
-    width: int
-    height: int
-    pixels: tuple[tuple[tuple[int, int], Color], ...]
-    default: Color = _BLACK
-
-    @property
-    def cells(self) -> tuple[int, int]:
-        """The canvas's intrinsic size, in cells."""
-        return self.width, (self.height + 1) // 2
-
-    def __call__(self, width: int, height: int) -> Rows:
-        colors = dict(self.pixels)
-        default = self.default
-        get = colors.get
-        return tuple(
-            tuple(
-                _half_block(get((x, top), default), get((x, top + 1), default)) for x in range(min(width, self.width))
-            )
-            for top in range(0, min(height * 2, self.height), 2)
-        )
-
-
-__all__ = ["HalfBlocks", "canvas", "clamp"]
+__all__ = ["canvas", "clamp"]

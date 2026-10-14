@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby
@@ -12,7 +12,7 @@ from xml.etree.ElementTree import Element, SubElement
 import waxy
 
 from counterweight._utils import flyweight, halve_integer
-from counterweight.elements import AnyElement, Canvas, Div, Rows, StyledGrapheme, Text
+from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
 from counterweight.geometry import Position, Rects, Region
 from counterweight.layout import cells_width, child_clip, clipped_axes, wrap_cells
 from counterweight.styles.styles import (
@@ -286,11 +286,9 @@ def paint_element(
 
     match element:
         case Div():
-            lines: Rows = ()
+            lines: tuple[tuple[Cell, ...], ...] = ()
         case Text() as e:
             lines = text_lines(e.cells, style.text_wrap, style.text_justify, style.text_style, resolved.content.width)
-        case Canvas() as e:
-            lines = canvas_rows(e.draw, resolved.content.width, resolved.content.height)
         case _:
             assert_never(element)
 
@@ -309,14 +307,6 @@ def paint_element(
         paint.write_row(resolved.content.left, y, line, text_clip)
 
     return hints
-
-
-@lru_cache(maxsize=2**8)
-def canvas_rows(draw: Callable[[int, int], Rows], width: int, height: int) -> Rows:
-    """What a `Canvas` with `draw` paints in a `width` by `height` content box, cached because `draw` is pure."""
-    if width <= 0 or height <= 0:
-        return ()
-    return draw(width, height)
 
 
 @lru_cache(maxsize=2**12)
