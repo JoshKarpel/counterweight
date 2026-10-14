@@ -156,6 +156,7 @@ nav:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
     - cookbook/draggable-components.md
+    - cookbook/prefix-keys.md
     - cookbook/spinners.md
   - performance.md
   - utilities.md

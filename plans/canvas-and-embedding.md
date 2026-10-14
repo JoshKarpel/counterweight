@@ -37,7 +37,7 @@ It lands in six phases, each of which stands alone:
 | 2. [Emulator](#phase-2-emulator) | a terminal emulator behind `Emulator` and `Screen`, and the screen painter | 1 |
 | 3. [Pseudo-terminals](#phase-3-pseudo-terminals) | `use_pty`: a program on a PTY, its output, its exit, and resizing | |
 | 4. [One-shot commands](#phase-4-one-shot-commands) | `use_command`, the transcript painter, a widget, and `use_rects(handle)` | 1, 2, 3 |
-| 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input, focusing a new component, and modal keys | |
+| 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input with defaults for unclaimed keys, focusing a new component, and modal keys | |
 | 6. [Embed](#phase-6-embedding-terminals) | input encoding, `use_terminal`, and a `terminal` widget | 1, 2, 3, 5 |
 
 Each arrow points from a phase to one that needs it:
@@ -959,9 +959,9 @@ so `use_rects(viewport)` measures the box the transcript fills (see [Measuring t
   A request is compared by identity, so running the same `argv` again starts another run.
   The effect sets state through an updater that applies only while its request is still the current one,
   so a snapshot that lands after a cancel or a new `run` can't overwrite it.
-- **Cancelling is a key the app binds**, such as Escape.
-  Until phase 5's raw input mode, Ctrl+C quits the whole app,
-  and it never reaches the program, which runs in its own session.
+- **Cancelling is a key the app binds**, such as Escape, or Ctrl+C, which reaches the app as a key press
+  since [phase 5](#every-key-reaches-the-app); unclaimed, Ctrl+C quits the app.
+  It never reaches the program, which runs in its own session with standard input on `/dev/null`.
 
 ### How a run is sized
 
@@ -1117,27 +1117,105 @@ The spike hit these limits in counterweight itself, which a multiplexer can't wo
 Each is also useful to apps that never embed a terminal.
 Nothing before phase 6 needs them, so this phase can land any time before it.
 
-1. **Ctrl+C quits the host.**
-   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
-   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
-   and Ctrl+S/Ctrl+Q are eaten as flow control.
-   None of them can reach an embedded program.
-   The spike's test session died this way.
-   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
-   with Ctrl+C then arriving as a key the app can bind to `Quit`,
-   or that a code runner (phase 4) can bind to cancel a run.
-2. **`FocusOn` can't focus a component that mounts in the same update.**
-   The routing table doesn't know the new handle yet, so the control is dropped.
-   The spike's multiplexer works around it with `ClearFocus` and `auto_focus`.
-   React's answer is an effect after mount that calls `ref.focus()`.
-   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
-   that mounts its target, or a way for an effect to send a control.
-3. **A mode that changes routing must be readable synchronously.**
-   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
-   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
-   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
-   `use_text_input` hits the same thing and solves it with updater functions.
-   This needs a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
+### Every key reaches the app
+
+`start_input_control` turned off `ECHO` and `ICANON` but left `ISIG` and `IXON` on.
+So Ctrl+C was a `SIGINT` that quit the app, Ctrl+Z (`SIGTSTP`) stopped it, Ctrl+\\ (`SIGQUIT`) killed it,
+and Ctrl+S/Ctrl+Q were eaten as flow control.
+None of them could reach an embedded program, and the spike's test session died this way.
+Three of them were wrong even for apps that embed nothing:
+counterweight installs no `SIGTSTP` or `SIGQUIT` handler,
+so Ctrl+Z and Ctrl+\\ left the terminal in the alternate screen with mouse tracking on,
+and Ctrl+S froze the app's output until Ctrl+Q.
+
+The app reads the terminal raw, as tmux puts its outer terminal and as `cfmakeraw` does:
+`ISIG`, `IEXTEN` and `IXON` are off too, so every key arrives as a key press.
+On Linux `IEXTEN` changes nothing once `ICANON` is off (a probe on a pseudo-terminal read Ctrl+V and Ctrl+O either way),
+but BSD and macOS act on `VLNEXT` and `VDISCARD` in either mode.
+`0x1c` to `0x1f` (Ctrl+\\, Ctrl+], Ctrl+^, Ctrl+_) had no `Key` and were skipped,
+so they're keys now too, with their Ctrl+Alt forms, and every control byte but `ESC` is one.
+
+Raw input is the mechanism; what the keys do is policy, and the web splits the two the same way.
+A browser dispatches `keydown` to the page first,
+and takes its default action (Ctrl+S saves the page, Space scrolls) only if no listener calls `preventDefault()`.
+Claiming an event is counterweight's `preventDefault()`,
+so a key press that no handler on its path claims takes its default from `app(unclaimed_keys=...)`,
+a mapping from keys to controls applied once bubbling ends (`route_key`).
+`DEFAULT_UNCLAIMED_KEYS` gives Ctrl+C `Quit` and Ctrl+Z `Suspend.to_shell()`,
+which is what they do to a program in a terminal.
+`{}` turns the defaults off, and `DEFAULT_UNCLAIMED_KEYS | {...}` changes some.
+Textual and prompt_toolkit also read raw and make Ctrl+C and Ctrl+Z bindings an app can override.
+
+- **Defaults are data, not a handler.**
+  The screen element is never a routing target, so a handler on it couldn't run after the root's anyway.
+  A mapping is a value an app can merge, compare and inspect;
+  a handler-shaped default (`unclaimed: InputHandler`) could cover mouse events too, but nothing needs that.
+- **Suspending to the shell stops the process group.**
+  `Suspend` already hands the terminal back and takes it again on resume,
+  so `Suspend.to_shell()` only needs a handler that stops the app.
+  Stopping the app's own process wasn't enough when driven in tmux:
+  under `uv run`, the shell's job is `uv`, which kept waiting, so the shell never took the terminal back.
+  `os.killpg(os.getpgrp(), SIGTSTP)` stops the group, as the terminal's Ctrl+Z does,
+  and `fg` resumed the app with its state.
+- **The cost is the escape hatch.**
+  A second Ctrl+C used to reach the interrupt handler `app` replaced, which stopped an app whose render loop was stuck.
+  Raw, a key only does something once the loop reads it, so a stuck app can be stopped only from outside;
+  `kill -INT` still quits it, and a second one still reaches the replaced handler.
+  A focused component that claims every key, as the embed does, takes Ctrl+C and Ctrl+Z too,
+  so an app that embeds a terminal needs a way out that the embed doesn't claim, such as the multiplexer's prefix.
+
+### Focusing a component as it mounts
+
+`FocusOn` couldn't focus a component that mounts in the same update:
+the routing table didn't know the new handle yet, so the control was dropped.
+The spike's multiplexer worked around it with `ClearFocus` and `auto_focus`.
+
+The web has three answers.
+`element.focus()` on an element that isn't rendered yet does nothing, as `FocusOn` did.
+React's is to mount, then focus in an effect after the commit (`useEffect(() => ref.current.focus())`),
+or to `flushSync` the state change and focus right after it.
+And `<dialog>`'s `showModal()` focuses a field inside the dialog as it opens.
+Counterweight's effects run after the frame paints and can't return controls,
+so focusing from an effect would show one frame with focus in the wrong place,
+and would need a new way for effects to act on the app.
+
+So `FocusOn` waits, as `ScrollIntoView` already names "the element with that handle in the next render":
+a `FocusOn` whose handle no component can take focus with yet is kept, and the next render's focus settles to it
+if a component with that handle can take focus then, before the frame is drawn
+(`RoutingTable.reconciled_focus(..., requested)`).
+It's dropped by any later control that moves focus, by a batch that causes no render,
+and once that render has settled focus, whether or not it applied.
+Keys read in the same batch still go to the component focused when they arrive, as they do for `auto_focus`.
+A component that hides itself because a waiting `FocusOn` focused it raises `UnsettledFocus`, as an `auto_focus` one does.
+
+### Modes that change routing
+
+`Ctrl+B %` in one read arrives as two key presses handled before the next render,
+so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
+In the DOM, each `keydown` is its own task, and React renders a discrete event's updates before the next one,
+so a handler rarely sees state from before the previous key.
+Counterweight handles every event it has read before rendering again, which keeps a burst of typing to one render,
+so a mode the next key's handler reads has to live in a ref, with state beside it only to draw it.
+That's how `use_text_input` takes typing with updater functions, and how the drag cookbook keeps its grab.
+The cookbook's Prefix Keys page documents the pattern, with a tmux-style prefix whose pane opens focused with `FocusOn`.
+A helper hook for modes is deferred: prefix keys, vim's modes and chords are several plausible designs,
+and nothing yet chooses between them.
+
+### Phase 5 work
+
+Done: the work below, with tests at 100% coverage.
+
+1. Raw input: `start_input_control` turns off `ISIG`, `IEXTEN` and `IXON`, every control byte but `ESC` is a key,
+   and `app(unclaimed_keys=...)` with `DEFAULT_UNCLAIMED_KEYS` and `Suspend.to_shell()`.
+   Tests read Ctrl+C, Ctrl+Z, Ctrl+\\, Ctrl+S and Ctrl+Q from a pseudo-terminal, before and after a suspension,
+   and stop a child's whole process group with `Suspend.to_shell()`.
+   A probe app was driven in tmux: the keys arrived, and Ctrl+Z, `fg` and Ctrl+Q worked.
+2. A `FocusOn` that waits for the next render, with tests for a component mounted beside it,
+   later and earlier focus controls, a batch with no render, the first frame, `UnsettledFocus`,
+   and a key read in the same batch.
+3. `docs/cookbook/prefix-keys.md`, with a test that a prefix and its key typed in one read open a focused pane.
+4. Docs: the events page's keys the terminal would act on, `use_focus`'s focusing a component as it mounts,
+   and the changelog.
 
 ## Phase 6: Embedding terminals
 
@@ -1213,6 +1291,9 @@ so nothing bubbles past it.
   Counterweight only bubbles from the focused node, and that turned out not to matter:
   the multiplexer puts its prefix handler before the terminal's with `first(prefix, terminal.on_input)`.
   The embed exposes its handler, and composition does the rest.
+- **Ctrl+C and Ctrl+Z** reach the embed as key presses (see [phase 5](#every-key-reaches-the-app)),
+  and it claims them, so they go to the program rather than taking the app's unclaimed defaults.
+  The multiplexer quits and suspends through its prefix instead (`Ctrl+B q`, and `Ctrl+B Ctrl+Z` with `Suspend.to_shell()`).
 - **Queries** are answered by libghostty from emulator state, and the replies are written back to the PTY.
   This covers CPR, DA1, DA2 and the other queries a multiplexer answers from its own state.
   Forwarding to the outer terminal is deferred: it has several plausible designs, and nothing has needed it yet.
@@ -1238,7 +1319,8 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
 1. `input_encoding`: key presses, pastes and mouse events back to the bytes a terminal sends,
    with xterm's spellings for F1 to F4, `alt+space`, and a press outside the program's screen only focusing the pane.
 2. `use_terminal`, ported from the spike onto phases 2 and 3,
-   using phase 5's fixes to drop the multiplexer's `ClearFocus` and closure-state workarounds.
+   with phase 5's waiting `FocusOn` in place of the multiplexer's `ClearFocus` and `auto_focus`,
+   and its prefix kept in a ref as the Prefix Keys cookbook page does.
    The multiplexer's `%` split reads `next_id` from its closure,
    so two splits in one read open two panes with the same id and key.
    The new id comes from the updater instead.

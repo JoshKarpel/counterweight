@@ -71,6 +71,7 @@ from counterweight.events import MouseUp
 from counterweight.events import Pasted
 from counterweight.events import StateSet
 from counterweight.events import TerminalResized
+from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
@@ -82,6 +83,7 @@ from counterweight.input import start_input_control
 from counterweight.input import start_reading_keys
 from counterweight.input import stop_input_control
 from counterweight.input import stop_reading_keys
+from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS
 from counterweight.layout import Layouts
 from counterweight.layout import LayoutTree
@@ -132,9 +134,10 @@ type SignalHandler = Callable[[int, FrameType | None], object] | int | None
 
 def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> SignalHandler:
     """
-    Makes the first interrupt `request_quit`, so ctrl+c quits the app and `app` returns,
-    and returns the handler it replaced, which takes any interrupt after that,
-    so a second ctrl+c still stops an app whose render loop is stuck and can't quit.
+    Makes the first interrupt `request_quit`, so an interrupt sent from outside (`kill -INT`) quits the app
+    and `app` returns, and returns the handler it replaced, which takes any interrupt after that,
+    so a second one still stops an app whose render loop is stuck and can't quit.
+    Ctrl+C is a key press, not an interrupt, since the app reads the terminal raw.
     """
     previous = getsignal(SIGINT)
 
@@ -148,6 +151,13 @@ def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> Signa
 
 def stop_handling_interrupt_signal(previous: SignalHandler) -> None:
     signal(SIGINT, previous)
+
+
+DEFAULT_UNCLAIMED_KEYS: Mapping[str, AnyControl] = frozendict({Key.ControlC: Quit(), Key.ControlZ: Suspend.to_shell()})
+"""
+What `app` does with a key press no handler claims, by default:
+Ctrl+C quits, and Ctrl+Z suspends the application as a shell job, as they do to a program in a terminal.
+"""
 
 
 def screen_element_style(width: int, height: int) -> Style:
@@ -179,6 +189,7 @@ async def app(
     clock: Clock = system_clock,
     log_levels: Mapping[str, int] = frozendict(),
     title: str | None = None,
+    unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
 ) -> None:
     """
     Parameters:
@@ -221,11 +232,32 @@ async def app(
         title: The title to give the terminal window when the application starts,
             as [`SetTitle`][counterweight.controls.SetTitle] would, before the first frame is drawn.
             If `None`, the terminal keeps the title it has.
+        unclaimed_keys: What a key press does when no handler claims it, by its key,
+            as a browser takes a key's default action unless a listener prevents it.
+            The application reads the terminal raw, so every key reaches it as a key press,
+            including Ctrl+C and Ctrl+Z, which a terminal otherwise turns into signals,
+            and the defaults, [`DEFAULT_UNCLAIMED_KEYS`][counterweight.app.DEFAULT_UNCLAIMED_KEYS],
+            give those two what they'd do there:
+            Ctrl+C returns [`Quit`][counterweight.controls.Quit],
+            and Ctrl+Z [`Suspend.to_shell()`][counterweight.controls.Suspend.to_shell].
+            A handler that claims one of those keys, such as one that passes keys on to a program,
+            keeps it from taking its default.
+            Pass `{}` to give unclaimed keys no defaults, or merge onto the defaults to change some,
+            as in `DEFAULT_UNCLAIMED_KEYS | {Key.ControlQ: Quit()}`.
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
             await render_loop(
-                root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock, title
+                root,
+                output_stream,
+                input_stream,
+                headless,
+                dimensions,
+                autopilot,
+                check_purity,
+                clock,
+                title,
+                unclaimed_keys,
             )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
@@ -250,6 +282,7 @@ async def render_loop(
     check_purity: bool,
     clock: Clock,
     title: str | None,
+    unclaimed_keys: Mapping[str, AnyControl],
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
@@ -341,7 +374,10 @@ async def render_loop(
         shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
         routing = RoutingTable.of(shadow, layouts)
-        focused = routing.reconciled_focus(None, warmup.mounted)
+        focused = routing.reconciled_focus(None, warmup.mounted, requested=None)
+        # The handle of a `FocusOn` that named no focusable component when it arrived,
+        # which the next render focuses if a component with it can take focus then.
+        requested_focus: FocusHandle | None = None
         # The scroll controls to apply in the next layout, in order, including the ones focus moving adds.
         pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = (
             [] if focused is None else [focus_into_view(focused)]
@@ -361,7 +397,10 @@ async def render_loop(
             and re-renders the mounted nodes that gain and lose focus, as a `use_state` setter would.
             """
             nonlocal focused
+            nonlocal requested_focus
 
+            # A later control that moves focus wins over a request that waits for the next render.
+            requested_focus = None
             if key == focused:
                 return
 
@@ -383,6 +422,7 @@ async def render_loop(
             nonlocal do_heal_borders
             nonlocal clock_offset
             nonlocal routing
+            nonlocal requested_focus
 
             match control:
                 case Quit():
@@ -406,7 +446,10 @@ async def render_loop(
                 case FocusPrevious(within=within):
                     refocus(routing.moved_focus(focused, within, is_forward=False))
                 case FocusOn(handle=handle):
-                    refocus(routing.focus_keys.get(handle, focused))
+                    if (key := routing.focus_keys.get(handle)) is not None:
+                        refocus(key)
+                    else:
+                        requested_focus = handle
                 case ClearFocus():
                     refocus(None)
                 case AdvanceClock(by=by):
@@ -525,7 +568,8 @@ async def render_loop(
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
-                    settled = routing.reconciled_focus(focused, update.mounted)
+                    settled = routing.reconciled_focus(focused, update.mounted, requested_focus)
+                    requested_focus = None
 
                     # Re-render the components whose focus changed before painting,
                     # so no frame shows focus where it was before the render moved it.
@@ -551,7 +595,7 @@ async def render_loop(
                             scroll_requests(pending_scrolls, shadow),
                         )
                         routing = RoutingTable.of(shadow, layouts)
-                        if routing.reconciled_focus(settled, refocused.mounted) != settled:
+                        if routing.reconciled_focus(settled, refocused.mounted, requested=None) != settled:
                             raise UnsettledFocus(
                                 "Focus changed again after re-rendering the components that gained and lost it, "
                                 "so a component hid itself because it gained focus."
@@ -608,6 +652,7 @@ async def render_loop(
                 else:
                     # Without a render, every pending control moves nothing, and mustn't wait to move a later layout.
                     pending_scrolls.clear()
+                    requested_focus = None
 
                 if ap is not None:
                     if isinstance(ap, _Control):
@@ -648,7 +693,7 @@ async def render_loop(
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed() | Pasted():
-                            for control in route_key(event, focused, routing):
+                            for control in route_key(event, focused, routing, unclaimed_keys):
                                 handle_control(control)
                         case (
                             MouseMoved()

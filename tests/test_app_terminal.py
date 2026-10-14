@@ -19,25 +19,32 @@ from signal import signal
 import pytest
 
 from counterweight.app import app
+from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import Bell
+from counterweight.controls import FocusOn
 from counterweight.controls import Quit
 from counterweight.controls import RestoreTitle
 from counterweight.controls import Screenshot
 from counterweight.controls import SetTitle
 from counterweight.controls import Suspend
+from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
+from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import FocusHandle
 from counterweight.geometry import Position
 from counterweight.handlers import first
 from counterweight.headless import use_text_input
 from counterweight.hooks import Mouse
 from counterweight.hooks import use_effect
+from counterweight.hooks import use_focus
 from counterweight.hooks import use_mouse
 from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.output import ALT_SCREEN_OFF
 from counterweight.output import ALT_SCREEN_ON
 from counterweight.output import BRACKETED_PASTE_OFF
@@ -522,3 +529,129 @@ async def test_an_interrupt_quits_the_app_after_a_suspension(
     )
 
     assert replaced_interrupts == []
+
+
+def typing_root(keyboard: int, typed: bytes, pressed: list[KeyPressed], claims: bool) -> Component:
+    """
+    A root that types `typed` on `keyboard` after each frame, rather than before the app starts,
+    since the terminal acts on each key as it arrives, in the mode it's in then,
+    and records each key pressed, claiming each one if `claims`, and quitting on Ctrl+C if it claims it.
+    """
+
+    @component
+    def root() -> Text:
+        async def type_keys() -> None:
+            os.write(keyboard, typed)
+
+        use_effect(type_keys)
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            assert isinstance(event, KeyPressed)
+            pressed.append(event)
+            if not claims:
+                return None
+            return Quit() if event.key == Key.ControlC else ()
+
+        return Text(content="hi", on_input=on_input)
+
+    return root()
+
+
+async def test_ctrl_c_and_the_other_keys_a_terminal_acts_on_reach_the_app_as_key_presses(
+    terminal: Terminal, replaced_interrupts: list[int]
+) -> None:
+    pressed: list[KeyPressed] = []
+    root = typing_root(terminal.keyboard, b"\x1a\x1c\x13\x11\x03", pressed, claims=True)
+
+    await wait_for(app(root, output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT)
+
+    assert pressed == [
+        KeyPressed(key=Key.ControlZ),
+        KeyPressed(key=Key.ControlBackslash),
+        KeyPressed(key=Key.ControlS),
+        KeyPressed(key=Key.ControlQ),
+        KeyPressed(key=Key.ControlC),
+    ]
+    assert replaced_interrupts == []
+
+
+async def test_ctrl_c_quits_an_app_that_does_not_claim_it(terminal: Terminal, replaced_interrupts: list[int]) -> None:
+    pressed: list[KeyPressed] = []
+    root = typing_root(terminal.keyboard, b"\x03", pressed, claims=False)
+
+    await wait_for(app(root, output_stream=Output(), input_stream=terminal.stream, dimensions=(3, 1)), TIMEOUT)
+
+    assert pressed == [KeyPressed(key=Key.ControlC)]
+    assert replaced_interrupts == []
+
+
+async def test_the_app_reads_raw_again_after_a_suspension(terminal: Terminal) -> None:
+    pressed: list[KeyPressed] = []
+    during: list[object] = []
+
+    def record_settings() -> None:
+        during.append(terminal.settings())
+
+    # The suspension cancels the first frame's effect before it starts, so the app types only once it has resumed.
+    root = typing_root(terminal.keyboard, b"\x03", pressed, claims=True)
+
+    before = terminal.settings()
+    await wait_for(
+        app(
+            root,
+            output_stream=Output(),
+            input_stream=terminal.stream,
+            dimensions=(3, 1),
+            autopilot=[Suspend(handler=record_settings)],
+        ),
+        TIMEOUT,
+    )
+
+    assert during == [before]
+    assert pressed == [KeyPressed(key=Key.ControlC)]
+
+
+async def test_a_key_read_with_one_that_mounts_and_focuses_a_component_goes_to_the_component_focused_before(
+    terminal: Terminal,
+) -> None:
+    received: list[tuple[str, str]] = []
+    handle = FocusHandle()
+
+    def recording(name: str) -> Callable[[InputEvent, Receiver], InputResponse]:
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            match event:
+                case KeyPressed(key="?" as key):
+                    received.append((name, key))
+                    return ()
+                case _:
+                    return None
+
+        return on_input
+
+    @component
+    def late() -> Text:
+        use_focus(handle=handle)
+
+        async def type_once_mounted() -> None:
+            os.write(terminal.keyboard, b"?q")
+
+        use_effect(type_once_mounted, deps=())
+        return Text(content="late", on_input=recording("late"))
+
+    @component
+    def root() -> Div:
+        is_mounted, set_mounted = use_state(False)
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            if event != KeyPressed(key="t"):
+                return Quit()
+            set_mounted(True)
+            return FocusOn(handle)
+
+        return Div(on_input=first(recording("root"), on_input), children=(late(),) if is_mounted else ())
+
+    os.write(terminal.keyboard, b"t?")
+
+    await wait_for(app(root(), output_stream=Output(), input_stream=terminal.stream, dimensions=(9, 1)), TIMEOUT)
+
+    assert received == [("root", "?"), ("late", "?")]

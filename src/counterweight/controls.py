@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import signal
 import sys
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -159,6 +161,25 @@ class Suspend(_Control):
 
     handler: Callable[[], Awaitable[None] | None]
 
+    @classmethod
+    def to_shell(cls) -> Suspend:
+        """
+        A `Suspend` that stops the application as a shell job, as Ctrl+Z stops a program in a terminal,
+        so the shell takes the terminal back, until it resumes the application with `fg`.
+        It's what Ctrl+Z does by default (see `unclaimed_keys` on `counterweight.app.app`).
+
+        It stops the application's whole process group, as the terminal's Ctrl+Z does,
+        so whatever started the application and waits on it, such as `uv run`, stops too,
+        which is what tells the shell to take the terminal back.
+        """
+        return cls(handler=stop_process_group)
+
+
+def stop_process_group() -> None:
+    """Stops this process's process group, as the terminal's Ctrl+Z does, until something sends it `SIGCONT`."""
+    # The suite runs this only in a child process that it stops and then kills, which never writes its coverage.
+    os.killpg(os.getpgrp(), signal.SIGTSTP)  # pragma: no cover
+
 
 @dataclass(frozen=True, slots=True)
 class ToggleBorderHealing(_Control):
@@ -203,7 +224,15 @@ class FocusOn(_Control):
     """
     Focus the component whose [`use_focus`][counterweight.hooks.use_focus] has `handle`,
     whether or not it's in the focus order.
-    It does nothing if that component hasn't mounted yet, has unmounted, is hidden, or is unfocusable.
+
+    If no component can take focus with `handle` yet, such as one that mounts in the render
+    a state change beside this control causes, it focuses that component in the next render, before the frame is drawn,
+    as `showModal` focuses a dialog's field as the dialog opens,
+    unless another control moves focus first.
+    Key presses that arrive before that render still go to the component focused when they arrive.
+    It does nothing if its batch of input causes no render,
+    or no component can take focus with `handle` after that render either,
+    because it hasn't mounted, has unmounted, is hidden, or is unfocusable.
     """
 
     handle: FocusHandle

@@ -592,10 +592,10 @@ def test_a_key_bubbles_once_an_earlier_control_in_its_batch_scrolls_its_containe
     table = scrolled_table(outer, {2: scrolled_to(Position(0, 1))}, 6, 2)
     outer_key, inner_key = table.root, table.layouts.scroll_containers[1].key
 
-    (moved,) = route_key(KeyPressed(key=Key.Down), inner_key, table)
+    (moved,) = route_key(KeyPressed(key=Key.Down), inner_key, table, {})
     assert isinstance(moved, ScrollBy)
 
-    assert route_key(KeyPressed(key=Key.Down), inner_key, table.scrolled(moved)) == (
+    assert route_key(KeyPressed(key=Key.Down), inner_key, table.scrolled(moved), {}) == (
         ScrollBy(Subtree(key=outer_key), y=1),
     )
 

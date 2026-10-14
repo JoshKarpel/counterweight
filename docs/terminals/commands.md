@@ -107,6 +107,8 @@ so nothing a run started outlives it.
 
 A program never gets the keys the app reads, so it can't be interrupted with Ctrl+C:
 bind a key to `cancel`, as the runner does with Escape.
+Ctrl+C [reaches the app as a key press](../input-handling/events.md#keys-the-terminal-would-act-on),
+so an app can bind it to `cancel`, as a shell does, rather than leaving it to quit the app.
 `timeout` bounds a run: a program still running when it runs out is hung up,
 and its outcome is [`TimedOut`][counterweight.commands.TimedOut].
 

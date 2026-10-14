@@ -280,6 +280,22 @@
   The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
   runs a command on each slide when it's shown.
 
+- `app` takes `unclaimed_keys`, what a key press does when no handler on its path claims it,
+  as a browser takes a key's default action unless a listener prevents it.
+  `DEFAULT_UNCLAIMED_KEYS` gives Ctrl+C `Quit` and Ctrl+Z `Suspend.to_shell()`,
+  which suspends the app as a shell job until the shell resumes it with `fg`,
+  stopping its whole process group as the terminal's Ctrl+Z does, so `uv run` and the like stop with it.
+  Pass `{}` for no defaults, or merge onto them to change some.
+  See [Keys the terminal would act on](input-handling/events.md#keys-the-terminal-would-act-on).
+
+- Added `Key.ControlBackslash`, `Key.ControlRightBracket`, `Key.ControlCaret` and `Key.ControlUnderscore`,
+  and their Ctrl+Alt forms, so every control byte a terminal sends is a key.
+  Previously Ctrl+\\, Ctrl+], Ctrl+^ and Ctrl+_ were skipped.
+
+- Added a [Prefix Keys](cookbook/prefix-keys.md) cookbook page: a tmux-style prefix key,
+  kept in a ref so a prefix and its key typed together still work,
+  and a pane it opens focused with `FocusOn`.
+
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 
@@ -335,6 +351,20 @@
   Add styling for content area background color.
 
 ### Changed
+
+- The app reads the terminal raw, as tmux does, so Ctrl+C, Ctrl+Z, Ctrl+\\, Ctrl+S and Ctrl+Q reach it as key presses
+  rather than the terminal acting on them.
+  Ctrl+C still quits, now as its [unclaimed default](input-handling/events.md#keys-the-terminal-would-act-on),
+  so a handler that claims it keeps it, such as to cancel a command.
+  Previously Ctrl+Z and Ctrl+\\ stopped and killed the app without handing the terminal back,
+  and Ctrl+S froze its output until Ctrl+Q.
+  An interrupt sent from outside, with `kill -INT`, still quits it, and a second one still reaches the handler it replaced,
+  but an app whose render loop is stuck can no longer be quit with Ctrl+C, since nothing reads it.
+
+- [`FocusOn`](hooks/use_focus.md#focusing-a-component-as-it-mounts) focuses a component that mounts
+  in the render its handler causes: one whose handle no component can take focus with yet
+  waits for the next render, and focuses it before the frame is drawn, unless another control moves focus first.
+  Previously it did nothing, so a handler that added a component had to clear focus for its `auto_focus`.
 
 - [`use_rects`](hooks/use_rects.md) takes an optional `ElementHandle`, and reports the rectangles of the element
   with that handle rather than the calling component's own, as a React component measures an element through a ref,

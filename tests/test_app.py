@@ -1,8 +1,10 @@
 import io
 from asyncio import wait_for
+from collections.abc import Mapping
 
 import pytest
 
+from counterweight.app import DEFAULT_UNCLAIMED_KEYS
 from counterweight.app import app
 from counterweight.components import Component
 from counterweight.components import component
@@ -24,6 +26,7 @@ from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import MouseUp
+from counterweight.events import Pasted
 from counterweight.events import Receiver
 from counterweight.events import TerminalResized
 from counterweight.focus import ElementHandle
@@ -31,6 +34,7 @@ from counterweight.geometry import Position
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col
@@ -251,3 +255,52 @@ async def test_a_component_reading_another_elements_scroll_renders_again_once_af
 
     # Once for the warmup, once on the first painted frame, and once after the scroll.
     assert reports == [0, 0, 3]
+
+
+CTRL_C = KeyPressed(key=Key.ControlC)
+
+
+async def frames_after(
+    events: list[KeyPressed | Pasted],
+    response: InputResponse = None,
+    unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
+) -> int:
+    """
+    How many screenshots an app takes after `events` before it quits, one after each event,
+    with a root whose handler responds to every event with `response`.
+    """
+    frames: list[object] = []
+    autopilot: list[KeyPressed | Pasted | AnyControl] = []
+    for event in events:
+        autopilot += [event, Screenshot(handler=frames.append)]
+
+    @component
+    def root() -> Text:
+        return Text(content="hi", on_input=lambda event, _: response)
+
+    await app(root(), headless=True, dimensions=(3, 1), autopilot=[*autopilot, Quit()], unclaimed_keys=unclaimed_keys)
+    return len(frames)
+
+
+async def test_an_unclaimed_ctrl_c_quits() -> None:
+    assert await frames_after([KeyPressed(key="a"), CTRL_C, KeyPressed(key="b")]) == 1
+
+
+async def test_a_claimed_ctrl_c_does_not_take_its_default() -> None:
+    assert await frames_after([CTRL_C, KeyPressed(key="b")], response=()) == 2
+
+
+async def test_with_no_unclaimed_keys_ctrl_c_does_nothing() -> None:
+    assert await frames_after([CTRL_C, KeyPressed(key="b")], unclaimed_keys={}) == 2
+
+
+async def test_an_unclaimed_key_takes_the_control_it_is_given() -> None:
+    assert await frames_after([KeyPressed(key="a"), KeyPressed(key="q")], unclaimed_keys={"q": Quit()}) == 1
+
+
+async def test_a_paste_of_a_keys_text_does_not_take_its_default() -> None:
+    assert await frames_after([Pasted(text="q"), KeyPressed(key="b")], unclaimed_keys={"q": Quit()}) == 2
+
+
+def test_ctrl_z_suspends_the_app_to_the_shell_by_default() -> None:
+    assert DEFAULT_UNCLAIMED_KEYS[Key.ControlZ] == Suspend.to_shell()

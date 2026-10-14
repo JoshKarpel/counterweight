@@ -113,9 +113,11 @@ def rooted(
     deliveries: list[Delivery],
     children: Callable[[bool], Sequence[Component | AnyElement]],
     on_input: InputHandler | None = None,
+    toggled: InputResponse = (),
 ) -> Component:
     """
-    A root that records what reaches it, toggles a flag on `TOGGLE`, and renders `children(flag)`.
+    A root that records what reaches it, toggles a flag on `TOGGLE`, responding with `toggled`,
+    and renders `children(flag)`.
     `on_input` handles what the root doesn't.
     """
 
@@ -129,7 +131,7 @@ def rooted(
             )
             if event == TOGGLE:
                 set_flag(not flag)
-                return ()
+                return toggled
             return None if on_input is None else on_input(event, receiver)
 
         return Div(style=size(20, 10), on_input=handler, children=tuple(children(flag)))
@@ -306,6 +308,64 @@ async def test_focus_on_focuses_its_component_and_does_nothing_once_it_has_unmou
     assert probed(deliveries) == ["named", "root"]
 
 
+def mounts_late(deliveries: list[Delivery], handle: FocusHandle) -> Callable[[bool], Sequence[Component]]:
+    """A focused component `a`, then `late`, with `handle`, once the flag is set."""
+    return lambda is_mounted: [
+        focusable("a", deliveries, auto_focus=True),
+        *([focusable("late", deliveries, handle=handle)] if is_mounted else []),
+    ]
+
+
+async def test_focus_on_focuses_a_component_that_mounts_in_the_render_its_handler_causes() -> None:
+    deliveries: list[Delivery] = []
+    handle = FocusHandle()
+
+    await run(rooted(deliveries, mounts_late(deliveries, handle), toggled=FocusOn(handle)), [TOGGLE, PROBE])
+
+    assert probed(deliveries) == ["late"]
+
+
+async def test_a_focus_control_after_a_waiting_focus_on_wins() -> None:
+    deliveries: list[Delivery] = []
+    handle = FocusHandle()
+
+    await run(
+        rooted(deliveries, mounts_late(deliveries, handle), toggled=(FocusOn(handle), ClearFocus())), [TOGGLE, PROBE]
+    )
+
+    assert probed(deliveries) == ["root"]
+
+
+async def test_a_waiting_focus_on_wins_over_a_focus_control_before_it() -> None:
+    deliveries: list[Delivery] = []
+    handle = FocusHandle()
+
+    await run(
+        rooted(deliveries, mounts_late(deliveries, handle), toggled=(ClearFocus(), FocusOn(handle))), [TOGGLE, PROBE]
+    )
+
+    assert probed(deliveries) == ["late"]
+
+
+async def test_a_focus_on_that_waits_for_a_render_that_never_comes_does_not_focus_a_later_mount() -> None:
+    deliveries: list[Delivery] = []
+    handle = FocusHandle()
+
+    await run(rooted(deliveries, mounts_late(deliveries, handle)), [FocusOn(handle), PROBE, TOGGLE, PROBE])
+
+    assert probed(deliveries) == ["a", "a"]
+
+
+async def test_a_focus_on_for_a_component_that_does_not_mount_leaves_focus_where_it_is() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        rooted(deliveries, mounts_late(deliveries, FocusHandle()), toggled=FocusOn(FocusHandle())), [TOGGLE, PROBE]
+    )
+
+    assert probed(deliveries) == ["a"]
+
+
 async def test_clear_focus_sends_keys_to_the_root() -> None:
     deliveries: list[Delivery] = []
 
@@ -344,8 +404,8 @@ async def test_use_focus_with_no_arguments_does_not_take_focus() -> None:
 
 
 @component
-def focus_label(name: str, auto_focus: bool = False) -> Text:
-    focus = use_focus(auto_focus=auto_focus)
+def focus_label(name: str, auto_focus: bool = False, handle: FocusHandle | None = None) -> Text:
+    focus = use_focus(auto_focus=auto_focus, handle=handle)
     return Text(content=f"{name}:{'on' if focus.is_focused else 'off'}")
 
 
@@ -400,6 +460,20 @@ async def test_a_key_after_an_auto_focus_component_mounts_later_reaches_it() -> 
     await run(rooted(deliveries, children), [TOGGLE, PROBE])
 
     assert probed(deliveries) == ["late"]
+
+
+async def test_a_component_that_a_focus_on_names_as_it_mounts_is_focused_in_the_first_frame_that_shows_it() -> None:
+    frames: list[Frame] = []
+    handle = FocusHandle()
+
+    await run(
+        rooted(
+            [], lambda is_mounted: [focus_label("late", handle=handle)] if is_mounted else [], toggled=FocusOn(handle)
+        ),
+        [TOGGLE, Screenshot(handler=frames.append)],
+    )
+
+    assert lines(frames) == [["late:on"]]
 
 
 async def test_a_component_that_hides_itself_when_it_gains_focus_raises() -> None:
@@ -951,3 +1025,15 @@ async def test_from_a_focused_component_out_of_the_focus_order_movement_goes_to_
     await run(rooted(deliveries, three(deliveries, auto_focus=True, in_focus_order=False)), [control, PROBE])
 
     assert probed(deliveries) == [expected]
+
+
+async def test_a_component_that_hides_itself_when_a_focus_on_focuses_it_as_it_mounts_raises() -> None:
+    handle = FocusHandle()
+
+    @component
+    def hides() -> Text:
+        focus = use_focus(handle=handle)
+        return Text(content="hides", style=display_none if focus.is_focused else default)
+
+    with pytest.raises(UnsettledFocus, match="hid itself"):
+        await run(rooted([], lambda is_mounted: [hides()] if is_mounted else [], toggled=FocusOn(handle)), [TOGGLE])
