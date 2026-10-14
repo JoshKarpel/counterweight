@@ -41,7 +41,7 @@ def clear_memos() -> None:  # pragma: no cover
     """
     Empties every `lru_cache` in counterweight, including the ones behind `flyweight` classes.
     A mutmut worker forks from mutmut's parent process after it has run every test, so each cache is warm,
-    and a mutant of a function that only runs on a cache miss (such as `justify_line`, behind `text_lines`)
+    and a mutant of a function that only runs on a cache miss (such as `justify_line`, behind `line_cells`)
     would never run at all; `cold_memos_while_mutmut_maps_tests` empties them for the same reason.
     mutmut freezes its heap before forking a worker, and `gc.get_objects` skips frozen objects, so this unfreezes first.
     """

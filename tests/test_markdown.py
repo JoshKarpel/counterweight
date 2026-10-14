@@ -16,7 +16,13 @@ from counterweight.events import AnyEvent, MouseScrolledDown, MouseScrolledLeft,
 from counterweight.geometry import Position
 from counterweight.handlers import scroll_on_wheel
 from counterweight.highlighting import code_block, code_style, highlight
-from counterweight.markdown import MarkdownStyles, markdown, unmatched_when_silent, wrap_gfm_autolink_rules
+from counterweight.markdown import (
+    MarkdownStyles,
+    markdown,
+    markdown_document,
+    unmatched_when_silent,
+    wrap_gfm_autolink_rules,
+)
 from counterweight.styles import CellStyle
 from counterweight.styles.utilities import (
     border,
@@ -771,8 +777,17 @@ def test_styles_are_merged_over_the_layout() -> None:
     assert paragraph.style == text_wrap_none | pad_x(1)
 
 
-def test_rendering_is_cached() -> None:
-    assert markdown("# a\n") is markdown("# a\n")
+def test_markdown_document_is_memo() -> None:
+    assert markdown_document("# a\n").memo is True
+
+
+def test_markdown_document_renders_what_markdown_renders() -> None:
+    source = "# a\n\nline\nbreak"
+    styles = MarkdownStyles(block_gap=3)
+
+    document = markdown_document(source, styles, keeps_line_breaks=True)
+
+    assert document.func(*document.args, **document.kwargs) == markdown(source, styles, keeps_line_breaks=True)
 
 
 async def test_a_list_item_wider_than_the_rest_of_the_document_widens_a_document_sized_to_its_content() -> None:

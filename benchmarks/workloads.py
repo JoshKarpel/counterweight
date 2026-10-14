@@ -1,6 +1,6 @@
 """Every workload, by name, for the CLI and the smoke tests."""
 
-from benchmarks import agent, agent_markdown, agent_typing, canvas, dashboard, dashboard_local, top
+from benchmarks import agent, agent_markdown, agent_typing, canvas, dashboard, dashboard_local, document, top
 from benchmarks.harness import Runnable
 
 WORKLOADS: dict[str, Runnable] = {
@@ -18,5 +18,8 @@ WORKLOADS: dict[str, Runnable] = {
         dashboard.WORKLOAD,
         dashboard.MEMO_WORKLOAD,
         dashboard_local.WORKLOAD,
+        document.WORKLOAD,
+        document.LINES_WORKLOAD,
+        document.TEXT_AREA_WORKLOAD,
     )
 }

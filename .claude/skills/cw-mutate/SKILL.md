@@ -35,7 +35,7 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   mutmut's timeout fires, and a VM without swap hangs.
 - **Warm caches hide mutants.** Each mutmut worker forks from a parent that has already run every test,
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
-  `paint.justify_line` and the wrap helpers sit behind `text_lines`, `CellStyle.__post_init__` behind its flyweight.
+  `paint.justify_line` sits behind `line_cells`, `CellStyle.__post_init__` behind its flyweight.
   `tests/conftest.py` empties every counterweight `lru_cache` (flyweights included) at the start of each worker.
   It also empties them before every test in mutmut's stats pass, which maps each function to the tests that run it,
   so a function behind a cache is mapped to every test that reaches it, not just the first to miss.
@@ -197,7 +197,6 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   aligning the edge it already sits on leaves the offset where it is.
 - **`_append_style_change`'s `and` as `or`.** `layout_style` is cached, so equal styles are the same object
   and the identity test already decides; they differ only after an eviction, which costs a redundant `SetStyle`.
-- **`MeasurableText.of`'s `text_cells(content, None)`.** Measuring reads only the cells' widths.
 - **`_measure_text`'s known height `None`, or either known dimension ignored.** Taffy uses a known dimension
   in place of the measured one (probed by running the suite with each variant patched in).
 - **Initial values the code never reads.** `_extract_words_and_spaces`'s `current_word = None`,

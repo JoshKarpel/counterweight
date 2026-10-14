@@ -25,7 +25,7 @@ from counterweight.layout import (
 )
 from counterweight.shadow import ShadowTree, update_shadow
 from counterweight.styles.styles import CellStyle, Color
-from counterweight.styles.utilities import border, col, fill, row, text_wrap_stable
+from counterweight.styles.utilities import border, col, fill, height, overflow_hidden, row, text_wrap_stable
 
 WIDTH, HEIGHT = 40, 12
 
@@ -214,6 +214,14 @@ SEQUENCES = {
     ],
     "reorder keyed children": [keyed("a", "b", "c"), keyed("c", "a"), keyed("b", "c", "a")],
     "replace the root": [Text(content="root"), labeled("root"), panes("root")],
+    "an ancestor moves": [
+        Div(style=col, children=(Text(content="above"), panes("moved"))),
+        Div(style=col, children=(Text(content="above\nabove"), panes("moved"))),
+    ],
+    "a clip shrinks": [
+        Div(style=col | overflow_hidden | height(6), children=(Text(content="a\nb\nc\nd"),)),
+        Div(style=col | overflow_hidden | height(2), children=(Text(content="a\nb\nc\nd"),)),
+    ],
 }
 
 
@@ -227,7 +235,7 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
 
 def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, Rects], ...]:
     """Each element and its layout in paint order, without the node keys, which differ between two trees."""
-    return tuple((element, layout) for _, element, layout in layouts.in_paint_order)
+    return tuple((element, layout) for _, element, layout, _ in layouts.in_paint_order)
 
 
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, Rects], ...]:
@@ -258,3 +266,22 @@ def test_text_is_not_wrapped_again_at_a_width_it_was_measured_at(mocker: MockerF
     _measure_text(waxy.KnownSize(height=3.0), waxy.AvailableSize(waxy.Definite(10), waxy.Definite(5)), text)
 
     assert wrap_cells.call_count == 1
+
+
+def test_node_that_did_not_move_keeps_its_rects() -> None:
+    tree = LayoutTree()
+    shadow = frames(tree, [panes("alpha", "beta")])
+    before = dict(tree.placed)
+
+    next = update_shadow(panes("alpha", "beta"), shadow, NO_LAYOUTS).tree
+    layouts = tree.compute(layout_changes(shadow, next), next, WIDTH, HEIGHT, {})
+
+    assert all(layouts.by_key[key] is rects for key, (_, rects) in before.items())
+
+
+def test_placements_are_kept_only_for_nodes_in_the_last_layout() -> None:
+    tree = LayoutTree()
+
+    shadow = frames(tree, [panes("a", "b", "c"), panes("a")])
+
+    assert set(tree.placed) == {node.key for node in shadow.nodes}

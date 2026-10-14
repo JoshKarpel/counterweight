@@ -30,6 +30,7 @@ from counterweight.output import Frame
 from counterweight.routing import RoutingTable, route_key
 from counterweight.shadow import DuplicateElementHandle, update_shadow
 from counterweight.styles import Style
+from counterweight.styles.styles import Color
 from counterweight.styles.utilities import (
     border,
     border_light,
@@ -39,6 +40,7 @@ from counterweight.styles.utilities import (
     height,
     inset_left,
     inset_top,
+    margin_bottom,
     overflow_x_scroll,
     overflow_y_scroll,
     position_absolute,
@@ -119,6 +121,34 @@ async def test_a_scrolled_container_paints_its_children_moved_up_by_its_offset_a
         "│line 3│",
         "└──────┘",
         "below   ",
+    ]
+
+
+async def test_text_scrolled_out_of_view_paints_the_rows_that_overflow_its_box_into_view() -> None:
+    overflowing = Text(content="a\nb\nc\nd\ne", style=height(1))
+    root = Div(style=col, children=(scroller(overflowing, Div(style=height(8))), Text(content="below")))
+
+    assert await last_rows(root, (8, 5), [ScrollTo(HANDLE, y=2)]) == [
+        "┌──────┐",
+        "│c     │",
+        "│d     │",
+        "└──────┘",
+        "below   ",
+    ]
+
+
+async def test_a_margin_color_in_view_paints_though_its_elements_border_box_is_scrolled_out_of_view() -> None:
+    red = Color.from_name("red")
+    margined = Div(style=height(1) | margin_bottom(3) | Style(margin_color=red))
+    root = scroller(margined, Div(style=height(8)))
+
+    frame = (await frames_of(root, (8, 4), [ScrollTo(HANDLE, y=1)]))[-1]
+
+    assert [[cell.style.background == red for cell in row] for row in frame.paint.rows()] == [
+        [False] * 8,
+        [False, *[True] * 6, False],
+        [False, *[True] * 6, False],
+        [False] * 8,
     ]
 
 

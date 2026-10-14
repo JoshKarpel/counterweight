@@ -21,7 +21,7 @@ from functools import partial
 from pathlib import Path
 
 from counterweight.app import app
-from counterweight.components import component
+from counterweight.components import Component, component
 from counterweight.controls import FocusOn, ScrollIntoView
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
@@ -29,7 +29,7 @@ from counterweight.handlers import first, on_click, tab_focus
 from counterweight.headless import use_scroll_area
 from counterweight.hooks import ElementHandle, FocusHandle, use_state
 from counterweight.keys import Key
-from counterweight.markdown import markdown
+from counterweight.markdown import markdown_document
 from counterweight.styles.utilities import *
 
 
@@ -154,7 +154,7 @@ def root(tree: Directory) -> Div:
             pane(
                 str(shown.path.relative_to(tree.path)) if shown else "",
                 fill(1),
-                (markdown(shown.source) if shown else Text(content="No Markdown files here."),),
+                (markdown_document(shown.source) if shown else Text(content="No Markdown files here."),),
                 # Keyed by the file, so showing another remounts the pane, which starts it scrolled to its top.
             ).with_key(str(shown.path) if shown else None),
         ),
@@ -165,7 +165,7 @@ def root(tree: Directory) -> Div:
 def pane(
     name: str,
     width: Style,
-    children: tuple[AnyElement, ...],
+    children: tuple[Component | AnyElement, ...],
     on_key: InputHandler | None = None,
     handle: FocusHandle | None = None,
     auto_focus: bool = False,

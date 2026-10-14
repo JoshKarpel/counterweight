@@ -11,7 +11,7 @@ from counterweight.handlers import on_click
 from counterweight.headless import use_scroll_area
 from counterweight.hooks import Setter, use_hovered, use_rects, use_state
 from counterweight.keys import Key
-from counterweight.markdown import MarkdownStyles, markdown
+from counterweight.markdown import MarkdownStyles, markdown_document
 from counterweight.styles import Style
 from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import *
@@ -188,7 +188,7 @@ def rendered_pane(source: str, mode: TextWrap) -> Div:
             Div(
                 style=fill(1) | col | text_color("violet", 200) | area.style,
                 handle=area.viewport,
-                children=(markdown(source, MARKDOWN_STYLES[mode]),),
+                children=(markdown_document(source, MARKDOWN_STYLES[mode]),),
             ),
         ),
     )

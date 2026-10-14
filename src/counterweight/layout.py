@@ -3,14 +3,14 @@ from __future__ import annotations
 from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
-from itertools import repeat
+from itertools import chain, repeat
 from math import inf
 from typing import TYPE_CHECKING, assert_never
 
 import waxy
 
 from counterweight.controls import ScrollAlignment, ScrollBy, ScrollIntoView, ScrollTo
-from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, text_cells
+from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, styled_cells, text_pieces
 from counterweight.geometry import Position, Rects, Region, Scroll
 from counterweight.graphemes import LINE_BREAKS
 from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
@@ -35,6 +35,12 @@ INITIAL_RECTS = Rects(
 
 # Everything a `Text`'s measured size depends on: its content, its text style, and how it wraps.
 type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
+
+# The rows a `Text` wraps to, each the clusters on it, before justifying.
+type Lines = tuple[tuple[StyledGrapheme, ...], ...]
+
+# Everything a node's `Rects` depend on: its absolute position, its layout, its clip, and the scroll offsets above it.
+type Placement = tuple[waxy.Point, waxy.Layout, Region | None, int, int]
 
 
 def text_source(text: Text) -> TextSource:
@@ -190,13 +196,16 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 @dataclass(frozen=True, slots=True)
 class Layouts:
     """
-    One frame's layouts: each visible node's key, element and layout in paint order, and its layout by key,
+    One frame's layouts: each visible node's key, element, layout and the rows it paints, in paint order,
+    and its layout by key,
     and the scroll of each visible scroll container by key, with the nodes of those scroll containers,
     which the next layout picks anchors in,
     and the key of each element given a `handle`, by its handle, which `use_scroll` reads scrolls through.
+
+    The rows are those a `Text` wraps to, and none for a `Div` or for a `Text` outside its clip, which paint skips.
     """
 
-    in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects], ...]
+    in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects, Lines], ...]
     by_key: Mapping[NodeKey, Rects]
     scrolls: Mapping[NodeKey, Scroll]
     scroll_containers: tuple[ShadowNode, ...] = ()
@@ -303,6 +312,10 @@ class LayoutTree:
 
     tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
+    texts: dict[NodeKey, MeasurableText] = field(default_factory=dict)
+    """The text each leaf is measured with, which is its node's context, kept here too to read it without a call into taffy."""
+    placed: dict[NodeKey, tuple[Placement, Rects]] = field(default_factory=dict)
+    """Each node's placement in the last layout and the `Rects` it resolved to, which the next layout reuses."""
 
     def compute(
         self,
@@ -326,14 +339,15 @@ class LayoutTree:
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
-        by_key, scrolls, scroll_containers = place(
+        self.placed, by_key, scrolls, scroll_containers = place(
             shadow.root,
             boxes,
             Region(left=0, top=0, right=width, bottom=height),
             priors,
             requested_scrolls(requests, shadow, boxes, priors),
+            self.placed,
         )
-        in_paint_order = tuple((node.key, node.element, by_key[node.key]) for node in paint_order(shadow.root, by_key))
+        in_paint_order = tuple(self.painted(node, by_key[node.key]) for node in paint_order(shadow.root, by_key))
 
         return Layouts(
             in_paint_order=in_paint_order,
@@ -343,25 +357,46 @@ class LayoutTree:
             handles=shadow.handled,
         )
 
+    def painted(self, node: ShadowNode, rects: Rects) -> tuple[NodeKey, AnyElement, Rects, Lines]:
+        """
+        `node`'s key, element and layout at `rects`, with the rows it paints:
+        those its `Text` wraps to, or none if it's outside its clip or is a `Div`.
+        """
+        key = node.key
+        element = node.element
+        if not isinstance(element, Text) or rects.clip is None:
+            return key, element, rects, ()
+        return (
+            key,
+            element,
+            rects,
+            self.texts[key].lines_at(None if element.style.resolved.text_wrap == "none" else rects.content.width),
+        )
+
     def apply(self, changes: Iterable[LayoutChange]) -> None:
         """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
         nodes = self.nodes
         tree = self.tree
+        texts = self.texts
         for change in changes:
             match change:
                 case CreateLeaf(key=key, style=style, text=text):
-                    nodes[key] = tree.new_leaf_with_context(style, MeasurableText.of(text))
+                    measurable = texts[key] = MeasurableText.of(text)
+                    nodes[key] = tree.new_leaf_with_context(style, measurable)
                 case CreateContainer(key=key, style=style, children=children):
                     nodes[key] = tree.new_with_children(style, [nodes[child] for child in children])
                 case SetStyle(key=key, style=style):
                     tree.set_style(nodes[key], style)
                 case SetText(key=key, text=text):
-                    tree.set_node_context(nodes[key], MeasurableText.of(text))
+                    measurable = texts[key] = MeasurableText.of(text, texts.get(key))
+                    tree.set_node_context(nodes[key], measurable)
                 case ClearText(key=key):
+                    del texts[key]
                     tree.set_node_context(nodes[key], None)
                 case SetChildren(key=key, children=children):
                     tree.set_children(nodes[key], [nodes[child] for child in children])
                 case Remove(key=key):
+                    texts.pop(key, None)
                     tree.remove(nodes.pop(key))
                 case _ as unreachable:
                     assert_never(unreachable)
@@ -392,13 +427,19 @@ def place(
     screen: Region,
     priors: Mapping[NodeKey, PriorScroll],
     scrolled: Mapping[NodeKey, Scroll],
-) -> tuple[dict[NodeKey, Rects], dict[NodeKey, Scroll], tuple[ShadowNode, ...]]:
+    previous: Mapping[NodeKey, tuple[Placement, Rects]],
+) -> tuple[dict[NodeKey, tuple[Placement, Rects]], dict[NodeKey, Rects], dict[NodeKey, Scroll], tuple[ShadowNode, ...]]:
     """
     Where each node with a box in `boxes` is on `screen`, given its absolute position and layout,
-    and the scroll and node of each scroll container among them,
+    with the placement it's resolved from, and the scroll and node of each scroll container among them,
     walking down from `root` so each node's clip is built from its parent's,
     and each node is moved by the offsets of the scroll containers above it.
     A node without a box is hidden, and so is every node beneath it.
+
+    A node whose placement is the one it had in `previous` keeps the `Rects` it had there,
+    since most nodes don't move from one layout to the next.
+    They're kept by node, not in a cache shared by every node,
+    because a tree with more nodes than such a cache holds would find none of them in it.
 
     A scroll container's scroll is its scroll in `scrolled`, if it has one there,
     and otherwise its `settled_scroll` from how it was scrolled before, in `priors`.
@@ -406,6 +447,7 @@ def place(
     The walk follows the tree, not paint order, because a raised descendant paints after nodes
     outside its ancestors, and must still be clipped by those ancestors.
     """
+    placements: dict[NodeKey, tuple[Placement, Rects]] = {}
     placed: dict[NodeKey, Rects] = {}
     scrolls: dict[NodeKey, Scroll] = {}
     scroll_containers: list[ShadowNode] = []
@@ -416,7 +458,15 @@ def place(
             position, layout = boxes[node.key]
         except KeyError:
             continue
-        rects = placed[node.key] = _resolve_layout(position, layout, clip, scrolled_x, scrolled_y)
+        placement = (position, layout, clip, scrolled_x, scrolled_y)
+        prior = previous.get(node.key)
+        if prior is not None and prior[0] == placement:
+            rects = prior[1]
+            placements[node.key] = prior
+        else:
+            rects = _resolve_layout(position, layout, clip, scrolled_x, scrolled_y)
+            placements[node.key] = (placement, rects)
+        placed[node.key] = rects
         style = node.element.style
         scrolls_x, scrolls_y = scrolled_axes(style)
         if scrolls_x or scrolls_y:
@@ -447,7 +497,7 @@ def place(
                 )
                 for child in reversed(children)
             )
-    return placed, scrolls, tuple(scroll_containers)
+    return placements, placed, scrolls, tuple(scroll_containers)
 
 
 @lru_cache(maxsize=2**12)
@@ -714,7 +764,14 @@ UNMEASURED = sentinel("UNMEASURED")
 class MeasurableText:
     """
     What layout needs to size a `Text`: its cells and how they wrap,
-    with the size they wrap to at each width already asked about.
+    with the rows and size they wrap to at each width already asked about,
+    whose rows at the width layout settles on are the ones paint draws, so text is wrapped once, not again to paint it.
+
+    Its cells are kept by piece of content (see `text_pieces`), for the next version of its text to reuse those
+    it shares with this one, so editing a long text rebuilds only the pieces the edit touched.
+    They're kept here, by node, as well as in `styled_cells`'s cache, which is shared by every text,
+    because a text with more pieces than that cache holds would otherwise push all of them out of it every time it changed,
+    and find none of them there.
 
     Taffy asks a leaf about a dozen distinct questions per layout, but the answer depends only on
     one effective width, so most questions repeat one already answered.
@@ -722,22 +779,53 @@ class MeasurableText:
 
     cells: tuple[StyledGrapheme, ...]
     wrap: TextWrap
+    pieces: Mapping[tuple[str, CellStyle], tuple[StyledGrapheme, ...]] = field(default_factory=dict)
     sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
+    lines: dict[int | None, Lines] = field(default_factory=dict)
     min_content_width: int | UNMEASURED | None = UNMEASURED
 
     @classmethod
-    def of(cls, source: TextSource) -> MeasurableText:
+    def of(cls, source: TextSource, previous: MeasurableText | None = None) -> MeasurableText:
+        """The text of `source`, reusing the cells of each piece it shares with the `previous` text of its node."""
         content, text_style, wrap = source
-        return cls(cells=text_cells(content, text_style), wrap=wrap)
+        # Most texts are one short line, which the shared cache alone serves, and splitting it into pieces
+        # doubles what building it costs. Treating a line split only at the rarer breaks as one piece changes no cells.
+        if isinstance(content, str) and "\n" not in content:
+            cells = styled_cells(content, text_style)
+            return cls(cells=cells, wrap=wrap, pieces={(content, text_style): cells})
+        reusable = {} if previous is None else previous.pieces
+        in_order = tuple(text_pieces(content, text_style))
+        pieces = {piece: reusable.get(piece) or styled_cells(*piece) for piece in set(in_order)}
+        # A one-piece text's cells are its piece's, which a reused piece keeps, so paint's row cache finds it by identity.
+        cells = (
+            pieces[in_order[0]] if len(in_order) == 1 else tuple(chain.from_iterable(map(pieces.__getitem__, in_order)))
+        )
+        return cls(cells=cells, wrap=wrap, pieces=pieces)
 
     def size_at(self, width: int | None) -> tuple[int, int]:
         """The widest line and the line count when wrapped at `width` (unlimited if `None`)."""
         try:
             return self.sizes[width]
         except KeyError:
-            lines = wrap_cells(self.cells, self.wrap, width)
+            lines = self.lines_at(width)
             size = self.sizes[width] = (max((cells_width(line) for line in lines), default=0), len(lines))
             return size
+
+    def lines_at(self, width: int | None) -> Lines:
+        """The rows this text wraps to at `width` (unlimited if `None`)."""
+        # Text that doesn't wrap breaks only at its line breaks, so every width with room for a cluster shares its rows.
+        if self.wrap == "none" and width is not None and width > 0:
+            width = None
+        try:
+            return self.lines[width]
+        except KeyError:
+            # Tuples kept as long as the text is, so paint's cache of each row's cells finds a row by identity,
+            # and a text on one row is its cells.
+            lines = tuple(map(tuple, wrap_cells(self.cells, self.wrap, width)))
+            if lines == (self.cells,):
+                lines = (self.cells,)
+            self.lines[width] = lines
+            return lines
 
     def narrowest_width(self) -> int | None:
         """
@@ -795,7 +883,6 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
     )
 
 
-@lru_cache(maxsize=2**12)
 def _resolve_layout(
     position: waxy.Point, layout: waxy.Layout, clip: Region | None, scrolled_x: int, scrolled_y: int
 ) -> Rects:
@@ -809,9 +896,6 @@ def _resolve_layout(
     A scroll container whose `scrollbar_width` isn't 0 reserves that much space for a scrollbar on each axis it scrolls,
     which counterweight doesn't draw. Taffy narrows its children by that space without saying where it is;
     as in CSS, it lies between the border and the padding box, so the padding box excludes it.
-
-    Cached because most nodes keep their position, layout and clip from one frame to the next,
-    and building the regions is most of the cost of reading layouts back.
     """
     left = int(position.x) - scrolled_x
     top = int(position.y) - scrolled_y
