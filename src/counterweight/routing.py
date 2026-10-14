@@ -111,9 +111,11 @@ class RoutingTable:
         """
         (root,) = shadow.root.children
 
-        if len({use_focus.handle for use_focus in shadow.focusable.values()}) != len(shadow.focusable):
+        handles = [use_focus.handle for use_focus in shadow.focusable.values()]
+        if len(set(handles)) != len(handles):
+            duplicate = next(handle for handle in handles if handles.count(handle) > 1)
             raise DuplicateFocusHandle(
-                "Two mounted components were given the same FocusHandle. "
+                f"Two mounted components were given the same FocusHandle, {duplicate!r}. "
                 "Give each focusable component its own, such as from its own use_state(FocusHandle)."
             )
 

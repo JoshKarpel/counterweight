@@ -17,10 +17,28 @@ from counterweight._context_vars import (
 from counterweight._utils import cancel_tasks, forever
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.hooks import Mouse, Setter, use_clock, use_effect, use_focus, use_memo, use_mouse, use_ref, use_state
+from counterweight.hooks import (
+    ElementHandle,
+    Mouse,
+    Setter,
+    use_clock,
+    use_effect,
+    use_focus,
+    use_memo,
+    use_mouse,
+    use_ref,
+    use_state,
+)
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import DuplicateKey, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
+from counterweight.shadow import (
+    DuplicateElementHandle,
+    DuplicateKey,
+    ShadowNode,
+    ShadowTree,
+    ShadowUpdate,
+    update_shadow,
+)
 from tests.rendering import effect_tasks, render, state_sets
 
 
@@ -184,6 +202,14 @@ def test_a_node_mounted_by_the_first_update_and_unmounted_by_the_later_neither_r
     )
 
 
+def test_the_combined_update_has_the_later_updates_tree() -> None:
+    later = shadow_update([], [], [])
+
+    combined = shadow_update([], [], []).followed_by(later)
+
+    assert combined.tree is later.tree
+
+
 @component
 def remembers(name: str, setters: dict[str, Setter[str]], seen: dict[str, str]) -> Text:
     value, set_value = use_state("initial")
@@ -280,6 +306,15 @@ def test_duplicate_sibling_keys_raise() -> None:
         update_shadow(
             Div(children=(logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k"))), None, NO_LAYOUTS
         )
+
+
+def test_two_mounted_elements_given_one_handle_raise_naming_the_handle() -> None:
+    handle = ElementHandle()
+
+    with pytest.raises(DuplicateElementHandle) as raised:
+        update_shadow(Div(children=(Div(handle=handle), Text(content="", handle=handle))), None, NO_LAYOUTS)
+
+    assert repr(handle) in str(raised.value)
 
 
 async def test_setter_is_the_same_object_across_renders() -> None:

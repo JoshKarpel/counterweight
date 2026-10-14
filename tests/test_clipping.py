@@ -162,7 +162,7 @@ async def test_a_wide_cluster_straddling_a_clip_edge_leaves_a_space_on_the_visib
     paint = (await frame_of(Div(children=(clipped,)), (6, 1))).paint
 
     assert [cell.grapheme for cell in paint.rows().__next__()] == [" ", " ", "b", "c", " ", " "]
-    assert paint[0, 0] is BLANK
+    assert paint[0, 0] == BLANK
 
 
 @pytest.mark.parametrize(
@@ -346,7 +346,7 @@ def test_fill_writes_only_inside_its_clip() -> None:
 
     paint.fill(Region(left=0, top=0, right=4, bottom=3), x, Region(left=1, top=1, right=3, bottom=2))
 
-    assert ["".join("." if cell is BLANK else cell.grapheme for cell in row) for row in paint.rows()] == [
+    assert ["".join("." if cell == BLANK else cell.grapheme for cell in row) for row in paint.rows()] == [
         "....",
         ".xx.",
         "....",
@@ -360,7 +360,7 @@ def test_write_row_writes_only_inside_its_clip(y: int, expected: str) -> None:
 
     paint.write_row(0, y, (x, x, x, x), Region(left=1, top=1, right=3, bottom=2))
 
-    assert "".join("." if cell is BLANK else cell.grapheme for cell in list(paint.rows())[y]) == expected
+    assert "".join("." if cell == BLANK else cell.grapheme for cell in list(paint.rows())[y]) == expected
 
 
 def clicks_on(name: str, clicks: list[str]) -> InputHandler:
