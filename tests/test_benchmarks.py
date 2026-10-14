@@ -18,6 +18,11 @@ from benchmarks.parsing import InputTiming
 from benchmarks.parsing import ParsingTimings
 from benchmarks.parsing import parsing_table
 from benchmarks.parsing import time_parsing
+from benchmarks.snapshots import SCENARIOS
+from benchmarks.snapshots import Scenario
+from benchmarks.snapshots import SnapshotTimings
+from benchmarks.snapshots import snapshots_table
+from benchmarks.snapshots import time_snapshots
 from benchmarks.stacks import EVENT_LOOP
 from benchmarks.stacks import LOOP_ITSELF
 from benchmarks.stacks import STARTUP
@@ -277,3 +282,26 @@ def test_parsing_table_compares_only_the_inputs_both_runs_timed() -> None:
     table = parsing_table({"before": before, "after": after})
 
     assert [row.split() for row in table.splitlines()[3:]] == [["key", "1", "2.00", "1.50", "-25%"]]
+
+
+def test_time_snapshots_times_each_scenario_by_name() -> None:
+    timings = time_snapshots({"line": Scenario(setup=b"a\r\n", step=b"b\r\n"), "none": SCENARIOS["unchanged"]}, 1, 2)
+
+    assert list(timings.snapshot_us) == ["line", "none"]
+    assert all(us > 0 for us in timings.snapshot_us.values())
+
+
+def test_snapshot_timings_load_what_they_dump(tmp_path: Path) -> None:
+    timings = SnapshotTimings(source="src", snapshot_us={"plain-line": 420.5})
+    timings.dump(tmp_path / "run.snapshots.json")
+
+    assert SnapshotTimings.load(tmp_path / "run.snapshots.json") == timings
+
+
+def test_snapshots_table_compares_only_the_scenarios_both_runs_timed() -> None:
+    before = SnapshotTimings(source="a", snapshot_us={"plain-line": 400.0, "wide-line": 900.0})
+    after = SnapshotTimings(source="b", snapshot_us={"plain-line": 300.0})
+
+    table = snapshots_table({"before": before, "after": after})
+
+    assert [row.split() for row in table.splitlines()[3:]] == [["plain-line", "400.0", "300.0", "-25%"]]

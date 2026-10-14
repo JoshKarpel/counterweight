@@ -233,10 +233,18 @@
   which returns rows of styled graphemes whose unset styles come from the canvas;
   a canvas draws again only when its painter isn't equal to the last one or its box changes size.
   `counterweight.painters.pixels` holds `Pixels`, a picture as RGBA bytes,
-  which `Pixels.from_image` makes from a Pillow image,
+  which `Pixels.from_image` makes from a Pillow image (installed by the `images` extra),
   and `HalfBlocks`, a painter that draws one two pixels to a cell with `▀`,
   scaling and placing it as CSS's `object-fit` and `object-position` do,
   and whose `pixels_at` finds the pixels a cell shows, for mouse input.
+
+- Added `counterweight.emulator`, a terminal emulator ([libghostty-vt](https://ghostty.org), through pyghostty,
+  installed by the `emulator` extra) that turns the bytes a program writes into what its terminal shows.
+  An `Emulator` is fed bytes, answers the program's queries through `on_reply`, and snapshots into immutable `Screen` values:
+  rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
+  A snapshot of an unchanged terminal is the same `Screen`, and rows that didn't change are shared between snapshots.
+  `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`,
+  leaving the program's default colors to the canvas's `text_style`, and drawing the cursor when asked.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.

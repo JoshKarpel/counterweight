@@ -64,7 +64,8 @@ The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div`, `Text` and `Canvas`, with style and event handling capabilities
-- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`)
+- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`) and `terminal` (`ScreenView`)
+- **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt, from the optional `emulator` extra) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
 - **Shadow tree** (src/counterweight/shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
@@ -147,7 +148,7 @@ read that to check a layout instead of the SVG.
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
 - **tests/**: Test suites organized by module
-- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing timings (see the `cw-profile` skill)
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing and emulator snapshot timings (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies
@@ -160,6 +161,8 @@ read that to check a layout instead of the SVG.
 - **markdown-it-py**: Parses Markdown for `counterweight.markdown`
 - **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
 - **pygments**: Lexes and colors source code for `counterweight.highlighting`
+- **pyghostty** (the `emulator` extra): libghostty-vt's cffi bindings, the terminal emulator behind `counterweight.emulator`
+- **pillow** (the `images` extra): Decodes images for `Pixels.from_image`, which counterweight itself never imports
 
 ## Code Style Guidelines
 - Line length: 120

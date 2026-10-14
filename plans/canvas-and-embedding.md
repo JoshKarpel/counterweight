@@ -586,7 +586,7 @@ At pyte's speed, `cat` of a 5 MB log freezes the pane for about nine seconds.
 it rebuilds every row as Rich text on every read, drops UTF-8 split across reads,
 always sends application-mode cursor keys, and never answers DA or CPR.
 
-libghostty-vt fits best.
+libghostty-vt fits best, through pyghostty.
 It is Ghostty's core, has the fidelity of a real terminal, and its API was designed for this kind of embedding.
 That API covers dirty rows with stable ids, key, mouse, paste and focus encoders that read the terminal's modes,
 reply callbacks, and color callbacks.
@@ -595,73 +595,122 @@ The cost is supply chain:
 - `pyghostty` has had three releases since July 2026, the latest 0.1.3.
 - It bundles a prebuilt `libghostty-vt` from a pinned Ghostty revision, and libghostty-vt is pre-1.0.
 - It is cffi in ABI mode: no compiler at install time, but no type information, and several calls per cell.
+- It installs about 11 MB, most of it the bundled library,
+  and ships only wheels, for macOS 13+ and manylinux 2.28 (x86_64 and aarch64), with no sdist.
 
-Phase 4 adds a requirement the spike didn't test: reading scrollback with its styles.
+So it is an optional dependency, the `emulator` extra (`counterweight[emulator]`),
+which only `counterweight.emulator` and the terminal painters import:
+an app that never shows a program's output doesn't pay its size,
+and counterweight still installs where pyghostty has no wheel.
+Pillow moved to an `images` extra by the same reasoning, though nothing in counterweight imports it.
+The dev group installs both.
+
+Phase 4 needs what the spike didn't test: reading scrollback with its styles.
 A transcript is everything a program printed, and most of a long one has scrolled off the screen by the time the program exits.
-pyghostty 0.1.3 keeps scrollback (`Terminal(scrollback=10000)`), but its only reader is `contents()`, which returns plain text.
-The spike reads styled cells through libghostty's render state, which covers the active screen.
-Whether libghostty-vt's C API reaches styled scrollback rows, so that pyghostty's `lib` can read them as the spike reads the screen,
-needs checking.
-If it doesn't, this requirement decides for an owned binding.
+pyghostty's `Terminal` reads scrollback only as plain text (`contents()`),
+but libghostty's render state reaches it through its own fast path:
+the `GHOSTTY_RENDER_STATE_OPTION_OVERSCAN` option asks an update to capture up to 65,535 rows above the viewport,
+which the row iterator visits before the screen's rows, with negative `VIEWPORT_Y`s,
+carrying the same cells, styles, dirty flags and row ids.
+A probe read styled scrollback rows that way, and their ids survived the screen scrolling.
+Dirty flags don't help there, since libghostty marks every row dirty when the screen scrolls,
+but a row in the scrollback can't change, so a row converted while already in the scrollback can be kept by id alone.
+A row converted on the screen has to be converted again once it scrolls off,
+since it may have changed after that snapshot and before it scrolled.
+The probe also found that libghostty caps scrollback at 10,000 _bytes_ by default
+(`GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES`), whatever the line limit:
+at 120 columns it kept 673 of 10,000 lines.
+Phase 4's emulator removes the byte cap (a null value) and bounds scrollback by lines alone.
+So styled scrollback doesn't decide for an owned binding.
 
 The alternative fits counterweight's own pattern.
 waxy is PyO3 bindings to taffy, and the same could wrap an emulator crate
 (`libghostty-rs`, `alacritty_terminal`, or `vt100`).
 The binding would expose a snapshot that returns whole rows as Python tuples in one call.
-That removes the 3 to 10 ms snapshot cost (see [Snapshots](#snapshots))
-and gives typed stubs, at the price of building and maintaining another binding.
-I'd keep the `Emulator`/`Screen` boundary either way: nothing outside `emulator.py` touches the emulator.
+That would remove what remains of the snapshot cost (see [Snapshots](#snapshots))
+and give typed stubs, at the price of building and maintaining another binding.
+The `Emulator`/`Screen` boundary keeps that open: nothing outside `emulator.py` touches the emulator.
 
 ### Snapshots
 
 A snapshot shares unchanged rows.
-`Screen` compares by identity, so a `Canvas` redraws only when the program's output changed.
-The emulator keeps each converted row by libghostty's row id while it isn't dirty.
-Unstyled cells are cached by their raw 64-bit value,
-which holds only a codepoint and a width when the cell has no style.
-A styled cell's raw value holds a page-local style id, so those can't be cached.
+`Screen` compares by identity, and a snapshot of a terminal that didn't change returns the previous `Screen`,
+so a `Canvas` redraws only when the program's output changed.
+The emulator keeps each converted row by libghostty's row id while it isn't dirty,
+and converts every row again when the program changes its default colors, which inverse and invisible cells name.
 
-Reading cells through cffi costs several calls per cell, and that is the bottleneck.
+Reading cells through cffi costs several calls per cell, and that is the bottleneck, so a row is read in bulk:
+`GHOSTTY_RENDER_STATE_ROW_DATA_CELLS_RAW` hands over the row's raw 64-bit cell values as one array,
+which a `memoryview` turns into Python ints in one call,
+and a cell is read through the cell iterator (selected by column) only when its value is new.
+An unstyled cell's value holds only its codepoint and width, so the emulator keeps its cells by value for good
+(at most `PLAIN_CELLS_KEPT`, 4,096, before starting over).
+A styled cell's value holds a style id that means something only within its page,
+so within one row the emulator keeps cells by value and styles by style id,
+which saves reading a style's colors and attributes for each cell that uses it.
+Decoding the raw values' bits in Python would save the rest, but libghostty's header says their positions aren't ABI-stable.
 
-These are medians on a 120×40 screen after one line scrolls, when libghostty marks every row dirty:
+`uv run python -m benchmarks snapshot` times snapshots on a 120×40 screen,
+each after one more piece of output (`benchmarks/snapshots.py`), and `compare` compares two runs.
+A line that scrolls the screen leaves libghostty marking every row dirty, so those snapshots convert the whole screen.
+Best times per snapshot:
 
-| Output | Snapshot |
-| --- | --- |
-| plain text | 2.8 ms |
-| every line colored | 10.5 ms |
-| nothing changed | 0.1 ms |
+| Output | Spike | Phase 2 |
+| --- | --- | --- |
+| a plain line, scrolling | 2.8 ms | 0.42 ms |
+| a line with every word colored, scrolling | 10.5 ms | 3.6 ms |
+| a line of wide characters, scrolling | | 0.51 ms |
+| a progress bar rewriting its row | | 0.07 ms |
+| nothing | 0.1 ms | 0.06 ms |
 
 ### The screen painter
 
-The screen painter draws a `Screen`, with the cursor as a reversed cell when asked (see [Fidelity](#later-fidelity)).
+The screen painter, `ScreenView(screen, show_cursor)`, draws a `Screen`,
+with the cursor as a cell with its colors swapped when asked (see [Fidelity](#later-fidelity)).
 It lives in `counterweight.painters.terminal`, and phase 4's transcript painter joins it there.
 The box sizes the terminal rather than the other way round,
 so it is a painter with no natural size (see [Sizing](#sizing)).
-It leaves a program's default colors unset, so they follow the canvas's `text_style`.
+
+A `Screen`'s cells leave a program's default colors unset, so they follow the canvas's `text_style`.
+A cell that has to name them, because the program swapped its colors (inverse video) or hid its text (invisible),
+names the colors the emulator was given (`foreground` and `background`, white on black by default),
+or those the program set with OSC 10 and 11.
+The `Screen` carries them too, for the drawn cursor.
+`CellStyle` has no reverse attribute, so a swapped cell can't follow the canvas's colors.
 
 Paint adds a wide grapheme's continuation cell, and `StyledGrapheme(grapheme="")` raises,
-so the screen painter drops libghostty's spacer tails.
+so the emulator drops libghostty's spacer tails.
 A row then has one entry per grapheme, not per column,
 so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
 which would put it on the wrong cell after any wide character on its line.
+On the second column of a wide cell, the cursor is at its first.
 
 Paint measures each grapheme with counterweight's own `grapheme_width`, not libghostty's,
 and the program laid its line out by libghostty's.
-Where the two disagree (an emoji with a variation selector, a character newer than one of the width tables),
-the rest of the line would shift by a column, and paint drops a cluster it measures as zero wide, shifting it back.
-So the screen painter keeps one column per libghostty column:
-a cell libghostty draws two wide that `grapheme_width` measures as one gets a space after it,
-and a cell it draws one wide that `grapheme_width` measures as zero or two is drawn as a space.
+Where the two disagree, the rest of the line would shift, and paint drops a cluster it measures as zero wide.
+They also split text into clusters differently.
+Unless a program sets mode 2027, libghostty splits ZWJ emoji and flags across cells,
+and attaches zero-width spaces and bidirectional marks to the cell before them,
+so one libghostty cell can be several clusters here.
+So the emulator keeps one column per libghostty column, cell by cell, as it converts a row:
+a cell whose clusters add up to its columns is drawn as them,
+one narrower here (libghostty gives a two-em dash two columns, and wcwidth one) gets spaces after it,
+and one wider here (an emoji with a variation selector) or with no width (a lone Devanagari vowel sign) is drawn as spaces.
+That happens in the emulator rather than the painter,
+so it runs once per converted row, and phase 4's transcript gets rows that already keep libghostty's columns.
 
 ### Phase 2 work
 
-1. Choose between `pyghostty` and an owned binding, against styled scrollback as well as what the spike needed,
-   and add the dependency.
-2. `Emulator` and `Screen`, ported from the spike, with bounded color and style caches:
-   the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
-3. The screen painter, keeping libghostty's column widths where `grapheme_width` disagrees.
-4. Tests that feed bytes (colors, wide characters and width disagreements, the alternate screen, scrolling, query replies),
-   and a benchmark of snapshot cost.
+Done: the work below, with tests at 100% coverage and a mutation testing pass over the new code.
+
+1. pyghostty over an owned binding (see [Choosing an emulator](#choosing-an-emulator)),
+   as the `emulator` extra, with Pillow moved to an `images` extra.
+2. `Emulator` and `Screen` in `counterweight.emulator`, with shared, bounded caches of styles and cells
+   (`lru_cache`s of `cell_style` and `cells_for`) in place of the spike's unbounded `_STYLES` and `colors`.
+3. `ScreenView` in `counterweight.painters.terminal`, with the emulator keeping libghostty's columns.
+4. Tests that feed bytes (colors and attributes, inverse and invisible cells, wide characters, width and cluster disagreements,
+   the alternate screen, scrolling, modes, the title, the cursor, query replies, resizing),
+   and the `snapshot` benchmark.
 
 ## Phase 3: Pseudo-terminals
 
@@ -955,7 +1004,8 @@ The embed in phase 6 feeds its emulator the same way.
    It stands alone, so it can land first.
 2. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
 3. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
-   (and scrollback to match), the pager defaults, and `clear_env`.
+   (and scrollback to match, read through overscan with libghostty's byte cap removed;
+   see [Choosing an emulator](#choosing-an-emulator)), the pager defaults, and `clear_env`.
 4. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
    with its outcome beneath, taking the `viewport` handle its caller measures.
 5. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.

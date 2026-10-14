@@ -42,6 +42,16 @@ dependencies = [
     "mdit-py-plugins>=0.5",
 ]
 
+[project.optional-dependencies]
+# A terminal emulator, for showing what a program prints (`counterweight.emulator`).
+emulator = [
+    "pyghostty>=0.1.3",
+]
+# A decoder for loading images into `counterweight.painters.pixels.Pixels`.
+images = [
+    "pillow>=12",
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.4",
@@ -62,7 +72,7 @@ dev = [
     "ruff>=0.16.10",
     "mutmut>=3.8.0",
     "types-pygments>=2.17",
-    "pillow>=12",
+    "counterweight[emulator,images]",
 ]
 
 [project.scripts]
@@ -77,6 +87,9 @@ Documentation = "https://www.counterweight.dev"
 [tool.uv]
 exclude-newer = "7 days"
 exclude-newer-package = { waxy = false }  # our own layout engine, which counterweight tracks closely
+
+[tool.uv.sources]
+counterweight = { workspace = true }
 
 [tool.pytest.ini_options]
 addopts = ["--strict-markers", "-Werror"]
