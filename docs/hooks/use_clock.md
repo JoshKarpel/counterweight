@@ -6,7 +6,7 @@ A component that reads the time any other way, such as with `datetime.now()`,
 keeps showing the time from whenever it last ran.
 
 ```python
---8 < --"use_clock_status_bar.py:example"
+--8<-- "use_clock_status_bar.py:example"
 ```
 
 ![Status bar](../assets/use-clock-status-bar.svg)
@@ -39,7 +39,7 @@ render a component that reads the clock and give it a new key when the event hap
 which remounts it and starts its `since_mount` again from zero:
 
 ```python
---8 < --"use_clock_lap_timer.py:example"
+--8<-- "use_clock_lap_timer.py:example"
 ```
 
 ![Lap timer](../assets/use-clock-lap-timer.svg)

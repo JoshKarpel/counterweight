@@ -1,9 +1,11 @@
+from typing import TYPE_CHECKING
+
 from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
 from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import Setter, use_state
+from counterweight.hooks import Setter, toggle, use_state
 from counterweight.hooks.impls import MountStatus, NodeKey, UseState
 from tests.rendering import state_sets
 
@@ -44,3 +46,20 @@ def test_a_setter_outliving_its_state_does_nothing() -> None:
         setter(2)
 
     assert queue.empty()
+
+
+def test_toggles_set_before_a_render_each_flip_the_latest_value() -> None:
+    with state_sets():
+        state = UseState(value=False, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7))
+
+        for _ in range(3):
+            state.setter(toggle)
+
+    assert state.value is True
+
+
+if TYPE_CHECKING:
+
+    def toggles(set_open: Setter[bool], set_count: Setter[int]) -> None:
+        set_open(toggle)
+        set_count(toggle)  # type: ignore[arg-type]

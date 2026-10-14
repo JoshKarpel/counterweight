@@ -17,7 +17,7 @@ and its parent's full size across it.
 In a `row`, each child is as wide as its content and as tall as the row:
 
 ```python
---8 < --"layout_defaults.py:row"
+--8<-- "layout_defaults.py:row"
 ```
 
 ![Children of a row](../assets/layout-defaults-row.svg)
@@ -30,7 +30,7 @@ The space to the right is free space that no child claimed.
 In a `col`, the axes swap: each child is as tall as its content and as wide as the column.
 
 ```python
---8 < --"layout_defaults.py:col"
+--8<-- "layout_defaults.py:col"
 ```
 
 ![Children of a column](../assets/layout-defaults-col.svg)
@@ -43,10 +43,12 @@ Stretching is the default, so `align_children_stretch` never needs to be written
 The app places the root component in a grid cell the size of the terminal,
 and the root stretches to fill it, whatever its content.
 Content wider than the terminal can't widen the root:
-the wide line is cut off at the root's border.
+the wide line overflows the root, drawing over its border,
+and the edge of the screen cuts it off.
+`overflow_hidden` on the root would [clip](clipping.md) it at the root's padding box instead.
 
 ```python
---8 < --"layout_defaults.py:root"
+--8<-- "layout_defaults.py:root"
 ```
 
 ![The root filling the screen](../assets/layout-root.svg)
@@ -61,13 +63,15 @@ In the top row below, two `grow(1)` children with long lines can't take half the
 so they overflow it.
 
 `fill(1)` has no automatic minimum,
-so in the bottom row the same two children split the row evenly, and their text is cut off instead.
+so in the bottom row the same two children split the row evenly.
 It [hides the child's overflow](clipping.md), and CSS gives a box that hides its overflow
 a minimum size of zero.
-`min_width(0)` (or `min_height(0)` in a `col`) has the same effect on its own axis.
+Hiding its overflow also clips each `Text`'s line at its own padding box.
+`min_width(0)` (or `min_height(0)` in a `col`) lowers the minimum the same way on its own axis,
+but leaves the overflow visible, so each line would run past its box.
 
 ```python
---8 < --"layout_defaults.py:automatic-minimum"
+--8<-- "layout_defaults.py:automatic-minimum"
 ```
 
 ![The automatic minimum size](../assets/layout-automatic-minimum.svg)
@@ -77,13 +81,16 @@ Grid tracks have the same floor;
 
 ## Text doesn't wrap unless asked to
 
-A `Text` renders each line of its content on one row, and cuts it off at the edge of its box.
-Setting a wrap mode such as `text_wrap_stable` breaks lines to fit the box's width instead.
+A `Text` renders each line of its content on one row.
+A line wider than the box overflows it, as text does in CSS,
+drawing over the box's border and past it, as in the top box below.
+`overflow_hidden` clips the line at the box's padding box, as in the middle one,
+and a wrap mode such as `text_wrap_stable` breaks lines to fit the box's width instead, as in the bottom one.
 [Text in layout](text.md) shows how wrapping text sizes itself,
 and [Text wrapping](../styles/text-wrapping.md) compares the wrap modes.
 
 ```python
---8 < --"layout_defaults.py:wrapping"
+--8<-- "layout_defaults.py:wrapping"
 ```
 
 ![Wrapped and unwrapped text](../assets/layout-wrapping.svg)

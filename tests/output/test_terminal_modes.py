@@ -5,8 +5,10 @@ from typing import TextIO
 import pytest
 
 from counterweight.output import (
+    start_bracketed_paste,
     start_mouse_tracking,
     start_output_control,
+    stop_bracketed_paste,
     stop_mouse_tracking,
     stop_output_control,
 )
@@ -30,6 +32,8 @@ class RecordingStream(io.StringIO):
         (stop_output_control, "\x1b[?1049l\x1b[?25h\x1b[23;0t"),
         (start_mouse_tracking, "\x1b[?1003h\x1b[?1006h"),
         (stop_mouse_tracking, "\x1b[?1003l\x1b[?1006l"),
+        (start_bracketed_paste, "\x1b[?2004h"),
+        (stop_bracketed_paste, "\x1b[?2004l"),
     ],
 )
 def test_terminal_mode_switch_writes_its_sequences_then_flushes(

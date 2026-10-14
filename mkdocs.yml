@@ -117,6 +117,11 @@ nav:
     - hooks/use_scroll.md
     - hooks/use_focus.md
     - hooks/use_hovered.md
+  - Headless Components:
+    - headless/index.md
+    - headless/use_text_input.md
+    - headless/use_text_area.md
+    - headless/use_scroll_area.md
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md

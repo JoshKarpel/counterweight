@@ -51,6 +51,7 @@ from counterweight.events import (
     MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
+    Pasted,
     StateSet,
     TerminalResized,
 )
@@ -66,8 +67,10 @@ from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
     paint_to_instructions,
+    start_bracketed_paste,
     start_mouse_tracking,
     start_output_control,
+    stop_bracketed_paste,
     stop_mouse_tracking,
     stop_output_control,
     synchronized,
@@ -267,6 +270,7 @@ async def render_loop(
         if not headless:
             start_output_control(stream=output_stream)
             start_mouse_tracking(stream=output_stream)
+            start_bracketed_paste(stream=output_stream)
 
         root_component, current_paint, w, h = handle_screen_size_change()
 
@@ -418,6 +422,7 @@ async def render_loop(
 
                     if not headless:
                         stop_reading_keys(key_reader)
+                        stop_bracketed_paste(stream=output_stream)
                         stop_mouse_tracking(stream=output_stream)
                         stop_output_control(stream=output_stream)
                         stop_input_control(stream=input_stream, original=original)
@@ -439,6 +444,7 @@ async def render_loop(
                         start_handling_resize_signal(put_event=put_event)
                         start_output_control(stream=output_stream)
                         start_mouse_tracking(stream=output_stream)
+                        start_bracketed_paste(stream=output_stream)
                         key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
                     root_component, current_paint, w, h = handle_screen_size_change()
@@ -604,7 +610,7 @@ async def render_loop(
                             should_render = True
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
-                        case KeyPressed():
+                        case KeyPressed() | Pasted():
                             for control in route_key(event, focused, routing):
                                 handle_control(control)
                         case (
@@ -651,6 +657,7 @@ async def render_loop(
         if not headless and not is_suspended:
             # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
             stop_reading_keys(key_reader)
+            stop_bracketed_paste(stream=output_stream)
             stop_mouse_tracking(stream=output_stream)
             stop_output_control(stream=output_stream)
             stop_input_control(stream=input_stream, original=original)

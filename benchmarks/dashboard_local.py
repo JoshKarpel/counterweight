@@ -27,6 +27,8 @@ class LocalDashboard:
     description: str
     dimensions: tuple[int, int]
     interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]] = field(default_factory=dict)
+    cycled_interjections: tuple[AnyEvent | AnyControl, ...] = ()
+    step_key: str = "n"
 
     @component
     def root(self, key_press_times: list[int]) -> Div:

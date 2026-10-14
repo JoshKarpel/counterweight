@@ -26,9 +26,22 @@ class TerminalResized(_Event):
 class KeyPressed(_Event):
     key: str
     """
-    The `Key` for a control or special key (`Key.Enter`, `Key.Up`, `Key.F1`),
-    or the text typed: one grapheme cluster, such as `"a"`, `"é"` or `"👩‍💻"`.
-    Each grapheme cluster of pasted text is its own key press.
+    The `Key` for a control or special key (`Key.Enter`, `Key.Up`, `Key.F1`), or for one pressed with Alt
+    (`Key.AltEnter`, `Key.AltUp`, `Key.ControlAltA`),
+    the text typed: one grapheme cluster, such as `"a"`, `"é"` or `"👩‍💻"`,
+    or `alt+` and the text, for text typed with Alt, such as `"alt+b"` or `"alt+B"` (Alt with Shift and B).
+    Text pasted in a terminal without bracketed paste arrives as a key press per grapheme cluster;
+    in one with it, the text arrives as one [`Pasted`][counterweight.events.Pasted].
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class Pasted(_Event):
+    text: str
+    """
+    The text pasted into the terminal, whole, with each line break as `"\\n"`
+    (terminals send a pasted line break as a carriage return).
+    It can hold anything a key press can't, such as line breaks and tabs, which arrive as text rather than as keys.
     """
 
 
@@ -40,6 +53,15 @@ class MouseMoved(_Event):
     button: int | None
     """The button that was held during the motion, or `None` if no button was pressed."""
 
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
+
 
 @dataclass(frozen=True, slots=True)
 class MouseDown(_Event):
@@ -48,6 +70,15 @@ class MouseDown(_Event):
 
     button: int
     """The mouse button that was pressed during the motion."""
+
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +89,15 @@ class MouseUp(_Event):
     button: int
     """The mouse button that was released during the motion."""
 
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
+
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledDown(_Event):
@@ -66,6 +106,15 @@ class MouseScrolledDown(_Event):
 
     direction: int = 1
     """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
+
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +125,15 @@ class MouseScrolledUp(_Event):
     direction: int = -1
     """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
 
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
+
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledLeft(_Event):
@@ -85,6 +143,15 @@ class MouseScrolledLeft(_Event):
     direction: int = -1
     """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
 
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
+
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledRight(_Event):
@@ -93,6 +160,15 @@ class MouseScrolledRight(_Event):
 
     direction: int = 1
     """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
+
+    is_shift_held: bool = False
+    """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
+
+    is_alt_held: bool = False
+    """Whether Alt (Option on macOS) was held, as the DOM's `MouseEvent.altKey` reports it."""
+
+    is_control_held: bool = False
+    """Whether Control was held, as the DOM's `MouseEvent.ctrlKey` reports it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +192,7 @@ MouseEvent = Union[
     MouseScrolledRight,
 ]
 
-InputEvent = Union[KeyPressed, MouseEvent]
+InputEvent = Union[KeyPressed, Pasted, MouseEvent]
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +215,7 @@ class Receiver:
     is_focused: bool
     """
     Whether the receiving element is the focused one.
-    For a key press it's the same as `is_target`, except when nothing is focused:
+    For a key press or a paste it's the same as `is_target`, except when nothing is focused:
     the root component's element is then the target, and no receiver is focused.
     """
 
@@ -147,8 +223,9 @@ class Receiver:
     """
     The receiving element and its descendants,
     for [`FocusNext`][counterweight.controls.FocusNext] and [`FocusPrevious`][counterweight.controls.FocusPrevious]
-    to move focus within, and for [`ScrollTo`][counterweight.controls.ScrollTo]
-    and [`ScrollBy`][counterweight.controls.ScrollBy] to scroll it.
+    to move focus within, for [`ScrollTo`][counterweight.controls.ScrollTo]
+    and [`ScrollBy`][counterweight.controls.ScrollBy] to scroll it,
+    and for [`ScrollIntoView`][counterweight.controls.ScrollIntoView] to bring it into view.
     """
 
     scroll: Scroll | None
@@ -187,6 +264,7 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
 AnyEvent = Union[
     TerminalResized,
     KeyPressed,
+    Pasted,
     StateSet,
     MouseEvent,
     Dummy,

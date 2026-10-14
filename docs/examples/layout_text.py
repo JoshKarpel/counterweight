@@ -4,6 +4,7 @@ import sys
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
+from counterweight.styles.styles import Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -72,19 +73,27 @@ def justify() -> Div:
 
 
 @component
-def narrow() -> Div:
+def narrow_panes(text_style: Style) -> Div:
     return Div(
-        style=row | gap(2),
+        style=row | gap(8),
         children=(
             Div(
                 style=col | width(20) | border | border_heavy,
-                children=(Text(style=border, content="unwrapped text in a col"),),
+                children=(Text(style=text_style, content="unwrapped text in a col"),),
             ),
             Div(
                 style=row | width(20) | border | border_heavy,
-                children=(Text(style=border, content="unwrapped text in a row"),),
+                children=(Text(style=text_style, content="unwrapped text in a row"),),
             ),
         ),
+    )
+
+
+@component
+def narrow() -> Div:
+    return Div(
+        style=col,
+        children=(narrow_panes(border), narrow_panes(border | overflow_hidden)),
     )
 
 
@@ -94,7 +103,7 @@ SCREENSHOTS = [
     ScreenshotSpec(wrap_in_pane(), "layout-text-wrap-in-pane", (60, 7)),
     ScreenshotSpec(wrap_in_row(), "layout-text-wrap-in-row", (60, 8)),
     ScreenshotSpec(justify(), "layout-text-justify", (50, 11)),
-    ScreenshotSpec(narrow(), "layout-text-narrow", (48, 5)),
+    ScreenshotSpec(narrow(), "layout-text-narrow", (56, 10)),
 ]
 
 

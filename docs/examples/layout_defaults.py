@@ -94,9 +94,10 @@ PARAGRAPH = "Text stays on one line unless its style sets a wrap mode, however n
 @component
 def wrapping() -> Div:
     return Div(
-        style=row,
+        style=col,
         children=(
             Text(style=width(24) | border, content=PARAGRAPH),
+            Text(style=width(24) | border | overflow_hidden, content=PARAGRAPH),
             Text(style=width(24) | border | text_wrap_stable, content=PARAGRAPH),
         ),
     )
@@ -109,7 +110,7 @@ SCREENSHOTS = [
     ScreenshotSpec(col_defaults(), "layout-defaults-col", (50, 11)),
     ScreenshotSpec(root_fills_screen(), "layout-root", (50, 5)),
     ScreenshotSpec(automatic_minimum(), "layout-automatic-minimum", (60, 10)),
-    ScreenshotSpec(wrapping(), "layout-wrapping", (48, 7)),
+    ScreenshotSpec(wrapping(), "layout-wrapping", (84, 12)),
 ]
 
 

@@ -2,9 +2,13 @@
 A Markdown viewer: a tree of a directory's Markdown files on the left, and the chosen file rendered on the right.
 
 Run it with `uv run python -m examples.markdown_viewer [directory]`; it shows the docs by default.
-Up and Down move through the tree, Right or Enter opens a directory or shows a file, Left closes a directory,
+Each pane is a scroll area: Tab moves focus between them, as does a click,
+and the focused pane's border lights up.
+In the tree, Up and Down move through it, Home and End to its first and last lines,
+Right or Enter opens a directory or shows a file, Left closes a directory,
 and clicking a row does what Enter would.
-PageUp, PageDown, Home and End scroll the document, and the wheel scrolls whichever pane is under the pointer.
+In the document, the arrows, PageUp, PageDown, Home and End scroll it,
+and the wheel scrolls whichever pane is under the pointer.
 """
 
 from __future__ import annotations
@@ -18,11 +22,12 @@ from pathlib import Path
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import ScrollIntoView, ScrollTo
+from counterweight.controls import FocusOn, ScrollIntoView
 from counterweight.elements import AnyElement, Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
-from counterweight.handlers import on_click, page_down, page_up, scroll_on_wheel
-from counterweight.hooks import ElementHandle, use_scroll, use_state
+from counterweight.handlers import first, on_click, tab_focus
+from counterweight.headless import use_scroll_area
+from counterweight.hooks import ElementHandle, FocusHandle, use_state
 from counterweight.keys import Key
 from counterweight.markdown import markdown
 from counterweight.styles.utilities import *
@@ -78,24 +83,25 @@ def root(tree: Directory) -> Div:
     shown, set_shown = use_state(first_file(tree))
     # On the cursor's line, so moving the cursor can scroll it into view.
     cursor_line, _ = use_state(ElementHandle)
-    document, _ = use_state(ElementHandle)
-    document_scroll = use_scroll(document)
+    tree_focus, _ = use_state(FocusHandle)
 
     lines = list(visible_lines(tree, expanded))
 
-    def activate(index: int) -> None:
+    def activate(index: int) -> FocusOn:
+        """Does what Enter on the line at `index` does, and focuses the tree, as a click on a list's item would."""
         set_cursor(index)
         match lines[index].entry:
             case Directory(path=path):
                 set_expanded(expanded ^ {path})
             case File() as file:
                 set_shown(file)
+        return FocusOn(tree_focus)
 
     def move_cursor(index: int) -> InputResponse:
         set_cursor(index)
         return ScrollIntoView(cursor_line, block="nearest")
 
-    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+    def on_tree_key(event: InputEvent, _: Receiver) -> InputResponse:
         if not lines:
             return None
         match event:
@@ -103,6 +109,10 @@ def root(tree: Directory) -> Div:
                 return move_cursor(max(cursor - 1, 0))
             case KeyPressed(key=Key.Down):
                 return move_cursor(min(cursor + 1, len(lines) - 1))
+            case KeyPressed(key=Key.Home):
+                return move_cursor(0)
+            case KeyPressed(key=Key.End):
+                return move_cursor(len(lines) - 1)
             case KeyPressed(key=Key.Right | Key.Enter):
                 match lines[cursor].entry:
                     case Directory(path=path):
@@ -115,21 +125,13 @@ def root(tree: Directory) -> Div:
                         set_expanded(expanded - {path})
                     case _:
                         return move_cursor(parent_line(lines, cursor))
-            case KeyPressed(key=Key.PageUp):
-                return page_up(document, document_scroll)
-            case KeyPressed(key=Key.PageDown):
-                return page_down(document, document_scroll)
-            case KeyPressed(key=Key.Home):
-                return ScrollTo(document, y=0)
-            case KeyPressed(key=Key.End):
-                return ScrollTo(document, y=document_scroll.max_offset.y)
             case _:
                 return None
         return ()
 
     return Div(
         style=row | full,
-        on_input=on_input,
+        on_input=tab_focus,
         children=(
             pane(
                 f"{tree.path.name}/",
@@ -144,12 +146,15 @@ def root(tree: Directory) -> Div:
                     )
                     for index, line in enumerate(lines)
                 ),
+                # First, so the tree's keys move its cursor rather than scroll it.
+                on_key=on_tree_key,
+                handle=tree_focus,
+                auto_focus=True,
             ),
             pane(
                 str(shown.path.relative_to(tree.path)) if shown else "",
                 fill(1),
                 (markdown(shown.source) if shown else Text(content="No Markdown files here."),),
-                handle=document,
                 # Keyed by the file, so showing another remounts the pane, which starts it scrolled to its top.
             ).with_key(str(shown.path) if shown else None),
         ),
@@ -157,19 +162,32 @@ def root(tree: Directory) -> Div:
 
 
 @component
-def pane(name: str, width: Style, children: tuple[AnyElement, ...], handle: ElementHandle | None = None) -> Div:
+def pane(
+    name: str,
+    width: Style,
+    children: tuple[AnyElement, ...],
+    on_key: InputHandler | None = None,
+    handle: FocusHandle | None = None,
+    auto_focus: bool = False,
+) -> Div:
     """
-    A titled, bordered pane whose content scrolls with the wheel.
-    The border and title are on a box around the part that scrolls, so they stay put while it scrolls.
+    A titled, bordered pane whose content scrolls with the keys while it's focused, and with the wheel.
+    The border and title are on a box around the part that scrolls, so they stay put while it scrolls,
+    and that box is the one that's focused, so its border can show it.
     """
+    area = use_scroll_area(handle=handle, auto_focus=auto_focus)
     return Div(
-        style=col | width | border | border_lightrounded | border_color("slate", 600),
+        style=col
+        | width
+        | border
+        | border_lightrounded
+        | (border_color("sky", 400) if area.focus.is_focused else border_color("slate", 600)),
+        on_input=first(on_key, area.on_input) if on_key else area.on_input,
         children=(
             Text(content=f" {name} " if name else "", style=title),
             Div(
-                style=fill(1) | col | pad_x(1) | overflow_y_scroll,
-                handle=handle,
-                on_input=scroll_on_wheel(),
+                style=fill(1) | col | pad_x(1) | area.style,
+                handle=area.viewport,
                 children=children,
             ),
         ),

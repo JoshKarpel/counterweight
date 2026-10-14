@@ -5,7 +5,7 @@ from types import ModuleType
 
 import pytest
 
-from benchmarks import agent, agent_markdown, canvas, dashboard, top
+from benchmarks import agent, agent_markdown, agent_typing, canvas, dashboard, top
 from benchmarks.harness import autopilot, run
 from benchmarks.parsing import INPUTS, InputTiming, ParsingTimings, parsing_table, time_parsing
 from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
@@ -46,13 +46,44 @@ async def test_workload_draws_the_same_last_frame_as_its_twin(name: str, twin: s
 def test_autopilot_sends_each_frames_interjections_before_the_key_press_that_steps_to_it() -> None:
     bell = Bell()
 
-    assert autopilot(3, None, {1: (bell,)}) == [
+    assert autopilot(3, None, {1: (bell,)}, (), "n") == [
         KeyPressed(key="n"),
         bell,
         KeyPressed(key="n"),
         KeyPressed(key="n"),
         Quit(),
     ]
+
+
+def test_autopilot_sends_cycled_interjections_one_a_frame_after_that_frames_interjections() -> None:
+    bell, typed_a, typed_b = Bell(), KeyPressed(key="a"), KeyPressed(key="b")
+    step = KeyPressed(key="f12")
+
+    assert autopilot(3, None, {1: (bell,)}, (typed_a, typed_b), "f12") == [
+        typed_a,
+        step,
+        bell,
+        typed_b,
+        step,
+        typed_a,
+        step,
+        Quit(),
+    ]
+
+
+async def test_typing_agent_types_into_its_prompt_while_its_transcript_streams(tmp_path: Path) -> None:
+    timings = await run(WORKLOADS["agent-typing"], frames=10, warmup=0, snapshot=tmp_path / "snapshot.txt")
+
+    *_, prompt, _ = (tmp_path / "snapshot.txt").read_text().splitlines()
+    assert (len(timings.frame_ms), prompt.strip("│ ")) == (9, "Before you")
+
+
+async def test_typing_agent_empties_its_prompt_when_it_sends_the_message(tmp_path: Path) -> None:
+    frames = len(agent_typing.MESSAGE)
+    await run(WORKLOADS["agent-typing"], frames=frames, warmup=0, snapshot=tmp_path / "snapshot.txt")
+
+    *_, prompt, _ = (tmp_path / "snapshot.txt").read_text().splitlines()
+    assert prompt.strip("│ ") == "Try fix the failing test or explain this diff"
 
 
 async def test_scrolled_agent_reads_back_where_its_twin_follows_the_end(tmp_path: Path) -> None:
@@ -200,7 +231,7 @@ def test_parsing_input_is_whole_events_with_nothing_skipped_or_held_over(name: s
     parsed = parse_input(INPUTS[name], is_final=False)
 
     assert parsed.events
-    assert (parsed.skipped, parsed.remainder) == ((), b"")
+    assert (parsed.skipped, parsed.end) == ((), len(INPUTS[name]))
 
 
 def test_time_parsing_times_each_input_by_name() -> None:

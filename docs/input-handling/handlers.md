@@ -32,6 +32,19 @@ so they can't sit on an element and its parent.
 ::: counterweight.handlers.first
 ::: counterweight.handlers.each
 
+## Headless Components
+
+A [headless component](../headless/index.md) returns its behavior as a handler, `on_input`,
+for the component to put on the element it returns, composed with any others:
+
+```python
+field = use_text_input(value, set_value)
+Text(content=..., on_input=first(field.on_input, submit_on_enter, focus_receiver_on_press))
+```
+
+The hook's handler returns `None` for the keys it doesn't edit with, such as Enter and Tab,
+so a handler after it in `first`, or on an ancestor, gets them.
+
 ## Clicks
 
 ::: counterweight.handlers.on_click
@@ -59,8 +72,9 @@ Text(content="Clear", on_input=each(on_click(clear), clear_focus))
 `tab_focus` moves within the element it's attached to,
 so on the root component's element it moves through the whole tree,
 and on a dialog's element it keeps Tab inside the dialog.
-A focused component that wants Tab for itself, to indent in a text area,
+A focused component that wants Tab for itself, such as a code editor that indents with it,
 handles it and returns `()`, so it never bubbles to `tab_focus`.
+The [headless text components](../headless/index.md) don't: they pass Tab on, so it moves focus out of them.
 
 Every handler here that acts on a press claims its `MouseDown`,
 so of nested elements with press handlers, the innermost takes the press:

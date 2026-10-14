@@ -6,7 +6,7 @@ On a `Chunk`'s style, that makes the chunk a link;
 on a `Text`'s `text_style`, it makes all of its text one.
 
 ```python
---8 < --"hyperlinks.py:example"
+--8<-- "hyperlinks.py:example"
 ```
 
 ![Hyperlinks](../assets/hyperlinks.svg)

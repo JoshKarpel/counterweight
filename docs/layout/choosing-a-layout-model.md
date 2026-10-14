@@ -16,7 +16,7 @@ Here is one app shell built both ways, with the same result:
 === "Flexbox"
 
     ```python
-    --8 < --"layout_choosing.py:shell-flex"
+    --8<-- "layout_choosing.py:shell-flex"
     ```
 
     ![An app shell with flexbox constraints](../assets/layout-choosing-shell-flex.svg)
@@ -24,7 +24,7 @@ Here is one app shell built both ways, with the same result:
 === "Grid"
 
     ```python
-    --8 < --"layout_choosing.py:shell-grid"
+    --8<-- "layout_choosing.py:shell-grid"
     ```
 
     ![An app shell with grid tracks](../assets/layout-choosing-shell-grid.svg)
@@ -47,7 +47,7 @@ A flexbox row takes the same extra child as one more column.
 === "Grid"
 
     ```python
-    --8 < --"layout_choosing.py:extra-child-grid"
+    --8<-- "layout_choosing.py:extra-child-grid"
     ```
 
     ![A third child starting a new grid row](../assets/layout-choosing-extra-child-grid.svg)
@@ -55,7 +55,7 @@ A flexbox row takes the same extra child as one more column.
 === "Flexbox"
 
     ```python
-    --8 < --"layout_choosing.py:extra-child-flex"
+    --8<-- "layout_choosing.py:extra-child-flex"
     ```
 
     ![A third child in a flexbox row](../assets/layout-choosing-extra-child-flex.svg)
@@ -80,7 +80,7 @@ Here the grid places the panes, the sidebar is a `col` of items,
 and the status bar is a `row` that pushes its items to either end:
 
 ```python
---8 < --"layout_choosing.py:mixed"
+--8<-- "layout_choosing.py:mixed"
 ```
 
 ![A grid of panes with flexbox inside them](../assets/layout-choosing-mixed.svg)
@@ -104,7 +104,7 @@ Decide which child gives way and say so:
 and `fill(1)` takes whatever is left, or nothing.
 
 ```python
---8 < --"layout_choosing.py:conflict"
+--8<-- "layout_choosing.py:conflict"
 ```
 
 ![An over-constrained row, and the same row shrinking](../assets/layout-choosing-conflict.svg)

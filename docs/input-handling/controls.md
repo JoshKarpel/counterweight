@@ -42,6 +42,10 @@ These controls scroll a [scroll container](../layout/scrolling.md).
 [`scroll_on_wheel`](handlers.md#scrolling) returns `ScrollBy` for the wheel,
 and [`scroll_on_keys`](handlers.md#scrolling) returns `ScrollBy` for the keys that scroll by a step or a page,
 and `ScrollTo` for Home and End.
+`ScrollIntoView` brings an element into view in every container above it:
+moving focus applies it to the newly focused element,
+[`use_text_area`'s handler](../headless/use_text_area.md#keeping-the-cursor-in-view) returns it for the cursor's row,
+and the [autocomplete recipe](../cookbook/autocomplete.md#a-long-list) returns it for the highlighted match.
 
 ::: counterweight.controls.ScrollTo
 ::: counterweight.controls.ScrollBy

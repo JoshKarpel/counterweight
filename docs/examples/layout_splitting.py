@@ -189,6 +189,13 @@ def overflow_grid() -> Div:
                     Text(style=border, content=LONG),
                 ),
             ),
+            Div(
+                style=display_grid | grid_template_columns(fr(1), fr(1)) | border | border_heavy,
+                children=(
+                    Text(style=border | overflow_hidden, content=LONG),
+                    Text(style=border | overflow_hidden, content=LONG),
+                ),
+            ),
         ),
     )
 
@@ -233,7 +240,7 @@ SCREENSHOTS = [
     ScreenshotSpec(ratio_exact(), "layout-split-ratio-exact", (60, 3)),
     ScreenshotSpec(nested_flex(), "layout-split-nested-flex", (60, 8)),
     ScreenshotSpec(nested_grid(), "layout-split-nested-grid", (60, 8)),
-    ScreenshotSpec(overflow_grid(), "layout-split-overflow-grid", (60, 10)),
+    ScreenshotSpec(overflow_grid(), "layout-split-overflow-grid", (60, 15)),
     ScreenshotSpec(percent_gap(), "layout-split-percent-gap", (60, 10)),
 ]
 

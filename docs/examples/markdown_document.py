@@ -4,7 +4,8 @@ import sys
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div
-from counterweight.events import KeyPressed
+from counterweight.events import KeyPressed, MouseScrolledRight
+from counterweight.geometry import Position
 from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
 from counterweight.hooks import use_focus
 from counterweight.keys import Key
@@ -88,14 +89,36 @@ def scrolling() -> Div:
 
 # --8<-- [end:scrolling]
 
+# --8<-- [start:wide]
+
+INSTALL = """\
+Install it with:
+
+```bash
+uv add counterweight markdown-it-py mdit-py-plugins pygments
+```
+"""
+
+
+@component
+def wide() -> Div:
+    return Div(style=col | pad_x(1), children=(markdown(INSTALL),))
+
+
+# --8<-- [end:wide]
+
+WHEEL_RIGHT = MouseScrolledRight(absolute=Position(5, 2))
+
 SCREENSHOTS = [
     ScreenshotSpec(root(), "markdown-document", (60, 25)),
     ScreenshotSpec(github(), "markdown-github", (60, 12)),
     ScreenshotSpec(scrolling(), "markdown-scrolling", (60, 12)),
     ScreenshotSpec(scrolling(), "markdown-scrolling-paged", (60, 12), events=[KeyPressed(key=Key.PageDown)]),
+    ScreenshotSpec(wide(), "markdown-wide", (40, 3)),
+    ScreenshotSpec(wide(), "markdown-wide-scrolled", (40, 3), events=[WHEEL_RIGHT] * 4),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (root, github, scrolling)}
+    roots = {root.__name__: root for root in (root, github, scrolling, wide)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else root()))

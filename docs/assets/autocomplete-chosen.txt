@@ -1,5 +1,5 @@
 ╭─ Add a dependency ───────────────────╮
-│ Package pydantic-settings▏           │
+│ Package pydantic-settings            │
 │                                      │
 │   Group                              │
 │                                      │

@@ -27,7 +27,7 @@ def lap_timer() -> Div:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Space):
-                set_laps(laps + 1)
+                set_laps(lambda laps: laps + 1)
                 return ()
             case _:
                 return None

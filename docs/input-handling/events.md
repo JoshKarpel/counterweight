@@ -3,22 +3,23 @@
 ## Handling Input
 
 `Div` and `Text` elements take an `on_input` handler,
-which Counterweight calls with key presses and mouse events,
+which Counterweight calls with key presses, pastes, and mouse events,
 along with a [`Receiver`][counterweight.events.Receiver] describing the element the event is delivered to.
 A handler matches on the event, so one case can cover a key and a mouse event alike:
 
 ```python
 def on_input(event: InputEvent, _: Receiver) -> InputResponse:
     match event:
-        case KeyPressed(key=Key.Down) | MouseScrolledDown():
-            set_offset(lambda o: o + 1)
-            return ()
-        case KeyPressed(key=Key.Up) | MouseScrolledUp():
-            set_offset(lambda o: o - 1)
+        case KeyPressed(key=Key.Space) | MouseDown(button=1):
+            set_is_open(toggle)
             return ()
         case _:
             return None
 ```
+
+The [library handlers](handlers.md) cover the common cases,
+such as `on_click` for a press released inside the element,
+and `scroll_on_wheel` and `scroll_on_keys` for a [scroll container](../layout/scrolling.md).
 
 A handler's return value says whether the event was its to handle:
 
@@ -73,13 +74,22 @@ def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
 ```
 
 Its `is_focused`, `focus_handle` and `subtree` serve the [focus](../hooks/use_focus.md) handlers:
-whether the element is focused, the handle that names its component if the component is focusable,
+whether the element is focused, the focus handle that names its component if the component is focusable,
 and the element and its descendants, for moving focus among them.
+The `subtree` also names the element for the [scroll controls](controls.md#scrolling),
+and `scroll` says how far the element is scrolled if it's a [scroll container](../layout/scrolling.md),
+which [`scroll_on_keys`](handlers.md#scrolling) reads to tell how far a page is and whether it's reached an end.
 
 ::: counterweight.events.InputEvent
 ::: counterweight.events.InputResponse
 ::: counterweight.events.InputHandler
 ::: counterweight.events.Receiver
+
+A handler that calls another, as the [autocomplete recipe](../cookbook/autocomplete.md) calls a text field's,
+reads what it returned with `response_controls`, which turns any response into a tuple of controls,
+or `None` if the inner handler didn't handle the event.
+
+::: counterweight.events.response_controls
 
 ## Routing Input Events
 
@@ -167,8 +177,72 @@ a press on a button inside a draggable panel clicks the button and doesn't drag 
 
 Each time a key is pressed, Counterweight emits a `KeyPressed` event that holds which key was pressed,
 and [routes](#key-presses) it to the focused element.
+Enter and Ctrl+J are different keys, `Key.Enter` and `Key.ControlJ`,
+so a [text area](../headless/use_text_area.md) can insert a line break on Ctrl+J
+while Enter submits a form.
 
 ::: counterweight.events.KeyPressed
+
+### Keys pressed with Alt
+
+Terminals send a key pressed with Alt as `ESC` followed by what the key sends on its own
+(xterm's `metaSendsEscape`, which most terminals do by default),
+and Counterweight reads the two as one key press:
+`Key.AltEnter` for Alt+Enter, `Key.AltBackspace` for Alt+Backspace, `Key.ControlAltA` for Ctrl+Alt+A,
+and `"alt+b"` for Alt+B, which is `alt+` and the text the key types, so Alt+Shift+B is `"alt+B"`.
+Arrow, navigation and function keys pressed with Alt are `Key.AltUp`, `Key.AltPageDown`, `Key.AltF1` and so on,
+whether the terminal sends Alt in their escape sequence, as xterm does, or as an `ESC` before it, as rxvt does.
+
+```python
+def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+    match event:
+        case KeyPressed(key=Key.Enter):
+            send()
+            return ()
+        case KeyPressed(key="alt+n"):
+            start_new_chat()
+            return ()
+        case _:
+            return None
+```
+
+The DOM's `KeyboardEvent` reports Alt in `altKey`, beside a `key` that doesn't change,
+as Counterweight's mouse events report it in `is_alt_held`.
+A key press names Alt in its key instead, as it names Control and Shift (`Key.ControlLeft`, `Key.ShiftUp`),
+so a handler that matches `Key.Enter` doesn't also take Alt+Enter,
+and a [text field](../headless/use_text_input.md) never types the `b` of Alt+B,
+since text is always one grapheme cluster, and `"alt+b"` isn't.
+
+An Escape pressed on its own and then a key sends the same bytes as Alt with the key,
+so Counterweight tells them apart by time, as terminal programs do:
+an `ESC` at the end of the input that has arrived waits up to 50 milliseconds for more,
+as it waits for the rest of an escape sequence,
+and is Alt with the key that arrives in that time, or the Escape key once it passes.
+Two `ESC`s are two presses of Escape rather than Alt+Escape, so pressing Escape twice quickly is never lost.
+`ESC [` and `ESC O` also begin escape sequences,
+so Alt+[ and Alt+Shift+O arrive as `"alt+["` and `"alt+O"` only when no key follows them within that time.
+
+A terminal that doesn't send Alt as an escape never sends these keys.
+One that sets the high bit of the byte for Alt instead (xterm with `metaSendsEscape` off and `eightBitInput` on)
+sends another character, as does macOS's Option key, which types characters such as `∫` for Option+B
+unless the terminal is set to send it as Meta (Terminal.app's "Use Option as Meta key",
+or iTerm2's "Esc+" for the Option key).
+Run `counterweight check-input` to see which events a terminal's keys arrive as.
+
+## Handling Pastes
+
+Counterweight turns on the terminal's bracketed paste mode,
+so text pasted into the terminal arrives as one `Pasted` event holding all of it,
+rather than as a key press per character,
+and it's [routed](#key-presses) to the focused element, as a key press is.
+A handler that only matches key presses never sees it,
+so a paste can't trigger a binding by holding the binding's key.
+[`use_text_input`](../headless/use_text_input.md) and [`use_text_area`](../headless/use_text_area.md)
+insert it in one edit.
+Terminals without bracketed paste send pasted text as typed keys,
+with its line breaks as Enter, or as Ctrl+J from a terminal that sends them as line feeds.
+
+::: counterweight.events.Pasted
 
 ## Handling Mouse Events
 
@@ -188,17 +262,40 @@ one of `MouseMoved`, `MouseDown`, `MouseUp`,
 ::: counterweight.events.MouseScrolledLeft
 ::: counterweight.events.MouseScrolledRight
 
+Each mouse event says which modifier keys were held, as the DOM's `MouseEvent` does,
+in `is_shift_held`, `is_alt_held` and `is_control_held`,
+so a handler can match a modified press or turn of the wheel:
+
+```python
+def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+    match event:
+        case MouseDown(button=1, is_control_held=True):
+            set_selected(lambda selected: selected ^ {item})
+            return ()
+        case MouseDown(button=1):
+            set_selected({item})
+            return ()
+        case _:
+            return None
+```
+
+Terminals keep some combinations for themselves and never report them to the app:
+most select text for Shift with a press, even while the app tracks the mouse,
+and some scroll their own scrollback for Shift with the wheel or open links for Control with a press.
+So a modifier works best as a shortcut for something the app offers another way too.
+`counterweight check-input --mouse` shows the events a terminal reports.
+
 For example, consider the following series of mouse actions and corresponding events:
 
 | Action                                                                           | Event                                                  |
 |----------------------------------------------------------------------------------|--------------------------------------------------------|
 | Mouse starts at position `(0, 0)`                                                | No event emitted                                       |
-| Mouse moves to position `(1, 0)`                                                 | `MouseMoved(position=Position(x=1, y=0), button=None)` |
-| Mouse button `1` is pressed                                                      | `MouseDown(position=Position(x=1, y=0), button=1)`     |
-| Mouse moves to position `(1, 1)`                                                 | `MouseMoved(position=Position(x=1, y=1), button=1)`    |
-| Mouse button `1` is released                                                     | `MouseUp(position=Position(x=1, y=1), button=1)`       |
-| Mouse button `3` is pressed                                                      | `MouseDown(position=Position(x=1, y=1), button=3)`     |
-| Mouse moves to position `(2, 2)` and mouse button `3` is released simultaneously | `MouseUp(position=Position(x=2, y=2), button=3)`       |
+| Mouse moves to position `(1, 0)`                                                 | `MouseMoved(absolute=Position(x=1, y=0), button=None)` |
+| Mouse button `1` is pressed                                                      | `MouseDown(absolute=Position(x=1, y=0), button=1)`     |
+| Mouse moves to position `(1, 1)`                                                 | `MouseMoved(absolute=Position(x=1, y=1), button=1)`    |
+| Mouse button `1` is released                                                     | `MouseUp(absolute=Position(x=1, y=1), button=1)`       |
+| Mouse button `3` is pressed                                                      | `MouseDown(absolute=Position(x=1, y=1), button=3)`     |
+| Mouse moves to position `(2, 2)` and mouse button `3` is released simultaneously | `MouseUp(absolute=Position(x=2, y=2), button=3)`       |
 
 !!! tip "Mouse Button Identifiers"
 

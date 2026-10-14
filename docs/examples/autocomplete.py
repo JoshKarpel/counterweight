@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import glob
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 from functools import partial
 
@@ -9,12 +13,22 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import ScrollIntoView
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseScrolledDown, MouseUp, Receiver
+from counterweight.events import (
+    InputEvent,
+    InputResponse,
+    KeyPressed,
+    MouseDown,
+    MouseScrolledDown,
+    MouseUp,
+    Receiver,
+    response_controls,
+)
 from counterweight.geometry import Position
 from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
-from counterweight.hooks import ElementHandle, use_focus, use_rects, use_state
+from counterweight.headless import use_text_input
+from counterweight.hooks import ElementHandle, use_rects, use_state
 from counterweight.keys import Key
-from counterweight.styles import Style
+from counterweight.styles import CellStyle, Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -41,6 +55,8 @@ RECIPES = ("codegen", "devlog", "docs-build", "docs-serve", "mutate", "pre-commi
 
 SHOWN_ROWS = 5
 
+CURSOR = (text_color("slate", 900) | text_bg("sky", 300)).text_style
+
 below = Style(layout=waxy.Style(inset_top=waxy.Percent(1.0)))
 above = Style(layout=waxy.Style(inset_bottom=waxy.Percent(1.0)))
 
@@ -50,6 +66,16 @@ def matches(text: str, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
 
 
+@dataclass(frozen=True, slots=True)
+class Completion:
+    text: str
+    highlighted: int
+    is_dismissed: bool
+
+    def edited(self, text: str) -> Completion:
+        return self if text == self.text else Completion(text=text, highlighted=0, is_dismissed=False)
+
+
 @component
 def autocomplete(
     candidates: tuple[str, ...],
@@ -57,42 +83,38 @@ def autocomplete(
     auto_focus: bool = False,
     list_clip: Style = clip_to_screen,
 ) -> Div:
-    focus = use_focus(auto_focus=auto_focus)
     rects = use_rects()
-    text, set_text = use_state("")
-    highlighted, set_highlighted = use_state(0)
-    is_dismissed, set_dismissed = use_state(False)
+    completion, set_completion = use_state(Completion(text="", highlighted=0, is_dismissed=False))
     highlighted_match, _ = use_state(ElementHandle)
 
-    shown = matches(text, candidates) if text else []
-    is_open = focus.is_focused and not is_dismissed and bool(shown)
+    def edit(edit_text: Callable[[str], str]) -> None:
+        set_completion(lambda c: c.edited(edit_text(c.text)))
 
-    def edit(new_text: str) -> None:
-        set_text(new_text)
-        set_highlighted(0)
-        set_dismissed(False)
+    field = use_text_input(completion.text, edit, auto_focus=auto_focus)
+
+    text, highlighted = completion.text, completion.highlighted
+    shown = matches(text, candidates) if text else []
+    is_open = field.focus.is_focused and not completion.is_dismissed and bool(shown)
 
     def choose(match: str) -> None:
-        set_text(match)
-        set_dismissed(True)
+        set_completion(Completion(text=match, highlighted=0, is_dismissed=True))
 
-    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        highlighted_in_view = ScrollIntoView(highlighted_match, block="nearest")
         match event:
             case KeyPressed(key=Key.Down) if is_open:
-                set_highlighted((highlighted + 1) % len(shown))
+                set_completion(lambda c: replace(c, highlighted=(c.highlighted + 1) % len(shown)))
             case KeyPressed(key=Key.Up) if is_open:
-                set_highlighted((highlighted - 1) % len(shown))
+                set_completion(lambda c: replace(c, highlighted=(c.highlighted - 1) % len(shown)))
             case KeyPressed(key=Key.Enter | Key.Tab) if is_open:
                 choose(shown[highlighted])
             case KeyPressed(key=Key.Escape) if is_open:
-                set_dismissed(True)
-            case KeyPressed(key=Key.Backspace):
-                edit(text[:-1])
-            case KeyPressed(key=typed) if not isinstance(typed, Key):
-                edit(text + typed)
+                set_completion(lambda c: replace(c, is_dismissed=True))
             case _:
-                return None
-        return ScrollIntoView(highlighted_match, block="nearest")
+                if (edited := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                return (*edited, highlighted_in_view)
+        return highlighted_in_view
 
     room_above = rects.border.top
     room_below = screen_height - rects.border.bottom
@@ -121,10 +143,22 @@ def autocomplete(
     )
 
     return Div(
-        style=width(24) | (text_bg("slate", 700) if focus.is_focused else text_bg("slate", 800)),
+        style=width(24) | (text_bg("slate", 700) if field.focus.is_focused else text_bg("slate", 800)),
         on_input=first(on_input, focus_receiver_on_press),
         children=(
-            Text(content=f"{text}▏" if focus.is_focused else text),
+            Div(
+                style=row | overflow_x_scroll | stick_to_end_x,
+                on_input=field.on_press,
+                children=(
+                    Text(content=field.before_cursor, style=text_wrap_none),
+                    Text(
+                        content=field.at_cursor,
+                        style=text_wrap_none | Style(text_style=CURSOR if field.focus.is_focused else CellStyle()),
+                        handle=field.cursor_cell,
+                    ),
+                    Text(content=field.after_cursor, style=text_wrap_none),
+                ),
+            ),
             *([suggestions] if is_open else []),
         ),
     )

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import zlib
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from random import choice
 from string import ascii_letters, ascii_uppercase
@@ -13,9 +16,9 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import Setter, use_clock, use_focus, use_state
+from counterweight.hooks import use_clock, use_focus, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -40,6 +43,43 @@ GUESSABLE_WORDS = set(
 )
 
 MAX_SUBMITS = 6
+
+
+@dataclass(frozen=True, slots=True)
+class Board:
+    """
+    One game: the guesses submitted so far, and the one being typed.
+    Each move returns a new board, built from the latest one, so keys that arrive together apply in order,
+    and returns the same board for a move the game refuses.
+    """
+
+    solution: str
+    submitted: tuple[str, ...] = ()
+    guess: str = ""
+
+    @property
+    def outcome(self) -> Literal["win", "loss", "playing"]:
+        if self.submitted and self.submitted[-1] == self.solution:
+            return "win"
+        return "playing" if len(self.submitted) < MAX_SUBMITS else "loss"
+
+    def typed(self, letters: str) -> Board:
+        if self.outcome != "playing":
+            return self
+        return replace(self, guess=(self.guess + letters.upper())[:5])
+
+    def deleted(self) -> Board:
+        if self.outcome != "playing":
+            return self
+        return replace(self, guess=self.guess[:-1])
+
+    def cleared(self) -> Board:
+        return replace(self, guess="")
+
+    def guessed(self) -> Board:
+        if self.outcome != "playing" or self.guess not in GUESSABLE_WORDS:
+            return self
+        return replace(self, submitted=(*self.submitted, self.guess), guess="")
 
 
 def daily_solution(day: date) -> str:
@@ -146,36 +186,32 @@ def menu_button(
 @component
 def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     use_focus(auto_focus=True)
-    guess, set_guess = use_state("")
+    board, set_board = use_state(Board(solution=solution))
 
-    submitted: list[str]
-    set_submitted: Setter[list[str]]
-    submitted, set_submitted = use_state([])
+    def move(change: Callable[[Board], Board]) -> InputResponse:
+        """
+        Makes a move on the latest board, ringing the bell if the game refuses it.
+        The setter calls `apply` before it returns, so `is_refused` is set by then.
+        """
+        is_refused = False
 
-    state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
+        def apply(latest: Board) -> Board:
+            nonlocal is_refused
+            moved = change(latest)
+            is_refused = moved == latest
+            return moved
 
-    def type_letter(letter: str) -> InputResponse:
-        if state != "playing" or len(guess) >= 5:
-            return Bell()
-        set_guess(lambda g: g + letter.upper())
-        return ()
+        set_board(apply)
+        return Bell() if is_refused else ()
+
+    def type_letters(letters: str) -> InputResponse:
+        return move(lambda b: b.typed(letters))
 
     def delete_letter() -> InputResponse:
-        if state != "playing":
-            return ()
-        if not guess:
-            return Bell()
-        set_guess(guess[:-1])
-        return ()
+        return move(Board.deleted)
 
     def submit_guess() -> InputResponse:
-        if state != "playing":
-            return ()
-        if guess not in GUESSABLE_WORDS:
-            return Bell()
-        set_guess("")
-        set_submitted(lambda s: [*s, guess])
-        return ()
+        return move(Board.guessed)
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
@@ -187,9 +223,14 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
             case KeyPressed(key=Key.Enter):
                 return submit_guess()
             case KeyPressed(key=letter) if letter in ascii_letters:
-                return type_letter(letter)
+                return type_letters(letter)
+            case Pasted(text=text):
+                letters = text.strip()
+                return type_letters(letters) if letters.isascii() and letters.isalpha() else Bell()
             case _:
                 return None
+
+    submitted, guess, state = board.submitted, board.guess, board.outcome
 
     guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
     if state == "playing":
@@ -228,10 +269,10 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
             keyboard(
                 submitted=submitted,
                 solution=solution,
-                on_letter=type_letter,
+                on_letter=type_letters,
                 on_submit=submit_guess,
                 on_backspace=delete_letter,
-                on_clear=lambda: set_guess(""),
+                on_clear=lambda: set_board(Board.cleared),
                 on_exit=stop_playing,
             ),
         ),
@@ -287,7 +328,7 @@ KEYBOARD = (
 
 @component
 def keyboard(
-    submitted: list[str],
+    submitted: tuple[str, ...],
     solution: str,
     on_letter: Callable[[str], InputResponse],
     on_submit: Callable[[], InputResponse],

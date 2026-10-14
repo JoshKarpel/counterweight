@@ -81,7 +81,7 @@ The first frame, and the frames after a resize or a resume from a suspend, re-ru
 Here's a dashboard whose root holds a note you type into:
 
 ```python
---8 < --"performance_state_in_root.py:example"
+--8<-- "performance_state_in_root.py:example"
 ```
 
 Each key press changes `dashboard`'s state, so it re-runs,
@@ -91,7 +91,7 @@ though none of them shows anything that changed:
 ```mermaid
 flowchart TB
     dashboard["dashboard"]:::rerun --> column["Div"]:::rerun
-    column --> note_text["Text: Note: d"]:::rerun
+    column --> note_row["Div: Note: d"]:::rerun
     column --> cards_row["Div"]:::rerun
     cards_row --> cards["metric_card ×4"]:::rerun
 
@@ -101,7 +101,7 @@ flowchart TB
 Move the state down into the component that shows it:
 
 ```python
---8 < --"performance_state_moved_down.py:example"
+--8<-- "performance_state_moved_down.py:example"
 ```
 
 ![Dashboard](assets/performance-dashboard.svg)
@@ -137,7 +137,7 @@ Declare the row [`memo`](components/index.md#skipping-a-component-whose-argument
 and it's reused when its arguments equal the previous frame's:
 
 ```python
---8 < --"performance_process_table.py:example"
+--8<-- "performance_process_table.py:example"
 ```
 
 ![Process table](assets/performance-process-table.svg)
@@ -213,7 +213,7 @@ def key_log() -> Div:
         if not isinstance(event, KeyPressed):
             return None
         keys.current.append(event.key)
-        set_count(count + 1)
+        set_count(lambda count: count + 1)
         return ()
 
     return Div(on_input=on_input, children=(key_list(keys.current),))
@@ -221,7 +221,7 @@ def key_log() -> Div:
 
 `key_list` keeps showing the keys from when it last ran.
 Replace the value instead of changing it:
-hold a tuple in state, and set a new one with `set_keys((*keys, event.key))`.
+hold a tuple in state, and set a new one with `set_keys(lambda keys: (*keys, event.key))`.
 
 **A hidden input**, such as a module-level setting, isn't one of the arguments:
 

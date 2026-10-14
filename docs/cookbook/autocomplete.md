@@ -6,12 +6,15 @@ The list has to reach past the box the field is in,
 which here is a form that [scrolls](../layout/scrolling.md) inside a [`fill(1)`](../layout/splitting-space.md) panel,
 and so clips its children.
 
-Counterweight has no text input element, so the recipe builds a minimal one:
-a [focusable](../hooks/use_focus.md) component that keeps its text in state,
-and appends each typed grapheme to it or, for Backspace, removes the last one.
+The field edits its text with [`use_text_input`](../headless/use_text_input.md),
+which makes it focusable and handles typing, moving the cursor, and pasting,
+and leaves drawing the text and the list to the field.
+It draws the text in a row that [scrolls sideways](../headless/use_text_input.md#scrolling-a-long-value),
+with the cursor's cell holding the hook's `cursor_cell` handle,
+so a value wider than the field keeps the cursor in view.
 
 ```python
---8 < --"autocomplete.py:example"
+--8<-- "autocomplete.py:example"
 ```
 
 Typing `py` into the package field opens the list,
@@ -47,7 +50,10 @@ It's at most `SHOWN_ROWS` matches tall, and [scrolls](#a-long-list) the rest.
 ## Choosing a match
 
 Down and Up move the highlight through the list, wrapping at the ends.
-The field keeps which match is highlighted in state, and resets it whenever the text changes:
+The field keeps its text in one state with which match is highlighted and whether the list is dismissed,
+and the setter it passes to `use_text_input` applies each edit to that state,
+resetting the highlight whenever the edit changes the text,
+so moving the cursor leaves it where it was:
 
 ![The third match highlighted after Down twice](../assets/autocomplete-highlighted.svg)
 
@@ -56,8 +62,9 @@ Enter or Tab replaces the text with the highlighted match, and closes the list:
 ![The package field holding pydantic-settings](../assets/autocomplete-chosen.svg)
 
 Escape closes the list too, and it stays closed until the text changes.
-Each of these keys is handled only while the list is open,
-so with it closed, Tab moves focus and Enter bubbles to whatever handles it outside the field.
+Each of these keys is handled only while the list is open.
+Every other event goes to `use_text_input`'s handler, which passes on the keys it doesn't edit with,
+so with the list closed, Tab moves focus and Enter bubbles to whatever handles it outside the field.
 
 A press on a match chooses it, through [`on_click`](../input-handling/handlers.md).
 `on_click` claims the press, so it never reaches the root's `clear_focus`, and focus stays in the field.
@@ -72,7 +79,11 @@ but focus stays in the field, so moving focus can't do it, as it does for a list
 The field gives one [`ElementHandle`][counterweight.focus.ElementHandle] to whichever match is highlighted,
 and every key it handles returns
 [`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view) for that handle, with `block="nearest"`,
-beside whatever state the key changed.
+beside whatever state the key changed,
+and after the controls `use_text_input`'s handler returns for a key it edits with,
+which scroll the cursor into view.
+[`response_controls`](../input-handling/events.md#counterweight.events.response_controls) turns that handler's response into a tuple of controls, or `None` if it didn't handle the key,
+so the field can return them together.
 `ScrollIntoView` applies to the layout of the render that change causes, before it paints,
 and names the element that has the handle in that render: the newly highlighted match.
 So the list scrolls in the same frame the highlight moves, and only as far as it takes:

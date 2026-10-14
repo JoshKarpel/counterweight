@@ -164,6 +164,8 @@ def scroll_on_wheel(lines: int = 3) -> InputHandler:
     A handler that scrolls the scroll container it's on by `lines` toward the wheel's direction
     for each `MouseScrolledUp`, `MouseScrolledDown`, `MouseScrolledLeft` and `MouseScrolledRight`,
     which is three lines by default, as desktop platforms scroll for each notch of the wheel.
+    With Shift held, the vertical wheel scrolls sideways, as browsers on Windows and Linux do:
+    up scrolls left and down scrolls right.
     It returns `None` for a wheel event that would move the container past the end of its range,
     so the event bubbles to the next scroll container out, as the web chains scrolling,
     and for anything else.
@@ -174,6 +176,10 @@ def scroll_on_wheel(lines: int = 3) -> InputHandler:
 
     def handler(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
+            case MouseScrolledUp(is_shift_held=True):
+                delta = Position(-lines, 0)
+            case MouseScrolledDown(is_shift_held=True):
+                delta = Position(lines, 0)
             case MouseScrolledUp():
                 delta = Position(0, -lines)
             case MouseScrolledDown():

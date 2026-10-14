@@ -8,10 +8,11 @@ from hypothesis import strategies as st
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
+from counterweight.controls import Quit, Screenshot, ScrollTo
 from counterweight.elements import Div, Text
 from counterweight.geometry import Position, Region
 from counterweight.graphemes import grapheme_width
+from counterweight.hooks import ElementHandle
 from counterweight.output import Frame
 from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, text_lines
 from counterweight.styles import Style
@@ -33,6 +34,11 @@ from counterweight.styles.utilities import (
     margin_auto,
     margin_color,
     margin_left,
+    overflow_clip,
+    overflow_hidden,
+    overflow_x_hidden,
+    overflow_x_scroll,
+    overflow_y_hidden,
     pad,
     padding_color,
     position_absolute,
@@ -193,16 +199,16 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
 
 @pytest.mark.parametrize(
     ("width", "expected"),
-    [(5, "日·本· "), (4, "日·本·"), (3, "日· ")],
+    [(5, "日·本· "), (4, "日·本·"), (3, "日·本·")],
 )
-def test_text_lines_never_split_a_wide_cluster_at_the_right_edge(width: int, expected: str) -> None:
-    (line,) = text_lines(Text(content="日本").cells, "none", "left", resolve_cell_style(CellStyle()), width, 1)
+def test_text_lines_pad_a_row_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
+    (line,) = text_lines(Text(content="日本").cells, "none", "left", resolve_cell_style(CellStyle()), width)
     assert "".join(cell.grapheme or "·" for cell in line) == expected
 
 
 def test_text_lines_draw_no_cell_for_a_zero_width_cluster() -> None:
     (line,) = text_lines(
-        Text(content="a\N{ZERO WIDTH SPACE}b").cells, "none", "left", resolve_cell_style(CellStyle()), 3, 1
+        Text(content="a\N{ZERO WIDTH SPACE}b").cells, "none", "left", resolve_cell_style(CellStyle()), 3
     )
     assert "".join(cell.grapheme for cell in line) == "ab "
 
@@ -407,25 +413,86 @@ async def test_wide_characters_take_two_cells_each() -> None:
     assert grid(paint) == ["┌────────┐", "│日·本·語·ab│", "└────────┘"]
 
 
-async def test_text_taller_than_its_content_box_is_cut_off_at_the_box() -> None:
-    frames: list[str] = []
+@pytest.mark.parametrize(
+    ("text_style", "expected"),
+    [
+        (Style(), ["a..", "b.."]),
+        (overflow_hidden, ["a..", "..."]),
+        (overflow_y_hidden, ["a..", "..."]),
+        (overflow_x_hidden, ["a..", "b.."]),
+    ],
+)
+async def test_text_taller_than_its_content_box_overflows_below_it_unless_its_overflow_clips_it(
+    text_style: Style, expected: list[str]
+) -> None:
+    paint = await render(Div(children=(Text(content="a\nb", style=size(3, 1) | text_style),)), dimensions=(3, 2))
+
+    assert grid(paint) == expected
+
+
+@pytest.mark.parametrize(
+    ("text_style", "expected"),
+    [
+        (Style(), "hello."),
+        (overflow_x_hidden, "hel..."),
+        (overflow_clip, "hel..."),
+        (overflow_y_hidden, "hello."),
+    ],
+)
+async def test_text_wider_than_its_content_box_overflows_past_it_unless_its_overflow_clips_it(
+    text_style: Style, expected: str
+) -> None:
+    paint = await render(Div(children=(Text(content="hello", style=size(3, 1) | text_style),)), dimensions=(6, 1))
+
+    assert grid(paint) == [expected]
+
+
+@pytest.mark.parametrize(("text_style", "expected"), [(Style(), "hi...."), (overflow_hidden, "......")])
+async def test_text_with_no_width_overflows_unless_its_overflow_clips_it_away(text_style: Style, expected: str) -> None:
+    paint = await render(Div(children=(Text(content="hi", style=size(0, 1) | text_style),)), dimensions=(6, 1))
+
+    assert grid(paint) == [expected]
+
+
+async def test_text_overflowing_its_content_box_is_cut_off_where_its_parent_clips() -> None:
+    paint = await render(
+        Div(style=size(4, 1) | overflow_hidden, children=(Text(content="hello", style=size(2, 1)),)), dimensions=(6, 1)
+    )
+
+    assert grid(paint) == ["hell.."]
+
+
+async def test_text_overflowing_a_column_in_a_scroll_container_scrolls_into_view() -> None:
+    handle = ElementHandle()
+    frames: list[Frame] = []
 
     @component
     def root() -> Div:
-        return Div(children=(Text(content="a\nb", style=size(3, 1)),))
+        return Div(
+            style=col | size(4, 1) | overflow_x_scroll,
+            handle=handle,
+            children=(Text(content="abcdefgh"),),
+        )
 
     await app(
         root(),
         headless=True,
-        dimensions=(3, 2),
-        autopilot=[Screenshot(handler=lambda frame: frames.append(frame.text(ansi=False))), Quit()],
+        dimensions=(6, 1),
+        autopilot=[ScrollTo(handle, x=4), Screenshot(handler=frames.append), Quit()],
+        check_purity=True,
     )
 
-    assert frames == ["a  \n   "]
+    assert grid(frames[0].paint) == ["efgh.."]
 
 
-def test_text_lines_are_empty_at_no_width() -> None:
-    assert text_lines(tuple(Text(content="hi").cells), "stable", "left", resolve_cell_style(CellStyle()), 0, 3) == ()
+def test_text_lines_that_wrap_are_empty_at_no_width() -> None:
+    assert text_lines(tuple(Text(content="hi").cells), "stable", "left", resolve_cell_style(CellStyle()), 0) == ()
+
+
+def test_text_lines_that_do_not_wrap_run_past_no_width() -> None:
+    lines = text_lines(tuple(Text(content="hi").cells), "none", "left", resolve_cell_style(CellStyle()), 0)
+
+    assert ["".join(cell.grapheme for cell in line) for line in lines] == ["hi"]
 
 
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:

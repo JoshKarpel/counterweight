@@ -14,7 +14,7 @@ import waxy
 from counterweight._utils import flyweight, halve_integer
 from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
 from counterweight.geometry import Position, Rects, Region
-from counterweight.layout import cells_width, wrap_cells
+from counterweight.layout import cells_width, child_clip, clipped_axes, wrap_cells
 from counterweight.styles.styles import (
     UNSET,
     BorderKind,
@@ -288,10 +288,7 @@ def paint_element(
         case Div():
             lines: tuple[tuple[Cell, ...], ...] = ()
         case Text() as e:
-            content = resolved.content
-            lines = text_lines(
-                e.cells, style.text_wrap, style.text_justify, style.text_style, content.width, content.height
-            )
+            lines = text_lines(e.cells, style.text_wrap, style.text_justify, style.text_style, resolved.content.width)
         case _:
             assert_never(element)
 
@@ -301,8 +298,13 @@ def paint_element(
     paint.fill(resolved.border, Cell.blank(color=style.content_color), clip)
     for region, cell in fills:
         paint.fill(region, cell, clip)
+    if not lines:
+        return hints
+    # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
+    if (text_clip := child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))) is None:
+        return hints
     for y, line in enumerate(lines, start=resolved.content.top):
-        paint.write_row(resolved.content.left, y, line, clip)
+        paint.write_row(resolved.content.left, y, line, text_clip)
 
     return hints
 
@@ -342,21 +344,20 @@ def text_lines(
     justify: TextJustify,
     text_style: ResolvedCellStyle,
     width: int,
-    height: int,
 ) -> tuple[tuple[Cell, ...], ...]:
     """
-    The rows of cells that text fills a `width` by `height` region with, each exactly `width` cells long.
-    They don't depend on where the region is, so text that moves keeps its cache entry.
+    The rows of cells that text wrapped and justified at `width` fills, each at least `width` cells long:
+    a line wider than `width`, or rows below the box, overflow it, as CSS's text does,
+    for the clip to cut off.
+    They don't depend on where the box is or how tall it is, so text that moves keeps its cache entry.
 
     A zero-width cluster takes no cell, so it isn't drawn.
-    A two-cell-wide cluster that would straddle the right edge is left out, and spaces fill the rest of its row.
+    Text that wraps draws nothing at a width of zero or less, where no row has room for a cluster.
     """
-    if width <= 0:
-        return ()
-
     lines = []
     previous_style = None
-    for line in wrap_cells(cells=graphemes, wrap=wrap, width=width)[:height]:
+    # Text that doesn't wrap breaks only at its line breaks, so its width only pads its rows.
+    for line in wrap_cells(cells=graphemes, wrap=wrap, width=max(width, 1) if wrap == "none" else width):
         cells: list[Cell] = []
         for styled in justify_line(line, width, justify):
             if not styled.width:
@@ -364,11 +365,6 @@ def text_lines(
             if styled.style is not previous_style:
                 resolved_style = resolve_cell_style(styled.style, text_style)
                 previous_style = styled.style
-            room = width - len(cells)
-            if styled.width > room:
-                # resolved_style is always bound here, since previous_style starts as None
-                cells.extend([Cell(" ", resolved_style)] * room)
-                break
             cells.append(Cell(styled.grapheme, resolved_style))
             if styled.width == 2:
                 cells.append(Cell("", resolved_style))

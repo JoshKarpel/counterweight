@@ -294,8 +294,8 @@ class ScrollIntoView(_Control):
     It applies as [`ScrollTo`][counterweight.controls.ScrollTo] does, to the layout of the next render,
     so a handler that returns it beside a state change, such as moving a highlight through a long list,
     shows the scroll in the same frame as the change.
-    The element `target` names is the one with that handle in the next render,
-    so a handle moved onto a newly highlighted element names the new one.
+    The element `target` names is the one with that element handle in the next render,
+    so an element handle moved onto a newly highlighted element names the new one.
     It does nothing if `target` names no mounted, visible element then,
     and it stops at an element with [`clip_to_screen`](../layout/clipping.md#escaping-every-clip),
     since no container above that element clips it.

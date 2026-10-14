@@ -1,16 +1,15 @@
 import asyncio
 import random
-from collections.abc import Callable
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, ScrollBy, ScrollTo
+from counterweight.controls import AnyControl, Quit
 from counterweight.elements import AnyElement, Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.handlers import first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
-from counterweight.hooks import ElementHandle, use_effect, use_focus, use_scroll, use_state
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.handlers import first, on_click, tab_focus
+from counterweight.headless import ScrollAxis, use_scroll_area
 from counterweight.keys import Key
-from counterweight.styles import CellStyle, Style
+from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
 
 LEVELS = (("INFO", cyan_400), ("WARN", amber_400), ("ERROR", red_400), ("DEBUG", slate_500))
@@ -72,87 +71,38 @@ def table_rows(count: int) -> tuple[Text, ...]:
 
 
 @component
-def scrolling_body(
-    children: tuple[AnyElement, ...],
-    axes: Style,
-    handle: ElementHandle,
-    auto_focus: bool,
-    report_focus: Callable[[bool], None],
-) -> Div:
-    """
-    The part of a pane that scrolls: with the wheel, and with the keys while it's focused.
-    The pane reads how far it's scrolled through `handle`, but only the body knows whether it's focused,
-    so it reports that from an effect, which is how a component tells its parent about something only it can see,
-    as a React component calls an `onFocus` prop.
-    """
-    focus = use_focus(auto_focus=auto_focus)
-
-    async def tell() -> None:
-        report_focus(focus.is_focused)
-
-    use_effect(tell, deps=(focus.is_focused,))
-
-    def on_key(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if (current := receiver.scroll) is None:
-            return None
-        page = max(1, current.view_height - 1)
-        target = receiver.subtree
-        match event:
-            case KeyPressed(key=Key.Up):
-                return ScrollBy(target, y=-1)
-            case KeyPressed(key=Key.Down):
-                return ScrollBy(target, y=1)
-            case KeyPressed(key=Key.Left):
-                return ScrollBy(target, x=-4)
-            case KeyPressed(key=Key.Right):
-                return ScrollBy(target, x=4)
-            case KeyPressed(key=Key.PageUp):
-                return ScrollBy(target, y=-page)
-            case KeyPressed(key=Key.PageDown):
-                return ScrollBy(target, y=page)
-            case KeyPressed(key=Key.Home):
-                return ScrollTo(target, x=0, y=0)
-            case KeyPressed(key=Key.End):
-                return ScrollTo(target, y=current.max_offset.y)
-            case _:
-                return None
-
-    return Div(
-        style=fill(1) | col | axes,
-        handle=handle,
-        on_input=first(on_key, scroll_on_wheel(), focus_receiver_on_press),
-        children=children,
-    )
-
-
-@component
 def pane(
-    title: str, children: tuple[AnyElement, ...], axes: Style, auto_focus: bool = False, has_jump_to_end: bool = False
+    title: str,
+    children: tuple[AnyElement, ...],
+    axis: ScrollAxis,
+    stick_to_end: bool = False,
+    auto_focus: bool = False,
+    has_jump_to_end: bool = False,
 ) -> Div:
     """
-    A titled, bordered pane around a body that scrolls.
+    A titled, bordered pane around a body that scrolls: with the wheel, and with the keys while the pane is focused.
     The border, the title, and the button that jumps to the end are on the pane, outside the part that scrolls,
-    so they stay put while it scrolls.
+    so they stay put while it scrolls, and the pane is the element that's focused, so its border can show it.
     """
-    body, _ = use_state(ElementHandle)
-    is_focused, set_is_focused = use_state(False)
-    scroll = use_scroll(body)
+    area = use_scroll_area(axis, stick_to_end, auto_focus=auto_focus)
+    scroll = area.scroll
 
     total = scroll.max_offset.y + scroll.view_height
     position = f" rows {scroll.offset.y + 1}-{scroll.offset.y + scroll.view_height} of {total} "
     if scroll.max_offset.x:
         position += f"· column {scroll.offset.x + 1} of {scroll.max_offset.x + scroll.view_width} "
 
-    accent = border_color("sky", 400) if is_focused else border_color("slate", 600)
+    accent = border_color("sky", 400) if area.focus.is_focused else border_color("slate", 600)
     return Div(
         style=fill(1) | col | border | border_lightrounded | accent,
+        on_input=area.on_input,
         children=(
             Text(content=f" {title} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border),
             Text(
                 content=position,
                 style=position_absolute | inset_bottom(-1) | inset_right(1) | clip_to_border | text_color("slate", 400),
             ),
-            scrolling_body(children, axes, body, auto_focus, set_is_focused),
+            Div(style=fill(1) | col | area.style, handle=area.viewport, children=children),
             # Over the body's last line, as Claude Code shows one over its transcript once it's scrolled back.
             *(
                 (
@@ -165,10 +115,10 @@ def pane(
                         | fit_content_width
                         | text_bg("sky", 800)
                         | text_color("sky", 100),
-                        on_input=on_click(lambda: ScrollTo(body, y=scroll.max_offset.y)),
+                        on_input=on_click(lambda: area.to_end),
                     ),
                 )
-                if has_jump_to_end and scroll.offset.y != scroll.max_offset.y
+                if has_jump_to_end and not area.is_at_end
                 else ()
             ),
         ),
@@ -185,8 +135,8 @@ def root() -> Div:
                 return None
 
     panes: tuple[Component, ...] = (
-        pane("Log", log_lines(80), overflow_y_scroll | stick_to_end_y, auto_focus=True, has_jump_to_end=True),
-        pane("Hosts", table_rows(40), overflow_scroll | align_children_start),
+        pane("Log", log_lines(80), "y", stick_to_end=True, auto_focus=True, has_jump_to_end=True),
+        pane("Hosts", table_rows(40), "both"),
     )
     return Div(
         style=col | full,

@@ -3,14 +3,31 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.headless import TextInput, use_text_input
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 METRICS = (("CPU", "23.4%"), ("Memory", "1.21 GB"), ("Disk", "44.8 MB/s"), ("Network", "8.33 MB/s"))
 
+CURSOR = text_color("slate", 900) | text_bg("slate", 100)
+
 # --8<-- [start:example]
+
+
+def note_line(field: TextInput) -> tuple[Text, Div]:
+    return (
+        Text(content="Note: "),
+        Div(
+            style=row | overflow_x_scroll | stick_to_end_x,
+            on_input=field.on_press,
+            children=(
+                Text(content=field.before_cursor, style=text_wrap_none),
+                Text(content=field.at_cursor, style=text_wrap_none | CURSOR, handle=field.cursor_cell),
+                Text(content=field.after_cursor, style=text_wrap_none),
+            ),
+        ),
+    )
 
 
 @component
@@ -27,16 +44,13 @@ def metric_card(label: str, value: str) -> Div:
 @component
 def dashboard() -> Div:
     note, set_note = use_state("")
-
-    def on_input(event: InputEvent, _: Receiver) -> None:
-        if isinstance(event, KeyPressed) and len(event.key) == 1:
-            set_note(note + event.key)
+    field = use_text_input(note, set_note, auto_focus=True)
 
     return Div(
         style=col,
-        on_input=on_input,
+        on_input=field.on_input,
         children=(
-            Text(content=f"Note: {note}"),
+            Div(style=row, children=note_line(field)),
             Div(style=row, children=tuple(metric_card(label, value) for label, value in METRICS)),
         ),
     )

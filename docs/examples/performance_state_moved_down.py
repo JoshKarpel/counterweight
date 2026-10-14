@@ -2,26 +2,22 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_focus, use_state
+from counterweight.elements import Div
+from counterweight.events import KeyPressed
+from counterweight.headless import use_text_input
+from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
-from docs.examples.performance_state_in_root import METRICS, metric_card
+from docs.examples.performance_state_in_root import METRICS, metric_card, note_line
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]
 
 
 @component
-def note() -> Text:
-    use_focus(auto_focus=True)
+def note() -> Div:
     text, set_text = use_state("")
-
-    def on_input(event: InputEvent, _: Receiver) -> None:
-        if isinstance(event, KeyPressed) and len(event.key) == 1:
-            set_text(text + event.key)
-
-    return Text(content=f"Note: {text}", on_input=on_input)
+    field = use_text_input(text, set_text, auto_focus=True)
+    return Div(style=row, on_input=field.on_input, children=note_line(field))
 
 
 @component

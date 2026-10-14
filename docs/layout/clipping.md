@@ -13,9 +13,12 @@ children that don't fit are drawn past its padding box, over its border and what
 `overflow_hidden` clips them to its padding box instead,
 so nothing inside the box is drawn outside its border.
 `overflow_scroll` clips them the same way, and lets them [scroll](scrolling.md).
+A `Text`'s lines overflow its box the same way,
+and `overflow_hidden` on the `Text` clips them to its own padding box
+(see [Text in layout](text.md#long-unwrapped-text-in-a-narrow-pane)).
 
 ```python
---8 < --"layout_clipping.py:hidden"
+--8<-- "layout_clipping.py:hidden"
 ```
 
 ![Visible and hidden overflow](../assets/layout-clipping-hidden.svg)
@@ -38,7 +41,7 @@ The `overflow_x_*` and `overflow_y_*` utilities each set one axis,
 so they combine with each other, as `overflow_x_hidden | overflow_y_clip`.
 
 ```python
---8 < --"layout_clipping.py:one-axis"
+--8<-- "layout_clipping.py:one-axis"
 ```
 
 ![Clipping one axis at a time](../assets/layout-clipping-one-axis.svg)
@@ -50,7 +53,7 @@ as on the web: a raised menu inside a box that hides its overflow is cut off at 
 unless it [escapes every clip](#escaping-every-clip).
 
 ```python
---8 < --"layout_clipping.py:raised"
+--8<-- "layout_clipping.py:raised"
 ```
 
 ![A raised menu clipped by its container](../assets/layout-clipping-raised.svg)
@@ -66,7 +69,7 @@ so it can draw on the border and is still cut off at the border's outer edge.
 `clip_to_padding` is the default.
 
 ```python
---8 < --"layout_clipping.py:clip-to"
+--8<-- "layout_clipping.py:clip-to"
 ```
 
 ![A title clipped to the padding box, and to the border box](../assets/layout-clipping-clip-to.svg)
@@ -85,7 +88,7 @@ even when that box, or one around it, clips.
 `clip_to_screen` makes a box **unclipped**: no ancestor clips it, so only the edge of the screen cuts it off.
 
 ```python
---8 < --"layout_clipping.py:unclipped"
+--8<-- "layout_clipping.py:unclipped"
 ```
 
 ![A raised menu escaping its container](../assets/layout-clipping-unclipped.svg)
@@ -110,7 +113,7 @@ loses the same part of its title as of its border.
 A title clipped to the screen would be drawn past the scroll container's edge instead.
 
 ```python
---8 < --"layout_clipping.py:scrolled-panels"
+--8<-- "layout_clipping.py:scrolled-panels"
 ```
 
 ![Titled panels scrolled one row down](../assets/layout-clipping-scrolled-panels.svg)
@@ -122,7 +125,7 @@ so `inset_top=Percent(1.0)` puts the box's top edge at the bottom of the padding
 which is the bottom border's row when the parent has a border.
 
 ```python
---8 < --"layout_clipping.py:percent-inset"
+--8<-- "layout_clipping.py:percent-inset"
 ```
 
 ![A box at a percentage inset on its parent's border row](../assets/layout-clipping-percent-inset.svg)

@@ -597,6 +597,13 @@ async def test_a_wheel_event_to_the_right_scrolls_a_container_horizontally() -> 
     assert await last_rows(container, (4, 1), [MouseScrolledRight(absolute=ORIGIN)]) == ["cdef"]
 
 
+async def test_a_wheel_event_down_with_shift_held_scrolls_a_container_to_the_right() -> None:
+    wide = Text(content="abcdefghij", style=size(10, 1))
+    container = Div(style=size(4, 1) | overflow_x_scroll, on_input=scroll_on_wheel(2), children=(wide,))
+
+    assert await last_rows(container, (4, 1), [MouseScrolledDown(absolute=ORIGIN, is_shift_held=True)]) == ["cdef"]
+
+
 @component
 def keyed_scroller(*children: Component | AnyElement) -> Div:
     """A focusable box 6 wide and 4 tall that the keys scroll vertically, and that takes focus as it mounts."""

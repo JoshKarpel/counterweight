@@ -42,6 +42,10 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         A function that can be called to update the value of the state (e.g., in an event handler).
             It can either be called with the new value of the state,
             or a function that takes the current value of the state and returns the new value of the state.
+            When the new value depends on the current one, pass a function:
+            a value computed from the state a render saw loses every update made since,
+            such as from other key presses read before the next render
+            (see [Updating state from its previous value](../hooks/use_state.md#updating-state-from-its-previous-value)).
             If the value is not equal to the current of the state,
             Counterweight will trigger a render cycle.
             It is the same object on every render,
@@ -49,6 +53,16 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
             Once the component unmounts, calling it does nothing.
     """
     return current_hook_state.get().use_state(initial_value)
+
+
+def toggle(value: bool) -> bool:
+    """
+    Flips a flag: pass it to a [`use_state`][counterweight.hooks.use_state] setter, as `set_open(toggle)`,
+    so each toggle flips the latest value, even when several land before the next render.
+    It takes only a `bool`, so a type checker rejects it for state of any other type,
+    where `operator.not_` would quietly turn the state into one.
+    """
+    return not value
 
 
 def use_ref[T](initial_value: Getter[T] | T) -> Ref[T]:

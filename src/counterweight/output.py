@@ -34,6 +34,10 @@ SYNCHRONIZED_OUTPUT_OFF = "\x1b[?2026l"
 SET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003h\x1b[?1006h"
 UNSET_ANY_EVENT_MOUSE_SGR_FORMAT = "\x1b[?1003l\x1b[?1006l"
 
+# https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Bracketed-Paste-Mode
+BRACKETED_PASTE_ON = "\x1b[?2004h"
+BRACKETED_PASTE_OFF = "\x1b[?2004l"
+
 CLEAR_SCREEN = "\x1b[2J"
 
 # xterm's title stack: the app saves the title it found, and restores it when it hands the terminal back.
@@ -78,6 +82,19 @@ def start_mouse_tracking(stream: TextIO) -> None:
 
 def stop_mouse_tracking(stream: TextIO) -> None:
     stream.write(UNSET_ANY_EVENT_MOUSE_SGR_FORMAT)
+
+    stream.flush()
+
+
+def start_bracketed_paste(stream: TextIO) -> None:
+    """Have the terminal mark the start and end of pasted text, so it's read as one `Pasted` rather than as keys."""
+    stream.write(BRACKETED_PASTE_ON)
+
+    stream.flush()
+
+
+def stop_bracketed_paste(stream: TextIO) -> None:
+    stream.write(BRACKETED_PASTE_OFF)
 
     stream.flush()
 

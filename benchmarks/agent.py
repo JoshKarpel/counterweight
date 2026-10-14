@@ -166,7 +166,7 @@ def view(model: Model, message_component: MessageComponent) -> Div:
         style=col,
         children=(
             header(model.tokens),
-            transcript(model.messages, message_component),
+            transcript(model.messages, message_component, auto_focus=True),
             spinner(model.tick),
             prompt(),
         ),
@@ -174,8 +174,9 @@ def view(model: Model, message_component: MessageComponent) -> Div:
 
 
 @component
-def transcript(messages: tuple[Message, ...], message_component: MessageComponent) -> Div:
-    use_focus(auto_focus=True)
+def transcript(messages: tuple[Message, ...], message_component: MessageComponent, auto_focus: bool) -> Div:
+    """The newest messages, which take focus on mounting if `auto_focus`, for `scroll_on_keys` in a live run."""
+    use_focus(auto_focus=auto_focus)
     no_jump: int | None = None
     jumped_to, set_jumped_to = use_state(no_jump)
     # On the message last jumped to, so ScrollIntoView names it once the render that moves it there is laid out.

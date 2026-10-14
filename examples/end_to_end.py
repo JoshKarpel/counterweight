@@ -7,7 +7,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import Setter, use_clock, use_focus, use_ref, use_state
+from counterweight.hooks import toggle, use_clock, use_ref, use_state
 from counterweight.keys import Key
 from counterweight.styles import BorderKind, Style
 from counterweight.styles.utilities import (
@@ -19,12 +19,13 @@ from counterweight.styles.utilities import (
     row,
     text_color,
 )
+from counterweight.widgets import text_input
 
 logger = logging.getLogger(__name__)
 
 
 @component
-def toggle() -> Div:
+def time_or_textpad() -> Div:
     border_cycle_ref = use_ref(cycle(BorderKind))
 
     def advance_border() -> BorderKind:
@@ -40,11 +41,12 @@ def toggle() -> Div:
     border_color_style, set_border_color_style = use_state(advance_border_color)
 
     toggled, set_toggled = use_state(False)
+    text, set_text = use_state("")
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Tab):
-                set_toggled(not toggled)
+                set_toggled(toggle)
                 return ()
             case KeyPressed(key=Key.F1):
                 set_border_kind(advance_border())
@@ -63,7 +65,16 @@ def toggle() -> Div:
                         content="End-to-End Demo",
                         style=border_color_style | pad(1) | border | Style(border_kind=border_kind),
                     ),
-                    time() if toggled else textpad(),
+                    time()
+                    if toggled
+                    # Takes focus each time it mounts, which is each time the root swaps it back in.
+                    else text_input(
+                        text,
+                        set_text,
+                        placeholder="...",
+                        auto_focus=True,
+                        style=text_color("teal", 600) | border_color("rose", 500) | pad(1),
+                    ),
                 ),
                 style=row | border | border_lightrounded,
             ),
@@ -83,33 +94,5 @@ def time() -> Text:
     )
 
 
-@component
-def textpad() -> Text:
-    # Takes focus each time it mounts, which is each time the root swaps it back in.
-    use_focus(auto_focus=True)
-    buffer: list[str]
-    set_buffer: Setter[list[str]]
-    buffer, set_buffer = use_state([])
-
-    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
-        match event:
-            case KeyPressed(key=Key.Backspace):
-                set_buffer(buffer[:-1])
-                return ()
-            case KeyPressed(key=key) if key.isprintable() and len(key) == 1:
-                set_buffer([*buffer, key])
-                return ()
-            case _:
-                return None
-
-    content = "".join(buffer) or "..."
-
-    return Text(
-        content=content,
-        style=text_color("teal", 600) | border_color("rose", 500) | pad(1) | border | border_lightrounded,
-        on_input=on_input,
-    )
-
-
 if __name__ == "__main__":
-    asyncio.run(app(toggle()))
+    asyncio.run(app(time_or_textpad()))
