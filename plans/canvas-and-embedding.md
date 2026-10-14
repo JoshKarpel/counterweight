@@ -63,11 +63,14 @@ a canvas that changes less often skips its painter entirely.
 ### The element and its painter
 
 ```python
+type Rows = Sequence[Sequence[StyledGrapheme]]  # top to bottom, each from the content box's left edge
+
+
 class Painter(Protocol):
     @property
     def natural_size(self) -> tuple[int, int]: ...  # (columns, rows): the intrinsic size
 
-    def draw(self, width: int, height: int) -> Rows: ...  # the content box's size -> rows of Cell
+    def draw(self, width: int, height: int) -> Rows: ...  # the content box's size -> rows of styled graphemes
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -89,6 +92,34 @@ A protocol fixes two problems with that:
   `use_state(painter)` calls a callable painter, and `set_state(painter)` treats it as an updater.
   The spike hit both (`Screen` was callable at first; `use_ref(on_output)` was called).
   A painter with a named `draw` method isn't callable, so it can be held in state like any other value.
+
+`draw` returns `StyledGrapheme`s, the cells a `Text`'s chunks become, and paint resolves them the same way:
+whatever a grapheme's `CellStyle` leaves unset comes from the element's `text_style`,
+and a two-cell grapheme gets its continuation cell.
+So a painter never needs the element's style.
+A pixel painter leaves a transparent pixel's color unset to show the canvas's background,
+and the terminal painter leaves a program's default colors unset to follow the app's.
+Building a cell is `StyledGrapheme("▀", CellStyle(foreground=top, background=bottom))`,
+with no resolved style to fill in.
+`draw`'s rows don't depend on the style, so the paint cache stays keyed by `(painter, width, height)`.
+Resolving runs after it and costs what it costs a `Text`:
+one cached `resolve_cell_style` per run of graphemes that share a style.
+The per-node cache (see [Open decisions](#open-decisions)) can keep the resolved rows too,
+and resolve again only when the rows or the `text_style` change.
+
+Painters live in a `counterweight.painters` package, one module per kind:
+`counterweight.painters.pixels` holds `Pixels` and `HalfBlocks` (phase 1),
+phase 3 adds the terminal's screen painter,
+and later ones could include a plotter that draws data as braille curves with text tick labels.
+The plotter is why `draw` returns cells rather than pixels: its labels are text, which pixels can't hold.
+
+The element is `Canvas` rather than `Image` because most of what it shows isn't an image:
+a terminal pane, a plot, a game board.
+It is the surface, and its painter decides what's on it.
+SwiftUI's `Canvas { context, size in ... }` is the closest precedent, a view whose content code draws at the view's size.
+`Image` would also collide with `PIL.Image` in the image example.
+If the image case wants its own name, an `image(pixels, fit=...)` function
+that returns `Canvas(painter=HalfBlocks(...))` can give it one.
 
 Prior art splits on two questions, and `Canvas` takes the same side as Textual and Flutter on both:
 
@@ -158,14 +189,62 @@ Two changes complete the replaced-element model:
 
 The two common uses of a canvas both start from a grid of pixels:
 drawing (walkers, a paint program, plots), and showing an image loaded from disk or memory.
-The web separates the pixels from how they're drawn into a box, and `Canvas` should too:
+Three pieces split that work, and each works in one unit:
+
+- `Pixels` is the picture, in pixels:
+  a value holding a width, a height and RGBA bytes.
+  It knows nothing about cells, boxes or terminals.
+- `HalfBlocks` is a `Painter` that holds a `Pixels` and draws it in cells.
+  It is the only piece that knows both units:
+  each cell shows two pixels stacked vertically,
+  as `▀` with the top pixel's color as its foreground and the bottom pixel's as its background.
+- `Canvas` is the element, in cells.
+  It takes its intrinsic size from its painter, gets a box from layout,
+  and places and clips the rows its painter draws.
+  It knows nothing about pixels.
+
+Each frame, the three meet in layout, paint, and input:
+
+```text
+layout  Canvas --natural_size------> HalfBlocks --(width, ceil(height / 2))--> intrinsic size in cells
+paint   Canvas --draw(W, H)--------> HalfBlocks --fit Pixels into W x 2H pixels, encode--> W x H cells
+input   Canvas cell (x, y) --------> HalfBlocks.pixels_at --> the source pixels that cell shows
+```
+
+Dependencies point one way.
+`Canvas` depends only on the `Painter` protocol,
+`HalfBlocks` on `Pixels` and `StyledGrapheme`,
+and `Pixels` only on `Color`.
+`Pixels` and `HalfBlocks` live together in `counterweight.painters.pixels`, not in `utils.py`.
+
+The web splits the same work three ways:
 
 | Web | Counterweight |
 | --- | --- |
-| `ImageData(data, width, height)`, RGBA bytes | `Pixels`, a frozen value holding `width`, `height` and RGBA `bytes` |
-| `ctx.drawImage(image, dx, dy, dw, dh)`, which scales into a box | `HalfBlocks(pixels, fit=...)`, a painter that scales to the size `draw` is given |
-| `object-fit: fill / contain / cover / none / scale-down` and `object-position` | `fit` and `position` on `HalfBlocks`, centered by default as on the web |
-| an image's natural size and ratio | `HalfBlocks.natural_size`: one column per pixel, one row per two pixels |
+| a decoded image, or `ImageData`: pixels with a natural size and no box | `Pixels` |
+| the browser drawing an image into its box: `object-fit`, `object-position`, and the device pixel ratio | `HalfBlocks` |
+| `<img>`, a replaced element: a box in CSS layout with an intrinsic size from its content | `Canvas` |
+
+Cells change three things:
+
+- **`Canvas` is closer to `<img>` than to `<canvas>`.**
+  A browser `<canvas>` owns a bitmap at its own resolution (its `width` and `height` attributes),
+  and CSS stretches that bitmap to the box.
+  `Canvas` owns no bitmap: its painter draws at the box's size, so nothing is stretched after drawing.
+- **Pixels per cell is the painter's device pixel ratio.**
+  A cell is the layout unit, as a CSS pixel is,
+  and `HalfBlocks` puts 1×2 pixels in each, as a 2x display puts 2×2 device pixels in a CSS pixel.
+  So the natural size in cells depends on the painter, not only on the pixels:
+  a 30×30 `Pixels` is 30×15 cells under `HalfBlocks`, and would be 15×8 under a braille painter's 2×4.
+  That's why `natural_size` belongs to the painter, and `Pixels` has no size in cells.
+  A cell is about twice as tall as it is wide, so 1×2 makes pixels roughly square,
+  and an image keeps its proportions without correction.
+  The exact ratio depends on the user's font.
+- **`fit` is on the painter, not the element's style.**
+  CSS sets `object-fit` on the element (Tailwind's `object-contain`).
+  `Canvas` can't apply it, because only a painter with pixels has something to scale:
+  a terminal's screen has no "contain".
+  The cost is that fit isn't a style utility, so it can't be combined with `|` or shared through a style.
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -183,6 +262,24 @@ class Pixels:
     @classmethod
     def from_image(cls, image: SupportsRGBA) -> Pixels: ...  # Pillow, matched structurally
     def with_points(self, points: Mapping[tuple[int, int], Color]) -> Pixels: ...
+
+
+type Fit = Literal["fill", "contain", "cover", "none", "scale-down"]
+
+
+@dataclass(frozen=True, slots=True)
+class HalfBlocks:
+    pixels: Pixels
+    fit: Fit = "fill"
+    position: tuple[float, float] = (0.5, 0.5)  # object-position, as fractions of the leftover space
+
+    @property
+    def natural_size(self) -> tuple[int, int]:
+        return self.pixels.width, (self.pixels.height + 1) // 2
+
+    def draw(self, width: int, height: int) -> Rows: ...
+
+    def pixels_at(self, cell: Position, width: int, height: int) -> tuple[Position, ...]: ...  # draw, inverted
 ```
 
 Drawing and loading then share one painter:
@@ -195,6 +292,40 @@ image = PIL.Image.open(path)
 Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1))
 ```
 
+`draw(width, height)` works in pixels until its last step:
+
+1. **Scale.**
+   The scale on each axis is the box's size over the natural size, both in cells,
+   so a box at the natural size draws the pixels 1:1 under every `fit`.
+   As with `object-fit`, `fill` scales each axis by its own ratio,
+   `contain` uses the smaller ratio on both, `cover` the larger, `none` neither,
+   and `scale-down` whichever of `none` and `contain` is smaller.
+2. **Place.**
+   `position` places the scaled picture in the box's `width` × `2 * height` pixels.
+   It places in whole pixels, which are half cells vertically, so a picture can start halfway down a cell.
+   Where the picture is bigger than the box (`cover`, `none`), the overflow is cropped.
+3. **Sample.**
+   Each box pixel the picture covers takes its nearest source pixel.
+   A box pixel it doesn't cover, and a transparent pixel, is left unset,
+   so it shows the element's background,
+   as a contained image in a browser shows its `<img>`'s background around it.
+   Alpha is all or nothing: a pixel under half opacity is transparent, and any other is opaque.
+   A painter that doesn't know the background can't blend with it.
+4. **Encode.**
+   Cell `(x, y)` shows box pixels `(x, 2y)` and `(x, 2y + 1)`.
+   Two opaque pixels are `▀`, with the top pixel as its foreground and the bottom as its background.
+   An unset pixel can only be a background, since an unset foreground resolves to the text color:
+   so an unset top pixel makes the cell `▄`, with the bottom pixel as its foreground,
+   and two unset pixels make it a space.
+
+The default `fit` is `fill`, as `object-fit`'s is.
+Every `fit` is the identity at the natural size, so the default matters only when a style or a stretch sizes the box.
+A row that stretches its children distorts a `fill` picture, as it does an `<img>` in a flex row, and `contain` keeps the ratio.
+An odd pixel height leaves the bottom half of the last row uncovered even at the natural size,
+so it's left unset (`utils.canvas` rejects odd heights instead).
+A `Pixels` built from `Color`s is opaque, since `Color` has no alpha;
+transparency arrives only through `from_rgba` and `from_image`.
+
 - **Bytes, not tuples of `Color`.**
   The paint cache hashes its key on every lookup and compares it on every hit.
   CPython caches a `bytes` object's hash, and comparing equal copies is a `memcmp`:
@@ -202,30 +333,42 @@ Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1
   The spike's `HalfBlocks` holds a tuple of `((x, y), Color)` pairs,
   which costs a Python-level `Color.__hash__` per pixel whenever the painter is rebuilt,
   and is the wrong shape for a dense image.
+- **What the cache sees.**
+  The canvas compares painters with `==`,
+  and two `HalfBlocks` are equal when their pixels' bytes, `fit` and `position` are.
+  So a component holds only a `Pixels` in state and builds `HalfBlocks(pixels)` in every render,
+  and `draw` re-runs only when the pixels or the box change.
+  A change is a new `Pixels`: `with_points` copies the whole buffer.
+- **Input arrives in cells.**
+  A mouse event gives the canvas a cell, and the cell shows two pixels, scaled and placed by `fit` and `position`.
+  `pixels_at` inverts `draw` for one cell:
+  the source pixels its two halves sample, none where the cell is outside the picture.
+  A paint program sets those pixels.
+  `examples/mouse.py` draws one full block per cell today, and sets both pixels to look the same.
 - **No Pillow dependency.**
   `from_rgba` takes raw bytes, so Pillow, numpy, or any decoder reaches `Pixels` the same way.
   `from_image` takes a `Protocol` with Pillow's `size`, `convert` and `tobytes`,
   which gives the one-liner without importing PIL.
   The docs say to decode before `app()` or in an effect that sets state, never in render.
-- **Scaling.**
-  `HalfBlocks` resamples when the box size changes, and the result is cached with the rest of `draw`.
-  Nearest-neighbor reads only the pixels it outputs, which keeps it cheap,
+- **Nearest-neighbor.**
+  It reads only the pixels it outputs, which keeps it cheap,
   but it's rough when shrinking a photo a long way.
   Averaging reads every source pixel, which in Python is too slow for a large image.
-  `HalfBlocks` uses nearest-neighbor, and the docs point to Pillow's `Image.thumbnail` for quality.
+  The docs point to Pillow's `Image.thumbnail` for quality.
   These costs are estimates to measure in the benchmark.
-- **Pixel aspect.**
-  A cell is about twice as tall as it is wide, so two pixels to a cell makes pixels roughly square,
-  and an image keeps its proportions without correction.
-  The exact ratio depends on the user's font.
 
 Deferred, each for a different reason:
 
 - **Shapes** (lines, rectangles, circles, as ratatui's `Canvas` draws):
   several plausible designs, such as pure functions from shapes to `Pixels` or an immutable path builder,
   and no way yet to choose between them.
-- **Other cell encodings** (braille, quadrants, sextants): each is another painter over the same `Pixels`,
-  cheap once `HalfBlocks` sets the pattern, and best added together.
+- **Other cell encodings** (braille 2×4, quadrants 2×2, sextants 2×3):
+  each is another painter over the same `Pixels` with its own pixels per cell.
+  Scaling, placing and sampling are the same for each, and only the encoding differs,
+  so they're cheap once `HalfBlocks` exists, and best added together.
+  They trade color for resolution: a cell has two colors, which `HalfBlocks` spends one per pixel,
+  and the others share between four to eight pixels.
+  Quadrants also make pixels twice as tall as wide, so they need an aspect correction.
 
 ### Open decisions
 
@@ -235,32 +378,17 @@ Deferred, each for a different reason:
   It also holds 256 entries for every canvas in the app, so many canvases evict each other.
   A per-node cache, kept across frames the way `LayoutTree` is, needs only `==` and holds one entry per canvas.
   I'd pick the per-node cache.
-- **What `draw` knows about its element's style.**
-  Painters build resolved styles, so they can't inherit the element's `text_style` the way a `Chunk` does,
-  and a transparent pixel can't show the background behind the canvas.
-  The spike's terminal painter gets its defaults from the emulator instead.
-  Passing the resolved text style to `draw` as a third argument would fix both.
-  It's cheap to add now and a breaking change to the protocol later.
-- **Building cells by hand.**
-  `Rows` exposes `paint.Cell` and `ResolvedCellStyle` as public API,
-  and a `Cell` needs a fully resolved style
-  (`Cell("▀", replace(CELL_STYLE_DEFAULTS, foreground=top, background=bottom))`).
-  A painter that doesn't go through `Pixels` needs a shorter way to build one.
-- **Wide graphemes.**
-  `Paint` requires every two-cell grapheme to be followed by its continuation cell (`Cell("")`).
-  Painters must emit it, and the docstring should say so.
-  Ratatui leaves the trailing cell blank instead, and its diff special-cases replacing wide glyphs.
 - **`utils.canvas`.**
   `examples/canvas.py` and `examples/mouse.py` each carry their own copy of it.
   Once they draw with `Pixels` and `HalfBlocks`, `canvas()` can be deprecated.
 
 ### Phase 1 work
 
-1. `Painter`, `Canvas` taking its intrinsic size and aspect ratio from the painter,
-   and the per-node paint cache.
-2. `Pixels` and `HalfBlocks(pixels, fit, position)`.
-3. Port `examples/canvas.py`, `examples/mouse.py` and the `canvas-element` benchmark,
-   and deprecate `utils.canvas`.
+1. `Painter`, drawing `StyledGrapheme` rows that paint resolves against the element's `text_style`;
+   `Canvas`, taking its intrinsic size and aspect ratio from the painter; and the per-node paint cache.
+2. `counterweight.painters.pixels`: `Pixels`, and `HalfBlocks(pixels, fit, position)` with `pixels_at`.
+3. Port `examples/canvas.py`, `examples/mouse.py` (setting both pixels of a clicked cell)
+   and the `canvas-element` benchmark, and deprecate `utils.canvas`.
 4. Docs: a `Canvas` page covering sizing (the shrink floor and `min_width(0)`), writing a painter, and loading an image,
    with screenshots from `docs/examples/`.
    Whether the image example makes Pillow a docs dependency or decodes a bundled file another way is open.
@@ -299,8 +427,9 @@ Each is also useful to apps that never embed a terminal.
 The embed works without these, but each makes embedded programs look or behave less like they do in a real terminal.
 
 4. **Colors are truecolor only.**
-   `Color` is RGB, so a program's palette indices and its "default" foreground and background
-   are resolved to fixed RGB values (libghostty's default palette, and the `Emulator`'s defaults).
+   `Color` is RGB, so a program's palette indices are resolved to libghostty's default palette.
+   Its "default" foreground and background are left unset, so they follow the canvas's `text_style`,
+   but that is RGB too.
    An embedded `ls --color` uses xterm's red, not the user's theme's red.
    tmux keeps palette indices and default colors through to the outer terminal.
    Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
@@ -507,7 +636,8 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
 
 1. Choose between `pyghostty` and an owned binding, and add the dependency.
 2. Port the spike's layers to the phase 1 `Painter` protocol and the phase 2 fixes,
-   dropping the multiplexer's `ClearFocus` and closure-state workarounds.
+   moving the screen painter to `counterweight.painters`, leaving a program's default colors unset,
+   and dropping the multiplexer's `ClearFocus` and closure-state workarounds.
 3. Harden `use_pty`: EOF and exit together (tmux's `window_pane_destroy_ready`),
    a configurable `TERM`, and grandchildren that hold the PTY open.
 4. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
