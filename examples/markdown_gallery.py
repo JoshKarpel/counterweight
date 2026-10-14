@@ -1,8 +1,11 @@
 """
-A gallery of the Markdown that `markdown` renders: each feature's source on the left, and how it renders on the right.
+A Markdown playground: each feature's source on the left, which you can edit, and how it renders on the right.
 
 Run it with `uv run python -m examples.markdown_gallery`.
-The gallery is longer than most screens: the wheel, the arrow keys, PageUp, PageDown, Home and End scroll it.
+Tab and Shift+Tab move between the sections' sources, or click one to edit it,
+and the preview beside it follows each edit; Ctrl+R puts back a section's original source.
+Escape, or a click outside the sources, stops editing,
+and then the arrow keys, PageUp, PageDown, Space, Home and End scroll the gallery, as the wheel always does.
 """
 
 from __future__ import annotations
@@ -11,12 +14,16 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
+from counterweight.controls import ClearFocus
 from counterweight.elements import Div, Text
-from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
-from counterweight.highlighting import code_block
-from counterweight.hooks import use_focus
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.handlers import first, tab_focus
+from counterweight.headless import use_scroll_area
+from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.markdown import markdown
 from counterweight.styles.utilities import *
+from counterweight.widgets import text_area
 
 GALLERY = (
     (
@@ -171,18 +178,48 @@ Raw HTML is shown as written.
 )
 
 
+HINT = "tab: edit the next section  ·  ctrl+r: reset it  ·  esc: stop editing, so the keys scroll"
+
+
+def stop_editing(event: InputEvent, _: Receiver) -> InputResponse:
+    """Escape bubbles out of a source, which doesn't edit with it, and clears focus, so the keys reach the gallery."""
+    match event:
+        case KeyPressed(key=Key.Escape):
+            return ClearFocus()
+        case _:
+            return None
+
+
 @component
 def root() -> Div:
-    # Focused, so the keys reach scroll_on_keys.
-    use_focus(auto_focus=True)
+    # Out of Tab's order, as a page's body is, but a click outside the sources focuses the gallery,
+    # which stops editing, and with the gallery or nothing focused, key presses reach this element.
+    gallery = use_scroll_area(in_focus_order=False)
     return Div(
-        style=col | full | gap_height(1) | pad_x(1) | overflow_y_scroll,
-        on_input=first(scroll_on_keys(), scroll_on_wheel()),
-        children=tuple(section(name, source) for name, source in GALLERY),
+        style=col | full | gap_height(1) | pad_x(1) | gallery.style,
+        handle=gallery.viewport,
+        on_input=first(tab_focus, stop_editing, gallery.on_input),
+        children=(
+            Text(content=HINT, style=text_justify_center | text_wrap_pretty | text_color("slate", 500)),
+            *(section(name, source).with_key(name) for name, source in GALLERY),
+        ),
     )
 
 
+@component
 def section(name: str, source: str) -> Div:
+    """One feature: its source, which this section's state holds as it's edited, beside the source rendered."""
+    original = source.removesuffix("\n")
+    text, set_text = use_state(original)
+
+    def reset(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.ControlR):
+                set_text(original)
+                return ()
+            case _:
+                return None
+
     return Div(
         style=display_grid
         | grid_template_columns(fr(1), fr(1))
@@ -191,10 +228,14 @@ def section(name: str, source: str) -> Div:
         | border_lightrounded
         | border_color("slate", 600)
         | pad_x(1),
+        # Ctrl+R bubbles here from the source, which doesn't edit with it, while the source is focused.
+        on_input=reset,
         children=(
-            Text(content=f" {name} ", style=title),
-            code_block(source.removesuffix("\n"), "markdown", style=pad_x(1)),
-            markdown(source),
+            Text(content=f" {name} " if text == original else f" {name} (edited) ", style=title),
+            # A text area is a scroll container, which adds nothing to the height of a grid row,
+            # so it's in a column that's as tall as its rows, which it grows to fill when the preview is taller.
+            Div(style=col, children=(text_area(text, set_text, enter_inserts_newline=True, style=grow(1)),)),
+            markdown(text),
         ),
     )
 

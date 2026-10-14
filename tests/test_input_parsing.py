@@ -77,10 +77,32 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         ("日本".encode(), [KeyPressed(key="日"), KeyPressed(key="本")]),
         ("e\u0301".encode(), [KeyPressed(key="e\u0301")]),
         ("👩‍💻!".encode(), [KeyPressed(key="👩‍💻"), KeyPressed(key="!")]),
-        # an ESC that doesn't begin a sequence is the Escape key
-        (b"\x1bx", [KeyPressed(key=Key.Escape), KeyPressed(key="x")]),
+        # an ESC that doesn't begin a sequence is Alt with the key that follows it
+        (b"\x1bb", [KeyPressed(key="alt+b")]),
+        (b"\x1bB", [KeyPressed(key="alt+B")]),
+        (b"\x1bbc", [KeyPressed(key="alt+b"), KeyPressed(key="c")]),
+        ("\x1bé".encode(), [KeyPressed(key="alt+é")]),
+        ("\x1b👩‍💻!".encode(), [KeyPressed(key="alt+👩‍💻"), KeyPressed(key="!")]),
+        (b"\x1b ", [KeyPressed(key=Key.AltSpace)]),
+        (b"\x1b\r", [KeyPressed(key=Key.AltEnter)]),
+        (b"\x1b\x7f", [KeyPressed(key=Key.AltBackspace)]),
+        (b"\x1b\x08", [KeyPressed(key=Key.AltBackspace)]),
+        (b"\x1b\t", [KeyPressed(key=Key.AltTab)]),
+        (b"\x1b\n", [KeyPressed(key=Key.ControlAltJ)]),
+        (b"\x1b\x00", [KeyPressed(key=Key.ControlAltSpace)]),
+        (b"\x1b\x01", [KeyPressed(key=Key.ControlAltA)]),
+        (b"\x1b\x1a", [KeyPressed(key=Key.ControlAltZ)]),
+        # or with the key whose escape sequence follows it, as rxvt sends Alt with those keys
+        (b"\x1b\x1b[A", [KeyPressed(key=Key.AltUp)]),
+        (b"\x1b\x1b[5~", [KeyPressed(key=Key.AltPageUp)]),
+        (b"\x1b\x1bOP", [KeyPressed(key=Key.AltF1)]),
+        # an ESC followed by anything else is the Escape key
         (b"\x1b\x1b", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.Escape)]),
-        (b"\x1b\x1b[A", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.Up)]),
+        (b"\x1b\x1bb", [KeyPressed(key=Key.Escape), KeyPressed(key="alt+b")]),
+        (b"\x1b\x1b[1;3A", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.AltUp)]),
+        (b"\x1b\x1b[25~", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.F13)]),
+        (b"\x1b\x1b[<0;1;1M", [KeyPressed(key=Key.Escape), MouseDown(absolute=Position(x=0, y=0), button=1)]),
+        (b"\x1b\x1b[200~a\x1b[201~", [KeyPressed(key=Key.Escape), Pasted(text="a")]),
         # f1 to f4
         (b"\x1bOP", [KeyPressed(key=Key.F1)]),
         (b"\x1bOQ", [KeyPressed(key=Key.F2)]),
@@ -127,7 +149,16 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         (b"\x1b[1;6B", [KeyPressed(key=Key.ControlShiftDown)]),
         (b"\x1b[1;6C", [KeyPressed(key=Key.ControlShiftRight)]),
         (b"\x1b[1;6D", [KeyPressed(key=Key.ControlShiftLeft)]),
+        (b"\x1b[1;3A", [KeyPressed(key=Key.AltUp)]),
+        (b"\x1b[1;3B", [KeyPressed(key=Key.AltDown)]),
+        (b"\x1b[1;3C", [KeyPressed(key=Key.AltRight)]),
+        (b"\x1b[1;3D", [KeyPressed(key=Key.AltLeft)]),
+        (b"\x1b[1;3H", [KeyPressed(key=Key.AltHome)]),
+        (b"\x1b[1;3F", [KeyPressed(key=Key.AltEnd)]),
+        (b"\x1b[2;3~", [KeyPressed(key=Key.AltInsert)]),
         (b"\x1b[3;3~", [KeyPressed(key=Key.AltDelete)]),
+        (b"\x1b[5;3~", [KeyPressed(key=Key.AltPageUp)]),
+        (b"\x1b[6;3~", [KeyPressed(key=Key.AltPageDown)]),
         (b"\x1b[3;5~", [KeyPressed(key=Key.ControlDelete)]),
         (b"\x1b[3;6~", [KeyPressed(key=Key.ControlShiftDelete)]),
         (b"\x1b[2;6~", [KeyPressed(key=Key.ControlShiftInsert)]),
@@ -157,6 +188,9 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         (b"\x1b[15;5~", [KeyPressed(key=Key.ControlF5)]),
         (b"\x1b[1;6Q", [KeyPressed(key=Key.ControlF14)]),
         (b"\x1b[24;6~", [KeyPressed(key=Key.ControlF24)]),
+        (b"\x1b[1;3P", [KeyPressed(key=Key.AltF1)]),
+        (b"\x1b[15;3~", [KeyPressed(key=Key.AltF5)]),
+        (b"\x1b[24;3~", [KeyPressed(key=Key.AltF12)]),
         # Mouse events
         (b"\x1b[<35;1;1m", [MouseMoved(absolute=Position(x=0, y=0), button=None)]),
         (b"\x1b[<35;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=None)]),
@@ -185,14 +219,27 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         (b"\x1b[<65;2;1M", [MouseScrolledDown(absolute=Position(x=1, y=0))]),
         (b"\x1b[<66;2;1M", [MouseScrolledLeft(absolute=Position(x=1, y=0))]),
         (b"\x1b[<67;2;1M", [MouseScrolledRight(absolute=Position(x=1, y=0))]),
-        # Shift (4), Meta (8), and Control (16) don't change which event a code is
-        (b"\x1b[<68;2;1M", [MouseScrolledUp(absolute=Position(x=1, y=0))]),
-        (b"\x1b[<73;2;1M", [MouseScrolledDown(absolute=Position(x=1, y=0))]),
-        (b"\x1b[<82;2;1M", [MouseScrolledLeft(absolute=Position(x=1, y=0))]),
-        (b"\x1b[<16;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=1)]),
-        (b"\x1b[<21;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=2)]),
-        (b"\x1b[<44;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=1)]),
-        (b"\x1b[<39;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=None)]),
+        # Shift (4), Meta (8, which terminals send for Alt), and Control (16) are modifiers on the event the rest is
+        (b"\x1b[<68;2;1M", [MouseScrolledUp(absolute=Position(x=1, y=0), is_shift_held=True)]),
+        (b"\x1b[<69;2;1M", [MouseScrolledDown(absolute=Position(x=1, y=0), is_shift_held=True)]),
+        (b"\x1b[<73;2;1M", [MouseScrolledDown(absolute=Position(x=1, y=0), is_alt_held=True)]),
+        (b"\x1b[<82;2;1M", [MouseScrolledLeft(absolute=Position(x=1, y=0), is_control_held=True)]),
+        (b"\x1b[<71;2;1M", [MouseScrolledRight(absolute=Position(x=1, y=0), is_shift_held=True)]),
+        (b"\x1b[<4;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=1, is_shift_held=True)]),
+        (b"\x1b[<8;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=1, is_alt_held=True)]),
+        (b"\x1b[<16;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=1, is_control_held=True)]),
+        (
+            b"\x1b[<28;3;4M",
+            [
+                MouseDown(
+                    absolute=Position(x=2, y=3), button=1, is_shift_held=True, is_alt_held=True, is_control_held=True
+                )
+            ],
+        ),
+        (b"\x1b[<21;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=2, is_shift_held=True, is_control_held=True)]),
+        (b"\x1b[<44;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=1, is_shift_held=True, is_alt_held=True)]),
+        (b"\x1b[<39;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=None, is_shift_held=True)]),
+        (b"\x1b[<136;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=8, is_alt_held=True)]),
         # Buttons 8 through 11
         (b"\x1b[<128;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=8)]),
         (b"\x1b[<129;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=9)]),
@@ -266,6 +313,24 @@ def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
         ),
         # control bytes with no key
         (b"\x1c", Parsed(events=(), skipped=(b"\x1c",), remainder=b"")),
+        # Alt with a control byte with no key, or with a key with no name with Alt
+        (b"\x1b\x1c", Parsed(events=(), skipped=(b"\x1b\x1c",), remainder=b"")),
+        (b"\x1b[25;3~", Parsed(events=(), skipped=(b"\x1b[25;3~",), remainder=b"")),
+        # an ESC before input that is skipped is the Escape key
+        (
+            b"\x1b\xffa",
+            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="a")), skipped=(b"\xff",), remainder=b""),
+        ),
+        (
+            b"\x1b\x1b[1;5p",
+            Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(b"\x1b[1;5p",), remainder=b""),
+        ),
+        (
+            b"\x1b\x1b[1;\x03",
+            Parsed(
+                events=(KeyPressed(key=Key.Escape), KeyPressed(key=Key.ControlC)), skipped=(b"\x1b[1;",), remainder=b""
+            ),
+        ),
         # bytes that aren't UTF-8 are skipped, and everything around them kept
         (
             b"a\xffb",
@@ -293,6 +358,9 @@ def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: Parsed) 
         (b"\x1b[", Parsed(events=(), skipped=(), remainder=b"\x1b[")),
         (b"\x1b[<35;1", Parsed(events=(), skipped=(), remainder=b"\x1b[<35;1")),
         (b"\x1bO", Parsed(events=(), skipped=(), remainder=b"\x1bO")),
+        (b"\x1b\x1b", Parsed(events=(), skipped=(), remainder=b"\x1b\x1b")),
+        (b"\x1b\x1b[1;3", Parsed(events=(), skipped=(), remainder=b"\x1b\x1b[1;3")),
+        (b"\x1b\xc3", Parsed(events=(), skipped=(), remainder=b"\x1b\xc3")),
         (b"a\xc3", Parsed(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\xc3")),
         (b"\xf0\x9f\x98", Parsed(events=(), skipped=(), remainder=b"\xf0\x9f\x98")),
         (b"\x1b[200~ab", Parsed(events=(), skipped=(), remainder=b"\x1b[200~ab")),
@@ -311,14 +379,24 @@ def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expecte
     "buffer, expected",
     [
         (b"\x1b", Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
+        # Alt+[ and Alt+O begin escape sequences, so they're Alt with those keys only if nothing follows
+        (b"\x1b[", Parsed(events=(KeyPressed(key="alt+["),), skipped=(), remainder=b"")),
+        (b"\x1bO", Parsed(events=(KeyPressed(key="alt+O"),), skipped=(), remainder=b"")),
         (
-            b"\x1b[",
-            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="[")), skipped=(), remainder=b""),
+            b"\x1b[1;",
+            Parsed(
+                events=(KeyPressed(key="alt+["), KeyPressed(key="1"), KeyPressed(key=";")), skipped=(), remainder=b""
+            ),
         ),
         (
-            b"\x1bO",
-            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="O")), skipped=(), remainder=b""),
+            b"\x1b\x1b[",
+            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key="alt+[")), skipped=(), remainder=b""),
         ),
+        (
+            b"\x1b\x1b",
+            Parsed(events=(KeyPressed(key=Key.Escape), KeyPressed(key=Key.Escape)), skipped=(), remainder=b""),
+        ),
+        (b"\x1b\xc3", Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(b"\xc3",), remainder=b"")),
         (b"a\xc3", Parsed(events=(KeyPressed(key="a"),), skipped=(b"\xc3",), remainder=b"")),
         (b"\x1b[200~ab", Parsed(events=(Pasted(text="ab"),), skipped=(), remainder=b"")),
         (b"\x1b[200~", Parsed(events=(Pasted(text=""),), skipped=(), remainder=b"")),
@@ -355,6 +433,10 @@ SPLIT_CORPUS = b"".join(
         b"\x1bOP",
         b"\x1b",
         b"\x1b[3;5~",
+        b"\x1bb",
+        b"\x1b\r",
+        b"\x1b\x1b[A",
+        "\x1bé".encode(),
         b"\xff",
         b"\x03",
         b"\x1b[200~p\x1b[A\r\n\x1b[201~",
@@ -365,6 +447,10 @@ SPLIT_CORPUS = b"".join(
 @pytest.mark.parametrize("offset", range(1, len(SPLIT_CORPUS)))
 def test_input_split_across_reads_parses_the_same_as_one_read(offset: int) -> None:
     assert parse_reads([SPLIT_CORPUS[:offset], SPLIT_CORPUS[offset:]]) == parse_reads([SPLIT_CORPUS])
+
+
+def test_an_escape_held_at_the_end_of_a_read_is_alt_with_the_key_the_next_read_starts_with() -> None:
+    assert parse_reads([b"\x1b", b"bc"]).events == (KeyPressed(key="alt+b"), KeyPressed(key="c"))
 
 
 def test_grapheme_cluster_split_across_reads_is_two_key_presses() -> None:
@@ -394,6 +480,8 @@ TOKENS = st.one_of(
             b"~",
             b"\x1b[200~",
             b"\x1b[201~",
+            b"\r",
+            b"\x7f",
         ]
     ),
     st.text().map(str.encode),

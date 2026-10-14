@@ -12,8 +12,17 @@ import waxy
 from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import ScrollIntoView
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseScrolledDown, MouseUp, Receiver
+from counterweight.elements import Div, Text
+from counterweight.events import (
+    InputEvent,
+    InputResponse,
+    KeyPressed,
+    MouseDown,
+    MouseScrolledDown,
+    MouseUp,
+    Receiver,
+    response_controls,
+)
 from counterweight.geometry import Position
 from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
 from counterweight.headless import use_text_input
@@ -91,6 +100,7 @@ def autocomplete(
         set_completion(Completion(text=match, highlighted=0, is_dismissed=True))
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        highlighted_in_view = ScrollIntoView(highlighted_match, block="nearest")
         match event:
             case KeyPressed(key=Key.Down) if is_open:
                 set_completion(lambda c: replace(c, highlighted=(c.highlighted + 1) % len(shown)))
@@ -101,9 +111,10 @@ def autocomplete(
             case KeyPressed(key=Key.Escape) if is_open:
                 set_completion(lambda c: replace(c, is_dismissed=True))
             case _:
-                if field.on_input(event, receiver) is None:
+                if (edited := response_controls(field.on_input(event, receiver))) is None:
                     return None
-        return ScrollIntoView(highlighted_match, block="nearest")
+                return (*edited, highlighted_in_view)
+        return highlighted_in_view
 
     room_above = rects.border.top
     room_below = screen_height - rects.border.bottom
@@ -135,12 +146,18 @@ def autocomplete(
         style=width(24) | (text_bg("slate", 700) if field.focus.is_focused else text_bg("slate", 800)),
         on_input=first(on_input, focus_receiver_on_press),
         children=(
-            Text(
-                content=(
-                    Chunk(content=field.before_cursor),
-                    Chunk(content=field.at_cursor, style=CURSOR if field.focus.is_focused else CellStyle()),
-                    Chunk(content=field.after_cursor),
-                )
+            Div(
+                style=row | overflow_x_scroll | stick_to_end_x,
+                on_input=field.on_press,
+                children=(
+                    Text(content=field.before_cursor, style=text_wrap_none),
+                    Text(
+                        content=field.at_cursor,
+                        style=text_wrap_none | Style(text_style=CURSOR if field.focus.is_focused else CellStyle()),
+                        handle=field.cursor_cell,
+                    ),
+                    Text(content=field.after_cursor, style=text_wrap_none),
+                ),
             ),
             *([suggestions] if is_open else []),
         ),

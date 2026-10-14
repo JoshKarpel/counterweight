@@ -68,7 +68,7 @@ async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -
 
     assert await render_text(root(), (10, 3)) == [
         "┌────────┐",
-        "│wider th│",
+        "│wider tha",
         "└────────┘",
     ]
 
@@ -82,7 +82,7 @@ async def test_root_fills_screen_whatever_its_content_height() -> None:
         "┌────┐",
         "│t   │",
         "│a   │",
-        "└────┘",
+        "└l───┘",
     ]
 
 

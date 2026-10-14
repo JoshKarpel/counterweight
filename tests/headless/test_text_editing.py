@@ -1,14 +1,22 @@
 import pytest
 
-from counterweight.graphemes import graphemes
-from counterweight.headless.text_editing import KEY_EDITS, EditableText, key_edit, paste_edit, settled
+from counterweight.headless.text_editing import (
+    KEY_EDITS,
+    EditableText,
+    cell_offset,
+    is_text,
+    key_edit,
+    move_to_column,
+    paste_edit,
+    settled,
+)
 from counterweight.keys import Key
 
 
-def marked(text: str) -> EditableText:
+def marked(text: str, goal_column: int | None = None) -> EditableText:
     """`text` with a `|` marking the cursor, as an `EditableText` without the `|`."""
     before, after = text.split("|")
-    return EditableText(value=before + after, cursor=len(graphemes(before)))
+    return EditableText(value=before + after, cursor=len(before), goal_column=goal_column)
 
 
 @pytest.mark.parametrize(
@@ -65,6 +73,19 @@ def marked(text: str) -> EditableText:
         ("cd ../src  |", Key.ControlW, "cd |"),
         ("cd ../s|rc", Key.ControlW, "cd |rc"),
         ("|cd", Key.ControlW, "|cd"),
+        # Readline's Alt bindings, with Alt+Backspace deleting back to the start of a word, as Ctrl+Left moves
+        ("one two|", "alt+b", "one |two"),
+        ("one, -- |two", "alt+b", "|one, -- two"),
+        ("|one two", "alt+f", "one| two"),
+        ("one| -- two", "alt+f", "one -- two|"),
+        ("|one two", "alt+d", "| two"),
+        ("one| -- two", "alt+d", "one|"),
+        ("cd ../src|", Key.AltBackspace, "cd ../|"),
+        ("one, -- |two", Key.AltBackspace, "|two"),
+        ("one tw|o", Key.AltBackspace, "one |o"),
+        ("one two|", Key.AltLeft, "one |two"),
+        ("|one two", Key.AltRight, "one| two"),
+        ("|one two", Key.AltDelete, "| two"),
     ],
 )
 def test_key_edits_value_and_cursor(before: str, key: str, after: str) -> None:
@@ -74,13 +95,49 @@ def test_key_edits_value_and_cursor(before: str, key: str, after: str) -> None:
     assert edit(marked(before)) == marked(after)
 
 
-@pytest.mark.parametrize("key", [Key.Enter, Key.Tab, Key.BackTab, Key.Up, Key.Down, Key.Escape, Key.F1, Key.ControlC])
-def test_key_that_is_not_text_and_has_no_edit_has_none(key: Key) -> None:
+@pytest.mark.parametrize(
+    "key",
+    [
+        Key.Enter,
+        Key.Tab,
+        Key.BackTab,
+        Key.Up,
+        Key.Down,
+        Key.Escape,
+        Key.F1,
+        Key.ControlC,
+        Key.AltEnter,
+        Key.AltSpace,
+        Key.ControlAltA,
+        "alt+x",
+        "alt+é",
+    ],
+)
+def test_key_that_is_not_text_and_has_no_edit_has_none(key: str) -> None:
     assert key_edit(key) is None
 
 
-def test_every_key_with_an_edit_is_a_named_key() -> None:
-    assert all(isinstance(key, Key) for key in KEY_EDITS)
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("a", True),
+        (Key.Space, True),
+        ("é", True),
+        ("e\u0301", True),
+        ("👩‍💻", True),
+        (Key.Enter, False),
+        (Key.F1, False),
+        ("alt+b", False),
+        ("alt+é", False),
+        (Key.ControlAltA, False),
+    ],
+)
+def test_text_is_one_grapheme_cluster_and_a_key_name_is_not(key: str, expected: bool) -> None:
+    assert is_text(key) is expected
+
+
+def test_every_key_with_an_edit_is_not_text() -> None:
+    assert not any(is_text(key) for key in KEY_EDITS)
 
 
 @pytest.mark.parametrize(
@@ -109,17 +166,14 @@ def test_following_moves_the_cursor_to_the_end_of_a_changed_value(text: str, val
     assert marked(text).following(value) == marked(following)
 
 
-@pytest.mark.parametrize(
-    ("value", "cursor", "clamped"),
-    [
-        ("abc", 2, 2),
-        ("abc", 7, 3),
-        ("abc", -1, 0),
-        ("👩‍💻é", 5, 2),
-    ],
-)
-def test_at_clamps_the_cursor_to_the_value(value: str, cursor: int, clamped: int) -> None:
-    assert EditableText.at(value, cursor) == EditableText(value=value, cursor=clamped)
+def test_following_the_same_value_keeps_the_cursor_and_goal_column() -> None:
+    text = marked("ab|c", goal_column=4)
+
+    assert text.following("abc") is text
+
+
+def test_following_a_changed_value_forgets_the_goal_column() -> None:
+    assert marked("a|bc", goal_column=4).following("wxyz") == marked("wxyz|")
 
 
 def test_insert_that_joins_the_cluster_after_it_leaves_the_cursor_after_the_joined_cluster() -> None:
@@ -138,9 +192,39 @@ def test_insert_that_joins_the_cluster_after_it_leaves_the_cursor_after_the_join
         pytest.param("ab|c", "abx|c", "abx", "abx|", id="truncated"),
         pytest.param("ab|c", "a|bc", "abc", "a|bc", id="moved"),
         pytest.param("ab|c", "abx|c", "z", "z|", id="replaced"),
+        pytest.param("a|b", "ax|b", "aé", "aé|", id="inside-a-cluster"),
     ],
 )
 def test_settled_keeps_the_edits_cursor_unless_the_value_was_left_as_before(
     before: str, edited: str, value: str, after: str
 ) -> None:
     assert settled(marked(before), marked(edited), value) == marked(after)
+
+
+def test_settled_keeps_the_goal_column_of_the_edit_it_keeps() -> None:
+    assert settled(marked("ab|c"), marked("a|bc", goal_column=3), "abc").goal_column == 3
+
+
+@pytest.mark.parametrize(
+    ("line", "column", "expected"),
+    [
+        ("abc", 1, 1),
+        ("a日b", 1, 1),
+        ("a日b", 2, 1),
+        ("a日b", 3, 2),
+        ("a日b", 4, 3),
+        ("abc", 9, 3),
+        ("abc", -1, 0),
+        ("", 4, 0),
+    ],
+)
+def test_cell_offset_is_the_start_of_the_cluster_drawn_across_the_cell_or_the_end_of_the_line(
+    line: str, column: int, expected: int
+) -> None:
+    assert cell_offset(line, column) == expected
+
+
+def test_moving_to_a_column_puts_the_cursor_on_the_cluster_there_and_forgets_the_goal_column() -> None:
+    moved = move_to_column(2)(EditableText(value="hello", cursor=5, goal_column=3))
+
+    assert moved == EditableText(value="hello", cursor=2, goal_column=None)

@@ -22,10 +22,11 @@ from mdit_py_plugins.gfm import gfm_plugin
 from pygments.util import ClassNotFound
 
 from counterweight.elements import Chunk, Div, Text
-from counterweight.highlighting import DEFAULT_CODE_THEME, CodeTheme, code_block
+from counterweight.events import InputEvent, InputResponse, Receiver
+from counterweight.handlers import scroll_on_wheel
+from counterweight.highlighting import DEFAULT_CODE_THEME, CodeTheme, code_block, code_style
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.utilities import (
-    align_self_start,
     border,
     border_collapse,
     border_color,
@@ -33,11 +34,15 @@ from counterweight.styles.utilities import (
     border_light,
     border_top,
     col,
+    default,
     display_grid,
     fill,
     gap_height,
     gap_width,
     grid_template_columns,
+    grow,
+    min_width,
+    overflow_x_scroll,
     pad_left,
     pad_x,
     row,
@@ -142,14 +147,25 @@ class MarkdownStyles:
     """Merged over `alert` and `alert_title` for a `CAUTION` alert, like `alert_note`."""
 
     code_block: Style = pad_x(1)
-    """Merged over the code theme's background, from [`code_style`][counterweight.highlighting.code_style]."""
+    """
+    The box around a code block, merged over the code theme's background
+    (from [`code_style`][counterweight.highlighting.code_style])
+    and a layout that scrolls the block sideways with the wheel when a line is wider than the box.
+    """
+    code_block_text: Style = default
+    """
+    The `Text` of a code block's lines, inside `code_block`, merged over the code theme's background and text color.
+    Pass `text_wrap_stable` to wrap long lines instead of scrolling them.
+    """
     code_theme: CodeTheme = DEFAULT_CODE_THEME
     """The theme fenced code blocks are highlighted with, when their info string names a language Pygments knows."""
-    front_matter: Style = Style(text_style=CellStyle(dim=True))
+    front_matter: Style = default
     """
     Merged over `code_block` for the document's YAML front matter, which is highlighted as YAML.
     Pass `display_none` to hide it.
     """
+    front_matter_text: Style = Style(text_style=CellStyle(dim=True))
+    """Merged over `code_block_text` for the front matter's text."""
 
     thematic_break: Style = border_light | border_top | border_color("slate", 600)
     math_block: Style = text_wrap_stable | text_justify_center | text_color("violet", 300)
@@ -159,7 +175,13 @@ class MarkdownStyles:
     html_block: Style = Style(text_style=CellStyle(dim=True))
     """Raw HTML blocks, which are shown as written."""
 
-    table: Style = align_self_start
+    table: Style = default
+    """
+    The box around a table, merged over a layout that scrolls the table sideways with the wheel
+    when it's wider than the box with its cells wrapped as narrow as their words allow.
+    """
+    table_grid: Style = default
+    """The grid of the table's cells, inside `table`, which is only as wide as its cells need."""
     table_cell: Style = border_light | border | border_color("slate", 600)
     """The `Div` around each cell's text, which draws its border."""
     table_cell_text: Style = pad_x(1) | text_wrap_stable
@@ -184,16 +206,28 @@ class MarkdownStyles:
 
 
 @lru_cache(maxsize=2**6)
-def markdown(source: str, styles: MarkdownStyles = MarkdownStyles()) -> Div:
+def markdown(source: str, styles: MarkdownStyles = MarkdownStyles(), keeps_line_breaks: bool = False) -> Div:
     """
     `source`, a Markdown document, as a `Div` of its blocks, drawn with `styles`.
 
     Links, bare URLs, and images are [hyperlinks][counterweight.styles.CellStyle] to their destinations.
     Fenced code blocks are highlighted as the language their info string names,
     or shown as written if it names none or one [Pygments](https://pygments.org/) doesn't know.
+    Code blocks and tables wider than the space they're given scroll sideways with the wheel.
     Math and raw HTML are shown as written, too.
+
+    Parameters:
+        keeps_line_breaks: Whether a line break inside a paragraph breaks the line where it's drawn,
+            as GitHub's comments and chat apps draw what people type,
+            rather than joining the lines with a space, as CommonMark does.
     """
-    document = SyntaxTreeNode(PARSER.parse(source))
+    tokens = PARSER.parse(source)
+    if keeps_line_breaks:
+        for token in tokens:
+            for child in token.children or ():
+                if child.type == "softbreak":
+                    child.type = "hardbreak"
+    document = SyntaxTreeNode(tokens)
     return Div(
         style=col | gap_height(styles.block_gap) | styles.document,
         children=blocks(document.children, styles, CellStyle(), list_depth=0),
@@ -227,8 +261,14 @@ def block(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_de
         case "fence" | "code_block":
             return fenced_code(node.content.removesuffix("\n"), node.info.split(maxsplit=1), styles)
         case "front_matter":
-            return code_block(
-                node.content, "yaml", theme=styles.code_theme, style=styles.code_block | styles.front_matter
+            return scrolling_box(
+                code_style(styles.code_theme) | styles.code_block | styles.front_matter,
+                code_block(
+                    node.content,
+                    "yaml",
+                    theme=styles.code_theme,
+                    style=styles.code_block_text | styles.front_matter_text,
+                ),
             )
         case "hr":
             return Div(style=styles.thematic_break)
@@ -266,13 +306,36 @@ def heading_style(styles: MarkdownStyles, tag: str) -> Style:
             return styles.heading_6
 
 
-def fenced_code(code: str, info: list[str], styles: MarkdownStyles) -> Text:
+def fenced_code(code: str, info: list[str], styles: MarkdownStyles) -> Div:
     """A code block, highlighted if its info string starts with a language Pygments knows."""
     language = info[0] if info else "text"
     try:
-        return code_block(code, language, theme=styles.code_theme, style=styles.code_block)
+        text = code_block(code, language, theme=styles.code_theme, style=styles.code_block_text)
     except ClassNotFound:
-        return code_block(code, "text", theme=styles.code_theme, style=styles.code_block)
+        text = code_block(code, "text", theme=styles.code_theme, style=styles.code_block_text)
+    return scrolling_box(code_style(styles.code_theme) | styles.code_block, text)
+
+
+def scrolling_box(style: Style, child: Div | Text) -> Div:
+    """
+    `child` in a box that scrolls sideways with the wheel when it's wider than the box,
+    as GitHub's styles scroll a code block or a table with `overflow: auto`.
+
+    Only its horizontal overflow scrolls, so its automatic minimum height is still `child`'s,
+    and it isn't squeezed shorter than its lines in a column too short for the document.
+    """
+    return Div(style=row | overflow_x_scroll | style, on_input=scroll_on_wheel_if_scrollable, children=(child,))
+
+
+SCROLL_ON_WHEEL = scroll_on_wheel()
+
+
+def scroll_on_wheel_if_scrollable(event: InputEvent, receiver: Receiver) -> InputResponse:
+    """
+    `scroll_on_wheel`, or nothing on a box whose style turned its scrolling off,
+    on which `scroll_on_wheel` would raise `ValueError`.
+    """
+    return None if receiver.scroll is None else SCROLL_ON_WHEEL(event, receiver)
 
 
 def alert(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle, list_depth: int) -> Div:
@@ -382,7 +445,7 @@ def marked(markers: tuple[Text, ...], children: tuple[Div | Text, ...], gap: Sty
     """`children` in a column beside `markers`, as a list item is beside its bullet."""
     return Div(
         style=row | gap_width(1),
-        children=(*markers, Div(style=col | gap | fill(1), children=children)),
+        children=(*markers, Div(style=col | gap | grow(1) | min_width(0), children=children)),
     )
 
 
@@ -390,8 +453,13 @@ def table(node: SyntaxTreeNode, styles: MarkdownStyles, text: CellStyle) -> Div:
     """A table, as a grid of bordered cells whose borders collapse into each other."""
     rows = [tr for section in node.children for tr in section.children]
     columns = len(rows[0].children)
+    return scrolling_box(styles.table, grid(rows, columns, styles, text))
+
+
+def grid(rows: list[SyntaxTreeNode], columns: int, styles: MarkdownStyles, text: CellStyle) -> Div:
+    """A table's `rows` of cells, as a grid with a column for each of their `columns`."""
     return Div(
-        style=display_grid | grid_template_columns(*[waxy.AUTO] * columns) | border_collapse | styles.table,
+        style=display_grid | grid_template_columns(*[waxy.AUTO] * columns) | border_collapse | styles.table_grid,
         children=tuple(
             # The border is on a Div around the Text, not on the Text itself,
             # because a grid row is too short for a wrapped Text with both a border and padding.

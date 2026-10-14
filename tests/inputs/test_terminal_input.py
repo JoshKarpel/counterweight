@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import termios
-from asyncio import Queue, get_running_loop, wait_for
+from asyncio import Queue, get_running_loop, to_thread, wait_for
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -103,6 +103,15 @@ async def next_in[T](queue: Queue[T]) -> T:
     return await wait_for(queue.get(), TIMEOUT)
 
 
+def type_all(keyboard: int, typed: bytes) -> None:
+    """
+    Write all of `typed` to `keyboard`, which blocks once the terminal's input queue is full
+    (on macOS, at about a kilobyte) until the program side reads it, so run it off the event loop.
+    """
+    while typed:
+        typed = typed[os.write(keyboard, typed) :]
+
+
 def is_read(stream: TextIO) -> bool:
     """Whether the event loop is reading `stream`, which this stops if it is."""
     return get_running_loop().remove_reader(stream.fileno())
@@ -157,7 +166,7 @@ async def test_read_keys_puts_a_paste_longer_than_one_read_as_one_event(
     terminal: Terminal, key_reading: KeyReading
 ) -> None:
     text = "0123456789" * 250
-    os.write(terminal.keyboard, b"\x1b[200~" + text.encode() + b"\x1b[201~q")
+    await to_thread(type_all, terminal.keyboard, b"\x1b[200~" + text.encode() + b"\x1b[201~q")
 
     assert [await next_in(key_reading.events), await next_in(key_reading.events)] == [
         Pasted(text=text),
@@ -236,6 +245,36 @@ async def test_an_escape_sequence_split_across_reads_is_one_key(terminal: Termin
 
     assert held.held == 1  # type: ignore[attr-defined]
     assert await next_in(key_reading.events) == KeyPressed(key=Key.Up)
+
+
+async def test_alt_with_a_key_reaches_the_app_as_one_key(terminal: Terminal, key_reading: KeyReading) -> None:
+    os.write(terminal.keyboard, b"\x1b\rq")
+
+    assert [await next_in(key_reading.events), await next_in(key_reading.events)] == [
+        KeyPressed(key=Key.AltEnter),
+        KeyPressed(key="q"),
+    ]
+
+
+async def test_an_escape_held_until_the_next_read_is_alt_with_the_key_it_starts_with(
+    terminal: Terminal, key_reading: KeyReading
+) -> None:
+    os.write(terminal.keyboard, b"\x1b")
+    held = await next_in(key_reading.records)
+    os.write(terminal.keyboard, b"b")
+
+    assert held.held == 1  # type: ignore[attr-defined]
+    assert await next_in(key_reading.events) == KeyPressed(key="alt+b")
+
+
+async def test_an_escape_that_times_out_before_the_next_read_is_the_escape_key(
+    terminal: Terminal, key_reading: KeyReading
+) -> None:
+    os.write(terminal.keyboard, b"\x1b")
+    escape = await next_in(key_reading.events)
+    os.write(terminal.keyboard, b"b")
+
+    assert [escape, await next_in(key_reading.events)] == [KeyPressed(key=Key.Escape), KeyPressed(key="b")]
 
 
 async def test_stopping_reading_keys_puts_a_held_escape(terminal: Terminal, key_reading: KeyReading) -> None:

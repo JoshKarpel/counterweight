@@ -38,6 +38,31 @@ class Key(str, Enum):
     ControlY = "ctrl+y"
     ControlZ = "ctrl+z"
 
+    # Terminals send Ctrl+H, I and M as Backspace, Tab and Enter, so Ctrl+Alt+H, I and M arrive as Alt with those.
+    ControlAltA = "ctrl+alt+a"
+    ControlAltB = "ctrl+alt+b"
+    ControlAltC = "ctrl+alt+c"
+    ControlAltD = "ctrl+alt+d"
+    ControlAltE = "ctrl+alt+e"
+    ControlAltF = "ctrl+alt+f"
+    ControlAltG = "ctrl+alt+g"
+    ControlAltJ = "ctrl+alt+j"
+    ControlAltK = "ctrl+alt+k"
+    ControlAltL = "ctrl+alt+l"
+    ControlAltN = "ctrl+alt+n"
+    ControlAltO = "ctrl+alt+o"
+    ControlAltP = "ctrl+alt+p"
+    ControlAltQ = "ctrl+alt+q"
+    ControlAltR = "ctrl+alt+r"
+    ControlAltS = "ctrl+alt+s"
+    ControlAltT = "ctrl+alt+t"
+    ControlAltU = "ctrl+alt+u"
+    ControlAltV = "ctrl+alt+v"
+    ControlAltW = "ctrl+alt+w"
+    ControlAltX = "ctrl+alt+x"
+    ControlAltY = "ctrl+alt+y"
+    ControlAltZ = "ctrl+alt+z"
+
     Left = "left"
     Right = "right"
     Up = "up"
@@ -82,7 +107,16 @@ class Key(str, Enum):
     ControlShiftPageUp = "ctrl+shift+pageup"
     ControlShiftPageDown = "ctrl+shift+pagedown"
 
+    AltLeft = "alt+left"
+    AltRight = "alt+right"
+    AltUp = "alt+up"
+    AltDown = "alt+down"
+    AltHome = "alt+home"
+    AltEnd = "alt+end"
+    AltInsert = "alt+insert"
     AltDelete = "alt+delete"
+    AltPageUp = "alt+pageup"
+    AltPageDown = "alt+pagedown"
 
     BackTab = "shift+tab"  # shift + tab
 
@@ -136,11 +170,30 @@ class Key(str, Enum):
     ControlF23 = "ctrl+f23"
     ControlF24 = "ctrl+f24"
 
+    AltF1 = "alt+f1"
+    AltF2 = "alt+f2"
+    AltF3 = "alt+f3"
+    AltF4 = "alt+f4"
+    AltF5 = "alt+f5"
+    AltF6 = "alt+f6"
+    AltF7 = "alt+f7"
+    AltF8 = "alt+f8"
+    AltF9 = "alt+f9"
+    AltF10 = "alt+f10"
+    AltF11 = "alt+f11"
+    AltF12 = "alt+f12"
+
     ControlSpace = "ctrl+space"
     Tab = "tab"
     Space = " "
     Enter = "enter"
     Backspace = "backspace"
+
+    ControlAltSpace = "ctrl+alt+space"
+    AltSpace = "alt+space"
+    AltTab = "alt+tab"
+    AltEnter = "alt+enter"
+    AltBackspace = "alt+backspace"
 
     def __repr__(self) -> str:
         return str(self)

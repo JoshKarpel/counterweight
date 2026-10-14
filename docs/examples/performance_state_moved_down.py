@@ -2,7 +2,7 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
+from counterweight.elements import Div
 from counterweight.events import KeyPressed
 from counterweight.headless import use_text_input
 from counterweight.hooks import use_state
@@ -14,10 +14,10 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 
 
 @component
-def note() -> Text:
+def note() -> Div:
     text, set_text = use_state("")
     field = use_text_input(text, set_text, auto_focus=True)
-    return Text(content=note_line(field), on_input=field.on_input)
+    return Div(style=row, on_input=field.on_input, children=note_line(field))
 
 
 @component

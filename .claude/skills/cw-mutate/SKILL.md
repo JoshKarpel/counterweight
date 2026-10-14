@@ -6,8 +6,11 @@ description: Mutation testing workflow for the counterweight project with mutmut
 # Counterweight Mutation Testing
 
 mutmut mutates all of `src/counterweight` (configured under `[tool.mutmut]` in `pyproject.toml`).
-Every module has no survivors beyond the equivalents listed below,
-so a new survivor is a test hole (or a new equivalent to argue for and add here).
+Every module outside `counterweight.headless`, `counterweight.widgets`, `counterweight.markdown`
+and `counterweight.highlighting` has no survivors beyond the equivalents listed below,
+so a new survivor there is a test hole (or a new equivalent to argue for and add here).
+Those four haven't been triaged: run their globs, kill what's a test hole,
+and list the equivalents under a heading of their own.
 
 ## Run it
 

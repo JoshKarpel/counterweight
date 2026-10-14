@@ -18,7 +18,7 @@ reusing last frame's layout matters most for `dashboard`, and text measurement d
 `agent` and `top`. `dashboard-local` draws what `dashboard` does, but holds its changing state
 in a leaf component rather than the root: compare the two to see what skipping components
 whose state didn't change saves. Each `-memo` workload (`dashboard-memo`, `top-memo`,
-`agent-memo`) draws what its twin does with the per-item component declared `memo`:
+`agent-memo`, `agent-markdown-memo`) draws what its twin does with the per-item component declared `memo`:
 compare the pair to see what skipping components whose arguments didn't change saves.
 `agent-markdown` streams Markdown shaped like a real coding agent's (short narration between tool calls,
 and now and then a summary with lists, tables and code), rendered with `markdown` and `code_block`:
@@ -26,6 +26,10 @@ compare it with `agent` to see roughly what parsing and highlighting cost.
 `agent-scrolled` is `agent` with its transcript scrolled back partway through the run, so it reads back
 while messages stream in below and drop off above: compare it with `agent`, which follows the end,
 to see what scroll anchoring costs.
+`agent-typing` is `agent` with a `text_area` prompt that holds focus and takes one edit a frame while the transcript streams
+(typing, Backspace, Ctrl+J, a paste, and Enter to send, which empties it), wrapping past its maximum height so it scrolls.
+Each of its frames is two loop iterations, one that edits the prompt and one that streams,
+so compare it with `agent` to see what a key press costs on a busy screen.
 
 ## Profile a run
 

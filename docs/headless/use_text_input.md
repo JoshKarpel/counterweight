@@ -9,7 +9,7 @@ For a ready-made box, use [`text_input`](#a-styled-text-input), which is built o
 
 This page covers the hook and that component.
 For text that wraps onto rows, use [`use_text_area`](use_text_area.md).
-Selection, and scrolling a value wider than its box, aren't supported yet.
+Selection isn't supported yet.
 
 ## Using the hook
 
@@ -25,6 +25,8 @@ and returns the value split around the cursor, with the handler that edits it:
 `before_cursor`, `at_cursor` and `after_cursor` together are the value,
 except that `at_cursor` is a space when the cursor is at the end of the value,
 so there's always a cell to draw the cursor in.
+The hook also returns `cursor`, the cursor's offset into the value in code points,
+so `value[:cursor]` is the text before it.
 Here the cursor is a highlighted cell, drawn only while the search box is focused:
 
 ![An empty search box, focused, above every fruit](../assets/text-input-search.svg)
@@ -55,35 +57,89 @@ and with handlers of your own:
 `first(field.on_input, on_enter)` handles a key the field passes on,
 and `first(on_ctrl_k, field.on_input)` takes over a key the field would handle.
 
+## Moving the cursor with a press
+
+A click in a browser's `<input>` focuses it and puts the caret where it lands.
+The hook can't know where the component draws the value, so it returns a second handler, `on_press`,
+for the element the value is drawn in, which may be inside the one the component returns.
+It reads a press of the left button as a cell of the value,
+counted from the left edge of that element's content box and moved by its scroll if it's a scroll container,
+puts the cursor on the character drawn across that cell, or at the end of the value past it,
+and focuses the component.
+In the [command line](#scrolling-a-long-value) below,
+it's on the row that scrolls the value rather than on the one that holds the `$ ` prompt too.
+
+## Scrolling a long value
+
+A browser's `<input>` scrolls a value wider than the box sideways, keeping the caret in view.
+The hook does its part of that: it returns a `cursor_cell` [element handle](../layout/scrolling.md#scrolling-from-a-handler)
+(an `ElementHandle`, which names an element, unlike the focus handle the hook's `handle` parameter takes),
+and its handler returns [`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view)
+for that handle, with `block="nearest"` and `inline="nearest"`, for each key press and paste it handles.
+The control applies to the layout of the render the edit causes,
+so the value scrolls in the same frame the cursor moves, and only as far as it takes.
+
+To use it, draw `at_cursor` as an element of its own, give it the handle,
+and put the three parts in a row that scrolls sideways,
+with `text_wrap_none` so none of them wraps.
+Draw a cell after the value while the cursor is off its end,
+so the value is as wide wherever the cursor is,
+and doesn't move under the pointer when a press takes the cursor off the end:
+
+```python
+--8<-- "text_input.py:scrolling"
+```
+
+![A command line scrolled to the end of a long command](../assets/text-input-command.svg)
+
+Home moves the cursor to the start, and the row scrolls back to it:
+
+![The command line scrolled back to its start](../assets/text-input-command-home.svg)
+
+The cursor starts at the end of the value, so the row has [`stick_to_end_x`](../layout/scrolling.md#following-the-end),
+which starts it scrolled to its end when the value is already wider than the box.
+The same `ScrollIntoView` scrolls every scroll container above the cell,
+so a field in a scrolling form comes back into view as soon as you type in it.
+A component that draws the value in one element can leave out the handle,
+and `ScrollIntoView` then scrolls nothing.
+
 ## Keys
 
 The handler follows [Readline](https://tiswww.case.edu/php/chet/readline/readline.html)'s default bindings,
 which most terminal programs share:
 
-| Key                         | Edit                                                   |
-|-----------------------------|--------------------------------------------------------|
-| Text                        | Insert it at the cursor                                |
-| Left, Ctrl+B                | Move one character left                                |
-| Right, Ctrl+F               | Move one character right                               |
-| Home, Ctrl+A, Ctrl+Home     | Move to the start                                      |
-| End, Ctrl+E, Ctrl+End       | Move to the end                                        |
-| Ctrl+Left                   | Move to the start of this word or the previous one     |
-| Ctrl+Right                  | Move to the end of this word or the next one           |
-| Backspace                   | Delete the character before the cursor                 |
-| Delete, Ctrl+D              | Delete the character at the cursor                     |
-| Ctrl+W                      | Delete back to the start of the whitespace-separated word |
-| Ctrl+Delete                 | Delete to the end of this word or the next one         |
-| Ctrl+U                      | Delete to the start                                    |
-| Ctrl+K                      | Delete to the end                                      |
-| Ctrl+T                      | Swap the characters before and at the cursor, or the last two at the end |
+| Key                            | Edit                                                                     |
+|--------------------------------|--------------------------------------------------------------------------|
+| Text                           | Insert it at the cursor                                                  |
+| Left, Ctrl+B                   | Move one character left                                                  |
+| Right, Ctrl+F                  | Move one character right                                                 |
+| Home, Ctrl+A, Ctrl+Home        | Move to the start                                                        |
+| End, Ctrl+E, Ctrl+End          | Move to the end                                                          |
+| Ctrl+Left, Alt+Left, Alt+B     | Move to the start of this word or the previous one                       |
+| Ctrl+Right, Alt+Right, Alt+F   | Move to the end of this word or the next one                             |
+| Backspace                      | Delete the character before the cursor                                   |
+| Delete, Ctrl+D                 | Delete the character at the cursor                                       |
+| Ctrl+W                         | Delete back to the start of the whitespace-separated word                |
+| Alt+Backspace                  | Delete back to the start of this word or the previous one                |
+| Ctrl+Delete, Alt+Delete, Alt+D | Delete to the end of this word or the next one                           |
+| Ctrl+U                         | Delete to the start                                                      |
+| Ctrl+K                         | Delete to the end                                                        |
+| Ctrl+T                         | Swap the characters before and at the cursor, or the last two at the end |
 
 A character is a grapheme cluster, so the cursor steps over an emoji or an accented letter whole.
-A word is a run of letters and digits.
+A word is a run of letters and digits,
+so Alt+Backspace stops at punctuation, as Readline's `backward-kill-word` does,
+where Ctrl+W, its `unix-word-rubout`, deletes back to whitespace: from the end of `cd ../src`,
+Alt+Backspace leaves `cd ../` and Ctrl+W leaves `cd `.
+The Alt keys arrive from terminals that send Alt as an escape,
+as [most do by default](../input-handling/events.md#keys-pressed-with-alt).
+Alt+Enter isn't an edit, so it bubbles as Enter does, as `Key.AltEnter`.
 
 A paste inserts its text in one edit, with each line break and tab turned into a space
 and any other control characters dropped,
 on terminals that support [bracketed paste](../input-handling/events.md#handling-pastes).
-On others, the pasted text arrives as typed keys, and its line breaks arrive as Enter.
+On others, the pasted text arrives as typed keys, and its line breaks arrive as Enter,
+or as Ctrl+J from a terminal that sends them as line feeds.
 
 ## Validating and transforming
 
@@ -115,12 +171,20 @@ the cursor moves to the end of the new value.
 
 [`text_input`][counterweight.widgets.text_input] draws a bordered box around the value,
 with the cursor highlighted while it's focused,
-and takes focus when it's pressed.
+and takes focus when it's pressed, with the cursor where the press lands.
 It takes the hook's parameters, a `placeholder` to show in an empty box,
-and a `style` merged over its own, such as a `width`.
+a `style` merged over its own, such as a `width`,
+and [`styles`](index.md#styling-the-widgets) for its colors.
 The sign-up form above uses it, and shows its placeholders when it starts:
 
 ![The sign-up form with both fields empty, showing their placeholders](../assets/text-input-sign-up.svg)
+
+A value wider than the box [scrolls](#scrolling-a-long-value) inside its border, keeping the cursor in view:
+
+![The name field scrolled to the end of a long name](../assets/text-input-sign-up-long.svg)
+
+Like an `<input>`, it doesn't grow to fit its value:
+beside other elements in a row, it shrinks to fit, and scrolls.
 
 ## API
 

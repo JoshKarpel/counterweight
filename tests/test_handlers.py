@@ -281,6 +281,53 @@ def test_scroll_on_wheel_does_not_handle_a_wheel_event_past_the_end_of_the_range
     assert scroll_on_wheel(2)(event, at_end) is None
 
 
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (MouseScrolledUp(absolute=INSIDE, is_shift_held=True), ScrollBy(SCROLLED.subtree, x=-2)),
+        (MouseScrolledDown(absolute=INSIDE, is_shift_held=True), ScrollBy(SCROLLED.subtree, x=2)),
+        (MouseScrolledLeft(absolute=INSIDE, is_shift_held=True), ScrollBy(SCROLLED.subtree, x=-2)),
+        (MouseScrolledRight(absolute=INSIDE, is_shift_held=True), ScrollBy(SCROLLED.subtree, x=2)),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_scroll_on_wheel_scrolls_sideways_for_the_vertical_wheel_with_shift_held(
+    event: InputEvent, expected: ScrollBy
+) -> None:
+    assert scroll_on_wheel(2)(event, SCROLLED) == expected
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        MouseScrolledDown(absolute=INSIDE, is_alt_held=True),
+        MouseScrolledDown(absolute=INSIDE, is_control_held=True),
+    ],
+    ids=["alt", "control"],
+)
+def test_scroll_on_wheel_scrolls_vertically_for_the_vertical_wheel_with_other_modifiers_held(
+    event: InputEvent,
+) -> None:
+    assert scroll_on_wheel(2)(event, SCROLLED) == ScrollBy(SCROLLED.subtree, y=2)
+
+
+@pytest.mark.parametrize(
+    ("event", "offset"),
+    [
+        (MouseScrolledUp(absolute=INSIDE, is_shift_held=True), Position(0, 3)),
+        (MouseScrolledDown(absolute=INSIDE, is_shift_held=True), Position(9, 3)),
+    ],
+    ids=["up", "down"],
+)
+def test_scroll_on_wheel_does_not_handle_a_shifted_wheel_event_past_the_sideways_end_of_the_range(
+    event: InputEvent, offset: Position
+) -> None:
+    assert SCROLLED.scroll is not None
+    at_end = replace(SCROLLED, scroll=replace(SCROLLED.scroll, offset=offset))
+
+    assert scroll_on_wheel(2)(event, at_end) is None
+
+
 def test_scroll_on_wheel_scrolls_three_lines_by_default() -> None:
     assert scroll_on_wheel()(MouseScrolledDown(absolute=INSIDE), SCROLLED) == ScrollBy(SCROLLED.subtree, y=3)
 

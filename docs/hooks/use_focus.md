@@ -53,7 +53,7 @@ the size and the wrapping paper cycle with Left and Right,
 the quantity steps with Up and Down, and gift wrap toggles with Space.
 
 ```python
---8 < --"focus_form.py:example"
+--8<-- "focus_form.py:example"
 ```
 
 The first field takes focus at startup, with `auto_focus=True`:
@@ -67,7 +67,7 @@ whose handler returns `FocusNext(within=receiver.subtree)`:
 ![The quantity field focused after Enter](../assets/focus-form-enter.svg)
 
 Each label focuses its field with `focus_on_press`,
-and a handle the form keeps in `use_state(FocusHandle)` and passes to both:
+and a focus handle the form keeps in `use_state(FocusHandle)` and passes to both:
 
 ![The gift wrap field focused after a press on its label](../assets/focus-form-label.svg)
 
@@ -87,7 +87,7 @@ two presses of Tab wrap back to Cancel.
 
 ![Cancel focused again after two presses of Tab](../assets/focus-form-modal-tab.svg)
 
-Enter on Cancel closes the dialog and returns `FocusOn` with the submit button's handle,
+Enter on Cancel closes the dialog and returns `FocusOn` with the submit button's focus handle,
 which the form passes to both the button and the dialog:
 
 ![The submit button focused again after the dialog closes](../assets/focus-form-modal-closed.svg)
@@ -106,7 +106,7 @@ No key or press does anything to focus unless a handler on its path returns a co
 - [`FocusNext`][counterweight.controls.FocusNext] and [`FocusPrevious`][counterweight.controls.FocusPrevious]
   move to the next or previous component in the focus order, which is tree order,
   wrapping at the ends.
-- [`FocusOn`][counterweight.controls.FocusOn] focuses the component with a given [handle](#focusing-a-component-you-render).
+- [`FocusOn`][counterweight.controls.FocusOn] focuses the component with a given [focus handle](#focusing-a-component-you-render).
 - [`ClearFocus`][counterweight.controls.ClearFocus] clears focus, so key presses go to the root component's element.
 
 The [library handlers](../input-handling/handlers.md#focus) return these for the common bindings:
@@ -136,15 +136,18 @@ and passes it down:
 @component
 def labelled_input(label: str) -> Div:
     input_handle, _ = use_state(FocusHandle)
+    value, set_value = use_state("")
     return Div(
         children=(
             Text(content=label, on_input=focus_on_press(input_handle)),
-            text_input(focus_handle=input_handle),
+            text_input(value, set_value, handle=input_handle),
         ),
     )
 ```
 
-A child that can be focused from outside takes a `FocusHandle | None` parameter and passes it to `use_focus`.
+A child that can be focused from outside takes a `handle: FocusHandle | None = None` parameter
+and passes it on to `use_focus`, as [`text_input`](../headless/use_text_input.md#a-styled-text-input)
+and the [headless components](../headless/index.md) do.
 Keep the handle in `use_state`: one built with `FocusHandle()` on every render
 makes `use_focus` raise `ChangedFocusHandle` on the second.
 Two mounted components given the same handle raise `DuplicateFocusHandle`.
@@ -185,7 +188,7 @@ each like a browser attribute:
   while `FocusOn`, `auto_focus` and a press still focus it, and it keeps focus once it has it.
   From it, `FocusNext` and `FocusPrevious` move to its neighbors in tree order.
 
-Either way the component keeps its handle and its place in tree order,
+Either way the component keeps its focus handle and its place in tree order,
 so it's back in the focus order where it was when the parameter flips back,
 though making a component focusable again doesn't focus it.
 They're parameters, rather than a `use_focus` call to skip,

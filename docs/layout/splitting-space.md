@@ -30,7 +30,7 @@ a plain `int` is that many cells, and `fr(n)` is `n` shares of the space the oth
 === "Flexbox"
 
     ```python
-    --8 < --"layout_splitting.py:equal-flex"
+    --8<-- "layout_splitting.py:equal-flex"
     ```
 
     ![Equal shares with flexbox](../assets/layout-split-equal-flex.svg)
@@ -38,7 +38,7 @@ a plain `int` is that many cells, and `fr(n)` is `n` shares of the space the oth
 === "Grid"
 
     ```python
-    --8 < --"layout_splitting.py:equal-grid"
+    --8<-- "layout_splitting.py:equal-grid"
     ```
 
     ![Equal shares with grid](../assets/layout-split-equal-grid.svg)
@@ -51,7 +51,7 @@ so the whole row is shared out by the fill factors.
 === "Flexbox"
 
     ```python
-    --8 < --"layout_splitting.py:sidebar-flex"
+    --8<-- "layout_splitting.py:sidebar-flex"
     ```
 
     ![A sidebar with flexbox](../assets/layout-split-sidebar-flex.svg)
@@ -59,7 +59,7 @@ so the whole row is shared out by the fill factors.
 === "Grid"
 
     ```python
-    --8 < --"layout_splitting.py:sidebar-grid"
+    --8<-- "layout_splitting.py:sidebar-grid"
     ```
 
     ![A sidebar with grid](../assets/layout-split-sidebar-grid.svg)
@@ -72,7 +72,7 @@ so `1` and `2` give the second pane twice the width of the first.
 === "Flexbox"
 
     ```python
-    --8 < --"layout_splitting.py:ratio-flex"
+    --8<-- "layout_splitting.py:ratio-flex"
     ```
 
     ![A 1:2 split with flexbox](../assets/layout-split-ratio-flex.svg)
@@ -80,7 +80,7 @@ so `1` and `2` give the second pane twice the width of the first.
 === "Grid"
 
     ```python
-    --8 < --"layout_splitting.py:ratio-grid"
+    --8<-- "layout_splitting.py:ratio-grid"
     ```
 
     ![A 1:2 split with grid](../assets/layout-split-ratio-grid.svg)
@@ -88,7 +88,7 @@ so `1` and `2` give the second pane twice the width of the first.
 === "Flexbox with `ratio`"
 
     ```python
-    --8 < --"layout_splitting.py:ratio-exact"
+    --8<-- "layout_splitting.py:ratio-exact"
     ```
 
     ![A 1:2 split with ratio](../assets/layout-split-ratio-exact.svg)
@@ -111,7 +111,7 @@ and a child spans tracks to cover the space a nested container would have.
 === "Flexbox"
 
     ```python
-    --8 < --"layout_splitting.py:nested-flex"
+    --8<-- "layout_splitting.py:nested-flex"
     ```
 
     ![Nested splits with flexbox](../assets/layout-split-nested-flex.svg)
@@ -119,7 +119,7 @@ and a child spans tracks to cover the space a nested container would have.
 === "Grid"
 
     ```python
-    --8 < --"layout_splitting.py:nested-grid"
+    --8<-- "layout_splitting.py:nested-grid"
     ```
 
     ![Nested splits with grid](../assets/layout-split-nested-grid.svg)
@@ -130,10 +130,13 @@ A bare `waxy.Fraction` track has the same floor as a flex item:
 it is never narrower than its content's minimum size.
 In the top grid below, two lines of unwrapped text push their columns past the grid's edge.
 `fr(1)` is CSS's `minmax(0, 1fr)`, which lowers the floor to zero,
-so in the bottom grid the columns split the space and the text is cut off instead.
+so in the middle grid the columns split the space.
+Each line is still wider than its column, so it overflows the column, as text does in CSS,
+over the next column and the grid's border.
+In the bottom grid, `overflow_hidden` on each `Text` clips its line at its own padding box.
 
 ```python
---8 < --"layout_splitting.py:overflow-grid"
+--8<-- "layout_splitting.py:overflow-grid"
 ```
 
 ![Grid columns overflowing, and fixed](../assets/layout-split-overflow-grid.svg)
@@ -151,7 +154,7 @@ With `shrink(1)`, as in the top row, each half gives up one cell to the gap inst
 To split a row with gaps into equal shares, use `fill` as in [Equal shares](#equal-shares).
 
 ```python
---8 < --"layout_splitting.py:percent-gap"
+--8<-- "layout_splitting.py:percent-gap"
 ```
 
 ![Percentages with a gap](../assets/layout-split-percent-gap.svg)

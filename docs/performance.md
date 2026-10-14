@@ -81,7 +81,7 @@ The first frame, and the frames after a resize or a resume from a suspend, re-ru
 Here's a dashboard whose root holds a note you type into:
 
 ```python
---8 < --"performance_state_in_root.py:example"
+--8<-- "performance_state_in_root.py:example"
 ```
 
 Each key press changes `dashboard`'s state, so it re-runs,
@@ -91,7 +91,7 @@ though none of them shows anything that changed:
 ```mermaid
 flowchart TB
     dashboard["dashboard"]:::rerun --> column["Div"]:::rerun
-    column --> note_text["Text: Note: d"]:::rerun
+    column --> note_row["Div: Note: d"]:::rerun
     column --> cards_row["Div"]:::rerun
     cards_row --> cards["metric_card ×4"]:::rerun
 
@@ -101,7 +101,7 @@ flowchart TB
 Move the state down into the component that shows it:
 
 ```python
---8 < --"performance_state_moved_down.py:example"
+--8<-- "performance_state_moved_down.py:example"
 ```
 
 ![Dashboard](assets/performance-dashboard.svg)
@@ -137,7 +137,7 @@ Declare the row [`memo`](components/index.md#skipping-a-component-whose-argument
 and it's reused when its arguments equal the previous frame's:
 
 ```python
---8 < --"performance_process_table.py:example"
+--8<-- "performance_process_table.py:example"
 ```
 
 ![Process table](assets/performance-process-table.svg)

@@ -16,7 +16,7 @@ it was the age of **wisdom**, it was the age of **foolishness**.
 """
 
 WRAP_STYLE: dict[TextWrap, Style] = {
-    "none": text_wrap_none,
+    "none": text_wrap_none | overflow_hidden,
     "stable": text_wrap_stable,
     "pretty": text_wrap_pretty,
     "balance": text_wrap_balance,

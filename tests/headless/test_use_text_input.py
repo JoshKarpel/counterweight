@@ -3,13 +3,14 @@ from dataclasses import dataclass
 
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit
+from counterweight.controls import AnyControl, Quit, ScrollIntoView
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import each, first
 from counterweight.headless import TextInput, use_text_input
-from counterweight.hooks import use_state
+from counterweight.hooks import ElementHandle, use_state
+from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 
 type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]
@@ -31,6 +32,14 @@ class Shown:
 
 def typed(text: str) -> tuple[KeyPressed, ...]:
     return tuple(KeyPressed(key=character) for character in text)
+
+
+def sent(data: bytes) -> tuple[KeyPressed, ...]:
+    """The key presses a terminal's input of `data` parses to, which MUST all be key presses."""
+    events = parse_input(data, is_final=True).events
+    keys = tuple(event for event in events if isinstance(event, KeyPressed))
+    assert keys == events
+    return keys
 
 
 async def run(
@@ -195,6 +204,19 @@ async def test_keys_the_field_does_not_edit_with_bubble_to_its_parent() -> None:
     assert shown[-1].value == "a"
 
 
+async def test_alt_with_a_key_from_the_terminal_edits_or_bubbles_rather_than_typing_text() -> None:
+    reached: list[InputEvent] = []
+
+    def record(event: InputEvent, _: Receiver) -> InputResponse:
+        reached.append(event)
+        return ()
+
+    shown = await run(sent(b"one two\x1bbX\x1bx\x1b\r"), on_parent=record)
+
+    assert reached == [KeyPressed(key="alt+x"), KeyPressed(key=Key.AltEnter)]
+    assert shown[-1].value == "one Xtwo"
+
+
 async def test_mouse_events_bubble_past_a_focused_field() -> None:
     reached: list[InputEvent] = []
 
@@ -239,3 +261,39 @@ async def test_the_field_reports_its_focus() -> None:
     await app(root(), headless=True, dimensions=(20, 3), autopilot=(Quit(),))
 
     assert focused[-1]
+
+
+async def test_the_cursor_counts_code_points_so_it_slices_the_value() -> None:
+    cursors: list[int] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("a👩‍💻b")
+        field = use_text_input(value, set_value, auto_focus=True)
+        cursors.append(field.cursor)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(KeyPressed(key=Key.Left), Quit()))
+
+    assert cursors[-1] == len("a👩‍💻")
+
+
+async def test_each_edit_scrolls_the_element_with_the_cursor_cells_handle_into_view() -> None:
+    handles: list[ElementHandle] = []
+    responses: list[InputResponse] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_input(value, set_value, auto_focus=True)
+        handles.append(field.cursor_cell)
+
+        def record(event: InputEvent, receiver: Receiver) -> InputResponse:
+            responses.append(response := field.on_input(event, receiver))
+            return response
+
+        return Text(content=value, on_input=record)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(*typed("a"), KeyPressed(key=Key.Left), Quit()))
+
+    assert responses == [ScrollIntoView(handles[0], block="nearest", inline="nearest")] * 2

@@ -156,7 +156,7 @@ To center a box in any parent, see [A dialog centered over the app](../layout/la
 
 ### Overflow, clipping and scrolling
 
-`overflow_hidden`, `overflow_clip` and `overflow_scroll` clip a box's children to its padding box, on both axes or, with `_x` or `_y`, on one,
+`overflow_hidden`, `overflow_clip` and `overflow_scroll` clip a box's children (and a `Text`'s own lines) to its padding box, on both axes or, with `_x` or `_y`, on one,
 and `overflow_scroll` makes the box a [scroll container](../layout/scrolling.md) there.
 `clip_to_border` lets a child, such as a border title, draw on its parent's border instead,
 and `clip_to_screen` lets one, such as a dropdown, escape every clip above it.

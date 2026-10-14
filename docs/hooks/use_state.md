@@ -65,6 +65,8 @@ This one hides from tests:
 an `autopilot` renders after each event it sends, so every key press there sees the latest `text`,
 and so does slow typing by hand.
 Write `set_text(lambda t: t + key)`.
+For a text field, [`use_text_input`](../headless/use_text_input.md) does this for you,
+along with the cursor, the editing keys and pastes.
 
 **An effect that outlives its render.**
 An effect closes over the values from the render that started it,

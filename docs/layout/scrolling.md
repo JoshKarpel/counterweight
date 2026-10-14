@@ -7,6 +7,22 @@ scrolling an element into view, and reading how far it's scrolled.
 [Clipping](clipping.md) covers how a scroll container cuts off what's outside its padding box,
 which it does as a box with hidden overflow does.
 
+## Scroll areas
+
+Most scrolling boxes want the same things:
+the wheel and the keys scroll them, Tab and a click focus them, as browsers make a scroll container focusable,
+and a style that scrolls even beside a constraint utility that hides overflow.
+[`use_scroll_area`](../headless/use_scroll_area.md) gives a component all of those, and leaves drawing it to the component,
+and [`scroll_area`](../headless/use_scroll_area.md#a-styled-scroll-area) is a bordered box built on it:
+
+```python
+--8<-- "scroll_area.py:widget"
+```
+
+![Two bordered boxes, the left one focused, showing the start of a log and of some code](../assets/scroll-area-widgets.svg)
+
+The rest of this page covers the pieces they're built from, for a box that needs something they don't do.
+
 ## Scroll containers
 
 `overflow_scroll` makes a box a scroll container on both axes,
@@ -47,7 +63,7 @@ A titled pane puts its border and title on a box around the part that scrolls,
 so they stay put while the content moves:
 
 ```python
---8 < --"scrolling.py:pane"
+--8<-- "scrolling.py:pane"
 ```
 
 === "Before"
@@ -63,6 +79,14 @@ so of nested scroll containers, the innermost under the pointer scrolls.
 `scroll_on_wheel` lets an event that would move its container past either end of its range bubble on,
 so once the inner one reaches its end, the wheel scrolls the one around it,
 as the web chains scrolling from one container to the next.
+
+With Shift held, `scroll_on_wheel` scrolls sideways for the vertical wheel, as browsers on Windows and Linux do,
+so a mouse without a sideways wheel can scroll a container that only scrolls sideways, such as a wide code block.
+The wheel event still says which way the wheel turned and that Shift was held,
+as Firefox's does, rather than reporting a sideways turn, as Chrome's does,
+so a handler before `scroll_on_wheel` can give Shift with the wheel a meaning of its own.
+Some terminals keep Shift with the wheel for their own scrollback and never report it,
+so a sideways wheel or a trackpad's sideways swipe is the only way to scroll sideways there.
 
 ## Scrolling with the keyboard
 
@@ -80,7 +104,7 @@ so the last lines of one page stay in view at the top of the next, to read on fr
 for apps that bind paging to other keys, such as `less`'s Space for a whole page and `d` and `u` for half of one:
 
 ```python
---8 < --"scrolling.py:keys"
+--8<-- "scrolling.py:keys"
 ```
 
 === "After PageDown"
@@ -99,16 +123,17 @@ and anything it doesn't handle falls through to the others.
 The [`ScrollTo`](../input-handling/controls.md#scrolling) and `ScrollBy` controls scroll a container
 to an offset, or by an amount, clamped to its range.
 A handler on the scroll container itself names it by its receiver's `subtree`, as `scroll_on_wheel` does.
-A handler anywhere else names it by an `ElementHandle`, as a React component reaches a DOM node through a ref:
+A handler anywhere else names it by an element handle, an `ElementHandle`,
+as a React component reaches a DOM node through a ref:
 create one with `use_state(ElementHandle)`, and pass it to the element's `handle`.
 
 ```python
---8 < --"scrolling.py:controls"
+--8<-- "scrolling.py:controls"
 ```
 
 ![The log scrolled to its end by the Bottom button](../assets/scrolling-controls.svg)
 
-Two mounted elements given the same handle raise `DuplicateElementHandle`,
+Two mounted elements given the same element handle raise `DuplicateElementHandle`,
 and a control whose handle names no mounted scroll container does nothing.
 
 Scroll controls apply to the layout of the render after the handler that returns them, before that render paints,
@@ -117,7 +142,7 @@ and after [anchoring](#keeping-the-content-in-view) and [sticking to the end](#f
 so each moves the view from where those left it.
 So a handler that adds a line to a log and returns `ScrollBy(log, y=1)` beside the state change
 scrolls by a row of the log that has the new line, in the same frame.
-That's where counterweight differs from the web:
+That's where Counterweight differs from the web:
 a browser's `scrollBy` scrolls the page as it stands while the handler runs,
 before React renders the state change, and a React app that wants to scroll the content that change lays out
 calls it from `useLayoutEffect` instead, which is what scroll controls do.
@@ -141,7 +166,7 @@ since no container above that element clips it, so none has to scroll to show it
 A table of contents scrolls each section's heading to the top of the pane it's in:
 
 ```python
---8 < --"scrolling.py:contents"
+--8<-- "scrolling.py:contents"
 ```
 
 === "Before"
@@ -156,10 +181,14 @@ Like the other scroll controls, it applies to the layout of the render after the
 as React's `useLayoutEffect` would call `scrollIntoView` after the DOM updates and before the browser paints.
 So a handler that changes state and returns `ScrollIntoView` beside it shows both in the same frame,
 and the handle names the element that has it in that render, not the one before.
-A list that moves a highlight with Down puts one handle on whichever item is highlighted,
+A list that moves a highlight with Down puts one element handle on whichever item is highlighted,
 and returns `ScrollIntoView(handle, block="nearest")` beside the state change that moves it:
 the handle has moved to the new item by the time the control applies
 (see the [autocomplete recipe](../cookbook/autocomplete.md#a-long-list)).
+[`use_text_area`](../headless/use_text_area.md#keeping-the-cursor-in-view) does the same for its cursor:
+it returns a `cursor_row` element handle for the element the cursor's row is drawn in,
+and its handler returns `ScrollIntoView` for it with `block="nearest"` beside each edit,
+so a text area in a scroll container keeps the cursor in view as it moves between rows.
 
 Moving [focus](../hooks/use_focus.md) scrolls the newly focused element into view with `block="nearest"`,
 as browsers do, so Tab never leaves focus on something out of sight.
@@ -167,7 +196,7 @@ That includes a component that takes focus with `auto_focus` as it mounts.
 
 `ScrollIntoView` scrolls in one step.
 The web's `behavior: "smooth"` animates the scroll across frames,
-which counterweight has no design for yet: a fixed number of frames and a fixed duration are both plausible.
+which Counterweight has no design for yet: a fixed number of frames and a fixed duration are both plausible.
 
 ## Reading the scroll
 
@@ -185,7 +214,7 @@ A list too long to render whole can render only the rows in view, with empty box
 so the content is as tall as every row would make it, as React's windowing libraries do:
 
 ```python
---8 < --"scrolling.py:windowed"
+--8<-- "scrolling.py:windowed"
 ```
 
 ![Rows six to nine of a hundred thousand](../assets/scrolling-windowed.svg)
@@ -236,7 +265,7 @@ and one that mounts already overflowing starts at its end.
 This log keeps its newest eight lines, adds one a second, and sticks to its end:
 
 ```python
---8 < --"scrolling.py:tail"
+--8<-- "scrolling.py:tail"
 ```
 
 === "Following"
@@ -260,15 +289,16 @@ Scrolled back two lines, it stays where the reader left it as new lines arrive b
 Scrolling back down to the end makes it follow the end again.
 The web has no property for this:
 a page puts an anchor element after the content, or reverses a column so it starts at its end.
+The [chat composer](../headless/use_text_area.md#using-the-hook) keeps its messages scrolled to the newest this way.
 
 ## Jumping to the end
 
-Counterweight doesn't draw scrollbars, as most terminal apps don't,
+Counterweight doesn't draw scrollbars ([#417](https://github.com/JoshKarpel/counterweight/issues/417)), as most terminal apps don't,
 so a reader scrolled back through a log has no sign of how far the end is.
 A button over the last line that appears once the log is scrolled back, and jumps to the end, gives them one:
 
 ```python
---8 < --"scrolling.py:jump"
+--8<-- "scrolling.py:jump"
 ```
 
 === "Scrolled back"
@@ -286,6 +316,9 @@ Being outside the log, it reads the log's scroll with `use_scroll(log)`.
 That's the previous frame's scroll, so the button appears a frame after the scroll that should show it,
 which nobody notices for a button that comes and goes.
 A wheel event over the button goes to the box around the log, not the log, so the wheel doesn't scroll it there.
+[`use_scroll_area`](../headless/use_scroll_area.md) puts its handler on the box around the part that scrolls,
+so its `is_at_end` and `to_end` make the same button from inside the component,
+and the wheel scrolls the log from over the button too.
 
 ## Where scrolled boxes are
 

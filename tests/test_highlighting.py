@@ -122,3 +122,7 @@ def test_code_block_merges_its_style_over_the_code_style() -> None:
 
     assert block.content == highlight("x = 1", "python", theme=LoudStyle)
     assert block.style == code_style(LoudStyle) | pad_x(2)
+
+
+def test_code_block_without_a_style_is_drawn_in_the_code_style() -> None:
+    assert code_block("x = 1", "python", theme=LoudStyle).style == code_style(LoudStyle)

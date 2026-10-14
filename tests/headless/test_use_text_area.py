@@ -1,6 +1,8 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+import pytest
+
 from counterweight import app
 from counterweight.components import component
 from counterweight.controls import AnyControl, Quit, ScrollIntoView
@@ -10,7 +12,9 @@ from counterweight.geometry import Position
 from counterweight.handlers import each, first
 from counterweight.headless import TextArea, use_text_area
 from counterweight.hooks import ElementHandle, use_state
+from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
+from counterweight.styles.utilities import height
 
 type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]
 
@@ -40,6 +44,14 @@ def typed(text: str) -> tuple[KeyPressed, ...]:
 
 def pressed(*keys: Key) -> tuple[KeyPressed, ...]:
     return tuple(KeyPressed(key=key) for key in keys)
+
+
+def sent(data: bytes) -> tuple[KeyPressed, ...]:
+    """The key presses a terminal's input of `data` parses to, which MUST all be key presses."""
+    events = parse_input(data, is_final=True).events
+    keys = tuple(event for event in events if isinstance(event, KeyPressed))
+    assert keys == events
+    return keys
 
 
 async def run(
@@ -102,6 +114,19 @@ async def test_enter_inserts_a_line_break_if_asked_to() -> None:
     shown = await run((*typed("ab"), *pressed(Key.Enter), *typed("c")), enter_inserts_newline=True)
 
     assert shown[-1].value == "ab\nc"
+
+
+async def test_alt_enter_from_the_terminal_inserts_a_line_break_where_enter_bubbles() -> None:
+    reached: list[InputEvent] = []
+
+    def record(event: InputEvent, _: Receiver) -> InputResponse:
+        reached.append(event)
+        return ()
+
+    shown = await run(sent(b"ab\x1b\rc\r"), on_parent=record)
+
+    assert reached == [KeyPressed(key=Key.Enter)]
+    assert shown[-1] == Shown(value="ab\nc", before="ab\nc", at=" ", after="", cursor=4)
 
 
 async def test_edits_before_the_next_render_each_start_from_the_one_before() -> None:
@@ -286,3 +311,35 @@ async def test_each_edit_scrolls_the_element_with_the_cursor_rows_handle_into_vi
     await app(root(), headless=True, dimensions=(20, 3), autopilot=(*typed("a"), *pressed(Key.Left), Quit()))
 
     assert responses == [ScrollIntoView(handles[0], block="nearest")] * 2
+
+
+@pytest.mark.parametrize(
+    ("keys", "cursor"),
+    [
+        pytest.param((Key.ControlHome, Key.PageDown), 14, id="down"),
+        pytest.param((Key.PageUp,), 3, id="up"),
+    ],
+)
+async def test_paging_outside_a_scroll_container_moves_a_page_of_the_elements_height_without_scrolling_it(
+    keys: tuple[Key, ...], cursor: int
+) -> None:
+    shown: list[Shown] = []
+    handles: list[ElementHandle] = []
+    responses: list[InputResponse] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("a\nb\nc\nd\ne\nf\ng\nh\nij")
+        field = use_text_area(value, set_value, width=WIDTH, auto_focus=True)
+        shown.append(Shown.of(value, field))
+        handles.append(field.cursor_row)
+
+        def record(event: InputEvent, receiver: Receiver) -> InputResponse:
+            responses.append(response := field.on_input(event, receiver))
+            return response
+
+        return Text(content=value, style=height(8), on_input=record)
+
+    await app(root(), headless=True, dimensions=(20, 9), autopilot=(*pressed(*keys), Quit()))
+
+    assert (shown[-1].cursor, responses[-1]) == (cursor, ScrollIntoView(handles[0], block="nearest"))

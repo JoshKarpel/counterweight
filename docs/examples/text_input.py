@@ -11,9 +11,9 @@ from counterweight.handlers import first, focus_receiver_on_press, scroll_on_whe
 from counterweight.headless import use_text_input
 from counterweight.hooks import ElementHandle, Setter, use_state
 from counterweight.keys import Key
-from counterweight.styles import CellStyle
+from counterweight.styles import CellStyle, Style
 from counterweight.styles.utilities import *
-from counterweight.widgets import text_input
+from counterweight.widgets import TextFieldStyles, text_input
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:hook]
@@ -96,12 +96,74 @@ def sign_up() -> Div:
 
 # --8<-- [end:widget]
 
+# --8<-- [start:scrolling]
+
+
+@component
+def command_line() -> Div:
+    command, set_command = use_state("")
+    field = use_text_input(command, set_command, auto_focus=True)
+    cursor = CURSOR if field.focus.is_focused else CellStyle()
+    return Div(
+        style=row | width(24),
+        on_input=first(field.on_input, focus_receiver_on_press),
+        children=(
+            Text(content="$ ", style=text_color("amber", 400)),
+            Div(
+                style=row | overflow_x_scroll | stick_to_end_x,
+                on_input=field.on_press,
+                children=(
+                    Text(content=field.before_cursor, style=text_wrap_none),
+                    Text(
+                        content=field.at_cursor,
+                        style=text_wrap_none | Style(text_style=cursor),
+                        handle=field.cursor_cell,
+                    ),
+                    Text(
+                        content=field.after_cursor + (" " if field.cursor < len(command) else ""),
+                        style=text_wrap_none,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+# --8<-- [end:scrolling]
+
+# --8<-- [start:styles]
+
+AMBER = TextFieldStyles(
+    box=border | border_heavy | border_color("slate", 500) | pad_x(1),
+    focused_box=border_color("amber", 400),
+    cursor=(text_color("slate", 900) | text_bg("amber", 300)).text_style,
+    placeholder=CellStyle(italic=True) | text_color("slate", 400).text_style,
+)
+
+
+@component
+def amber_sign_up() -> Div:
+    name, set_name = use_state("")
+    email, set_email = use_state("")
+    return Div(
+        style=col | width(30),
+        on_input=tab_focus,
+        children=(
+            text_input(name, set_name, placeholder="Name", styles=AMBER, auto_focus=True),
+            text_input(email, set_email, placeholder="Email", styles=AMBER),
+        ),
+    )
+
+
+# --8<-- [end:styles]
+
 
 def typed(text: str) -> tuple[KeyPressed, ...]:
     return tuple(KeyPressed(key=character) for character in text)
 
 
 TAB = KeyPressed(key=Key.Tab)
+COMMAND = typed('git commit -m "Scroll long values"')
 
 SCREENSHOTS = [
     ScreenshotSpec(search(), "text-input-search", (30, 8)),
@@ -128,9 +190,15 @@ SCREENSHOTS = [
         (30, 6),
         events=(Pasted(text="Ada Lovelace"), TAB, *typed("3x6")),
     ),
+    ScreenshotSpec(
+        sign_up(), "text-input-sign-up-long", (30, 6), events=(Pasted(text="Augusta Ada King, Countess of Lovelace"),)
+    ),
+    ScreenshotSpec(command_line(), "text-input-command", (24, 1), events=COMMAND),
+    ScreenshotSpec(command_line(), "text-input-command-home", (24, 1), events=(*COMMAND, KeyPressed(key=Key.Home))),
+    ScreenshotSpec(amber_sign_up(), "text-input-styled", (30, 6), events=(*typed("Ada"),)),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (search, sign_up)}
+    roots = {root.__name__: root for root in (search, sign_up, command_line, amber_sign_up)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else search()))

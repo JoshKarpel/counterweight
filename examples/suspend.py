@@ -1,23 +1,24 @@
 import os
 import subprocess
 import sys
-from asyncio import run
+from asyncio import run, to_thread
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Suspend
-from counterweight.elements import Chunk, Div, Text
+from counterweight.controls import ScrollIntoView, Suspend
+from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import use_text_input
-from counterweight.hooks import use_rects, use_state
+from counterweight.hooks import ElementHandle, use_effect, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
 
-CURSOR = (text_color("slate", 900) | text_bg("slate", 100)).text_style
+CURSOR = text_color("slate", 900) | text_bg("slate", 100)
 
 
 @component
@@ -41,7 +42,7 @@ def root() -> Div:
     )
 
 
-def _list_files(glob: str) -> list[Path]:
+def _list_files(glob: str) -> tuple[Path, ...]:
     cwd = Path.cwd()
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "--", glob],
@@ -50,8 +51,8 @@ def _list_files(glob: str) -> list[Path]:
         check=False,
     )
     if result.returncode != 0:
-        return sorted(cwd.rglob(glob))
-    return sorted(cwd / f for f in result.stdout.splitlines() if f)
+        return tuple(sorted(cwd.rglob(glob)))
+    return tuple(sorted(cwd / f for f in result.stdout.splitlines() if f))
 
 
 def open_editor(file: Path) -> None:
@@ -67,20 +68,27 @@ def open_editor(file: Path) -> None:
 @component
 def picker() -> Div:
     glob, set_glob = use_state("**/*.py")
+    files, set_files = use_state(tuple[Path, ...]())
     selected_file_idx, set_selected_file_idx = use_state(0)
+    # On the selected row, so moving the selection can scroll it into view.
+    selected_row, _ = use_state(ElementHandle)
 
-    files = _list_files(glob)
+    # In a thread, so typing in the glob field doesn't wait on git, and only when the glob changes.
+    async def list_files() -> None:
+        set_files(await to_thread(_list_files, glob))
+
+    use_effect(list_files, deps=(glob,))
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
-            case KeyPressed(key=Key.Enter):
+            case KeyPressed(key=Key.Enter) if files:
                 return Suspend(handler=partial(open_editor, files[selected_file_idx]))
             case KeyPressed(key=Key.Down):
                 set_selected_file_idx(lambda i: clamp(0, i + 1, len(files) - 1))
-                return ()
+                return ScrollIntoView(selected_row, block="center")
             case KeyPressed(key=Key.Up):
                 set_selected_file_idx(lambda i: clamp(0, i - 1, len(files) - 1))
-                return ()
+                return ScrollIntoView(selected_row, block="center")
             case _:
                 return None
 
@@ -97,7 +105,8 @@ def picker() -> Div:
         on_input=on_input,
         children=(
             glob_input(glob=glob, set_glob=edit_glob),
-            file_list(files=files, selected_idx=selected_file_idx),
+            # Keyed by the glob, so editing it remounts the list, which starts it scrolled to its top.
+            file_list(files=files, selected_idx=selected_file_idx, selected_row=selected_row).with_key(glob),
         ),
     )
 
@@ -110,12 +119,18 @@ def glob_input(glob: str, set_glob: Callable[[Callable[[str], str]], None]) -> D
         on_input=field.on_input,
         children=(
             Text(style=content_box | border | pad_x(1), content="glob"),
-            Text(
+            Div(
                 style=content_box | border | pad_x(1) | fill(1),
-                content=(
-                    Chunk(content=field.before_cursor),
-                    Chunk(content=field.at_cursor, style=CURSOR),
-                    Chunk(content=field.after_cursor),
+                children=(
+                    Div(
+                        style=row | overflow_x_scroll | stick_to_end_x,
+                        on_input=field.on_press,
+                        children=(
+                            Text(content=field.before_cursor, style=text_wrap_none),
+                            Text(content=field.at_cursor, style=text_wrap_none | CURSOR, handle=field.cursor_cell),
+                            Text(content=field.after_cursor, style=text_wrap_none),
+                        ),
+                    ),
                 ),
             ),
         ),
@@ -123,18 +138,17 @@ def glob_input(glob: str, set_glob: Callable[[Callable[[str], str]], None]) -> D
 
 
 @component
-def file_list(files: list[Path], selected_idx: int) -> Div:
-    rects = use_rects()
-    visible = max(1, rects.content.height)
-    start_idx = clamp(0, selected_idx - visible // 2, max(0, len(files) - visible))
+def file_list(files: tuple[Path, ...], selected_idx: int, selected_row: ElementHandle) -> Div:
     return Div(
-        style=col | justify_children_start | pad_x(1) | border | border_lightrounded | fill(1),
+        style=col | justify_children_start | pad_x(1) | border | border_lightrounded | fill(1) | overflow_y_scroll,
+        on_input=scroll_on_wheel(),
         children=tuple(
             Text(
                 style=text_color("cyan", 300) if idx == selected_idx else default,
                 content=str(file.relative_to(Path.cwd())),
+                handle=selected_row if idx == selected_idx else None,
             )
-            for idx, file in enumerate(files[start_idx : start_idx + visible], start=start_idx)
+            for idx, file in enumerate(files)
         ),
     )
 

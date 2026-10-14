@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
 from counterweight.handlers import first, scroll_on_wheel
 from counterweight.headless import use_text_area
 from counterweight.hooks import use_rects, use_state
@@ -46,7 +46,7 @@ def composer(draft: str, edit_draft: Callable[[Callable[[str], str]], None], sen
             Chunk(content=field.after_cursor),
         ),
         style=border | border_lightrounded | border_color("amber", 400) | pad_x(1) | text_wrap_none,
-        on_input=first(field.on_input, on_enter),
+        on_input=first(field.on_input, field.on_press, on_enter),
     )
 
 
@@ -129,6 +129,7 @@ SCREENSHOTS = [
         (30, 6),
         events=tuple(event for item in GROCERIES for event in (*typed(item), ENTER))[:-1],
     ),
+    ScreenshotSpec(notes(), "text-area-notes-pasted", (30, 6), events=(Pasted(text="if done:\n\tship()\n\treturn"),)),
 ]
 
 

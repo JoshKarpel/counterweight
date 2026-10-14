@@ -2,26 +2,28 @@ import pytest
 
 from counterweight.headless.text_area_editing import (
     DrawnArea,
-    EditableArea,
     drawn,
     key_edit,
     key_edits,
+    move_down,
+    move_to_cell,
+    move_up,
     paste_edit,
     rows,
-    settled,
 )
+from counterweight.headless.text_editing import Edit, EditableText, is_text
 from counterweight.keys import Key
 
 WIDTH = 8
 
 
-def marked(text: str, goal_column: int | None = None) -> EditableArea:
-    """`text` with a `|` marking the cursor, as an `EditableArea` without the `|`."""
+def marked(text: str, goal_column: int | None = None) -> EditableText:
+    """`text` with a `|` marking the cursor, as an `EditableText` without the `|`."""
     before, after = text.split("|")
-    return EditableArea(value=before + after, cursor=len(before), goal_column=goal_column)
+    return EditableText(value=before + after, cursor=len(before), goal_column=goal_column)
 
 
-def marking(area: EditableArea) -> str:
+def marking(area: EditableText) -> str:
     """The value with a `|` marking the cursor."""
     return area.value[: area.cursor] + "|" + area.value[area.cursor :]
 
@@ -119,6 +121,10 @@ def test_rows_wrap_so_every_cursor_position_has_a_cell(value: str, width: int, e
         ("cd ../src|", Key.ControlW, "cd |"),
         ("one\n|two", Key.ControlW, "|two"),
         ("|cd", Key.ControlW, "|cd"),
+        ("one\n|two", "alt+b", "|one\ntwo"),
+        ("one|\ntwo", "alt+f", "one\ntwo|"),
+        ("one|\ntwo", "alt+d", "one|"),
+        ("one\n|two", Key.AltBackspace, "|two"),
         # deleting a line break joins its lines
         ("ab|cd", Key.Backspace, "a|cd"),
         ("ab\n|cd", Key.Backspace, "ab|cd"),
@@ -149,12 +155,21 @@ def test_enter_inserts_a_line_break_if_asked_to() -> None:
     assert marking(edit(marked("ab|cd"))) == "ab\n|cd"
 
 
+@pytest.mark.parametrize("key", [Key.ControlJ, Key.AltEnter])
 @pytest.mark.parametrize("enter_inserts_newline", [False, True])
-def test_every_key_with_an_edit_is_a_named_key(enter_inserts_newline: bool) -> None:
-    assert all(isinstance(key, Key) for key in key_edits(WIDTH, enter_inserts_newline))
+def test_ctrl_j_and_alt_enter_insert_a_line_break_whatever_enter_does(key: Key, enter_inserts_newline: bool) -> None:
+    edit = key_edit(key, WIDTH, enter_inserts_newline=enter_inserts_newline)
+
+    assert edit is not None
+    assert marking(edit(marked("ab|cd"))) == "ab\n|cd"
 
 
-def press(area: EditableArea, *keys: Key) -> EditableArea:
+@pytest.mark.parametrize("enter_inserts_newline", [False, True])
+def test_every_key_with_an_edit_is_not_text(enter_inserts_newline: bool) -> None:
+    assert not any(is_text(key) for key in key_edits(WIDTH, enter_inserts_newline))
+
+
+def press(area: EditableText, *keys: Key) -> EditableText:
     for key in keys:
         edit = key_edit(key, WIDTH, enter_inserts_newline=False)
         assert edit is not None
@@ -176,48 +191,46 @@ def test_a_move_along_the_row_forgets_the_column_up_and_down_aim_for() -> None:
 
 
 @pytest.mark.parametrize(
+    ("before", "move", "after"),
+    [
+        pytest.param("a\nbc|d\ne\nfgh\ni", move_down(WIDTH, 2), "a\nbcd\ne\nfg|h\ni", id="down-keeps-the-column"),
+        pytest.param("a\nb|cd\ne", move_down(WIDTH, 5), "a\nbcd\ne|", id="down-stops-at-the-last-row"),
+        pytest.param("a\nbcd\ne|f", move_down(WIDTH, 5), "a\nbcd\nef|", id="down-from-the-last-row-to-the-end"),
+        pytest.param("a\nbcd\ne\nfg|h", move_up(WIDTH, 2), "a\nbc|d\ne\nfgh", id="up-keeps-the-column"),
+        pytest.param("abc\nd\nef|g", move_up(WIDTH, 5), "ab|c\nd\nefg", id="up-stops-at-the-first-row"),
+        pytest.param("a|bc\nd", move_up(WIDTH, 5), "|abc\nd", id="up-from-the-first-row-to-the-start"),
+        pytest.param("hello world foo|", move_up(WIDTH, 2), "hel|lo world foo", id="soft-rows"),
+    ],
+)
+def test_moving_several_rows_stops_at_the_furthest_row(before: str, move: Edit, after: str) -> None:
+    assert marking(move(marked(before))) == after
+
+
+@pytest.mark.parametrize(
     ("pasted", "after"),
     [
         pytest.param("one\r\ntwo\rthree\n", "<one\ntwo\nthree\n|>", id="line-breaks"),
         pytest.param("a\u2028b\x85c\vd", "<a\nb\nc\nd|>", id="unicode-line-breaks"),
-        pytest.param("cell\tcell", "<cell cell|>", id="tab"),
         pytest.param("a\x1b[1mb\x7fc\x9bd\x00", "<a[1mbcd|>", id="other-controls"),
     ],
 )
 def test_paste_inserts_its_text_with_its_line_breaks(pasted: str, after: str) -> None:
-    assert marking(paste_edit(pasted)(marked("<|>"))) == after
-
-
-def test_following_the_same_value_keeps_the_cursor_and_goal_column() -> None:
-    area = marked("ab|c", goal_column=4)
-
-    assert area.following("abc") is area
-
-
-def test_following_a_changed_value_moves_the_cursor_to_its_end() -> None:
-    assert marked("a|bc", goal_column=4).following("wxyz") == marked("wxyz|")
+    assert marking(paste_edit(pasted, 4)(marked("<|>"))) == after
 
 
 @pytest.mark.parametrize(
-    ("before", "edited", "value", "after"),
+    ("before", "pasted", "tab_size", "after"),
     [
-        pytest.param("1|2", "1x|2", "1x2", "1x|2", id="kept"),
-        pytest.param("a|b", "ax|b", "AXB", "AX|B", id="transformed"),
-        pytest.param("1|2", "1x|2", "12", "1|2", id="rejected"),
-        pytest.param("ab|c", "abx|c", "abx", "abx|", id="truncated"),
-        pytest.param("ab|c", "a|bc", "abc", "a|bc", id="moved"),
-        pytest.param("ab|c", "abx|c", "z", "z|", id="replaced"),
-        pytest.param("a|b", "ax|b", "aé", "aé|", id="inside-a-cluster"),
+        pytest.param("|", "\tif x:\n\t\ty", 4, "    if x:\n        y|", id="indentation"),
+        pytest.param("|", "a\tbc\tdef\tg", 4, "a   bc  def g|", id="alignment"),
+        pytest.param("ab\ncd|", "\tx", 4, "ab\ncd  x|", id="counts-the-line-before-the-cursor"),
+        pytest.param("a\t|", "\tx", 4, "a\t    x|", id="counts-a-tab-before-the-cursor-as-expanded"),
+        pytest.param("|", "\tx\r\n\ty", 2, "  x\n  y|", id="line-breaks-reset-the-column"),
+        pytest.param("|", "a\tb", 8, "a       b|", id="tab-size"),
     ],
 )
-def test_settled_keeps_the_edits_cursor_unless_the_value_was_left_as_before(
-    before: str, edited: str, value: str, after: str
-) -> None:
-    assert marking(settled(marked(before), marked(edited), value)) == after
-
-
-def test_settled_keeps_the_goal_column_of_the_edit_it_keeps() -> None:
-    assert settled(marked("ab|c"), marked("a|bc", goal_column=3), "abc").goal_column == 3
+def test_paste_expands_each_tab_to_the_next_tab_stop(before: str, pasted: str, tab_size: int, after: str) -> None:
+    assert marking(paste_edit(pasted, tab_size)(marked(before))) == after
 
 
 @pytest.mark.parametrize(
@@ -236,3 +249,21 @@ def test_settled_keeps_the_goal_column_of_the_edit_it_keeps() -> None:
 )
 def test_drawn_splits_the_rows_around_the_cursor(value: str, cursor: int, width: int, expected: DrawnArea) -> None:
     assert drawn(value, cursor, width) == expected
+
+
+@pytest.mark.parametrize(
+    ("row", "column", "expected"),
+    [
+        (1, 2, 8),
+        (0, 7, 5),
+        (2, 9, 15),
+        (5, 0, 12),
+        (-3, 1, 1),
+    ],
+)
+def test_moving_to_a_cell_puts_the_cursor_on_the_cluster_there_or_the_nearest_position_in_the_nearest_row(
+    row: int, column: int, expected: int
+) -> None:
+    moved = move_to_cell(8, row, column)(EditableText(value="hello world foo", cursor=0, goal_column=4))
+
+    assert moved == EditableText(value="hello world foo", cursor=expected, goal_column=None)

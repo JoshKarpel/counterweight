@@ -40,6 +40,9 @@ def line_entry() -> Text:
 
 `line_entry` collects keys without rendering, and renders only when Enter sets `line`.
 Rendering reads `line`, never `typed`.
+It shows a ref, not how to take text:
+it has no cursor or Backspace, and drops [pastes](../input-handling/events.md#handling-pastes).
+For a field, use [`use_text_input`](../headless/use_text_input.md).
 
 Refs fit:
 
@@ -48,7 +51,7 @@ Refs fit:
   [drag](../cookbook/draggable-components.md) began:
   a handler sees the state of the render that built it,
   so an event handled in the same batch as the one that set the state doesn't see the new value.
-- **Handles to things outside the tree**, such as a task or a client,
+- **Objects outside the tree**, such as a task or a client,
   that a handler or an effect uses.
 - **Something expensive to build once**, with a function as the initial value:
   `use_ref(lambda: build_index())` calls `build_index` only on the first render.

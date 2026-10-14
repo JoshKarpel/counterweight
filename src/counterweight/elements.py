@@ -20,7 +20,10 @@ class Div:
     children: tuple[Component | AnyElement, ...] = ()
     on_input: InputHandler | None = None
     handle: ElementHandle | None = None
-    """The handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo]."""
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -64,7 +67,10 @@ class Text:
     style: Style = _DEFAULT_STYLE
     on_input: InputHandler | None = None
     handle: ElementHandle | None = None
-    """The handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo]."""
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
 
     @property
     def children(self) -> tuple[Component | AnyElement, ...]:

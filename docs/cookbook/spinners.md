@@ -4,7 +4,7 @@ To show that something is still working, such as each step of a coding agent,
 animate a spinner with [`use_clock`](../hooks/use_clock.md):
 
 ```python
---8 < --"spinner.py:example"
+--8<-- "spinner.py:example"
 ```
 
 ![Spinner](../assets/spinner.svg)

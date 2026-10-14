@@ -16,6 +16,7 @@ from pygments.token import Token, _TokenType
 
 from counterweight.elements import Chunk, Text
 from counterweight.styles import UNSET, CellStyle, Color, Style
+from counterweight.styles.utilities import default
 
 # A Pygments style, by name (any of `pygments.styles.get_all_styles()`) or as a `pygments.style.Style` subclass.
 type CodeTheme = str | type[PygmentsStyle]
@@ -63,7 +64,7 @@ def code_block(
     code: str,
     language: str,
     theme: CodeTheme = DEFAULT_CODE_THEME,
-    style: Style | None = None,
+    style: Style = default,
     tab_size: int = 4,
 ) -> Text:
     """

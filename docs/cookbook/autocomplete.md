@@ -9,9 +9,12 @@ and so clips its children.
 The field edits its text with [`use_text_input`](../headless/use_text_input.md),
 which makes it focusable and handles typing, moving the cursor, and pasting,
 and leaves drawing the text and the list to the field.
+It draws the text in a row that [scrolls sideways](../headless/use_text_input.md#scrolling-a-long-value),
+with the cursor's cell holding the hook's `cursor_cell` handle,
+so a value wider than the field keeps the cursor in view.
 
 ```python
---8 < --"autocomplete.py:example"
+--8<-- "autocomplete.py:example"
 ```
 
 Typing `py` into the package field opens the list,
@@ -76,7 +79,11 @@ but focus stays in the field, so moving focus can't do it, as it does for a list
 The field gives one [`ElementHandle`][counterweight.focus.ElementHandle] to whichever match is highlighted,
 and every key it handles returns
 [`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view) for that handle, with `block="nearest"`,
-beside whatever state the key changed.
+beside whatever state the key changed,
+and after the controls `use_text_input`'s handler returns for a key it edits with,
+which scroll the cursor into view.
+[`response_controls`](../input-handling/events.md#counterweight.events.response_controls) turns that handler's response into a tuple of controls, or `None` if it didn't handle the key,
+so the field can return them together.
 `ScrollIntoView` applies to the layout of the render that change causes, before it paints,
 and names the element that has the handle in that render: the newly highlighted match.
 So the list scrolls in the same frame the highlight moves, and only as far as it takes:

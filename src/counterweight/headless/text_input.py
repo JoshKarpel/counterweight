@@ -5,10 +5,19 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Pasted, Receiver
-from counterweight.focus import FocusHandle
-from counterweight.graphemes import graphemes
-from counterweight.headless.text_editing import Edit, EditableText, key_edit, paste_edit, settled
+from counterweight.controls import FocusOn, ScrollIntoView
+from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
+from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.geometry import ORIGIN, Position
+from counterweight.headless.text_editing import (
+    Edit,
+    EditableText,
+    key_edit,
+    move_to_column,
+    next_cluster,
+    paste_edit,
+    settled,
+)
 from counterweight.hooks import Focus, use_focus, use_state
 
 
@@ -29,17 +38,40 @@ class TextInput:
     """The value's text after `at_cursor`."""
 
     cursor: int
-    """How many of the value's grapheme clusters come before the cursor."""
+    """How many of the value's code points come before the cursor, so `value[:cursor]` is the text before it."""
+
+    cursor_cell: ElementHandle
+    """
+    The element handle for the calling component to give the element it draws `at_cursor` in,
+    which `on_input` scrolls into view as the cursor moves,
+    so a value wider than its box, drawn in a [scroll container](../layout/scrolling.md), keeps the cursor in view,
+    as a browser's `<input>` does.
+    """
 
     focus: Focus
-    """Whether the calling component is focused, and its handle, as [`use_focus`][counterweight.hooks.use_focus] returns them."""
+    """
+    Whether the calling component is focused, and its focus handle,
+    as [`use_focus`][counterweight.hooks.use_focus] returns them.
+    """
 
     on_input: InputHandler
     """
     The handler that edits the value, for the calling component to put on the element it returns.
-    It returns `None` for every event while that element isn't focused,
+    It returns [`ScrollIntoView`][counterweight.controls.ScrollIntoView] for `cursor_cell` for each event it edits with,
+    and `None` for every event while that element isn't focused,
     and for the key presses it doesn't edit with, such as Enter, Tab, Up and Down,
     so they bubble to the element's ancestors.
+    """
+
+    on_press: InputHandler
+    """
+    The handler that moves the cursor to where a press lands, as a click in a browser's `<input>` does,
+    for the calling component to put on the element it draws the value in,
+    from the left edge of that element's content box, scrolled by that element's scroll if it's a scroll container.
+    For a press of the left button, it moves the cursor to the cluster drawn across the cell pressed,
+    or to the end of the value past it, and returns [`FocusOn`][counterweight.controls.FocusOn] for the component
+    with [`ScrollIntoView`][counterweight.controls.ScrollIntoView] for `cursor_cell`.
+    It returns `None` for every other event, and for every event while the component isn't focusable.
     """
 
 
@@ -71,7 +103,7 @@ def use_text_input(
 
         auto_focus: Passed to [`use_focus`][counterweight.hooks.use_focus].
 
-        handle: Passed to [`use_focus`][counterweight.hooks.use_focus].
+        handle: The focus handle passed to [`use_focus`][counterweight.hooks.use_focus].
 
         is_focusable: Passed to [`use_focus`][counterweight.hooks.use_focus].
 
@@ -79,33 +111,17 @@ def use_text_input(
 
     Returns:
         The value split around the cursor, for the calling component to draw,
-        and the handler that edits it, for the calling component to put on the element it returns.
+        the handler that edits it, for the calling component to put on the element it returns,
+        and the handler that moves the cursor to a press, for the element it draws the value in.
         The cursor starts at the end of the value, and moves to the end when the value changes other than by an edit.
     """
     focus = use_focus(auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order)
     # The value the cursor was last placed in, so a value that differs from it was changed other than by an edit.
-    text, set_text = use_state(lambda: EditableText(value=value, cursor=len(graphemes(value))))
+    text, set_text = use_state(lambda: EditableText(value=value, cursor=len(value), goal_column=None))
+    cursor_cell, _ = use_state(ElementHandle)
 
     def apply(edit: Edit) -> None:
-        # Both setters apply an updater immediately, so this reads the latest text, then the latest value,
-        # and a second edit before the next render starts from the first one's result.
-        def edit_text(latest_text: EditableText) -> EditableText:
-            # This render's value stands until the setter reports a later one, which one that ignores calls never does.
-            values = [value]
-
-            def read_value(latest_value: str) -> str:
-                values.append(latest_value)
-                return latest_value
-
-            set_value(read_value)
-            before = latest_text.following(values[-1])
-            edited = edit(before)
-            set_value(lambda _: edited.value)
-            # A setter that validates or transforms the edit decides the value, so read back what it kept.
-            set_value(read_value)
-            return settled(before, edited, values[-1])
-
-        set_text(edit_text)
+        set_text(lambda latest: edited(latest, edit, value, set_value))
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
@@ -114,8 +130,8 @@ def use_text_input(
         match event:
             case KeyPressed(key=key):
                 edit = key_edit(key)
-            case Pasted(text=text):
-                edit = paste_edit(text)
+            case Pasted(text=pasted):
+                edit = paste_edit(pasted)
             case _:
                 return None
 
@@ -123,15 +139,58 @@ def use_text_input(
             return None
 
         apply(edit)
-        return ()
+        return ScrollIntoView(cursor_cell, block="nearest", inline="nearest")
 
-    clusters = graphemes(value)
-    cursor = text.cursor if value == text.value else len(clusters)
+    def on_press(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case MouseDown(absolute=position, button=1) if is_focusable:
+                apply(move_to_column(cell_pressed(position, receiver).x))
+                return FocusOn(focus.handle), ScrollIntoView(cursor_cell, block="nearest", inline="nearest")
+            case _:
+                return None
+
+    cursor = text.following(value).cursor
+    at_cursor_end = next_cluster(value, cursor)
     return TextInput(
-        before_cursor="".join(clusters[:cursor]),
-        at_cursor=clusters[cursor] if cursor < len(clusters) else " ",
-        after_cursor="".join(clusters[cursor + 1 :]),
+        before_cursor=value[:cursor],
+        at_cursor=value[cursor:at_cursor_end] if cursor < len(value) else " ",
+        after_cursor=value[at_cursor_end:],
         cursor=cursor,
+        cursor_cell=cursor_cell,
         focus=focus,
         on_input=on_input,
+        on_press=on_press,
     )
+
+
+def cell_pressed(position: Position, receiver: Receiver) -> Position:
+    """
+    Where `position` is in the content the receiving element draws, from the top-left corner of its content box:
+    where it is in the content box, moved by how far the content is scrolled if the element is a scroll container.
+    """
+    return receiver.relative(position) + (receiver.scroll.offset if receiver.scroll is not None else ORIGIN)
+
+
+def edited(
+    latest: EditableText, edit: Edit, value: str, set_value: Callable[[Callable[[str], str]], None]
+) -> EditableText:
+    """
+    The text after `edit`, for a hook's state updater given the `latest` text:
+    it reads the latest value through `set_value`, writes the edited one, and reads back what the setter kept,
+    so a setter that validates or transforms the edit decides the value, and a second edit before the next render
+    starts from this one's result, since a state setter applies an updater immediately.
+    `value` is the one the render that made the handler saw,
+    which stands until the setter reports a later one, which one that ignores calls never does.
+    """
+    values = [value]
+
+    def read_value(latest_value: str) -> str:
+        values.append(latest_value)
+        return latest_value
+
+    set_value(read_value)
+    before = latest.following(values[-1])
+    after = edit(before)
+    set_value(lambda _: after.value)
+    set_value(read_value)
+    return settled(before, after, values[-1])

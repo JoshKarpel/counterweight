@@ -33,17 +33,18 @@ and over Ratatui to have the framework own the state, the event loop and the lay
 | Screen | Full screen (inline: [#393](https://github.com/JoshKarpel/counterweight/issues/393)) | Full screen or inline | Inline or full screen | Full screen, inline or a fixed area |
 | Mouse | Yes | Yes | No | Through the backend's events |
 | Focus | Yes | Yes | Yes | No |
-| Text input | One line or wrapped rows, as [headless components](headless/index.md) | Built in | Third-party packages | Third-party crates |
+| Text input | One line or wrapped rows, as [headless components](headless/index.md) and the bordered `text_input` and `text_area` widgets built on them | Built in | Third-party packages | Third-party crates |
 | Scrolling | [Scroll containers](layout/scrolling.md), without a visible scrollbar ([#417](https://github.com/JoshKarpel/counterweight/issues/417)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
-| Wide characters | No ([#392](https://github.com/JoshKarpel/counterweight/issues/392)) | Yes | Yes | Yes |
+| Markdown and syntax highlighting | [Built in](rich-text/markdown.md) | Built in | Third-party packages | Third-party crates |
+| Wide characters | [Yes](elements/text.md#wide-characters) | Yes | Yes | Yes |
 | Platforms | Linux, macOS | Linux, macOS, Windows | Not stated | Linux, macOS, Windows |
 
 ## Textual
 
 Textual is the closest alternative in the same language, and the most complete:
 it has a large [widget library](https://textual.textualize.io/widget_gallery/)
-with text inputs, text areas, tables, trees and Markdown viewers,
-focus handling, scrolling, an inline mode, Windows support,
+with data tables, trees, tabs, select menus, checkboxes and progress bars,
+text selection, visible scrollbars, an inline mode, Windows support,
 and a way to serve apps in a browser.
 
 The difference is how you describe a UI.
@@ -135,12 +136,11 @@ These are the gaps you're most likely to hit, with what to do instead:
   and [`use_text_area`](headless/use_text_area.md) have no selection,
   and a single-line value wider than its box doesn't scroll to keep the cursor in view.
   Tracked in [#420](https://github.com/JoshKarpel/counterweight/issues/420) (scrolling a long line).
-- **Wide characters.** Counterweight counts every character as one cell,
-  so CJK characters and most emoji, which terminals draw two cells wide, push the rest of their line out of alignment.
-  Tracked in [#392](https://github.com/JoshKarpel/counterweight/issues/392).
 - **Inline rendering.** Counterweight always uses the terminal's alternate screen,
   so nothing it draws remains in the scrollback when the app exits.
   Tracked in [#393](https://github.com/JoshKarpel/counterweight/issues/393).
 - **Windows.** Counterweight reads input through POSIX terminal APIs,
   and is tested on Linux and macOS.
-- **A widget library.** Counterweight provides elements, layout and styles, and you build the widgets.
+- **A widget library.** Counterweight's widgets are a text input and a text area,
+  and its [rich text](rich-text/markdown.md) renders Markdown and highlighted code.
+  Tables, trees, menus, tabs and the rest you build from elements, layout, styles and hooks.
