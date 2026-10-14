@@ -58,7 +58,8 @@
   that the terminal opens when it's clicked.
 
 - [#411](https://github.com/JoshKarpel/counterweight/issues/411)
-  Added the `SetTitle` control, which sets the title of the terminal window.
+  Added the `SetTitle` control, which sets the title of the terminal window,
+  and the `title` argument to `app`, which sets it when the app starts.
   The app saves the title it started with and restores it when it quits and while it's suspended,
   on terminals that support xterm's title stack,
   and the `RestoreTitle` control brings it back while the app runs.

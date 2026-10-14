@@ -45,6 +45,7 @@ class Bell(_Control):
 class SetTitle(_Control):
     """
     Set the title of the terminal window.
+    To set it when the application starts, pass `title` to `counterweight.app.app`.
 
     The title is set at the beginning of the next render cycle,
     so all other events that are due to be processed in the current cycle
