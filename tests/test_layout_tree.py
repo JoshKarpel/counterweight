@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import pytest
 import waxy
@@ -7,20 +8,25 @@ from pytest_mock import MockerFixture
 from counterweight import layout
 from counterweight.components import component
 from counterweight.elements import AnyElement
+from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
+from counterweight.elements import Rows
+from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
 from counterweight.geometry import Rects
+from counterweight.hooks.impls import NodeKey
 from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import ClearText
+from counterweight.layout import ClearSource
 from counterweight.layout import CreateLeaf
+from counterweight.layout import IntrinsicSize
 from counterweight.layout import Layouts
 from counterweight.layout import LayoutTree
 from counterweight.layout import MeasurableText
 from counterweight.layout import Remove
 from counterweight.layout import SetChildren
-from counterweight.layout import SetText
-from counterweight.layout import _measure_text
+from counterweight.layout import SetSource
+from counterweight.layout import _measure_leaf
 from counterweight.layout import layout_changes
 from counterweight.layout import layout_style
 from counterweight.layout import text_source
@@ -70,6 +76,18 @@ def canvas(colors: Sequence[str]) -> Div:
             Text(content="label"),
         )
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Blocks:
+    """A painter that fills whatever box it's given with `grapheme`."""
+
+    grapheme: str = "#"
+    natural_size: tuple[int, int] = (4, 2)
+    keeps_aspect_ratio: bool = True
+
+    def draw(self, width: int, height: int) -> Rows:
+        return ((StyledGrapheme(grapheme=self.grapheme),) * width,) * height
 
 
 @component
@@ -130,7 +148,7 @@ def test_changed_text_is_one_set_text() -> None:
         for node in next.nodes
         if isinstance(element := node.element, Text) and element.content == "beta, longer now"
     ]
-    assert layout_changes(previous, next) == [SetText(key=changed.key, text=text_source(text))]
+    assert layout_changes(previous, next) == [SetSource(key=changed.key, source=text_source(text))]
 
 
 def test_reused_subtree_is_not_descended_into(mocker: MockerFixture) -> None:
@@ -190,8 +208,8 @@ def test_text_becoming_a_div_keeps_its_key() -> None:
     assert (now_div.key, layout_changes(previous, next)) == (
         was_text.key,
         [
-            CreateLeaf(key=nested.key, style=layout_style(nested_text.style), text=text_source(nested_text)),
-            ClearText(key=now_div.key),
+            CreateLeaf(key=nested.key, style=layout_style(nested_text.style), source=text_source(nested_text)),
+            ClearSource(key=now_div.key),
             SetChildren(key=now_div.key, children=(nested.key,)),
         ],
     )
@@ -226,6 +244,21 @@ SEQUENCES = {
     "an ancestor moves": [
         Div(style=col, children=(Text(content="above"), panes("moved"))),
         Div(style=col, children=(Text(content="above\nabove"), panes("moved"))),
+    ],
+    "text becomes a canvas and back": [
+        Div(children=(Text(content="leaf"),)),
+        Div(children=(Canvas(painter=Blocks()),)),
+        Div(children=(Text(content="leaf again"),)),
+    ],
+    "canvas becomes a div and back": [
+        Div(children=(Canvas(painter=Blocks()),)),
+        Div(children=(Div(style=border, children=(Text(content="nested"),)),)),
+        Div(children=(Canvas(painter=Blocks(grapheme="%")),)),
+    ],
+    "canvas changes its natural size": [
+        Div(style=col, children=(Canvas(painter=Blocks()), Text(content="below"))),
+        Div(style=col, children=(Canvas(painter=Blocks(natural_size=(6, 3))), Text(content="below"))),
+        Div(style=col, children=(Canvas(painter=Blocks(natural_size=(6, 3), keeps_aspect_ratio=False)),)),
     ],
     "a clip shrinks": [
         Div(style=col | overflow_hidden | height(6), children=(Text(content="a\nb\nc\nd"),)),
@@ -270,9 +303,9 @@ def test_text_is_not_wrapped_again_at_a_width_it_was_measured_at(mocker: MockerF
     text = MeasurableText.of(("the quick brown fox", CellStyle(), "stable"))
     wrap_cells = mocker.spy(layout, "wrap_cells")
 
-    _measure_text(waxy.KnownSize(width=10.0), waxy.AvailableSize(waxy.MaxContent(), waxy.MaxContent()), text)
-    _measure_text(waxy.KnownSize(), waxy.AvailableSize(waxy.Definite(10), waxy.MaxContent()), text)
-    _measure_text(waxy.KnownSize(height=3.0), waxy.AvailableSize(waxy.Definite(10), waxy.Definite(5)), text)
+    _measure_leaf(waxy.KnownSize(width=10.0), waxy.AvailableSize(waxy.MaxContent(), waxy.MaxContent()), text)
+    _measure_leaf(waxy.KnownSize(), waxy.AvailableSize(waxy.Definite(10), waxy.MaxContent()), text)
+    _measure_leaf(waxy.KnownSize(height=3.0), waxy.AvailableSize(waxy.Definite(10), waxy.Definite(5)), text)
 
     assert wrap_cells.call_count == 1
 
@@ -294,3 +327,95 @@ def test_placements_are_kept_only_for_nodes_in_the_last_layout() -> None:
     shadow = frames(tree, [panes("a", "b", "c"), panes("a")])
 
     assert set(tree.placed) == {node.key for node in shadow.nodes}
+
+
+def leaf_keys(shadow: ShadowTree, kind: type[Text | Canvas]) -> set[NodeKey]:
+    return {node.key for node in shadow.nodes if isinstance(node.element, kind)}
+
+
+@pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
+def test_tree_keeps_texts_only_for_texts_and_drawings_only_for_canvases(elements: list[AnyElement]) -> None:
+    tree = LayoutTree()
+    shadow = frames(tree, elements)
+
+    assert (set(tree.texts), set(tree.drawings)) == (leaf_keys(shadow, Text), leaf_keys(shadow, Canvas))
+
+
+def test_canvas_with_an_equal_painter_has_no_layout_changes() -> None:
+    previous = update_shadow(Div(children=(Canvas(painter=Blocks()),)), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Canvas(painter=Blocks()),)), previous, NO_LAYOUTS).tree
+
+    assert layout_changes(previous, next) == []
+
+
+def test_canvas_with_another_painter_of_the_same_natural_size_has_no_layout_changes() -> None:
+    previous = update_shadow(Div(children=(Canvas(painter=Blocks()),)), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Canvas(painter=Blocks(grapheme="%")),)), previous, NO_LAYOUTS).tree
+
+    assert layout_changes(previous, next) == []
+
+
+def test_canvas_whose_natural_size_changes_is_one_set_source() -> None:
+    previous = update_shadow(Div(children=(Canvas(painter=Blocks()),)), None, NO_LAYOUTS).tree
+    next = update_shadow(Div(children=(Canvas(painter=Blocks(natural_size=(6, 2))),)), previous, NO_LAYOUTS).tree
+
+    [node] = next.root.children
+    assert layout_changes(previous, next) == [
+        SetSource(key=node.key, source=IntrinsicSize(width=6, height=2, keeps_aspect_ratio=True)),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("painter", "expected"),
+    [
+        (Blocks(natural_size=(6, 2)), True),
+        (Blocks(natural_size=(6, 2), keeps_aspect_ratio=False), False),
+        (Blocks(natural_size=(0, 2)), False),
+        (Blocks(natural_size=(6, 0)), False),
+    ],
+    ids=["keeps its ratio", "doesn't keep its ratio", "no width", "no height"],
+)
+def test_canvas_keeps_its_painters_aspect_ratio_only_if_it_has_one(painter: Blocks, expected: bool) -> None:
+    assert IntrinsicSize.of(painter).keeps_aspect_ratio is expected
+
+
+# Taffy gives a leaf its known size as a border box, and the available space as its content box where it knows it,
+# so a known size wider than the available space has a padding and border as wide as the difference,
+# and takes the size measured on an unknown axis as a content box.
+@pytest.mark.parametrize(
+    ("known", "available", "expected"),
+    [
+        (waxy.KnownSize(), (waxy.MaxContent(), waxy.MaxContent()), waxy.Size(6.0, 2.0)),
+        (waxy.KnownSize(width=3.0), (waxy.Definite(3), waxy.MaxContent()), waxy.Size(3.0, 1.0)),
+        (waxy.KnownSize(width=5.0), (waxy.Definite(3), waxy.MaxContent()), waxy.Size(5.0, 1.0)),
+        (waxy.KnownSize(height=4.0), (waxy.MaxContent(), waxy.Definite(4)), waxy.Size(12.0, 4.0)),
+        (waxy.KnownSize(height=6.0), (waxy.MaxContent(), waxy.Definite(4)), waxy.Size(12.0, 6.0)),
+        (waxy.KnownSize(width=5.0, height=5.0), (waxy.Definite(3), waxy.Definite(3)), waxy.Size(5.0, 5.0)),
+    ],
+    ids=["neither", "width", "width with a border", "height", "height with a border", "both"],
+)
+def test_canvas_that_keeps_its_aspect_ratio_measures_the_unknown_axis_by_it(
+    known: waxy.KnownSize,
+    available: tuple[waxy.Definite | waxy.MaxContent, waxy.Definite | waxy.MaxContent],
+    expected: waxy.Size,
+) -> None:
+    intrinsic = IntrinsicSize(width=6, height=2, keeps_aspect_ratio=True)
+
+    assert _measure_leaf(known, waxy.AvailableSize(*available), intrinsic) == expected
+
+
+@pytest.mark.parametrize(
+    ("known", "expected"),
+    [
+        (waxy.KnownSize(), waxy.Size(6.0, 2.0)),
+        (waxy.KnownSize(width=3.0), waxy.Size(3.0, 2.0)),
+        (waxy.KnownSize(height=4.0), waxy.Size(6.0, 4.0)),
+    ],
+    ids=["neither", "width", "height"],
+)
+def test_canvas_that_does_not_keep_its_aspect_ratio_measures_the_unknown_axis_at_its_natural_size(
+    known: waxy.KnownSize, expected: waxy.Size
+) -> None:
+    intrinsic = IntrinsicSize(width=6, height=2, keeps_aspect_ratio=False)
+
+    assert _measure_leaf(known, waxy.AvailableSize(waxy.Definite(3), waxy.Definite(4)), intrinsic) == expected

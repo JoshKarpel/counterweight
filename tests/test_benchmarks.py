@@ -48,6 +48,7 @@ async def test_workload_renders_every_frame(name: str, tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("name", "twin"),
     [
+        ("canvas-element", "canvas"),
         ("dashboard-local", "dashboard"),
         ("dashboard-memo", "dashboard"),
         ("top-memo", "top"),

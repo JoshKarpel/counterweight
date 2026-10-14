@@ -22,8 +22,11 @@ from counterweight.controls import ScrollBy
 from counterweight.controls import ScrollIntoView
 from counterweight.controls import ScrollTo
 from counterweight.elements import AnyElement
+from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
+from counterweight.elements import Painter
+from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
 from counterweight.elements import styled_cells
@@ -61,8 +64,8 @@ INITIAL_RECTS = Rects(
 # Everything a `Text`'s measured size depends on: its content, its text style, and how it wraps.
 type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
 
-# The rows a `Text` wraps to, each the clusters on it, before justifying.
-type Lines = tuple[tuple[StyledGrapheme, ...], ...]
+# The rows a `Text` wraps to, each the clusters on it, before justifying, or the rows a `Canvas`'s painter draws.
+type Lines = Rows
 
 # Everything a node's `Rects` depend on: its absolute position, its layout, its clip, and the scroll offsets above it.
 type Placement = tuple[waxy.Point, waxy.Layout, Region | None, int, int]
@@ -74,10 +77,39 @@ def text_source(text: Text) -> TextSource:
 
 
 @dataclass(frozen=True, slots=True)
+class IntrinsicSize:
+    """
+    Everything a `Canvas`'s measured size depends on: its painter's natural size,
+    and whether a size known on one axis gives the other by the ratio between them.
+    """
+
+    width: int
+    height: int
+    keeps_aspect_ratio: bool
+
+    @classmethod
+    def of(cls, painter: Painter) -> IntrinsicSize:
+        """The intrinsic size of a canvas drawn by `painter`, which has no ratio to keep if it's zero on either axis."""
+        width, height = painter.natural_size
+        return cls(width, height, painter.keeps_aspect_ratio and width > 0 and height > 0)
+
+
+# Everything a leaf's measured size depends on.
+type LeafSource = TextSource | IntrinsicSize
+
+
+def leaf_source(leaf: Text | Canvas) -> LeafSource:
+    """Everything `leaf`'s measured size depends on: its text, or its painter's intrinsic size."""
+    if isinstance(leaf, Text):
+        return text_source(leaf)
+    return IntrinsicSize.of(leaf.painter)
+
+
+@dataclass(frozen=True, slots=True)
 class CreateLeaf:
     key: NodeKey
     style: waxy.Style
-    text: TextSource
+    source: LeafSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,13 +126,13 @@ class SetStyle:
 
 
 @dataclass(frozen=True, slots=True)
-class SetText:
+class SetSource:
     key: NodeKey
-    text: TextSource
+    source: LeafSource
 
 
 @dataclass(frozen=True, slots=True)
-class ClearText:
+class ClearSource:
     key: NodeKey
 
 
@@ -115,7 +147,7 @@ class Remove:
     key: NodeKey
 
 
-type LayoutChange = CreateLeaf | CreateContainer | SetStyle | SetText | ClearText | SetChildren | Remove
+type LayoutChange = CreateLeaf | CreateContainer | SetStyle | SetSource | ClearSource | SetChildren | Remove
 
 
 def layout_changes(previous_tree: ShadowTree | None, next_tree: ShadowTree) -> list[LayoutChange]:
@@ -160,24 +192,24 @@ def _reconcile(
     element = next.element
     style = layout_style(element.style)
 
-    # Taffy discards a node's cached layout when its text or children are set, even to equal values,
+    # Taffy discards a node's cached layout when its source or children are set, even to equal values,
     # so each is set only when it changed.
     match element:
-        case Text():
-            source = text_source(element)
+        case Text() | Canvas():
+            source = leaf_source(element)
             if previous is None:
-                changes.append(CreateLeaf(key=key, style=style, text=source))
+                changes.append(CreateLeaf(key=key, style=style, source=source))
                 return
 
             _append_style_change(previous, key, style, changes)
             match previous.element:
-                case Text() as previous_text:
-                    if text_source(previous_text) != source:
-                        changes.append(SetText(key=key, text=source))
+                case Text() | Canvas() as previous_leaf:
+                    if leaf_source(previous_leaf) != source:
+                        changes.append(SetSource(key=key, source=source))
                 case Div():
                     for child in previous.children:
                         removals.extend(_removals(child))
-                    changes.append(SetText(key=key, text=source))
+                    changes.append(SetSource(key=key, source=source))
                 case _ as unreachable:
                     assert_never(unreachable)
         case Div():
@@ -194,8 +226,8 @@ def _reconcile(
 
             _append_style_change(previous, key, style, changes)
             match previous.element:
-                case Text():
-                    changes.append(ClearText(key=key))
+                case Text() | Canvas():
+                    changes.append(ClearSource(key=key))
                     changes.append(SetChildren(key=key, children=child_keys))
                 case Div():
                     if tuple(child.key for child in previous.children) != child_keys:
@@ -227,7 +259,8 @@ class Layouts:
     which the next layout picks anchors in,
     and the key of each element given a `handle`, by its handle, which `use_scroll` reads scrolls through.
 
-    The rows are those a `Text` wraps to, and none for a `Div` or for a `Text` outside its clip, which paint skips.
+    The rows are those a `Text` wraps to or a `Canvas`'s painter draws,
+    and none for a `Div` or for a leaf outside its clip, which paint skips.
     """
 
     in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects, Lines], ...]
@@ -335,10 +368,17 @@ class LayoutTree:
     Only `apply` and `compute` read or write its taffy nodes.
     """
 
-    tree: waxy.TaffyTree[MeasurableText] = field(default_factory=waxy.TaffyTree)
+    tree: waxy.TaffyTree[MeasurableText | IntrinsicSize] = field(default_factory=waxy.TaffyTree)
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
     texts: dict[NodeKey, MeasurableText] = field(default_factory=dict)
-    """The text each leaf is measured with, which is its node's context, kept here too to read it without a call into taffy."""
+    """The text each `Text` is measured with, which is its node's context, kept here too to read it without a call into taffy."""
+    drawings: dict[NodeKey, tuple[Painter, int, int, Rows]] = field(default_factory=dict)
+    """
+    The rows each `Canvas`'s painter drew last, with the painter and the size they were drawn at,
+    which the next layout reuses while both are unchanged.
+    They're kept by node, not in a cache shared by every canvas, so many canvases don't push each other out of it,
+    and a painter needs only `==`, not a hash.
+    """
     placed: dict[NodeKey, tuple[Placement, Rects]] = field(default_factory=dict)
     """Each node's placement in the last layout and the `Rects` it resolved to, which the next layout reuses."""
 
@@ -360,7 +400,7 @@ class LayoutTree:
 
         root = self.nodes[shadow.root.key]
         available = waxy.AvailableSize(width=waxy.Definite(width), height=waxy.Definite(height))
-        self.tree.compute_layout(root, available, measure=_measure_text)
+        self.tree.compute_layout(root, available, measure=_measure_leaf)
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}
@@ -385,12 +425,14 @@ class LayoutTree:
     def painted(self, node: ShadowNode, rects: Rects) -> tuple[NodeKey, AnyElement, Rects, Lines]:
         """
         `node`'s key, element and layout at `rects`, with the rows it paints:
-        those its `Text` wraps to, or none if it's outside its clip or is a `Div`.
+        those its `Text` wraps to or its `Canvas`'s painter draws, or none if it's outside its clip or is a `Div`.
         """
         key = node.key
         element = node.element
-        if not isinstance(element, Text) or rects.clip is None:
+        if isinstance(element, Div) or rects.clip is None:
             return key, element, rects, ()
+        if isinstance(element, Canvas):
+            return key, element, rects, self.drawn(key, element.painter, rects.content)
         return (
             key,
             element,
@@ -398,30 +440,60 @@ class LayoutTree:
             self.texts[key].lines_at(None if element.style.resolved.text_wrap == "none" else rects.content.width),
         )
 
+    def drawn(self, key: NodeKey, painter: Painter, content: Region) -> Rows:
+        """
+        The rows `painter` draws in the `content` box of the canvas at `key`,
+        which are the rows it drew last if it's equal to the painter that drew them, at the same size.
+        """
+        width = content.width
+        height = content.height
+        if width <= 0 or height <= 0:
+            return ()
+        previous = self.drawings.get(key)
+        if previous is not None and previous[1] == width and previous[2] == height and previous[0] == painter:
+            return previous[3]
+        rows = painter.draw(width, height)
+        self.drawings[key] = (painter, width, height, rows)
+        return rows
+
+    def measured(self, key: NodeKey, source: LeafSource) -> MeasurableText | IntrinsicSize:
+        """
+        What the leaf at `key` is measured with, from its `source`:
+        its intrinsic size, or its text, which reuses the cells it shares with the text it had before.
+        Whatever it kept as the other kind of leaf is dropped.
+        """
+        if isinstance(source, IntrinsicSize):
+            self.texts.pop(key, None)
+            return source
+        self.drawings.pop(key, None)
+        measurable = self.texts[key] = MeasurableText.of(source, self.texts.get(key))
+        return measurable
+
     def apply(self, changes: Iterable[LayoutChange]) -> None:
         """Applies `changes` to the taffy tree in order, so each one may refer to nodes the earlier ones created."""
         nodes = self.nodes
         tree = self.tree
         texts = self.texts
+        drawings = self.drawings
         for change in changes:
             match change:
-                case CreateLeaf(key=key, style=style, text=text):
-                    measurable = texts[key] = MeasurableText.of(text)
-                    nodes[key] = tree.new_leaf_with_context(style, measurable)
+                case CreateLeaf(key=key, style=style, source=source):
+                    nodes[key] = tree.new_leaf_with_context(style, self.measured(key, source))
                 case CreateContainer(key=key, style=style, children=children):
                     nodes[key] = tree.new_with_children(style, [nodes[child] for child in children])
                 case SetStyle(key=key, style=style):
                     tree.set_style(nodes[key], style)
-                case SetText(key=key, text=text):
-                    measurable = texts[key] = MeasurableText.of(text, texts.get(key))
-                    tree.set_node_context(nodes[key], measurable)
-                case ClearText(key=key):
-                    del texts[key]
+                case SetSource(key=key, source=source):
+                    tree.set_node_context(nodes[key], self.measured(key, source))
+                case ClearSource(key=key):
+                    texts.pop(key, None)
+                    drawings.pop(key, None)
                     tree.set_node_context(nodes[key], None)
                 case SetChildren(key=key, children=children):
                     tree.set_children(nodes[key], [nodes[child] for child in children])
                 case Remove(key=key):
                     texts.pop(key, None)
+                    drawings.pop(key, None)
                     tree.remove(nodes.pop(key))
                 case _ as unreachable:
                     assert_never(unreachable)
@@ -495,9 +567,10 @@ def place(
         style = node.element.style
         scrolls_x, scrolls_y = scrolled_axes(style)
         if scrolls_x or scrolls_y:
-            if isinstance(node.element, Text):
+            if not isinstance(node.element, Div):
+                kind = type(node.element).__name__
                 raise ValueError(
-                    "A Text doesn't scroll its own text, so its overflow can't be Scroll: "
+                    f"A {kind} doesn't scroll its own content, so its overflow can't be Scroll: "
                     "put it in a Div whose overflow is Scroll, which scrolls it."
                 )
             if (scroll := scrolled.get(node.key)) is None:
@@ -862,13 +935,16 @@ class MeasurableText:
         return self.min_content_width
 
 
-def _measure_text(
+def _measure_leaf(
     known: waxy.KnownSize,
     available: waxy.AvailableSize,
-    context: MeasurableText,
+    context: MeasurableText | IntrinsicSize,
 ) -> waxy.Size:
     known_width = known.width
     known_height = known.height
+
+    if isinstance(context, IntrinsicSize):
+        return _measure_intrinsic(known_width, known_height, available, context)
 
     width: int | None
     if known_width is not None:
@@ -891,6 +967,41 @@ def _measure_text(
         known_width if known_width is not None else float(widest),
         known_height if known_height is not None else float(line_count),
     )
+
+
+def _measure_intrinsic(
+    known_width: float | None, known_height: float | None, available: waxy.AvailableSize, intrinsic: IntrinsicSize
+) -> waxy.Size:
+    """
+    A canvas's size: its known size on each axis that has one, and its intrinsic size on the others,
+    except that when only one axis is known, a canvas that keeps its aspect ratio sizes the other by it,
+    as an `<img>` does.
+
+    The ratio is between content boxes, as a picture's is, and taffy takes a measured size as a content box,
+    adding the padding and border to it, but gives a known size as a border box.
+    Where it knows a size, though, the available space it gives is that size less the padding and border,
+    so the ratio is applied to that.
+    The canvas's node has no `aspect_ratio` for taffy to apply instead,
+    since taffy applies that to the border box, which would take a bordered canvas out of proportion.
+    """
+    if intrinsic.keeps_aspect_ratio:
+        if known_width is not None and known_height is None:
+            known_height = _definite(available.width) * intrinsic.height / intrinsic.width
+        elif known_height is not None and known_width is None:
+            known_width = _definite(available.height) * intrinsic.width / intrinsic.height
+    return waxy.Size(
+        known_width if known_width is not None else float(intrinsic.width),
+        known_height if known_height is not None else float(intrinsic.height),
+    )
+
+
+def _definite(space: waxy.Definite | waxy.MinContent | waxy.MaxContent) -> float:
+    """The size of `space`, which taffy makes definite on every axis where it knows a leaf's size."""
+    match space:
+        case waxy.Definite(value=value):
+            return value
+        case _:  # pragma: unreachable
+            raise ValueError(f"{space} isn't definite")
 
 
 def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int | None:

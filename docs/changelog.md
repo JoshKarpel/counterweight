@@ -224,9 +224,19 @@
   A wrapping `Text`'s minimum size is its widest word, so wrapping `Text`s side by side
   in a row shrink to share it.
 
-- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
-  Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
-  half-block pixel art in a terminal canvas using `▀` characters, as a tuple of chunks for a `Text`.
+- Added the [`Canvas`](elements/canvas.md) element, a leaf whose content box its painter draws cell by cell,
+  skipping the text layout a `Text` of chunks goes through every frame.
+  It's sized as an `<img>` is: its painter's natural size is its intrinsic size, which it takes on each axis
+  its style and its parent's layout leave undetermined, and a painter that keeps its aspect ratio gives a canvas
+  sized on one axis the other by that ratio.
+  A painter is any object with a `natural_size`, `keeps_aspect_ratio` and `draw(width, height)`,
+  which returns rows of styled graphemes whose unset styles come from the canvas;
+  a canvas draws again only when its painter isn't equal to the last one or its box changes size.
+  `counterweight.painters.pixels` holds `Pixels`, a picture as RGBA bytes,
+  which `Pixels.from_image` makes from a Pillow image,
+  and `HalfBlocks`, a painter that draws one two pixels to a cell with `▀`,
+  scaling and placing it as CSS's `object-fit` and `object-position` do,
+  and whose `pixels_at` finds the pixels a cell shows, for mouse input.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.

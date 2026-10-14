@@ -78,7 +78,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **Diagnostic prose.** `XX` wraps and case changes of the fixed sentences in `InconsistentHookExecution`
   (`update_node`), `ImpureComponent` (`check_is_pure`), `StaleMemo` (`Hooks.use_memo`),
-  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`, the `ValueError`s of `scroll_on_keys`,
+  `place`'s `ValueError` for a `Text` or `Canvas` whose overflow is `Scroll`, the `ValueError`s of `scroll_on_keys`,
   `scroll_on_wheel` and `focus_receiver_on_press`, `use_focus`'s `DuplicateUseFocus` and `ChangedFocusHandle`,
   `ShadowTree`'s `DuplicateElementHandle` and `DuplicateFocusHandle`, `render_loop`'s `UnsettledFocus`,
   the exception groups of `cancel_tasks`, and `teardown_failure`'s `RuntimeError`.
@@ -197,7 +197,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   aligning the edge it already sits on leaves the offset where it is.
 - **`_append_style_change`'s `and` as `or`.** `layout_style` is cached, so equal styles are the same object
   and the identity test already decides; they differ only after an eviction, which costs a redundant `SetStyle`.
-- **`_measure_text`'s known height `None`, or either known dimension ignored.** Taffy uses a known dimension
+- **`_measure_leaf`'s known height (for a text) `None`, or either known dimension ignored.** Taffy uses a known dimension
   in place of the measured one (probed by running the suite with each variant patched in).
 - **Initial values the code never reads.** `_extract_words_and_spaces`'s `current_word = None`,
   `_greedy_line_count`'s initial `length` and `pending_space_len` (`None`, `1`, or `1` after the last word),

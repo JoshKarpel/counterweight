@@ -469,7 +469,7 @@ async def test_a_scroll_that_moves_nothing_does_not_wait_to_move_a_later_layout(
 def test_a_text_whose_overflow_is_scroll_raises() -> None:
     shadow = update_shadow(Text(content="x", style=overflow_y_scroll), None, NO_LAYOUTS).tree
 
-    with pytest.raises(ValueError, match="Text doesn't scroll"):
+    with pytest.raises(ValueError, match="Text doesn't scroll its own content"):
         LayoutTree().compute(layout_changes(None, shadow), shadow, 4, 2, {})
 
 

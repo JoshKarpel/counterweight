@@ -103,6 +103,7 @@ nav:
     - elements/index.md
     - elements/div.md
     - elements/text.md
+    - elements/canvas.md
   - Hooks:
     - hooks/index.md
     - hooks/use_state.md

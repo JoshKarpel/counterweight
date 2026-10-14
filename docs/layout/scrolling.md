@@ -49,8 +49,9 @@ so a flex item that scrolls shrinks to fit beside its siblings instead of growin
 That's usually what a scrolling pane wants;
 give it a size, or `shrink(0)`, when it should be as large as its content up to some limit.
 
-A `Text` doesn't scroll its own text, so a `Text` whose overflow is `Scroll` raises `ValueError`:
-put a long `Text` in a `Div` that scrolls.
+A `Text` doesn't scroll its own text, nor a `Canvas` what it draws,
+so either one whose overflow is `Scroll` raises `ValueError`:
+put a long `Text` or a large `Canvas` in a `Div` that scrolls.
 
 ## Scrolling with the wheel
 

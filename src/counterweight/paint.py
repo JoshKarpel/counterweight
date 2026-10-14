@@ -17,6 +17,7 @@ import waxy
 from counterweight._utils import flyweight
 from counterweight._utils import halve_integer
 from counterweight.elements import AnyElement
+from counterweight.elements import Canvas
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
@@ -257,10 +258,12 @@ def paint_element(
     Paint the part of one element inside its clip onto `paint`,
     returning the border healing hints for its corners inside the clip.
 
-    `lines` are the rows a `Text` wraps to, which layout wrapped it to, and are empty for a `Div`.
+    `lines` are the rows a `Text` wraps to, which layout wrapped it to, or the rows a `Canvas`'s painter drew,
+    and are empty for a `Div`.
     Only the rows inside the clip are built, so a long text in a scroll container costs only the rows in view,
     and an element paints nothing if its border box, its text and any `margin_color` margin all miss the clip.
     Text overflows its box down and to the right, so the border box alone can't decide that.
+    A canvas's rows never leave its content box, which clips them.
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
@@ -279,10 +282,19 @@ def paint_element(
     content = resolved.content
     rows = range(0)
     text_clip = clip
-    # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
-    if lines and (own_clip := child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))) is not None:
-        text_clip = own_clip
-        rows = range(max(text_clip.top, content.top), min(text_clip.bottom, content.top + len(lines)))
+    text_justify = style.text_justify
+    text_style = style.text_style
+    if lines:
+        if isinstance(element, Canvas):
+            own_clip = clip.intersection(content)
+            text_justify = "left"
+            text_style = canvas_text_style(element.style)
+        else:
+            # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
+            own_clip = child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))
+        if own_clip is not None:
+            text_clip = own_clip
+            rows = range(max(text_clip.top, content.top), min(text_clip.bottom, content.top + len(lines)))
 
     has_margin_color = element.style.margin_color is not UNSET
     if (
@@ -318,11 +330,23 @@ def paint_element(
         paint.write_row(
             content.left,
             y,
-            line_cells(lines[y - content.top], style.text_justify, style.text_style, content.width),
+            line_cells(lines[y - content.top], text_justify, text_style, content.width),
             text_clip,
         )
 
     return hints
+
+
+@lru_cache(maxsize=2**8)
+def canvas_text_style(style: Style) -> ResolvedCellStyle:
+    """
+    The style a `Canvas` with `style` resolves its painter's cells against:
+    its `text_style`, whose background is its `content_color` unless the `text_style` sets one.
+    """
+    resolved = style.resolved
+    if style.text_style.background is not UNSET:
+        return resolved.text_style
+    return resolve_cell_style(CellStyle(background=resolved.content_color), resolved.text_style)
 
 
 @lru_cache(maxsize=2**12)
