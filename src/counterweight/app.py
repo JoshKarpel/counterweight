@@ -143,6 +143,7 @@ async def app(
     check_purity: bool = False,
     clock: Clock = system_clock,
     log_levels: Mapping[str, int] = frozendict(),
+    title: str | None = None,
 ) -> None:
     """
     Parameters:
@@ -182,10 +183,15 @@ async def app(
             of the module that defines `root`'s function (`__main__` for an app run as a script).
             Pass `{"some_library": logging.DEBUG}` to see a library's debug records too,
             or `{"my_app": logging.INFO}` to hide the app's own.
+        title: The title to give the terminal window when the application starts,
+            as [`SetTitle`][counterweight.controls.SetTitle] would, before the first frame is drawn.
+            If `None`, the terminal keeps the title it has.
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
-            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock)
+            await render_loop(
+                root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock, title
+            )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
             # and keeps callers from catching it by its own type.
@@ -208,6 +214,7 @@ async def render_loop(
     autopilot: Iterable[AnyEvent | AnyControl],
     check_purity: bool,
     clock: Clock,
+    title: str | None,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
@@ -275,8 +282,8 @@ async def render_loop(
         pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
-        # The title the app has set, and the one the terminal shows, which is the one it started with if it's None.
-        title: str | None = None
+        # The title the terminal shows, which is the one it started with if it's None,
+        # so the first pass of the loop sets the title `app` was given.
         shown_title: str | None = None
 
         do_heal_borders = True

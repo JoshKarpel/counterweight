@@ -168,6 +168,21 @@ async def test_set_title_sets_the_title_once_for_each_change(terminal: Terminal)
     assert output.getvalue() == TAKE_OVER + HI + title_instructions("one") + title_instructions("two") + HAND_BACK
 
 
+async def test_the_title_app_is_given_is_set_before_the_first_frame(terminal: Terminal) -> None:
+    output = Output()
+
+    await app(
+        hi(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[SetTitle(title="start"), SetTitle(title="later"), Quit()],
+        title="start",
+    )
+
+    assert output.getvalue() == TAKE_OVER + title_instructions("start") + HI + title_instructions("later") + HAND_BACK
+
+
 async def test_restore_title_restores_the_original_title_only_after_another_was_set(terminal: Terminal) -> None:
     output = Output()
 
