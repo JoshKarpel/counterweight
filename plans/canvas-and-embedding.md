@@ -302,9 +302,13 @@ class Pixels:
     @classmethod
     def blank(cls, width: int, height: int, color: Color) -> Pixels: ...
     @classmethod
-    def from_points(cls, width: int, height: int, points: Mapping[tuple[int, int], Color], default: Color) -> Pixels: ...
+    def from_points(
+        cls, width: int, height: int, points: Mapping[tuple[int, int], Color], default: Color
+    ) -> Pixels: ...
     @classmethod
-    def from_rgba(cls, width: int, height: int, rgba: bytes) -> Pixels: ...  # raises unless len(rgba) == width * height * 4
+    def from_rgba(
+        cls, width: int, height: int, rgba: bytes
+    ) -> Pixels: ...  # raises unless len(rgba) == width * height * 4
     @classmethod
     def from_image(cls, image: SupportsRGBA) -> Pixels: ...  # Pillow, matched structurally
     def with_points(self, points: Mapping[tuple[int, int], Color]) -> Pixels: ...
