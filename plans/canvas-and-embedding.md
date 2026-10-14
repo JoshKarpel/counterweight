@@ -99,7 +99,7 @@ and a two-cell grapheme gets its continuation cell.
 So a painter never needs the element's style.
 A pixel painter leaves a transparent pixel's color unset to show the canvas's background,
 and the terminal painter leaves a program's default colors unset to follow the app's.
-Building a cell is `StyledGrapheme("▀", CellStyle(foreground=top, background=bottom))`,
+Building a cell is `StyledGrapheme(grapheme="▀", style=CellStyle(foreground=top, background=bottom))`,
 with no resolved style to fill in.
 `draw`'s rows don't depend on the style, so the paint cache stays keyed by `(painter, width, height)`.
 Resolving runs after it and costs what it costs a `Text`:
@@ -184,6 +184,8 @@ Two changes complete the replaced-element model:
   Under the protocol every painter states its size,
   so the question becomes what an unsized painter (a terminal, which takes whatever box it gets) should report.
   Zero with a documented "size it with its style" is the simplest answer.
+  A painter whose natural size is zero on either axis has no aspect ratio to transfer,
+  so its node gets none, rather than a ratio of `0 / 0`.
 
 ### Pixels and images
 
@@ -378,8 +380,15 @@ Deferred, each for a different reason:
   It also holds 256 entries for every canvas in the app, so many canvases evict each other.
   A per-node cache, kept across frames the way `LayoutTree` is, needs only `==` and holds one entry per canvas.
   I'd pick the per-node cache.
+- **Which background an unset cell shows.**
+  Paint fills the content box with `content_color`,
+  but resolves a grapheme's unset background against `text_style.background`, which defaults to black on its own.
+  So on a canvas styled with only `content_bg`, a cell the picture doesn't reach at all shows `content_color`,
+  while a transparent pixel, or the uncovered half of a `▀` or `▄` cell, shows `text_style.background`.
+  Either `Canvas` resolves unset backgrounds against `content_color`,
+  or the docs say a canvas sets both, as a `Text` with a background does.
 - **`utils.canvas`.**
-  `examples/canvas.py` and `examples/mouse.py` each carry their own copy of it.
+  `examples/canvas.py` carries its own copy of it, and `examples/mouse.py` a full-block variant.
   Once they draw with `Pixels` and `HalfBlocks`, `canvas()` can be deprecated.
 
 ### Phase 1 work
@@ -600,11 +609,18 @@ so nothing bubbles past it.
   Every `Key` round-trips through encode and parse, except `ctrl+h`, `ctrl+i` and `ctrl+m`
   (which terminals send as Backspace, Tab and Enter) and `shift+escape`.
   Cursor keys switch to `SS3` under DECCKM, which vim exercised.
+  Where a key has several spellings, the encoder picks the one xterm sends, which is what `TERM=xterm-256color` promises:
+  F1 to F4 are `SS3 P` to `SS3 S`, and Shift+F1 to F4 are `CSI 1 ; 2 P` and so on.
+  The spike's rule (`CSI` over `SS3`, then the shorter `CSI`) sends `CSI 11 ~` for F1 and `CSI 25 ~` for F13,
+  which xterm's terminfo doesn't list, so htop's F1 to F4 do nothing.
 - **Pastes** are wrapped in bracketed-paste markers when the program set `?2004`,
-  with any end marker in the text dropped, so a paste can't end itself early.
+  with every end marker in the text removed, so a paste can't end itself early.
+  Removal repeats until none is left: one pass of `replace` turns `ESC [ 20 ESC [ 201 ~ 1 ~` into an end marker.
 - **Mouse events** inside the canvas are encoded only if the program enabled tracking,
   filtered by its tracking level, and translated to pane-local coordinates, as SGR or X10.
   A press also focuses the pane.
+  A press outside the program's screen (on the pane's border or padding) only focuses it:
+  the spike encodes it too, sending the program a column or row of 0 or past its edge.
   Counterweight's press capture already does what terminals expect of a drag:
   the pane that claimed the press gets its motion and release, wherever the pointer goes.
 - **The prefix key.**
@@ -638,8 +654,29 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
 2. Port the spike's layers to the phase 1 `Painter` protocol and the phase 2 fixes,
    moving the screen painter to `counterweight.painters`, leaving a program's default colors unset,
    and dropping the multiplexer's `ClearFocus` and closure-state workarounds.
-3. Harden `use_pty`: EOF and exit together (tmux's `window_pane_destroy_ready`),
-   a configurable `TERM`, and grandchildren that hold the PTY open.
+   - Paint adds a wide grapheme's continuation cell, and `StyledGrapheme(grapheme="")` raises,
+     so the screen painter drops libghostty's spacer tails.
+     A row then has one entry per grapheme, not per column,
+     so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
+     which would put it on the wrong cell after any wide character on its line.
+   - The multiplexer's `%` split reads `next_id` from its closure,
+     so two splits in one read open two panes with the same id and key.
+     The new id comes from the updater instead.
+   - The emulator's color and style caches are bounded:
+     the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
+3. Harden `use_pty`:
+   - EOF and exit together (tmux's `window_pane_destroy_ready`), and grandchildren that hold the PTY open.
+     The spike's drain re-raises its `TimeoutError` out of the effect,
+     and an effect's exception ends the app's task group,
+     so a shell that exits leaving a background job on the PTY quits the whole app, and its exit status is never set.
+   - A spawn that fails (an `argv` that doesn't exist) closes both PTY fds and reports the failure as the pane's state,
+     rather than raising out of the effect with the fds leaked.
+   - The program starts at its real size.
+     `use_rects` is zero on the first render, so the spike spawns at 0×0,
+     and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
+     leaving the program at 0×0 until the pane's size next changes.
+     Applying the latest size on connect closes that gap.
+   - A configurable `TERM`.
 4. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
    with an effect keyed on `focus.is_focused`.
 5. `use_terminal` as a public headless component, and a `terminal` widget on top of it,
