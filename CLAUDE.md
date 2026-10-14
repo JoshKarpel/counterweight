@@ -86,8 +86,9 @@ The entry point is typically through `counterweight.app.app()` which starts the 
 This project uses [Just](https://github.com/casey/just) as the task runner. Key commands:
 
 ```bash
-# Install dependencies
-just install
+# Install Just and uv (pinned in mise.toml), then the dependencies
+mise install
+uv sync
 
 # Run type checking, then the tests with coverage, passing any arguments on to pytest
 just test [-k pattern | tests/test_paint.py ...]

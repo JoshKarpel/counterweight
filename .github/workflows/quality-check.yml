@@ -25,20 +25,35 @@ jobs:
     permissions:
       contents: read
     env:
-      PLATFORM: ${{ matrix.platform }}
-      PYTHON_VERSION: ${{ matrix.python-version }}
       UV_PYTHON: ${{ matrix.python-version }}
       PYTHONUTF8: 1  # https://peps.python.org/pep-0540/
       COLORTERM: truecolor
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
       - name: Install uv and Just
-        uses: jdx/mise-action@v5.1.1
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca  # v5.1.1
+        with:
+          version: 2026.10.3
+        env:
+          MISE_LOCKED: 1  # install only the versions, URLs and checksums in mise.lock
+
+      - name: Restore uv cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-${{ matrix.python-version }}-
+
+      # Before anything else runs `uv run`, which would rewrite a stale lock instead of failing on it.
+      - name: Install dependencies
+        run: uv sync --locked
 
       - name: Run pre-commit checks
         run: uv run pre-commit run --all-files --show-diff-on-failure --color=always
@@ -55,3 +70,6 @@ jobs:
 
       - name: Test docs
         run: uv run mkdocs build --clean --strict --verbose
+
+      - name: Prune uv cache
+        run: uv cache prune --ci

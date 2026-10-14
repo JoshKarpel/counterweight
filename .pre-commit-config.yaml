@@ -125,17 +125,18 @@ repos:
   # astral-sh/ruff-pre-commit v0.16.10
   - repo: local
     hooks:
-      - id: ruff-format
-        name: ruff format
-        entry: uv run --frozen ruff format --force-exclude
-        language: unsupported
-        types_or: [python, pyi, jupyter, markdown]
-        require_serial: true
+      # Check before formatting: a fix can leave code the formatter would change.
       - id: ruff-check
         name: ruff check
         entry: uv run --frozen ruff check --force-exclude --fix
         language: unsupported
         types_or: [python, pyi, jupyter]
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: unsupported
+        types_or: [python, pyi, jupyter, markdown]
         require_serial: true
 
   # astral-sh/uv-pre-commit. `uv` itself is whichever is on `PATH`, not a package in the lock it checks.

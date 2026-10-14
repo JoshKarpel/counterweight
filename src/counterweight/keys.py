@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import Enum
 
 
-class Key(StrEnum):
+# A `StrEnum` would make `str(key)` give the key's text ("escape") instead of its name ("Key.Escape"),
+# which breaks code that formats keys.
+class Key(str, Enum):  # noqa: UP042
     """
     The named keys, each equal to its name as text, such as `"ctrl+a"`.
 
@@ -198,4 +200,4 @@ class Key(StrEnum):
     AltBackspace = "alt+backspace"
 
     def __repr__(self) -> str:
-        return f"Key.{self.name}"
+        return str(self)
