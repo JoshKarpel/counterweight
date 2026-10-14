@@ -107,6 +107,7 @@ from counterweight.paint import Paint
 from counterweight.paint import diff_paint
 from counterweight.paint import paint_layout
 from counterweight.paint import runs_of
+from counterweight.programs import TerminalStreams
 from counterweight.routing import Press
 from counterweight.routing import RoutingTable
 from counterweight.routing import UnsettledFocus
@@ -509,7 +510,9 @@ async def render_loop(
                     is_suspended = True
 
                     try:
-                        await maybe_await(should_suspend.handler())
+                        await maybe_await(
+                            should_suspend.handler(TerminalStreams(input=input_stream, output=output_stream))
+                        )
                     except Exception as ex:  # noqa: BLE001 (a failing user handler is logged, not fatal)
                         logger.error(
                             "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}

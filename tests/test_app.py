@@ -61,7 +61,7 @@ async def test_headless_autopilot_events_with_empty_app() -> None:
             TerminalResized(),
             Screenshot(handler=lambda _: None),
             Screenshot.to_stream(),
-            Suspend(handler=lambda: None),
+            Suspend(handler=lambda terminal: None),
             ToggleBorderHealing(),
             Quit(),
         ),

@@ -146,6 +146,7 @@ nav:
     - styles/utilities.md
   - Terminals:
     - terminals/commands.md
+    - terminals/programs.md
     - terminals/emulators.md
   - Rich Text:
     - rich-text/hyperlinks.md

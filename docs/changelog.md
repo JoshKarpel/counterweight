@@ -280,6 +280,20 @@
   The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
   runs a command on each slide when it's shown.
 
+- Added [running programs on the app's terminal](terminals/programs.md), as `git commit` runs an editor.
+  `Suspend.to_program` suspends the app, runs a program on the app's `input_stream` and `output_stream`
+  until it exits, with the app's environment and `env` (or only `env` with `clear_env`) in `cwd`,
+  and calls `on_exit` with `Exited` or `FailedToStart`.
+  While it runs, the app swallows `SIGINT` and `SIGQUIT`, as POSIX's `system()` does,
+  so Ctrl+C in a pager reaches the pager without quitting the app.
+  `Suspend.to_edit_file` opens a file in the user's editor, `$VISUAL`, then `$EDITOR`, then `vi`,
+  and calls `on_exit` with how the editor exited.
+  `Suspend.to_edit_text` edits a string the same way, through a file whose name sets the editor's highlighting,
+  and calls `on_edit` with the edited text, or with how the editor failed, so vim's `:cq` abandons the edit.
+  `counterweight.programs` holds the functions they run,
+  `run_program`, `edit_file`, `edit_text` and `preferred_editor`,
+  and `Exited` and `FailedToStart`, which `run_pty` returns too.
+
 - `app` takes `unclaimed_keys`, what a key press does when no handler on its path claims it,
   as a browser takes a key's default action unless a listener prevents it.
   `DEFAULT_UNCLAIMED_KEYS` gives Ctrl+C `Quit` and Ctrl+Z `Suspend.to_shell()`,
@@ -351,6 +365,10 @@
   Add styling for content area background color.
 
 ### Changed
+
+- A `Suspend` handler receives the terminal the app handed back, as `TerminalStreams`,
+  so it can run a program on the terminal the app draws on even when that isn't standard output.
+  A handler that took no arguments takes one now.
 
 - The app reads the terminal raw, as tmux does, so Ctrl+C, Ctrl+Z, Ctrl+\\, Ctrl+S and Ctrl+Q reach it as key presses
   rather than the terminal acting on them.

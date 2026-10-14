@@ -38,9 +38,9 @@ from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.painters.terminal import MAX_LINES
 from counterweight.painters.terminal import Transcript
+from counterweight.programs import Exited
+from counterweight.programs import FailedToStart
 from counterweight.pseudoterminal import HANGUP_GRACE
-from counterweight.pseudoterminal import Exited
-from counterweight.pseudoterminal import FailedToStart
 from counterweight.pseudoterminal import PtyConnection
 from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import Starting

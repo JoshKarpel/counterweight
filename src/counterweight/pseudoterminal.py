@@ -37,6 +37,8 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
+from counterweight.programs import Exited
+from counterweight.programs import FailedToStart
 
 READ_SIZE = 2**16
 
@@ -78,22 +80,6 @@ class Starting:
 @dataclass(frozen=True, slots=True)
 class Running:
     """The program is running."""
-
-
-@dataclass(frozen=True, slots=True)
-class Exited:
-    """The program exited."""
-
-    status: int
-    """Its exit status, or the negated number of the signal that ended it, as `asyncio` reports it."""
-
-
-@dataclass(frozen=True, slots=True)
-class FailedToStart:
-    """The program couldn't be started, such as for an `argv` naming a file that doesn't exist."""
-
-    reason: str
-    """Why, from the operating system, such as `"No such file or directory"`."""
 
 
 type PtyStatus = Starting | Running | Exited | FailedToStart

@@ -13,7 +13,8 @@ They need the `emulator` extra (`counterweight[emulator]`), and pseudo-terminals
 [`run_pty`][counterweight.pseudoterminal.run_pty] runs a program on a new pseudo-terminal until it exits,
 in its own session with the terminal as its controlling terminal,
 calling `on_output` with what the program writes, standard output and standard error together.
-It returns how the program exited, or why it couldn't start,
+It returns how the program exited ([`Exited`][counterweight.programs.Exited]),
+or why it couldn't start ([`FailedToStart`][counterweight.programs.FailedToStart]),
 and hands out a [`PtyConnection`][counterweight.pseudoterminal.PtyConnection] that writes to the program
 without blocking and resizes its terminal.
 Cancelling it hangs the program up, as closing a terminal window does.
@@ -49,8 +50,6 @@ everything a program printed.
 ::: counterweight.pseudoterminal.PtyStatus
 ::: counterweight.pseudoterminal.Starting
 ::: counterweight.pseudoterminal.Running
-::: counterweight.pseudoterminal.Exited
-::: counterweight.pseudoterminal.FailedToStart
 ::: counterweight.emulator.Emulator
 ::: counterweight.emulator.Screen
 ::: counterweight.emulator.Modes

@@ -5,17 +5,27 @@ import signal
 import sys
 from collections.abc import Awaitable
 from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal
 from typing import TextIO
 
+from counterweight._utils import maybe_await
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
+from counterweight.programs import EditOutcome
+from counterweight.programs import ProgramOutcome
+from counterweight.programs import TerminalStreams
+from counterweight.programs import edit_file
+from counterweight.programs import edit_text
+from counterweight.programs import run_program
 
 if TYPE_CHECKING:
     from counterweight.output import Frame
@@ -152,14 +162,16 @@ class Screenshot(_Control):
 @dataclass(frozen=True, slots=True)
 class Suspend(_Control):
     """
-    Suspend the application while the handler function is running.
+    Suspend the application while the handler function is running,
+    handing the terminal back to whatever started the application, and taking it again when the handler returns.
+    The handler receives the terminal, as [`TerminalStreams`][counterweight.programs.TerminalStreams].
 
     The application will be suspended (and then resumed) at the beginning of the next render cycle,
     so all other events that are due to be processed in the current cycle
     will be processed before the application is suspended.
     """
 
-    handler: Callable[[], Awaitable[None] | None]
+    handler: Callable[[TerminalStreams], Awaitable[None] | None]
 
     @classmethod
     def to_shell(cls) -> Suspend:
@@ -174,11 +186,106 @@ class Suspend(_Control):
         """
         return cls(handler=stop_process_group)
 
+    @classmethod
+    def to_program(
+        cls,
+        argv: Sequence[str],
+        on_exit: Callable[[ProgramOutcome], Awaitable[None] | None] = lambda outcome: None,
+        env: Mapping[str, str] = frozendict(),
+        clear_env: bool = False,
+        cwd: Path | None = None,
+    ) -> Suspend:
+        """
+        A `Suspend` that runs `argv` on the application's terminal until it exits, such as a pager or an editor,
+        then calls `on_exit` with how it exited, or why it couldn't start, before the application takes the terminal back.
+        See [`run_program`][counterweight.programs.run_program] for `env`, `clear_env` and `cwd`,
+        and for what Ctrl+C and Ctrl+Z do while the program runs.
+        """
+        return cls(
+            handler=partial(report_program, argv=tuple(argv), on_exit=on_exit, env=env, clear_env=clear_env, cwd=cwd)
+        )
 
-def stop_process_group() -> None:
+    @classmethod
+    def to_edit_file(
+        cls,
+        path: Path,
+        on_exit: Callable[[ProgramOutcome], Awaitable[None] | None] = lambda outcome: None,
+        editor: Sequence[str] | None = None,
+    ) -> Suspend:
+        """
+        A `Suspend` that edits the file at `path` in the user's editor on the application's terminal,
+        then calls `on_exit` with how the editor exited, or why it couldn't start,
+        before the application takes the terminal back.
+        See [`edit_file`][counterweight.programs.edit_file] for `editor`.
+        """
+        return cls(
+            handler=partial(
+                report_file_edit, path=path, on_exit=on_exit, editor=None if editor is None else tuple(editor)
+            )
+        )
+
+    @classmethod
+    def to_edit_text(
+        cls,
+        text: str,
+        on_edit: Callable[[EditOutcome], Awaitable[None] | None],
+        file_name: str = "edit.txt",
+        editor: Sequence[str] | None = None,
+    ) -> Suspend:
+        """
+        A `Suspend` that edits `text` in the user's editor on the application's terminal,
+        then calls `on_edit` with the edited text, or how the edit failed,
+        before the application takes the terminal back.
+        See [`edit_text`][counterweight.programs.edit_text] for `file_name` and `editor`.
+        """
+        return cls(
+            handler=partial(
+                report_edit,
+                text=text,
+                on_edit=on_edit,
+                file_name=file_name,
+                editor=None if editor is None else tuple(editor),
+            )
+        )
+
+
+def stop_process_group(terminal: TerminalStreams) -> None:
     """Stops this process's process group, as the terminal's Ctrl+Z does, until something sends it `SIGCONT`."""
     # The suite runs this only in a child process that it stops and then kills, which never writes its coverage.
     os.killpg(os.getpgrp(), signal.SIGTSTP)  # pragma: no cover
+
+
+async def report_program(
+    terminal: TerminalStreams,
+    argv: tuple[str, ...],
+    on_exit: Callable[[ProgramOutcome], Awaitable[None] | None],
+    env: Mapping[str, str],
+    clear_env: bool,
+    cwd: Path | None,
+) -> None:
+    """The handler of `Suspend.to_program`: runs `argv` on `terminal`, then passes `on_exit` how it ended."""
+    await maybe_await(on_exit(await run_program(argv, terminal, env=env, clear_env=clear_env, cwd=cwd)))
+
+
+async def report_file_edit(
+    terminal: TerminalStreams,
+    path: Path,
+    on_exit: Callable[[ProgramOutcome], Awaitable[None] | None],
+    editor: tuple[str, ...] | None,
+) -> None:
+    """The handler of `Suspend.to_edit_file`: edits `path` on `terminal`, then passes `on_exit` how the editor ended."""
+    await maybe_await(on_exit(await edit_file(path, terminal, editor=editor)))
+
+
+async def report_edit(
+    terminal: TerminalStreams,
+    text: str,
+    on_edit: Callable[[EditOutcome], Awaitable[None] | None],
+    file_name: str,
+    editor: tuple[str, ...] | None,
+) -> None:
+    """The handler of `Suspend.to_edit_text`: edits `text` on `terminal`, then passes `on_edit` how the edit ended."""
+    await maybe_await(on_edit(await edit_text(text, terminal, file_name=file_name, editor=editor)))
 
 
 @dataclass(frozen=True, slots=True)

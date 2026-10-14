@@ -59,6 +59,7 @@ from counterweight.output import SYNCHRONIZED_OUTPUT_OFF
 from counterweight.output import SYNCHRONIZED_OUTPUT_ON
 from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import title_instructions
+from counterweight.programs import TerminalStreams
 from counterweight.styles.utilities import text_black
 from tests.devlog import devlog_lines
 from tests.terminal import Terminal
@@ -161,7 +162,7 @@ async def test_suspend_hands_the_terminal_back_while_its_handler_runs(terminal: 
     output = Output()
     during: list[tuple[str, object, bool]] = []
 
-    def handler() -> None:
+    def handler(streams: TerminalStreams) -> None:
         is_read = get_running_loop().remove_reader(terminal.stream.fileno())
         during.append((output.getvalue(), terminal.settings(), is_read))
 
@@ -176,6 +177,21 @@ async def test_suspend_hands_the_terminal_back_while_its_handler_runs(terminal: 
     frame = TAKE_OVER + HI + HAND_BACK
     assert during == [(frame, before, False)]
     assert output.getvalue() == frame + frame
+
+
+async def test_a_suspend_handler_receives_the_streams_the_app_draws_on_and_reads_from(terminal: Terminal) -> None:
+    output = Output()
+    received: list[TerminalStreams] = []
+
+    await app(
+        hi(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[Suspend(handler=received.append), Quit()],
+    )
+
+    assert received == [TerminalStreams(input=terminal.stream, output=output)]
 
 
 async def test_set_title_sets_the_title_once_for_each_change(terminal: Terminal) -> None:
@@ -230,7 +246,7 @@ async def test_a_suspension_restores_the_title_while_its_handler_runs_then_sets_
         output_stream=output,
         input_stream=terminal.stream,
         dimensions=(3, 1),
-        autopilot=[SetTitle(title="mine"), Suspend(handler=lambda: during.append(output.getvalue())), Quit()],
+        autopilot=[SetTitle(title="mine"), Suspend(handler=lambda streams: during.append(output.getvalue())), Quit()],
     )
 
     titled = TAKE_OVER + HI + title_instructions("mine") + HAND_BACK
@@ -243,7 +259,7 @@ async def test_an_interrupt_in_a_suspend_handler_quits_without_handing_the_termi
 ) -> None:
     output = Output()
 
-    def interrupted() -> None:
+    def interrupted(streams: TerminalStreams) -> None:
         raise KeyboardInterrupt
 
     await app(
@@ -366,7 +382,7 @@ async def test_mouse_input_from_the_terminal_reaches_use_mouse(
     [
         pytest.param([], TAKE_OVER + HI, id="from-the-start"),
         pytest.param(
-            [Suspend(handler=lambda: None)],
+            [Suspend(handler=lambda streams: None)],
             TAKE_OVER + HI + HAND_BACK + TAKE_OVER + HI,
             id="after-a-suspension",
         ),
@@ -413,7 +429,7 @@ async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> No
     def root() -> Text:
         return Text(content="hi", on_input=on_input)
 
-    def type_quit_while_suspended() -> None:
+    def type_quit_while_suspended(streams: TerminalStreams) -> None:
         os.write(terminal.keyboard, b"q")
 
     await wait_for(
@@ -505,7 +521,7 @@ async def test_a_suspension_puts_back_the_interrupt_handler_while_its_handler_ru
         output_stream=Output(),
         input_stream=terminal.stream,
         dimensions=(3, 1),
-        autopilot=[Suspend(handler=lambda: raise_signal(SIGINT)), Quit()],
+        autopilot=[Suspend(handler=lambda streams: raise_signal(SIGINT)), Quit()],
     )
 
     assert replaced_interrupts == [SIGINT]
@@ -514,7 +530,7 @@ async def test_a_suspension_puts_back_the_interrupt_handler_while_its_handler_ru
 async def test_an_interrupt_quits_the_app_after_a_suspension(
     terminal: Terminal, replaced_interrupts: list[int]
 ) -> None:
-    def type_while_suspended() -> None:
+    def type_while_suspended(streams: TerminalStreams) -> None:
         os.write(terminal.keyboard, b"i")
 
     await wait_for(
@@ -589,7 +605,7 @@ async def test_the_app_reads_raw_again_after_a_suspension(terminal: Terminal) ->
     pressed: list[KeyPressed] = []
     during: list[object] = []
 
-    def record_settings() -> None:
+    def record_settings(streams: TerminalStreams) -> None:
         during.append(terminal.settings())
 
     # The suspension cancels the first frame's effect before it starts, so the app types only once it has resumed.
