@@ -4,14 +4,22 @@ from collections.abc import Callable
 
 import pytest
 
-from counterweight.components import Component, component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, Receiver
-from counterweight.hooks import Setter, use_memo, use_state
-from counterweight.hooks.impls import StaleMemo, UseMemo
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import Receiver
+from counterweight.hooks import Setter
+from counterweight.hooks import use_memo
+from counterweight.hooks import use_state
+from counterweight.hooks.impls import StaleMemo
+from counterweight.hooks.impls import UseMemo
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowTree, update_shadow
-from tests.rendering import state_set_keys, state_sets
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import update_shadow
+from tests.rendering import state_set_keys
+from tests.rendering import state_sets
 
 
 def render_after_each(root: Component, steps: list[Callable[[], None]], check_purity: bool = False) -> list[ShadowTree]:

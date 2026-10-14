@@ -18,30 +18,40 @@ and which the wheel and the keyboard scroll back through in a live run.
 import random
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from functools import partial
+from itertools import pairwise
 from typing import Literal
 
-from benchmarks.agent import CODE, FILES, KEPT_MESSAGES, VOCABULARY, header, prompt, spinner
+from benchmarks.agent import CODE
+from benchmarks.agent import FILES
+from benchmarks.agent import KEPT_MESSAGES
+from benchmarks.agent import VOCABULARY
+from benchmarks.agent import header
+from benchmarks.agent import prompt
+from benchmarks.agent import spinner
 from benchmarks.harness import Workload
-from counterweight.components import Component, component
-from counterweight.elements import Div, Text
-from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.handlers import first
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
 from counterweight.highlighting import code_block
 from counterweight.hooks import use_focus
 from counterweight.markdown import markdown
-from counterweight.styles.utilities import (
-    border,
-    border_color,
-    border_lightrounded,
-    col,
-    fill,
-    gap_height,
-    overflow_y_scroll,
-    pad_x,
-    stick_to_end_y,
-    text_color,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_lightrounded
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import gap_height
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import stick_to_end_y
+from counterweight.styles.utilities import text_color
 
 WORDS_PER_FRAME = 3
 
@@ -129,7 +139,7 @@ def step(model: Model) -> Model:
     next_id = model.next_id
     if not pending:
         ids = range(next_id, next_id + rng.choice(TOOL_CALLS))
-        tools = tuple(tool_call(rng, id) for id in ids)
+        tools = tuple(tool_call(rng, message_id) for message_id in ids)
         next_id += len(ids)
         messages = (*messages, *tools, Message(id=next_id, kind="assistant", title="", body=""))
         next_id += 1
@@ -151,11 +161,11 @@ def chunk_source(rng: random.Random) -> str:
     """One block of an agent's text: usually a sentence or two of narration, sometimes a summary."""
     if rng.random() >= SUMMARY_SHARE:
         return prose(rng, rng.choice(NARRATION_WORDS))
-    kinds, weights = zip(*SUMMARY_BLOCK_WEIGHTS.items())
+    kinds, weights = zip(*SUMMARY_BLOCK_WEIGHTS.items(), strict=True)
     chosen = ["paragraph", *rng.choices(kinds, weights, k=rng.choice(SUMMARY_BLOCKS) - 1)]
     # Two lists in a row would merge into one loose list, which agents rarely write, so the second becomes prose.
     kinds_in_order = [
-        "paragraph" if kind in LISTS and previous in LISTS else kind for previous, kind in zip(["", *chosen], chosen)
+        "paragraph" if kind in LISTS and previous in LISTS else kind for previous, kind in pairwise(["", *chosen])
     ]
     return "\n\n".join(summary_block(rng, kind) for kind in kinds_in_order)
 
@@ -202,21 +212,21 @@ def prose(rng: random.Random, words: int) -> str:
     return " ".join(out)
 
 
-def tool_call(rng: random.Random, id: int) -> Message:
-    kinds, weights = zip(*TOOL_WEIGHTS.items())
+def tool_call(rng: random.Random, message_id: int) -> Message:
+    kinds, weights = zip(*TOOL_WEIGHTS.items(), strict=True)
     kind: Kind = rng.choices(kinds, weights)[0]
     match kind:
         case "bash":
             command, output = rng.choice(COMMANDS)
-            return Message(id=id, kind="bash", title=f"$ {command}", body="\n".join(output))
+            return Message(id=message_id, kind="bash", title=f"$ {command}", body="\n".join(output))
         case "read":
             start = rng.randrange(len(CODE))
             lines = (CODE[(start + n) % len(CODE)] for n in range(rng.randrange(3, 8)))
-            return Message(id=id, kind="read", title=f"Read {rng.choice(FILES)}", body="\n".join(lines))
+            return Message(id=message_id, kind="read", title=f"Read {rng.choice(FILES)}", body="\n".join(lines))
         case _:
             line = rng.choice(CODE)
             return Message(
-                id=id,
+                id=message_id,
                 kind="edit",
                 title=f"Edit {rng.choice(FILES)}",
                 body=f"-{line}\n+{line.replace('tree', 'cached')}",

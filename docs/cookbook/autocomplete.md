@@ -13,9 +13,7 @@ It draws the text in a row that [scrolls sideways](../headless/use_text_input.md
 with the cursor's cell holding the hook's `cursor_cell` handle,
 so a value wider than the field keeps the cursor in view.
 
-```python
---8<-- "autocomplete.py:example"
-```
+<!-- example: autocomplete.py:example -->
 
 Typing `py` into the package field opens the list,
 which reaches past the bottom of the panel and over the text below it:

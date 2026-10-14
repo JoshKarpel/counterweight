@@ -1,8 +1,15 @@
 import re
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from counterweight.elements import Chunk, StyledGrapheme, Text
+from counterweight.elements import Chunk
+from counterweight.elements import StyledGrapheme
+from counterweight.elements import Text
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
+from counterweight.styles import CellStyle
 from counterweight.styles import Style
 
 
@@ -12,7 +19,7 @@ def test_texts_have_no_children() -> None:
 
 @pytest.mark.parametrize(
     ("content", "style", "expected"),
-    (
+    [
         (
             "",
             Style(),
@@ -38,7 +45,7 @@ def test_texts_have_no_children() -> None:
             Style(),
             (StyledGrapheme(grapheme="f"), StyledGrapheme(grapheme="o"), StyledGrapheme(grapheme="o")),
         ),
-    ),
+    ],
 )
 def test_text_cells(
     content: str | tuple[Chunk, ...],
@@ -54,6 +61,15 @@ def test_chunk_space() -> None:
 
 def test_chunk_newline() -> None:
     assert Chunk.newline() == Chunk(content="\n")
+
+
+def test_chunk_cells_are_its_clusters_in_its_style() -> None:
+    bold = CellStyle(bold=True)
+
+    assert Chunk(content="hé", style=bold).cells == (
+        StyledGrapheme(grapheme="h", style=bold),
+        StyledGrapheme(grapheme="é", style=bold),
+    )
 
 
 def test_text_cells_are_grapheme_clusters() -> None:
@@ -91,5 +107,35 @@ def test_text_replaces_control_characters_but_keeps_line_breaks() -> None:
 
 
 def test_styled_grapheme_rejects_control_characters() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is a control character"):
         StyledGrapheme(grapheme="\x1b")
+
+
+LINE_BREAKS_AND_CLUSTERS = st.lists(
+    st.sampled_from(
+        [
+            "a",
+            " ",
+            "\n",
+            "\r",
+            "\r\n",
+            "\x0b",
+            "\x0c",
+            "\x1c",
+            "\x85",
+            "\N{LINE SEPARATOR}",
+            "\N{COMBINING ACUTE ACCENT}",
+            "\N{ZERO WIDTH JOINER}",
+            "👩",
+            "\U0001f1fa",
+            "\U0001f1f8",
+            "\t",
+        ]
+    ),
+    max_size=12,
+).map("".join)
+
+
+@given(content=LINE_BREAKS_AND_CLUSTERS)
+def test_text_cells_are_the_clusters_of_the_whole_content_though_built_line_by_line(content: str) -> None:
+    assert [cell.grapheme for cell in Text(content=content).cells] == [visible(g) for g in graphemes(content)]

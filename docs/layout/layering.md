@@ -10,9 +10,7 @@ and `z` decides which of the overlapping boxes is drawn on top.
 without moving anything else: its siblings keep the space it would have taken.
 Insets are measured in cells, and `inset_top(2)` moves the box down two rows.
 
-```python
---8<-- "layout_layering.py:relative"
-```
+<!-- example: layout_layering.py:relative -->
 
 ![Relative positioning](../assets/layout-relative.svg)
 
@@ -22,9 +20,7 @@ Insets are measured in cells, and `inset_top(2)` moves the box down two rows.
 its siblings are laid out as if it weren't there,
 and its insets place it relative to its parent's padding box.
 
-```python
---8<-- "layout_layering.py:absolute"
-```
+<!-- example: layout_layering.py:absolute -->
 
 ![Absolute positioning](../assets/layout-absolute.svg)
 
@@ -37,9 +33,7 @@ so they center only in a parent that centers its children, as this one does.
 To center a box whatever its parent's alignment, see [A dialog centered over the app](#a-dialog-centered-over-the-app).
 Margins push the box away from where it was placed.
 
-```python
---8<-- "absolute_positioning_insets.py:example"
-```
+<!-- example: absolute_positioning_insets.py:example -->
 
 ![The inset utilities](../assets/absolute-positioning-insets.svg)
 
@@ -49,9 +43,7 @@ Where boxes overlap, the one with the higher `z` is drawn on top.
 Boxes with equal `z` are drawn in the order they appear in the tree, each parent before its children,
 and a box that sets no `z` counts as 0.
 
-```python
---8<-- "z.py:example"
-```
+<!-- example: z.py:example -->
 
 ![Z layers](../assets/z.svg)
 
@@ -73,9 +65,7 @@ but still over the box that forms the context.
 A `z(1)` dropdown inside a toolbar that sets no `z` joins the stacking context around the toolbar,
 so it's drawn over the content below the toolbar:
 
-```python
---8<-- "layout_layering.py:dropdown"
-```
+<!-- example: layout_layering.py:dropdown -->
 
 === "Toolbar without `z`"
 
@@ -108,9 +98,7 @@ so a dialog centers over the whole app only when it's a child of an element that
 such as the root component's element here.
 A dialog rendered deeper in the tree centers over its own parent.
 
-```python
---8<-- "layout_layering.py:dialog"
-```
+<!-- example: layout_layering.py:dialog -->
 
 ![A dialog over the app](../assets/layout-dialog.svg)
 
@@ -130,8 +118,6 @@ Negative insets reach past the parent's padding box onto its border.
 `clip_to_border` keeps the badges visible if the parent
 [hides its overflow](clipping.md#drawing-on-the-parents-border).
 
-```python
---8<-- "layout_layering.py:badge"
-```
+<!-- example: layout_layering.py:badge -->
 
 ![Badges on borders](../assets/layout-badge.svg)

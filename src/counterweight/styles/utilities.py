@@ -3,7 +3,10 @@ from typing import Literal
 
 import waxy
 
-from counterweight.styles import BorderKind, CellStyle, Color, Style
+from counterweight.styles import BorderKind
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
+from counterweight.styles import Style
 
 Side = Literal["top", "bottom", "left", "right"]
 

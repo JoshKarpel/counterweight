@@ -11,7 +11,8 @@ if TYPE_CHECKING:
     from counterweight.components import Component
     from counterweight.events import AnyEvent
     from counterweight.hooks import Mouse
-    from counterweight.hooks.impls import Hooks, NodeKey
+    from counterweight.hooks.impls import Hooks
+    from counterweight.hooks.impls import NodeKey
     from counterweight.layout import Layouts
 
 current_event_queue: ContextVar[Queue[AnyEvent]] = ContextVar("current_event_queue")

@@ -6,9 +6,13 @@ from typing import Any
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import toggle, use_state
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import toggle
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 

@@ -3,9 +3,13 @@ from __future__ import annotations
 from enum import Enum
 
 
-class Key(str, Enum):
+# A `StrEnum` would make `str(key)` give the key's text ("escape") instead of its name ("Key.Escape"),
+# which breaks code that formats keys.
+class Key(str, Enum):  # noqa: UP042
     """
-    Derived from https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py
+    The named keys, each equal to the text that names it, such as `Key.ControlA == "ctrl+a"`.
+
+    Derived from [Textual's keys](https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py).
     """
 
     Escape = "escape"  # Also Control-[

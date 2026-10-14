@@ -7,11 +7,11 @@ from counterweight._utils import halve_integer
 
 @pytest.mark.parametrize(
     ("x", "result"),
-    (
+    [
         (0, (0, 0)),
         (1, (1, 0)),  # leftover favors the left result
         (2, (1, 1)),
-    ),
+    ],
 )
 def test_examples(x: int, result: tuple[int, int]) -> None:
     assert halve_integer(x) == result

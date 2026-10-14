@@ -15,13 +15,18 @@ import asyncio
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import ClearFocus
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.handlers import first, tab_focus
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.handlers import first
+from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.markdown import markdown
+from counterweight.markdown import markdown_document
 from counterweight.styles.utilities import *
 from counterweight.widgets import text_area
 
@@ -235,7 +240,7 @@ def section(name: str, source: str) -> Div:
             # A text area is a scroll container, which adds nothing to the height of a grid row,
             # so it's in a column that's as tall as its rows, which it grows to fill when the preview is taller.
             Div(style=col, children=(text_area(text, set_text, enter_inserts_newline=True, style=grow(1)),)),
-            markdown(text),
+            markdown_document(text),
         ),
     )
 

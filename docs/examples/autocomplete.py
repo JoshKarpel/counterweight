@@ -3,32 +3,41 @@ from __future__ import annotations
 import asyncio
 import glob
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from fnmatch import fnmatchcase
 from functools import partial
 
 import waxy
 
 from counterweight.app import app
-from counterweight.components import Component, component
+from counterweight.components import Component
+from counterweight.components import component
 from counterweight.controls import ScrollIntoView
-from counterweight.elements import Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseScrolledDown,
-    MouseUp,
-    Receiver,
-    response_controls,
-)
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.events import response_controls
 from counterweight.geometry import Position
-from counterweight.handlers import clear_focus, first, focus_receiver_on_press, on_click, scroll_on_wheel, tab_focus
+from counterweight.handlers import clear_focus
+from counterweight.handlers import first
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import on_click
+from counterweight.handlers import scroll_on_wheel
+from counterweight.handlers import tab_focus
 from counterweight.headless import use_text_input
-from counterweight.hooks import ElementHandle, use_rects, use_state
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import use_rects
+from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles import CellStyle, Style
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 

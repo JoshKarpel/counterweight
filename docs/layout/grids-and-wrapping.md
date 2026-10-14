@@ -9,9 +9,7 @@ The examples on this page size every track with `fr(1)`, one share of the grid's
 
 Equal tracks on both axes give a grid of equal tiles, and `gap` separates them.
 
-```python
---8<-- "layout_grids.py:tiles"
-```
+<!-- example: layout_grids.py:tiles -->
 
 ![Dashboard tiles](../assets/layout-grid-tiles.svg)
 
@@ -26,9 +24,7 @@ A child placed on rows alone is placed before one placed on columns alone,
 whatever their order among the children,
 so mixing the two can push a child into an extra row below the template.
 
-```python
---8<-- "layout_grids.py:spans"
-```
+<!-- example: layout_grids.py:spans -->
 
 ![Cells spanning tracks](../assets/layout-grid-spans.svg)
 
@@ -39,9 +35,7 @@ By default, children fill each row in turn and the grid adds rows,
 like the seventh child on the left.
 `grid_auto_flow_column` fills each column in turn and adds columns instead.
 
-```python
---8<-- "layout_grids.py:auto-flow"
-```
+<!-- example: layout_grids.py:auto-flow -->
 
 ![Row and column auto flow](../assets/layout-grid-auto-flow.svg)
 
@@ -51,8 +45,6 @@ When children have different sizes and there's no grid for them to line up in,
 `flex_wrap` lets a row start a new line when the next child doesn't fit.
 `gap_width` spaces the children within a line.
 
-```python
---8<-- "layout_grids.py:wrap"
-```
+<!-- example: layout_grids.py:wrap -->
 
 ![Wrapping with flexbox](../assets/layout-flex-wrap.svg)

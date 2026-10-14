@@ -1,41 +1,50 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 
 import pytest
 
 from counterweight.components import component
-from counterweight.controls import AnyControl, ScrollBy, ScrollTo
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, InputEvent, InputResponse, KeyPressed, Receiver, TerminalResized
+from counterweight.controls import AnyControl
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.events import TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks import use_state
-from counterweight.layout import (
-    NO_LAYOUTS,
-    Anchor,
-    Layouts,
-    LayoutTree,
-    PriorScroll,
-    layout_changes,
-    prior_scrolls,
-    requested_offset,
-)
-from counterweight.shadow import ShadowTree, update_shadow
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Anchor
+from counterweight.layout import Layouts
+from counterweight.layout import LayoutTree
+from counterweight.layout import PriorScroll
+from counterweight.layout import layout_changes
+from counterweight.layout import prior_scrolls
+from counterweight.layout import requested_offset
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import update_shadow
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    clip_to_screen,
-    col,
-    height,
-    overflow_anchor_none,
-    overflow_y_scroll,
-    position_absolute,
-    shrink,
-    stick_to_end_x,
-    stick_to_end_y,
-    text_wrap_stable,
-    unstick_y,
-)
-from tests.test_scrolling import HANDLE, last_rows, scrolled_to
+from counterweight.styles.utilities import clip_to_screen
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import overflow_anchor_none
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import shrink
+from counterweight.styles.utilities import stick_to_end_x
+from counterweight.styles.utilities import stick_to_end_y
+from counterweight.styles.utilities import text_wrap_stable
+from counterweight.styles.utilities import unstick_y
+from tests.test_scrolling import HANDLE
+from tests.test_scrolling import last_rows
+from tests.test_scrolling import scrolled_to
 
 # Eight messages that each take one row of a screen 12 wide, and two of one 8 wide.
 MESSAGES = tuple((i, f"m{i} aaaa bbb") for i in range(8))
@@ -47,7 +56,7 @@ def message(content: str) -> Text:
 
 
 def transcript_children(messages: Sequence[tuple[int, str]]) -> tuple[AnyElement, ...]:
-    return tuple(message(content).with_key(str(id)) for id, content in messages)  # type: ignore[misc]
+    return tuple(message(content).with_key(str(key)) for key, content in messages)  # type: ignore[misc]
 
 
 type Messages = tuple[tuple[int, str], ...]
@@ -257,7 +266,8 @@ def test_an_excluded_node_is_never_the_anchor_nor_anything_inside_it(excluded: S
 
     anchor = prior_scrolls(layouts)[shadow.root.key].anchor
 
-    assert anchor is not None and anchor.key == shadow.root.children[2].key
+    assert anchor is not None
+    assert anchor.key == shadow.root.children[2].key
 
 
 def test_a_nested_scroll_container_is_the_anchor_without_being_descended_into() -> None:

@@ -1160,3 +1160,123 @@ Median frame time, median of three rounds, with the range across rounds:
 - **Counterweight's share is 17%,** larger than run 24's because real output has more blocks and inline spans per word.
 - Run 24's levers still apply, but the per-paragraph inline cache would save less here:
   most blocks are a single short paragraph, and summaries spend more in the block pass.
+
+### Run 26 — paint culled to each element's clip (issue #418)
+
+**Date:** 2026-10-14
+
+**Change:** paint does work only for what's inside each element's clip.
+
+- **Paint draws the rows layout wrapped.** `MeasurableText.lines_at` keeps the rows each width wrapped to,
+  `Layouts.in_paint_order` carries each visible `Text`'s rows at its content width beside its layout,
+  and `paint_layout` takes `(element, rects, lines)`.
+  `text_lines`, which wrapped every `Text` again in paint and cached the result keyed on its whole grapheme tuple, is gone.
+- **Only rows inside the clip are built,** through `line_cells`, cached by the row's own graphemes, so a row keeps its entry as it scrolls.
+- **An element whose border box, text rows and `margin_color` margin all miss its clip paints nothing.**
+  Culling on the margin box alone, as the issue proposed, blanks text that overflows a box scrolled out of view.
+- **Cells are built through a dictionary of the graphemes seen so far, a line or chunk at a time, in two caches.**
+  Each node keeps its text's cells by piece, so the next version of the text reuses the lines it shares with this one,
+  and only the pieces it lacks go to `styled_cells`, whose 4,096-entry `lru_cache` is shared by every text.
+  The shared cache alone gets no hits once a text has more lines than it holds:
+  rebuilding a 5,000-line text after an edit to its last line takes 27.5 ms through it alone, and 6.8 ms with both.
+  The node's cache alone tripled `top`'s share of samples in `MeasurableText.of`, since `top`'s short values recur
+  across its texts, which only the shared cache sees. A text on one line skips the node's cache:
+  splitting it into pieces doubled what building it costs, 1,178 ns a text against 557 ns, and is 664 ns without.
+- **Wrapped rows are tuples kept with the text,** and a one-row text's row is its cells tuple,
+  because CPython caches a tuple's hash on the tuple and paint's row cache hashes the same objects every frame.
+  Text that doesn't wrap keeps one set of rows for every width.
+
+Three workloads type one key a frame into a 112 KB, 1,250-line document at 100x30:
+`document` draws it as one `Text`, `document-lines` as one `Text` per line, and `document-text-area` in a `text_area`.
+
+**Method:** development runs of unprofiled `benchmarks run` (200–300 frames), one change at a time;
+a final comparison of the least total CPU time (`time.process_time`, startup included) of three alternating runs per side,
+200 frames each, with HEAD's source on `PYTHONPATH`;
+peak RSS over 400 frames of `document`; and a digest of every frame of every workload, with ANSI styles, against HEAD.
+An interleaved frame-time comparison of the final code was cut short by unrelated load on the machine and isn't reported.
+The development runs and the peak memory below are of the document as first generated, 87 KB, whose lines averaged 70 characters;
+the final comparison is of the 112 KB document, whose lines average 90.
+
+Median frame time of `document` after each change, single development runs:
+
+| Change | Median |
+|---|---|
+| Before | 98 ms |
+| Rows outside the clip not built | 74 ms |
+| Paint draws layout's rows | 43 ms |
+| Elements culled to the clip | 44 ms |
+| Faster `text_cells` | 28 ms |
+
+Final code, least CPU time of three runs:
+
+| Workload | HEAD | Branch | Change |
+|---|---|---|---|
+| `document` | 28.50 s | 7.44 s | −74% |
+| `document-lines` | 2.74 s | 2.10 s | −23% |
+| `document-text-area` | 2.10 s | 1.78 s | −16% |
+| `canvas` | 0.85 s | 0.75 s | −12% |
+| `agent` | 0.55 s | 0.52 s | −5% |
+| `agent-scrolled` | 0.51 s | 0.49 s | −4% |
+| `agent-markdown` | 0.63 s | 0.63 s | 0% |
+| `top` | 2.86 s | 3.23 s | +13% |
+| `agent-typing` | 0.79 s | 0.76 s | −4% |
+| `dashboard` | 0.43 s | 0.44 s | +2% |
+| `dashboard-local` | 0.41 s | 0.39 s | −4% |
+
+`top`'s least CPU time moves by 10% between runs of the same code.
+Eight interleaved rounds of `top` put the medians at 3.15 s for HEAD and 3.27 s for the branch,
+and building texts (`MeasurableText.of`) is 3.5% of the branch's samples, against 3.0% with a shared cache alone.
+
+- **Paint's share of a `document` frame fell from 58 ms to 0.3 ms.** Half of `text_lines` had been a second `wrap_cells`
+  of the whole document at the width measure had just wrapped it to, and about 5 ms more was hashing its cache key.
+- **Peak memory for 400 frames of `document` fell from 763 MB to 49 MB.** `text_lines` and `text_cells` each cached whole texts,
+  4,096 entries, so every keystroke added a copy of the document's rows and cells.
+- **`text_cells` was 40% of the frame left after paint,** about 18 ms: a flyweight constructor per grapheme, called with keywords,
+  which hashes its `CellStyle`. Building the document's cells takes 18.4 ms that way, 3.5 ms through a local `dict.get`,
+  and 1.8 ms mapping through a `dict` subclass with `__missing__`.
+- **`document-lines` gains from the cull,** not the rows: most of its 1,250 `Text`s are out of view.
+  What's left is per-element work in `update_shadow` and `place`.
+- **An earlier version cost `top` 5–10%,** from two causes. Keeping rows for every width taffy asked about
+  raised young collections from 110 to 162 over 300 frames (101 once unwrapped text shares one set).
+  And building a fresh tuple per row per frame hashed 418,265 graphemes over 100 frames against HEAD's 111,537,
+  where HEAD hashed the same cells tuple every frame and paid once; keeping rows as tuples and reusing a one-row text's cells
+  brought it to 122,742.
+- **Every frame of every workload matches HEAD,** 200 frames each, styles included.
+- **What remains of `document`'s frame is layout:** the measure's wrap over the whole text,
+  which #418 leaves out of scope.
+
+### Run 27 — caches kept by node rather than shared
+
+**Date:** 2026-10-14
+
+**Change:** two caches keyed by one node's content or geometry move from a shared `lru_cache` onto the node,
+since a render that asks a shared cache for more keys than its `maxsize`, in the same order every frame, never hits it.
+
+- **Each node keeps its `Rects` with the placement they came from,** its position, layout, clip and the scroll offsets above it,
+  and `place` reuses them when the placement is unchanged, instead of `_resolve_layout`'s 4,096-entry cache.
+  Comparing a placement costs about what hashing it did: `document-lines`, `top`, `agent` and `dashboard` measure the same.
+- **`markdown` is no longer cached,** and `markdown_document`, a `memo` component that calls it, keeps one document per mounted component.
+
+**Method:** median frame times of unprofiled 200-frame runs, three rounds alternating the two versions in one process;
+hit rates from `cache_info()` over 500 frames.
+
+`_resolve_layout`'s cache hit 80–99.8% of calls in every workload, which have at most a few thousand nodes.
+`document-lines` with 5,000 lines instead of 1,250 hit it on no call:
+
+| `document-lines`, 5,000 lines | Shared cache | By node |
+|---|---|---|
+| Median frame, three rounds | 88–92 ms | 39–47 ms |
+
+`markdown`'s cache hit 75% of calls in `agent-markdown` and 3.4% in `agent-markdown-memo`,
+whose `memo` message components already skip unchanged messages:
+
+| Median frame | Cached | Uncached |
+|---|---|---|
+| `agent-markdown` | 1.95–2.01 ms | 2.43–2.62 ms |
+| `agent-markdown-memo` | 1.77–1.79 ms | 1.86–1.99 ms |
+
+- **`agent-markdown` now parses every message every frame,** which is what it measures against `agent-markdown-memo`:
+  the cost of rendering Markdown outside a `memo` component.
+- **Scrolling still changes every node's placement** inside the container that scrolls, since `Rects` are in screen coordinates.
+  Browsers keep layout in the content's coordinates and apply the scroll offset when painting and hit testing;
+  doing that here would change every reader of `Rects`.

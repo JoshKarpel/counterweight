@@ -5,19 +5,27 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import overload
 
-from counterweight._context_vars import (
-    current_focused,
-    current_hook_state,
-    current_instant,
-    current_layouts,
-    current_use_mouse_listeners,
-)
+from counterweight._context_vars import current_focused
+from counterweight._context_vars import current_hook_state
+from counterweight._context_vars import current_instant
+from counterweight._context_vars import current_layouts
+from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import forever
-from counterweight.focus import ElementHandle, FocusHandle
-from counterweight.geometry import ORIGIN, Position, Rects, Scroll
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.geometry import ORIGIN
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Scroll
 from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
-from counterweight.layout import INITIAL_RECTS, Layouts
+from counterweight.hooks.types import Deps
+from counterweight.hooks.types import Getter
+from counterweight.hooks.types import Ref
+from counterweight.hooks.types import Setter
+from counterweight.hooks.types import Setup
+from counterweight.hooks.types import Tick
+from counterweight.layout import INITIAL_RECTS
+from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
 

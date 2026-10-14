@@ -1,23 +1,31 @@
 from dataclasses import dataclass
 
 import pytest
+from hypothesis import example
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.events import (
-    AnyEvent,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-)
+from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input_parsing import PASTE_START, parse_input
+from counterweight.input_parsing import ALT
+from counterweight.input_parsing import CONTROL
+from counterweight.input_parsing import CONTROL_SHIFT
+from counterweight.input_parsing import PASTE_START
+from counterweight.input_parsing import SHIFT
+from counterweight.input_parsing import Modifier
+from counterweight.input_parsing import alt_name
+from counterweight.input_parsing import modified
+from counterweight.input_parsing import parse_input
+from counterweight.input_parsing import sequence_keys
 from counterweight.keys import Key
 
 
@@ -35,8 +43,102 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
     return Parsed(events=parsed.events, skipped=parsed.skipped, remainder=buffer[parsed.end :])
 
 
+# Every kind of escape sequence for a key: SS3 and CSI letters, CSI numbers, and either with a modifier.
+KEY_SEQUENCES: list[tuple[bytes, Key]] = [
+    # f1 to f4
+    (b"\x1bOP", Key.F1),
+    (b"\x1bOQ", Key.F2),
+    (b"\x1bOR", Key.F3),
+    (b"\x1bOS", Key.F4),
+    # shift-tab
+    (b"\x1b[Z", Key.BackTab),
+    # CSI lookups
+    (b"\x1b[A", Key.Up),
+    (b"\x1b[B", Key.Down),
+    (b"\x1b[C", Key.Right),
+    (b"\x1b[D", Key.Left),
+    (b"\x1b[2~", Key.Insert),
+    (b"\x1b[3~", Key.Delete),
+    (b"\x1b[F", Key.End),
+    (b"\x1b[11~", Key.F1),
+    (b"\x1b[12~", Key.F2),
+    (b"\x1b[13~", Key.F3),
+    (b"\x1b[14~", Key.F4),
+    (b"\x1b[15~", Key.F5),
+    (b"\x1b[17~", Key.F6),
+    (b"\x1b[18~", Key.F7),
+    (b"\x1b[19~", Key.F8),
+    (b"\x1b[20~", Key.F9),
+    (b"\x1b[21~", Key.F10),
+    (b"\x1b[23~", Key.F11),
+    (b"\x1b[24~", Key.F12),
+    (b"\x1b[25~", Key.F13),
+    (b"\x1b[26~", Key.F14),
+    (b"\x1b[28~", Key.F15),
+    (b"\x1b[29~", Key.F16),
+    (b"\x1b[31~", Key.F17),
+    (b"\x1b[32~", Key.F18),
+    (b"\x1b[33~", Key.F19),
+    (b"\x1b[34~", Key.F20),
+    (b"\x1b[1;2A", Key.ShiftUp),
+    (b"\x1b[1;2B", Key.ShiftDown),
+    (b"\x1b[1;2C", Key.ShiftRight),
+    (b"\x1b[1;2D", Key.ShiftLeft),
+    (b"\x1b[1;5A", Key.ControlUp),
+    (b"\x1b[1;5B", Key.ControlDown),
+    (b"\x1b[1;5C", Key.ControlRight),
+    (b"\x1b[1;5D", Key.ControlLeft),
+    (b"\x1b[1;6A", Key.ControlShiftUp),
+    (b"\x1b[1;6B", Key.ControlShiftDown),
+    (b"\x1b[1;6C", Key.ControlShiftRight),
+    (b"\x1b[1;6D", Key.ControlShiftLeft),
+    (b"\x1b[1;3A", Key.AltUp),
+    (b"\x1b[1;3B", Key.AltDown),
+    (b"\x1b[1;3C", Key.AltRight),
+    (b"\x1b[1;3D", Key.AltLeft),
+    (b"\x1b[1;3H", Key.AltHome),
+    (b"\x1b[1;3F", Key.AltEnd),
+    (b"\x1b[2;3~", Key.AltInsert),
+    (b"\x1b[3;3~", Key.AltDelete),
+    (b"\x1b[5;3~", Key.AltPageUp),
+    (b"\x1b[6;3~", Key.AltPageDown),
+    (b"\x1b[3;5~", Key.ControlDelete),
+    (b"\x1b[3;6~", Key.ControlShiftDelete),
+    (b"\x1b[2;6~", Key.ControlShiftInsert),
+    (b"\x1b[H", Key.Home),
+    (b"\x1b[1~", Key.Home),
+    (b"\x1b[7~", Key.Home),
+    (b"\x1bOH", Key.Home),
+    (b"\x1b[4~", Key.End),
+    (b"\x1b[8~", Key.End),
+    (b"\x1bOF", Key.End),
+    (b"\x1b[5~", Key.PageUp),
+    (b"\x1b[6~", Key.PageDown),
+    (b"\x1bOA", Key.Up),
+    (b"\x1bOD", Key.Left),
+    (b"\x1b[1;2H", Key.ShiftHome),
+    (b"\x1b[1;5F", Key.ControlEnd),
+    (b"\x1b[1;6H", Key.ControlShiftHome),
+    (b"\x1b[2;2~", Key.ShiftInsert),
+    (b"\x1b[3;2~", Key.ShiftDelete),
+    (b"\x1b[5;2~", Key.ShiftPageUp),
+    (b"\x1b[6;5~", Key.ControlPageDown),
+    (b"\x1b[5;6~", Key.ControlShiftPageUp),
+    # xterm reports Shift with F1 through F12 as F13 through F24
+    (b"\x1b[1;2P", Key.F13),
+    (b"\x1b[24;2~", Key.F24),
+    (b"\x1b[1;5S", Key.ControlF4),
+    (b"\x1b[15;5~", Key.ControlF5),
+    (b"\x1b[1;6Q", Key.ControlF14),
+    (b"\x1b[24;6~", Key.ControlF24),
+    (b"\x1b[1;3P", Key.AltF1),
+    (b"\x1b[15;3~", Key.AltF5),
+    (b"\x1b[24;3~", Key.AltF12),
+]
+
+
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         # single characters, raw
         (b"f", [KeyPressed(key="f")]),
@@ -103,94 +205,7 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         (b"\x1b\x1b[25~", [KeyPressed(key=Key.Escape), KeyPressed(key=Key.F13)]),
         (b"\x1b\x1b[<0;1;1M", [KeyPressed(key=Key.Escape), MouseDown(absolute=Position(x=0, y=0), button=1)]),
         (b"\x1b\x1b[200~a\x1b[201~", [KeyPressed(key=Key.Escape), Pasted(text="a")]),
-        # f1 to f4
-        (b"\x1bOP", [KeyPressed(key=Key.F1)]),
-        (b"\x1bOQ", [KeyPressed(key=Key.F2)]),
-        (b"\x1bOR", [KeyPressed(key=Key.F3)]),
-        (b"\x1bOS", [KeyPressed(key=Key.F4)]),
-        # shift-tab
-        (b"\x1b[Z", [KeyPressed(key=Key.BackTab)]),
-        # CSI lookups
-        (b"\x1b[A", [KeyPressed(key=Key.Up)]),
-        (b"\x1b[B", [KeyPressed(key=Key.Down)]),
-        (b"\x1b[C", [KeyPressed(key=Key.Right)]),
-        (b"\x1b[D", [KeyPressed(key=Key.Left)]),
-        (b"\x1b[2~", [KeyPressed(key=Key.Insert)]),
-        (b"\x1b[3~", [KeyPressed(key=Key.Delete)]),
-        (b"\x1b[F", [KeyPressed(key=Key.End)]),
-        (b"\x1b[11~", [KeyPressed(key=Key.F1)]),
-        (b"\x1b[12~", [KeyPressed(key=Key.F2)]),
-        (b"\x1b[13~", [KeyPressed(key=Key.F3)]),
-        (b"\x1b[14~", [KeyPressed(key=Key.F4)]),
-        (b"\x1b[17~", [KeyPressed(key=Key.F6)]),
-        (b"\x1b[18~", [KeyPressed(key=Key.F7)]),
-        (b"\x1b[19~", [KeyPressed(key=Key.F8)]),
-        (b"\x1b[20~", [KeyPressed(key=Key.F9)]),
-        (b"\x1b[21~", [KeyPressed(key=Key.F10)]),
-        (b"\x1b[23~", [KeyPressed(key=Key.F11)]),
-        (b"\x1b[24~", [KeyPressed(key=Key.F12)]),
-        (b"\x1b[25~", [KeyPressed(key=Key.F13)]),
-        (b"\x1b[26~", [KeyPressed(key=Key.F14)]),
-        (b"\x1b[28~", [KeyPressed(key=Key.F15)]),
-        (b"\x1b[29~", [KeyPressed(key=Key.F16)]),
-        (b"\x1b[31~", [KeyPressed(key=Key.F17)]),
-        (b"\x1b[32~", [KeyPressed(key=Key.F18)]),
-        (b"\x1b[33~", [KeyPressed(key=Key.F19)]),
-        (b"\x1b[34~", [KeyPressed(key=Key.F20)]),
-        (b"\x1b[1;2A", [KeyPressed(key=Key.ShiftUp)]),
-        (b"\x1b[1;2B", [KeyPressed(key=Key.ShiftDown)]),
-        (b"\x1b[1;2C", [KeyPressed(key=Key.ShiftRight)]),
-        (b"\x1b[1;2D", [KeyPressed(key=Key.ShiftLeft)]),
-        (b"\x1b[1;5A", [KeyPressed(key=Key.ControlUp)]),
-        (b"\x1b[1;5B", [KeyPressed(key=Key.ControlDown)]),
-        (b"\x1b[1;5C", [KeyPressed(key=Key.ControlRight)]),
-        (b"\x1b[1;5D", [KeyPressed(key=Key.ControlLeft)]),
-        (b"\x1b[1;6A", [KeyPressed(key=Key.ControlShiftUp)]),
-        (b"\x1b[1;6B", [KeyPressed(key=Key.ControlShiftDown)]),
-        (b"\x1b[1;6C", [KeyPressed(key=Key.ControlShiftRight)]),
-        (b"\x1b[1;6D", [KeyPressed(key=Key.ControlShiftLeft)]),
-        (b"\x1b[1;3A", [KeyPressed(key=Key.AltUp)]),
-        (b"\x1b[1;3B", [KeyPressed(key=Key.AltDown)]),
-        (b"\x1b[1;3C", [KeyPressed(key=Key.AltRight)]),
-        (b"\x1b[1;3D", [KeyPressed(key=Key.AltLeft)]),
-        (b"\x1b[1;3H", [KeyPressed(key=Key.AltHome)]),
-        (b"\x1b[1;3F", [KeyPressed(key=Key.AltEnd)]),
-        (b"\x1b[2;3~", [KeyPressed(key=Key.AltInsert)]),
-        (b"\x1b[3;3~", [KeyPressed(key=Key.AltDelete)]),
-        (b"\x1b[5;3~", [KeyPressed(key=Key.AltPageUp)]),
-        (b"\x1b[6;3~", [KeyPressed(key=Key.AltPageDown)]),
-        (b"\x1b[3;5~", [KeyPressed(key=Key.ControlDelete)]),
-        (b"\x1b[3;6~", [KeyPressed(key=Key.ControlShiftDelete)]),
-        (b"\x1b[2;6~", [KeyPressed(key=Key.ControlShiftInsert)]),
-        (b"\x1b[H", [KeyPressed(key=Key.Home)]),
-        (b"\x1b[1~", [KeyPressed(key=Key.Home)]),
-        (b"\x1b[7~", [KeyPressed(key=Key.Home)]),
-        (b"\x1bOH", [KeyPressed(key=Key.Home)]),
-        (b"\x1b[4~", [KeyPressed(key=Key.End)]),
-        (b"\x1b[8~", [KeyPressed(key=Key.End)]),
-        (b"\x1bOF", [KeyPressed(key=Key.End)]),
-        (b"\x1b[5~", [KeyPressed(key=Key.PageUp)]),
-        (b"\x1b[6~", [KeyPressed(key=Key.PageDown)]),
-        (b"\x1bOA", [KeyPressed(key=Key.Up)]),
-        (b"\x1bOD", [KeyPressed(key=Key.Left)]),
-        (b"\x1b[1;2H", [KeyPressed(key=Key.ShiftHome)]),
-        (b"\x1b[1;5F", [KeyPressed(key=Key.ControlEnd)]),
-        (b"\x1b[1;6H", [KeyPressed(key=Key.ControlShiftHome)]),
-        (b"\x1b[2;2~", [KeyPressed(key=Key.ShiftInsert)]),
-        (b"\x1b[3;2~", [KeyPressed(key=Key.ShiftDelete)]),
-        (b"\x1b[5;2~", [KeyPressed(key=Key.ShiftPageUp)]),
-        (b"\x1b[6;5~", [KeyPressed(key=Key.ControlPageDown)]),
-        (b"\x1b[5;6~", [KeyPressed(key=Key.ControlShiftPageUp)]),
-        # xterm reports Shift with F1 through F12 as F13 through F24
-        (b"\x1b[1;2P", [KeyPressed(key=Key.F13)]),
-        (b"\x1b[24;2~", [KeyPressed(key=Key.F24)]),
-        (b"\x1b[1;5S", [KeyPressed(key=Key.ControlF4)]),
-        (b"\x1b[15;5~", [KeyPressed(key=Key.ControlF5)]),
-        (b"\x1b[1;6Q", [KeyPressed(key=Key.ControlF14)]),
-        (b"\x1b[24;6~", [KeyPressed(key=Key.ControlF24)]),
-        (b"\x1b[1;3P", [KeyPressed(key=Key.AltF1)]),
-        (b"\x1b[15;3~", [KeyPressed(key=Key.AltF5)]),
-        (b"\x1b[24;3~", [KeyPressed(key=Key.AltF12)]),
+        *((sequence, [KeyPressed(key=key)]) for sequence, key in KEY_SEQUENCES),
         # Mouse events
         (b"\x1b[<35;1;1m", [MouseMoved(absolute=Position(x=0, y=0), button=None)]),
         (b"\x1b[<35;2;1m", [MouseMoved(absolute=Position(x=1, y=0), button=None)]),
@@ -238,6 +253,8 @@ def parse(buffer: bytes, *, is_final: bool) -> Parsed:
         ),
         (b"\x1b[<21;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=2, is_shift_held=True, is_control_held=True)]),
         (b"\x1b[<44;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=1, is_shift_held=True, is_alt_held=True)]),
+        (b"\x1b[<48;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=1, is_control_held=True)]),
+        (b"\x1b[<8;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=1, is_alt_held=True)]),
         (b"\x1b[<39;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=None, is_shift_held=True)]),
         (b"\x1b[<136;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=8, is_alt_held=True)]),
         # Buttons 8 through 11
@@ -251,7 +268,7 @@ def test_known_input_parses_to_its_events(buffer: bytes, expected: list[AnyEvent
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b[200~hello\x1b[201~", [Pasted(text="hello")]),
         (b"\x1b[200~\x1b[201~", [Pasted(text="")]),
@@ -274,20 +291,33 @@ def test_bracketed_paste_parses_to_one_event_holding_its_text(buffer: bytes, exp
     assert parse(buffer, is_final=False) == Parsed(events=tuple(expected), skipped=(), remainder=b"")
 
 
-def test_a_held_paste_is_searched_for_its_end_only_past_what_was_searched_before() -> None:
-    buffer = b"\x1b[200~a\x1b[201~"
+@pytest.mark.parametrize(
+    ("paste_searched", "end"),
+    [
+        # the end starts in the last bytes searched before, which the next read could complete
+        (len(b"\x1b[200~ab\x1b[201"), len(b"\x1b[200~ab\x1b[201~")),
+        # the end starts before those, so the search doesn't look there again
+        (len(b"\x1b[200~ab\x1b[201~"), 0),
+    ],
+)
+def test_a_held_paste_is_searched_for_its_end_only_past_what_was_searched_before(paste_searched: int, end: int) -> None:
+    assert parse_input(b"\x1b[200~ab\x1b[201~", is_final=False, paste_searched=paste_searched).end == end
 
-    assert parse_input(buffer, is_final=False, paste_searched=len(buffer) + len(PASTE_START)).end == 0
+
+def test_a_paste_after_the_end_of_a_held_paste_is_searched_from_its_own_start() -> None:
+    held = b"\x1b[200~" + b"a" * 10
+
+    assert parse_reads([held, b"\x1b[201~\x1b[200~b\x1b[201~"]).events == (Pasted(text="a" * 10), Pasted(text="b"))
 
 
 def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
-    assert parse(b"\x1b[200~a\xffb\x1b[201~", is_final=True) == Parsed(
-        events=(Pasted(text="ab"),), skipped=(b"\xff",), remainder=b""
+    assert parse(b"\x1b[200~a\xffb\xfec\x1b[201~", is_final=True) == Parsed(
+        events=(Pasted(text="abc"),), skipped=(b"\xff", b"\xfe"), remainder=b""
     )
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         # well-formed CSI and SS3 sequences we don't know the meaning of
         (b"\x1b[1;5p", Parsed(events=(), skipped=(b"\x1b[1;5p",), remainder=b"")),
@@ -313,6 +343,7 @@ def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
         ),
         # control bytes with no key
         (b"\x1c", Parsed(events=(), skipped=(b"\x1c",), remainder=b"")),
+        (b"\x1dq", Parsed(events=(KeyPressed(key="q"),), skipped=(b"\x1d",), remainder=b"")),
         # Alt with a control byte with no key, or with a key with no name with Alt
         (b"\x1b\x1c", Parsed(events=(), skipped=(b"\x1b\x1c",), remainder=b"")),
         (b"\x1b[25;3~", Parsed(events=(), skipped=(b"\x1b[25;3~",), remainder=b"")),
@@ -341,6 +372,14 @@ def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
             Parsed(events=(KeyPressed(key="a"), KeyPressed(key=Key.Up)), skipped=(b"\xc3",), remainder=b""),
         ),
         (
+            b"a\xffb\xfec",
+            Parsed(
+                events=(KeyPressed(key="a"), KeyPressed(key="b"), KeyPressed(key="c")),
+                skipped=(b"\xff", b"\xfe"),
+                remainder=b"",
+            ),
+        ),
+        (
             b"\xff\xcc\x81",
             Parsed(events=(KeyPressed(key="\u0301"),), skipped=(b"\xff",), remainder=b""),
         ),
@@ -351,7 +390,7 @@ def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: Parsed) 
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b", Parsed(events=(), skipped=(), remainder=b"\x1b")),
         (b"a\x1b", Parsed(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\x1b")),
@@ -376,7 +415,7 @@ def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expecte
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b", Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
         # Alt+[ and Alt+O begin escape sequences, so they're Alt with those keys only if nothing follows
@@ -458,8 +497,9 @@ def test_grapheme_cluster_split_across_reads_is_two_key_presses() -> None:
 
 
 @given(st.binary())
+@example(b"a\x1b")
 def test_final_parse_of_any_bytes_holds_nothing_over(buffer: bytes) -> None:
-    assert parse(buffer, is_final=True).remainder == b""
+    assert parse_input(buffer, is_final=True).end == len(buffer)
 
 
 TOKENS = st.one_of(
@@ -519,3 +559,65 @@ def test_input_split_anywhere_parses_to_the_same_text_and_events(buffer: bytes, 
 
 def test_key_repr_is_its_qualified_name() -> None:
     assert repr(Key.Up) == "Key.Up"
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        (Key.Space, "alt+space"),
+        (Key.ControlA, "ctrl+alt+a"),
+        (Key.ControlSpace, "ctrl+alt+space"),
+        (Key.Up, "alt+up"),
+        (Key.F13, "alt+f13"),
+    ],
+)
+def test_alt_name_puts_alt_before_a_key_or_after_its_control(key: Key, expected: str) -> None:
+    assert alt_name(key) == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "modifier", "expected"),
+    [
+        (Key.Up, SHIFT, Key.ShiftUp),
+        (Key.PageDown, CONTROL, Key.ControlPageDown),
+        (Key.Insert, CONTROL_SHIFT, Key.ControlShiftInsert),
+        (Key.Home, ALT, Key.AltHome),
+        (Key.Escape, ALT, None),
+        (Key.F1, SHIFT, Key.F13),
+        (Key.F12, SHIFT, Key.F24),
+        (Key.F5, CONTROL, Key.ControlF5),
+        (Key.F2, CONTROL_SHIFT, Key.ControlF14),
+        (Key.F3, ALT, Key.AltF3),
+    ],
+)
+def test_modified_is_the_key_xterm_reports_for_a_key_with_a_modifier(
+    key: Key, modifier: Modifier, expected: Key | None
+) -> None:
+    assert modified(key, modifier) == expected
+
+
+@pytest.mark.parametrize("modifier", [SHIFT, ALT, CONTROL, CONTROL_SHIFT])
+def test_f13_and_above_have_no_key_with_a_modifier(modifier: Modifier) -> None:
+    assert modified(Key.F13, modifier) is None
+
+
+def test_sequence_keys_holds_each_key_sequence() -> None:
+    table = sequence_keys()
+
+    assert {sequence: table.get(sequence) for sequence, _ in KEY_SEQUENCES} == dict(KEY_SEQUENCES)
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        # unmodified F1 through F4 are only ever SS3 letters
+        b"\x1b[P",
+        b"\x1b[Q",
+        b"\x1b[R",
+        b"\x1b[S",
+        # Alt with F13 has no key
+        b"\x1b[25;3~",
+    ],
+)
+def test_sequence_keys_holds_no_key_for_a_sequence_without_one(sequence: bytes) -> None:
+    assert sequence not in sequence_keys()

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-from asyncio import Queue, QueueEmpty, Task, get_event_loop, wait
+from asyncio import Queue
+from asyncio import QueueEmpty
+from asyncio import Task
+from asyncio import get_event_loop
+from asyncio import wait
+from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Iterable
 from functools import lru_cache
 from inspect import isawaitable
-from math import ceil, floor
-from typing import Awaitable, Callable
+from math import ceil
+from math import floor
 
 
 async def drain_queue[T](queue: Queue[T]) -> list[T]:
@@ -30,8 +36,7 @@ def halve_integer(x: int) -> tuple[int, int]:
 async def maybe_await[R](val: Awaitable[R] | R) -> R:
     if isawaitable(val):
         return await val
-    else:
-        return val
+    return val
 
 
 async def forever() -> None:

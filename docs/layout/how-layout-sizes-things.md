@@ -16,9 +16,7 @@ and its parent's full size across it.
 
 In a `row`, each child is as wide as its content and as tall as the row:
 
-```python
---8<-- "layout_defaults.py:row"
-```
+<!-- example: layout_defaults.py:row -->
 
 ![Children of a row](../assets/layout-defaults-row.svg)
 
@@ -29,9 +27,7 @@ The space to the right is free space that no child claimed.
 
 In a `col`, the axes swap: each child is as tall as its content and as wide as the column.
 
-```python
---8<-- "layout_defaults.py:col"
-```
+<!-- example: layout_defaults.py:col -->
 
 ![Children of a column](../assets/layout-defaults-col.svg)
 
@@ -47,9 +43,7 @@ the wide line overflows the root, drawing over its border,
 and the edge of the screen cuts it off.
 `overflow_hidden` on the root would [clip](clipping.md) it at the root's padding box instead.
 
-```python
---8<-- "layout_defaults.py:root"
-```
+<!-- example: layout_defaults.py:root -->
 
 ![The root filling the screen](../assets/layout-root.svg)
 
@@ -70,9 +64,7 @@ Hiding its overflow also clips each `Text`'s line at its own padding box.
 `min_width(0)` (or `min_height(0)` in a `col`) lowers the minimum the same way on its own axis,
 but leaves the overflow visible, so each line would run past its box.
 
-```python
---8<-- "layout_defaults.py:automatic-minimum"
-```
+<!-- example: layout_defaults.py:automatic-minimum -->
 
 ![The automatic minimum size](../assets/layout-automatic-minimum.svg)
 
@@ -89,8 +81,6 @@ and a wrap mode such as `text_wrap_stable` breaks lines to fit the box's width i
 [Text in layout](text.md) shows how wrapping text sizes itself,
 and [Text wrapping](../styles/text-wrapping.md) compares the wrap modes.
 
-```python
---8<-- "layout_defaults.py:wrapping"
-```
+<!-- example: layout_defaults.py:wrapping -->
 
 ![Wrapped and unwrapped text](../assets/layout-wrapping.svg)

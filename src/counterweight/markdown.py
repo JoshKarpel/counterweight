@@ -2,14 +2,13 @@
 Markdown rendering: a Markdown document as a tree of elements, parsed by
 [markdown-it-py](https://markdown-it-py.readthedocs.io/) as GitHub Flavored Markdown, with math and YAML front matter.
 
-Rendering is a pure function of the source and the styles, so the result is cached,
-and a component can render the same document on every render without parsing it again.
+`markdown` is a pure function of the source and the styles, which parses the document each time it's called,
+and `markdown_document` is a component that calls it, which parses the document again only when its arguments change.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Literal
 
 import waxy
@@ -21,38 +20,45 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.gfm import gfm_plugin
 from pygments.util import ClassNotFound
 
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, Receiver
+from counterweight.components import component
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import Receiver
 from counterweight.handlers import scroll_on_wheel
-from counterweight.highlighting import DEFAULT_CODE_THEME, CodeTheme, code_block, code_style
-from counterweight.styles import CellStyle, Style
-from counterweight.styles.utilities import (
-    border,
-    border_collapse,
-    border_color,
-    border_left,
-    border_light,
-    border_top,
-    col,
-    default,
-    display_grid,
-    fill,
-    gap_height,
-    gap_width,
-    grid_template_columns,
-    grow,
-    min_width,
-    overflow_x_scroll,
-    pad_left,
-    pad_x,
-    row,
-    text_bg,
-    text_color,
-    text_justify_center,
-    text_justify_left,
-    text_justify_right,
-    text_wrap_stable,
-)
+from counterweight.highlighting import DEFAULT_CODE_THEME
+from counterweight.highlighting import CodeTheme
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import border_top
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import display_grid
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import gap_height
+from counterweight.styles.utilities import gap_width
+from counterweight.styles.utilities import grid_template_columns
+from counterweight.styles.utilities import grow
+from counterweight.styles.utilities import min_width
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import pad_left
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_justify_center
+from counterweight.styles.utilities import text_justify_left
+from counterweight.styles.utilities import text_justify_right
+from counterweight.styles.utilities import text_wrap_stable
 
 # Math is enabled here rather than by `gfm_plugin(dollarmath=True)`, whose defaults parse `$5 and $10` as math.
 # These options follow Pandoc's rule instead (no space just inside the dollars, no digit right after the closing one),
@@ -205,7 +211,6 @@ class MarkdownStyles:
     """The footnotes' definitions, which follow the rest of the document, numbered in the order they're referenced."""
 
 
-@lru_cache(maxsize=2**6)
 def markdown(source: str, styles: MarkdownStyles = MarkdownStyles(), keeps_line_breaks: bool = False) -> Div:
     """
     `source`, a Markdown document, as a `Div` of its blocks, drawn with `styles`.
@@ -215,6 +220,9 @@ def markdown(source: str, styles: MarkdownStyles = MarkdownStyles(), keeps_line_
     or shown as written if it names none or one [Pygments](https://pygments.org/) doesn't know.
     Code blocks and tables wider than the space they're given scroll sideways with the wheel.
     Math and raw HTML are shown as written, too.
+
+    It parses `source` each time it's called. In a component that renders often, use `markdown_document`,
+    or call it under [`use_memo`][counterweight.hooks.use_memo].
 
     Parameters:
         keeps_line_breaks: Whether a line break inside a paragraph breaks the line where it's drawn,
@@ -232,6 +240,19 @@ def markdown(source: str, styles: MarkdownStyles = MarkdownStyles(), keeps_line_
         style=col | gap_height(styles.block_gap) | styles.document,
         children=blocks(document.children, styles, CellStyle(), list_depth=0),
     )
+
+
+@component(memo=True)
+def markdown_document(source: str, styles: MarkdownStyles = MarkdownStyles(), keeps_line_breaks: bool = False) -> Div:
+    """
+    `source`, a Markdown document, rendered as [`markdown`][counterweight.markdown.markdown] renders it, by a component
+    that keeps what it rendered while it stays mounted, and parses the document again only when its arguments change,
+    as a [`memo`][counterweight.components.component] component does.
+
+    What it keeps is one document per mounted component, freed when the component unmounts,
+    so a transcript of many messages, or one streaming in, parses only the message that changed.
+    """
+    return markdown(source, styles, keeps_line_breaks)
 
 
 def blocks(

@@ -1,8 +1,14 @@
 import pytest
 
 from counterweight.output import Frame
-from counterweight.paint import Cell, Paint, svg, svg_text_style
-from counterweight.styles.styles import CellStyle, Color, ResolvedCellStyle, resolve_cell_style
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import svg
+from counterweight.paint import svg_text_style
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import ResolvedCellStyle
+from counterweight.styles.styles import resolve_cell_style
 
 
 def style(foreground: str = "white", background: str = "black") -> ResolvedCellStyle:

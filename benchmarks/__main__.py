@@ -14,28 +14,35 @@ from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from without_cli import (
-    FLOAT,
-    INT,
-    PATH,
-    STR,
-    Converter,
-    Streams,
-    argument,
-    command,
-    default,
-    flag,
-    group,
-    once,
-    option,
-    optional,
-)
+from without_cli import FLOAT
+from without_cli import INT
+from without_cli import PATH
+from without_cli import STR
+from without_cli import Converter
+from without_cli import Streams
+from without_cli import argument
+from without_cli import command
+from without_cli import default
+from without_cli import flag
+from without_cli import group
+from without_cli import once
+from without_cli import option
+from without_cli import optional
 from without_cli import run as run_cli
 
-from benchmarks.harness import Runnable, Timings, run
-from benchmarks.parsing import INPUTS, ParsingTimings, parsing_table, time_parsing
-from benchmarks.stacks import STARTUP, Summary, parse_collapsed, summarize
-from benchmarks.tables import Column, render_table
+from benchmarks.harness import Runnable
+from benchmarks.harness import Timings
+from benchmarks.harness import run
+from benchmarks.parsing import INPUTS
+from benchmarks.parsing import ParsingTimings
+from benchmarks.parsing import parsing_table
+from benchmarks.parsing import time_parsing
+from benchmarks.stacks import STARTUP
+from benchmarks.stacks import Summary
+from benchmarks.stacks import parse_collapsed
+from benchmarks.stacks import summarize
+from benchmarks.tables import Column
+from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
 from counterweight.app import app
 

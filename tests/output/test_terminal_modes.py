@@ -4,14 +4,12 @@ from typing import TextIO
 
 import pytest
 
-from counterweight.output import (
-    start_bracketed_paste,
-    start_mouse_tracking,
-    start_output_control,
-    stop_bracketed_paste,
-    stop_mouse_tracking,
-    stop_output_control,
-)
+from counterweight.output import start_bracketed_paste
+from counterweight.output import start_mouse_tracking
+from counterweight.output import start_output_control
+from counterweight.output import stop_bracketed_paste
+from counterweight.output import stop_mouse_tracking
+from counterweight.output import stop_output_control
 
 
 class RecordingStream(io.StringIO):

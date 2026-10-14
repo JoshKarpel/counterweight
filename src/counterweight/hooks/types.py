@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 type Getter[T] = Callable[[], T]
 type Setter[T] = Callable[[Callable[[T], T] | T], None]

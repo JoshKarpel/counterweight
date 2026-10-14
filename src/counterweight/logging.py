@@ -8,17 +8,24 @@ at read time, so the render loop pays for one encoding per record rather than on
 import json
 import logging
 from asyncio import sleep
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator
+from collections.abc import Awaitable
+from collections.abc import Callable
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-from functools import partial
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from shutil import get_terminal_size
 from tempfile import gettempdir
 
 from without_cli import Writer
-from without_logging import Level, capture, render_json, to_stream
-from without_streams.wiring import compose, offload
+from without_logging import Level
+from without_logging import capture
+from without_logging import render_json
+from without_logging import to_stream
+from without_streams.wiring import compose
+from without_streams.wiring import offload
 
 from counterweight.constants import PACKAGE_NAME
 
@@ -118,11 +125,16 @@ def format_line(line: str, raw: bool) -> str:
     return line.rstrip("\n") if raw else render_line(json.loads(line))
 
 
+async def wait_for_more() -> None:
+    """Wait one `TAIL_POLL` on the event loop for the devlog to grow."""
+    await sleep(TAIL_POLL.total_seconds())
+
+
 async def tail_devlog(
     out: Writer,
     raw: bool = False,
     path: Path = DEVLOG_FILE,
-    wait: Callable[[], Awaitable[None]] = partial(sleep, TAIL_POLL.total_seconds()),
+    wait: Callable[[], Awaitable[None]] = wait_for_more,
 ) -> None:
     """
     Write the devlog to `out` as it's written, starting over when an app truncates it.
@@ -133,7 +145,7 @@ async def tail_devlog(
     under `asyncio.run` that cancels the main task, which a blocking loop would never notice.
     """
     while True:
-        path.touch(exist_ok=True)
+        path.touch(exist_ok=True)  # noqa: ASYNC240 (a local file, read with blocking calls anyway)
         with path.open(mode="r") as f:
             pending = ""
             while True:
@@ -142,7 +154,7 @@ async def tail_devlog(
                     out.write(f"{format_line(pending, raw)}\n")
                     out.flush()
                     pending = ""
-                elif f.tell() > path.stat().st_size:
+                elif f.tell() > path.stat().st_size:  # noqa: ASYNC240 (as above)
                     out.write(f"{' DevLog Rotated '.center(get_terminal_size().columns, '━')}\n")
                     break
                 else:

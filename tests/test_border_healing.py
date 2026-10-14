@@ -6,24 +6,30 @@ import pytest
 
 from counterweight.app import app
 from counterweight.border_healing import heal_borders
-from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot, ToggleBorderHealing
-from counterweight.elements import Div, Text
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ToggleBorderHealing
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.geometry import Position
-from counterweight.paint import BLANK, Cell, Paint
-from counterweight.styles.styles import CellStyle, JoinedBorderKind, resolve_cell_style
-from counterweight.styles.utilities import (
-    align_self_stretch,
-    border,
-    border_collapse,
-    border_double,
-    center_children,
-    col,
-    fill,
-    row,
-    size,
-    text_justify_center,
-)
+from counterweight.paint import BLANK
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import JoinedBorderKind
+from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.utilities import align_self_stretch
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import border_double
+from counterweight.styles.utilities import center_children
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import text_justify_center
 
 
 async def _render(root: Component, dimensions: tuple[int, int]) -> str:

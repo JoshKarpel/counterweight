@@ -3,7 +3,11 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind, ClipTo, OverflowAnchor, TextJustify, TextWrap
+from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import ClipTo
+from counterweight.styles.styles import OverflowAnchor
+from counterweight.styles.styles import TextJustify
+from counterweight.styles.styles import TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -330,9 +334,9 @@ generated_lines.append("")
 
 # Color lookup map
 generated_lines.append("_COLOR_MAP: dict[tuple[str, int], Color] = {")
-for color, shades in COLORS.items():
-    for shade in shades:
-        generated_lines.append(f'    ("{color}", {shade}): {color}_{shade},')
+generated_lines.extend(
+    f'    ("{color}", {shade}): {color}_{shade},' for color, shades in COLORS.items() for shade in shades
+)
 generated_lines.append("}")
 generated_lines.append("")
 
@@ -449,8 +453,7 @@ generated_lines.append("")
 # --- Border kind utilities ---
 
 generated_lines.append("border_none = Style(border_kind=None)")
-for b in BorderKind:
-    generated_lines.append(f"border_{b.name.lower()} = Style(border_kind=BorderKind.{b.name})")
+generated_lines.extend(f"border_{b.name.lower()} = Style(border_kind=BorderKind.{b.name})" for b in BorderKind)
 
 generated_lines.append("")
 
@@ -537,15 +540,13 @@ generated_lines.append("")
 
 # --- Clip utilities ---
 
-for c in get_args(ClipTo):
-    generated_lines.append(f'clip_to_{c} = Style(clip_to="{c}")')
+generated_lines.extend(f'clip_to_{c} = Style(clip_to="{c}")' for c in get_args(ClipTo))
 
 generated_lines.append("")
 
 # --- Scroll anchoring and sticking to the end ---
 
-for a in get_args(OverflowAnchor):
-    generated_lines.append(f'overflow_anchor_{a} = Style(overflow_anchor="{a}")')
+generated_lines.extend(f'overflow_anchor_{a} = Style(overflow_anchor="{a}")' for a in get_args(OverflowAnchor))
 
 STICK_AXES = {
     "": ["x", "y"],
@@ -561,15 +562,13 @@ generated_lines.append("")
 
 # --- Text justify ---
 
-for j in get_args(TextJustify):
-    generated_lines.append(f'text_justify_{j} = Style(text_justify="{j}")')
+generated_lines.extend(f'text_justify_{j} = Style(text_justify="{j}")' for j in get_args(TextJustify))
 
 generated_lines.append("")
 
 # --- Text wrap ---
 
-for w in get_args(TextWrap):
-    generated_lines.append(f'text_wrap_{w} = Style(text_wrap="{w}")')
+generated_lines.extend(f'text_wrap_{w} = Style(text_wrap="{w}")' for w in get_args(TextWrap))
 
 generated_lines.append("")
 

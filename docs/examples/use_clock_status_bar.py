@@ -4,7 +4,8 @@ from datetime import timedelta
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
-from counterweight.elements import Div, Text
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.hooks import use_clock
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec

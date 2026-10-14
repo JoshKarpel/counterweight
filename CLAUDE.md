@@ -41,6 +41,23 @@ where counterweight differs (cells instead of pixels, taffy's layout,
 effects that start after the frame paints), say what the difference changes
 and why the design diverges.
 
+## Where Caches Go
+
+Put a cache where the repeats it serves can be seen.
+
+- **Shared, at the source** (`lru_cache`, `@flyweight`): values keyed by something from a small set
+  that recurs across nodes and frames, such as a grapheme, a style, or a short piece of text.
+  However large the app, the keys in use stay few, so a fixed `maxsize` holds them.
+- **Per node, on the consumer** (the shadow node, a `memo` component, or the layout tree's texts and placements):
+  values keyed by one node's content or geometry, such as the lines of a document or a node's place on screen.
+  How many keys are live grows with the app, and a shared cache that sees more keys a frame than its `maxsize`,
+  in the same order every frame, gets no hits and evicts everything else in it.
+  Kept on the node, the entries are freed when the node is.
+- **Both, layered,** when both kinds of repeat are real: the node's cache in front and the shared one behind,
+  so only the node's misses reach it, as `MeasurableText.of` does in front of `styled_cells`.
+
+Before adding or moving a cache, check its hit rate (`cache_info()`) on a workload whose content is larger than its `maxsize`.
+
 ## Architecture
 
 The framework follows a React-like architecture:
@@ -60,7 +77,7 @@ The framework follows a React-like architecture:
 - **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input`, `text_area` and `scroll_area`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
-- **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks
+- **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks, and `markdown_document`, the `memo` component that renders a Markdown document
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -69,8 +86,9 @@ The entry point is typically through `counterweight.app.app()` which starts the 
 This project uses [Just](https://github.com/casey/just) as the task runner. Key commands:
 
 ```bash
-# Install dependencies
-just install
+# Install Just and uv (pinned in mise.toml), then the dependencies
+mise install
+uv sync
 
 # Run type checking, then the tests with coverage, passing any arguments on to pytest
 just test [-k pattern | tests/test_paint.py ...]
@@ -108,8 +126,11 @@ and hand-written utility functions need a docstring to describe them there.
 
 ## Docs Screenshots
 
-Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,
-and pages include its code between `--8<--` snippet markers.
+Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list.
+A page shows a section of one with a `<!-- example: <module>.py:<section> -->` line outside any code block,
+which `mkdocs_hooks/examples.py` replaces with the code between the module's `# --8<-- [start:<section>]`
+and `# --8<-- [end:<section>]` comments,
+so every Python code block in a page is real Python that ruff can format.
 Run one in the terminal with `uv run python -m docs.examples.<module> [root]`, naming a root function to pick
 among several; running it by path fails, since the examples import from the `docs` package.
 Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`

@@ -104,6 +104,10 @@ Prefer `use_memo` when:
   and carries them between tests and between apps run in the same process.
 - **The value is part of the component's output**, such as an element whose children shouldn't re-run.
   That's meant for one instance, not for every instance that happens to pass equal arguments.
+- **Each instance computes from its own input**, such as a document per message in a transcript.
+  A render with more instances than the cache's `maxsize` asks for more keys than it holds,
+  in the same order every render, so each key is evicted before it's asked for again and nothing hits.
+  `use_memo` keeps one value per instance, however many instances there are.
 
 Don't put `lru_cache` on a function defined inside a component:
 every render defines a new function with an empty cache, so it never hits.

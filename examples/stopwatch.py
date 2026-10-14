@@ -6,10 +6,17 @@ from textwrap import dedent
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, Receiver
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.handlers import tab_focus
-from counterweight.hooks import use_clock, use_focus, use_state
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 

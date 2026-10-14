@@ -8,43 +8,54 @@ from hypothesis import strategies as st
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot, ScrollTo
-from counterweight.elements import Div, Text
-from counterweight.geometry import Position, Region
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollTo
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.geometry import Position
+from counterweight.geometry import Region
 from counterweight.graphemes import grapheme_width
 from counterweight.hooks import ElementHandle
+from counterweight.layout import MeasurableText
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, text_lines
+from counterweight.paint import BLANK
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import border_fills
+from counterweight.paint import diff_paint
+from counterweight.paint import line_cells
 from counterweight.styles import Style
-from counterweight.styles.styles import BorderKind, CellStyle, Color, resolve_cell_style
-from counterweight.styles.utilities import (
-    _COLOR_MAP,
-    border,
-    border_bg,
-    border_light,
-    col,
-    content_color,
-    fit_content_height,
-    fit_content_width,
-    full,
-    inset,
-    inset_left,
-    inset_top,
-    margin,
-    margin_auto,
-    margin_color,
-    margin_left,
-    overflow_clip,
-    overflow_hidden,
-    overflow_x_hidden,
-    overflow_x_scroll,
-    overflow_y_hidden,
-    pad,
-    padding_color,
-    position_absolute,
-    size,
-    z,
-)
+from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.utilities import _COLOR_MAP
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_bg
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import content_color
+from counterweight.styles.utilities import fit_content_height
+from counterweight.styles.utilities import fit_content_width
+from counterweight.styles.utilities import full
+from counterweight.styles.utilities import inset
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import margin_auto
+from counterweight.styles.utilities import margin_color
+from counterweight.styles.utilities import margin_left
+from counterweight.styles.utilities import overflow_clip
+from counterweight.styles.utilities import overflow_hidden
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_hidden
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import padding_color
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import z
 
 RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
 BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
@@ -61,7 +72,7 @@ BEYOND_THE_SCREEN = Region(left=-9, top=-9, right=9, bottom=9)
 def grid(paint: Paint) -> list[str]:
     """Each row of `paint`, with `.` for a blank cell and `·` for a continuation cell."""
     return [
-        "".join("." if cell is BLANK else "·" if cell.is_continuation else cell.grapheme for cell in row)
+        "".join("." if cell == BLANK else "·" if cell.is_continuation else cell.grapheme for cell in row)
         for row in paint.rows()
     ]
 
@@ -141,6 +152,22 @@ def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen(x: int, expe
     assert grid(paint) == expected
 
 
+@pytest.mark.parametrize(
+    ("x", "row", "expected"),
+    [
+        (-1, (WIDE, CONTINUATION, X, Y), [Cell(" ", BLUE), X, Y, BLANK]),
+        (1, (X, Y, WIDE, CONTINUATION), [BLANK, X, Y, Cell(" ", BLUE)]),
+    ],
+    ids=["clips-left-half", "clips-right-half"],
+)
+def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen_in_its_own_style(
+    x: int, row: tuple[Cell, ...], expected: list[Cell]
+) -> None:
+    paint = Paint.blank(4, 1)
+    paint.write_row(x, 0, row, paint.bounds)
+    assert paint.cells == expected
+
+
 def test_write_row_overhanging_the_left_edge_leaves_the_row_above_alone() -> None:
     paint = Paint.blank(4, 2)
     paint.write_row(0, 0, (X, WIDE, CONTINUATION, X), paint.bounds)
@@ -193,7 +220,7 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
             paint[x, y] = X
 
     for row in paint.rows():
-        for left, right in zip([BLANK, *row], [*row, BLANK]):
+        for left, right in zip([BLANK, *row], [*row, BLANK], strict=True):
             assert (grapheme_width(left.grapheme) == 2 if left.grapheme else False) == right.is_continuation
 
 
@@ -201,16 +228,16 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
     ("width", "expected"),
     [(5, "日·本· "), (4, "日·本·"), (3, "日·本·")],
 )
-def test_text_lines_pad_a_row_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
-    (line,) = text_lines(Text(content="日本").cells, "none", "left", resolve_cell_style(CellStyle()), width)
-    assert "".join(cell.grapheme or "·" for cell in line) == expected
+def test_a_rows_cells_pad_it_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
+    (line,) = MeasurableText(cells=Text(content="日本").cells, wrap="none").lines_at(None)
+    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), width)
+    assert "".join(cell.grapheme or "·" for cell in cells) == expected
 
 
-def test_text_lines_draw_no_cell_for_a_zero_width_cluster() -> None:
-    (line,) = text_lines(
-        Text(content="a\N{ZERO WIDTH SPACE}b").cells, "none", "left", resolve_cell_style(CellStyle()), 3
-    )
-    assert "".join(cell.grapheme for cell in line) == "ab "
+def test_a_rows_cells_draw_no_cell_for_a_zero_width_cluster() -> None:
+    (line,) = MeasurableText(cells=Text(content="a\N{ZERO WIDTH SPACE}b").cells, wrap="none").lines_at(None)
+    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), 3)
+    assert "".join(cell.grapheme for cell in cells) == "ab "
 
 
 def test_diff_of_identical_paints_is_empty() -> None:
@@ -255,7 +282,7 @@ def test_copy_is_independent() -> None:
     paint = Paint.blank(2, 1)
     copy = paint.copy()
     copy[0, 0] = X
-    assert paint[0, 0] is BLANK
+    assert paint[0, 0] == BLANK
 
 
 def test_items_pairs_cells_with_positions_row_by_row() -> None:
@@ -485,14 +512,17 @@ async def test_text_overflowing_a_column_in_a_scroll_container_scrolls_into_view
     assert grid(frames[0].paint) == ["efgh.."]
 
 
-def test_text_lines_that_wrap_are_empty_at_no_width() -> None:
-    assert text_lines(tuple(Text(content="hi").cells), "stable", "left", resolve_cell_style(CellStyle()), 0) == ()
+def test_text_that_wraps_has_no_rows_at_no_width() -> None:
+    assert MeasurableText(cells=Text(content="hi").cells, wrap="stable").lines_at(0) == ()
 
 
-def test_text_lines_that_do_not_wrap_run_past_no_width() -> None:
-    lines = text_lines(tuple(Text(content="hi").cells), "none", "left", resolve_cell_style(CellStyle()), 0)
+def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
+    lines = MeasurableText(cells=Text(content="hi").cells, wrap="none").lines_at(None)
 
-    assert ["".join(cell.grapheme for cell in line) for line in lines] == ["hi"]
+    assert [
+        "".join(cell.grapheme for cell in line_cells(line, "left", resolve_cell_style(CellStyle()), 0))
+        for line in lines
+    ] == ["hi"]
 
 
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:

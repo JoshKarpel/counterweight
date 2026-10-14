@@ -12,9 +12,7 @@ unless the `Text` or one of its ancestors [clips](clipping.md) it.
 A wrapping `Text` in a column is stretched to the column's width,
 and wraps to fit it, taking as many rows as it needs.
 
-```python
---8<-- "layout_text.py:wrap-in-pane"
-```
+<!-- example: layout_text.py:wrap-in-pane -->
 
 ![Text wrapping inside a pane](../assets/layout-text-wrap-in-pane.svg)
 
@@ -26,9 +24,7 @@ A flex item can't shrink below its
 and a wrapping `Text`'s is the width of its widest word,
 so neither needs anything set to give up the space its unwrapped line would take.
 
-```python
---8<-- "layout_text.py:wrap-in-row"
-```
+<!-- example: layout_text.py:wrap-in-row -->
 
 ![Wrapping text in a row](../assets/layout-text-wrap-in-row.svg)
 
@@ -40,9 +36,7 @@ but one [sized to its content](sizing-one-box.md#fit-to-content),
 like the `align_self_start` one below, has none.
 With a wrap mode, each line is aligned separately.
 
-```python
---8<-- "layout_text.py:justify"
-```
+<!-- example: layout_text.py:justify -->
 
 ![Justified text](../assets/layout-text-justify.svg)
 
@@ -65,8 +59,6 @@ which in a `row` cuts off the `Text`'s own right border with its line.
 `overflow_x_scroll` on the pane makes it a [scroll container](scrolling.md)
 the reader can scroll along the line, in a `col` or a `row` alike.
 
-```python
---8<-- "layout_text.py:narrow"
-```
+<!-- example: layout_text.py:narrow -->
 
 ![Unwrapped text in narrow panes](../assets/layout-text-narrow.svg)

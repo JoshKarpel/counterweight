@@ -7,33 +7,36 @@ are re-measured, laid out and painted each frame in a grid-and-rows layout.
 
 import random
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from functools import partial
 
 from benchmarks.harness import Workload
-from counterweight.components import Component, component
-from counterweight.elements import Chunk, Div, Text
-from counterweight.styles.styles import CellStyle, Style
-from counterweight.styles.utilities import (
-    col,
-    cyan_400,
-    display_grid,
-    fill,
-    fr,
-    gap_width,
-    green_500,
-    grid_template_columns,
-    length,
-    pad_x,
-    red_500,
-    row,
-    slate_100,
-    slate_500,
-    slate_950,
-    text_bg,
-    text_color,
-    text_justify_right,
-)
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Style
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import cyan_400
+from counterweight.styles.utilities import display_grid
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import fr
+from counterweight.styles.utilities import gap_width
+from counterweight.styles.utilities import green_500
+from counterweight.styles.utilities import grid_template_columns
+from counterweight.styles.utilities import length
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import red_500
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import slate_100
+from counterweight.styles.utilities import slate_500
+from counterweight.styles.utilities import slate_950
+from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_justify_right
 
 CORES = 16
 PROCESSES = 120
@@ -256,7 +259,7 @@ def render_process_row(process: Process, selected: bool) -> Div:
         children=(
             *(
                 Text(content=cell, style=length(width) | text_justify_right | cell_color(name) | background)
-                for cell, (name, width) in zip(cells, COLUMNS)
+                for cell, (name, width) in zip(cells, COLUMNS, strict=True)
             ),
             Text(content=f" {process.command}", style=fill(1) | background),
         ),

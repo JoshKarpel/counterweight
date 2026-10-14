@@ -4,30 +4,26 @@ from dataclasses import dataclass
 import pytest
 import waxy
 
-from counterweight.styles.styles import (
-    CELL_STYLE_DEFAULTS,
-    STYLE_DEFAULTS,
-    BorderKind,
-    CellStyle,
-    Color,
-    Style,
-    StyleFragment,
-    merge,
-    resolve_cell_style,
-)
-from counterweight.styles.utilities import (
-    border,
-    border_heavy,
-    inset_left,
-    inset_top,
-    position_absolute,
-    position_relative,
-)
+from counterweight.styles.styles import CELL_STYLE_DEFAULTS
+from counterweight.styles.styles import STYLE_DEFAULTS
+from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import Style
+from counterweight.styles.styles import StyleFragment
+from counterweight.styles.styles import merge
+from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import position_relative
 
 
 @pytest.mark.parametrize(
     ("left", "right", "expected"),
-    (
+    [
         (Style(), Style(), Style()),
         (
             Style(border_style=CellStyle(bold=True)),
@@ -74,7 +70,7 @@ from counterweight.styles.utilities import (
             Style(border_style=CellStyle(italic=True)),
             Style(border_style=CellStyle(bold=True, italic=True)),
         ),
-    ),
+    ],
 )
 def test_style_merging(left: Style, right: Style, expected: Style) -> None:
     assert (left | right) == expected

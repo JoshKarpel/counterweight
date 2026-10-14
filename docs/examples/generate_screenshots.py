@@ -14,14 +14,17 @@ import pkgutil
 import subprocess
 import sys
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC
+from datetime import datetime
 
 import docs.examples
 from counterweight.app import app
 from counterweight.clock import frozen_clock
-from counterweight.controls import Quit, Screenshot
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.output import Frame
-from docs.examples.screenshot_spec import ASSETS, ScreenshotSpec
+from docs.examples.screenshot_spec import ASSETS
+from docs.examples.screenshot_spec import ScreenshotSpec
 
 NOT_EXAMPLES = {"generate_screenshots", "screenshot_spec"}
 
@@ -75,16 +78,20 @@ def check_assets(specs: list[ScreenshotSpec], all_modules: bool) -> None:
         raise ValueError(f"No example produces these assets: {[str(p) for p in orphans]}")
 
 
-async def main(module_names: list[str]) -> None:
+async def render_all(specs: list[ScreenshotSpec]) -> None:
+    for spec in specs:
+        await render(spec)
+
+
+def main(module_names: list[str]) -> None:
     specs = [spec for module_name in module_names or example_modules() for spec in screenshots(module_name)]
     check_assets(specs, all_modules=not module_names)
     new_paths = [path for spec in specs for path in (spec.svg_path, spec.text_path) if not path.exists()]
-    for spec in specs:
-        await render(spec)
+    asyncio.run(render_all(specs))
     # pre-commit only fails a hook that leaves an unstaged diff, which a new untracked file isn't.
     if new_paths:
         subprocess.run(["git", "add", "--intent-to-add", *map(str, new_paths)], check=True)
 
 
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv[1:]))
+    main(sys.argv[1:])

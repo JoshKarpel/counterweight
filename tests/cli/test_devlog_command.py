@@ -1,5 +1,7 @@
 import pytest
-from without_cli import Streams, Writer, run
+from without_cli import Streams
+from without_cli import Writer
+from without_cli import run
 
 from counterweight.cli import cli
 

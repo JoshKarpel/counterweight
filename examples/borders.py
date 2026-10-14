@@ -6,9 +6,13 @@ from more_itertools import flatten
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_ref, use_state
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import use_ref
+from counterweight.hooks import use_state
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 

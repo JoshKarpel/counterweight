@@ -4,36 +4,39 @@ from dataclasses import dataclass
 import pytest
 
 from counterweight import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, Screenshot
-from counterweight.elements import Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Receiver,
-)
-from counterweight.geometry import Position, Rects, Region
-from counterweight.handlers import each, on_click
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
+from counterweight.handlers import each
+from counterweight.handlers import on_click
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    inset_left,
-    inset_top,
-    margin,
-    margin_color,
-    position_absolute,
-    size,
-    z,
-)
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import margin_color
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import z
 
 
 @dataclass(frozen=True, slots=True)

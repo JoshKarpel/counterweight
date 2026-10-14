@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from functools import wraps
 from typing import overload
 

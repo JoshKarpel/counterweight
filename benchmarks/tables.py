@@ -1,6 +1,7 @@
 """Plain-text tables for the benchmark CLI's reports."""
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
+from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import zip_longest
 

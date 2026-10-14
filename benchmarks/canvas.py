@@ -11,22 +11,25 @@ from itertools import product
 
 from benchmarks.harness import Workload
 from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
-from counterweight.styles.styles import COLORS_BY_NAME, CellStyle, Color
-from counterweight.styles.utilities import (
-    align_children_center,
-    amber_600,
-    border,
-    border_color,
-    border_heavy,
-    col,
-    cyan_600,
-    justify_children_space_evenly,
-    pink_600,
-    row,
-    text_justify_center,
-)
-from counterweight.utils import canvas, clamp
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.styles.styles import COLORS_BY_NAME
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.utilities import align_children_center
+from counterweight.styles.utilities import amber_600
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import cyan_600
+from counterweight.styles.utilities import justify_children_space_evenly
+from counterweight.styles.utilities import pink_600
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_justify_center
+from counterweight.utils import canvas
+from counterweight.utils import clamp
 
 WIDTH = 30
 HEIGHT = 30
@@ -69,12 +72,14 @@ def step(model: Model) -> Model:
 def walk(walkers: Walkers, rng: random.Random) -> Walkers:
     return tuple(
         (clamp(0, x + dx, WIDTH - 1), clamp(0, y + dy, HEIGHT - 1))
-        for (x, y), (dx, dy) in zip(walkers, [rng.choice(MOVES) for _ in walkers])
+        for (x, y), (dx, dy) in zip(walkers, [rng.choice(MOVES) for _ in walkers], strict=True)
     )
 
 
 def view(model: Model) -> Div:
-    canvases = tuple(walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
+    canvases = tuple(
+        walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers, strict=True)
+    )
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
         children=(
@@ -102,7 +107,7 @@ def header() -> Text:
 @component
 def walker_canvas(colors: tuple[Color, ...], walkers: Walkers) -> Text:
     return Text(
-        content=canvas(width=WIDTH, height=HEIGHT, cells=dict(zip(walkers, colors))),
+        content=canvas(width=WIDTH, height=HEIGHT, cells=dict(zip(walkers, colors, strict=True))),
         style=border | border_heavy | border_color("slate", 400),
     )
 

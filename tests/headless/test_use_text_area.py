@@ -1,17 +1,33 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
 
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, ScrollIntoView
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
+from counterweight.controls import AnyControl
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import Quit
+from counterweight.controls import ScrollIntoView
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.geometry import Position
-from counterweight.handlers import each, first
-from counterweight.headless import TextArea, use_text_area
-from counterweight.hooks import ElementHandle, use_state
+from counterweight.handlers import each
+from counterweight.handlers import first
+from counterweight.headless import TextArea
+from counterweight.headless import use_text_area
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import FocusHandle
+from counterweight.hooks import use_state
 from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 from counterweight.styles.utilities import height
@@ -343,3 +359,109 @@ async def test_paging_outside_a_scroll_container_moves_a_page_of_the_elements_he
     await app(root(), headless=True, dimensions=(20, 9), autopilot=(*pressed(*keys), Quit()))
 
     assert (shown[-1].cursor, responses[-1]) == (cursor, ScrollIntoView(handles[0], block="nearest"))
+
+
+async def test_paging_in_an_element_one_row_tall_moves_the_cursor_a_row() -> None:
+    shown: list[Shown] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("a\nb\nc\nd")
+        field = use_text_area(value, set_value, width=WIDTH, auto_focus=True)
+        shown.append(Shown.of(value, field))
+        return Text(content=value, style=height(1), on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(*pressed(Key.ControlHome, Key.PageDown), Quit()))
+
+    assert shown[-1].cursor == 2
+
+
+async def test_a_paste_expands_tabs_to_stops_four_columns_apart_by_default() -> None:
+    shown = await run((Pasted(text="\tx"),))
+
+    assert shown[-1].value == "    x"
+
+
+async def test_the_field_is_in_the_focus_order_by_default() -> None:
+    focused: list[bool] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_area(value, set_value, width=WIDTH)
+        focused.append(field.focus.is_focused)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(FocusNext(), Quit()))
+
+    assert focused[-1]
+
+
+@pytest.mark.parametrize("in_focus_order", [True, False])
+async def test_the_field_is_in_the_focus_order_unless_asked_not_to_be(in_focus_order: bool) -> None:
+    focused: list[bool] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_area(value, set_value, width=WIDTH, in_focus_order=in_focus_order)
+        focused.append(field.focus.is_focused)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(FocusNext(), Quit()))
+
+    assert focused[-1] == in_focus_order
+
+
+async def test_an_unfocusable_field_does_not_take_focus_when_it_mounts() -> None:
+    focused: list[bool] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_area(value, set_value, width=WIDTH, auto_focus=True, is_focusable=False)
+        focused.append(field.focus.is_focused)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(Quit(),))
+
+    assert not focused[-1]
+
+
+async def test_the_field_focuses_with_the_handle_it_is_given() -> None:
+    handle = FocusHandle()
+    handles: list[FocusHandle] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_area(value, set_value, width=WIDTH, handle=handle)
+        handles.append(field.focus.handle)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(Quit(),))
+
+    assert handles[-1] is handle
+
+
+async def test_a_press_focuses_the_field_and_scrolls_the_cursor_row_into_view() -> None:
+    responses: list[InputResponse] = []
+    fields: list[TextArea] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("hello world")
+        field = use_text_area(value, set_value, width=WIDTH)
+        fields.append(field)
+
+        def record(event: InputEvent, receiver: Receiver) -> InputResponse:
+            responses.append(response := field.on_press(event, receiver))
+            return response
+
+        return Text(content=value, on_input=record)
+
+    await app(
+        root(), headless=True, dimensions=(20, 3), autopilot=(MouseDown(absolute=Position(x=2, y=1), button=1), Quit())
+    )
+
+    assert responses == [(FocusOn(fields[0].focus.handle), ScrollIntoView(fields[0].cursor_row, block="nearest"))]

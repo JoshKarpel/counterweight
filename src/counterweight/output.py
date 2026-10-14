@@ -4,13 +4,19 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING
+from typing import TextIO
 from xml.etree.ElementTree import indent as indent_svg
 from xml.etree.ElementTree import tostring
 
 from counterweight.geometry import Position
-from counterweight.graphemes import LINE_BREAKS, graphemes, visible
-from counterweight.paint import Cell, Paint, Run, svg
+from counterweight.graphemes import LINE_BREAKS
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import Run
+from counterweight.paint import svg
 from counterweight.styles.styles import ResolvedCellStyle
 
 if TYPE_CHECKING:

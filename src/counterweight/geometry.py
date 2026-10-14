@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from itertools import product
 
 from counterweight._utils import unordered_range

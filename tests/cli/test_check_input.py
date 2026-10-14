@@ -1,12 +1,18 @@
 import io
 import os
 import sys
-from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
+from asyncio import CancelledError
+from asyncio import Event
+from asyncio import create_task
+from asyncio import get_running_loop
+from asyncio import wait_for
 from signal import SIGINT
 
 import pytest
 
-from counterweight.cli import SIGINT_EXIT, _check_input, main
+from counterweight.cli import SIGINT_EXIT
+from counterweight.cli import _check_input
+from counterweight.cli import main
 from counterweight.constants import PACKAGE_NAME
 from tests.terminal import Terminal
 
@@ -78,7 +84,7 @@ def test_check_input_exits_like_sigint_when_interrupted(terminal: Terminal, monk
     monkeypatch.setattr(sys, "stdin", terminal.stream)
     monkeypatch.setattr(sys, "stdout", output)
 
-    with pytest.raises(SystemExit) as exit:
+    with pytest.raises(SystemExit) as exited:
         main()
 
-    assert (exit.value.code, output.getvalue()) == (SIGINT_EXIT, PASTE_ON)
+    assert (exited.value.code, output.getvalue()) == (SIGINT_EXIT, PASTE_ON)
