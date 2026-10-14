@@ -7,18 +7,18 @@ import waxy
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import Div, Text
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    border,
-    border_heavy,
-    border_left,
-    border_left_0,
-    border_none,
-    border_right_0,
-    border_top,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_left_0
+from counterweight.styles.utilities import border_none
+from counterweight.styles.utilities import border_right_0
+from counterweight.styles.utilities import border_top
 
 
 async def render_box(style: Style) -> str:

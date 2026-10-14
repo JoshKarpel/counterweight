@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from enum import Enum
 from functools import lru_cache
-from typing import Literal, NamedTuple
+from typing import Literal
+from typing import NamedTuple
+from typing import Self
 
 import waxy
 
@@ -50,7 +53,7 @@ def merge_style_fragments[S: StyleFragment](left: S, right: S) -> S:
 class StyleFragment:
     __slots__ = ()
 
-    def __or__[S: StyleFragment](self: S, other: S | None) -> S:
+    def __or__(self, other: Self | None) -> Self:
         if other is None:
             return self
         return merge_style_fragments(self, other)

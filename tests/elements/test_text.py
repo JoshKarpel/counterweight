@@ -4,9 +4,13 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.elements import Chunk, StyledGrapheme, Text
-from counterweight.graphemes import graphemes, visible
-from counterweight.styles import CellStyle, Style
+from counterweight.elements import Chunk
+from counterweight.elements import StyledGrapheme
+from counterweight.elements import Text
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
 
 
 def test_texts_have_no_children() -> None:
@@ -15,7 +19,7 @@ def test_texts_have_no_children() -> None:
 
 @pytest.mark.parametrize(
     ("content", "style", "expected"),
-    (
+    [
         (
             "",
             Style(),
@@ -41,7 +45,7 @@ def test_texts_have_no_children() -> None:
             Style(),
             (StyledGrapheme(grapheme="f"), StyledGrapheme(grapheme="o"), StyledGrapheme(grapheme="o")),
         ),
-    ),
+    ],
 )
 def test_text_cells(
     content: str | tuple[Chunk, ...],
@@ -103,7 +107,7 @@ def test_text_replaces_control_characters_but_keeps_line_breaks() -> None:
 
 
 def test_styled_grapheme_rejects_control_characters() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is a control character"):
         StyledGrapheme(grapheme="\x1b")
 
 

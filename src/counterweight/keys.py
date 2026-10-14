@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Key(str, Enum):
+class Key(StrEnum):
     """
-    Derived from https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py
+    The named keys, each equal to its name as text, such as `"ctrl+a"`.
+
+    Derived from [Textual's keys](https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py).
     """
 
     Escape = "escape"  # Also Control-[
@@ -196,4 +198,4 @@ class Key(str, Enum):
     AltBackspace = "alt+backspace"
 
     def __repr__(self) -> str:
-        return str(self)
+        return f"Key.{self.name}"

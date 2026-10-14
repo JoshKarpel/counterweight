@@ -80,9 +80,7 @@ The first frame, and the frames after a resize or a resume from a suspend, re-ru
 
 Here's a dashboard whose root holds a note you type into:
 
-```python
---8<-- "performance_state_in_root.py:example"
-```
+<!-- example: performance_state_in_root.py:example -->
 
 Each key press changes `dashboard`'s state, so it re-runs,
 builds a new `metric_card` for each metric, and every card re-runs too,
@@ -100,9 +98,7 @@ flowchart TB
 
 Move the state down into the component that shows it:
 
-```python
---8<-- "performance_state_moved_down.py:example"
-```
+<!-- example: performance_state_moved_down.py:example -->
 
 ![Dashboard](assets/performance-dashboard.svg)
 
@@ -136,9 +132,7 @@ though most rows show the same process with the same selection as before.
 Declare the row [`memo`](components/index.md#skipping-a-component-whose-arguments-didnt-change),
 and it's reused when its arguments equal the previous frame's:
 
-```python
---8<-- "performance_process_table.py:example"
-```
+<!-- example: performance_process_table.py:example -->
 
 ![Process table](assets/performance-process-table.svg)
 

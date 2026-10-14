@@ -1,34 +1,31 @@
 from dataclasses import dataclass
 
 import pytest
-from hypothesis import example, given
+from hypothesis import example
+from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.events import (
-    AnyEvent,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-)
+from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input_parsing import (
-    ALT,
-    CONTROL,
-    CONTROL_SHIFT,
-    PASTE_START,
-    SHIFT,
-    Modifier,
-    alt_name,
-    modified,
-    parse_input,
-    sequence_keys,
-)
+from counterweight.input_parsing import ALT
+from counterweight.input_parsing import CONTROL
+from counterweight.input_parsing import CONTROL_SHIFT
+from counterweight.input_parsing import PASTE_START
+from counterweight.input_parsing import SHIFT
+from counterweight.input_parsing import Modifier
+from counterweight.input_parsing import alt_name
+from counterweight.input_parsing import modified
+from counterweight.input_parsing import parse_input
+from counterweight.input_parsing import sequence_keys
 from counterweight.keys import Key
 
 
@@ -141,7 +138,7 @@ KEY_SEQUENCES: list[tuple[bytes, Key]] = [
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         # single characters, raw
         (b"f", [KeyPressed(key="f")]),
@@ -271,7 +268,7 @@ def test_known_input_parses_to_its_events(buffer: bytes, expected: list[AnyEvent
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b[200~hello\x1b[201~", [Pasted(text="hello")]),
         (b"\x1b[200~\x1b[201~", [Pasted(text="")]),
@@ -295,7 +292,7 @@ def test_bracketed_paste_parses_to_one_event_holding_its_text(buffer: bytes, exp
 
 
 @pytest.mark.parametrize(
-    "paste_searched, end",
+    ("paste_searched", "end"),
     [
         # the end starts in the last bytes searched before, which the next read could complete
         (len(b"\x1b[200~ab\x1b[201"), len(b"\x1b[200~ab\x1b[201~")),
@@ -320,7 +317,7 @@ def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         # well-formed CSI and SS3 sequences we don't know the meaning of
         (b"\x1b[1;5p", Parsed(events=(), skipped=(b"\x1b[1;5p",), remainder=b"")),
@@ -393,7 +390,7 @@ def test_input_that_is_not_an_event_is_skipped(buffer: bytes, expected: Parsed) 
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b", Parsed(events=(), skipped=(), remainder=b"\x1b")),
         (b"a\x1b", Parsed(events=(KeyPressed(key="a"),), skipped=(), remainder=b"\x1b")),
@@ -418,7 +415,7 @@ def test_input_that_may_continue_is_held_over_until_final(buffer: bytes, expecte
 
 
 @pytest.mark.parametrize(
-    "buffer, expected",
+    ("buffer", "expected"),
     [
         (b"\x1b", Parsed(events=(KeyPressed(key=Key.Escape),), skipped=(), remainder=b"")),
         # Alt+[ and Alt+O begin escape sequences, so they're Alt with those keys only if nothing follows
@@ -565,7 +562,7 @@ def test_key_repr_is_its_qualified_name() -> None:
 
 
 @pytest.mark.parametrize(
-    "key, expected",
+    ("key", "expected"),
     [
         (Key.Space, "alt+space"),
         (Key.ControlA, "ctrl+alt+a"),
@@ -579,7 +576,7 @@ def test_alt_name_puts_alt_before_a_key_or_after_its_control(key: Key, expected:
 
 
 @pytest.mark.parametrize(
-    "key, modifier, expected",
+    ("key", "modifier", "expected"),
     [
         (Key.Up, SHIFT, Key.ShiftUp),
         (Key.PageDown, CONTROL, Key.ControlPageDown),

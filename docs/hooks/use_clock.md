@@ -5,9 +5,7 @@ while staying [pure](../components/index.md#keeping-components-pure).
 A component that reads the time any other way, such as with `datetime.now()`,
 keeps showing the time from whenever it last ran.
 
-```python
---8<-- "use_clock_status_bar.py:example"
-```
+<!-- example: use_clock_status_bar.py:example -->
 
 ![Status bar](../assets/use-clock-status-bar.svg)
 
@@ -38,9 +36,7 @@ To time something from an event, such as a key press,
 render a component that reads the clock and give it a new key when the event happens,
 which remounts it and starts its `since_mount` again from zero:
 
-```python
---8<-- "use_clock_lap_timer.py:example"
-```
+<!-- example: use_clock_lap_timer.py:example -->
 
 ![Lap timer](../assets/use-clock-lap-timer.svg)
 

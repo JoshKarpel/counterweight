@@ -4,12 +4,20 @@ from __future__ import annotations
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, Screenshot, Suspend
-from counterweight.elements import Div, Text
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import Suspend
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.events import KeyPressed
-from counterweight.hooks import use_focus, use_state
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 from counterweight.output import Frame
-from counterweight.styles.utilities import border, border_collapse, row, size
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import size
 from tests.devlog import devlog_lines
 
 

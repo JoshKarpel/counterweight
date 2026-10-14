@@ -11,53 +11,142 @@ There, `[` jumps back to the start of each earlier tool call in turn, and End re
 
 import random
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from functools import partial
 from typing import Literal
 
 from benchmarks.harness import Workload
-from counterweight.components import Component, component
-from counterweight.controls import ScrollBy, ScrollIntoView
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollIntoView
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.focus import ElementHandle
-from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
-from counterweight.hooks import use_focus, use_state
+from counterweight.handlers import first
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.styles import CellStyle
-from counterweight.styles.utilities import (
-    amber_400,
-    border,
-    border_color,
-    border_lightrounded,
-    col,
-    cyan_400,
-    fill,
-    green_400,
-    justify_children_space_between,
-    overflow_y_scroll,
-    pad_x,
-    red_400,
-    row,
-    slate_400,
-    slate_500,
-    stick_to_end_y,
-    text_color,
-    text_wrap_stable,
-)
+from counterweight.styles.utilities import amber_400
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_lightrounded
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import cyan_400
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import green_400
+from counterweight.styles.utilities import justify_children_space_between
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import red_400
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import slate_400
+from counterweight.styles.utilities import slate_500
+from counterweight.styles.utilities import stick_to_end_y
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_wrap_stable
 
 WORDS_PER_FRAME = 3
 KEPT_MESSAGES = 12
 SCROLLED_BACK_AT = 150
 SCROLLED_BACK_ROWS = 20
 
-VOCABULARY = (
-    "the layout tree component render frame cell style border paint diff text wrap measure width height "
-    "function returns value cache hit miss we should probably check whether this test covers that case "
-    "first then update call site so nothing else breaks and run suite again before moving on next file "
-    "looks like regression came from merge rule where an unset field fell through default instead of left "
-    "side I will read module see how it handles empty input and edge cases around zero sized regions"
-).split()
+VOCABULARY = [
+    "the",
+    "layout",
+    "tree",
+    "component",
+    "render",
+    "frame",
+    "cell",
+    "style",
+    "border",
+    "paint",
+    "diff",
+    "text",
+    "wrap",
+    "measure",
+    "width",
+    "height",
+    "function",
+    "returns",
+    "value",
+    "cache",
+    "hit",
+    "miss",
+    "we",
+    "should",
+    "probably",
+    "check",
+    "whether",
+    "this",
+    "test",
+    "covers",
+    "that",
+    "case",
+    "first",
+    "then",
+    "update",
+    "call",
+    "site",
+    "so",
+    "nothing",
+    "else",
+    "breaks",
+    "and",
+    "run",
+    "suite",
+    "again",
+    "before",
+    "moving",
+    "on",
+    "next",
+    "file",
+    "looks",
+    "like",
+    "regression",
+    "came",
+    "from",
+    "merge",
+    "rule",
+    "where",
+    "an",
+    "unset",
+    "field",
+    "fell",
+    "through",
+    "default",
+    "instead",
+    "of",
+    "left",
+    "side",
+    "I",
+    "will",
+    "read",
+    "module",
+    "see",
+    "how",
+    "it",
+    "handles",
+    "empty",
+    "input",
+    "and",
+    "edge",
+    "cases",
+    "around",
+    "zero",
+    "sized",
+    "regions",
+]
 
 FILES = (
     "src/counterweight/layout.py",
@@ -144,14 +233,17 @@ def step(model: Model) -> Model:
     )
 
 
-def tool_call(rng: random.Random, id: int) -> Message:
+def tool_call(rng: random.Random, message_id: int) -> Message:
     path = rng.choice(FILES)
     start = rng.randrange(len(CODE))
     lines = tuple(CODE[(start + offset) % len(CODE)] for offset in range(rng.randrange(3, 8)))
     if rng.random() < 0.5:
-        return Message(id=id, kind="read", title=f"Read {path}", lines=lines)
+        return Message(id=message_id, kind="read", title=f"Read {path}", lines=lines)
     return Message(
-        id=id, kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}")
+        id=message_id,
+        kind="edit",
+        title=f"Edit {path}",
+        lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}"),
     )
 
 

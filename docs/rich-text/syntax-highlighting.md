@@ -4,9 +4,7 @@
 in any of the [languages it knows](https://pygments.org/languages/),
 and draws it on its theme's background.
 
-```python
---8<-- "syntax_highlighting.py:example"
-```
+<!-- example: syntax_highlighting.py:example -->
 
 ![Syntax highlighting in three themes](../assets/syntax-highlighting.svg)
 

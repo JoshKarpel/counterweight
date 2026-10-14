@@ -4,21 +4,33 @@ the same clock reading, layouts and purity check as the render that moved focus.
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from itertools import count
 
 import pytest
 
 from counterweight.app import app
 from counterweight.clock import frozen_clock
-from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import use_clock, use_focus, use_rects, use_state
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_rects
+from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.shadow import ImpureComponent
-from counterweight.styles.utilities import col, size
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import size
 
 TOGGLE = KeyPressed(key="t")
 NOON = datetime(2024, 1, 2, 12, tzinfo=UTC)

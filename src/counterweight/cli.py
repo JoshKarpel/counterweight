@@ -2,15 +2,31 @@ from __future__ import annotations
 
 import sys
 from asyncio import Queue
-from typing import Never, TextIO
+from typing import Never
+from typing import TextIO
 
-from without_cli import INT, Streams, command, flag, group, option, optional, run
+from without_cli import INT
+from without_cli import Streams
+from without_cli import command
+from without_cli import flag
+from without_cli import group
+from without_cli import option
+from without_cli import optional
+from without_cli import run
 
-from counterweight.constants import PACKAGE_NAME, __version__
+from counterweight.constants import PACKAGE_NAME
+from counterweight.constants import __version__
 from counterweight.events import AnyEvent
-from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.logging import last_devlog, tail_devlog
-from counterweight.output import start_bracketed_paste, start_mouse_tracking, stop_bracketed_paste, stop_mouse_tracking
+from counterweight.input import start_input_control
+from counterweight.input import start_reading_keys
+from counterweight.input import stop_input_control
+from counterweight.input import stop_reading_keys
+from counterweight.logging import last_devlog
+from counterweight.logging import tail_devlog
+from counterweight.output import start_bracketed_paste
+from counterweight.output import start_mouse_tracking
+from counterweight.output import stop_bracketed_paste
+from counterweight.output import stop_mouse_tracking
 
 SIGINT_EXIT = 130
 

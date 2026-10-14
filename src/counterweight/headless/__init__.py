@@ -5,9 +5,13 @@ and [React Aria](https://react-spectrum.adobe.com/react-aria/hooks.html) do for 
 `counterweight.widgets` draws each of them one way.
 """
 
-from counterweight.headless.scroll_area import ScrollArea, ScrollAxis, use_scroll_area
-from counterweight.headless.text_area import TextArea, use_text_area
-from counterweight.headless.text_input import TextInput, use_text_input
+from counterweight.headless.scroll_area import ScrollArea
+from counterweight.headless.scroll_area import ScrollAxis
+from counterweight.headless.scroll_area import use_scroll_area
+from counterweight.headless.text_area import TextArea
+from counterweight.headless.text_area import use_text_area
+from counterweight.headless.text_input import TextInput
+from counterweight.headless.text_input import use_text_input
 
 __all__ = [
     "ScrollArea",

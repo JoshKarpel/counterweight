@@ -1,7 +1,8 @@
 import pytest
 import waxy
 
-from counterweight.styles import BorderKind, Style
+from counterweight.styles import BorderKind
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 

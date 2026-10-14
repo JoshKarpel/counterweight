@@ -6,9 +6,14 @@ from typing import get_args
 import pytest
 import waxy
 
-from counterweight.styles import BorderKind, CellStyle, Color, Style
+from counterweight.styles import BorderKind
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
+from counterweight.styles import Style
 from counterweight.styles import utilities as utilities_module
-from mkdocs_hooks.utility_tables import describe_style, public_utilities, render_utility_tables
+from mkdocs_hooks.utility_tables import describe_style
+from mkdocs_hooks.utility_tables import public_utilities
+from mkdocs_hooks.utility_tables import render_utility_tables
 
 UTILITIES_PAGE = Path(__file__).parent.parent / "docs" / "styles" / "utilities.md"
 

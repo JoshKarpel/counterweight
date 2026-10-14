@@ -4,9 +4,12 @@ import sys
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div
-from counterweight.events import KeyPressed, MouseScrolledRight
+from counterweight.events import KeyPressed
+from counterweight.events import MouseScrolledRight
 from counterweight.geometry import Position
-from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
+from counterweight.handlers import first
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_focus
 from counterweight.keys import Key
 from counterweight.markdown import markdown_document

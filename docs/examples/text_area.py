@@ -5,11 +5,19 @@ from dataclasses import dataclass
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
-from counterweight.handlers import first, scroll_on_wheel
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Pasted
+from counterweight.events import Receiver
+from counterweight.handlers import first
+from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import use_text_area
-from counterweight.hooks import use_rects, use_state
+from counterweight.hooks import use_rects
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.widgets import text_area

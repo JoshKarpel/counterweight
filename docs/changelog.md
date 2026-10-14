@@ -284,6 +284,10 @@
 
 ### Changed
 
+- **Breaking:** `Key` is a `StrEnum`, so `str(key)` and `f"{key}"` give the key's text, such as `"escape"`,
+  as a browser's `KeyboardEvent.key` is a plain string.
+  Previously they gave the member's name, such as `"Key.Escape"`, which `repr(key)` still gives.
+
 - [#416](https://github.com/JoshKarpel/counterweight/pull/416)
   **Breaking:** a `Text` overflows its box, as CSS's text does:
   a line wider than its content box runs past it, and rows below its height draw below it,

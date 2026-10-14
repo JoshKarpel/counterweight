@@ -23,10 +23,14 @@ def counter() -> Text:
     Given a function, the setter calls it right away with the latest state, updates included,
     and stores what it returns:
 
+    <!-- fmt: off -->
+
     ```python
     set_count(count + 1)            # wrong: loses updates made since this render
     set_count(lambda c: c + 1)      # right: builds on the latest state
     ```
+
+    <!-- fmt: on -->
 
 Several updates can land before the next render in ways that are easy to miss,
 because each looks like one update when you read the code.

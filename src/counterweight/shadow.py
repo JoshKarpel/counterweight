@@ -1,26 +1,32 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Iterator
+from collections.abc import Mapping
+from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import timedelta
 from itertools import chain
 
-from counterweight._context_vars import (
-    current_focused,
-    current_hook_idx,
-    current_hook_state,
-    current_instant,
-    current_layouts,
-    current_purity_checked,
-)
-from counterweight.clock import BEGINNING, Instant
+from counterweight._context_vars import current_focused
+from counterweight._context_vars import current_hook_idx
+from counterweight._context_vars import current_hook_state
+from counterweight._context_vars import current_instant
+from counterweight._context_vars import current_layouts
+from counterweight._context_vars import current_purity_checked
+from counterweight.clock import BEGINNING
+from counterweight.clock import Instant
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
-from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseFocus
+from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import InconsistentHookExecution
+from counterweight.hooks.impls import NodeKey
+from counterweight.hooks.impls import UseFocus
 from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
@@ -286,9 +292,7 @@ def update_shadow(
 def update_node(
     next: Component | AnyElement, previous: ShadowNode | None, reconciliation: Reconciliation
 ) -> ShadowNode:
-    """
-    Returns the updated shadow node, marking every previous node that the new tree doesn't continue as unmounted.
-    """
+    """Returns the updated shadow node, marking every previous node that the new tree doesn't continue as unmounted."""
     match next, previous:
         case Component(
             func=next_func,

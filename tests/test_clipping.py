@@ -1,46 +1,59 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 
 import pytest
 import waxy
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import InputEvent, InputHandler, InputResponse, MouseDown, Receiver
-from counterweight.geometry import Position, Rects, Region
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import MouseDown
+from counterweight.events import Receiver
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
 from counterweight.layout import child_clip
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, paint_layout
+from counterweight.paint import BLANK
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import paint_layout
 from counterweight.styles import Style
-from counterweight.styles.styles import CellStyle, JoinedBorderKind, resolve_cell_style
-from counterweight.styles.utilities import (
-    border,
-    border_double,
-    border_light,
-    border_y,
-    clip_to_border,
-    clip_to_padding,
-    clip_to_screen,
-    col,
-    fill,
-    height,
-    inset_left,
-    inset_top,
-    overflow_clip,
-    overflow_hidden,
-    overflow_visible,
-    overflow_x_hidden,
-    overflow_y_hidden,
-    pad_x,
-    position_absolute,
-    row,
-    size,
-    width,
-    z,
-)
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import JoinedBorderKind
+from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_double
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import border_y
+from counterweight.styles.utilities import clip_to_border
+from counterweight.styles.utilities import clip_to_padding
+from counterweight.styles.utilities import clip_to_screen
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import overflow_clip
+from counterweight.styles.utilities import overflow_hidden
+from counterweight.styles.utilities import overflow_visible
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_y_hidden
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import width
+from counterweight.styles.utilities import z
 
 
 async def frame_of(root: AnyElement, dimensions: tuple[int, int], events: Sequence[InputEvent] = ()) -> Frame:

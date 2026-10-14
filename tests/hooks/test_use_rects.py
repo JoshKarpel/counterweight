@@ -2,10 +2,18 @@ from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.geometry import Region
-from counterweight.hooks import Rects, use_rects, use_state
-from counterweight.styles.utilities import border, display_none, margin, pad, size
+from counterweight.hooks import Rects
+from counterweight.hooks import use_rects
+from counterweight.hooks import use_state
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import size
 
 EMPTY = Region(left=0, top=0, right=0, bottom=0)
 VISIBLE = Region(left=0, top=0, right=7, bottom=4)

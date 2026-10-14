@@ -15,7 +15,8 @@ from functools import partial
 from pathlib import Path
 
 import counterweight
-from benchmarks.tables import Column, render_table
+from benchmarks.tables import Column
+from benchmarks.tables import render_table
 from counterweight.input_parsing import parse_input
 
 # How many bytes each timed read holds. A terminal hands over at most a few kilobytes per read,
@@ -39,7 +40,7 @@ INPUTS: Mapping[str, bytes] = {
     "mouse-move": b"\x1b[<35;12;4M",
     "mouse-flood": fill_read([b"\x1b[<35;%d;%dM" % (column, 1 + column // 3) for column in range(1, 200)]),
     "ascii-paste": fill_read(
-        [f"{word} ".encode() for word in "the quick brown fox jumps over the lazy dog".split()] * 30
+        [f"{word} ".encode() for word in ["the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"]] * 30
     ),
     "non-ascii-paste": fill_read([character.encode() for character in "naïve café 日本語 👩‍💻 " * 100]),
     "bracketed-paste": b"\x1b[200~" + b"the quick brown fox jumps over the lazy dog\r" * 22 + b"\x1b[201~",

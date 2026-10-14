@@ -1,20 +1,18 @@
 import pytest
 
-from counterweight.headless.text_editing import (
-    KEY_EDITS,
-    EditableText,
-    Target,
-    cell_offset,
-    delete_to,
-    is_text,
-    key_edit,
-    move_to,
-    move_to_column,
-    paste_edit,
-    settled,
-    word_end,
-    word_start,
-)
+from counterweight.headless.text_editing import KEY_EDITS
+from counterweight.headless.text_editing import EditableText
+from counterweight.headless.text_editing import Target
+from counterweight.headless.text_editing import cell_offset
+from counterweight.headless.text_editing import delete_to
+from counterweight.headless.text_editing import is_text
+from counterweight.headless.text_editing import key_edit
+from counterweight.headless.text_editing import move_to
+from counterweight.headless.text_editing import move_to_column
+from counterweight.headless.text_editing import paste_edit
+from counterweight.headless.text_editing import settled
+from counterweight.headless.text_editing import word_end
+from counterweight.headless.text_editing import word_start
 from counterweight.keys import Key
 
 

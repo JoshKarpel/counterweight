@@ -1,7 +1,10 @@
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING
+from typing import assert_type
 
-from counterweight.components import Component, component
-from counterweight.elements import Div, Text
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import Div
+from counterweight.elements import Text
 
 
 def repeated(label: str, count: int = 1) -> Text:

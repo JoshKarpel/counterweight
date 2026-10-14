@@ -7,10 +7,14 @@ Plain `==` can't answer that for handlers: a re-run builds new closures, which n
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
+from dataclasses import is_dataclass
 from functools import partial
-from types import CellType, FunctionType, MethodType
-from typing import TYPE_CHECKING, TypeIs
+from types import CellType
+from types import FunctionType
+from types import MethodType
+from typing import TYPE_CHECKING
+from typing import TypeIs
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -72,7 +76,7 @@ def equivalent_within(a: object, b: object, comparing: set[tuple[int, int]]) -> 
                 and equivalent_within(a.keywords, b.keywords, comparing)
             )
         case tuple() | list(), tuple() | list():
-            return len(a) == len(b) and all(equivalent_within(x, y, comparing) for x, y in zip(a, b))
+            return len(a) == len(b) and all(equivalent_within(x, y, comparing) for x, y in zip(a, b, strict=True))
         case dict(), dict():
             keys_match = list(a) == list(b) if isinstance(a, OrderedDict) else a.keys() == b.keys()
             return keys_match and all(equivalent_within(a[k], b[k], comparing) for k in a)

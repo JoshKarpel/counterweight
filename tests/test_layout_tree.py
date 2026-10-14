@@ -6,26 +6,35 @@ from pytest_mock import MockerFixture
 
 from counterweight import layout
 from counterweight.components import component
-from counterweight.elements import AnyElement, Chunk, Div, Text
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.geometry import Rects
-from counterweight.layout import (
-    NO_LAYOUTS,
-    ClearText,
-    CreateLeaf,
-    Layouts,
-    LayoutTree,
-    MeasurableText,
-    Remove,
-    SetChildren,
-    SetText,
-    _measure_text,
-    layout_changes,
-    layout_style,
-    text_source,
-)
-from counterweight.shadow import ShadowTree, update_shadow
-from counterweight.styles.styles import CellStyle, Color
-from counterweight.styles.utilities import border, col, fill, height, overflow_hidden, row, text_wrap_stable
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import ClearText
+from counterweight.layout import CreateLeaf
+from counterweight.layout import Layouts
+from counterweight.layout import LayoutTree
+from counterweight.layout import MeasurableText
+from counterweight.layout import Remove
+from counterweight.layout import SetChildren
+from counterweight.layout import SetText
+from counterweight.layout import _measure_text
+from counterweight.layout import layout_changes
+from counterweight.layout import layout_style
+from counterweight.layout import text_source
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import update_shadow
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import overflow_hidden
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_wrap_stable
 
 WIDTH, HEIGHT = 40, 12
 

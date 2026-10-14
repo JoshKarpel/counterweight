@@ -1,30 +1,63 @@
 from __future__ import annotations
 
-from asyncio import CancelledError, Event, Queue, TaskGroup, create_task, wait_for
+from asyncio import CancelledError
+from asyncio import Event
+from asyncio import Queue
+from asyncio import TaskGroup
+from asyncio import create_task
+from asyncio import wait_for
 from collections.abc import Callable
 from contextlib import suppress
 from copy import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import timedelta
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight._utils import cancel_tasks, forever
+from counterweight._utils import cancel_tasks
+from counterweight._utils import forever
 from counterweight.app import app
 from counterweight.clock import BEGINNING
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, InputEvent, Receiver, TerminalResized
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import ToggleBorderHealing
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import Receiver
+from counterweight.events import TerminalResized
 from counterweight.geometry import Region
-from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
+from counterweight.hooks import Rects
+from counterweight.hooks import Setter
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_rects
+from counterweight.hooks import use_ref
+from counterweight.hooks import use_state
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseClock, UseRef
-from counterweight.layout import NO_LAYOUTS, Layouts
-from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
-from tests.rendering import effect_tasks, render, state_set_keys, state_sets
+from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import InconsistentHookExecution
+from counterweight.hooks.impls import NodeKey
+from counterweight.hooks.impls import UseClock
+from counterweight.hooks.impls import UseRef
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Layouts
+from counterweight.shadow import ImpureComponent
+from counterweight.shadow import ShadowNode
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import dirty_paths
+from counterweight.shadow import is_dirty
+from counterweight.shadow import update_shadow
+from tests.rendering import effect_tasks
+from tests.rendering import render
+from tests.rendering import state_set_keys
+from tests.rendering import state_sets
 
 type Shape = tuple[tuple[str, Shape], ...]
 
@@ -584,7 +617,8 @@ def test_check_purity_leaves_a_ref_that_a_reused_component_writes_while_renderin
     )
 
     [hook] = next.children[0].hooks.data
-    assert isinstance(hook, UseRef) and hook.ref.current == 1
+    assert isinstance(hook, UseRef)
+    assert hook.ref.current == 1
 
 
 @component(memo=True)

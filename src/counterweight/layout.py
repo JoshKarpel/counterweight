@@ -1,24 +1,49 @@
 from __future__ import annotations
 
-from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from collections.abc import Container
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Mapping
+from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from functools import lru_cache
-from itertools import chain, repeat
+from itertools import chain
+from itertools import repeat
 from math import inf
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING
+from typing import assert_never
 
 import waxy
 
-from counterweight.controls import ScrollAlignment, ScrollBy, ScrollIntoView, ScrollTo
-from counterweight.elements import AnyElement, Chunk, Div, StyledGrapheme, Text, styled_cells, text_pieces
-from counterweight.geometry import Position, Rects, Region, Scroll
+from counterweight.controls import ScrollAlignment
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollIntoView
+from counterweight.controls import ScrollTo
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import StyledGrapheme
+from counterweight.elements import Text
+from counterweight.elements import styled_cells
+from counterweight.elements import text_pieces
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
+from counterweight.geometry import Scroll
 from counterweight.graphemes import LINE_BREAKS
-from counterweight.styles.styles import CellStyle, ClipTo, ResolvedStyle, Style, TextWrap
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import ClipTo
+from counterweight.styles.styles import ResolvedStyle
+from counterweight.styles.styles import Style
+from counterweight.styles.styles import TextWrap
 
 if TYPE_CHECKING:
     from counterweight.focus import ElementHandle
     from counterweight.hooks.impls import NodeKey
-    from counterweight.shadow import ShadowNode, ShadowTree
+    from counterweight.shadow import ShadowNode
+    from counterweight.shadow import ShadowTree
 
 
 _EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)
@@ -1007,10 +1032,7 @@ def _flatten_long_words(
     flat_spaces: list[list[StyledGrapheme]] = []
 
     for i, word in enumerate(words):
-        if cells_width(word) > width:
-            chunks = _break_long_word(word, width)
-        else:
-            chunks = [word]
+        chunks = _break_long_word(word, width) if cells_width(word) > width else [word]
 
         for j, chunk in enumerate(chunks):
             if flat_words:
@@ -1180,10 +1202,7 @@ def _wrap_pretty(paragraph: list[StyledGrapheme], width: int) -> list[list[Style
             if ll > width and j > i + 1:
                 break
             slack = max(width - ll, 0)
-            if j == n:
-                cost = 0.0
-            else:
-                cost = float(slack) ** 2
+            cost = 0.0 if j == n else float(slack) ** 2
             total = cost + dp[j]
             if total < dp[i]:
                 dp[i] = total

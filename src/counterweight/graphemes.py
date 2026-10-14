@@ -6,7 +6,8 @@ and how many terminal cells each cluster takes.
 from __future__ import annotations
 
 from functools import lru_cache
-from unicodedata import category, iter_graphemes
+from unicodedata import category
+from unicodedata import iter_graphemes
 
 from wcwidth import wcswidth
 

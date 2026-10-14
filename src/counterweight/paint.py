@@ -1,33 +1,41 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import groupby
 from textwrap import dedent
 from typing import assert_never
-from xml.etree.ElementTree import Element, SubElement
+from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import SubElement
 
 import waxy
 
-from counterweight._utils import flyweight, halve_integer
-from counterweight.elements import AnyElement, StyledGrapheme
-from counterweight.geometry import Position, Rects, Region
-from counterweight.layout import Lines, cells_width, child_clip, clipped_axes
-from counterweight.styles.styles import (
-    UNSET,
-    BorderKind,
-    CellStyle,
-    Color,
-    JoinedBorderKind,
-    JoinedBorderParts,
-    ResolvedCellStyle,
-    ResolvedStyle,
-    Style,
-    TextJustify,
-    resolve_cell_style,
-)
+from counterweight._utils import flyweight
+from counterweight._utils import halve_integer
+from counterweight.elements import AnyElement
+from counterweight.elements import StyledGrapheme
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
+from counterweight.layout import Lines
+from counterweight.layout import cells_width
+from counterweight.layout import child_clip
+from counterweight.layout import clipped_axes
+from counterweight.styles.styles import UNSET
+from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import JoinedBorderKind
+from counterweight.styles.styles import JoinedBorderParts
+from counterweight.styles.styles import ResolvedCellStyle
+from counterweight.styles.styles import ResolvedStyle
+from counterweight.styles.styles import Style
+from counterweight.styles.styles import TextJustify
+from counterweight.styles.styles import resolve_cell_style
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +233,7 @@ def diff_paint(new: Paint, current: Paint) -> list[Run]:
         if new_row == current_row:
             continue
         run_start = None
-        for x, (new_cell, current_cell) in enumerate(zip(new_row, current_row)):
+        for x, (new_cell, current_cell) in enumerate(zip(new_row, current_row, strict=True)):
             if new_cell is not current_cell and new_cell != current_cell:
                 if run_start is None:
                     run_start = x
@@ -334,15 +342,14 @@ def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -
     space = width - cells_width(line)
     if space <= 0:
         return line
-    elif justify == "left":
+    if justify == "left":
         return line + [StyledGrapheme(grapheme=" ")] * space
-    elif justify == "right":
+    if justify == "right":
         return [StyledGrapheme(grapheme=" ")] * space + line
-    elif justify == "center":
+    if justify == "center":
         left, right = halve_integer(space)
         return [StyledGrapheme(grapheme=" ")] * left + line + [StyledGrapheme(grapheme=" ")] * right
-    else:
-        assert_never(justify)
+    assert_never(justify)
 
 
 @lru_cache(maxsize=2**12)

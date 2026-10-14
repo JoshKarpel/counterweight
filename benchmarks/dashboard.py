@@ -6,28 +6,30 @@ work that caches, or reuse of last frame's layout, could skip.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from functools import partial
 
 from benchmarks.harness import Workload
-from counterweight.components import Component, component
-from counterweight.elements import Chunk, Div, Text
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.styles.styles import CellStyle
-from counterweight.styles.utilities import (
-    amber_400,
-    border,
-    border_collapse,
-    border_color,
-    col,
-    cyan_400,
-    fill,
-    justify_children_space_between,
-    pad,
-    row,
-    slate_100,
-    slate_400,
-    text_justify_center,
-)
+from counterweight.styles.utilities import amber_400
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import cyan_400
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import justify_children_space_between
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import slate_100
+from counterweight.styles.utilities import slate_400
+from counterweight.styles.utilities import text_justify_center
 
 METRICS = (
     ("CPU usage", "23.4%"),

@@ -16,8 +16,10 @@ from __future__ import annotations
 import asyncio
 import re
 import sys
-from collections.abc import AsyncIterator, Callable
-from dataclasses import dataclass, replace
+from collections.abc import AsyncIterator
+from collections.abc import Callable
+from dataclasses import dataclass
+from dataclasses import replace
 from datetime import timedelta
 from functools import partial
 from typing import Literal
@@ -25,16 +27,29 @@ from typing import Literal
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import ScrollTo
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.handlers import first, on_click, page_down, page_up, tab_focus
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.handlers import first
+from counterweight.handlers import on_click
+from counterweight.handlers import page_down
+from counterweight.handlers import page_up
+from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
-from counterweight.hooks import ElementHandle, use_effect, use_scroll, use_state
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_scroll
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.markdown import markdown
-from counterweight.styles import CellStyle, Style
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
-from counterweight.widgets import TextFieldStyles, text_area
+from counterweight.widgets import TextFieldStyles
+from counterweight.widgets import text_area
 
 REPLIES = (
     """\

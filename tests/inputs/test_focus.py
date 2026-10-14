@@ -1,35 +1,54 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
 
 from counterweight import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, ClearFocus, FocusNext, FocusOn, FocusPrevious, Quit, Screenshot
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledUp,
-    MouseUp,
-    Receiver,
-)
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import ClearFocus
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import FocusPrevious
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
 from counterweight.geometry import Position
-from counterweight.handlers import first, focus_receiver_on_press, tab_focus
-from counterweight.hooks import use_focus, use_state
-from counterweight.hooks.impls import ChangedFocusHandle, DuplicateUseFocus
+from counterweight.handlers import first
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import tab_focus
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
+from counterweight.hooks.impls import ChangedFocusHandle
+from counterweight.hooks.impls import DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.output import Frame
 from counterweight.routing import UnsettledFocus
 from counterweight.shadow import DuplicateFocusHandle
 from counterweight.styles import Style
-from counterweight.styles.utilities import col, default, display_none, inset_left, inset_top, position_absolute, size
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
 
 PROBE = KeyPressed(key="?")
 TOGGLE = KeyPressed(key="t")
@@ -445,7 +464,8 @@ async def test_use_focus_keeps_its_handle_across_renders() -> None:
 
     await run(counter(), [PROBE, PROBE])
 
-    assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
+    assert len(handles) > 2
+    assert all(handle is handles[0] for handle in handles)
 
 
 async def test_calling_use_focus_twice_in_one_component_raises() -> None:
@@ -652,7 +672,8 @@ async def test_a_parent_and_child_on_one_bubble_path_receive_different_subtrees(
 
     await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
 
-    assert len(subtrees) == 2 and subtrees[0] != subtrees[1]
+    assert len(subtrees) == 2
+    assert subtrees[0] != subtrees[1]
 
 
 # Handles created by a parent
@@ -698,7 +719,8 @@ async def test_use_focus_returns_the_handle_it_was_given() -> None:
 
     await run(root(), [])
 
-    assert returned and all(handle is given for handle in returned)
+    assert returned
+    assert all(handle is given for handle in returned)
 
 
 async def test_passing_a_different_handle_on_a_later_render_raises_naming_both_handles() -> None:
@@ -832,7 +854,8 @@ async def test_a_component_keeps_its_handle_when_it_becomes_unfocusable_and_focu
 
     await run(root(), [TOGGLE, TOGGLE])
 
-    assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
+    assert len(handles) > 2
+    assert all(handle is handles[0] for handle in handles)
 
 
 async def test_a_press_on_an_unfocusable_component_with_focus_receiver_on_press_is_claimed_and_keeps_focus() -> None:

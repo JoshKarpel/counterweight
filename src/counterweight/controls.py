@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TextIO, Union
+from typing import TYPE_CHECKING
+from typing import Literal
+from typing import TextIO
 
-from counterweight.focus import ElementHandle, FocusHandle, Subtree
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
 from counterweight.geometry import Position
 
 if TYPE_CHECKING:
@@ -157,9 +162,7 @@ class Suspend(_Control):
 
 @dataclass(frozen=True, slots=True)
 class ToggleBorderHealing(_Control):
-    """
-    Toggle whether border healing occurs.
-    """
+    """Toggle whether border healing occurs."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,9 +211,7 @@ class FocusOn(_Control):
 
 @dataclass(frozen=True, slots=True)
 class ClearFocus(_Control):
-    """
-    Clear focus, so key presses go to the root component.
-    """
+    """Clear focus, so key presses go to the root component."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,20 +310,20 @@ class ScrollIntoView(_Control):
     """Where to put the element horizontally."""
 
 
-AnyControl = Union[
-    Quit,
-    Bell,
-    SetTitle,
-    RestoreTitle,
-    Screenshot,
-    Suspend,
-    ToggleBorderHealing,
-    FocusNext,
-    FocusPrevious,
-    FocusOn,
-    ClearFocus,
-    AdvanceClock,
-    ScrollTo,
-    ScrollBy,
-    ScrollIntoView,
-]
+AnyControl = (
+    Quit
+    | Bell
+    | SetTitle
+    | RestoreTitle
+    | Screenshot
+    | Suspend
+    | ToggleBorderHealing
+    | FocusNext
+    | FocusPrevious
+    | FocusOn
+    | ClearFocus
+    | AdvanceClock
+    | ScrollTo
+    | ScrollBy
+    | ScrollIntoView
+)
