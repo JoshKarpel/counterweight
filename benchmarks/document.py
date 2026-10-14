@@ -1,5 +1,5 @@
 """
-Typing at the end of a long document, about 90 KB in 1250 lines, inside a scroll container that sticks to its end.
+Typing at the end of a long document, about 110 KB in 1250 lines, inside a scroll container that sticks to its end.
 
 Each frame types one character onto the last line, and starts a new line now and then,
 so the document changes every frame while only its last few rows are in view.
@@ -39,9 +39,12 @@ class Model:
 
 
 def line(rng: random.Random) -> str:
+    """Words up to a length drawn around `CHARACTERS_PER_LINE`, so some lines wrap at the workload's width and some don't."""
+    length = rng.randint(CHARACTERS_PER_LINE // 2, CHARACTERS_PER_LINE * 3 // 2)
     words: list[str] = []
-    while sum(len(word) + 1 for word in words) < rng.randint(CHARACTERS_PER_LINE // 2, CHARACTERS_PER_LINE * 3 // 2):
-        words.append(rng.choice(VOCABULARY))
+    while length > 0:
+        words.append(word := rng.choice(VOCABULARY))
+        length -= len(word) + 1
     return " ".join(words)
 
 
@@ -92,7 +95,7 @@ LINES_WORKLOAD = replace(
 @component
 def editor(model: Model) -> Div:
     """The document in a `text_area` that fills the screen, which the autopilot types into."""
-    draft, set_draft = use_state("\n".join(model.lines))
+    draft, set_draft = use_state(lambda: "\n".join(model.lines))
     return Div(style=col | fill(1), children=(text_area(draft, set_draft, style=fill(1), auto_focus=True),))
 
 

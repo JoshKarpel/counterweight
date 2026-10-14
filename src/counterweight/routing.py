@@ -134,7 +134,7 @@ class RoutingTable:
             layouts=layouts,
             parents=shadow.parents,
             handlers={
-                key: element.on_input for key, element, _ in layouts.in_paint_order if element.on_input is not None
+                key: element.on_input for key, element, _, _ in layouts.in_paint_order if element.on_input is not None
             },
             focus=focus,
             focus_keys={focusable.handle: key for key, focusable in focus.items() if focusable.is_focusable},
@@ -147,7 +147,7 @@ class RoutingTable:
         The topmost element painted at `position`, the last in paint order whose border box contains it
         inside its clip, or the root component's node if that's only the screen.
         """
-        for key, _, layout in reversed(self.layouts.in_paint_order):
+        for key, _, layout, _ in reversed(self.layouts.in_paint_order):
             if (visible := layout.visible) is not None and visible.contains(position):
                 return self.root if key == self.screen else key
         return self.root

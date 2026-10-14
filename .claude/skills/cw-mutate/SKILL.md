@@ -129,7 +129,6 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   aligning the edge it already sits on leaves the offset where it is.
 - **`_append_style_change`'s `and` as `or`.** `layout_style` is cached, so equal styles are the same object
   and the identity test already decides; they differ only after an eviction, which costs a redundant `SetStyle`.
-- **`MeasurableText.of`'s `text_cells(content, None)`.** Measuring reads only the cells' widths.
 - **`_measure_text`'s known height `None`, or either known dimension ignored.** Taffy uses a known dimension
   in place of the measured one (probed by running the suite with each variant patched in).
 - **Initial values the code never reads.** `_extract_words_and_spaces`'s `current_word = None`,

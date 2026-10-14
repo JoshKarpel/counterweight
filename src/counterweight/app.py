@@ -530,10 +530,7 @@ async def render_loop(
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
-                        (
-                            (element, layout, layouts.lines.get(key, ()))
-                            for key, element, layout in layouts.in_paint_order
-                        ),
+                        ((element, layout, lines) for _, element, layout, lines in layouts.in_paint_order),
                         w,
                         h,
                     )

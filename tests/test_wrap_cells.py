@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from counterweight.elements import StyledGrapheme, text_cells
+from counterweight.elements import Chunk, StyledGrapheme, styled_cells, text_cells
 from counterweight.layout import MeasurableText, wrap_cells
 from counterweight.styles.styles import CellStyle, TextWrap
 
@@ -291,3 +293,57 @@ def test_text_on_one_row_has_its_cells_as_that_row() -> None:
     (row,) = text.lines_at(10)
 
     assert row is text.cells
+
+
+BOLD = CellStyle(bold=True)
+
+
+def test_text_reuses_the_cells_of_each_line_the_previous_text_of_its_node_had() -> None:
+    previous = MeasurableText.of(("kept\nedited", BOLD, "stable"))
+    styled_cells.cache_clear()
+
+    text = MeasurableText.of(("kept\nedits", BOLD, "stable"), previous)
+
+    assert text.pieces[("kept\n", BOLD)] is previous.pieces[("kept\n", BOLD)]
+
+
+def test_text_reuses_the_cells_of_each_chunk_the_previous_text_of_its_node_had() -> None:
+    kept = Chunk(content="kept", style=BOLD)
+    previous = MeasurableText.of(((kept, Chunk(content="edited")), CellStyle(), "stable"))
+    styled_cells.cache_clear()
+
+    text = MeasurableText.of(((kept, Chunk(content="edits")), CellStyle(), "stable"), previous)
+
+    assert text.pieces[("kept", BOLD)] is previous.pieces[("kept", BOLD)]
+
+
+def test_text_keeps_only_the_cells_of_its_own_pieces() -> None:
+    previous = MeasurableText.of(("gone\nkept", BOLD, "stable"))
+
+    text = MeasurableText.of(("kept", BOLD, "stable"), previous)
+
+    assert set(text.pieces) == {("kept", BOLD)}
+
+
+def test_text_reuses_no_cells_of_a_previous_text_in_another_style() -> None:
+    previous = MeasurableText.of(("same", CellStyle(), "stable"))
+
+    text = MeasurableText.of(("same", BOLD, "stable"), previous)
+
+    assert text.cells == text_cells("same", BOLD)
+
+
+LINES = st.lists(
+    st.sampled_from(["a", "b c", "\n", "\r\n", "\N{LINE SEPARATOR}", "\N{COMBINING ACUTE ACCENT}"]), max_size=8
+).map("".join)
+
+
+@given(previous=LINES, content=LINES)
+def test_a_text_built_from_a_previous_one_has_the_cells_of_its_own_content(previous: str, content: str) -> None:
+    text = MeasurableText.of((content, BOLD, "stable"), MeasurableText.of((previous, BOLD, "stable")))
+
+    assert text.cells == text_cells(content, BOLD)
+
+
+def test_texts_of_one_equal_line_share_their_cells() -> None:
+    assert MeasurableText.of(("same", BOLD, "stable")).cells is MeasurableText.of(("same", BOLD, "none")).cells

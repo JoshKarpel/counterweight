@@ -6,7 +6,7 @@ from hypothesis import strategies as st
 
 from counterweight.elements import Chunk, StyledGrapheme, Text
 from counterweight.graphemes import graphemes, visible
-from counterweight.styles import Style
+from counterweight.styles import CellStyle, Style
 
 
 def test_texts_have_no_children() -> None:
@@ -57,6 +57,15 @@ def test_chunk_space() -> None:
 
 def test_chunk_newline() -> None:
     assert Chunk.newline() == Chunk(content="\n")
+
+
+def test_chunk_cells_are_its_clusters_in_its_style() -> None:
+    bold = CellStyle(bold=True)
+
+    assert Chunk(content="hé", style=bold).cells == (
+        StyledGrapheme(grapheme="h", style=bold),
+        StyledGrapheme(grapheme="é", style=bold),
+    )
 
 
 def test_text_cells_are_grapheme_clusters() -> None:
@@ -124,5 +133,5 @@ LINE_BREAKS_AND_CLUSTERS = st.lists(
 
 
 @given(content=LINE_BREAKS_AND_CLUSTERS)
-def test_text_cells_are_the_clusters_of_the_whole_content_though_cached_line_by_line(content: str) -> None:
+def test_text_cells_are_the_clusters_of_the_whole_content_though_built_line_by_line(content: str) -> None:
     assert [cell.grapheme for cell in Text(content=content).cells] == [visible(g) for g in graphemes(content)]

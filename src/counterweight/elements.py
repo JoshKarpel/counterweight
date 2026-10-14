@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import chain
@@ -34,7 +35,7 @@ class Chunk:
 
     @property
     def cells(self) -> tuple[StyledGrapheme, ...]:
-        return _chunk_cells(self.content, self.style)
+        return styled_cells(self.content, self.style)
 
     @classmethod
     def space(cls) -> Chunk:
@@ -109,26 +110,31 @@ class _StyledGraphemes(dict[str, StyledGrapheme]):
         return cell
 
 
-def _styled_graphemes(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
+@lru_cache(maxsize=2**12)
+def styled_cells(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    """
+    The grapheme clusters of `content`, each styled with `style`.
+
+    Cached because short pieces of text, such as a table's values, recur across texts and frames.
+    Layout asks for a one-line text's cells, and for the pieces a longer text doesn't already have
+    from its previous version (see `MeasurableText.of`), so a long text being edited asks for the pieces the edit touched,
+    not every piece every frame.
+    """
     return tuple(map(_StyledGraphemes(style).__getitem__, graphemes(content)))
 
 
-@lru_cache(maxsize=2**12)
-def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
-    return _styled_graphemes(content, style)
-
-
-def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
+def text_pieces(content: str | tuple[Chunk, ...], text_style: CellStyle) -> Iterator[tuple[str, CellStyle]]:
     """
-    The styled grapheme clusters of a `Text`'s content.
-
-    A string's are cached line by line, not whole, so a long text that changes, such as a document being edited,
-    rebuilds only the lines that changed, and the cache holds its lines rather than every version of it.
+    A `Text`'s content as pieces whose cells, laid end to end, are its cells: each chunk, or each line of a string.
+    Layout keeps each text's cells by piece, so a long text that changes, such as a document being edited,
+    rebuilds only the pieces that changed.
     A line break always ends a grapheme cluster, so splitting at them splits no cluster.
     """
     if isinstance(content, str):
-        if "\n" not in content and "\r" not in content:
-            return _chunk_cells(content, text_style)
-        return tuple(chain.from_iterable(_chunk_cells(line, text_style) for line in content.splitlines(keepends=True)))
-    else:
-        return tuple(cell for chunk in content for cell in chunk.cells)
+        return ((line, text_style) for line in content.splitlines(keepends=True))
+    return ((chunk.content, chunk.style) for chunk in content)
+
+
+def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    """The styled grapheme clusters of a `Text`'s content."""
+    return tuple(chain.from_iterable(styled_cells(*piece) for piece in text_pieces(content, text_style)))
