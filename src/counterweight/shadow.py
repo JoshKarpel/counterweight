@@ -18,7 +18,7 @@ from counterweight.clock import BEGINNING, Instant
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
-from counterweight.focus import ElementHandle
+from counterweight.focus import ElementHandle, FocusHandle
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseFocus
 from counterweight.layout import Layouts
@@ -80,7 +80,10 @@ class ShadowTree:
     handled: Mapping[ElementHandle, NodeKey] = field(init=False, repr=False, compare=False)
     """The key of each element given a `handle`, hidden ones included, by its handle."""
     focusable: Mapping[NodeKey, UseFocus] = field(init=False, repr=False, compare=False)
-    """The `use_focus` hook of each node whose last run called `use_focus`, hidden ones included, in pre-order."""
+    """
+    The `use_focus` hook of each node whose last run called `use_focus`, hidden ones included, in pre-order.
+    Building the tree raises `DuplicateFocusHandle` if two of them share a handle.
+    """
     clocked: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
     """The nodes that call `use_clock`, which a node does on every run if it does on any."""
 
@@ -91,6 +94,7 @@ class ShadowTree:
         scroll_readers = []
         handled: dict[ElementHandle, NodeKey] = {}
         focusable = {}
+        focus_handles: set[FocusHandle] = set()
         clocked = []
         for node in self.root.walk():
             by_key[node.key] = node
@@ -107,8 +111,14 @@ class ShadowTree:
                         "Give each element its own, such as from its own use_state(ElementHandle)."
                     )
                 handled[handle] = node.key
-            if node.hooks.focus is not None:
-                focusable[node.key] = node.hooks.focus
+            if (focus := node.hooks.focus) is not None:
+                if focus.handle in focus_handles:
+                    raise DuplicateFocusHandle(
+                        f"Two mounted components were given the same FocusHandle, {focus.handle!r}. "
+                        "Give each focusable component its own, such as from its own use_state(FocusHandle)."
+                    )
+                focus_handles.add(focus.handle)
+                focusable[node.key] = focus
             if node.hooks.clocks:
                 clocked.append(node)
 
@@ -153,6 +163,10 @@ class ShadowUpdate:
 
 class DuplicateElementHandle(Exception):
     """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
+
+
+class DuplicateFocusHandle(Exception):
+    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
 
 
 class DuplicateKey(Exception):

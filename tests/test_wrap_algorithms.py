@@ -1,6 +1,6 @@
 """
 The balance and pretty wrapping algorithms, checked against slow reference implementations
-on paragraphs of words that each take at least one cell.
+on paragraphs of words, including words of zero-width clusters.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from counterweight.styles.styles import CellStyle
 
 type Line = list[StyledGrapheme]
 
-words = st.text(alphabet="ab日", min_size=1, max_size=5)
+words = st.text(alphabet="ab日\u200b", min_size=1, max_size=5)
 
 
 @st.composite
@@ -65,6 +65,12 @@ def test_greedy_line_count_counts_the_lines_wrapping_at_the_target_makes(
     )
 
 
+def test_greedy_line_count_counts_the_space_after_a_line_of_only_zero_width_words() -> None:
+    _, word_widths, flat_spaces = flattened(cells("\u200b a"), 1)
+
+    assert _greedy_line_count(word_widths, flat_spaces, 1) == 2
+
+
 def reference_balance(paragraph: Line, width: int) -> list[Line]:
     """The greedy wrap at the narrowest target that takes no more lines than wrapping at `width`."""
     flat_words, word_widths, flat_spaces = flattened(paragraph, width)
@@ -81,6 +87,7 @@ def reference_balance(paragraph: Line, width: int) -> list[Line]:
 @settings(deadline=None)
 @given(paragraph=paragraphs(), width=widths)
 @example(paragraph="a a a a a 日", width=3)
+@example(paragraph=" \u200b 日日  日", width=7)
 def test_balance_wraps_at_the_narrowest_target_that_keeps_the_line_count(paragraph: str, width: int) -> None:
     assert text(_wrap_balance(cells(paragraph), width)) == text(reference_balance(cells(paragraph), width))
 

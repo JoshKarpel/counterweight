@@ -61,7 +61,7 @@ BEYOND_THE_SCREEN = Region(left=-9, top=-9, right=9, bottom=9)
 def grid(paint: Paint) -> list[str]:
     """Each row of `paint`, with `.` for a blank cell and `·` for a continuation cell."""
     return [
-        "".join("." if cell is BLANK else "·" if cell.is_continuation else cell.grapheme for cell in row)
+        "".join("." if cell == BLANK else "·" if cell.is_continuation else cell.grapheme for cell in row)
         for row in paint.rows()
     ]
 
@@ -139,6 +139,22 @@ def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen(x: int, expe
     paint = Paint.blank(4, 1)
     paint.write_row(x, 0, (X, WIDE, CONTINUATION), paint.bounds)
     assert grid(paint) == expected
+
+
+@pytest.mark.parametrize(
+    ("x", "row", "expected"),
+    [
+        (-1, (WIDE, CONTINUATION, X, Y), [Cell(" ", BLUE), X, Y, BLANK]),
+        (1, (X, Y, WIDE, CONTINUATION), [BLANK, X, Y, Cell(" ", BLUE)]),
+    ],
+    ids=["clips-left-half", "clips-right-half"],
+)
+def test_write_row_erases_the_half_of_a_wide_cluster_left_on_screen_in_its_own_style(
+    x: int, row: tuple[Cell, ...], expected: list[Cell]
+) -> None:
+    paint = Paint.blank(4, 1)
+    paint.write_row(x, 0, row, paint.bounds)
+    assert paint.cells == expected
 
 
 def test_write_row_overhanging_the_left_edge_leaves_the_row_above_alone() -> None:
@@ -255,7 +271,7 @@ def test_copy_is_independent() -> None:
     paint = Paint.blank(2, 1)
     copy = paint.copy()
     copy[0, 0] = X
-    assert paint[0, 0] is BLANK
+    assert paint[0, 0] == BLANK
 
 
 def test_items_pairs_cells_with_positions_row_by_row() -> None:

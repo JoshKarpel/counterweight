@@ -91,6 +91,25 @@ def test_intersection(other: Region, expected: Region | None) -> None:
     assert other.intersection(REGION) == expected
 
 
+@pytest.mark.parametrize(
+    "other",
+    [
+        Region(left=3, top=4, right=8, bottom=9),
+        Region(left=2, top=5, right=8, bottom=9),
+        Region(left=2, top=4, right=7, bottom=9),
+        Region(left=2, top=4, right=8, bottom=8),
+        Region(left=3, top=5, right=7, bottom=8),
+    ],
+    ids=["sharing-left-edge", "sharing-top-edge", "sharing-right-edge", "sharing-bottom-edge", "equal"],
+)
+def test_intersection_with_a_region_containing_it_is_the_region_itself(other: Region) -> None:
+    assert REGION.intersection(other) is REGION
+
+
+def test_intersection_of_an_empty_region_with_a_region_containing_it_is_none() -> None:
+    assert Region(left=4, top=6, right=4, bottom=7).intersection(REGION) is None
+
+
 def test_adding_positions_adds_each_coordinate() -> None:
     assert Position(x=3, y=5) + Position(x=11, y=17) == Position(x=14, y=22)
 

@@ -6,11 +6,8 @@ description: Mutation testing workflow for the counterweight project with mutmut
 # Counterweight Mutation Testing
 
 mutmut mutates all of `src/counterweight` (configured under `[tool.mutmut]` in `pyproject.toml`).
-Every module outside `counterweight.headless`, `counterweight.widgets`, `counterweight.markdown`
-and `counterweight.highlighting` has no survivors beyond the equivalents listed below,
-so a new survivor there is a test hole (or a new equivalent to argue for and add here).
-Those four haven't been triaged: run their globs, kill what's a test hole,
-and list the equivalents under a heading of their own.
+Every module has no survivors beyond the equivalents listed below,
+so a new survivor is a test hole (or a new equivalent to argue for and add here).
 
 ## Run it
 
@@ -21,7 +18,7 @@ uv run mutmut results                         # what survived
 uv run mutmut show <mutant>                   # one mutant's diff
 ```
 
-A full cold run takes about 35 minutes on 2 CPUs, most of it in `app.render_loop`,
+A full cold run takes about 70 minutes on 2 CPUs, most of it in `app.render_loop`,
 whose mutants each re-run every app-level test.
 When working on the state modules, pass their globs to skip the rest.
 
@@ -40,10 +37,18 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
   `paint.justify_line` and the wrap helpers sit behind `text_lines`, `CellStyle.__post_init__` behind its flyweight.
   `tests/conftest.py` empties every counterweight `lru_cache` (flyweights included) at the start of each worker.
-  A new cache needs nothing extra, but a test that relies on a cached object's identity across tests will fail
-  under mutmut only.
+  It also empties them before every test in mutmut's stats pass, which maps each function to the tests that run it,
+  so a function behind a cache is mapped to every test that reaches it, not just the first to miss.
+  A new cache needs nothing extra, but a test that compares a cached object by identity with one built before
+  the caches were emptied (`cell is BLANK`, where `Cell` is a flyweight) fails in every mutmut worker,
+  counting every mutant it reaches as killed. Compare such values by equality.
 - **The baseline runs each test twice in one process** (the stats pass, then the clean run),
   so state a test leaves in a module or class, like a `ClassVar` list it appends to, has to be reset by the test.
+- **Code that runs at import never runs under a mutant.** mutmut imports the source in its parent process,
+  so a module-level table built by calling a function (`input_parsing`'s `ALT_KEYS` and `SEQUENCE_KEYS`,
+  `text_editing`'s `KEY_EDITS`, `markdown`'s `PARSER` patched by `wrap_gfm_autolink_rules`) is built by the unmutated
+  function, and tests that only read the table can't see that function's mutants.
+  Test such a function by calling it directly (`sequence_keys()`, `move_to(word_start)`), as its own contract.
 - **Decorators run before any mutant does.** mutmut imports the test modules in its parent process,
   so a module-level `@component` runs the unmutated `component`.
   A test that pins what a decorator builds has to apply it inside the test body.
@@ -73,9 +78,19 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **Diagnostic prose.** `XX` wraps and case changes of the fixed sentences in `InconsistentHookExecution`
   (`update_node`), `ImpureComponent` (`check_is_pure`), `StaleMemo` (`Hooks.use_memo`),
-  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`, `scroll_on_keys`' `ValueError`,
+  `place`'s `ValueError` for a `Text` whose overflow is `Scroll`, the `ValueError`s of `scroll_on_keys`,
+  `scroll_on_wheel` and `focus_receiver_on_press`, `use_focus`'s `DuplicateUseFocus` and `ChangedFocusHandle`,
+  `ShadowTree`'s `DuplicateElementHandle` and `DuplicateFocusHandle`, `render_loop`'s `UnsettledFocus`,
   the exception groups of `cancel_tasks`, and `teardown_failure`'s `RuntimeError`.
-  Tests pin what each message names (the component, the hook types, the key, the size), not its wording.
+  Tests pin what each message names (the component, the hook types, the key, the size, the handles), not its wording.
+- **`case _: return None` dropped** from a function that returns `None` without it:
+  `on_click`, `tab_focus`, `focus_on_press`, `focus_receiver_on_press`, `clear_focus`,
+  `use_text_input`'s and `use_text_area`'s `on_press`, `key_scroll`, and `JoinedBorderParts.select`.
+- **`ScrollIntoView` without `inline="nearest"`**, in `focus_into_view` and `use_text_input`'s `on_input` and `on_press`:
+  `inline` defaults to `"nearest"`. Dropping `block="nearest"` is killed, since `block` defaults to `"start"`.
+- **`key is None` guards disabled where the lookup misses `None` anyway**: `scroll_in`'s
+  (`layouts.scrolls.get(None, NO_SCROLL)`) and `captured`'s `press.captor is None`
+  (`deliver` finds no handler for `None`). Both are keyed by `NodeKey`; the guards narrow the type for the checker.
 
 ### State
 
@@ -91,6 +106,9 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **Truthiness swaps.** `unmount`'s `is_mounted = None`, `update_shadow`'s `check_purity=None`,
   and `equivalent_within`'s `case _: return False` dropped (returning `None`):
   each value is only ever read for truthiness.
+- **`Hooks.use_focus`'s `hook.auto_focus = None` on a later run.** `reconciled_focus` reads `auto_focus` only for
+  the nodes an update mounted, which created their hook in that update, and a purity re-run writes to a detached copy,
+  so the value a later run stores is never read.
 - **`Hooks.use_effect`'s initial `deps=None`** instead of `(object(),)`.
   `handle_effects` reruns an effect whose `new_deps` is `None` or differs from `deps`,
   and `None` differs from every tuple, so a mounting effect runs either way.
@@ -98,7 +116,13 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 ### App
 
 - **`render_loop`'s truthiness swaps.** `should_quit`, `should_bell` and `should_render` set to `None`,
-  `should_suspend` set to `""`, and `events = None` after a timeout: each is only read for truthiness.
+  `should_suspend` set to `""`, `events = None` after a timeout, `is_suspended = None`, `should_clear = None`
+  after a frame, and `FocusPrevious`'s `is_forward=None`: each is only read for truthiness.
+- **`render_loop`'s initial `should_clear`, `None` or `False`.** `handle_screen_size_change` sets it to `True`
+  before the first frame reads it, and the `finally` block never reads it.
+- **The warmup's pending scroll when nothing is focused** (`(focused is None) and False`, queueing
+  `focus_into_view(None)`): `scroll_requests` drops a control whose `Subtree` key is `None`,
+  and the first frame clears `pending_scrolls`.
 - **`handle_control`'s `case None: pass` dropped.** A `match` with no matching case does nothing.
 - **`Dummy()` replaced by `None` in the event queue.** It only wakes the loop, and `None` matches no case either.
 - **The available size, `None` or dropped**, in `render_loop` (warmup and frames) and `LayoutTree.compute`.
@@ -108,15 +132,59 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **The warmup's `instant=read_clock()` dropped** (reading `BEGINNING`). `use_clock` uses its mount reading
   only through its monotonic time, which is zero at the start either way,
   and the first painted frame's wall time is in a later tick, so it takes a fresh reading.
-- **`focus_into_view` without `inline="nearest"`.** `ScrollIntoView`'s `inline` defaults to `"nearest"`.
 - **`layout_changes(None, shadow)` in place of the previous shadow.** Every node is created again,
   which lays out the same; it only throws away taffy's cached layout.
 
 ### Input
 
-- **`on_click`'s `case _: return None` dropped.** The handler returns `None` without it.
+- **`sequence_keys`' `\x1B` for `\x1b`**: a hex escape's case doesn't change the byte.
+- **`parse_input`'s initial `Step(end=None)` or `Step(end=1)`**: the loop replaces `step` before reading its `end`,
+  and after the loop only its `paste_searched` is read, which is `None` either way.
+- **`parse_input`'s `(paste_searched or 1)` and `else 1`**: `max` clamps any count up to
+  `len(PASTE_START) + len(PASTE_END) - 1` to the start of the paste's text, so 0 and 1 search from the same place.
+- **`parse_escaped_sequence`'s `end` when it finds no event** (`start ± 1`, `start + 2`, `None`), and its
+  `events=(None,)` for an unknown sequence: its only caller, `parse_alt`, reads that `end` only to compare it with
+  `following`, which none of them equal, and `(None,)` matches its `case (KeyPressed(...), *rest)` no more than `()`
+  does, so either way `parse_alt` returns Escape and `end=following`.
+- **The codec name `"UTF-8"`** in `parse_paste` and `parse_text`: codec lookup ignores case.
+- **`read_keys`' `is_final=None`**: `parse_input` and its helpers read `is_final` only for truthiness.
+- **`put_parsed_keys`' `paste_searched=None` or dropped** in its call to `parse_input`: the count only saves work.
+  By `parse_input`'s contract the bytes it skips can't hold the paste's end, so searching them again finds the same.
+  Dropping the count `KeyReader` stores is killed, since tests read that state.
 - **`read_keys`'s read size grown** (`3**10`, `2**11`): a burst longer than 1024 bytes is all a test could
   use to tell, and how a burst splits across reads isn't a contract. Shrinking it (`2 * 10`) is killed.
+
+### Headless components
+
+- **`line_start_at`'s `rfind("\n", None, offset)`**: `str.rfind` reads a `None` start as 0.
+- **`blank_separated_word_start`'s first loop at `position >= 0`.** At 0, `previous_cluster` returns 0,
+  so the slice is empty and `"".isspace()` is false, which stops the loop as `> 0` does.
+- **`line_rows`' `zip(..., strict=True)`** dropped, `False` or `None`: the second sequence is `starts[1:]`
+  plus the line's end, so it's always as long as `starts`.
+- **`drawn`'s `row.start <= cursor <= row.end`** only adds the end of a soft row, which the row after it
+  also matches (it starts there), and that later match overwrites `cursor_row`.
+- **`drawn`'s `after_cursor` guard as `or True` or `<=`.** At the end of the cursor's row, `at_cursor` is the
+  one-cell space, and `value[cursor + 1 : cursor]` is empty.
+- **`use_text_input`'s and `use_text_area`'s initial `EditableText(value=None, ...)`.** The state is only read
+  through `following(value)`, which for a text whose value differs returns `EditableText(value, len(value), None)`,
+  exactly the initial text.
+
+### Markdown and highlighting
+
+- **`block`'s and `span`'s `case _` dropped, and their `ValueError(None)`**: `PARSER` enables no rule that makes
+  any other block or inline span, so the arm never runs (it's `# pragma: no cover` for the same reason).
+- **`block`'s `split(maxsplit=2)` for a fence's info string**: `fenced_code` reads only the first word,
+  and whether there is one.
+- **Lexer names in another case, and `"XXtextXX"`** (`"YAML"` in `block`, `"TEXT"` and `"XXtextXX"` in `fenced_code`):
+  Pygments looks lexers up by lowercased alias, and an unknown name raises `ClassNotFound`,
+  which `fenced_code` answers with the same `"text"` block.
+- **`fill(2)` on display math beside its label, and `grow(2)` on a list item's column**: each is the only
+  growing child of its row, so it takes all the free space whatever its factor.
+- **`alert`'s title spans with `styles=None`**: markdown-it writes the title as the alert's kind, one text token,
+  and `span` reads no style for text.
+- **`zip(..., strict=True)` dropped, `False` or `None`, in `wrap_gfm_autolink_rules`, `list_block` and `footnotes`**:
+  markdown-it's default rule chain holds every enabled rule, so it's as long as `get_active_rules()`,
+  and list markers and footnote numbers are built one per item and one per footnote.
 
 ### Layout
 
@@ -133,7 +201,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **`_measure_text`'s known height `None`, or either known dimension ignored.** Taffy uses a known dimension
   in place of the measured one (probed by running the suite with each variant patched in).
 - **Initial values the code never reads.** `_extract_words_and_spaces`'s `current_word = None`,
-  `_greedy_line_count`'s `length = None` and `pending_space_len` (`None`, `1`, or `1` after the last word),
+  `_greedy_line_count`'s initial `length` and `pending_space_len` (`None`, `1`, or `1` after the last word),
   and `_wrap_at_target`'s `current_width` (`None`, `1`) and `pending_space = None`:
   each is replaced, or read only for truthiness, before anything else reads it.
 - **`_wrap_at_target`'s `zip(..., strict=True)`** dropped, `False` or `None`: the widths are built from the words.
@@ -141,8 +209,6 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   (`i > 0 or True`, `i >= 0`), and `cells_width(word) >= width`. A word exactly `width` wide breaks into itself,
   the first word's first chunk is never preceded by a space, and a chunk that isn't a word's last leaves less room
   than the next chunk's first cluster needs, so no line ever holds two chunks of one word.
-- **`_break_long_word`'s `room` at width 1** (`width > 1 or True`, `width >= 1`): a room of 0 takes one
-  cluster per chunk without a hyphen, as a room of 1 does.
 - **`_wrap_balance`'s `k < 1`** sends a one-line paragraph through the search, which finds the full width again,
   and its `/` midpoint leaves the target strictly between the answer and the answer plus one,
   which wraps the same since cell widths are whole.
@@ -157,11 +223,15 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **`Paint.write_row`'s `x <= low`.** At `x == low`, `skip` is 0 either way.
 - **`justify_line`'s `space < 0`.** Padding by zero spaces returns the same line.
-- **`svg`'s `"0.2F"` format, its dropped empty `style` attributes, and `0 / x_mul`**: they render identically.
+- **`svg`'s `"0.2F"` format, its dropped empty `style` attributes, and `0 / x_mul` and `0 / y_mul`**: they render identically.
+- **`paint_element`'s `resolved.visible is resolved.border` disabled (`and False`).** `visible` is
+  `border.intersection(clip)`, which is `border` itself only when the clip contains the non-empty border box,
+  and every corner `border_fills` returns is a cell of that box, so filtering them by `clip.contains` keeps them all.
+- **`paint_element`'s `lines = None` for a `Div`**: a `Div`'s lines are only read through `not lines`.
+- **`paint_element`'s `child_clip(clip, None, ...)`**: with `clip_to="padding"`, `child_clip` never reads `screen`.
 - **`paint_to_instructions`'s initial `style = ""`.** It differs from every cell's style, as `None` does.
 - **`CellStyle` and `ResolvedCellStyle`'s `hash(None)`.** Every instance hashing alike only slows caches;
   equality still decides.
-- **`JoinedBorderParts.select`'s `case _: return None` dropped.** The function returns `None` without it.
 
 ### Styles
 

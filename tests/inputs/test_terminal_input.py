@@ -49,6 +49,21 @@ def test_input_control_turns_off_echo_and_line_buffering_and_reads_each_byte_at_
     assert cc[termios.VTIME] == 0
 
 
+@pytest.mark.parametrize("translation", [termios.ICRNL, termios.INLCR, termios.IGNCR])
+def test_input_control_turns_off_each_line_ending_translation(terminal: Terminal, translation: int) -> None:
+    attributes = terminal.settings()
+    iflag = attributes[0]
+    assert isinstance(iflag, int)
+    attributes[0] = iflag | translation
+    termios.tcsetattr(terminal.stream, termios.TCSANOW, attributes)
+
+    start_input_control(terminal.stream)
+
+    during = terminal.settings()[0]
+    assert isinstance(during, int)
+    assert not during & translation
+
+
 def test_stopping_input_control_restores_the_original_attributes(terminal: Terminal) -> None:
     before = terminal.settings()
 
@@ -190,6 +205,15 @@ async def test_held_input_waits_as_long_as_its_kind_needs(
 
     assert timer is not None
     assert timer.when() - get_running_loop().time() == pytest.approx(timeout.total_seconds(), abs=0.04)
+
+
+async def test_a_held_paste_keeps_how_much_of_it_was_searched_for_its_end(
+    terminal: Terminal, key_reading: KeyReading
+) -> None:
+    os.write(terminal.keyboard, b"\x1b[200~abc")
+    await next_in(key_reading.records)
+
+    assert key_reading.reader.paste_searched == len(b"\x1b[200~abc")
 
 
 async def test_stopping_reading_keys_stops_the_event_loop_reading_the_stream(

@@ -1,5 +1,7 @@
 from collections.abc import Sequence
 
+import pytest
+
 from counterweight import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot, ScrollBy
@@ -24,6 +26,7 @@ from counterweight.styles.utilities import (
     overflow_y_scroll,
     pad_x,
     row,
+    text_color,
     width,
 )
 from counterweight.widgets import TextFieldStyles, text_area, text_input
@@ -260,6 +263,22 @@ async def test_text_input_style_merges_over_the_unfocused_border_color() -> None
     frame = await screenshot(field(initial="hi", auto_focus=False, style=border_color("red", 500)))
 
     assert next(frame.paint.rows())[0].style.foreground == border_color("red", 500).border_style.foreground
+
+
+@pytest.mark.parametrize(
+    ("is_focusable", "color"),
+    [(True, text_color("red", 500)), (False, TextFieldStyles().unfocusable_box)],
+)
+async def test_text_input_style_merges_under_the_unfocusable_box_style_while_it_is_not_focusable(
+    is_focusable: bool, color: Style
+) -> None:
+    frame = await screenshot(
+        field(initial="hi", auto_focus=False, is_focusable=is_focusable, style=text_color("red", 500))
+    )
+
+    _, middle, _ = frame.paint.rows()
+
+    assert middle[2].style.foreground == color.text_style.foreground
 
 
 async def test_text_input_draws_its_box_cursor_and_placeholder_with_the_given_styles() -> None:

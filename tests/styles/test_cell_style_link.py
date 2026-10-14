@@ -13,7 +13,10 @@ from counterweight.styles.styles import resolve_cell_style
         "https://example.com/a%20b?q=1;r=2#frag",
         "mailto:someone@example.com",
         "file:///tmp/x.txt",
+        "file:///tmp/a b.txt",
+        "https://example.com/~user",
     ],
+    ids=["https", "escaped", "mailto", "file", "space", "tilde"],
 )
 def test_printable_ascii_link_is_accepted(link: str) -> None:
     assert CellStyle(link=link).link == link
