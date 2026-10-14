@@ -19,7 +19,7 @@ They differ in everything about input and lifetime:
 | --- | --- | --- |
 | The program | expected to exit, successfully or not | interactive, running as long as its pane |
 | Starts | when the app calls `run(argv)`, from a key press or an effect on mount | when the pane mounts |
-| Input | none: stdin is `/dev/null`, and `PAGER=cat` by default | key presses, pastes and mouse events, re-encoded as the bytes a terminal sends |
+| Input | none: stdin is `/dev/null`, and `PAGER=cat` and `GIT_PAGER=cat` by default | key presses, pastes and mouse events, re-encoded as the bytes a terminal sends |
 | Focus | none | focusable, with handlers such as a prefix key put before its own |
 | Shows | the transcript: everything printed, scrollback then the screen | the current screen, with its cursor |
 | Size | width fixed when the run starts and `rows` a knob (24), growing with its output and scrolling | its box's size, with a resize sending the program `SIGWINCH` |
@@ -36,7 +36,7 @@ It lands in six phases, each of which stands alone:
 | 1. [Canvas](#phase-1-canvas) | the element, painters, and pixel images | |
 | 2. [Emulator](#phase-2-emulator) | a terminal emulator behind `Emulator` and `Screen`, and the screen painter | 1 |
 | 3. [Pseudo-terminals](#phase-3-pseudo-terminals) | `use_pty`: a program on a PTY, its output, its exit, and resizing | |
-| 4. [One-shot commands](#phase-4-one-shot-commands) | `use_command`, the transcript painter, and a widget | 1, 2, 3 |
+| 4. [One-shot commands](#phase-4-one-shot-commands) | `use_command`, the transcript painter, a widget, and `use_rects(handle)` | 1, 2, 3 |
 | 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input, focusing a new component, and modal keys | |
 | 6. [Embed](#phase-6-embedding-terminals) | input encoding, `use_terminal`, and a `terminal` widget | 1, 2, 3, 5 |
 
@@ -113,6 +113,9 @@ type Rows = Sequence[Sequence[StyledGrapheme]]  # top to bottom, each from the c
 class Painter(Protocol):
     @property
     def natural_size(self) -> tuple[int, int]: ...  # (columns, rows): the intrinsic size
+
+    @property
+    def keeps_aspect_ratio(self) -> bool: ...  # whether a box sized on one axis takes the other from natural_size
 
     def draw(self, width: int, height: int) -> Rows: ...  # the content box's size -> rows of styled graphemes
 
@@ -222,6 +225,10 @@ Two changes complete the replaced-element model:
   most likely by giving its taffy node an `aspect_ratio` when the style doesn't set one,
   so that taffy also applies the ratio through min and max sizes.
   That taffy does this for leaf nodes with a measure function needs checking.
+  Only a picture has a ratio to keep, so a painter opts in with `keeps_aspect_ratio`:
+  `HalfBlocks` does, while a transcript (phase 4) or a plotter doesn't,
+  since a transcript stretched wider than its columns would otherwise grow taller by the same ratio,
+  padding itself with blank rows.
 - **A painter with no natural size.**
   Flutter and Compose default the intrinsic size to zero, and an invisible canvas is a known complaint.
   HTML's `<canvas>` defaults to 300×150.
@@ -327,6 +334,10 @@ class HalfBlocks:
     def natural_size(self) -> tuple[int, int]:
         return self.pixels.width, (self.pixels.height + 1) // 2
 
+    @property
+    def keeps_aspect_ratio(self) -> bool:
+        return True
+
     def draw(self, width: int, height: int) -> Rows: ...
 
     def pixels_at(self, cell: Position, width: int, height: int) -> tuple[Position, ...]: ...  # draw, inverted
@@ -339,14 +350,19 @@ pixels = Pixels.from_points(30, 30, {walker: color for walker, color in ...}, de
 Canvas(painter=HalfBlocks(pixels), style=border)  # 30x15 cells, from the painter
 
 image = PIL.Image.open(path)
-Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1))
+Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1) | min_width(0))
 ```
+
+Without `min_width(0)`, an image wider than the screen would floor its flex item at its intrinsic width
+(see [Sizing](#sizing)) and overflow the row rather than shrink to fit.
 
 `draw(width, height)` works in pixels until its last step:
 
 1. **Scale.**
-   The scale on each axis is the box's size over the natural size, both in cells,
-   so a box at the natural size draws the pixels 1:1 under every `fit`.
+   The scale on each axis is the box's size over the picture's size, both in pixels:
+   `width` over the pixel width, and `2 * height` over the pixel height.
+   Ratios in cells would be wrong for an odd pixel height, whose natural height rounds up half a cell:
+   a 1-pixel-tall picture under `fill` in a 10-row box would cover only its top 10 of 20 pixel rows.
    As with `object-fit`, `fill` scales each axis by its own ratio,
    `contain` uses the smaller ratio on both, `cover` the larger, `none` neither,
    and `scale-down` whichever of `none` and `contain` is smaller.
@@ -369,10 +385,12 @@ Canvas(painter=HalfBlocks(Pixels.from_image(image), fit="contain"), style=fill(1
    and two unset pixels make it a space.
 
 The default `fit` is `fill`, as `object-fit`'s is.
-Every `fit` is the identity at the natural size, so the default matters only when a style or a stretch sizes the box.
+For an even pixel height, every `fit` is the identity at the natural size,
+so the default matters only when a style or a stretch sizes the box.
 A row that stretches its children distorts a `fill` picture, as it does an `<img>` in a flex row, and `contain` keeps the ratio.
-An odd pixel height leaves the bottom half of the last row uncovered even at the natural size,
-so it's left unset (`utils.canvas` rejects odd heights instead).
+An odd pixel height has half a cell more box than picture even at the natural size:
+`fill` and `cover` stretch the picture over it, and `contain`, `none` and `scale-down` leave the bottom half of the last row unset
+(`utils.canvas` rejects odd heights instead).
 A `Pixels` built from `Color`s is opaque, since `Color` has no alpha;
 transparency arrives only through `from_rgba` and `from_image`.
 
@@ -413,12 +431,14 @@ Deferred, each for a different reason:
   several plausible designs, such as pure functions from shapes to `Pixels` or an immutable path builder,
   and no way yet to choose between them.
 - **Other cell encodings** (braille 2×4, quadrants 2×2, sextants 2×3):
-  each is another painter over the same `Pixels` with its own pixels per cell.
-  Scaling, placing and sampling are the same for each, and only the encoding differs,
-  so they're cheap once `HalfBlocks` exists, and best added together.
-  They trade color for resolution: a cell has two colors, which `HalfBlocks` spends one per pixel,
-  and the others share between four to eight pixels.
+  each is another painter over the same `Pixels`, scaled and placed as `HalfBlocks` is,
+  but each needs design work that `HalfBlocks` doesn't.
+  A cell has two colors, which `HalfBlocks` spends one per pixel,
+  and the others must split four to eight pixels between them.
+  A brightness threshold, the two most distant colors, and a split around the mean are all plausible,
+  with no way yet to choose between them.
   Quadrants also make pixels twice as tall as wide, so they need an aspect correction.
+  The color split is the same question for all three, so they're best designed together.
 
 ### Open decisions
 
@@ -442,7 +462,8 @@ Deferred, each for a different reason:
 ### Phase 1 work
 
 1. `Painter`, drawing `StyledGrapheme` rows that paint resolves against the element's `text_style`;
-   `Canvas`, taking its intrinsic size and aspect ratio from the painter; and the per-node paint cache.
+   `Canvas`, taking its intrinsic size from the painter, and its aspect ratio when the painter keeps one;
+   and the per-node paint cache.
 2. `counterweight.painters.pixels`: `Pixels`, and `HalfBlocks(pixels, fit, position)` with `pixels_at`.
 3. Port `examples/canvas.py`, `examples/mouse.py` (setting both pixels of a clicked cell)
    and the `canvas-element` benchmark, and deprecate `utils.canvas`.
@@ -581,14 +602,22 @@ A row then has one entry per grapheme, not per column,
 so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
 which would put it on the wrong cell after any wide character on its line.
 
+Paint measures each grapheme with counterweight's own `grapheme_width`, not libghostty's,
+and the program laid its line out by libghostty's.
+Where the two disagree (an emoji with a variation selector, a character newer than one of the width tables),
+the rest of the line would shift by a column, and paint drops a cluster it measures as zero wide, shifting it back.
+So the screen painter keeps one column per libghostty column:
+a cell libghostty draws two wide that `grapheme_width` measures as one gets a space after it,
+and a cell it draws one wide that `grapheme_width` measures as zero or two is drawn as a space.
+
 ### Phase 2 work
 
 1. Choose between `pyghostty` and an owned binding, against styled scrollback as well as what the spike needed,
    and add the dependency.
 2. `Emulator` and `Screen`, ported from the spike, with bounded color and style caches:
    the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
-3. The screen painter.
-4. Tests that feed bytes (colors, wide characters, the alternate screen, scrolling, query replies),
+3. The screen painter, keeping libghostty's column widths where `grapheme_width` disagrees.
+4. Tests that feed bytes (colors, wide characters and width disagreements, the alternate screen, scrolling, query replies),
    and a benchmark of snapshot cost.
 
 ## Phase 3: Pseudo-terminals
@@ -600,12 +629,36 @@ It knows nothing about emulators or painters, so it can be written alongside pha
   The child runs in its own session with the PTY as its controlling terminal,
   and a resize is `ioctl(TIOCSWINSZ)` on the master (see [Lifecycle](#background-how-terminal-multiplexers-work)).
   Cancelling the effect hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
+  A program can ignore `SIGHUP` (`nohup`, `trap '' HUP`), so if its group is still running after a grace period
+  (a knob, one second by default), it gets `SIGTERM`, and then `SIGKILL` after another,
+  so that no program outlives the effect that ran it.
 - **Writes never block.**
   Bytes the program isn't reading yet are buffered and flushed when the master is writable,
   so a handler that writes never blocks the event loop.
 - **Standard input.**
   An interactive program reads its keys from the PTY.
   A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice.
+  The child then can't make its controlling terminal from standard input, as the spike's `make_controlling_terminal` does
+  (`TIOCSCTTY` on fd 0): on `/dev/null` that fails with `ENOTTY`, so every one-shot spawn would fail.
+  It uses standard output, which is the PTY either way.
+- **The environment.**
+  A program gets the environment the app started with, the hook's defaults over that, and the caller's `env` over those:
+  `os.environ | defaults | env`, with later layers winning.
+  The defaults say what terminal the program is on (`TERM=xterm-256color`, `COLORTERM=truecolor`),
+  phase 4 adds its pager defaults, and a caller changes any of them through `env`.
+  Inheriting is the default because a program run without `PATH`, `HOME` or a locale rarely does what anyone wants.
+  Python's `subprocess` and Node's `spawn` replace the whole environment when given one,
+  which makes every caller write `os.environ | ...` and leaves no layer for defaults.
+  Deno's `Command` merges `env` over the inherited environment, and takes `clearEnv` to start from nothing.
+  The hooks follow Deno, with `clear_env=True` to drop the inherited layer,
+  so a docs screenshot doesn't depend on the environment of whoever generated it.
+  `env` can only add or override, so removing one inherited variable means `clear_env` and passing the rest.
+- **The size comes from the PTY, not the environment.**
+  The inherited layer drops `COLUMNS` and `LINES`, which describe the terminal the app was started from.
+  Some programs read them before asking the terminal:
+  Python's `shutil.get_terminal_size` does, so an inherited `COLUMNS=200` on a 77-column PTY formats for 200.
+  Setting them to the PTY's size would be right only until the embed resizes,
+  after which they'd be stale and still win, so the hooks leave the size to the PTY alone.
 
 The spike's `use_pty` needs hardening:
 
@@ -620,13 +673,16 @@ The spike's `use_pty` needs hardening:
   and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
   leaving the program at 0×0 until the pane's size next changes.
   Applying the latest size on connect closes that gap.
-- A configurable `TERM`.
+- The spike hardcodes `TERM` and `COLORTERM` over the inherited environment, and passes `COLUMNS` and `LINES` through;
+  the environment's layers above replace that.
 
 ### Phase 3 work
 
-1. `run_pty` and `use_pty`, with the choice of standard input and the hardening above.
+1. `run_pty` and `use_pty`, with the choice of standard input, the environment's layers, and the hardening above.
 2. Tests against real programs:
-   output, an exit status, a background job that holds the PTY open, an `argv` that doesn't exist, and a resize.
+   output, an exit status, a background job that holds the PTY open, an `argv` that doesn't exist, a resize,
+   standard input on `/dev/null`, cancelling a program that ignores `SIGHUP`,
+   and the environment (a default overridden by `env`, `clear_env`, and an inherited `COLUMNS` dropped).
 
 ## Phase 4: One-shot commands
 
@@ -657,7 +713,10 @@ The program sees a terminal, so it acts as it would on one:
 
 - Standard input is `/dev/null`, so a program that reads input gets end of file rather than waiting.
 - `git log` and other commands start a pager, which waits for keys that never come,
-  so the hook sets `PAGER=cat` unless `env` overrides it.
+  so the hook adds `PAGER=cat` and `GIT_PAGER=cat` to its defaults, which `env` can override
+  (see [the environment](#phase-3-pseudo-terminals)).
+  `PAGER` alone isn't enough for git, which prefers `GIT_PAGER` and the user's `core.pager` over it.
+  Other tools read their own variables (`MANPAGER`, `SYSTEMD_PAGER`), so the timeout stays the backstop.
 - Queries (CPR, DA) are answered from the emulator and written back to the PTY, as in the embed,
   so a program that asks its terminal something doesn't wait for a reply.
 - Anything else that waits ends when the run is cancelled or times out.
@@ -724,6 +783,7 @@ def use_command(
     columns: int,
     rows: int = 24,
     env: Mapping[str, str] | None = None,
+    clear_env: bool = False,
     timeout: timedelta | None = None,
     max_lines: int = 10_000,
 ) -> Command: ...
@@ -734,7 +794,8 @@ so a component can keep it in state, show it again, or show it beside the next r
 A slide runs its command when it's shown:
 
 ```python
-command = use_command(columns=use_rects().content.width)
+viewport, _ = use_state(ElementHandle)
+command = use_command(columns=use_rects(viewport).content.width)
 
 
 async def start() -> None:
@@ -744,19 +805,72 @@ async def start() -> None:
 use_effect(start, deps=(tuple(argv),))
 ```
 
+The widget that shows the run takes `viewport` for its `scroll_area`,
+so `use_rects(viewport)` measures the box the transcript fills (see [Measuring the box](#measuring-the-box)).
+
 - **`run` records a request in state, and an effect keyed on the request runs it.**
   Cancelling, starting another run, and unmounting all end that effect, which hangs the program up.
-- **The width is fixed when the run starts.**
-  The program formats its output for the PTY's columns, so `columns` is read when the run starts,
-  and a run requested before the box has a width (`use_rects` is zero on the first render) waits for one.
-  A later resize doesn't rewrap the transcript; running again at the new width is the caller's choice.
-- **`rows` is the height the program sees**:
-  what a live display sizes itself to, and how much output stays on the screen rather than in scrollback.
-  It defaults to 24, a fresh xterm's height, rather than the box's height,
-  because the transcript scrolls in its box, so the box isn't the program's screen.
 - **Cancelling is a key the app binds**, such as Escape.
   Until phase 5's raw input mode, Ctrl+C quits the whole app,
   and it never reaches the program, which runs in its own session.
+
+### How a run is sized
+
+A run has two sizes, and only the first comes from its box.
+The PTY's size is what the program formats its output for, and is fixed for the run.
+The transcript's size is how much the program has printed, and grows while it runs.
+
+```text
+the box's content width, when the run starts ──> columns ──┐
+rows, a knob (24) ─────────────────────────────> rows ─────┴──> the PTY, which the program formats for
+                                                                  │ output, through the emulator
+                                                                  v
+                                       Transcript: natural size (columns, lines printed)
+                                                                  │
+                                                                  v
+              Canvas: width from its parent, height = lines ──> scroll_area: shows what fits, scrolls the rest
+```
+
+- **`columns` is the PTY's width, read when the run starts.**
+  The program lays its output out for it (wrapping, tables, progress bars),
+  and a run requested before the box has a width (`use_rects` is zero on the first render) waits for one.
+  So the box has to take its width from its parent (a stretch, `fill`, or a styled width), never from its content:
+  the transcript's natural width is the run's `columns`, so a box sized by its content stays zero wide
+  and the run never starts.
+  The widget's docs say so.
+  A later resize doesn't rewrap the transcript: columns past the box's edge are clipped,
+  and running again at the new width is the caller's choice.
+- **`rows` is the PTY's height**, which the program sees and the transcript doesn't:
+  what a live display sizes itself to, and how tall a program that moves the cursor around its screen can draw.
+  The transcript holds scrollback and the screen alike, so `rows` doesn't bound its height.
+  It defaults to 24, a fresh xterm's height, rather than the box's height,
+  because the transcript scrolls in its box, so the box isn't the program's screen.
+- **The transcript's height is the lines printed.**
+  Its natural size is `(columns, lines)`, where `lines` counts scrollback then the screen,
+  with trailing blank rows dropped and at most `max_lines`.
+  Its canvas takes that height (the transcript keeps no aspect ratio, so a wider box doesn't make it taller),
+  and the `scroll_area` shows as many rows as fit and scrolls the rest, following the end while the program runs.
+
+#### Measuring the box
+
+`use_rects()` reports the calling component's own top element,
+but the box the transcript fills is the widget's `scroll_area`, a component of its own.
+So `use_rects` takes an optional handle, as `use_scroll` already does:
+`use_rects(handle)` reports the rects of the element that `handle` names,
+and `use_rects()` keeps reporting the caller's own top element.
+This is the web's answer: React measures an element through a ref and a `ResizeObserver`,
+not through the component's own root.
+
+It follows `use_scroll(handle)` in the details too:
+
+- A handle that named no visible element in the previous render reports the initial rects (all zero),
+  so a run requested before the widget mounts waits for its width, as it does on the first render.
+- The caller records the rects it read per handle, as `use_scroll` records scrolls,
+  and renders again when any of them move.
+- The handle comes from `use_state(ElementHandle)`, and the widget passes it on to its `scroll_area` as `viewport`.
+
+Without it, the slide example would measure the right box only when the widget was all that the calling component rendered.
+A fixed width, such as 80 with the box scrolling sideways, needs no new API: it's `columns=80`.
 
 ### Output: places in the effect, values in the render
 
@@ -778,9 +892,13 @@ The embed in phase 6 feeds its emulator the same way.
 - **The transcript is scrollback, then the screen**, with trailing blank rows dropped.
   A run's terminal never resizes, so a row that has scrolled into scrollback doesn't change again,
   and the transcript converts each row once.
-  A snapshot then costs the screen plus whatever scrolled since the last one,
-  and the emulator's scrollback only has to hold what a run prints between two snapshots.
+  A snapshot then costs the screen plus whatever scrolled since the last one.
   A runaway `yes` would grow the transcript without bound, so it keeps the last `max_lines` rows.
+  The emulator's scrollback has to hold what a run prints between two snapshots, which a timed snapshot doesn't bound:
+  `seq 1 300000` printed about 27,000 lines a frame in the spike.
+  So the emulator keeps at least `max_lines` rows of scrollback.
+  Anything that scrolls off it before a snapshot is then older than the last `max_lines` rows,
+  which the transcript would have dropped anyway, so no gap opens in its middle.
 - **The transcript is a painter with a natural size**, `(columns, lines)`,
   so it sizes its `Canvas` as an image does, and a `scroll_area` scrolls through it.
 - **Recorded output.**
@@ -790,14 +908,17 @@ The embed in phase 6 feeds its emulator the same way.
 
 ### Phase 4 work
 
-1. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
-2. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`, and the `PAGER` default.
-3. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
-   with its outcome beneath.
-4. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.
+1. `use_rects(handle)`, with tests and docs alongside `use_scroll(handle)`'s.
+   It stands alone, so it can land first.
+2. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
+3. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
+   (and scrollback to match), the pager defaults, and `clear_env`.
+4. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
+   with its outcome beneath, taking the `viewport` handle its caller measures.
+5. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.
    Docs with screenshots from `docs/examples/`, drawn from recorded output through `Transcript.of`.
-5. Tests against real programs (colors, a progress bar's last frame, a failing status, a program that doesn't exist,
-   cancelling and timing out a program that sleeps, and the pager default), to 100% coverage,
+6. Tests against real programs (colors, a progress bar's last frame, a failing status, a program that doesn't exist,
+   cancelling and timing out a program that sleeps, and the pager defaults), to 100% coverage,
    and a mutation testing pass over the new code.
 
 ## Phase 5: Framework fixes for the embed
@@ -880,6 +1001,8 @@ so nothing bubbles past it.
   `input_encoding.KEY_SEQUENCES` inverts `input_parsing`'s own tables, so the encoder and parser can't drift.
   Every `Key` round-trips through encode and parse, except `ctrl+h`, `ctrl+i` and `ctrl+m`
   (which terminals send as Backspace, Tab and Enter) and `shift+escape`.
+  `alt+space` needs its own case, `ESC` then a space:
+  `Key.Space`'s value is `" "`, so the spike's Alt rule looks up `space`, finds nothing, and drops the key.
   Cursor keys switch to `SS3` under DECCKM, which vim exercised.
   Where a key has several spellings, the encoder picks the one xterm sends, which is what `TERM=xterm-256color` promises:
   F1 to F4 are `SS3 P` to `SS3 S`, and Shift+F1 to F4 are `CSI 1 ; 2 P` and so on.
@@ -923,7 +1046,7 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
 ### Phase 6 work
 
 1. `input_encoding`: key presses, pastes and mouse events back to the bytes a terminal sends,
-   with xterm's spellings for F1 to F4, and a press outside the program's screen only focusing the pane.
+   with xterm's spellings for F1 to F4, `alt+space`, and a press outside the program's screen only focusing the pane.
 2. `use_terminal`, ported from the spike onto phases 2 and 3,
    using phase 5's fixes to drop the multiplexer's `ClearFocus` and closure-state workarounds.
    The multiplexer's `%` split reads `next_id` from its closure,
