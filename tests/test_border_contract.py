@@ -6,19 +6,18 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.elements import Div
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    border,
-    border_bottom,
-    border_contract,
-    border_left,
-    border_right,
-    border_top,
-    border_x,
-    size,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_bottom
+from counterweight.styles.utilities import border_contract
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_right
+from counterweight.styles.utilities import border_top
+from counterweight.styles.utilities import border_x
+from counterweight.styles.utilities import size
 
 
 async def render_box(sides: Style, contract: int) -> str:

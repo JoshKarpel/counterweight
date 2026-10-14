@@ -4,12 +4,20 @@ from __future__ import annotations
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, Screenshot, Suspend
-from counterweight.elements import Div, Text
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import Suspend
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.events import KeyPressed
+from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.output import Frame
-from counterweight.styles.utilities import border, border_collapse, row, size
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import size
 from tests.devlog import devlog_lines
 
 
@@ -101,3 +109,26 @@ async def test_the_devlog_counts_every_event_a_frame_handles() -> None:
         await app(counter(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="a"), Quit()])
 
     assert "DEBUG    counterweight.app Handled events num_events=2" in lines
+
+
+async def test_the_devlog_records_the_components_a_frame_runs_again_to_settle_focus() -> None:
+    @component
+    def label() -> Text:
+        focus = use_focus(auto_focus=True)
+        return Text(content="on" if focus.is_focused else "off")
+
+    @component
+    def mounts_on_key() -> Div:
+        is_mounted, set_mounted = use_state(False)
+        return Div(on_input=lambda event, _: set_mounted(True), children=(label(),) if is_mounted else ())
+
+    with devlog_lines() as lines:
+        await app(mounts_on_key(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="t"), Quit()])
+
+    frame = lines[lines.index("DEBUG    counterweight.app Handled events num_events=2") + 1 :][:4]
+    assert frame == [
+        "DEBUG    counterweight.app Updated shadow tree components_run=2",
+        "DEBUG    counterweight.app Calculated layout",
+        "DEBUG    counterweight.app Settled focus components_run=1",
+        "DEBUG    counterweight.app Generated new paint",
+    ]

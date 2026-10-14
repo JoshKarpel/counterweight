@@ -1,43 +1,51 @@
-from collections.abc import Callable, Sequence
+import sys
+from collections.abc import Callable
+from collections.abc import Sequence
 
 import pytest
 
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, FocusNext, Quit, Screenshot, ScrollTo
-from counterweight.elements import Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    Pasted,
-    Receiver,
-)
+from counterweight.controls import AnyControl
+from counterweight.controls import FocusNext
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollTo
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.geometry import Position
-from counterweight.handlers import first, on_click
-from counterweight.headless import ScrollArea, ScrollAxis, use_scroll_area
-from counterweight.hooks import ElementHandle, use_scroll, use_state
+from counterweight.handlers import first
+from counterweight.handlers import on_click
+from counterweight.headless import ScrollArea
+from counterweight.headless import ScrollAxis
+from counterweight.headless import use_scroll_area
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import use_scroll
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.styles.utilities import (
-    align_children_start,
-    col,
-    fill,
-    overflow_scroll,
-    overflow_x_hidden,
-    overflow_x_scroll,
-    overflow_y_clip,
-    overflow_y_scroll,
-    size,
-    stick_to_end_x,
-    stick_to_end_y,
-)
+from counterweight.styles.utilities import align_children_start
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import overflow_scroll
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_clip
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import stick_to_end_x
+from counterweight.styles.utilities import stick_to_end_y
 
 ROWS = tuple(f"row {i:02}" for i in range(20))
 # Each line names its columns, so a scroll sideways shows which column comes first.
@@ -182,7 +190,11 @@ async def test_keys_scroll_an_area_vertically(keys: tuple[Key, ...], offset: Pos
     assert areas[-1].scroll.offset == offset
 
 
-async def test_a_page_is_the_given_fraction_of_the_view() -> None:
+@pytest.mark.parametrize(
+    ("keys", "offset"),
+    [((Key.PageDown,), Position(0, 2)), ((Key.PageDown, Key.PageDown, Key.PageUp), Position(0, 2))],
+)
+async def test_a_page_is_the_given_fraction_of_the_view(keys: tuple[Key, ...], offset: Position) -> None:
     areas: list[ScrollArea] = []
 
     @component
@@ -200,10 +212,10 @@ async def test_a_page_is_the_given_fraction_of_the_view() -> None:
         area_component(),
         headless=True,
         dimensions=(20, 6),
-        autopilot=(KeyPressed(key=Key.PageDown), SETTLE, Quit()),
+        autopilot=(*frame_by_frame(*keys), Quit()),
     )
 
-    assert areas[-1].scroll.offset == Position(0, 2)
+    assert areas[-1].scroll.offset == offset
 
 
 async def test_a_page_that_is_not_positive_raises() -> None:
@@ -360,6 +372,20 @@ async def test_the_area_is_in_the_focus_order_unless_asked_not_to_be() -> None:
     assert (focusable[-1].focus.is_focused, out_of_order[-1].focus.is_focused) == (True, False)
 
 
+async def test_the_area_is_focusable_and_in_the_focus_order_by_default() -> None:
+    areas: list[ScrollArea] = []
+
+    @component
+    def area_component() -> Div:
+        area = use_scroll_area()
+        areas.append(area)
+        return Div(style=size(*SIZE) | area.style, handle=area.viewport, on_input=area.on_input)
+
+    await app(area_component(), headless=True, dimensions=(20, 6), autopilot=(FocusNext(), Quit()))
+
+    assert areas[-1].focus.is_focused
+
+
 async def test_is_at_end_is_true_while_the_content_fits() -> None:
     _, areas = await run((), content=ROWS[:2])
 
@@ -419,6 +445,26 @@ async def test_to_start_scrolls_the_area_to_its_start_on_its_axes(axis: ScrollAx
     _, areas = await run((*away, *pressed("s")), axis=axis, content=WIDE, compose=jump)
 
     assert areas[-1].scroll.offset == Position(0, 0)
+
+
+@pytest.mark.parametrize(
+    ("axis", "start", "end"),
+    [
+        ("y", (None, 0), (None, sys.maxsize)),
+        ("x", (0, None), (sys.maxsize, None)),
+        ("both", (0, 0), (sys.maxsize, sys.maxsize)),
+    ],
+)
+async def test_to_start_and_to_end_scroll_only_the_areas_axes(
+    axis: ScrollAxis, start: tuple[int | None, int | None], end: tuple[int | None, int | None]
+) -> None:
+    _, areas = await run((), axis=axis)
+    area = areas[-1]
+
+    assert (area.to_start, area.to_end) == (
+        ScrollTo(area.viewport, x=start[0], y=start[1]),
+        ScrollTo(area.viewport, x=end[0], y=end[1]),
+    )
 
 
 async def test_a_parent_scrolls_and_reads_the_area_through_the_viewport_handle_it_passes() -> None:

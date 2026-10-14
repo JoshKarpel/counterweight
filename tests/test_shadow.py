@@ -5,23 +5,43 @@ from asyncio import TaskGroup
 from collections.abc import Callable
 from datetime import timedelta
 from sys import getrecursionlimit
-from weakref import WeakSet, ref
+from weakref import WeakSet
+from weakref import ref
 
 import pytest
 
-from counterweight._context_vars import (
-    current_hook_idx,
-    current_hook_state,
-    current_use_mouse_listeners,
-)
-from counterweight._utils import cancel_tasks, forever
+from counterweight._context_vars import current_hook_idx
+from counterweight._context_vars import current_hook_state
+from counterweight._context_vars import current_use_mouse_listeners
+from counterweight._utils import cancel_tasks
+from counterweight._utils import forever
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.hooks import Mouse, Setter, use_clock, use_effect, use_focus, use_memo, use_mouse, use_ref, use_state
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import FocusHandle
+from counterweight.hooks import Mouse
+from counterweight.hooks import Setter
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_memo
+from counterweight.hooks import use_mouse
+from counterweight.hooks import use_ref
+from counterweight.hooks import use_state
+from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import DuplicateKey, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
-from tests.rendering import effect_tasks, render, state_sets
+from counterweight.shadow import DuplicateElementHandle
+from counterweight.shadow import DuplicateFocusHandle
+from counterweight.shadow import DuplicateKey
+from counterweight.shadow import ShadowNode
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import ShadowUpdate
+from counterweight.shadow import update_shadow
+from tests.rendering import effect_tasks
+from tests.rendering import render
+from tests.rendering import state_sets
 
 
 @component
@@ -184,6 +204,14 @@ def test_a_node_mounted_by_the_first_update_and_unmounted_by_the_later_neither_r
     )
 
 
+def test_the_combined_update_has_the_later_updates_tree() -> None:
+    later = shadow_update([], [], [])
+
+    combined = shadow_update([], [], []).followed_by(later)
+
+    assert combined.tree is later.tree
+
+
 @component
 def remembers(name: str, setters: dict[str, Setter[str]], seen: dict[str, str]) -> Text:
     value, set_value = use_state("initial")
@@ -280,6 +308,33 @@ def test_duplicate_sibling_keys_raise() -> None:
         update_shadow(
             Div(children=(logs_effect("x", log).with_key("k"), logs_effect("y", log).with_key("k"))), None, NO_LAYOUTS
         )
+
+
+def test_two_mounted_elements_given_one_handle_raise_naming_the_handle() -> None:
+    handle = ElementHandle()
+
+    with pytest.raises(DuplicateElementHandle) as raised:
+        update_shadow(Div(children=(Div(handle=handle), Text(content="", handle=handle))), None, NO_LAYOUTS)
+
+    assert repr(handle) in str(raised.value)
+
+
+def test_two_mounted_components_given_one_focus_handle_raise_naming_the_handle() -> None:
+    handle = FocusHandle()
+
+    @component
+    def focusable(name: str, given: FocusHandle) -> Text:
+        use_focus(handle=given)
+        return Text(content=name)
+
+    with pytest.raises(DuplicateFocusHandle) as raised:
+        update_shadow(
+            Div(children=(focusable("own", FocusHandle()), focusable("a", handle), focusable("b", handle))),
+            None,
+            NO_LAYOUTS,
+        )
+
+    assert repr(handle) in str(raised.value)
 
 
 async def test_setter_is_the_same_object_across_renders() -> None:
@@ -431,7 +486,7 @@ def test_changing_hook_count_between_renders_raises(first_count: int, second_cou
     shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS).tree
 
     with pytest.raises(InconsistentHookExecution):
-        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS).tree
+        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS)
 
 
 async def never_runs() -> None:
@@ -499,7 +554,7 @@ class RenderFailed(Exception):
 def raises_on_render(should_raise: bool) -> Text:
     use_state(0)
     if should_raise:
-        raise RenderFailed()
+        raise RenderFailed
     return Text(content="rendered")
 
 
@@ -512,7 +567,7 @@ def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) ->
     idx_token = current_hook_idx.set(outer_hook_idx)
     try:
         with pytest.raises(RenderFailed):
-            update_shadow(raises_on_render(True), previous, NO_LAYOUTS).tree
+            update_shadow(raises_on_render(True), previous, NO_LAYOUTS)
         context_after_raise = (current_hook_state.get() is outer_hooks, current_hook_idx.get())
     finally:
         current_hook_idx.reset(idx_token)

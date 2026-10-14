@@ -8,9 +8,7 @@ On each `MouseMoved`, set the offset to where it started
 plus how far the pointer has moved since then,
 [clamped](#keeping-it-inside-its-parent) so the component stays inside its parent.
 
-```python
---8<-- "draggable.py:example"
-```
+<!-- example: draggable.py:example -->
 
 ![Two draggable boxes](../assets/draggable.svg)
 

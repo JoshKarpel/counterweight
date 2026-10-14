@@ -21,9 +21,7 @@ and `styles`, a [`TextFieldStyles`][counterweight.widgets.TextFieldStyles] that 
 their box while unfocused, focused, and unfocusable, their cursor, and their placeholder.
 Pass the fields you want to change, and share one `TextFieldStyles` between all the fields of a form:
 
-```python
---8<-- "text_input.py:styles"
-```
+<!-- example: text_input.py:styles -->
 
 ![Two heavy-bordered fields, the focused one amber, with "Ada" typed into it](../assets/text-input-styled.svg)
 

@@ -9,35 +9,41 @@ import sys
 from dataclasses import dataclass
 from typing import Literal
 
-from counterweight.controls import FocusOn, ScrollBy, ScrollTo
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    Receiver,
-)
-from counterweight.focus import ElementHandle, FocusHandle
-from counterweight.geometry import Position, Scroll
-from counterweight.handlers import PAGE_FRACTION, check_page_fraction, page_down, page_up
-from counterweight.hooks import Focus, use_focus, use_scroll, use_state
+from counterweight.controls import FocusOn
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.geometry import Position
+from counterweight.geometry import Scroll
+from counterweight.handlers import PAGE_FRACTION
+from counterweight.handlers import check_page_fraction
+from counterweight.handlers import page_down
+from counterweight.handlers import page_up
+from counterweight.hooks import Focus
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_scroll
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    default,
-    overflow_scroll,
-    overflow_x_hidden,
-    overflow_x_scroll,
-    overflow_y_clip,
-    overflow_y_scroll,
-    stick_to_end_x,
-    stick_to_end_y,
-)
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import overflow_scroll
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_clip
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import stick_to_end_x
+from counterweight.styles.utilities import stick_to_end_y
 
 # Which way a scroll area scrolls: sideways, vertically, or both.
 type ScrollAxis = Literal["x", "y", "both"]

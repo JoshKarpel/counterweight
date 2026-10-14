@@ -7,10 +7,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from time import monotonic
 
-LOCAL_EPOCH = datetime(1970, 1, 1)
+# Naive on purpose: ticks count the wall clock's local time, whatever its zone.
+LOCAL_EPOCH = datetime(1970, 1, 1)  # noqa: DTZ001
 
 
 @dataclass(frozen=True, slots=True)

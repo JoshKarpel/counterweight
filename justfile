@@ -78,9 +78,12 @@ profiles-serve PORT="8001":
     @mkdir -p profiles
     exec uv run python -m http.server {{ PORT }} --bind 0.0.0.0 --directory profiles
 
-[doc('Upgrade all dependencies')]
+# --local keeps mise from upgrading the tools in your global config too.
+[doc('Upgrade all dependencies, and the tools in mise.toml')]
 upgrade:
     uv lock --upgrade
+    mise upgrade --local --bump
+    mise lock
 
 alias update := upgrade
 alias u := upgrade

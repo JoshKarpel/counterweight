@@ -3,21 +3,36 @@ from __future__ import annotations
 from asyncio import Task
 from collections.abc import Iterator
 from copy import copy
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from datetime import timedelta
 from itertools import count
-from typing import TYPE_CHECKING, NewType, assert_never
+from typing import TYPE_CHECKING
+from typing import NewType
+from typing import assert_never
 from weakref import ref
 
-from counterweight._context_vars import current_event_queue, current_hook_idx, current_purity_checked
-from counterweight.clock import Instant, tick_index, until_next_tick
+from counterweight._context_vars import current_event_queue
+from counterweight._context_vars import current_hook_idx
+from counterweight._context_vars import current_purity_checked
+from counterweight.clock import Instant
+from counterweight.clock import tick_index
+from counterweight.clock import until_next_tick
 from counterweight.equivalence import equivalent
 from counterweight.events import StateSet
-from counterweight.focus import ElementHandle, FocusHandle
-from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.hooks.types import Deps
+from counterweight.hooks.types import Getter
+from counterweight.hooks.types import Ref
+from counterweight.hooks.types import Setter
+from counterweight.hooks.types import Setup
+from counterweight.hooks.types import Tick
 
 if TYPE_CHECKING:
-    from counterweight.geometry import Rects, Scroll
+    from counterweight.geometry import Rects
+    from counterweight.geometry import Scroll
 
 # Identifies one mounted node across frames, for as long as its hooks carry over.
 NodeKey = NewType("NodeKey", int)
@@ -270,8 +285,6 @@ class Hooks:
             hook.new_deps = deps
 
         current_hook_idx.set(current_hook_idx.get() + 1)
-
-        return None
 
     def use_focus(
         self, auto_focus: bool, handle: FocusHandle | None, is_focusable: bool, in_focus_order: bool

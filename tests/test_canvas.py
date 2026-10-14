@@ -1,7 +1,9 @@
 import pytest
 
-from counterweight.elements import NEWLINE, Chunk
-from counterweight.styles.styles import CellStyle, Color
+from counterweight.elements import NEWLINE
+from counterweight.elements import Chunk
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
 from counterweight.utils import canvas
 
 RED = Color.from_name("red")

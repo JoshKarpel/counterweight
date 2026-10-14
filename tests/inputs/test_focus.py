@@ -1,33 +1,54 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
 
 from counterweight import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, ClearFocus, FocusNext, FocusOn, FocusPrevious, Quit, Screenshot
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseScrolledDown,
-    MouseScrolledUp,
-    MouseUp,
-    Receiver,
-)
-from counterweight.focus import FocusHandle, Subtree
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import ClearFocus
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import FocusPrevious
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
 from counterweight.geometry import Position
-from counterweight.handlers import first, focus_receiver_on_press, tab_focus
-from counterweight.hooks import use_focus, use_state
-from counterweight.hooks.impls import ChangedFocusHandle, DuplicateUseFocus
+from counterweight.handlers import first
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import tab_focus
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
+from counterweight.hooks.impls import ChangedFocusHandle
+from counterweight.hooks.impls import DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.routing import DuplicateFocusHandle, UnsettledFocus
+from counterweight.routing import UnsettledFocus
+from counterweight.shadow import DuplicateFocusHandle
 from counterweight.styles import Style
-from counterweight.styles.utilities import col, default, display_none, inset_left, inset_top, position_absolute, size
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
 
 PROBE = KeyPressed(key="?")
 TOGGLE = KeyPressed(key="t")
@@ -197,6 +218,28 @@ async def test_a_click_on_the_focused_element_carries_is_focused() -> None:
     assert [(delivery.name, delivery.is_focused) for delivery in deliveries] == [("focused", True), ("root", False)]
 
 
+async def test_each_event_of_a_press_and_a_move_after_it_reaches_the_focused_element_as_focused() -> None:
+    deliveries: list[Delivery] = []
+    events: list[InputEvent] = [
+        MouseDown(absolute=Position(1, 1), button=1),
+        MouseDown(absolute=Position(2, 1), button=3),
+        MouseMoved(absolute=Position(2, 2), button=1),
+        MouseUp(absolute=Position(2, 2), button=3),
+        MouseUp(absolute=Position(3, 2), button=1),
+        MouseMoved(absolute=Position(3, 3), button=None),
+    ]
+
+    await run(
+        rooted(
+            deliveries,
+            lambda _: [focusable("focused", deliveries, style=box(0, 0, 5, 5), auto_focus=True, response=())],
+        ),
+        events,
+    )
+
+    assert deliveries == [Delivery(name="focused", event=event, is_target=True, is_focused=True) for event in events]
+
+
 # Moving focus
 
 
@@ -240,6 +283,17 @@ async def test_focus_next_skips_a_focusable_in_a_hidden_subtree() -> None:
     assert probed(deliveries) == ["c"]
 
 
+async def test_focus_next_focuses_a_component_that_mounted_in_the_last_render() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        rooted(deliveries, lambda is_mounted: [focusable("late", deliveries)] if is_mounted else []),
+        [TOGGLE, FocusNext(), PROBE],
+    )
+
+    assert probed(deliveries) == ["late"]
+
+
 async def test_focus_on_focuses_its_component_and_does_nothing_once_it_has_unmounted() -> None:
     deliveries: list[Delivery] = []
     handle = FocusHandle()
@@ -274,6 +328,19 @@ async def test_auto_focus_takes_focus_only_when_nothing_is_focused_and_the_first
     await run(rooted(deliveries, children), [PROBE, TOGGLE, PROBE])
 
     assert probed(deliveries) == ["first", "first"]
+
+
+async def test_use_focus_with_no_arguments_does_not_take_focus() -> None:
+    deliveries: list[Delivery] = []
+
+    @component
+    def plain() -> Div:
+        use_focus()
+        return Div(on_input=recording("plain", deliveries))
+
+    await run(rooted(deliveries, lambda _: [plain()]), [PROBE])
+
+    assert probed(deliveries) == ["root"]
 
 
 @component
@@ -324,13 +391,24 @@ async def test_an_auto_focus_component_that_mounts_later_is_focused_in_the_first
     assert lines(frames) == [["late:on"]]
 
 
+async def test_a_key_after_an_auto_focus_component_mounts_later_reaches_it() -> None:
+    deliveries: list[Delivery] = []
+
+    def children(is_mounted: bool) -> Sequence[Component]:
+        return [focusable("late", deliveries, auto_focus=True)] if is_mounted else []
+
+    await run(rooted(deliveries, children), [TOGGLE, PROBE])
+
+    assert probed(deliveries) == ["late"]
+
+
 async def test_a_component_that_hides_itself_when_it_gains_focus_raises() -> None:
     @component
     def hides() -> Text:
         focus = use_focus(auto_focus=True)
         return Text(content="hides", style=display_none if focus.is_focused else default)
 
-    with pytest.raises(UnsettledFocus):
+    with pytest.raises(UnsettledFocus, match="hid itself"):
         await run(rooted([], lambda is_mounted: [hides()] if is_mounted else []), [TOGGLE])
 
 
@@ -341,6 +419,17 @@ async def test_unmounting_the_focused_component_clears_focus() -> None:
         return [focusable("a", deliveries), *([] if is_unmounted else [focusable("b", deliveries, auto_focus=True)])]
 
     await run(rooted(deliveries, children), [PROBE, TOGGLE, PROBE])
+
+    assert probed(deliveries) == ["b", "root"]
+
+
+async def test_unmounting_the_focused_component_does_not_focus_an_auto_focus_component_that_mounted_before() -> None:
+    deliveries: list[Delivery] = []
+
+    def children(is_unmounted: bool) -> Sequence[Component]:
+        return [focusable("a", deliveries, auto_focus=True), *([] if is_unmounted else [focusable("b", deliveries)])]
+
+    await run(rooted(deliveries, children), [FocusNext(), PROBE, TOGGLE, PROBE])
 
     assert probed(deliveries) == ["b", "root"]
 
@@ -375,7 +464,8 @@ async def test_use_focus_keeps_its_handle_across_renders() -> None:
 
     await run(counter(), [PROBE, PROBE])
 
-    assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
+    assert len(handles) > 2
+    assert all(handle is handles[0] for handle in handles)
 
 
 async def test_calling_use_focus_twice_in_one_component_raises() -> None:
@@ -385,7 +475,7 @@ async def test_calling_use_focus_twice_in_one_component_raises() -> None:
         use_focus()
         return Text(content="")  # pragma: never runs
 
-    with pytest.raises(DuplicateUseFocus):
+    with pytest.raises(DuplicateUseFocus, match="use_focus"):
         await run(twice(), [])
 
 
@@ -582,7 +672,8 @@ async def test_a_parent_and_child_on_one_bubble_path_receive_different_subtrees(
 
     await run(root(), [MouseScrolledDown(absolute=Position(1, 1))])
 
-    assert len(subtrees) == 2 and subtrees[0] != subtrees[1]
+    assert len(subtrees) == 2
+    assert subtrees[0] != subtrees[1]
 
 
 # Handles created by a parent
@@ -628,17 +719,30 @@ async def test_use_focus_returns_the_handle_it_was_given() -> None:
 
     await run(root(), [])
 
-    assert returned and all(handle is given for handle in returned)
+    assert returned
+    assert all(handle is given for handle in returned)
 
 
-async def test_passing_a_different_handle_on_a_later_render_raises() -> None:
+async def test_passing_a_different_handle_on_a_later_render_raises_naming_both_handles() -> None:
+    handles: list[FocusHandle] = []
+
     @component
     def root() -> Text:
-        use_focus(handle=FocusHandle())
+        handles.append(FocusHandle())
+        use_focus(handle=handles[-1])
         return Text(content="")
 
-    with pytest.raises(ChangedFocusHandle):
+    with pytest.raises(ChangedFocusHandle) as raised:
         await run(root(), [])
+
+    first, passed = handles
+    assert (repr(passed) in str(raised.value), repr(first) in str(raised.value)) == (True, True)
+
+
+def test_a_focus_handles_repr_names_it_by_its_identity() -> None:
+    handle = FocusHandle()
+
+    assert repr(handle) == f"<FocusHandle at {id(handle):#x}>"
 
 
 @pytest.mark.parametrize("is_focusable", [True, False], ids=["focusable", "unfocusable"])
@@ -750,7 +854,8 @@ async def test_a_component_keeps_its_handle_when_it_becomes_unfocusable_and_focu
 
     await run(root(), [TOGGLE, TOGGLE])
 
-    assert len(handles) > 2 and all(handle is handles[0] for handle in handles)
+    assert len(handles) > 2
+    assert all(handle is handles[0] for handle in handles)
 
 
 async def test_a_press_on_an_unfocusable_component_with_focus_receiver_on_press_is_claimed_and_keeps_focus() -> None:

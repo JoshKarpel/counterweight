@@ -1,4 +1,5 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from typing import ClassVar
 
 import pytest

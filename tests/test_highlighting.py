@@ -5,11 +5,20 @@ from hypothesis import given
 from hypothesis import strategies as st
 from pygments.style import Style as PygmentsStyle
 from pygments.styles import get_style_by_name
-from pygments.token import Comment, Keyword, Name, Token, _TokenType
+from pygments.token import Comment
+from pygments.token import Keyword
+from pygments.token import Name
+from pygments.token import Token
+from pygments.token import _TokenType
 from pygments.util import ClassNotFound
 
-from counterweight.highlighting import cell_style_for_token, code_block, code_style, highlight
-from counterweight.styles import UNSET, CellStyle, Color
+from counterweight.highlighting import cell_style_for_token
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.highlighting import highlight
+from counterweight.styles import UNSET
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
 from counterweight.styles.utilities import pad_x
 
 
@@ -122,6 +131,14 @@ def test_code_block_merges_its_style_over_the_code_style() -> None:
 
     assert block.content == highlight("x = 1", "python", theme=LoudStyle)
     assert block.style == code_style(LoudStyle) | pad_x(2)
+
+
+def test_code_block_expands_tabs_to_four_columns_by_default() -> None:
+    assert code_block("\tx", "python").content == highlight("\tx", "python", tab_size=4)
+
+
+def test_code_block_expands_tabs_to_its_tab_size() -> None:
+    assert code_block("\tx", "python", tab_size=2).content == highlight("\tx", "python", tab_size=2)
 
 
 def test_code_block_without_a_style_is_drawn_in_the_code_style() -> None:

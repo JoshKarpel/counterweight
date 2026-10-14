@@ -3,82 +3,116 @@ from __future__ import annotations
 import logging
 import shutil
 import sys
-from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
+from asyncio import Queue
+from asyncio import QueueEmpty
+from asyncio import TaskGroup
+from asyncio import get_running_loop
+from asyncio import timeout
 from collections import deque
-from collections.abc import Callable, Collection, Iterator, Mapping
+from collections.abc import Callable
+from collections.abc import Collection
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Mapping
 from datetime import timedelta
-from itertools import chain, repeat
-from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
+from itertools import chain
+from itertools import repeat
+from signal import SIG_DFL
+from signal import SIGINT
+from signal import SIGWINCH
+from signal import getsignal
+from signal import signal
 from types import FrameType
-from typing import Iterable, TextIO, assert_never
+from typing import TextIO
+from typing import assert_never
 from weakref import WeakSet
 
 import waxy
 
-from counterweight._context_vars import current_event_queue, current_use_mouse_listeners
-from counterweight._utils import cancel_tasks, drain_queue, maybe_await
+from counterweight._context_vars import current_event_queue
+from counterweight._context_vars import current_use_mouse_listeners
+from counterweight._utils import cancel_tasks
+from counterweight._utils import drain_queue
+from counterweight._utils import maybe_await
 from counterweight.border_healing import heal_borders
-from counterweight.clock import Clock, Instant, system_clock
-from counterweight.components import Component, component
-from counterweight.controls import (
-    AdvanceClock,
-    AnyControl,
-    Bell,
-    ClearFocus,
-    FocusNext,
-    FocusOn,
-    FocusPrevious,
-    Quit,
-    RestoreTitle,
-    Screenshot,
-    ScrollBy,
-    ScrollIntoView,
-    ScrollTo,
-    SetTitle,
-    Suspend,
-    ToggleBorderHealing,
-    _Control,
-)
+from counterweight.clock import Clock
+from counterweight.clock import Instant
+from counterweight.clock import system_clock
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AdvanceClock
+from counterweight.controls import AnyControl
+from counterweight.controls import Bell
+from counterweight.controls import ClearFocus
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import FocusPrevious
+from counterweight.controls import Quit
+from counterweight.controls import RestoreTitle
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollIntoView
+from counterweight.controls import ScrollTo
+from counterweight.controls import SetTitle
+from counterweight.controls import Suspend
+from counterweight.controls import ToggleBorderHealing
+from counterweight.controls import _Control
 from counterweight.elements import Div
-from counterweight.events import (
-    AnyEvent,
-    Dummy,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-    StateSet,
-    TerminalResized,
-)
+from counterweight.events import AnyEvent
+from counterweight.events import Dummy
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
+from counterweight.events import StateSet
+from counterweight.events import TerminalResized
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.hooks.hooks import scroll_in
-from counterweight.hooks.impls import Hooks, NodeKey
-from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
-from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, ScrollRequest, layout_changes, prior_scrolls
-from counterweight.logging import app_log_levels, devlog
-from counterweight.output import (
-    CLEAR_SCREEN,
-    Frame,
-    paint_to_instructions,
-    start_bracketed_paste,
-    start_mouse_tracking,
-    start_output_control,
-    stop_bracketed_paste,
-    stop_mouse_tracking,
-    stop_output_control,
-    synchronized,
-    title_instructions,
-)
-from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.routing import Press, RoutingTable, UnsettledFocus, named_key, route_key, route_mouse
-from counterweight.shadow import ShadowTree, until_due, update_shadow
+from counterweight.hooks.impls import Hooks
+from counterweight.hooks.impls import NodeKey
+from counterweight.input import start_input_control
+from counterweight.input import start_reading_keys
+from counterweight.input import stop_input_control
+from counterweight.input import stop_reading_keys
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Layouts
+from counterweight.layout import LayoutTree
+from counterweight.layout import ScrollRequest
+from counterweight.layout import layout_changes
+from counterweight.layout import prior_scrolls
+from counterweight.logging import app_log_levels
+from counterweight.logging import devlog
+from counterweight.output import CLEAR_SCREEN
+from counterweight.output import Frame
+from counterweight.output import paint_to_instructions
+from counterweight.output import start_bracketed_paste
+from counterweight.output import start_mouse_tracking
+from counterweight.output import start_output_control
+from counterweight.output import stop_bracketed_paste
+from counterweight.output import stop_mouse_tracking
+from counterweight.output import stop_output_control
+from counterweight.output import synchronized
+from counterweight.output import title_instructions
+from counterweight.paint import Paint
+from counterweight.paint import diff_paint
+from counterweight.paint import paint_layout
+from counterweight.paint import runs_of
+from counterweight.routing import Press
+from counterweight.routing import RoutingTable
+from counterweight.routing import UnsettledFocus
+from counterweight.routing import named_key
+from counterweight.routing import route_key
+from counterweight.routing import route_mouse
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import until_due
+from counterweight.shadow import update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -410,7 +444,7 @@ async def render_loop(
                         try:
                             await maybe_await(screenshot.handler(frame))
                             logger.debug("Took screenshot", extra={"handler": screenshot.handler})
-                        except Exception as ex:
+                        except Exception as ex:  # noqa: BLE001 (a failing user handler is logged, not fatal)
                             logger.error(
                                 "Error in screenshot handler", extra={"error": repr(ex), "handler": screenshot.handler}
                             )
@@ -432,7 +466,7 @@ async def render_loop(
 
                     try:
                         await maybe_await(should_suspend.handler())
-                    except Exception as ex:
+                    except Exception as ex:  # noqa: BLE001 (a failing user handler is logged, not fatal)
                         logger.error(
                             "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}
                         )
@@ -530,7 +564,9 @@ async def render_loop(
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
-                        ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
+                        ((element, layout, lines) for _, element, layout, lines in layouts.in_paint_order),
+                        w,
+                        h,
                     )
                     logger.debug("Generated new paint")
 

@@ -4,9 +4,14 @@ from datetime import timedelta
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import use_clock, use_state
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec

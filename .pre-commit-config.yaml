@@ -1,39 +1,94 @@
+# Every hook is `local` and runs a tool from the `dev` group through `uv run`, so the hooks, the editor, `just` and CI
+# all run the version `uv.lock` holds, under the same cooldown as every other dependency.
+# `--frozen` so a hook never re-locks: the `uv-lock` hook is the one that reports a stale lock.
 repos:
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: local
     hooks:
       - id: check-added-large-files
-      - id: check-ast
-      - id: check-builtin-literals
+        name: check for added large files
+        entry: uv run --frozen check-added-large-files
+        language: unsupported
       - id: check-case-conflict
-      - id: check-docstring-first
+        name: check for case conflicts
+        entry: uv run --frozen check-case-conflict
+        language: unsupported
       - id: check-merge-conflict
+        name: check for merge conflicts
+        entry: uv run --frozen check-merge-conflict
+        language: unsupported
+        types: [text]
       - id: check-toml
+        name: check toml
+        entry: uv run --frozen check-toml
+        language: unsupported
+        types: [toml]
       - id: check-json
-      - id: debug-statements
+        name: check json
+        entry: uv run --frozen check-json
+        language: unsupported
+        types: [json]
+      - id: detect-private-key
+        name: detect private key
+        entry: uv run --frozen detect-private-key
+        language: unsupported
+        types: [text]
       - id: end-of-file-fixer
+        name: fix end of files
+        entry: uv run --frozen end-of-file-fixer
+        language: unsupported
+        types: [text]
       - id: forbid-new-submodules
+        name: forbid new submodules
+        entry: uv run --frozen forbid-new-submodules
+        language: unsupported
+        types: [directory]
       - id: mixed-line-ending
+        name: mixed line ending
+        entry: uv run --frozen mixed-line-ending
+        language: unsupported
+        types: [text]
       - id: trailing-whitespace
+        name: trim trailing whitespace
+        entry: uv run --frozen trailing-whitespace-fixer
+        language: unsupported
+        types: [text]
         # Text screenshots are exact character grids, trailing blanks included.
         exclude: ^docs/assets/.*\.txt$
 
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
+  - repo: local
     hooks:
-      - id: python-check-mock-methods
-      - id: python-no-eval
-      - id: python-no-log-warn
-      - id: python-use-type-annotations
-      - id: python-check-blanket-type-ignore
-
-  - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.38.2
-    hooks:
-      - id: check-github-workflows
-      - id: check-github-actions
       - id: check-dependabot
+        name: Validate Dependabot Config (v2)
+        entry: uv run --frozen check-jsonschema --builtin-schema vendor.dependabot
+        language: unsupported
+        files: ^\.github/dependabot\.(yml|yaml)$
+        types: [yaml]
+      - id: check-github-workflows
+        name: Validate GitHub Workflows
+        entry: uv run --frozen check-jsonschema --builtin-schema vendor.github-workflows
+        language: unsupported
+        files: ^\.github/workflows/[^/]+$
+        types: [yaml]
+      - id: check-github-actions
+        name: Validate GitHub Actions
+        entry: uv run --frozen check-jsonschema --builtin-schema vendor.github-actions
+        language: unsupported
+        files: >
+          (?x)^(
+            action\.(yml|yaml)|
+            \.github/actions/(.+/)?action\.(yml|yaml)
+          )$
+        types: [yaml]
+
+  - repo: local
+    hooks:
+      - id: zizmor
+        name: zizmor
+        entry: uv run --frozen zizmor --no-progress
+        language: unsupported
+        files: (^|/)(\.github/(workflows/[^/]+|dependabot)\.ya?ml|action\.ya?ml|\.pre-commit-(config|hooks)\.ya?ml)$
+        types: [yaml]
+        require_serial: true
 
   - repo: local
     hooks:
@@ -44,42 +99,45 @@ repos:
         types: [python]
       - id: format-justfile
         name: format justfile
-        language: system
         entry: just --fmt --unstable
-        files: justfile
+        language: unsupported
+        files: ^justfile$
         pass_filenames: false
       - id: generate-utilities
         name: generate utilities
-        language: system
-        entry: uv run codegen/generate_utilities.py
+        entry: uv run --frozen python codegen/generate_utilities.py
+        language: unsupported
         always_run: true
         pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
-        language: system
-        entry: uv run python -m docs.examples.generate_screenshots
+        entry: uv run --frozen python -m docs.examples.generate_screenshots
+        language: unsupported
         files: ^(src/|docs/examples/|docs/assets/.*\.svg$|uv\.lock$)
         pass_filenames: false
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.17.0'
+  - repo: local
     hooks:
+      # Check before formatting: a fix can leave code the formatter would change.
       - id: ruff-check
-        args: [ --fix, --exit-non-zero-on-fix ]
-      - id: ruff-format
-        # Formatting Python fences in markdown rewrites `--8<-- "file.py:section"` snippet lines.
+        name: ruff check
+        entry: uv run --frozen ruff check --force-exclude --fix
+        language: unsupported
         types_or: [python, pyi, jupyter]
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: unsupported
+        types_or: [python, pyi, jupyter, markdown]
+        require_serial: true
 
-# TODO: figure out how to get this and snippets to play nicely
-#  - repo: https://github.com/adamchainz/blacken-docs
-#    rev: 1.16.0
-#    hooks:
-#      - id: blacken-docs
-#        additional_dependencies:
-#        - black==23.3.0
-
-ci:
-  skip:
-    - format-justfile
-    - generate-utilities
-    - generate-screenshots
+  # `uv` itself is whichever is on `PATH`, not a package in the lock it checks.
+  - repo: local
+    hooks:
+      - id: uv-lock
+        name: uv-lock
+        entry: uv lock
+        language: unsupported
+        files: ^(uv\.lock|pyproject\.toml|uv\.toml)$
+        pass_filenames: false

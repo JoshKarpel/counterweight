@@ -2,7 +2,8 @@ import pytest
 
 from counterweight.components import component
 from counterweight.elements import Text
-from counterweight.hooks import Ref, use_ref
+from counterweight.hooks import Ref
+from counterweight.hooks import use_ref
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import update_shadow
 

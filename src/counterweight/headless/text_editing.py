@@ -11,13 +11,18 @@ A line break is a cluster of its own, so the edits here move and delete across o
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, replace
+from bisect import bisect_left
+from bisect import bisect_right
+from collections.abc import Callable
+from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import replace
 from functools import lru_cache
 from itertools import accumulate
 
-from counterweight.graphemes import grapheme_width, graphemes, visible
+from counterweight.graphemes import grapheme_width
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
 from counterweight.keys import Key
 
 

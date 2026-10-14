@@ -1,17 +1,25 @@
+from collections.abc import Callable
+
 import pytest
 
-from counterweight.headless.text_area_editing import (
-    DrawnArea,
-    drawn,
-    key_edit,
-    key_edits,
-    move_down,
-    move_to_cell,
-    move_up,
-    paste_edit,
-    rows,
-)
-from counterweight.headless.text_editing import Edit, EditableText, is_text
+from counterweight.headless.text_area_editing import DrawnArea
+from counterweight.headless.text_area_editing import drawn
+from counterweight.headless.text_area_editing import key_edit
+from counterweight.headless.text_area_editing import key_edits
+from counterweight.headless.text_area_editing import move_down
+from counterweight.headless.text_area_editing import move_to_cell
+from counterweight.headless.text_area_editing import move_up
+from counterweight.headless.text_area_editing import move_vertically
+from counterweight.headless.text_area_editing import or_further
+from counterweight.headless.text_area_editing import paste_edit
+from counterweight.headless.text_area_editing import previous_row
+from counterweight.headless.text_area_editing import row_end
+from counterweight.headless.text_area_editing import rows
+from counterweight.headless.text_editing import Edit
+from counterweight.headless.text_editing import EditableText
+from counterweight.headless.text_editing import is_text
+from counterweight.headless.text_editing import value_start
+from counterweight.headless.text_editing import word_end
 from counterweight.keys import Key
 
 WIDTH = 8
@@ -60,10 +68,12 @@ def test_rows_wrap_so_every_cursor_position_has_a_cell(value: str, width: int, e
         ("ab|cd", Key.ControlJ, "ab\n|cd"),
         ("ab|cd", Key.Left, "a|bcd"),
         ("ab\n|cd", Key.Left, "ab|\ncd"),
+        ("\na|b", Key.Left, "\n|ab"),
         ("|abcd", Key.Left, "|abcd"),
         ("ab|cd", Key.ControlB, "a|bcd"),
         ("ab|cd", Key.Right, "abc|d"),
         ("ab|\ncd", Key.Right, "ab\n|cd"),
+        ("a|b\ncd", Key.Right, "ab|\ncd"),
         ("abcd|", Key.Right, "abcd|"),
         ("ab|cd", Key.ControlF, "abc|d"),
         # a cluster is one step, however many code points it has
@@ -78,6 +88,8 @@ def test_rows_wrap_so_every_cursor_position_has_a_cell(value: str, width: int, e
         ("日本\na|bc", Key.Up, "|日本\nabc"),
         ("日本\nab|c", Key.Up, "日|本\nabc"),
         ("hel|lo world foo", Key.Up, "|hello world foo"),
+        ("a\n\nb|", Key.Up, "a\n|\nb"),
+        ("a|\n\nb", Key.Down, "a\n|\nb"),
         ("hello world f|oo", Key.Down, "hello world foo|"),
         ("hello world foo|", Key.ControlP, "hello wor|ld foo"),
         ("he|llo world foo", Key.ControlN, "hello wo|rld foo"),
@@ -87,6 +99,7 @@ def test_rows_wrap_so_every_cursor_position_has_a_cell(value: str, width: int, e
         ("ab|cd", Key.ControlT, "acb|d"),
         ("ab|\ncd", Key.ControlT, "ba|\ncd"),
         ("ab\ncd|", Key.ControlT, "ab\ndc|"),
+        ("ab\ncd|\nef", Key.ControlT, "ab\ndc|\nef"),
         ("ab\n|cd", Key.ControlT, "ab\n|cd"),
         ("a|\ncd", Key.ControlT, "a|\ncd"),
         ("ab\n|\ncd", Key.ControlT, "ab\n|\ncd"),
@@ -184,6 +197,12 @@ def test_up_and_down_return_to_the_column_they_started_from_after_a_shorter_row(
     assert marking(press(area, Key.Up)) == "abcde|f\nab\nabcdef"
 
 
+def test_up_onto_the_first_row_keeps_the_column_it_aims_for() -> None:
+    area = press(marked("\nab|"), Key.Up)
+
+    assert (marking(area), area.goal_column) == ("|\nab", 2)
+
+
 def test_a_move_along_the_row_forgets_the_column_up_and_down_aim_for() -> None:
     area = press(marked("abcdef\nab\nabcde|f"), Key.Up, Key.Left, Key.Down)
 
@@ -191,19 +210,38 @@ def test_a_move_along_the_row_forgets_the_column_up_and_down_aim_for() -> None:
 
 
 @pytest.mark.parametrize(
-    ("before", "move", "after"),
+    ("before", "move", "count", "after"),
     [
-        pytest.param("a\nbc|d\ne\nfgh\ni", move_down(WIDTH, 2), "a\nbcd\ne\nfg|h\ni", id="down-keeps-the-column"),
-        pytest.param("a\nb|cd\ne", move_down(WIDTH, 5), "a\nbcd\ne|", id="down-stops-at-the-last-row"),
-        pytest.param("a\nbcd\ne|f", move_down(WIDTH, 5), "a\nbcd\nef|", id="down-from-the-last-row-to-the-end"),
-        pytest.param("a\nbcd\ne\nfg|h", move_up(WIDTH, 2), "a\nbc|d\ne\nfgh", id="up-keeps-the-column"),
-        pytest.param("abc\nd\nef|g", move_up(WIDTH, 5), "ab|c\nd\nefg", id="up-stops-at-the-first-row"),
-        pytest.param("a|bc\nd", move_up(WIDTH, 5), "|abc\nd", id="up-from-the-first-row-to-the-start"),
-        pytest.param("hello world foo|", move_up(WIDTH, 2), "hel|lo world foo", id="soft-rows"),
+        pytest.param("a\nbc|d\ne\nfgh\ni", move_down, 2, "a\nbcd\ne\nfg|h\ni", id="down-keeps-the-column"),
+        pytest.param("a\nb|cd\nef", move_down, 5, "a\nbcd\ne|f", id="down-stops-at-the-last-row"),
+        pytest.param("a\nbcd\ne|f", move_down, 5, "a\nbcd\nef|", id="down-from-the-last-row-to-the-end"),
+        pytest.param("a\nbcd\ne\nfg|h", move_up, 2, "a\nbc|d\ne\nfgh", id="up-keeps-the-column"),
+        pytest.param("abc\nd\nef|g", move_up, 5, "ab|c\nd\nefg", id="up-stops-at-the-first-row"),
+        pytest.param("a|bc\nd", move_up, 5, "|abc\nd", id="up-from-the-first-row-to-the-start"),
+        pytest.param("hello world foo|", move_up, 2, "hel|lo world foo", id="soft-rows"),
     ],
 )
-def test_moving_several_rows_stops_at_the_furthest_row(before: str, move: Edit, after: str) -> None:
-    assert marking(move(marked(before))) == after
+def test_moving_several_rows_stops_at_the_furthest_row(
+    before: str, move: Callable[[int, int], Edit], count: int, after: str
+) -> None:
+    assert marking(move(WIDTH, count)(marked(before))) == after
+
+
+@pytest.mark.parametrize(
+    ("cursor", "expected"),
+    [
+        pytest.param(2, 0, id="target"),
+        pytest.param(0, 3, id="further-from-the-target"),
+    ],
+)
+def test_or_further_reaches_the_target_or_from_it_the_further_target(cursor: int, expected: int) -> None:
+    assert or_further(value_start, word_end)("one two", cursor) == expected
+
+
+def test_moving_vertically_past_the_first_row_moves_to_the_edge_reached_from_the_cursor() -> None:
+    move = move_vertically(WIDTH, previous_row, row_end(WIDTH))
+
+    assert move(marked("a|bc\nd")) == marked("abc|\nd")
 
 
 @pytest.mark.parametrize(
@@ -224,6 +262,7 @@ def test_paste_inserts_its_text_with_its_line_breaks(pasted: str, after: str) ->
         pytest.param("|", "\tif x:\n\t\ty", 4, "    if x:\n        y|", id="indentation"),
         pytest.param("|", "a\tbc\tdef\tg", 4, "a   bc  def g|", id="alignment"),
         pytest.param("ab\ncd|", "\tx", 4, "ab\ncd  x|", id="counts-the-line-before-the-cursor"),
+        pytest.param("ab|\ncd", "\tx", 4, "ab  x|\ncd", id="counts-only-the-cursors-line"),
         pytest.param("a\t|", "\tx", 4, "a\t    x|", id="counts-a-tab-before-the-cursor-as-expanded"),
         pytest.param("|", "\tx\r\n\ty", 2, "  x\n  y|", id="line-breaks-reset-the-column"),
         pytest.param("|", "a\tb", 8, "a       b|", id="tab-size"),
@@ -245,6 +284,7 @@ def test_paste_expands_each_tab_to_the_next_tab_stop(before: str, pasted: str, t
         pytest.param("ab\ncd", 2, 5, DrawnArea("ab", " ", "\ncd"), id="end-of-a-line"),
         pytest.param("a\n\nb", 2, 5, DrawnArea("a\n", " ", "\nb"), id="empty-line"),
         pytest.param("abcd", 4, 4, DrawnArea("abcd\n", " ", ""), id="after-a-full-row"),
+        pytest.param("a\nb\nc", 0, 5, DrawnArea("", "a", "\nb\nc"), id="rows-after-the-cursor"),
     ],
 )
 def test_drawn_splits_the_rows_around_the_cursor(value: str, cursor: int, width: int, expected: DrawnArea) -> None:

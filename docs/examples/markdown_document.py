@@ -4,12 +4,15 @@ import sys
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div
-from counterweight.events import KeyPressed, MouseScrolledRight
+from counterweight.events import KeyPressed
+from counterweight.events import MouseScrolledRight
 from counterweight.geometry import Position
-from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
+from counterweight.handlers import first
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_focus
 from counterweight.keys import Key
-from counterweight.markdown import markdown
+from counterweight.markdown import markdown_document
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 
@@ -42,7 +45,7 @@ tallest = max(peaks, key=lambda p: p.height)
 
 @component
 def root() -> Div:
-    return Div(style=col | pad_x(1), children=(markdown(README),))
+    return Div(style=col | pad_x(1), children=(markdown_document(README),))
 
 
 # --8<-- [end:example]
@@ -68,7 +71,7 @@ Forecasts are at www.mountain-forecast.com.
 
 @component
 def github() -> Div:
-    return Div(style=col | pad_x(1), children=(markdown(EXPEDITION),))
+    return Div(style=col | pad_x(1), children=(markdown_document(EXPEDITION),))
 
 
 # --8<-- [end:github]
@@ -83,7 +86,7 @@ def scrolling() -> Div:
     return Div(
         style=col | full | border | border_lightrounded | pad_x(1) | overflow_y_scroll,
         on_input=first(scroll_on_keys(), scroll_on_wheel()),
-        children=(markdown(README),),
+        children=(markdown_document(README),),
     )
 
 
@@ -102,7 +105,7 @@ uv add counterweight markdown-it-py mdit-py-plugins pygments
 
 @component
 def wide() -> Div:
-    return Div(style=col | pad_x(1), children=(markdown(INSTALL),))
+    return Div(style=col | pad_x(1), children=(markdown_document(INSTALL),))
 
 
 # --8<-- [end:wide]

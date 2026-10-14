@@ -1,13 +1,11 @@
 # Markdown
 
-`markdown` renders a Markdown document as a `Div` of elements,
-which goes anywhere an element does.
+`markdown_document` renders a Markdown document as a component,
+which goes anywhere a component does.
 It handles [GitHub Flavored Markdown](https://github.github.com/gfm/),
 and YAML front matter at the top of a document.
 
-```python
---8<-- "markdown_document.py:example"
-```
+<!-- example: markdown_document.py:example -->
 
 ![A rendered Markdown document](../assets/markdown-document.svg)
 
@@ -23,9 +21,7 @@ and YAML front matter at the top of a document.
 
 GitHub's extensions to CommonMark draw like this:
 
-```python
---8<-- "markdown_document.py:github"
-```
+<!-- example: markdown_document.py:github -->
 
 ![A rendered Markdown document using GitHub's extensions](../assets/markdown-github.svg)
 
@@ -36,8 +32,17 @@ GitHub's extensions to CommonMark draw like this:
   is a block quote with a title, colored by its kind.
 - Footnotes are numbered in the order they're referenced, and their definitions follow the rest of the document.
 
-Rendering is cached by the source and the styles,
-so a component can render the same document on every render without parsing it again.
+## Parsing
+
+`markdown_document` is a [`memo`](../components/index.md#skipping-a-component-whose-arguments-didnt-change) component,
+so it parses its document again only when its arguments change,
+and keeps what it rendered while it stays mounted, freed when it unmounts.
+A transcript that renders each message with one parses only the message that changed,
+however many messages there are, as React apps wrap a Markdown component in `React.memo`.
+
+The function it calls, `markdown`, returns the document's `Div` of elements, and parses the document each time it's called.
+Call it to put the elements together with others yourself,
+under [`use_memo`](../hooks/use_memo.md) in a component that renders often.
 
 ## Scrolling
 
@@ -45,9 +50,7 @@ A document is as tall as its content, so one longer than the space it's given ru
 Put it in a [scroll container](../layout/scrolling.md), as a browser puts a page in a scrolling viewport,
 with [`scroll_on_keys`](../input-handling/handlers.md#scrolling) and `scroll_on_wheel` to scroll it:
 
-```python
---8<-- "markdown_document.py:scrolling"
-```
+<!-- example: markdown_document.py:scrolling -->
 
 === "Before"
 
@@ -69,9 +72,7 @@ as GitHub's styles give a `pre` `overflow: auto`.
 `markdown` puts it in a box with `overflow_x_scroll`
 and [`scroll_on_wheel`](../input-handling/handlers.md#scrolling), so the wheel scrolls it under the pointer:
 
-```python
---8<-- "markdown_document.py:wide"
-```
+<!-- example: markdown_document.py:wide -->
 
 === "Before"
 
@@ -111,10 +112,12 @@ A code block and a table are each a box around what they show:
 Pass the fields you want to change, and the rest keep their defaults:
 
 ```python
-markdown(source, MarkdownStyles(heading_1=text_color("amber", 300), code_theme="monokai", block_gap=0))
+markdown_document(source, MarkdownStyles(heading_1=text_color("amber", 300), code_theme="monokai", block_gap=0))
 ```
 
 ## API
+
+::: counterweight.markdown.markdown_document
 
 ::: counterweight.markdown.markdown
 

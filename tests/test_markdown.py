@@ -1,35 +1,51 @@
 import io
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
+from collections.abc import Sequence
 from textwrap import dedent
 
 import pytest
+from markdown_it import MarkdownIt
+from markdown_it.parser_inline import RuleFuncInlineType
+from markdown_it.rules_inline import StateInline
+from mdit_py_plugins.gfm import gfm_plugin
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import AnyElement, Chunk, Div, Text
-from counterweight.events import AnyEvent, MouseScrolledDown, MouseScrolledLeft, MouseScrolledRight
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
 from counterweight.geometry import Position
 from counterweight.handlers import scroll_on_wheel
-from counterweight.highlighting import code_block, code_style, highlight
-from counterweight.markdown import MarkdownStyles, markdown
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.highlighting import highlight
+from counterweight.markdown import MarkdownStyles
+from counterweight.markdown import markdown
+from counterweight.markdown import markdown_document
+from counterweight.markdown import unmatched_when_silent
+from counterweight.markdown import wrap_gfm_autolink_rules
 from counterweight.styles import CellStyle
-from counterweight.styles.utilities import (
-    border,
-    border_left,
-    border_light,
-    col,
-    display_none,
-    height,
-    max_content_width,
-    overflow_x_hidden,
-    overflow_y_scroll,
-    pad_left,
-    pad_x,
-    text_justify_left,
-    text_wrap_none,
-    text_wrap_stable,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import max_content_width
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_left
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import text_justify_left
+from counterweight.styles.utilities import text_wrap_none
+from counterweight.styles.utilities import text_wrap_stable
 
 
 async def render(
@@ -61,6 +77,9 @@ async def render(
         check_purity=True,
     )
     return "\n".join(line.rstrip() for line in capture.getvalue().rstrip().split("\n"))
+
+
+DEFAULT_STYLES = MarkdownStyles()
 
 
 def walk(element: AnyElement) -> Iterator[AnyElement]:
@@ -120,8 +139,37 @@ def test_each_heading_level_has_its_own_style(level: int) -> None:
     assert heading.content == (Chunk(content="Title"),)
 
 
+@pytest.mark.parametrize("source", ["# *a*\n", "| *a* |\n|---|\n"])
+def test_inline_spans_are_styled_in_headings_and_table_cells(source: str) -> None:
+    assert chunk_for(source, "a").style == MarkdownStyles().emphasis
+
+
 def test_nested_emphasis_merges_styles() -> None:
     assert chunk_for("***both***\n", "both").style == CellStyle(bold=True, italic=True)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("**`a`**\n", DEFAULT_STYLES.strong | DEFAULT_STYLES.code_inline),
+        ("~~`a`~~\n", DEFAULT_STYLES.strikethrough | DEFAULT_STYLES.code_inline),
+        ("[`a`](x)\n", DEFAULT_STYLES.link | CellStyle(link="x") | DEFAULT_STYLES.code_inline),
+        ("![[`a`](x)](cat.png)\n", DEFAULT_STYLES.image | CellStyle(link="cat.png") | DEFAULT_STYLES.code_inline),
+    ],
+)
+def test_spans_inside_spans_merge_their_styles(source: str, expected: CellStyle) -> None:
+    assert chunk_for(source, "a").style == expected
+
+
+@pytest.mark.parametrize(("source", "line_break"), [("*a\nb*\n", " "), ("*a  \nb*\n", "\n")])
+def test_line_break_inside_a_span_takes_its_style(source: str, line_break: str) -> None:
+    emphasis = MarkdownStyles().emphasis
+
+    assert chunks(source) == [
+        Chunk(content="a", style=emphasis),
+        Chunk(content=line_break, style=emphasis),
+        Chunk(content="b", style=emphasis),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -168,8 +216,20 @@ async def test_display_math_is_shown_as_written_and_centered() -> None:
     assert math.style == MarkdownStyles().math_block
 
 
-async def test_display_math_label_is_to_its_right() -> None:
-    assert await render("$$x = 1$$ (eq)\n", 15) == "   x = 1   (eq)"
+@pytest.mark.parametrize("source", ["$$\n  y = 1\nx = X\n$$\n", "$$\n  y = 1\nx = X\n$$ (eq)\n"])
+def test_display_math_keeps_its_lines_as_written(source: str) -> None:
+    assert texts(source)[0].content == "  y = 1\nx = X"
+
+
+@pytest.mark.parametrize(("width", "expected"), [(15, "   x = 1   (eq)"), (10, "x = 1 (eq)")])
+async def test_display_math_label_is_to_its_right(width: int, expected: str) -> None:
+    assert await render("$$x = 1$$ (eq)\n", width) == expected
+
+
+def test_display_math_label_is_styled() -> None:
+    (_, label) = texts("$$x = 1$$ (eq)\n")
+
+    assert label == Text(content="(eq)", style=MarkdownStyles().math_label)
 
 
 def test_link_text_is_a_hyperlink_to_its_destination() -> None:
@@ -205,6 +265,75 @@ def test_link_whose_text_is_a_bare_url_links_to_its_destination(text: str) -> No
     link = chunk_for(f"see [{text}](https://example.com/docs) here\n", text)
 
     assert link.style == MarkdownStyles().link | CellStyle(link="https://example.com/docs")
+
+
+def test_rule_unmatched_when_silent_is_not_tried_in_silent_mode() -> None:
+    def rule(state: StateInline, silent: bool) -> bool:
+        raise AssertionError("The rule was tried in silent mode.")
+
+    assert unmatched_when_silent(rule)(StateInline("x", MarkdownIt(), {}, []), True) is False
+
+
+def test_rule_unmatched_when_silent_is_the_rule_outside_silent_mode() -> None:
+    calls: list[tuple[StateInline, bool]] = []
+
+    def rule(state: StateInline, silent: bool) -> bool:
+        calls.append((state, silent))
+        return True
+
+    state = StateInline("x", MarkdownIt(), {}, [])
+
+    assert unmatched_when_silent(rule)(state, False) is True
+    assert calls == [(state, False)]
+
+
+# Each GFM autolink rule, the text it links, the position of the character that triggers it,
+# and the destination it links to.
+GFM_AUTOLINKS = [
+    ("gfm_autolink_www", "www.example.com", 0, "http://www.example.com"),
+    ("gfm_autolink_protocol", "https://example.com", 5, "https://example.com"),
+    ("gfm_autolink_email", "someone@example.com", 7, "mailto:someone@example.com"),
+]
+
+
+def wrapped_gfm_autolink_rule(name: str, source: str, trigger: int) -> tuple[RuleFuncInlineType, StateInline]:
+    """
+    The rule `name` of a fresh parser whose GFM autolink rules `wrap_gfm_autolink_rules` replaced,
+    and a state at the character that triggers it, with the text before it pending, as the text rule leaves it.
+    The rule is called directly, since a parser that loops on a rule matching without moving would hang the test.
+    """
+    parser = MarkdownIt("commonmark").use(gfm_plugin)
+    wrap_gfm_autolink_rules(parser)
+    rules = dict(zip(parser.inline.ruler.get_active_rules(), parser.inline.ruler.getRules(""), strict=True))
+    state = StateInline(source, parser, {}, [])
+    state.pos = trigger
+    state.pending = source[:trigger]
+    return rules[name], state
+
+
+@pytest.mark.parametrize(("name", "source", "trigger", "destination"), GFM_AUTOLINKS)
+def test_wrapped_gfm_autolink_rule_does_not_match_in_silent_mode(
+    name: str, source: str, trigger: int, destination: str
+) -> None:
+    rule, state = wrapped_gfm_autolink_rule(name, source, trigger)
+
+    assert rule(state, True) is False
+    assert state.pos == trigger
+
+
+@pytest.mark.parametrize(("name", "source", "trigger", "destination"), GFM_AUTOLINKS)
+def test_wrapped_gfm_autolink_rule_links_outside_silent_mode(
+    name: str, source: str, trigger: int, destination: str
+) -> None:
+    rule, state = wrapped_gfm_autolink_rule(name, source, trigger)
+
+    assert rule(state, False) is True
+    assert [(token.type, token.attrs, token.content) for token in state.tokens] == [
+        ("link_open", {"href": destination}, ""),
+        ("text", {}, source),
+        ("link_close", {}, ""),
+    ]
+    assert state.pos == len(source)
 
 
 def test_empty_link_destination_is_not_a_hyperlink() -> None:
@@ -245,6 +374,10 @@ async def test_html_block_is_shown_as_written() -> None:
     assert await render("<div>\nhi\n</div>\n", 20) == "<div>\nhi\n</div>"
 
 
+def test_html_block_is_styled_without_its_last_line_break() -> None:
+    assert texts("<div>\nhi\n</div>\n") == [Text(content="<div>\nhi\n</div>", style=MarkdownStyles().html_block)]
+
+
 async def test_block_quote_has_a_bar_and_styles_its_text() -> None:
     source = "> one\n>\n> two\n"
 
@@ -275,8 +408,35 @@ async def test_loose_list_has_gaps_between_items() -> None:
     assert await render("- one\n\n- two\n", 20) == "• one\n\n• two"
 
 
+async def test_loose_list_item_blocks_are_separated_by_a_blank_line() -> None:
+    assert await render("- one\n\n  two\n", 20) == "• one\n\n  two"
+
+
 async def test_list_item_text_wraps_beside_its_marker() -> None:
     assert await render("- one two three four\n", 12) == "• one two\n  three four"
+
+
+async def test_list_item_with_no_room_beside_its_marker_stays_inside_its_box() -> None:
+    styles = MarkdownStyles(document=border | border_light)
+
+    assert await render("- ab\n", 4, styles) == "┌──┐\n│• │\n└──┘"
+
+
+@pytest.mark.parametrize(("source", "marker"), [("- a\n", "•"), ("1. a\n", "1."), ("1. [ ] a\n", "1.")])
+def test_list_markers_are_styled(source: str, marker: str) -> None:
+    assert texts(source)[0] == Text(content=marker, style=MarkdownStyles().list_marker)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("- a\n\n  > - b\n", "• a\n\n  │ ◦ b"),
+        ("- a\n\n  > [!NOTE]\n  > - b\n", "• a\n\n  │ Note\n  │ ◦ b"),
+        ("a[^x]\n\n[^x]: - b\n", "a[1]\n\n────────\n[1] • b"),
+    ],
+)
+async def test_list_inside_another_block_takes_the_bullet_for_its_depth(source: str, expected: str) -> None:
+    assert await render(source, 8) == expected
 
 
 async def test_bullets_cycle_with_depth() -> None:
@@ -403,12 +563,13 @@ async def test_footnote_paragraphs_are_separated_by_a_blank_line() -> None:
     assert await render(source, 10) == "a[1]\n\n──────────\n[1] one\n\n    two"
 
 
-def test_front_matter_is_dim_yaml() -> None:
-    (front_matter, _) = texts("---\nkey: value\n---\n\nbody\n")
+def test_front_matter_is_dim_yaml_in_the_code_theme() -> None:
+    styles = MarkdownStyles(code_theme="monokai")
 
-    styles = MarkdownStyles()
+    (front_matter, _) = texts("---\nkey: value\n---\n\nbody\n", styles)
+
     assert front_matter == code_block(
-        "key: value", "yaml", theme=styles.code_theme, style=styles.code_block_text | styles.front_matter_text
+        "key: value", "yaml", theme="monokai", style=styles.code_block_text | styles.front_matter_text
     )
 
 
@@ -439,13 +600,13 @@ def test_code_block_box_is_drawn_on_the_code_theme_background() -> None:
 
 @pytest.mark.parametrize("info", ["", "not-a-real-language", "  "])
 def test_fenced_code_without_a_known_language_is_plain(info: str) -> None:
-    (block,) = texts(f"```{info}\nx = 1\n```\n")
+    (block,) = texts(f"```{info}\nx = 1\n```\n", MarkdownStyles(code_theme="monokai", code_block_text=pad_x(2)))
 
-    assert block.content == highlight("x = 1", "text")
+    assert block == code_block("x = 1", "text", theme="monokai", style=pad_x(2))
 
 
 def test_info_string_words_after_the_language_are_ignored() -> None:
-    (block,) = texts("```python title=x.py\nx = 1\n```\n")
+    (block,) = texts("```python title=x.py linenums=1\nx = 1\n```\n")
 
     assert block.content == highlight("x = 1", "python")
 
@@ -622,8 +783,17 @@ def test_styles_are_merged_over_the_layout() -> None:
     assert paragraph.style == text_wrap_none | pad_x(1)
 
 
-def test_rendering_is_cached() -> None:
-    assert markdown("# a\n") is markdown("# a\n")
+def test_markdown_document_is_memo() -> None:
+    assert markdown_document("# a\n").memo is True
+
+
+def test_markdown_document_renders_what_markdown_renders() -> None:
+    source = "# a\n\nline\nbreak"
+    styles = MarkdownStyles(block_gap=3)
+
+    document = markdown_document(source, styles, keeps_line_breaks=True)
+
+    assert document.func(*document.args, **document.kwargs) == markdown(source, styles, keeps_line_breaks=True)
 
 
 async def test_a_list_item_wider_than_the_rest_of_the_document_widens_a_document_sized_to_its_content() -> None:
@@ -643,5 +813,6 @@ def test_a_line_break_in_a_paragraph_joins_its_lines_unless_line_breaks_are_kept
 ) -> None:
     (paragraph,) = markdown("one\ntwo", keeps_line_breaks=keeps_line_breaks).children
 
-    assert isinstance(paragraph, Text) and not isinstance(paragraph.content, str)
+    assert isinstance(paragraph, Text)
+    assert not isinstance(paragraph.content, str)
     assert "".join(chunk.content for chunk in paragraph.content) == expected

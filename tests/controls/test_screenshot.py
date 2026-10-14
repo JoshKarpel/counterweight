@@ -7,13 +7,21 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.hooks import use_state
-from counterweight.output import Frame, paint_to_str
-from counterweight.paint import Cell, Paint
-from counterweight.styles.styles import CellStyle, Color, resolve_cell_style
+from counterweight.output import Frame
+from counterweight.output import paint_to_str
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import resolve_cell_style
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 [![PyPI - License](https://img.shields.io/pypi/l/counterweight)](https://pypi.org/project/counterweight)
 [![Docs](https://img.shields.io/badge/docs-exist-brightgreen)](https://www.counterweight.dev)
 
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/JoshKarpel/counterweight/main.svg)](https://results.pre-commit.ci/latest/github/JoshKarpel/counterweight/main)
+[![quality-check](https://github.com/JoshKarpel/counterweight/actions/workflows/quality-check.yml/badge.svg)](https://github.com/JoshKarpel/counterweight/actions/workflows/quality-check.yml)
 
 [![GitHub issues](https://img.shields.io/github/issues/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/pulls)

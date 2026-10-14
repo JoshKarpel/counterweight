@@ -7,7 +7,9 @@ from counterweight.events import KeyPressed
 from counterweight.headless import use_text_input
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
-from docs.examples.performance_state_in_root import METRICS, metric_card, note_line
+from docs.examples.performance_state_in_root import METRICS
+from docs.examples.performance_state_in_root import metric_card
+from docs.examples.performance_state_in_root import note_line
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]

@@ -2,7 +2,8 @@ import subprocess
 import sys
 
 import pytest
-from without_cli import Streams, run
+from without_cli import Streams
+from without_cli import run
 
 from counterweight.cli import cli
 from counterweight.constants import PACKAGE_NAME

@@ -4,8 +4,10 @@ from functools import lru_cache
 
 from more_itertools import grouper
 
-from counterweight.elements import NEWLINE, Chunk
-from counterweight.styles.styles import CellStyle, Color
+from counterweight.elements import NEWLINE
+from counterweight.elements import Chunk
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
 
 _BLACK = Color.from_name("black")
 

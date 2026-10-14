@@ -14,7 +14,9 @@ import inspect
 import re
 from annotationlib import Format
 from collections import Counter
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from fnmatch import fnmatchcase
 from types import ModuleType
 from typing import get_args
@@ -24,7 +26,10 @@ from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.structure.files import Files
 from mkdocs.structure.pages import Page
 
-from counterweight.styles import UNSET, CellStyle, Color, Style
+from counterweight.styles import UNSET
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
+from counterweight.styles import Style
 from counterweight.styles import utilities as utilities_module
 
 UTILITIES_MARKER = re.compile(r"^<!-- utilities: (?P<patterns>[^>]+?) -->$", re.MULTILINE)

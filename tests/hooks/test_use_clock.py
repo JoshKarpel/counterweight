@@ -1,23 +1,43 @@
 from __future__ import annotations
 
-from asyncio import CancelledError, Event, create_task, wait_for
+from asyncio import CancelledError
+from asyncio import Event
+from asyncio import create_task
+from asyncio import wait_for
 from contextlib import suppress
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 
 import pytest
 
 from counterweight.app import app
-from counterweight.clock import Instant, frozen_clock, system_clock, tick_index, until_next_tick
+from counterweight.clock import Instant
+from counterweight.clock import frozen_clock
+from counterweight.clock import system_clock
+from counterweight.clock import tick_index
+from counterweight.clock import until_next_tick
 from counterweight.components import component
-from counterweight.controls import AdvanceClock, Quit, Screenshot
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import KeyPressed, Receiver
+from counterweight.controls import AdvanceClock
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.focus import Subtree
-from counterweight.hooks import use_clock, use_state
-from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_state
+from counterweight.layout import INITIAL_RECTS
+from counterweight.layout import NO_LAYOUTS
 from counterweight.output import Frame
-from counterweight.shadow import ShadowUpdate, until_due, update_shadow
-from tests.rendering import state_set_keys, state_sets
+from counterweight.shadow import ShadowUpdate
+from counterweight.shadow import until_due
+from counterweight.shadow import update_shadow
+from tests.rendering import state_set_keys
+from tests.rendering import state_sets
 
 # 26 seconds past the minute.
 MOUNTED = Instant(wall=datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC), monotonic=timedelta(seconds=7))
@@ -200,7 +220,9 @@ INDIA = timezone(timedelta(hours=5, minutes=30))
         ),
         pytest.param(datetime(2026, 3, 14, 15, 9, tzinfo=INDIA), timedelta(hours=1), timedelta(minutes=51), id="1h"),
         pytest.param(datetime(2026, 3, 14, 23, 0, tzinfo=INDIA), timedelta(days=1), timedelta(hours=1), id="1d"),
-        pytest.param(datetime(2026, 3, 14, 15, 10), timedelta(minutes=1), timedelta(minutes=1), id="on-a-tick"),
+        pytest.param(
+            datetime(2026, 3, 14, 15, 10, tzinfo=UTC), timedelta(minutes=1), timedelta(minutes=1), id="on-a-tick"
+        ),
     ],
 )
 def test_ticks_start_on_the_local_wall_clock(wall: datetime, interval: timedelta, expected: timedelta) -> None:

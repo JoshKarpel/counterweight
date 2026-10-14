@@ -30,6 +30,10 @@ to see what scroll anchoring costs.
 (typing, Backspace, Ctrl+J, a paste, and Enter to send, which empties it), wrapping past its maximum height so it scrolls.
 Each of its frames is two loop iterations, one that edits the prompt and one that streams,
 so compare it with `agent` to see what a key press costs on a busy screen.
+`document` types onto the end of a ~110 KB document drawn as one `Text` in a scroll container,
+as a pager would draw a file, `document-lines` draws it as one `Text` per line, as `markdown` draws one per block,
+and `document-text-area` types into it in a `text_area`, which wraps it itself and draws it as a few `Text`s:
+use them to see what content scrolled out of view costs.
 
 ## Profile a run
 

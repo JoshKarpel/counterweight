@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from counterweight.controls import AnyControl
-from counterweight.focus import FocusHandle, Subtree
-from counterweight.geometry import Position, Rects, Scroll
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Scroll
 
 if TYPE_CHECKING:
     from counterweight.hooks.impls import NodeKey
@@ -182,17 +185,11 @@ class Dummy(_Event):
     pass
 
 
-MouseEvent = Union[
-    MouseMoved,
-    MouseDown,
-    MouseUp,
-    MouseScrolledDown,
-    MouseScrolledUp,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-]
+MouseEvent = (
+    MouseMoved | MouseDown | MouseUp | MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight
+)
 
-InputEvent = Union[KeyPressed, Pasted, MouseEvent]
+InputEvent = KeyPressed | Pasted | MouseEvent
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,7 +239,7 @@ class Receiver:
         return position - self.rects.content.top_left
 
 
-InputResponse = Union[AnyControl, tuple[AnyControl | None, ...], None]
+InputResponse = AnyControl | tuple[AnyControl | None, ...] | None
 
 InputHandler = Callable[[InputEvent, Receiver], InputResponse]
 
@@ -261,11 +258,4 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
             return (response,)
 
 
-AnyEvent = Union[
-    TerminalResized,
-    KeyPressed,
-    Pasted,
-    StateSet,
-    MouseEvent,
-    Dummy,
-]
+AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | MouseEvent | Dummy

@@ -7,7 +7,7 @@ from counterweight._utils import unordered_range
 
 @pytest.mark.parametrize(
     ("a", "b", "expected"),
-    (
+    [
         (0, 0, (0,)),
         (0, 1, (0, 1)),
         (0, 2, (0, 1, 2)),
@@ -16,7 +16,7 @@ from counterweight._utils import unordered_range
         (1, 2, (1, 2)),
         (2, 1, (2, 1)),
         (1, -1, (1, 0, -1)),
-    ),
+    ],
 )
 def test_examples(a: int, b: int, expected: tuple[int, ...]) -> None:
     assert tuple(unordered_range(a, b)) == expected

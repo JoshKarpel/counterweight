@@ -14,13 +14,22 @@ Compare with `agent` to see what a key press costs on a busy screen.
 from dataclasses import replace
 
 from benchmarks.agent import WORKLOAD as AGENT
-from benchmarks.agent import Model, header, message_view, spinner, transcript
+from benchmarks.agent import Model
+from benchmarks.agent import header
+from benchmarks.agent import message_view
+from benchmarks.agent import spinner
+from benchmarks.agent import transcript
 from counterweight.components import component
 from counterweight.elements import Div
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles.utilities import col, max_height
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import max_height
 from counterweight.widgets import text_area
 
 PROMPT_HEIGHT = 8

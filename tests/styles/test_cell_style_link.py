@@ -1,7 +1,11 @@
 import pytest
 
-from counterweight.output import HYPERLINK_END, hyperlink, paint_to_str, sgr_from_cell_style
-from counterweight.paint import Cell, Paint
+from counterweight.output import HYPERLINK_END
+from counterweight.output import hyperlink
+from counterweight.output import paint_to_str
+from counterweight.output import sgr_from_cell_style
+from counterweight.paint import Cell
+from counterweight.paint import Paint
 from counterweight.styles import CellStyle
 from counterweight.styles.styles import resolve_cell_style
 
@@ -13,7 +17,10 @@ from counterweight.styles.styles import resolve_cell_style
         "https://example.com/a%20b?q=1;r=2#frag",
         "mailto:someone@example.com",
         "file:///tmp/x.txt",
+        "file:///tmp/a b.txt",
+        "https://example.com/~user",
     ],
+    ids=["https", "escaped", "mailto", "file", "space", "tilde"],
 )
 def test_printable_ascii_link_is_accepted(link: str) -> None:
     assert CellStyle(link=link).link == link

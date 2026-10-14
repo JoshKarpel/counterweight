@@ -12,10 +12,15 @@ from functools import lru_cache
 from pygments.lexers import get_lexer_by_name
 from pygments.style import Style as PygmentsStyle
 from pygments.styles import get_style_by_name
-from pygments.token import Token, _TokenType
+from pygments.token import Token
+from pygments.token import _TokenType
 
-from counterweight.elements import Chunk, Text
-from counterweight.styles import UNSET, CellStyle, Color, Style
+from counterweight.elements import Chunk
+from counterweight.elements import Text
+from counterweight.styles import UNSET
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
+from counterweight.styles import Style
 from counterweight.styles.utilities import default
 
 # A Pygments style, by name (any of `pygments.styles.get_all_styles()`) or as a `pygments.style.Style` subclass.

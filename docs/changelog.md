@@ -117,9 +117,11 @@
   See [Clipping](layout/clipping.md), and the [autocomplete recipe](cookbook/autocomplete.md).
 
 - [#330](https://github.com/JoshKarpel/counterweight/issues/330)
-  Added [`markdown`](rich-text/markdown.md), which renders a Markdown document
-  (GitHub Flavored Markdown, with its task lists, alerts, footnotes, bare URLs, and math, and YAML front matter)
-  as a `Div` of elements, styled by a `MarkdownStyles` with a field for each kind of block and span.
+  Added [`markdown_document`](rich-text/markdown.md), a component that renders a Markdown document
+  (GitHub Flavored Markdown, with its task lists, alerts, footnotes, bare URLs, and math, and YAML front matter),
+  styled by a `MarkdownStyles` with a field for each kind of block and span.
+  It's a `memo` component, which parses its document again only when its arguments change,
+  and `markdown`, the function it calls, returns the document as a `Div` of elements.
   Links are hyperlinks, and fenced code blocks and front matter are highlighted.
   Code blocks and tables too wide for the space they're given scroll sideways with the wheel, as GitHub's styles scroll them,
   and a table wraps its cells as narrow as their words allow before it scrolls.

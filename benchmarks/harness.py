@@ -17,8 +17,11 @@ Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 import asyncio
 import json
 import statistics
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from collections.abc import Callable
+from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -27,11 +30,18 @@ from typing import Protocol
 
 import counterweight
 from counterweight.app import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, Screenshot
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.elements import Div
-from counterweight.events import AnyEvent, InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_effect, use_state
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_state
 from counterweight.output import Frame
 
 

@@ -6,28 +6,53 @@ The failure modes' code mirrors the page's inline snippets, so a change that sto
 from __future__ import annotations
 
 from asyncio import Queue
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
+from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from counterweight.app import app
-from counterweight.components import Component, component
+from counterweight.components import Component
+from counterweight.components import component
 from counterweight.controls import Quit
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, InputEvent, InputHandler, KeyPressed, Receiver
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.focus import Subtree
-from counterweight.hooks import Setter, use_memo, use_ref, use_state
-from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
+from counterweight.hooks import Setter
+from counterweight.hooks import use_memo
+from counterweight.hooks import use_ref
+from counterweight.hooks import use_state
+from counterweight.hooks.impls import InconsistentHookExecution
+from counterweight.hooks.impls import StaleMemo
+from counterweight.hooks.impls import UseState
 from counterweight.keys import Key
-from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
-from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
-from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
-from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
+from counterweight.layout import INITIAL_RECTS
+from counterweight.layout import NO_LAYOUTS
+from counterweight.shadow import ImpureComponent
+from counterweight.shadow import ShadowNode
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import ShadowUpdate
+from counterweight.shadow import update_shadow
+from docs.examples import performance_process_table
+from docs.examples import performance_state_in_root
+from docs.examples import performance_state_moved_down
+from docs.examples.performance_process_table import PROCESSES
+from docs.examples.performance_process_table import Process
+from docs.examples.performance_process_table import process_row
+from docs.examples.performance_process_table import process_table
 from tests.devlog import devlog_lines
-from tests.rendering import state_set_keys, state_sets
+from tests.rendering import state_set_keys
+from tests.rendering import state_sets
 
 
 @dataclass(slots=True)
@@ -448,7 +473,8 @@ def test_a_dependency_built_every_render_recomputes_every_render(inline: bool, e
 
 @component
 def process_labels(processes: tuple[Process, ...]) -> Div:
-    labels = [use_memo(lambda: f"{process.name} ({process.pid})", deps=(process,)) for process in processes]
+    # The guide's code, which `use_memo` calls before the loop moves on.
+    labels = [use_memo(lambda: f"{process.name} ({process.pid})", deps=(process,)) for process in processes]  # noqa: B023
     return Div(children=tuple(Text(content=label) for label in labels))
 
 

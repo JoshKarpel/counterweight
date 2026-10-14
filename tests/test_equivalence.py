@@ -5,9 +5,12 @@ from functools import partial
 
 import pytest
 
-from counterweight.elements import Div, Text
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.equivalence import equivalent
-from counterweight.events import InputEvent, InputHandler, Receiver
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import Receiver
 
 
 def handler_capturing(value: object) -> Callable[[], object]:

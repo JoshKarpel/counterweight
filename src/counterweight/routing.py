@@ -8,29 +8,36 @@ Handlers run here, but what their controls do is up to the render loop, which ho
 
 from __future__ import annotations
 
-from collections.abc import Collection, Iterator, Mapping
-from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, assert_never
+from collections.abc import Collection
+from collections.abc import Iterator
+from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import replace
+from typing import TYPE_CHECKING
+from typing import assert_never
 
-from counterweight.controls import AnyControl, ScrollBy, ScrollTo
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    KeyPressed,
-    MouseDown,
-    MouseEvent,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-    Receiver,
-    response_controls,
-)
-from counterweight.focus import ElementHandle, FocusHandle, Subtree
-from counterweight.geometry import Position, Scroll
+from counterweight.controls import AnyControl
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseEvent
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
+from counterweight.events import Receiver
+from counterweight.events import response_controls
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import Position
+from counterweight.geometry import Scroll
 from counterweight.layout import Layouts
 
 if TYPE_CHECKING:
@@ -67,10 +74,6 @@ class Focusable:
     in_focus_order: bool
 
 
-class DuplicateFocusHandle(Exception):
-    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
-
-
 class UnsettledFocus(Exception):
     """
     Raised when re-rendering the components whose focus a render changed changes focus again,
@@ -105,17 +108,8 @@ class RoutingTable:
 
     @classmethod
     def of(cls, shadow: ShadowTree, layouts: Layouts) -> RoutingTable:
-        """
-        The table for `shadow`, whose root is the screen element, and the `layouts` computed from it.
-        Raises `DuplicateFocusHandle` if two mounted components, hidden or unfocusable ones included, share a handle.
-        """
+        """The table for `shadow`, whose root is the screen element, and the `layouts` computed from it."""
         (root,) = shadow.root.children
-
-        if len({use_focus.handle for use_focus in shadow.focusable.values()}) != len(shadow.focusable):
-            raise DuplicateFocusHandle(
-                "Two mounted components were given the same FocusHandle. "
-                "Give each focusable component its own, such as from its own use_state(FocusHandle)."
-            )
 
         focus = {
             key: Focusable(
@@ -134,7 +128,7 @@ class RoutingTable:
             layouts=layouts,
             parents=shadow.parents,
             handlers={
-                key: element.on_input for key, element, _ in layouts.in_paint_order if element.on_input is not None
+                key: element.on_input for key, element, _, _ in layouts.in_paint_order if element.on_input is not None
             },
             focus=focus,
             focus_keys={focusable.handle: key for key, focusable in focus.items() if focusable.is_focusable},
@@ -147,7 +141,7 @@ class RoutingTable:
         The topmost element painted at `position`, the last in paint order whose border box contains it
         inside its clip, or the root component's node if that's only the screen.
         """
-        for key, _, layout in reversed(self.layouts.in_paint_order):
+        for key, _, layout, _ in reversed(self.layouts.in_paint_order):
             if (visible := layout.visible) is not None and visible.contains(position):
                 return self.root if key == self.screen else key
         return self.root

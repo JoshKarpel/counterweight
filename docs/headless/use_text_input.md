@@ -18,9 +18,7 @@ and passes it to the hook with its setter.
 The hook owns the cursor, makes the component [focusable](../hooks/use_focus.md),
 and returns the value split around the cursor, with the handler that edits it:
 
-```python
---8<-- "text_input.py:hook"
-```
+<!-- example: text_input.py:hook -->
 
 `before_cursor`, `at_cursor` and `after_cursor` together are the value,
 except that `at_cursor` is a space when the cursor is at the end of the value,
@@ -86,9 +84,7 @@ Draw a cell after the value while the cursor is off its end,
 so the value is as wide wherever the cursor is,
 and doesn't move under the pointer when a press takes the cursor off the end:
 
-```python
---8<-- "text_input.py:scrolling"
-```
+<!-- example: text_input.py:scrolling -->
 
 ![A command line scrolled to the end of a long command](../assets/text-input-command.svg)
 
@@ -154,9 +150,7 @@ To validate or transform an edit, wrap the setter in one that applies the edit i
 and decides what to keep.
 This one keeps only digits:
 
-```python
---8<-- "text_input.py:widget"
-```
+<!-- example: text_input.py:widget -->
 
 Typing `3x6` into the age field gives `36`, since the `x` would have made the value something other than digits:
 
