@@ -1,17 +1,33 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
 
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, FocusNext, FocusOn, Quit, ScrollIntoView
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
+from counterweight.controls import AnyControl
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import Quit
+from counterweight.controls import ScrollIntoView
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.geometry import Position
-from counterweight.handlers import each, first
-from counterweight.headless import TextArea, use_text_area
-from counterweight.hooks import ElementHandle, FocusHandle, use_state
+from counterweight.handlers import each
+from counterweight.handlers import first
+from counterweight.headless import TextArea
+from counterweight.headless import use_text_area
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import FocusHandle
+from counterweight.hooks import use_state
 from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 from counterweight.styles.utilities import height

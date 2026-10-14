@@ -1,9 +1,12 @@
 import io
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from asyncio import get_running_loop
+from collections.abc import Awaitable
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from time import get_clock_info
 from traceback import TracebackException
 
 import pytest
@@ -13,16 +16,16 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Text
-from counterweight.logging import (
-    BASE_LOG_LEVELS,
-    app_log_levels,
-    devlog,
-    format_line,
-    last_devlog,
-    render_exception,
-    render_line,
-    tail_devlog,
-)
+from counterweight.logging import BASE_LOG_LEVELS
+from counterweight.logging import TAIL_POLL
+from counterweight.logging import app_log_levels
+from counterweight.logging import devlog
+from counterweight.logging import format_line
+from counterweight.logging import last_devlog
+from counterweight.logging import render_exception
+from counterweight.logging import render_line
+from counterweight.logging import tail_devlog
+from counterweight.logging import wait_for_more
 
 RECORD = {
     "timestamp": "2026-10-11T03:16:34.779176+00:00",
@@ -197,6 +200,16 @@ async def test_tail_devlog_creates_a_missing_devlog(tmp_path: Path) -> None:
         await tail_devlog(io.StringIO(), path=path, wait=stop)
 
     assert path.read_text() == ""
+
+
+async def test_tail_devlog_waits_one_poll_on_the_event_loop_by_default() -> None:
+    loop = get_running_loop()
+    start = loop.time()
+
+    await wait_for_more()
+
+    # The loop runs a timer up to its clock's resolution early.
+    assert loop.time() - start >= TAIL_POLL.total_seconds() - get_clock_info("monotonic").resolution
 
 
 @pytest.mark.parametrize("raw", [True, False])

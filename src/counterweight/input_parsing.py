@@ -14,20 +14,19 @@ import re
 from codecs import getincrementaldecoder
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal, assert_never
+from typing import Literal
+from typing import assert_never
 
-from counterweight.events import (
-    AnyEvent,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-)
+from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
 from counterweight.geometry import Position
 from counterweight.graphemes import graphemes
 from counterweight.keys import Key
@@ -459,7 +458,7 @@ def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
             is_alt_held=is_alt_held,
             is_control_held=is_control_held,
         )
-    elif final == b"m":
+    if final == b"m":
         return MouseUp(
             absolute=position,
             button=button,
@@ -467,14 +466,13 @@ def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
             is_alt_held=is_alt_held,
             is_control_held=is_control_held,
         )
-    else:
-        return MouseDown(
-            absolute=position,
-            button=button,
-            is_shift_held=is_shift_held,
-            is_alt_held=is_alt_held,
-            is_control_held=is_control_held,
-        )
+    return MouseDown(
+        absolute=position,
+        button=button,
+        is_shift_held=is_shift_held,
+        is_alt_held=is_alt_held,
+        is_control_held=is_control_held,
+    )
 
 
 def parse_control(buffer: bytes | bytearray, start: int) -> Step:

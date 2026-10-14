@@ -4,37 +4,54 @@ from __future__ import annotations
 
 import io
 import os
-from asyncio import CancelledError, Event, create_task, get_running_loop, wait_for
-from collections.abc import Callable, Iterator
-from signal import SIGINT, SIGWINCH, raise_signal, signal
+from asyncio import CancelledError
+from asyncio import Event
+from asyncio import create_task
+from asyncio import get_running_loop
+from asyncio import wait_for
+from collections.abc import Callable
+from collections.abc import Iterator
+from signal import SIGINT
+from signal import SIGWINCH
+from signal import raise_signal
+from signal import signal
 
 import pytest
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Bell, Quit, RestoreTitle, Screenshot, SetTitle, Suspend
+from counterweight.controls import AnyControl
+from counterweight.controls import Bell
+from counterweight.controls import Quit
+from counterweight.controls import RestoreTitle
+from counterweight.controls import Screenshot
+from counterweight.controls import SetTitle
+from counterweight.controls import Suspend
 from counterweight.elements import Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import first
 from counterweight.headless import use_text_input
-from counterweight.hooks import Mouse, use_effect, use_mouse, use_state
-from counterweight.output import (
-    ALT_SCREEN_OFF,
-    ALT_SCREEN_ON,
-    BRACKETED_PASTE_OFF,
-    BRACKETED_PASTE_ON,
-    CLEAR_SCREEN,
-    CURSOR_OFF,
-    CURSOR_ON,
-    RESTORE_TITLE,
-    SAVE_TITLE,
-    SET_ANY_EVENT_MOUSE_SGR_FORMAT,
-    SYNCHRONIZED_OUTPUT_OFF,
-    SYNCHRONIZED_OUTPUT_ON,
-    UNSET_ANY_EVENT_MOUSE_SGR_FORMAT,
-    title_instructions,
-)
+from counterweight.hooks import Mouse
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_mouse
+from counterweight.hooks import use_state
+from counterweight.output import ALT_SCREEN_OFF
+from counterweight.output import ALT_SCREEN_ON
+from counterweight.output import BRACKETED_PASTE_OFF
+from counterweight.output import BRACKETED_PASTE_ON
+from counterweight.output import CLEAR_SCREEN
+from counterweight.output import CURSOR_OFF
+from counterweight.output import CURSOR_ON
+from counterweight.output import RESTORE_TITLE
+from counterweight.output import SAVE_TITLE
+from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight.output import SYNCHRONIZED_OUTPUT_OFF
+from counterweight.output import SYNCHRONIZED_OUTPUT_ON
+from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight.output import title_instructions
 from counterweight.styles.utilities import text_black
 from tests.devlog import devlog_lines
 from tests.terminal import Terminal

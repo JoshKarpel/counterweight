@@ -5,15 +5,34 @@ from types import ModuleType
 
 import pytest
 
-from benchmarks import agent, agent_markdown, agent_typing, canvas, dashboard, top
-from benchmarks.harness import autopilot, run
-from benchmarks.parsing import INPUTS, InputTiming, ParsingTimings, parsing_table, time_parsing
-from benchmarks.stacks import EVENT_LOOP, LOOP_ITSELF, STARTUP, Frame, parse_collapsed, parse_frame, summarize
-from benchmarks.tables import Column, render_table
+from benchmarks import agent
+from benchmarks import agent_markdown
+from benchmarks import agent_typing
+from benchmarks import canvas
+from benchmarks import dashboard
+from benchmarks import top
+from benchmarks.harness import autopilot
+from benchmarks.harness import run
+from benchmarks.parsing import INPUTS
+from benchmarks.parsing import InputTiming
+from benchmarks.parsing import ParsingTimings
+from benchmarks.parsing import parsing_table
+from benchmarks.parsing import time_parsing
+from benchmarks.stacks import EVENT_LOOP
+from benchmarks.stacks import LOOP_ITSELF
+from benchmarks.stacks import STARTUP
+from benchmarks.stacks import Frame
+from benchmarks.stacks import parse_collapsed
+from benchmarks.stacks import parse_frame
+from benchmarks.stacks import summarize
+from benchmarks.tables import Column
+from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
 from counterweight import output
 from counterweight.app import app
-from counterweight.controls import Bell, Quit, Screenshot
+from counterweight.controls import Bell
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.events import KeyPressed
 from counterweight.input_parsing import parse_input
 

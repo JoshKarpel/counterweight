@@ -8,12 +8,12 @@ from counterweight.output import move_to
 
 @pytest.mark.parametrize(
     ("pos", "expected"),
-    (
+    [
         (Position(0, 0), "\x1b[1;1f"),
         (Position(1, 0), "\x1b[1;2f"),
         (Position(0, 1), "\x1b[2;1f"),
         (Position(1, 1), "\x1b[2;2f"),
-    ),
+    ],
 )
 def test_examples(pos: Position, expected: str) -> None:
     assert move_to(pos) == expected

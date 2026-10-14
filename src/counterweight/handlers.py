@@ -8,24 +8,30 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from counterweight.controls import ClearFocus, FocusNext, FocusOn, FocusPrevious, ScrollBy, ScrollTo
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Receiver,
-    response_controls,
-)
-from counterweight.focus import ElementHandle, FocusHandle, Subtree
-from counterweight.geometry import Position, Scroll
+from counterweight.controls import ClearFocus
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import FocusPrevious
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.events import response_controls
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import Position
+from counterweight.geometry import Scroll
 from counterweight.keys import Key
 
 

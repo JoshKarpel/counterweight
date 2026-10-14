@@ -8,44 +8,54 @@ from hypothesis import strategies as st
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot, ScrollTo
-from counterweight.elements import Div, Text
-from counterweight.geometry import Position, Region
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollTo
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.geometry import Position
+from counterweight.geometry import Region
 from counterweight.graphemes import grapheme_width
 from counterweight.hooks import ElementHandle
 from counterweight.layout import MeasurableText
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, line_cells
+from counterweight.paint import BLANK
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import border_fills
+from counterweight.paint import diff_paint
+from counterweight.paint import line_cells
 from counterweight.styles import Style
-from counterweight.styles.styles import BorderKind, CellStyle, Color, resolve_cell_style
-from counterweight.styles.utilities import (
-    _COLOR_MAP,
-    border,
-    border_bg,
-    border_light,
-    col,
-    content_color,
-    fit_content_height,
-    fit_content_width,
-    full,
-    inset,
-    inset_left,
-    inset_top,
-    margin,
-    margin_auto,
-    margin_color,
-    margin_left,
-    overflow_clip,
-    overflow_hidden,
-    overflow_x_hidden,
-    overflow_x_scroll,
-    overflow_y_hidden,
-    pad,
-    padding_color,
-    position_absolute,
-    size,
-    z,
-)
+from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.utilities import _COLOR_MAP
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_bg
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import content_color
+from counterweight.styles.utilities import fit_content_height
+from counterweight.styles.utilities import fit_content_width
+from counterweight.styles.utilities import full
+from counterweight.styles.utilities import inset
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import margin_auto
+from counterweight.styles.utilities import margin_color
+from counterweight.styles.utilities import margin_left
+from counterweight.styles.utilities import overflow_clip
+from counterweight.styles.utilities import overflow_hidden
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_hidden
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import padding_color
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import z
 
 RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
 BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
@@ -210,7 +220,7 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
             paint[x, y] = X
 
     for row in paint.rows():
-        for left, right in zip([BLANK, *row], [*row, BLANK]):
+        for left, right in zip([BLANK, *row], [*row, BLANK], strict=True):
             assert (grapheme_width(left.grapheme) == 2 if left.grapheme else False) == right.is_continuation
 
 

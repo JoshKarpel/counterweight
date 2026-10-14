@@ -8,8 +8,11 @@ from more_itertools import grouper
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
-from counterweight.hooks import use_effect, use_state
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_state
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
@@ -126,7 +129,7 @@ def random_walkers() -> Text:
         content=canvas(
             width=w,
             height=h,
-            cells=dict(zip(walkers, colors)),
+            cells=dict(zip(walkers, colors, strict=True)),
         ),
         style=border | border_heavy | border_color("slate", 400),
     )

@@ -86,8 +86,9 @@ The entry point is typically through `counterweight.app.app()` which starts the 
 This project uses [Just](https://github.com/casey/just) as the task runner. Key commands:
 
 ```bash
-# Install dependencies
-just install
+# Install Just and uv (pinned in mise.toml), then the dependencies
+mise install
+uv sync
 
 # Run type checking, then the tests with coverage, passing any arguments on to pytest
 just test [-k pattern | tests/test_paint.py ...]
@@ -125,8 +126,11 @@ and hand-written utility functions need a docstring to describe them there.
 
 ## Docs Screenshots
 
-Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list,
-and pages include its code between `--8<--` snippet markers.
+Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list.
+A page shows a section of one with a `<!-- example: <module>.py:<section> -->` line outside any code block,
+which `mkdocs_hooks/examples.py` replaces with the code between the module's `# --8<-- [start:<section>]`
+and `# --8<-- [end:<section>]` comments,
+so every Python code block in a page is real Python that ruff can format.
 Run one in the terminal with `uv run python -m docs.examples.<module> [root]`, naming a root function to pick
 among several; running it by path fails, since the examples import from the `docs` package.
 Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`

@@ -3,7 +3,10 @@ from __future__ import annotations
 import logging
 import os
 import termios
-from asyncio import Queue, get_running_loop, to_thread, wait_for
+from asyncio import Queue
+from asyncio import get_running_loop
+from asyncio import to_thread
+from asyncio import wait_for
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -11,18 +14,19 @@ from typing import TextIO
 
 import pytest
 
-from counterweight.events import AnyEvent, KeyPressed, MouseMoved, Pasted
+from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseMoved
+from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input import (
-    ESCAPE_TIMEOUT,
-    PASTE_TIMEOUT,
-    KeyReader,
-    read_keys,
-    start_input_control,
-    start_reading_keys,
-    stop_input_control,
-    stop_reading_keys,
-)
+from counterweight.input import ESCAPE_TIMEOUT
+from counterweight.input import PASTE_TIMEOUT
+from counterweight.input import KeyReader
+from counterweight.input import read_keys
+from counterweight.input import start_input_control
+from counterweight.input import start_reading_keys
+from counterweight.input import stop_input_control
+from counterweight.input import stop_reading_keys
 from counterweight.keys import Key
 from tests.terminal import Terminal
 
@@ -190,21 +194,21 @@ async def test_read_keys_puts_a_paste_longer_than_one_read_as_one_event(
 
 
 @pytest.mark.parametrize(
-    ("typed", "timeout"),
+    ("typed", "hold"),
     [
         (b"\x1b", ESCAPE_TIMEOUT),
         (b"\x1b[200~ab", PASTE_TIMEOUT),
     ],
 )
 async def test_held_input_waits_as_long_as_its_kind_needs(
-    terminal: Terminal, key_reading: KeyReading, typed: bytes, timeout: timedelta
+    terminal: Terminal, key_reading: KeyReading, typed: bytes, hold: timedelta
 ) -> None:
     os.write(terminal.keyboard, typed)
     await next_in(key_reading.records)
     timer = key_reading.reader.hold_timer
 
     assert timer is not None
-    assert timer.when() - get_running_loop().time() == pytest.approx(timeout.total_seconds(), abs=0.04)
+    assert timer.when() - get_running_loop().time() == pytest.approx(hold.total_seconds(), abs=0.04)
 
 
 async def test_a_held_paste_keeps_how_much_of_it_was_searched_for_its_end(
@@ -317,4 +321,5 @@ async def test_stopping_reading_keys_cancels_the_hold_timeout(terminal: Terminal
 
     stop_reading_keys(key_reading.reader)
 
-    assert timer is not None and timer.cancelled()
+    assert timer is not None
+    assert timer.cancelled()

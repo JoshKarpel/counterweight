@@ -5,15 +5,28 @@ from collections.abc import Callable
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import ScrollBy
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
-from counterweight.handlers import first, focus_receiver_on_press, scroll_on_wheel, tab_focus
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Pasted
+from counterweight.events import Receiver
+from counterweight.handlers import first
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import scroll_on_wheel
+from counterweight.handlers import tab_focus
 from counterweight.headless import use_text_input
-from counterweight.hooks import ElementHandle, Setter, use_state
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import Setter
+from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles import CellStyle, Style
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
-from counterweight.widgets import TextFieldStyles, text_input
+from counterweight.widgets import TextFieldStyles
+from counterweight.widgets import text_input
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:hook]

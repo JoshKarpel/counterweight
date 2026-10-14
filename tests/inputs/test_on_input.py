@@ -2,16 +2,22 @@ from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
-from counterweight.events import (
-    InputEvent,
-    KeyPressed,
-    MouseScrolledDown,
-    Receiver,
-)
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseScrolledDown
+from counterweight.events import Receiver
 from counterweight.focus import Subtree
-from counterweight.geometry import Position, Rects, Region
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
 from counterweight.hooks.impls import NodeKey
-from counterweight.styles.utilities import border, inset_left, inset_top, margin, pad, position_absolute, size
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import size
 
 SCREEN = Region(left=0, top=0, right=20, bottom=20)
 

@@ -7,31 +7,32 @@ Each line's rows are cached, as its clusters are, so an edit only wraps the line
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 
-from counterweight.graphemes import grapheme_width, graphemes, visible
-from counterweight.headless.text_editing import (
-    DROPPED_CONTROLS,
-    KEY_EDITS,
-    LINE_BREAKS,
-    Edit,
-    EditableText,
-    Target,
-    cell_offset,
-    delete_to,
-    insert,
-    is_blank,
-    key_edit_in,
-    line_clusters,
-    line_end_at,
-    line_start_at,
-    move_to,
-    previous_cluster,
-    value_end,
-    value_start,
-)
+from counterweight.graphemes import grapheme_width
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
+from counterweight.headless.text_editing import DROPPED_CONTROLS
+from counterweight.headless.text_editing import KEY_EDITS
+from counterweight.headless.text_editing import LINE_BREAKS
+from counterweight.headless.text_editing import Edit
+from counterweight.headless.text_editing import EditableText
+from counterweight.headless.text_editing import Target
+from counterweight.headless.text_editing import cell_offset
+from counterweight.headless.text_editing import delete_to
+from counterweight.headless.text_editing import insert
+from counterweight.headless.text_editing import is_blank
+from counterweight.headless.text_editing import key_edit_in
+from counterweight.headless.text_editing import line_clusters
+from counterweight.headless.text_editing import line_end_at
+from counterweight.headless.text_editing import line_start_at
+from counterweight.headless.text_editing import move_to
+from counterweight.headless.text_editing import previous_cluster
+from counterweight.headless.text_editing import value_end
+from counterweight.headless.text_editing import value_start
 from counterweight.keys import Key
 
 
@@ -276,8 +277,8 @@ PASTE_CONTROLS: Mapping[int, str | None] = {
 
 
 def paste_edit(pasted: str, tab_size: int) -> Edit:
-    """
-    The edit pasting `pasted` makes: inserting it with each line break as `\\n`,
+    r"""
+    The edit pasting `pasted` makes: inserting it with each line break as `\n`,
     each tab expanded to spaces up to the next multiple of `tab_size` columns along its line,
     counting the line's text before the cursor, as `str.expandtabs` counts columns,
     and without any other control characters.

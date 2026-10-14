@@ -8,29 +8,36 @@ Handlers run here, but what their controls do is up to the render loop, which ho
 
 from __future__ import annotations
 
-from collections.abc import Collection, Iterator, Mapping
-from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, assert_never
+from collections.abc import Collection
+from collections.abc import Iterator
+from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import replace
+from typing import TYPE_CHECKING
+from typing import assert_never
 
-from counterweight.controls import AnyControl, ScrollBy, ScrollTo
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    KeyPressed,
-    MouseDown,
-    MouseEvent,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Pasted,
-    Receiver,
-    response_controls,
-)
-from counterweight.focus import ElementHandle, FocusHandle, Subtree
-from counterweight.geometry import Position, Scroll
+from counterweight.controls import AnyControl
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseEvent
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Pasted
+from counterweight.events import Receiver
+from counterweight.events import response_controls
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import Position
+from counterweight.geometry import Scroll
 from counterweight.layout import Layouts
 
 if TYPE_CHECKING:

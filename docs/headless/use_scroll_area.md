@@ -32,9 +32,7 @@ This log puts its border and title on the element it returns, and its lines in t
 with `stick_to_end=True`, so it follows its newest line,
 and a button that jumps back to it while it's scrolled back:
 
-```python
---8<-- "scroll_area.py:hook"
-```
+<!-- example: scroll_area.py:hook -->
 
 === "Following the end"
 
@@ -152,9 +150,7 @@ a terminal draws nothing outside a box, so its border changes color with focus i
 as the [text field widgets'](index.md#styling-the-widgets) borders do,
 and its content stays where it is as focus comes and goes:
 
-```python
---8<-- "scroll_area.py:widget"
-```
+<!-- example: scroll_area.py:widget -->
 
 === "The first focused"
 

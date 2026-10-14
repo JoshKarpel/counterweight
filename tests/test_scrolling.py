@@ -5,49 +5,65 @@ from collections.abc import Sequence
 import pytest
 import waxy
 
-from counterweight.app import app, stale_scroll_readers
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, Screenshot, ScrollBy, ScrollTo
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import (
-    AnyEvent,
-    InputEvent,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseScrolledDown,
-    MouseScrolledRight,
-    Receiver,
-)
-from counterweight.focus import ElementHandle, Subtree
-from counterweight.geometry import ORIGIN, Position, Scroll
-from counterweight.handlers import scroll_on_keys, scroll_on_wheel
-from counterweight.hooks import use_focus, use_scroll, use_state
+from counterweight.app import app
+from counterweight.app import stale_scroll_readers
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledRight
+from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import ORIGIN
+from counterweight.geometry import Position
+from counterweight.geometry import Scroll
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_scroll
+from counterweight.hooks import use_state
 from counterweight.hooks.impls import NodeKey
 from counterweight.keys import Key
-from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, PriorScroll, layout_changes
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Layouts
+from counterweight.layout import LayoutTree
+from counterweight.layout import PriorScroll
+from counterweight.layout import layout_changes
 from counterweight.output import Frame
-from counterweight.routing import RoutingTable, route_key
-from counterweight.shadow import DuplicateElementHandle, update_shadow
+from counterweight.routing import RoutingTable
+from counterweight.routing import route_key
+from counterweight.shadow import DuplicateElementHandle
+from counterweight.shadow import update_shadow
 from counterweight.styles import Style
 from counterweight.styles.styles import Color
-from counterweight.styles.utilities import (
-    border,
-    border_light,
-    clip_to_border,
-    clip_to_screen,
-    col,
-    height,
-    inset_left,
-    inset_top,
-    margin_bottom,
-    overflow_x_scroll,
-    overflow_y_scroll,
-    position_absolute,
-    shrink,
-    size,
-    z,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import clip_to_border
+from counterweight.styles.utilities import clip_to_screen
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import inset_left
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import margin_bottom
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import shrink
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import z
 
 # Marks where `frames_of` takes a screenshot in its autopilot, besides the one it takes at the end.
 SHOT = Screenshot(handler=lambda frame: None)

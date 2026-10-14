@@ -2,9 +2,12 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.markdown import MarkdownStyles, markdown_document
-from counterweight.styles.styles import Style, TextWrap
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.markdown import MarkdownStyles
+from counterweight.markdown import markdown_document
+from counterweight.styles.styles import Style
+from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 

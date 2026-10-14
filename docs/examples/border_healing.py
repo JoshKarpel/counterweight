@@ -2,9 +2,13 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, ToggleBorderHealing
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.controls import AnyControl
+from counterweight.controls import ToggleBorderHealing
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec

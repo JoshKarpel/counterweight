@@ -8,17 +8,19 @@ from hypothesis import strategies as st
 
 from counterweight.geometry import Position
 from counterweight.graphemes import grapheme_width
-from counterweight.output import (
-    HYPERLINK_END,
-    RESET_STYLE,
-    hyperlink,
-    move_to,
-    paint_to_instructions,
-    sgr_from_cell_style,
-)
-from counterweight.paint import Cell, Paint, diff_paint, runs_of
+from counterweight.output import HYPERLINK_END
+from counterweight.output import RESET_STYLE
+from counterweight.output import hyperlink
+from counterweight.output import move_to
+from counterweight.output import paint_to_instructions
+from counterweight.output import sgr_from_cell_style
+from counterweight.paint import Cell
+from counterweight.paint import Paint
+from counterweight.paint import diff_paint
+from counterweight.paint import runs_of
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import Color, resolve_cell_style
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import resolve_cell_style
 
 DEFAULT = resolve_cell_style(CellStyle())
 RED_FG = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))

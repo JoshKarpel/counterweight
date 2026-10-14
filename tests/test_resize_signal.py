@@ -1,7 +1,12 @@
-from signal import SIG_DFL, SIGWINCH, getsignal, raise_signal
+from signal import SIG_DFL
+from signal import SIGWINCH
+from signal import getsignal
+from signal import raise_signal
 
-from counterweight.app import start_handling_resize_signal, stop_handling_resize_signal
-from counterweight.events import AnyEvent, TerminalResized
+from counterweight.app import start_handling_resize_signal
+from counterweight.app import stop_handling_resize_signal
+from counterweight.events import AnyEvent
+from counterweight.events import TerminalResized
 
 
 def test_resize_signal_puts_a_terminal_resized_event_until_handling_stops() -> None:

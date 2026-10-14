@@ -52,9 +52,7 @@ Its fields take keys rather than text:
 the size and the wrapping paper cycle with Left and Right,
 the quantity steps with Up and Down, and gift wrap toggles with Space.
 
-```python
---8<-- "focus_form.py:example"
-```
+<!-- example: focus_form.py:example -->
 
 The first field takes focus at startup, with `auto_focus=True`:
 

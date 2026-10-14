@@ -1,8 +1,15 @@
-from asyncio import CancelledError, Event, create_task, current_task, sleep, timeout, wait
+from asyncio import CancelledError
+from asyncio import Event
+from asyncio import create_task
+from asyncio import current_task
+from asyncio import sleep
+from asyncio import timeout
+from asyncio import wait
 
 import pytest
 
-from counterweight._utils import cancel_tasks, forever
+from counterweight._utils import cancel_tasks
+from counterweight._utils import forever
 
 
 async def test_cancel_tasks_cancels_every_task() -> None:

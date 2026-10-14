@@ -3,33 +3,45 @@ from collections.abc import Sequence
 import pytest
 
 from counterweight import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit, Screenshot, ScrollBy
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseScrolledUp, Pasted
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollBy
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledUp
+from counterweight.events import Pasted
 from counterweight.geometry import Position
 from counterweight.handlers import scroll_on_keys
-from counterweight.hooks import ElementHandle, use_state
+from counterweight.hooks import ElementHandle
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.styles import CellStyle, Color, Style
-from counterweight.styles.utilities import (
-    align_self_start,
-    border,
-    border_color,
-    border_heavy,
-    col,
-    default,
-    fill,
-    height,
-    max_height,
-    overflow_y_scroll,
-    pad_x,
-    row,
-    text_color,
-    width,
-)
-from counterweight.widgets import TextFieldStyles, text_area, text_input
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
+from counterweight.styles import Style
+from counterweight.styles.utilities import align_self_start
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import max_height
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import width
+from counterweight.widgets import TextFieldStyles
+from counterweight.widgets import text_area
+from counterweight.widgets import text_input
 
 CURSOR = TextFieldStyles().cursor
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"

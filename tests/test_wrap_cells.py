@@ -4,9 +4,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.elements import Chunk, StyledGrapheme, styled_cells, text_cells
-from counterweight.layout import MeasurableText, wrap_cells
-from counterweight.styles.styles import CellStyle, TextWrap
+from counterweight.elements import Chunk
+from counterweight.elements import StyledGrapheme
+from counterweight.elements import styled_cells
+from counterweight.elements import text_cells
+from counterweight.layout import MeasurableText
+from counterweight.layout import wrap_cells
+from counterweight.styles.styles import CellStyle
+from counterweight.styles.styles import TextWrap
 
 
 def cells(text: str) -> list[StyledGrapheme]:

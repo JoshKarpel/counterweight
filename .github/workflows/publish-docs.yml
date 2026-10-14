@@ -4,16 +4,30 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions: {}
 
 jobs:
   publish-docs:
+    name: Publish docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write  # gh-deploy pushes the built site to the gh-pages branch
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v7.0.1
-    - name: Install uv
-      uses: astral-sh/setup-uv@v10.2.0
-      with:
-        enable-cache: true
-    - name: Build and deploy docs
-      run: uv run mkdocs gh-deploy --clean --strict --verbose --force
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: true  # gh-deploy pushes with the checkout's credential
+
+      - name: Install uv
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca  # v5.1.1
+        with:
+          version: 2026.10.3
+          cache: false  # don't restore a cache into a job that publishes
+        env:
+          MISE_LOCKED: 1  # install only the versions, URLs and checksums in mise.lock
+
+      - name: Build and deploy docs
+        run: uv run --locked mkdocs gh-deploy --clean --strict --verbose --force

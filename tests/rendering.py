@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from asyncio import Queue, Task, TaskGroup, sleep
+from asyncio import Queue
+from asyncio import Task
+from asyncio import TaskGroup
+from asyncio import sleep
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -10,10 +13,12 @@ from counterweight._context_vars import current_event_queue
 from counterweight.app import handle_effects
 from counterweight.components import Component
 from counterweight.elements import AnyElement
-from counterweight.events import AnyEvent, StateSet
+from counterweight.events import AnyEvent
+from counterweight.events import StateSet
 from counterweight.hooks.impls import NodeKey
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowTree, update_shadow
+from counterweight.shadow import ShadowTree
+from counterweight.shadow import update_shadow
 
 
 @contextmanager

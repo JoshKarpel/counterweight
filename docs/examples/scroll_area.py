@@ -3,11 +3,17 @@ import sys
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Screenshot
-from counterweight.elements import Div, Text
-from counterweight.events import AnyEvent, KeyPressed, MouseDown, MouseUp
+from counterweight.controls import AnyControl
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseUp
 from counterweight.geometry import Position
-from counterweight.handlers import on_click, tab_focus
+from counterweight.handlers import on_click
+from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
 from counterweight.keys import Key
 from counterweight.styles.utilities import *

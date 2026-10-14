@@ -21,9 +21,7 @@ since the text is wrapped to fit it.
 The hook returns the rows, joined by line breaks, split around the cursor,
 so the component draws them with `text_wrap_none`, without wrapping them again:
 
-```python
---8<-- "text_area.py:hook"
-```
+<!-- example: text_area.py:hook -->
 
 Enter isn't an edit, so it [bubbles](../input-handling/events.md#routing-input-events),
 and here the composer takes it to send the draft.
@@ -172,9 +170,7 @@ and [`styles`](index.md#styling-the-widgets) for its colors.
 It's as wide as its parent or its `style` makes it, and grows to fit its rows,
 up to a `max_height` in its `style`, even in a column too short for everything in it:
 
-```python
---8<-- "text_area.py:widget"
-```
+<!-- example: text_area.py:widget -->
 
 ![An empty notes box showing its placeholder](../assets/text-area-notes.svg)
 

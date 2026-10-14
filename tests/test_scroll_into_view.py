@@ -3,35 +3,42 @@ from __future__ import annotations
 import pytest
 
 from counterweight.components import component
-from counterweight.controls import (
-    AnyControl,
-    FocusNext,
-    FocusOn,
-    ScrollAlignment,
-    ScrollBy,
-    ScrollIntoView,
-    ScrollTo,
-)
-from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.focus import ElementHandle, FocusHandle
-from counterweight.hooks import use_focus, use_state
+from counterweight.controls import AnyControl
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import ScrollAlignment
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollIntoView
+from counterweight.controls import ScrollTo
+from counterweight.elements import AnyElement
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.layout import aligned
 from counterweight.styles import Style
-from counterweight.styles.utilities import (
-    clip_to_screen,
-    col,
-    display_none,
-    inset_top,
-    overflow_x_scroll,
-    overflow_y_scroll,
-    position_absolute,
-    row,
-    shrink,
-    size,
-)
-from tests.test_scrolling import HANDLE, frames_of, last_rows, rows
+from counterweight.styles.utilities import clip_to_screen
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import inset_top
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import position_absolute
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import shrink
+from counterweight.styles.utilities import size
+from tests.test_scrolling import HANDLE
+from tests.test_scrolling import frames_of
+from tests.test_scrolling import last_rows
+from tests.test_scrolling import rows
 
 ITEMS = tuple(ElementHandle() for _ in range(8))
 

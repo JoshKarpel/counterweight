@@ -1,4 +1,5 @@
-from asyncio import Queue, timeout
+from asyncio import Queue
+from asyncio import timeout
 
 import pytest
 
@@ -18,9 +19,6 @@ async def test_non_empty_queue(queue: Queue[int]) -> None:
 
 
 async def test_empty_queue_hangs(queue: Queue[int]) -> None:
-    try:
-        async with timeout(0.05):  # pragma: unreachable
+    with pytest.raises(TimeoutError):
+        async with timeout(0.05):
             await drain_queue(queue)
-            assert False, "drain_queue() should have hung"
-    except TimeoutError:
-        pass

@@ -6,17 +6,27 @@ compared with `dashboard`, this measures what skipping the components whose stat
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from datetime import timedelta
 from time import perf_counter_ns
 
 from benchmarks.dashboard import WORKLOAD as DASHBOARD
-from benchmarks.dashboard import frame_text, layout, metric_card
+from benchmarks.dashboard import frame_text
+from benchmarks.dashboard import layout
+from benchmarks.dashboard import metric_card
 from counterweight.components import component
 from counterweight.controls import AnyControl
-from counterweight.elements import Div, Text
-from counterweight.events import AnyEvent, InputEvent, KeyPressed, Receiver
-from counterweight.hooks import use_clock, use_focus, use_state
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 
 
 @dataclass(frozen=True, slots=True)

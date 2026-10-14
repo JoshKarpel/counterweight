@@ -4,21 +4,32 @@ import asyncio
 import logging
 import zlib
 from collections.abc import Callable
-from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from dataclasses import dataclass
+from dataclasses import replace
+from datetime import date
+from datetime import timedelta
 from random import choice
-from string import ascii_letters, ascii_uppercase
+from string import ascii_letters
+from string import ascii_uppercase
 from typing import Literal
 
 from more_itertools import padded
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Bell, Quit
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
+from counterweight.controls import Bell
+from counterweight.controls import Quit
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.handlers import on_click
-from counterweight.hooks import use_clock, use_focus, use_state
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_focus
+from counterweight.hooks import use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -109,60 +120,59 @@ def root() -> Div:
                 ).with_key(solution),
             ),
         )
-    else:
 
-        def play_today() -> None:
-            s = daily_solution(today)
-            logger.debug("Starting play", extra={"solution": s})
-            set_solution(s)
-            set_playing(True)
+    def play_today() -> None:
+        s = daily_solution(today)
+        logger.debug("Starting play", extra={"solution": s})
+        set_solution(s)
+        set_playing(True)
 
-        def play_random() -> None:
-            s = choice(SOLUTION_WORDS)
-            logger.debug("Starting play", extra={"solution": s})
-            set_solution(s)
-            set_playing(True)
+    def play_random() -> None:
+        s = choice(SOLUTION_WORDS)
+        logger.debug("Starting play", extra={"solution": s})
+        set_solution(s)
+        set_playing(True)
 
-        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
-            match event:
-                case KeyPressed(key=Key.F1):
-                    play_today()
-                    return ()
-                case KeyPressed(key=Key.F2):
-                    play_random()
-                    return ()
-                case KeyPressed(key="q"):
-                    return Quit()
-                case _:
-                    return None
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.F1):
+                play_today()
+                return ()
+            case KeyPressed(key=Key.F2):
+                play_random()
+                return ()
+            case KeyPressed(key="q"):
+                return Quit()
+            case _:
+                return None
 
-        return Div(
-            style=col | align_children_center,
-            children=(
-                header,
-                Div(
-                    style=col | align_children_center | gap(2) | margin_top(4),
-                    children=(
-                        menu_button(
-                            content=f"[F1] Play Daily ({today:%Y-%m-%d})",
-                            hover_style=text_color("indigo", 500) | border_color("indigo", 500),
-                            on_click_action=play_today,
-                        ),
-                        menu_button(
-                            content="[F2] Play Random",
-                            hover_style=text_color("emerald", 500) | border_color("emerald", 500),
-                            on_click_action=play_random,
-                        ),
-                        menu_button(
-                            content="[q] Quit",
-                            hover_style=text_color("red", 500) | border_color("red", 500),
-                            on_click_action=Quit,
-                        ),
+    return Div(
+        style=col | align_children_center,
+        children=(
+            header,
+            Div(
+                style=col | align_children_center | gap(2) | margin_top(4),
+                children=(
+                    menu_button(
+                        content=f"[F1] Play Daily ({today:%Y-%m-%d})",
+                        hover_style=text_color("indigo", 500) | border_color("indigo", 500),
+                        on_click_action=play_today,
+                    ),
+                    menu_button(
+                        content="[F2] Play Random",
+                        hover_style=text_color("emerald", 500) | border_color("emerald", 500),
+                        on_click_action=play_random,
+                    ),
+                    menu_button(
+                        content="[q] Quit",
+                        hover_style=text_color("red", 500) | border_color("red", 500),
+                        on_click_action=Quit,
                     ),
                 ),
             ),
-            on_input=on_input,
-        )
+        ),
+        on_input=on_input,
+    )
 
 
 button_style = pad_x(1) | border | border_lightrounded
@@ -232,11 +242,11 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     submitted, guess, state = board.submitted, board.guess, board.outcome
 
-    guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
+    guess_rows = [guess_row(s, solution=solution, row_kind="submitted") for s in submitted]
     if state == "playing":
         known_bad = frozenset("".join(submitted)) - frozenset(solution)
-        guess_rows.append(guess_row(guess, solution=solution, type="current", known_bad=known_bad))
-    guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
+        guess_rows.append(guess_row(guess, solution=solution, row_kind="current", known_bad=known_bad))
+    guess_rows += [guess_row(blank, solution=solution, row_kind="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
     message_style = text_justify_center | pad_x(2) | border
@@ -283,27 +293,27 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 def guess_row(
     guess: str,
     solution: str,
-    type: Literal["submitted", "current", "pending"],
+    row_kind: Literal["submitted", "current", "pending"],
     known_bad: frozenset[str] = frozenset(),
 ) -> Div:
     children = []
-    for guess_letter, solution_letter in zip(padded(guess, fillvalue=" ", n=5), solution):
+    for guess_letter, solution_letter in zip(padded(guess, fillvalue=" ", n=5), solution, strict=True):
         style = {
             "submitted": border | border_double,
             "current": border | border_heavy,
             "pending": border | border_double,
-        }[type]
+        }[row_kind]
 
-        if type == "submitted":
+        if row_kind == "submitted":
             if guess_letter == solution_letter:
                 style |= border_color("green", 600)
             elif guess_letter in solution:
                 style |= border_color("yellow", 300)
             else:
                 style |= border_color("red", 700)
-        elif type == "pending":
+        elif row_kind == "pending":
             style |= border_color("gray", 700)
-        elif type == "current":
+        elif row_kind == "current":
             if guess_letter in known_bad:
                 style |= border_color("red", 700)
             elif guess_letter != " ":
@@ -346,7 +356,7 @@ def keyboard(
             kb_letter_styles[letter] = border_color("red", 700)
 
     for s in submitted:
-        for guess_letter, solution_letter in zip(s, solution):
+        for guess_letter, solution_letter in zip(s, solution, strict=True):
             if guess_letter == solution_letter:
                 kb_letter_styles[guess_letter] = border_color("green", 600)
 

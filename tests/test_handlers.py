@@ -2,46 +2,45 @@ from dataclasses import replace
 
 import pytest
 
-from counterweight.controls import (
-    Bell,
-    ClearFocus,
-    FocusNext,
-    FocusOn,
-    FocusPrevious,
-    Quit,
-    ScrollBy,
-    ScrollTo,
-    ToggleBorderHealing,
-)
-from counterweight.events import (
-    InputEvent,
-    InputHandler,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseScrolledDown,
-    MouseScrolledLeft,
-    MouseScrolledRight,
-    MouseScrolledUp,
-    MouseUp,
-    Receiver,
-)
-from counterweight.focus import ElementHandle, FocusHandle, Subtree
-from counterweight.geometry import Position, Rects, Region, Scroll
-from counterweight.handlers import (
-    clear_focus,
-    each,
-    first,
-    focus_on_press,
-    focus_receiver_on_press,
-    on_click,
-    page_down,
-    page_up,
-    scroll_on_keys,
-    scroll_on_wheel,
-    tab_focus,
-)
+from counterweight.controls import Bell
+from counterweight.controls import ClearFocus
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import FocusPrevious
+from counterweight.controls import Quit
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.controls import ToggleBorderHealing
+from counterweight.events import InputEvent
+from counterweight.events import InputHandler
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
+from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import Subtree
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
+from counterweight.geometry import Scroll
+from counterweight.handlers import clear_focus
+from counterweight.handlers import each
+from counterweight.handlers import first
+from counterweight.handlers import focus_on_press
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import on_click
+from counterweight.handlers import page_down
+from counterweight.handlers import page_up
+from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import scroll_on_wheel
+from counterweight.handlers import tab_focus
 from counterweight.hooks.impls import NodeKey
 from counterweight.keys import Key
 

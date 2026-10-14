@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from counterweight.geometry import Position, Region
+from counterweight.geometry import Position
+from counterweight.geometry import Region
 
 REGION = Region(left=3, top=5, right=7, bottom=8)
 

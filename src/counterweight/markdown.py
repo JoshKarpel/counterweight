@@ -21,38 +21,44 @@ from mdit_py_plugins.gfm import gfm_plugin
 from pygments.util import ClassNotFound
 
 from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
-from counterweight.events import InputEvent, InputResponse, Receiver
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import Receiver
 from counterweight.handlers import scroll_on_wheel
-from counterweight.highlighting import DEFAULT_CODE_THEME, CodeTheme, code_block, code_style
-from counterweight.styles import CellStyle, Style
-from counterweight.styles.utilities import (
-    border,
-    border_collapse,
-    border_color,
-    border_left,
-    border_light,
-    border_top,
-    col,
-    default,
-    display_grid,
-    fill,
-    gap_height,
-    gap_width,
-    grid_template_columns,
-    grow,
-    min_width,
-    overflow_x_scroll,
-    pad_left,
-    pad_x,
-    row,
-    text_bg,
-    text_color,
-    text_justify_center,
-    text_justify_left,
-    text_justify_right,
-    text_wrap_stable,
-)
+from counterweight.highlighting import DEFAULT_CODE_THEME
+from counterweight.highlighting import CodeTheme
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_collapse
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import border_top
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import display_grid
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import gap_height
+from counterweight.styles.utilities import gap_width
+from counterweight.styles.utilities import grid_template_columns
+from counterweight.styles.utilities import grow
+from counterweight.styles.utilities import min_width
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import pad_left
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_justify_center
+from counterweight.styles.utilities import text_justify_left
+from counterweight.styles.utilities import text_justify_right
+from counterweight.styles.utilities import text_wrap_stable
 
 # Math is enabled here rather than by `gfm_plugin(dollarmath=True)`, whose defaults parse `$5 and $10` as math.
 # These options follow Pandoc's rule instead (no space just inside the dollars, no digit right after the closing one),

@@ -5,21 +5,24 @@ on paragraphs of words, including words of zero-width clusters.
 
 from __future__ import annotations
 
-from itertools import combinations, pairwise
+from itertools import combinations
+from itertools import pairwise
 
-from hypothesis import assume, example, given, settings
+from hypothesis import assume
+from hypothesis import example
+from hypothesis import given
+from hypothesis import settings
 from hypothesis import strategies as st
 
-from counterweight.elements import StyledGrapheme, text_cells
-from counterweight.layout import (
-    _extract_words_and_spaces,
-    _flatten_long_words,
-    _greedy_line_count,
-    _wrap_at_target,
-    _wrap_balance,
-    _wrap_pretty,
-    cells_width,
-)
+from counterweight.elements import StyledGrapheme
+from counterweight.elements import text_cells
+from counterweight.layout import _extract_words_and_spaces
+from counterweight.layout import _flatten_long_words
+from counterweight.layout import _greedy_line_count
+from counterweight.layout import _wrap_at_target
+from counterweight.layout import _wrap_balance
+from counterweight.layout import _wrap_pretty
+from counterweight.layout import cells_width
 from counterweight.styles.styles import CellStyle
 
 type Line = list[StyledGrapheme]
@@ -119,7 +122,10 @@ def reference_pretty(paragraph: Line, width: int) -> list[Line]:
             ends = (*breaks, n)
             bounds = list(pairwise((0, *ends)))
             lines = [line(start, stop) for start, stop in bounds]
-            if any(cells_width(built) > width and stop - start > 1 for built, (start, stop) in zip(lines, bounds)):
+            if any(
+                cells_width(built) > width and stop - start > 1
+                for built, (start, stop) in zip(lines, bounds, strict=True)
+            ):
                 continue
             cost = sum(max(width - cells_width(built), 0) ** 2 for built in lines[:-1])
             candidates.append((cost, ends, lines))

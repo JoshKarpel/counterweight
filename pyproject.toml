@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.9.26,<0.10.0"]
+requires = ["uv_build>=0.12.23,<0.13"]
 build-backend = "uv_build"
 
 [project]
@@ -20,7 +20,6 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
     "Operating System :: Unix",
     "Programming Language :: Python :: 3",
@@ -46,9 +45,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit>=4.4",
-    "black==26.3.1",
+    "pre-commit-hooks>=6.0.0",
+    "check-jsonschema>=0.38.0",
+    "zizmor>=1.30.0",
     "watchfiles>=0.19",
-    "pytest<10",
+    "pytest>=9.0",
     "pytest-cov>=3",
     "pytest-xdist>=3",
     "pytest-asyncio>=1",
@@ -58,7 +59,7 @@ dev = [
     "mkdocs<2",
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.19.0",
-    "ruff>=0.15.4",
+    "ruff>=0.16.10",
     "mutmut>=3.8.0",
     "types-pygments>=2.17",
 ]
@@ -140,38 +141,84 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
-    "I",   # https://beta.ruff.rs/docs/rules/#isort-i
-    "F",   # https://beta.ruff.rs/docs/rules/#pyflakes-f
-    "E",   # https://beta.ruff.rs/docs/rules/#error-e
-    "W",   # https://beta.ruff.rs/docs/rules/#warning-w
-    "T20", # https://beta.ruff.rs/docs/rules/#flake8-print-t20
-    "PIE", # https://beta.ruff.rs/docs/rules/#flake8-pie-pie
-    "PLC", # https://beta.ruff.rs/docs/rules/#convention-plc
-    "PLE", # https://beta.ruff.rs/docs/rules/#error-ple
-    "PLW", # https://beta.ruff.rs/docs/rules/#warning-plw
-    "PTH", # https://beta.ruff.rs/docs/rules/#flake8-use-pathlib-pth
-    "PGH", # https://beta.ruff.rs/docs/rules/#pygrep-hooks-pgh
-    "RUF", # https://beta.ruff.rs/docs/rules/#ruff-specific-rules-ruf
+    "A",     # https://docs.astral.sh/ruff/rules/#flake8-builtins-a
+    "ASYNC", # https://docs.astral.sh/ruff/rules/#flake8-async-async
+    "B",     # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+    "BLE",   # https://docs.astral.sh/ruff/rules/#flake8-blind-except-ble
+    "C4",    # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+    "D",     # https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    "DTZ",   # https://docs.astral.sh/ruff/rules/#flake8-datetimez-dtz
+    "E",     # https://docs.astral.sh/ruff/rules/#error-e
+    "F",     # https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "FLY",   # https://docs.astral.sh/ruff/rules/#flynt-fly
+    "FURB",  # https://docs.astral.sh/ruff/rules/#refurb-furb
+    "G",     # https://docs.astral.sh/ruff/rules/#flake8-logging-format-g
+    "I",     # https://docs.astral.sh/ruff/rules/#isort-i
+    "ICN",   # https://docs.astral.sh/ruff/rules/#flake8-import-conventions-icn
+    "LOG",   # https://docs.astral.sh/ruff/rules/#flake8-logging-log
+    "N",     # https://docs.astral.sh/ruff/rules/#pep8-naming-n
+    "PERF",  # https://docs.astral.sh/ruff/rules/#perflint-perf
+    "PGH",   # https://docs.astral.sh/ruff/rules/#pygrep-hooks-pgh
+    "PIE",   # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
+    "PLC",   # https://docs.astral.sh/ruff/rules/#convention-plc
+    "PLE",   # https://docs.astral.sh/ruff/rules/#error-ple
+    "PLW",   # https://docs.astral.sh/ruff/rules/#warning-plw
+    "PT",    # https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
+    "PTH",   # https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+    "PYI",   # https://docs.astral.sh/ruff/rules/#flake8-pyi-pyi
+    "RET",   # https://docs.astral.sh/ruff/rules/#flake8-return-ret
+    "RSE",   # https://docs.astral.sh/ruff/rules/#flake8-raise-rse
+    "RUF",   # https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+    "S307",  # https://docs.astral.sh/ruff/rules/suspicious-eval-usage/
+    "SIM",   # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+    "SLF",   # https://docs.astral.sh/ruff/rules/#flake8-self-slf
+    "T10",   # https://docs.astral.sh/ruff/rules/#flake8-debugger-t10
+    "T20",   # https://docs.astral.sh/ruff/rules/#flake8-print-t20
+    "TID",   # https://docs.astral.sh/ruff/rules/#flake8-tidy-imports-tid
+    "UP",    # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "W",     # https://docs.astral.sh/ruff/rules/#warning-w
 ]
 
 ignore = [
-    "E501",  # line length exceeds limit
+    "E501",  # line length: formatter owns this
     "E741",  # ambiguous variable name
     "T201",  # print
     "T203",  # pprint
     "F403",  # star imports, used for utilities
     "F405",  # star imports, used for utilities
+    "N818",  # exception names are deliberately descriptive, not Error-suffixed
+    "G004",  # logging-f-string: f-strings in log calls are allowed
+    "FLY002", # static-join-to-f-string: joined rows lay out an expected screen as a grid
+    # pydocstyle: enforce well-formed docstrings, but don't mandate their presence.
+    # The google convention below already leaves mood alone (D401).
+    "D1",    # undocumented-*: a presence check rewards padding
+    "D205",  # would force a single-physical-line summary; summary sentences wrap naturally over a few lines
+    "D212",  # the summary starts on the line after the opening quotes
 ]
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # mkdocstrings' default docstring style
+
+[tool.ruff.lint.isort]
+force-single-line = true
 
 [tool.ruff.lint.flake8-bugbear]
-# Styles are immutable values, so they're safe as dataclass defaults.
+# Styles are immutable values, so they're safe as defaults.
 extend-immutable-calls = [
     "counterweight.styles.Style",
     "counterweight.styles.CellStyle",
     "counterweight.styles.styles.Style",
     "counterweight.styles.styles.CellStyle",
     "counterweight.styles.utilities.*",
+    "counterweight.markdown.MarkdownStyles",
+    "counterweight.widgets.ScrollAreaStyles",
+    "counterweight.widgets.TextFieldStyles",
+]
+
+[tool.ruff.lint.flake8-builtins]
+ignorelist = [
+    "hex",   # `Color.from_hex`'s public keyword argument
+    "next",  # pairs with `previous` in reconciliation: the element or node replacing the previous one
 ]
 
 [tool.mutmut]

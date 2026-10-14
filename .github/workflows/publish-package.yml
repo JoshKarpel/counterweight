@@ -4,9 +4,13 @@ on:
   release:
     types: [published]
 
+permissions: {}
+
 jobs:
   pypi:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: pypi
       url: https://pypi.org/p/${{ github.event.repository.name }}
@@ -14,13 +18,21 @@ jobs:
       contents: read  # add default back in
       id-token: write
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v7.0.1
-    - name: Install uv
-      uses: astral-sh/setup-uv@v10.2.0
-      with:
-        enable-cache: true
-    - name: Build the package
-      run: uv build -vvv
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.14.2
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca  # v5.1.1
+        with:
+          version: 2026.10.3
+          cache: false  # don't restore a cache into a publish job
+        env:
+          MISE_LOCKED: 1  # install only the versions, URLs and checksums in mise.lock
+
+      - name: Build the package
+        run: uv build -vvv
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2

@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 import os
 import termios
-from asyncio import TimerHandle, get_running_loop
+from asyncio import TimerHandle
+from asyncio import get_running_loop
 from collections.abc import Callable
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import timedelta
 from typing import TextIO
 

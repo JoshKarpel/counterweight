@@ -2,7 +2,9 @@ import asyncio
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec

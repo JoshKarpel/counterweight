@@ -5,20 +5,26 @@ from itertools import cycle
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import toggle, use_clock, use_ref, use_state
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.hooks import toggle
+from counterweight.hooks import use_clock
+from counterweight.hooks import use_ref
+from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles import BorderKind, Style
-from counterweight.styles.utilities import (
-    border,
-    border_color,
-    border_lightrounded,
-    col,
-    pad,
-    row,
-    text_color,
-)
+from counterweight.styles import BorderKind
+from counterweight.styles import Style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_lightrounded
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import text_color
 from counterweight.widgets import text_input
 
 logger = logging.getLogger(__name__)

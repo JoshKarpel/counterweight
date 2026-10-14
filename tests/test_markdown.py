@@ -1,5 +1,6 @@
 import io
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
+from collections.abc import Sequence
 from textwrap import dedent
 
 import pytest
@@ -10,36 +11,41 @@ from mdit_py_plugins.gfm import gfm_plugin
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import AnyElement, Chunk, Div, Text
-from counterweight.events import AnyEvent, MouseScrolledDown, MouseScrolledLeft, MouseScrolledRight
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import AnyEvent
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledLeft
+from counterweight.events import MouseScrolledRight
 from counterweight.geometry import Position
 from counterweight.handlers import scroll_on_wheel
-from counterweight.highlighting import code_block, code_style, highlight
-from counterweight.markdown import (
-    MarkdownStyles,
-    markdown,
-    markdown_document,
-    unmatched_when_silent,
-    wrap_gfm_autolink_rules,
-)
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.highlighting import highlight
+from counterweight.markdown import MarkdownStyles
+from counterweight.markdown import markdown
+from counterweight.markdown import markdown_document
+from counterweight.markdown import unmatched_when_silent
+from counterweight.markdown import wrap_gfm_autolink_rules
 from counterweight.styles import CellStyle
-from counterweight.styles.utilities import (
-    border,
-    border_left,
-    border_light,
-    col,
-    display_none,
-    height,
-    max_content_width,
-    overflow_x_hidden,
-    overflow_y_scroll,
-    pad_left,
-    pad_x,
-    text_justify_left,
-    text_wrap_none,
-    text_wrap_stable,
-)
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_left
+from counterweight.styles.utilities import border_light
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import display_none
+from counterweight.styles.utilities import height
+from counterweight.styles.utilities import max_content_width
+from counterweight.styles.utilities import overflow_x_hidden
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_left
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import text_justify_left
+from counterweight.styles.utilities import text_wrap_none
+from counterweight.styles.utilities import text_wrap_stable
 
 
 async def render(
@@ -807,5 +813,6 @@ def test_a_line_break_in_a_paragraph_joins_its_lines_unless_line_breaks_are_kept
 ) -> None:
     (paragraph,) = markdown("one\ntwo", keeps_line_breaks=keeps_line_breaks).children
 
-    assert isinstance(paragraph, Text) and not isinstance(paragraph.content, str)
+    assert isinstance(paragraph, Text)
+    assert not isinstance(paragraph.content, str)
     assert "".join(chunk.content for chunk in paragraph.content) == expected

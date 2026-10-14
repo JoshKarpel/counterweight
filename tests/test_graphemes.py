@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from counterweight.graphemes import grapheme_width, graphemes, visible
+from counterweight.graphemes import grapheme_width
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
 
 
 @pytest.mark.parametrize(
@@ -58,7 +60,7 @@ def test_grapheme_width(grapheme: str, expected: int) -> None:
 
 @pytest.mark.parametrize("grapheme", ["\t", "\x1b", "\x7f", "\x85"])
 def test_grapheme_width_rejects_control_characters(grapheme: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is a control character"):
         grapheme_width(grapheme)
 
 

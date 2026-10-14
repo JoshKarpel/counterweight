@@ -9,25 +9,79 @@ compare them with each other, and before and after a change, to see what drawing
 """
 
 import random
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from dataclasses import replace
 
 from benchmarks.harness import Workload
 from counterweight.components import component
-from counterweight.elements import Div, Text
+from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles.utilities import col, fill, overflow_y_scroll, pad_x, stick_to_end_y, text_wrap_stable
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import stick_to_end_y
+from counterweight.styles.utilities import text_wrap_stable
 from counterweight.widgets import text_area
 
 LINES = 1250
 CHARACTERS_PER_LINE = 88
 
-VOCABULARY = (
-    "the layout tree component render frame cell style border paint diff text wrap measure width height "
-    "function returns value cache hit miss we should probably check whether this test covers that case "
-    "first then update call site so nothing else breaks and run suite again before moving on next file"
-).split()
+VOCABULARY = [
+    "the",
+    "layout",
+    "tree",
+    "component",
+    "render",
+    "frame",
+    "cell",
+    "style",
+    "border",
+    "paint",
+    "diff",
+    "text",
+    "wrap",
+    "measure",
+    "width",
+    "height",
+    "function",
+    "returns",
+    "value",
+    "cache",
+    "hit",
+    "miss",
+    "we",
+    "should",
+    "probably",
+    "check",
+    "whether",
+    "this",
+    "test",
+    "covers",
+    "that",
+    "case",
+    "first",
+    "then",
+    "update",
+    "call",
+    "site",
+    "so",
+    "nothing",
+    "else",
+    "breaks",
+    "and",
+    "run",
+    "suite",
+    "again",
+    "before",
+    "moving",
+    "on",
+    "next",
+    "file",
+]
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,32 +8,42 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from counterweight.components import Component, component
-from counterweight.elements import AnyElement, Chunk, Div, Text
-from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.graphemes import graphemes
-from counterweight.handlers import PAGE_FRACTION, first, focus_receiver_on_press, scroll_on_wheel
-from counterweight.headless import ScrollAxis, use_scroll_area, use_text_area, use_text_input
+from counterweight.handlers import PAGE_FRACTION
+from counterweight.handlers import first
+from counterweight.handlers import focus_receiver_on_press
+from counterweight.handlers import scroll_on_wheel
+from counterweight.headless import ScrollAxis
+from counterweight.headless import use_scroll_area
+from counterweight.headless import use_text_area
+from counterweight.headless import use_text_input
 from counterweight.hooks import use_rects
-from counterweight.styles import CellStyle, Style
-from counterweight.styles.utilities import (
-    border,
-    border_color,
-    border_lightrounded,
-    col,
-    default,
-    min_width,
-    overflow_x_scroll,
-    overflow_y_scroll,
-    pad_x,
-    row,
-    shrink,
-    stick_to_end_x,
-    stick_to_end_y,
-    text_bg,
-    text_color,
-    text_wrap_none,
-)
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_lightrounded
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import min_width
+from counterweight.styles.utilities import overflow_x_scroll
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import row
+from counterweight.styles.utilities import shrink
+from counterweight.styles.utilities import stick_to_end_x
+from counterweight.styles.utilities import stick_to_end_y
+from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_wrap_none
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

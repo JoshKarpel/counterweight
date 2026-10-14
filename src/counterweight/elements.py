@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from functools import lru_cache
 from itertools import chain
-from typing import Union
 
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
-from counterweight.graphemes import grapheme_width, graphemes, visible
-from counterweight.styles import CellStyle, Style
+from counterweight.graphemes import grapheme_width
+from counterweight.graphemes import graphemes
+from counterweight.graphemes import visible
+from counterweight.styles import CellStyle
+from counterweight.styles import Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
 
 _DEFAULT_STYLE = Style()
@@ -70,10 +73,7 @@ class Text:
         return text_cells(self.content, self.style.text_style)
 
 
-AnyElement = Union[
-    Div,
-    Text,
-]
+AnyElement = Div | Text
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 

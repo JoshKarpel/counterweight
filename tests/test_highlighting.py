@@ -5,11 +5,20 @@ from hypothesis import given
 from hypothesis import strategies as st
 from pygments.style import Style as PygmentsStyle
 from pygments.styles import get_style_by_name
-from pygments.token import Comment, Keyword, Name, Token, _TokenType
+from pygments.token import Comment
+from pygments.token import Keyword
+from pygments.token import Name
+from pygments.token import Token
+from pygments.token import _TokenType
 from pygments.util import ClassNotFound
 
-from counterweight.highlighting import cell_style_for_token, code_block, code_style, highlight
-from counterweight.styles import UNSET, CellStyle, Color
+from counterweight.highlighting import cell_style_for_token
+from counterweight.highlighting import code_block
+from counterweight.highlighting import code_style
+from counterweight.highlighting import highlight
+from counterweight.styles import UNSET
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
 from counterweight.styles.utilities import pad_x
 
 

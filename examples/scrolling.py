@@ -2,21 +2,55 @@ import asyncio
 import random
 
 from counterweight.app import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, Quit
-from counterweight.elements import AnyElement, Chunk, Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver
-from counterweight.handlers import first, on_click, tab_focus
-from counterweight.headless import ScrollAxis, use_scroll_area
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Quit
+from counterweight.elements import AnyElement
+from counterweight.elements import Chunk
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.handlers import first
+from counterweight.handlers import on_click
+from counterweight.handlers import tab_focus
+from counterweight.headless import ScrollAxis
+from counterweight.headless import use_scroll_area
 from counterweight.keys import Key
 from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
 
 LEVELS = (("INFO", cyan_400), ("WARN", amber_400), ("ERROR", red_400), ("DEBUG", slate_500))
-WORDS = (
-    "request served cache miss retrying connection pool exhausted reloaded config from disk "
-    "worker started shutting down slow query took longer than expected lease renewed for shard"
-).split()
+WORDS = [
+    "request",
+    "served",
+    "cache",
+    "miss",
+    "retrying",
+    "connection",
+    "pool",
+    "exhausted",
+    "reloaded",
+    "config",
+    "from",
+    "disk",
+    "worker",
+    "started",
+    "shutting",
+    "down",
+    "slow",
+    "query",
+    "took",
+    "longer",
+    "than",
+    "expected",
+    "lease",
+    "renewed",
+    "for",
+    "shard",
+]
 
 COLUMNS = ("host", "region", "cpu", "memory", "disk", "requests", "errors", "latency p50", "latency p99", "uptime")
 

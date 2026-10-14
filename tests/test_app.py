@@ -4,35 +4,40 @@ from asyncio import wait_for
 import pytest
 
 from counterweight.app import app
-from counterweight.components import Component, component
-from counterweight.controls import (
-    AnyControl,
-    Bell,
-    Quit,
-    RestoreTitle,
-    Screenshot,
-    ScrollBy,
-    ScrollTo,
-    SetTitle,
-    Suspend,
-    ToggleBorderHealing,
-)
-from counterweight.elements import Div, Text
-from counterweight.events import (
-    InputEvent,
-    InputResponse,
-    KeyPressed,
-    MouseDown,
-    MouseMoved,
-    MouseUp,
-    Receiver,
-    TerminalResized,
-)
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import Bell
+from counterweight.controls import Quit
+from counterweight.controls import RestoreTitle
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollBy
+from counterweight.controls import ScrollTo
+from counterweight.controls import SetTitle
+from counterweight.controls import Suspend
+from counterweight.controls import ToggleBorderHealing
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseUp
+from counterweight.events import Receiver
+from counterweight.events import TerminalResized
 from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
-from counterweight.hooks import use_effect, use_scroll, use_state
+from counterweight.hooks import use_effect
+from counterweight.hooks import use_scroll
+from counterweight.hooks import use_state
 from counterweight.styles.styles import Style
-from counterweight.styles.utilities import border, col, full, overflow_y_scroll, size, text_wrap_stable
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import full
+from counterweight.styles.utilities import overflow_y_scroll
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import text_wrap_stable
 
 
 async def test_headless_autopilot_events_with_empty_app() -> None:
@@ -118,7 +123,7 @@ class Boom(Exception):
 def raises_in_render() -> Text:
     is_pressed, set_is_pressed = use_state(False)
     if is_pressed:
-        raise Boom()
+        raise Boom
 
     def on_input(event: InputEvent, _: Receiver) -> None:
         set_is_pressed(True)
@@ -129,7 +134,7 @@ def raises_in_render() -> Text:
 @component
 def raises_in_handler() -> Text:
     def on_input(event: InputEvent, _: Receiver) -> None:
-        raise Boom()
+        raise Boom
 
     return Text(content="", on_input=on_input)
 
@@ -137,7 +142,7 @@ def raises_in_handler() -> Text:
 @component
 def raises_in_effect() -> Text:
     async def setup() -> None:
-        raise Boom()
+        raise Boom
 
     use_effect(setup, deps=())
     return Text(content="")
@@ -160,7 +165,7 @@ async def test_app_raises_a_lone_error_itself_rather_than_in_an_exception_group(
 @component
 def raises_in_two_effects() -> Text:
     async def setup() -> None:
-        raise Boom()
+        raise Boom
 
     use_effect(setup, deps=())
     use_effect(setup, deps=())

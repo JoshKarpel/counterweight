@@ -10,9 +10,7 @@ The utilities on this page override either.
 `width`, `height` and `size` set a box's size in cells.
 An axis left unset keeps its default: the `height(4)` box below still stretches across the column.
 
-```python
---8<-- "layout_box_sizing.py:fixed"
-```
+<!-- example: layout_box_sizing.py:fixed -->
 
 ![Fixed sizes](../assets/layout-size-fixed.svg)
 
@@ -22,9 +20,7 @@ Along the main axis, a box already fits its content.
 Across it, a box stretches unless its alignment says otherwise:
 `align_self_start` (or any alignment except stretch) shrinks it to its content.
 
-```python
---8<-- "layout_box_sizing.py:fit"
-```
+<!-- example: layout_box_sizing.py:fit -->
 
 ![Fitting content](../assets/layout-size-fit.svg)
 
@@ -43,9 +39,7 @@ The sizing keywords set a box's width or height from its content, whichever axis
 Each has a `_height` counterpart.
 Here each box is the only child of a `row`:
 
-```python
---8<-- "layout_box_sizing.py:content-keywords"
-```
+<!-- example: layout_box_sizing.py:content-keywords -->
 
 ![Sizing keywords](../assets/layout-size-content-keywords.svg)
 
@@ -57,9 +51,7 @@ so `sizes this`, wrapped onto a second row, overflows the box and is drawn over 
 A `max_content_width` box wider than the column keeps extra rows for the same reason.
 Put the box in a `row`, as above, or in a grid.
 
-```python
---8<-- "layout_box_sizing.py:content-keywords-col"
-```
+<!-- example: layout_box_sizing.py:content-keywords-col -->
 
 ![Sizing keywords in a column](../assets/layout-size-content-keywords-col.svg)
 
@@ -69,9 +61,7 @@ Put the box in a `row`, as above, or in a grid.
 `full_width` and `full_height` (the same as `stretch_width` and `stretch_height`) fill the parent,
 after the box's margins, whatever the other children need.
 
-```python
---8<-- "layout_box_sizing.py:fill"
-```
+<!-- example: layout_box_sizing.py:fill -->
 
 ![Filling the parent](../assets/layout-size-fill.svg)
 
@@ -83,9 +73,7 @@ In the top row, the first box would take half the row but stops at 20 cells.
 In the bottom row, two 30-cell boxes don't fit in 40 cells, so both shrink,
 but the first stops at 24 cells and the second gives up the rest.
 
-```python
---8<-- "layout_box_sizing.py:clamped"
-```
+<!-- example: layout_box_sizing.py:clamped -->
 
 ![Clamped sizes](../assets/layout-size-clamped.svg)
 
@@ -98,9 +86,7 @@ so `aspect_ratio(1)` looks tall, and `aspect_ratio(2)` is the one that looks squ
 The parent here sets `align_children_start`:
 a box stretched across a row has its height from the row, and its aspect ratio has nothing to set.
 
-```python
---8<-- "layout_box_sizing.py:aspect-ratio"
-```
+<!-- example: layout_box_sizing.py:aspect-ratio -->
 
 ![Aspect ratios](../assets/layout-size-aspect-ratio.svg)
 
@@ -110,8 +96,6 @@ Sizes include the border and padding by default, so a `width(24)` box is 24 cell
 With `content_box`, the size applies to the content alone,
 and the border and padding are added outside it: here 24 cells of content, 4 of padding and 2 of border.
 
-```python
---8<-- "layout_box_sizing.py:box-sizing"
-```
+<!-- example: layout_box_sizing.py:box-sizing -->
 
 ![Border box and content box](../assets/layout-size-box-sizing.svg)

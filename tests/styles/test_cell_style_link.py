@@ -1,7 +1,11 @@
 import pytest
 
-from counterweight.output import HYPERLINK_END, hyperlink, paint_to_str, sgr_from_cell_style
-from counterweight.paint import Cell, Paint
+from counterweight.output import HYPERLINK_END
+from counterweight.output import hyperlink
+from counterweight.output import paint_to_str
+from counterweight.output import sgr_from_cell_style
+from counterweight.paint import Cell
+from counterweight.paint import Paint
 from counterweight.styles import CellStyle
 from counterweight.styles.styles import resolve_cell_style
 

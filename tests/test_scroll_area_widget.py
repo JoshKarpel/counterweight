@@ -3,19 +3,41 @@ from collections.abc import Sequence
 import pytest
 
 from counterweight import app
-from counterweight.components import Component, component
-from counterweight.controls import AnyControl, FocusNext, FocusOn, Quit, Screenshot, ScrollTo
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, MouseDown, MouseScrolledDown, Receiver
-from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import AnyControl
+from counterweight.controls import FocusNext
+from counterweight.controls import FocusOn
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.controls import ScrollTo
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
+from counterweight.events import MouseDown
+from counterweight.events import MouseScrolledDown
+from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.geometry import Position
 from counterweight.headless import ScrollAxis
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.styles import Color, Style
-from counterweight.styles.utilities import border, border_color, border_heavy, col, default, fill, size, text_bg
-from counterweight.widgets import ScrollAreaStyles, scroll_area
+from counterweight.styles import Color
+from counterweight.styles import Style
+from counterweight.styles.utilities import border
+from counterweight.styles.utilities import border_color
+from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import default
+from counterweight.styles.utilities import fill
+from counterweight.styles.utilities import size
+from counterweight.styles.utilities import text_bg
+from counterweight.widgets import ScrollAreaStyles
+from counterweight.widgets import scroll_area
 
 ROWS = tuple(f"row {i:02}" for i in range(20))
 SETTLE = Screenshot(handler=lambda _: None)

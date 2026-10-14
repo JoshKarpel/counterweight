@@ -17,12 +17,19 @@ from __future__ import annotations
 import io
 
 from counterweight.app import app
-from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot
-from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, Receiver, TerminalResized
+from counterweight.components import Component
+from counterweight.components import component
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
+from counterweight.elements import Div
+from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import KeyPressed
+from counterweight.events import Receiver
+from counterweight.events import TerminalResized
 from counterweight.hooks import use_state
-from counterweight.styles.utilities import col, size
+from counterweight.styles.utilities import col
+from counterweight.styles.utilities import size
 
 
 async def _render(root: Component, dimensions: tuple[int, int]) -> str:

@@ -9,11 +9,19 @@ from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import cancel_tasks
 from counterweight.components import component
 from counterweight.elements import Text
-from counterweight.geometry import Position, Rects, Region
-from counterweight.hooks import Hovered, Mouse, use_hovered, use_mouse
-from counterweight.layout import NO_LAYOUTS, Layouts
+from counterweight.geometry import Position
+from counterweight.geometry import Rects
+from counterweight.geometry import Region
+from counterweight.hooks import Hovered
+from counterweight.hooks import Mouse
+from counterweight.hooks import use_hovered
+from counterweight.hooks import use_mouse
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Layouts
 from counterweight.shadow import update_shadow
-from tests.rendering import effect_tasks, render, state_sets
+from tests.rendering import effect_tasks
+from tests.rendering import render
+from tests.rendering import state_sets
 
 # Each box is a cell inside the next.
 NESTED_BOXES = Rects(
