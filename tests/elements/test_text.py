@@ -1,8 +1,11 @@
 import re
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from counterweight.elements import Chunk, StyledGrapheme, Text
+from counterweight.graphemes import graphemes, visible
 from counterweight.styles import Style
 
 
@@ -93,3 +96,33 @@ def test_text_replaces_control_characters_but_keeps_line_breaks() -> None:
 def test_styled_grapheme_rejects_control_characters() -> None:
     with pytest.raises(ValueError):
         StyledGrapheme(grapheme="\x1b")
+
+
+LINE_BREAKS_AND_CLUSTERS = st.lists(
+    st.sampled_from(
+        [
+            "a",
+            " ",
+            "\n",
+            "\r",
+            "\r\n",
+            "\x0b",
+            "\x0c",
+            "\x1c",
+            "\x85",
+            "\N{LINE SEPARATOR}",
+            "\N{COMBINING ACUTE ACCENT}",
+            "\N{ZERO WIDTH JOINER}",
+            "👩",
+            "\U0001f1fa",
+            "\U0001f1f8",
+            "\t",
+        ]
+    ),
+    max_size=12,
+).map("".join)
+
+
+@given(content=LINE_BREAKS_AND_CLUSTERS)
+def test_text_cells_are_the_clusters_of_the_whole_content_though_cached_line_by_line(content: str) -> None:
+    assert [cell.grapheme for cell in Text(content=content).cells] == [visible(g) for g in graphemes(content)]

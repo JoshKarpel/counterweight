@@ -12,9 +12,9 @@ from xml.etree.ElementTree import Element, SubElement
 import waxy
 
 from counterweight._utils import flyweight, halve_integer
-from counterweight.elements import AnyElement, Div, StyledGrapheme, Text
+from counterweight.elements import AnyElement, StyledGrapheme
 from counterweight.geometry import Position, Rects, Region
-from counterweight.layout import cells_width, child_clip, clipped_axes, wrap_cells
+from counterweight.layout import Lines, cells_width, child_clip, clipped_axes
 from counterweight.styles.styles import (
     UNSET,
     BorderKind,
@@ -26,7 +26,6 @@ from counterweight.styles.styles import (
     ResolvedStyle,
     Style,
     TextJustify,
-    TextWrap,
     resolve_cell_style,
 )
 
@@ -197,15 +196,15 @@ Run = tuple[int, int, list[Cell]]  # cells to draw left to right from (x, y)
 
 
 def paint_layout(
-    elements: Iterable[tuple[AnyElement, Rects]],
+    elements: Iterable[tuple[AnyElement, Rects, Lines]],
     width: int,
     height: int,
 ) -> tuple[Paint, BorderHealingHints]:
     """Paint `elements` in the order given, which is paint order, so later elements are drawn over earlier ones."""
     paint = Paint.blank(width, height)
     hints: BorderHealingHints = {}
-    for element, resolved in elements:
-        hints.update(paint_element(paint, element, element.style.resolved, resolved))
+    for element, resolved, lines in elements:
+        hints.update(paint_element(paint, element, element.style.resolved, resolved, lines))
     return paint, hints
 
 
@@ -244,11 +243,16 @@ def runs_of(paint: Paint) -> list[Run]:
 
 
 def paint_element(
-    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: Rects
+    paint: Paint, element: AnyElement, style: ResolvedStyle, resolved: Rects, lines: Lines
 ) -> tuple[tuple[Position, JoinedBorderParts], ...]:
     """
     Paint the part of one element inside its clip onto `paint`,
     returning the border healing hints for its corners inside the clip.
+
+    `lines` are the rows a `Text` wraps to, which layout wrapped it to, and are empty for a `Div`.
+    Only the rows inside the clip are built, so a long text in a scroll container costs only the rows in view,
+    and an element paints nothing if its border box, its text and any `margin_color` margin all miss the clip.
+    Text overflows its box down and to the right, so the border box alone can't decide that.
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
@@ -264,6 +268,22 @@ def paint_element(
     if clip is None:
         return ()
 
+    content = resolved.content
+    rows = range(0)
+    text_clip = clip
+    # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
+    if lines and (own_clip := child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))) is not None:
+        text_clip = own_clip
+        rows = range(max(text_clip.top, content.top), min(text_clip.bottom, content.top + len(lines)))
+
+    has_margin_color = element.style.margin_color is not UNSET
+    if (
+        resolved.visible is None
+        and not rows
+        and not (has_margin_color and resolved.margin.intersection(clip) is not None)
+    ):
+        return ()
+
     border, corners = border_fills(
         style.border_kind,
         style.border_style,
@@ -277,20 +297,8 @@ def paint_element(
         if resolved.visible is resolved.border
         else tuple((position, parts) for position, parts in corners if clip.contains(position))
     )
-    margin = (
-        edge_fills(resolved.margin, resolved.border, style.margin_color)
-        if element.style.margin_color is not UNSET
-        else ()
-    )
+    margin = edge_fills(resolved.margin, resolved.border, style.margin_color) if has_margin_color else ()
     fills = margin + border + edge_fills(resolved.padding, resolved.content, style.padding_color)
-
-    match element:
-        case Div():
-            lines: tuple[tuple[Cell, ...], ...] = ()
-        case Text() as e:
-            lines = text_lines(e.cells, style.text_wrap, style.text_justify, style.text_style, resolved.content.width)
-        case _:
-            assert_never(element)
 
     if not fills and not lines and element.style.content_color is UNSET:
         return hints
@@ -298,13 +306,13 @@ def paint_element(
     paint.fill(resolved.border, Cell.blank(color=style.content_color), clip)
     for region, cell in fills:
         paint.fill(region, cell, clip)
-    if not lines:
-        return hints
-    # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
-    if (text_clip := child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))) is None:
-        return hints
-    for y, line in enumerate(lines, start=resolved.content.top):
-        paint.write_row(resolved.content.left, y, line, text_clip)
+    for y in rows:
+        paint.write_row(
+            content.left,
+            y,
+            line_cells(lines[y - content.top], style.text_justify, style.text_style, content.width),
+            text_clip,
+        )
 
     return hints
 
@@ -338,38 +346,25 @@ def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -
 
 
 @lru_cache(maxsize=2**12)
-def text_lines(
-    graphemes: tuple[StyledGrapheme, ...],
-    wrap: TextWrap,
-    justify: TextJustify,
-    text_style: ResolvedCellStyle,
-    width: int,
-) -> tuple[tuple[Cell, ...], ...]:
+def line_cells(
+    line: tuple[StyledGrapheme, ...], justify: TextJustify, text_style: ResolvedCellStyle, width: int
+) -> tuple[Cell, ...]:
     """
-    The rows of cells that text wrapped and justified at `width` fills, each at least `width` cells long:
-    a line wider than `width`, or rows below the box, overflow it, as CSS's text does,
-    for the clip to cut off.
-    They don't depend on where the box is or how tall it is, so text that moves keeps its cache entry.
-
+    The cells one wrapped row of text fills when justified at `width`, at least `width` cells long.
     A zero-width cluster takes no cell, so it isn't drawn.
-    Text that wraps draws nothing at a width of zero or less, where no row has room for a cluster.
     """
-    lines = []
+    cells: list[Cell] = []
     previous_style = None
-    # Text that doesn't wrap breaks only at its line breaks, so its width only pads its rows.
-    for line in wrap_cells(cells=graphemes, wrap=wrap, width=max(width, 1) if wrap == "none" else width):
-        cells: list[Cell] = []
-        for styled in justify_line(line, width, justify):
-            if not styled.width:
-                continue
-            if styled.style is not previous_style:
-                resolved_style = resolve_cell_style(styled.style, text_style)
-                previous_style = styled.style
-            cells.append(Cell(styled.grapheme, resolved_style))
-            if styled.width == 2:
-                cells.append(Cell("", resolved_style))
-        lines.append(tuple(cells))
-    return tuple(lines)
+    for styled in justify_line(list(line), width, justify):
+        if not styled.width:
+            continue
+        if styled.style is not previous_style:
+            resolved_style = resolve_cell_style(styled.style, text_style)
+            previous_style = styled.style
+        cells.append(Cell(styled.grapheme, resolved_style))
+        if styled.width == 2:
+            cells.append(Cell("", resolved_style))
+    return tuple(cells)
 
 
 _ONE_CELL = waxy.Length(1)

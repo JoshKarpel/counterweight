@@ -277,3 +277,17 @@ def test_narrowest_width_is_the_widest_word_or_unlimited_if_text_does_not_wrap(
     content: str, wrap: TextWrap, expected: int | None
 ) -> None:
     assert MeasurableText.of((content, CellStyle(), wrap)).narrowest_width() == expected
+
+
+def test_text_that_does_not_wrap_has_the_same_rows_at_every_width_with_room_for_a_cluster() -> None:
+    text = MeasurableText.of(("ab\ncd", CellStyle(), "none"))
+
+    assert text.lines_at(1) is text.lines_at(9) is text.lines_at(None)
+
+
+def test_text_on_one_row_has_its_cells_as_that_row() -> None:
+    text = MeasurableText.of(("ab cd", CellStyle(), "stable"))
+
+    (row,) = text.lines_at(10)
+
+    assert row is text.cells

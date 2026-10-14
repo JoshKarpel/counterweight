@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
+from itertools import chain
 from typing import Union
 
 from counterweight._utils import flyweight
@@ -48,19 +49,6 @@ SPACE = Chunk(content=" ")
 NEWLINE = Chunk(content="\n")
 
 
-@lru_cache(maxsize=2**12)
-def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
-    return tuple(StyledGrapheme(grapheme=visible(grapheme), style=style) for grapheme in graphemes(content))
-
-
-@lru_cache(maxsize=2**12)
-def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
-    if isinstance(content, str):
-        return _chunk_cells(content, text_style)
-    else:
-        return tuple(cell for chunk in content for cell in chunk.cells)
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Text:
     content: str | tuple[Chunk, ...]
@@ -102,3 +90,45 @@ class StyledGrapheme:
         if len(self.grapheme) != 1 and len(graphemes(self.grapheme)) != 1:
             raise ValueError(f"A StyledGrapheme holds exactly one grapheme cluster, not {self.grapheme!r}")
         object.__setattr__(self, "width", grapheme_width(self.grapheme))
+
+
+class _StyledGraphemes(dict[str, StyledGrapheme]):
+    """
+    Each grapheme cluster met so far, styled with `style`,
+    so styling a long text looks each distinct cluster up in the flyweight once rather than once per occurrence.
+    """
+
+    __slots__ = ("style",)
+
+    def __init__(self, style: CellStyle) -> None:
+        super().__init__()
+        self.style = style
+
+    def __missing__(self, grapheme: str) -> StyledGrapheme:
+        cell = self[grapheme] = StyledGrapheme(grapheme=visible(grapheme), style=self.style)
+        return cell
+
+
+def _styled_graphemes(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    return tuple(map(_StyledGraphemes(style).__getitem__, graphemes(content)))
+
+
+@lru_cache(maxsize=2**12)
+def _chunk_cells(content: str, style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    return _styled_graphemes(content, style)
+
+
+def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
+    """
+    The styled grapheme clusters of a `Text`'s content.
+
+    A string's are cached line by line, not whole, so a long text that changes, such as a document being edited,
+    rebuilds only the lines that changed, and the cache holds its lines rather than every version of it.
+    A line break always ends a grapheme cluster, so splitting at them splits no cluster.
+    """
+    if isinstance(content, str):
+        if "\n" not in content and "\r" not in content:
+            return _chunk_cells(content, text_style)
+        return tuple(chain.from_iterable(_chunk_cells(line, text_style) for line in content.splitlines(keepends=True)))
+    else:
+        return tuple(cell for chunk in content for cell in chunk.cells)

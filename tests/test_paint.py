@@ -13,8 +13,9 @@ from counterweight.elements import Div, Text
 from counterweight.geometry import Position, Region
 from counterweight.graphemes import grapheme_width
 from counterweight.hooks import ElementHandle
+from counterweight.layout import MeasurableText
 from counterweight.output import Frame
-from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, text_lines
+from counterweight.paint import BLANK, Cell, Paint, border_fills, diff_paint, line_cells
 from counterweight.styles import Style
 from counterweight.styles.styles import BorderKind, CellStyle, Color, resolve_cell_style
 from counterweight.styles.utilities import (
@@ -201,16 +202,16 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
     ("width", "expected"),
     [(5, "日·本· "), (4, "日·本·"), (3, "日·本·")],
 )
-def test_text_lines_pad_a_row_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
-    (line,) = text_lines(Text(content="日本").cells, "none", "left", resolve_cell_style(CellStyle()), width)
-    assert "".join(cell.grapheme or "·" for cell in line) == expected
+def test_a_rows_cells_pad_it_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
+    (line,) = MeasurableText(cells=Text(content="日本").cells, wrap="none").lines_at(None)
+    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), width)
+    assert "".join(cell.grapheme or "·" for cell in cells) == expected
 
 
-def test_text_lines_draw_no_cell_for_a_zero_width_cluster() -> None:
-    (line,) = text_lines(
-        Text(content="a\N{ZERO WIDTH SPACE}b").cells, "none", "left", resolve_cell_style(CellStyle()), 3
-    )
-    assert "".join(cell.grapheme for cell in line) == "ab "
+def test_a_rows_cells_draw_no_cell_for_a_zero_width_cluster() -> None:
+    (line,) = MeasurableText(cells=Text(content="a\N{ZERO WIDTH SPACE}b").cells, wrap="none").lines_at(None)
+    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), 3)
+    assert "".join(cell.grapheme for cell in cells) == "ab "
 
 
 def test_diff_of_identical_paints_is_empty() -> None:
@@ -485,14 +486,17 @@ async def test_text_overflowing_a_column_in_a_scroll_container_scrolls_into_view
     assert grid(frames[0].paint) == ["efgh.."]
 
 
-def test_text_lines_that_wrap_are_empty_at_no_width() -> None:
-    assert text_lines(tuple(Text(content="hi").cells), "stable", "left", resolve_cell_style(CellStyle()), 0) == ()
+def test_text_that_wraps_has_no_rows_at_no_width() -> None:
+    assert MeasurableText(cells=Text(content="hi").cells, wrap="stable").lines_at(0) == ()
 
 
-def test_text_lines_that_do_not_wrap_run_past_no_width() -> None:
-    lines = text_lines(tuple(Text(content="hi").cells), "none", "left", resolve_cell_style(CellStyle()), 0)
+def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
+    lines = MeasurableText(cells=Text(content="hi").cells, wrap="none").lines_at(None)
 
-    assert ["".join(cell.grapheme for cell in line) for line in lines] == ["hi"]
+    assert [
+        "".join(cell.grapheme for cell in line_cells(line, "left", resolve_cell_style(CellStyle()), 0))
+        for line in lines
+    ] == ["hi"]
 
 
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:

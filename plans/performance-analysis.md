@@ -1160,3 +1160,74 @@ Median frame time, median of three rounds, with the range across rounds:
 - **Counterweight's share is 17%,** larger than run 24's because real output has more blocks and inline spans per word.
 - Run 24's levers still apply, but the per-paragraph inline cache would save less here:
   most blocks are a single short paragraph, and summaries spend more in the block pass.
+
+### Run 26 — paint culled to each element's clip (issue #418)
+
+**Date:** 2026-10-14
+
+**Change:** paint does work only for what's inside each element's clip.
+
+- **Paint draws the rows layout wrapped.** `MeasurableText.lines_at` keeps the rows each width wrapped to,
+  `Layouts.lines` hands each visible `Text` its rows at its content width, and `paint_layout` takes `(element, rects, lines)`.
+  `text_lines`, which wrapped every `Text` again in paint and cached the result keyed on its whole grapheme tuple, is gone.
+- **Only rows inside the clip are built,** through `line_cells`, cached by the row's own graphemes, so a row keeps its entry as it scrolls.
+- **An element whose border box, text rows and `margin_color` margin all miss its clip paints nothing.**
+  Culling on the margin box alone, as the issue proposed, blanks text that overflows a box scrolled out of view.
+- **`text_cells` builds cells through a dictionary of the graphemes seen so far,** and caches a string line by line rather than whole,
+  so an edited document rebuilds one line and the cache doesn't keep every version of it.
+- **Wrapped rows are tuples kept with the text,** and a one-row text's row is its cells tuple,
+  because CPython caches a tuple's hash on the tuple and paint's row cache hashes the same objects every frame.
+  Text that doesn't wrap keeps one set of rows for every width.
+
+Three workloads type one key a frame into an 87 KB, 1,250-line document at 100x30:
+`document` draws it as one `Text`, `document-lines` as one `Text` per line, and `document-text-area` in a `text_area`.
+
+**Method:** development runs of unprofiled `benchmarks run` (200–300 frames), one change at a time;
+a final comparison of the least total CPU time (`time.process_time`, startup included) of three alternating runs per side,
+200 frames each, with HEAD's source on `PYTHONPATH`;
+peak RSS over 400 frames of `document`; and a digest of every frame of every workload, with ANSI styles, against HEAD.
+An interleaved frame-time comparison of the final code was cut short by unrelated load on the machine and isn't reported.
+
+Median frame time of `document` after each change, single development runs:
+
+| Change | Median |
+|---|---|
+| Before | 98 ms |
+| Rows outside the clip not built | 74 ms |
+| Paint draws layout's rows | 43 ms |
+| Elements culled to the clip | 44 ms |
+| Faster `text_cells` | 28 ms |
+
+Final code, least CPU time of three runs:
+
+| Workload | HEAD | Branch | Change |
+|---|---|---|---|
+| `document` | 19.90 s | 5.69 s | −71% |
+| `document-lines` | 2.43 s | 1.80 s | −26% |
+| `document-text-area` | 1.50 s | 1.34 s | −11% |
+| `canvas` | 0.56 s | 0.46 s | −17% |
+| `agent` | 0.33 s | 0.29 s | −12% |
+| `agent-scrolled` | 0.31 s | 0.26 s | −13% |
+| `agent-markdown` | 0.46 s | 0.43 s | −7% |
+| `top` | 2.63 s | 2.67 s | +1% |
+| `agent-typing` | 0.53 s | 0.54 s | +1% |
+| `dashboard` | 0.23 s | 0.24 s | +2% |
+| `dashboard-local` | 0.18 s | 0.19 s | +2% |
+
+- **Paint's share of a `document` frame fell from 58 ms to 0.3 ms.** Half of `text_lines` had been a second `wrap_cells`
+  of the whole document at the width measure had just wrapped it to, and about 5 ms more was hashing its cache key.
+- **Peak memory for 400 frames of `document` fell from 763 MB to 49 MB.** `text_lines` and `text_cells` each cached whole texts,
+  4,096 entries, so every keystroke added a copy of the document's rows and cells.
+- **`text_cells` was 40% of the frame left after paint,** about 18 ms: a flyweight constructor per grapheme, called with keywords,
+  which hashes its `CellStyle`. Building the document's cells takes 18.4 ms that way, 3.5 ms through a local `dict.get`,
+  and 1.8 ms mapping through a `dict` subclass with `__missing__`.
+- **`document-lines` gains from the cull,** not the rows: most of its 1,250 `Text`s are out of view.
+  What's left is per-element work in `update_shadow` and `place`.
+- **An earlier version cost `top` 5–10%,** from two causes. Keeping rows for every width taffy asked about
+  raised young collections from 110 to 162 over 300 frames (101 once unwrapped text shares one set).
+  And building a fresh tuple per row per frame hashed 418,265 graphemes over 100 frames against HEAD's 111,537,
+  where HEAD hashed the same cells tuple every frame and paid once; keeping rows as tuples and reusing a one-row text's cells
+  brought it to 122,742.
+- **Every frame of every workload matches HEAD,** 200 frames each, styles included.
+- **What remains of `document`'s frame is layout:** `text_cells` and the measure's wrap over the whole text,
+  which #418 leaves out of scope.

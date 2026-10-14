@@ -38,7 +38,7 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   mutmut's timeout fires, and a VM without swap hangs.
 - **Warm caches hide mutants.** Each mutmut worker forks from a parent that has already run every test,
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
-  `paint.justify_line` and the wrap helpers sit behind `text_lines`, `CellStyle.__post_init__` behind its flyweight.
+  `paint.justify_line` sits behind `line_cells`, `CellStyle.__post_init__` behind its flyweight.
   `tests/conftest.py` empties every counterweight `lru_cache` (flyweights included) at the start of each worker.
   A new cache needs nothing extra, but a test that relies on a cached object's identity across tests will fail
   under mutmut only.

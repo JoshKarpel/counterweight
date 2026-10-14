@@ -329,10 +329,11 @@ def rects(border_box: Region, clip: Region) -> Rects:
 
 def test_a_clipped_healing_hint_does_not_displace_an_earlier_elements_live_hint_at_the_same_cell() -> None:
     screen = Region(left=0, top=0, right=6, bottom=3)
-    earlier = (Div(style=border | border_light), rects(Region(left=2, top=0, right=5, bottom=3), clip=screen))
+    earlier = (Div(style=border | border_light), rects(Region(left=2, top=0, right=5, bottom=3), clip=screen), ())
     later = (
         Div(style=border | border_double),
         rects(Region(left=2, top=0, right=6, bottom=3), clip=Region(left=3, top=0, right=6, bottom=3)),
+        (),
     )
 
     _, hints = paint_layout([earlier, later], 6, 3)
