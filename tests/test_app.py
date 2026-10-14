@@ -11,16 +11,28 @@ from counterweight.controls import (
     Quit,
     RestoreTitle,
     Screenshot,
+    ScrollBy,
+    ScrollTo,
     SetTitle,
     Suspend,
     ToggleBorderHealing,
 )
 from counterweight.elements import Div, Text
-from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, Receiver, TerminalResized
+from counterweight.events import (
+    InputEvent,
+    InputResponse,
+    KeyPressed,
+    MouseDown,
+    MouseMoved,
+    MouseUp,
+    Receiver,
+    TerminalResized,
+)
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
-from counterweight.hooks import use_effect, use_state
+from counterweight.hooks import use_effect, use_scroll, use_state
 from counterweight.styles.styles import Style
-from counterweight.styles.utilities import border, col, full, text_wrap_stable
+from counterweight.styles.utilities import border, col, full, overflow_y_scroll, size, text_wrap_stable
 
 
 async def test_headless_autopilot_events_with_empty_app() -> None:
@@ -177,3 +189,60 @@ async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_t
     await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[*controls, Quit()])
 
     assert output.getvalue() == ""
+
+
+HANDLE = ElementHandle()
+
+
+def scroller(count: int) -> Div:
+    """A container 1 row tall over `count` lines, scrolling vertically."""
+    return Div(
+        style=col | size(6, 1) | overflow_y_scroll,
+        handle=HANDLE,
+        children=tuple(Text(content=f"line {i}") for i in range(count)),
+    )
+
+
+async def test_scroll_controls_one_handler_returns_compose_in_order() -> None:
+    @component
+    def root() -> Div:
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            return ScrollBy(HANDLE, y=2), ScrollBy(HANDLE, y=1)
+
+        return Div(on_input=on_input, children=(scroller(5),))
+
+    capture = io.StringIO()
+    await app(
+        root(),
+        headless=True,
+        dimensions=(6, 1),
+        autopilot=[KeyPressed(key="j"), Screenshot.to_stream(capture, ansi=False), Quit()],
+        check_purity=True,
+    )
+
+    assert capture.getvalue() == "line 3\n"
+
+
+async def test_a_component_reading_another_elements_scroll_renders_again_once_after_it_scrolls() -> None:
+    reports: list[int] = []
+
+    @component
+    def beside() -> Div:
+        scroll = use_scroll(HANDLE)
+        reports.append(scroll.offset.y)
+        return Div(style=col, children=(Text(content=str(scroll.offset.y)), scroller(5)))
+
+    await app(
+        beside(),
+        headless=True,
+        dimensions=(6, 2),
+        autopilot=[
+            ScrollTo(HANDLE, y=3),
+            Screenshot(handler=lambda _: None),
+            Screenshot(handler=lambda _: None),
+            Quit(),
+        ],
+    )
+
+    # Once for the warmup, once on the first painted frame, and once after the scroll.
+    assert reports == [0, 0, 3]

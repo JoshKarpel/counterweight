@@ -1,15 +1,17 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+import pytest
+
 from counterweight import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Quit, ScrollIntoView
+from counterweight.controls import AnyControl, FocusNext, FocusOn, Quit, ScrollIntoView
 from counterweight.elements import Div, Text
 from counterweight.events import InputEvent, InputHandler, InputResponse, KeyPressed, MouseDown, Pasted, Receiver
 from counterweight.geometry import Position
 from counterweight.handlers import each, first
 from counterweight.headless import TextInput, use_text_input
-from counterweight.hooks import ElementHandle, use_state
+from counterweight.hooks import ElementHandle, FocusHandle, use_state
 from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 
@@ -297,3 +299,91 @@ async def test_each_edit_scrolls_the_element_with_the_cursor_cells_handle_into_v
     await app(root(), headless=True, dimensions=(20, 3), autopilot=(*typed("a"), KeyPressed(key=Key.Left), Quit()))
 
     assert responses == [ScrollIntoView(handles[0], block="nearest", inline="nearest")] * 2
+
+
+async def test_the_field_is_in_the_focus_order_by_default() -> None:
+    focused: list[bool] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_input(value, set_value)
+        focused.append(field.focus.is_focused)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(FocusNext(), Quit()))
+
+    assert focused[-1]
+
+
+@pytest.mark.parametrize("in_focus_order", [True, False])
+async def test_the_field_is_in_the_focus_order_unless_asked_not_to_be(in_focus_order: bool) -> None:
+    focused: list[bool] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_input(value, set_value, in_focus_order=in_focus_order)
+        focused.append(field.focus.is_focused)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(FocusNext(), Quit()))
+
+    assert focused[-1] == in_focus_order
+
+
+async def test_the_field_focuses_with_the_handle_it_is_given() -> None:
+    handle = FocusHandle()
+    handles: list[FocusHandle] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("")
+        field = use_text_input(value, set_value, handle=handle)
+        handles.append(field.focus.handle)
+        return Text(content=value, on_input=field.on_input)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(Quit(),))
+
+    assert handles[-1] is handle
+
+
+async def run_pressing(press: MouseDown) -> tuple[list[Shown], list[InputResponse], TextInput]:
+    """
+    Runs an unfocused field drawing "hello" in a `Text` that isn't a scroll container and takes the field's `on_press`,
+    presses it with `press`, and returns what each of the field's renders showed,
+    what `on_press` returned, and what the field's first render got.
+    """
+    shown: list[Shown] = []
+    responses: list[InputResponse] = []
+    fields: list[TextInput] = []
+
+    @component
+    def root() -> Text:
+        value, set_value = use_state("hello")
+        field = use_text_input(value, set_value)
+        shown.append(Shown.of(value, field))
+        fields.append(field)
+
+        def record(event: InputEvent, receiver: Receiver) -> InputResponse:
+            responses.append(response := field.on_press(event, receiver))
+            return response
+
+        return Text(content=value, on_input=record)
+
+    await app(root(), headless=True, dimensions=(20, 3), autopilot=(press, Quit()), check_purity=True)
+    return shown, responses, fields[0]
+
+
+async def test_a_press_on_an_element_that_does_not_scroll_moves_the_cursor_to_the_cell_pressed() -> None:
+    shown, _, _ = await run_pressing(MouseDown(absolute=Position(x=3, y=0), button=1))
+
+    assert shown[-1] == Shown(value="hello", before="hel", at="l", after="o")
+
+
+async def test_a_press_focuses_the_field_and_scrolls_the_cursor_cell_into_view() -> None:
+    _, responses, field = await run_pressing(MouseDown(absolute=Position(x=3, y=0), button=1))
+
+    assert responses == [
+        (FocusOn(field.focus.handle), ScrollIntoView(field.cursor_cell, block="nearest", inline="nearest"))
+    ]

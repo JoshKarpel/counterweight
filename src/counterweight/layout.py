@@ -44,9 +44,8 @@ type Placement = tuple[waxy.Point, waxy.Layout, Region | None, int, int]
 
 
 def text_source(text: Text) -> TextSource:
-    """Everything `text`'s measured size depends on, normalized so that equal sources compare equal."""
-    content = text.content if isinstance(text.content, str) else tuple(text.content)
-    return content, text.style.text_style, text.style.resolved.text_wrap
+    """Everything `text`'s measured size depends on."""
+    return text.content, text.style.text_style, text.style.resolved.text_wrap
 
 
 @dataclass(frozen=True, slots=True)
@@ -1068,7 +1067,7 @@ def _greedy_line_count(word_widths: list[int], flat_spaces: list[list[StyledGrap
     pending_space_len = 0
 
     for i, wlen in enumerate(word_widths):
-        if not length:
+        if i == 0:
             length = wlen
         elif length + pending_space_len + wlen <= width:
             length += pending_space_len + wlen

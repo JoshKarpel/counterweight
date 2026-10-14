@@ -26,12 +26,23 @@ def pytest_configure(config: pytest.Config) -> None:
             cap_address_space(headroom=MUTANT_MEMORY_HEADROOM)
 
 
+@pytest.fixture(autouse=True)
+def cold_memos_while_mutmut_maps_tests() -> None:
+    """
+    Empties every counterweight cache before each test in mutmut's stats pass, which maps each function to the tests
+    that run it: a function reached only through a cache would otherwise be mapped only to the tests that missed it,
+    and only those would run against its mutants.
+    """
+    if os.environ.get("MUTANT_UNDER_TEST") == "stats":  # pragma: no cover
+        clear_memos()
+
+
 def clear_memos() -> None:  # pragma: no cover
     """
     Empties every `lru_cache` in counterweight, including the ones behind `flyweight` classes.
     A mutmut worker forks from mutmut's parent process after it has run every test, so each cache is warm,
     and a mutant of a function that only runs on a cache miss (such as `justify_line`, behind `line_cells`)
-    would never run at all.
+    would never run at all; `cold_memos_while_mutmut_maps_tests` empties them for the same reason.
     mutmut freezes its heap before forking a worker, and `gc.get_objects` skips frozen objects, so this unfreezes first.
     """
     gc.unfreeze()

@@ -255,6 +255,24 @@ def test_zero_width_clusters_take_no_width() -> None:
     assert MeasurableText(cells=tuple(cells("a\N{ZERO WIDTH SPACE}b")), wrap="none").size_at(None) == (2, 1)
 
 
+@pytest.mark.parametrize("mode", ["stable", "balance", "pretty"])
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("\N{ZERO WIDTH SPACE}ab", ["\N{ZERO WIDTH SPACE}a", "b"]),
+        ("a\N{ZERO WIDTH SPACE}b", ["a\N{ZERO WIDTH SPACE}", "b"]),
+    ],
+)
+def test_long_word_at_width_one_keeps_zero_width_clusters_on_a_line_with_a_visible_one(
+    mode: TextWrap, content: str, expected: list[str]
+) -> None:
+    assert lines_text(wrap_cells(cells(content), mode, 1)) == expected
+
+
+def test_balance_keeps_a_paragraph_that_fits_on_one_line_when_it_starts_with_a_zero_width_word() -> None:
+    assert lines_text(wrap_cells(cells("\N{ZERO WIDTH SPACE} a"), "balance", 3)) == ["\N{ZERO WIDTH SPACE} a"]
+
+
 def test_hyphen_takes_the_style_of_the_cluster_before_it() -> None:
     bold = CellStyle(bold=True)
 

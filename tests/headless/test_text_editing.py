@@ -3,12 +3,17 @@ import pytest
 from counterweight.headless.text_editing import (
     KEY_EDITS,
     EditableText,
+    Target,
     cell_offset,
+    delete_to,
     is_text,
     key_edit,
+    move_to,
     move_to_column,
     paste_edit,
     settled,
+    word_end,
+    word_start,
 )
 from counterweight.keys import Key
 
@@ -61,6 +66,7 @@ def marked(text: str, goal_column: int | None = None) -> EditableText:
         ("one |two", Key.ControlLeft, "|one two"),
         ("one, -- |two", Key.ControlLeft, "|one, -- two"),
         ("|one two", Key.ControlLeft, "|one two"),
+        (" |one", Key.ControlLeft, "| one"),
         ("|one two", Key.ControlRight, "one| two"),
         ("o|ne two", Key.ControlRight, "one| two"),
         ("one| -- two", Key.ControlRight, "one -- two|"),
@@ -73,6 +79,7 @@ def marked(text: str, goal_column: int | None = None) -> EditableText:
         ("cd ../src  |", Key.ControlW, "cd |"),
         ("cd ../s|rc", Key.ControlW, "cd |rc"),
         ("|cd", Key.ControlW, "|cd"),
+        (" |cd", Key.ControlW, "|cd"),
         # Readline's Alt bindings, with Alt+Backspace deleting back to the start of a word, as Ctrl+Left moves
         ("one two|", "alt+b", "one |two"),
         ("one, -- |two", "alt+b", "|one, -- two"),
@@ -228,3 +235,30 @@ def test_moving_to_a_column_puts_the_cursor_on_the_cluster_there_and_forgets_the
     moved = move_to_column(2)(EditableText(value="hello", cursor=5, goal_column=3))
 
     assert moved == EditableText(value="hello", cursor=2, goal_column=None)
+
+
+# `KEY_EDITS` builds its edits when the module is imported, so these build theirs in the test, to pin what they do.
+@pytest.mark.parametrize(
+    ("target", "before", "after"),
+    [
+        (word_start, "one tw|o", "one |two"),
+        (word_end, "o|ne two", "one| two"),
+    ],
+)
+def test_moving_to_a_target_moves_the_cursor_there_and_forgets_the_goal_column(
+    target: Target, before: str, after: str
+) -> None:
+    assert move_to(target)(marked(before, goal_column=3)) == marked(after)
+
+
+@pytest.mark.parametrize(
+    ("target", "before", "after"),
+    [
+        (word_start, "one tw|o", "one |o"),
+        (word_end, "o|ne two", "o| two"),
+    ],
+)
+def test_deleting_to_a_target_deletes_between_it_and_the_cursor_and_forgets_the_goal_column(
+    target: Target, before: str, after: str
+) -> None:
+    assert delete_to(target)(marked(before, goal_column=3)) == marked(after)
