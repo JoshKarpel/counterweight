@@ -26,7 +26,8 @@ from counterweight.hooks import use_focus, use_state
 from counterweight.hooks.impls import ChangedFocusHandle, DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.output import Frame
-from counterweight.routing import DuplicateFocusHandle, UnsettledFocus
+from counterweight.routing import UnsettledFocus
+from counterweight.shadow import DuplicateFocusHandle
 from counterweight.styles import Style
 from counterweight.styles.utilities import col, default, display_none, inset_left, inset_top, position_absolute, size
 

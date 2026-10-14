@@ -67,10 +67,6 @@ class Focusable:
     in_focus_order: bool
 
 
-class DuplicateFocusHandle(Exception):
-    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
-
-
 class UnsettledFocus(Exception):
     """
     Raised when re-rendering the components whose focus a render changed changes focus again,
@@ -105,19 +101,8 @@ class RoutingTable:
 
     @classmethod
     def of(cls, shadow: ShadowTree, layouts: Layouts) -> RoutingTable:
-        """
-        The table for `shadow`, whose root is the screen element, and the `layouts` computed from it.
-        Raises `DuplicateFocusHandle` if two mounted components, hidden or unfocusable ones included, share a handle.
-        """
+        """The table for `shadow`, whose root is the screen element, and the `layouts` computed from it."""
         (root,) = shadow.root.children
-
-        handles = [use_focus.handle for use_focus in shadow.focusable.values()]
-        if len(set(handles)) != len(handles):
-            duplicate = next(handle for handle in handles if handles.count(handle) > 1)
-            raise DuplicateFocusHandle(
-                f"Two mounted components were given the same FocusHandle, {duplicate!r}. "
-                "Give each focusable component its own, such as from its own use_state(FocusHandle)."
-            )
 
         focus = {
             key: Focusable(

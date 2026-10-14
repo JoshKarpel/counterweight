@@ -22,9 +22,8 @@ from counterweight.events import (
 )
 from counterweight.geometry import Position, Rects, Region
 from counterweight.handlers import each, on_click
-from counterweight.hooks import FocusHandle, use_focus, use_state
+from counterweight.hooks import use_state
 from counterweight.output import Frame
-from counterweight.routing import DuplicateFocusHandle
 from counterweight.styles import Style
 from counterweight.styles.utilities import (
     inset_left,
@@ -560,21 +559,3 @@ async def test_a_move_with_no_button_held_during_a_press_routes_by_position_and_
     )
 
     assert names(deliveries) == ["captor", "other"]
-
-
-async def test_two_mounted_components_given_one_focus_handle_raise_naming_the_handle() -> None:
-    handle = FocusHandle()
-
-    @component
-    def focusable(name: str, given: FocusHandle) -> Text:
-        use_focus(handle=given)
-        return Text(content=name)
-
-    @component
-    def root() -> Div:
-        return Div(children=(focusable("own", FocusHandle()), focusable("a", handle), focusable("b", handle)))
-
-    with pytest.raises(DuplicateFocusHandle) as raised:
-        await run(root(), [])
-
-    assert repr(handle) in str(raised.value)

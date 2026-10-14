@@ -19,6 +19,7 @@ from counterweight.components import component
 from counterweight.elements import Div, Text
 from counterweight.hooks import (
     ElementHandle,
+    FocusHandle,
     Mouse,
     Setter,
     use_clock,
@@ -33,6 +34,7 @@ from counterweight.hooks.impls import Hooks, InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import (
     DuplicateElementHandle,
+    DuplicateFocusHandle,
     DuplicateKey,
     ShadowNode,
     ShadowTree,
@@ -313,6 +315,24 @@ def test_two_mounted_elements_given_one_handle_raise_naming_the_handle() -> None
 
     with pytest.raises(DuplicateElementHandle) as raised:
         update_shadow(Div(children=(Div(handle=handle), Text(content="", handle=handle))), None, NO_LAYOUTS)
+
+    assert repr(handle) in str(raised.value)
+
+
+def test_two_mounted_components_given_one_focus_handle_raise_naming_the_handle() -> None:
+    handle = FocusHandle()
+
+    @component
+    def focusable(name: str, given: FocusHandle) -> Text:
+        use_focus(handle=given)
+        return Text(content=name)
+
+    with pytest.raises(DuplicateFocusHandle) as raised:
+        update_shadow(
+            Div(children=(focusable("own", FocusHandle()), focusable("a", handle), focusable("b", handle))),
+            None,
+            NO_LAYOUTS,
+        )
 
     assert repr(handle) in str(raised.value)
 
