@@ -246,6 +246,21 @@
   `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`,
   leaving the program's default colors to the canvas's `text_style`, and drawing the cursor when asked.
 
+- Added `counterweight.pseudoterminal`, which runs a program on a pseudo-terminal, as a terminal window does,
+  and hands back the bytes it writes, standard output and standard error together.
+  `run_pty` runs one until it exits, returning `Exited` with its status, or `FailedToStart` with the reason,
+  such as for an `argv` that doesn't exist, and hands out a `PtyConnection` that writes to the program
+  without blocking, buffering what it isn't reading yet, and resizes its terminal, which sends it `SIGWINCH`.
+  Its standard input is the terminal, or `/dev/null` for a program that shouldn't wait for keys.
+  `use_pty` runs one while its component is mounted, starting it once its size is positive,
+  so a terminal sized from `use_rects` starts at its real size rather than 0 by 0,
+  resizing it as its size changes, and starting it again when its `argv` or environment change.
+  A program gets the app's environment without `COLUMNS` and `LINES`, which describe the app's terminal,
+  then `TERM=xterm-256color` and `COLORTERM=truecolor`, then the caller's `env`, or only the last two with `clear_env`.
+  Cancelled, or once the program exits, its process group is hung up as closing a terminal window does,
+  with `SIGHUP`, then `SIGTERM` and `SIGKILL` a `hangup_grace` apart for whatever ignores it,
+  so nothing it started outlives it, even a background job holding the terminal open.
+
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
 

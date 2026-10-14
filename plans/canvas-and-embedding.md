@@ -714,28 +714,86 @@ Done: the work below, with tests at 100% coverage and a mutation testing pass ov
 
 ## Phase 3: Pseudo-terminals
 
-`use_pty` runs a program on a pseudo-terminal while its component is mounted, and hands back the bytes the program writes.
+`counterweight.pseudoterminal` runs a program on a pseudo-terminal and hands back the bytes the program writes:
+`run_pty` until the program exits, and `use_pty` while its component is mounted.
 It knows nothing about emulators or painters, so it can be written alongside phases 1 and 2.
+It's a module of its own beside `emulator.py`, rather than in `counterweight.headless` as the spike had it,
+since a pseudo-terminal is no control's behavior; `pty.py` would shadow the standard library's `pty`.
+
+```python
+type PtyStatus = Starting | Running | Exited | FailedToStart  # Exited(status), FailedToStart(reason)
+
+
+async def run_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    on_start: Callable[[PtyConnection], None] = ...,  # writes (buffered) and resizes, until run_pty returns
+    env: Mapping[str, str] = frozendict(),
+    clear_env: bool = False,
+    stdin: Literal["pty", "devnull"] = "pty",
+    hangup_grace: timedelta = timedelta(seconds=1),
+) -> Exited | FailedToStart: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Pty:
+    write: Callable[[bytes], None]  # the same function every render; does nothing while nothing runs
+    status: PtyStatus
+
+
+def use_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    env: Mapping[str, str] = frozendict(),
+    clear_env: bool = False,
+    hangup_grace: timedelta = timedelta(seconds=1),
+) -> Pty: ...
+```
+
+Phase 4 reuses `Running`, `Exited` and `FailedToStart` in its `Outcome`.
 
 - **The program's terminal.**
   The child runs in its own session with the PTY as its controlling terminal,
   and a resize is `ioctl(TIOCSWINSZ)` on the master (see [Lifecycle](#background-how-terminal-multiplexers-work)).
-  Cancelling the effect hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
-  A program can ignore `SIGHUP` (`nohup`, `trap '' HUP`), so if its group is still running after a grace period
-  (a knob, one second by default), it gets `SIGTERM`, and then `SIGKILL` after another,
-  so that no program outlives the effect that ran it.
+- **Hanging up.**
+  Cancelling `run_pty` hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
+  A program can ignore `SIGHUP` (`nohup`, `trap '' HUP`), so if its group is still running after `hangup_grace`
+  (one second by default), it gets `SIGTERM`, and then `SIGKILL` after another,
+  so that no program outlives the call that ran it.
+  The same happens once the program exits, to whatever it left running in its group.
+  Nothing signals when a process group empties, since its members other than the program aren't the app's children,
+  so the wait checks every 10 ms.
+- **Exit and end of file.**
+  Once the program exits, `run_pty` keeps reading what it wrote just before, until end of file or `DRAIN_TIMEOUT` (0.5 s).
+  End of file comes once nothing holds the program's side of the PTY open, which a background job can do indefinitely.
+  When the session leader exits, Linux already sends `SIGHUP` to the terminal's foreground process group,
+  which a non-interactive shell's background jobs are in,
+  so only a job that ignores `SIGHUP` holds the PTY open; the hang-up's `SIGTERM` then ends it.
+  The spike's drain re-raised its `TimeoutError` out of the effect, which ended the app's task group,
+  so a shell exiting with such a job running quit the whole app; here the timeout only ends the drain.
+- **A failed spawn is a result.**
+  An `argv` that doesn't exist closes both PTY fds and returns `FailedToStart` with the `OSError`'s message,
+  which `use_pty` reports as its status, rather than raising out of the effect with the fds leaked.
+  A spawn cancelled partway closes them too.
 - **Writes never block.**
   Bytes the program isn't reading yet are buffered and flushed when the master is writable,
   so a handler that writes never blocks the event loop.
+  Once `run_pty` returns, the connection is closed, and writing to it or resizing it does nothing,
+  rather than touching an fd number the process may have reused.
 - **Standard input.**
   An interactive program reads its keys from the PTY.
-  A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice.
+  A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice (`stdin`).
   The child then can't make its controlling terminal from standard input, as the spike's `make_controlling_terminal` does
   (`TIOCSCTTY` on fd 0): on `/dev/null` that fails with `ENOTTY`, so every one-shot spawn would fail.
   It uses standard output, which is the PTY either way.
+  `use_pty` always reads from the PTY: a program run on `/dev/null` is phase 4's `use_command`.
 - **The environment.**
-  A program gets the environment the app started with, the hook's defaults over that, and the caller's `env` over those:
-  `os.environ | defaults | env`, with later layers winning.
+  A program gets the environment the app started with, the terminal's defaults over that, and the caller's `env` over those,
+  with later layers winning.
   The defaults say what terminal the program is on (`TERM=xterm-256color`, `COLORTERM=truecolor`),
   phase 4 adds its pager defaults, and a caller changes any of them through `env`.
   Inheriting is the default because a program run without `PATH`, `HOME` or a locale rarely does what anyone wants.
@@ -751,30 +809,27 @@ It knows nothing about emulators or painters, so it can be written alongside pha
   Python's `shutil.get_terminal_size` does, so an inherited `COLUMNS=200` on a 77-column PTY formats for 200.
   Setting them to the PTY's size would be right only until the embed resizes,
   after which they'd be stale and still win, so the hooks leave the size to the PTY alone.
-
-The spike's `use_pty` needs hardening:
-
-- EOF and exit together (tmux's `window_pane_destroy_ready`), and grandchildren that hold the PTY open.
-  The spike's drain re-raises its `TimeoutError` out of the effect,
-  and an effect's exception ends the app's task group,
-  so a shell that exits leaving a background job on the PTY quits the whole app, and its exit status is never set.
-- A spawn that fails (an `argv` that doesn't exist) closes both PTY fds and reports the failure as the hook's state,
-  rather than raising out of the effect with the fds leaked.
-- The program starts at its real size.
-  `use_rects` is zero on the first render, so the spike spawns at 0×0,
-  and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
-  leaving the program at 0×0 until the pane's size next changes.
-  Applying the latest size on connect closes that gap.
-- The spike hardcodes `TERM` and `COLORTERM` over the inherited environment, and passes `COLUMNS` and `LINES` through;
-  the environment's layers above replace that.
+- **The program starts at its real size.**
+  `use_rects` is zero on the first render, so the spike spawned at 0×0,
+  and a resize that arrived while `create_subprocess_exec` was still awaited found no connection and was dropped,
+  leaving the program at 0×0 until the pane's size next changed.
+  `use_pty` waits until both `columns` and `rows` are positive before starting the program,
+  and applies the latest size once the spawn connects, if it changed meanwhile.
+  A later size that isn't positive leaves the terminal at its last size.
+- **What restarts it.**
+  A change to `argv`, `env` or `clear_env` hangs the program up and starts it again;
+  `on_output` is read through a ref, so the latest render's callback gets the output without a restart.
 
 ### Phase 3 work
+
+Done: the work below, with tests at 100% coverage and a mutation testing pass over the new code.
 
 1. `run_pty` and `use_pty`, with the choice of standard input, the environment's layers, and the hardening above.
 2. Tests against real programs:
    output, an exit status, a background job that holds the PTY open, an `argv` that doesn't exist, a resize,
    standard input on `/dev/null`, cancelling a program that ignores `SIGHUP`,
-   and the environment (a default overridden by `env`, `clear_env`, and an inherited `COLUMNS` dropped).
+   and the environment (a default overridden by `env`, `clear_env`, and an inherited `COLUMNS` dropped),
+   and `use_pty` through renders: waiting for a positive size, a resize while spawning, restarts, and unmounting.
 
 ## Phase 4: One-shot commands
 
@@ -1054,7 +1109,7 @@ Canvas(painter=ScreenView(screen, show_cursor))         element (phase 1): paint
   ^
 use_terminal(argv, columns, rows) -> EmbeddedTerminal   headless (phase 6): emulator, snapshots, input forwarding, focus
   ^
-use_pty(argv, columns, rows, on_output) -> Pty          headless (phase 3): PTY, child process, writes, resize, exit status
+use_pty(argv, columns, rows, on_output) -> Pty          pseudoterminal.py (phase 3): PTY, child process, writes, resize, status
   ^
 Emulator (place) -> Screen (value)                      emulator.py (phase 2): the only module that knows about the emulator
 ```

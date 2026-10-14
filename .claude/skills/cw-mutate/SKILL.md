@@ -238,6 +238,22 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   is `None`, and `resolve_cell_style` without its second argument for `border_style` and `text_style`,
   whose default is `CELL_STYLE_DEFAULTS`, which both of `STYLE_DEFAULTS`' cell styles are.
 
+### Pseudo-terminals
+
+- **`make_controlling_terminal` has no tests.** It runs in the child between fork and exec, where mutmut's
+  stats pass can't see it; breaking it fails the `stdin="devnull"` test, which spawns through it.
+- **`window_size`'s `"hhhh"`**: signed and unsigned shorts pack the same bytes for sizes under 32,768.
+- **`run_pty`'s `data = None` on a read error, and `set_blocking(master, None)`**: each is only read for truthiness.
+- **`run_pty`'s `repr(None)` for a spawn error without a message**: `asyncio`'s spawn raises the child's exec error
+  as `OSError(errno, strerror)`, so `strerror` is always set; the fallback narrows its type for the checker.
+- **`use_pty`'s initial ref values**: `output` (`None`, `lambda: None`) is assigned on every render before
+  anything reads it, and `size` (`None`, `(1, 0)`, `(0, 1)`) is read only after `is_sized` is set,
+  which `apply_size` does after assigning it.
+- **`use_pty`'s `apply_size` with `deps=None` or none**: running it every render sets the same size again,
+  and `TIOCSWINSZ` sends `SIGWINCH` only when the size changes.
+- **`use_pty`'s `use_memo(..., None)` for `write`**: `None` equals `None`, so the memo keeps its value,
+  and mypy rejects `None` for `use_memo`'s deps anyway.
+
 ### Utilities
 
 - **`unordered_range`'s `b <= a`.** At `a == b`, both steps give the one-element range.
