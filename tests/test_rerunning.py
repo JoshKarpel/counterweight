@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from asyncio import Event, Queue, TaskGroup, create_task, wait_for
+from asyncio import CancelledError, Event, Queue, TaskGroup, create_task, wait_for
 from collections.abc import Callable
+from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -16,12 +17,12 @@ from counterweight.clock import BEGINNING
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, ToggleBorderHealing
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed, TerminalResized
+from counterweight.events import AnyEvent, InputEvent, Receiver, TerminalResized
 from counterweight.geometry import Region
 from counterweight.hooks import Rects, Setter, use_effect, use_rects, use_ref, use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseClock, UseRef
-from counterweight.layout import NO_LAYOUTS, Layouts, ResolvedLayout
+from counterweight.layout import NO_LAYOUTS, Layouts
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, dirty_paths, is_dirty, update_shadow
 from tests.rendering import effect_tasks, render, state_set_keys, state_sets
 
@@ -41,7 +42,7 @@ def counted(name: str, children: Shape, calls: Calls) -> Div:
     _, set_count = use_state(0)
     calls.names.append(name)
     calls.setters[name] = set_count
-    return Div(children=[counted(child, grandchildren, calls) for child, grandchildren in children])
+    return Div(children=tuple(counted(child, grandchildren, calls) for child, grandchildren in children))
 
 
 def set_state(calls: Calls, queue: Queue[AnyEvent], *names: str) -> frozenset[NodeKey]:
@@ -116,7 +117,7 @@ def holds(child: Component, calls: Calls) -> Div:
     _, set_count = use_state(0)
     calls.names.append("holder")
     calls.setters["holder"] = set_count
-    return Div(children=[child])
+    return Div(children=(child,))
 
 
 def test_component_object_reused_by_its_rerun_parent_is_not_rerun() -> None:
@@ -141,7 +142,7 @@ def starts_every_render(log: list[str]) -> Text:
 async def test_effect_without_deps_of_a_reused_component_does_not_rerun() -> None:
     log: list[str] = []
     calls = Calls()
-    root = Div(children=[starts_every_render(log), counted("sibling", (), calls)])
+    root = Div(children=(starts_every_render(log), counted("sibling", (), calls)))
 
     with state_sets() as queue:
         async with TaskGroup() as tg:
@@ -169,7 +170,7 @@ def shows(log: list[str], setters: dict[str, Setter[bool]]) -> Div:
         use_effect(setup, deps=())
         return Text(content="child")
 
-    return Div(children=[child()] if is_shown else [])
+    return Div(children=(child(),) if is_shown else ())
 
 
 async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() -> None:
@@ -186,12 +187,13 @@ async def test_effect_stops_when_its_component_is_unmounted_by_a_rerun_parent() 
     assert log == ["stop"]
 
 
-MOVED = ResolvedLayout(
+MOVED = Rects(
     content=Region(left=1, top=2, right=3, bottom=4),
     padding=Region(left=1, top=2, right=3, bottom=4),
     border=Region(left=1, top=2, right=3, bottom=4),
     margin=Region(left=1, top=2, right=3, bottom=4),
-    order=0,
+    clip=Region(left=0, top=0, right=10, bottom=10),
+    visible=Region(left=1, top=2, right=3, bottom=4),
 )
 
 
@@ -210,12 +212,12 @@ def measures(calls: Calls) -> Div:
     ],
 )
 def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
-    layout: ResolvedLayout | None, expected: list[str]
+    layout: Rects | None, expected: list[str]
 ) -> None:
     calls = Calls()
     root = measures(calls)
     previous = update_shadow(root, None, NO_LAYOUTS).tree
-    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout})
+    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout}, scrolls={})
     calls.names.clear()
 
     update_shadow(root, previous, layouts)
@@ -241,7 +243,7 @@ def test_component_that_stops_calling_use_rects_does_not_rerun_when_its_layout_m
         second = update_shadow(root, first, NO_LAYOUTS, set_state(calls, queue, "measures_until_set")).tree
     calls.names.clear()
 
-    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}))
+    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}, scrolls={}))
 
     assert calls.names == []
 
@@ -266,7 +268,7 @@ async def test_whole_tree_rerenders_only_on_resize(
 
     @component
     def root() -> Div:
-        return Div(children=[leaf()])
+        return Div(children=(leaf(),))
 
     await app(root(), headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()))
 
@@ -289,7 +291,7 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[starts()])
+        return Div(children=(starts(),))
 
     # Nothing yields to the event loop while an autopilot runs, so the app runs with none until the effect starts.
     running = create_task(app(root(), headless=True, dimensions=(20, 10)))
@@ -297,7 +299,8 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
         await wait_for(started.wait(), timeout=5)
     finally:
         running.cancel()
-        await running
+        with suppress(CancelledError):
+            await running
 
     assert started.is_set()
 
@@ -312,7 +315,7 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED_RECTS]))
+        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,
@@ -327,7 +330,6 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
     return tree, dirty
 
 
-MOVED_RECTS = Rects(content=MOVED.content, padding=MOVED.padding, border=MOVED.border, margin=MOVED.margin)
 NOW = BEGINNING + timedelta(seconds=90)
 DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=BEGINNING)
 NOT_DUE = UseClock(interval=timedelta(minutes=1), mounted=BEGINNING, current=NOW)
@@ -369,7 +371,7 @@ def passes(calls: Calls, child: Callable[[int, Calls], Component]) -> Div:
     count, set_count = use_state(0)
     calls.names.append("parent")
     calls.setters["parent"] = set_count
-    return Div(children=[child(count, calls)])
+    return Div(children=(child(count, calls),))
 
 
 @component(memo=True)
@@ -431,21 +433,21 @@ def handler_capturing_setting(argument: object, calls: Calls) -> Text:
     calls.names.append("handler_capturing_setting")
     label = SETTINGS["label"]
 
-    def on_key(_: KeyPressed) -> None:
-        print(label)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        print(label)  # pragma: never runs
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component(memo=True)
 def inline_handler(argument: object, calls: Calls) -> Text:
     calls.names.append("inline_handler")
-    return Text(content="", on_key=lambda _: None)
+    return Text(content="", on_input=lambda event, _: None)
 
 
 @component
 def reads_setting_around(child: Component, calls: Calls) -> Div:
-    return Div(children=[child, Text(content=SETTINGS["label"])])
+    return Div(children=(child, Text(content=SETTINGS["label"])))
 
 
 @pytest.mark.parametrize(
@@ -470,7 +472,7 @@ def reads_setting_around(child: Component, calls: Calls) -> Div:
             id="passed-through-to-a-dirty-child",
         ),
         pytest.param(
-            lambda calls: Div(children=[Div(children=[reads_setting("same", calls)]), counted("sibling", (), calls)]),
+            lambda calls: Div(children=(Div(children=(reads_setting("same", calls),)), counted("sibling", (), calls))),
             ("sibling",),
             "reads_setting",
             id="inside-a-reused-element",
@@ -511,7 +513,7 @@ def has_effect(argument: object, calls: Calls) -> Text:
     calls.names.append("has_effect")
 
     async def setup() -> None:
-        await forever()
+        await forever()  # pragma: never runs
 
     use_effect(setup)
     return Text(content="")
@@ -587,7 +589,7 @@ def test_check_purity_leaves_a_ref_that_a_reused_component_writes_while_renderin
 
 @component(memo=True)
 def one_child_per_setting_letter(argument: object, calls: Calls) -> Div:
-    return Div(children=[Text(content=letter) for letter in SETTINGS["label"]])
+    return Div(children=tuple(Text(content=letter) for letter in SETTINGS["label"]))
 
 
 def test_check_purity_leaves_every_node_mounted_when_running_again_unmounts_one(

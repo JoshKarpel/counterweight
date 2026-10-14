@@ -13,7 +13,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def root() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=fill(1)
                 | content_color("green", 500)
@@ -26,8 +26,8 @@ def root() -> Div:
                 | margin_color("red", 500)
                 | margin_x(2)
                 | margin_y(1)
-            )
-        ],
+            ),
+        ),
     )
 
 

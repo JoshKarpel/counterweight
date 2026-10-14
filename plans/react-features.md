@@ -7,16 +7,15 @@ tracked task from a handler.
 Those two are what an Elm-style app structure (one model, a pure `update`, commands as data)
 needs from the runtime, so the plan ends that thread with a cookbook recipe for the structure
 rather than a library API.
-It builds on `plans/fix-react-semantics.md`, which fixed the reconciler and hooks divergences
+It builds on the reconciler and hooks matching React's semantics
 (stable setters, keyed children, setters that no-op after unmount, hook-count checks).
-It doesn't cover skipping unchanged components; that is `plans/component-memoization.md`.
 
 ## Problems
 
 - **No reducer-shaped state.** State that changes in response to messages has to be written
   as a hand-rolled `set_state` updater at every call site.
 - **Only an event handler can issue a control.** `handle_control` is reached from handler
-  return values and the autopilot (`app.py:405`, `app.py:413`, `app.py:373`), so an effect
+  return values and the autopilot (`app.py:403`, `app.py:409`, `app.py:372`), so an effect
   can't `Quit()` when a timer expires or `Bell()` when a background job fails.
 - **A handler can't start tracked work.** A handler that calls `asyncio.create_task` gets a
   task outside the app's `TaskGroup`: its exception is only logged when the task is collected,
@@ -80,7 +79,7 @@ lazy, like `use_state`'s.
 
 Add a `ControlSent(control)` event that the app loop passes to `handle_control`, and a
 `use_send_control()` hook that returns a stable function enqueuing one.
-The drain loop at `app.py:428` already pulls events enqueued while it handles a batch,
+The drain loop at `app.py:424` already pulls events enqueued while it handles a batch,
 so a control sent from a handler or an effect takes effect in the same render cycle as the
 event that caused it.
 The autopilot's `handle_control` plus `Dummy()` can then become a single `ControlSent`.
@@ -168,29 +167,7 @@ a ticker subscription dispatches until its component is removed from the view.
 
 ### 5. Route key and mouse events
 
-**Status:** Needs design
-
-This changes how every example that passes `on_key=` handles keys, so it starts with a short
-design doc rather than code.
-The shape to evaluate, taken from the DOM:
-
-- A notion of focus: which element receives keys. Candidates are a `focusable` attribute on
-  elements plus a `use_focus` hook, or focus held in app state and set by controls.
-- Keys dispatch to the focused element, then bubble to its ancestors.
-  Mouse events dispatch to the topmost element under the pointer, then bubble.
-- A handler stops propagation through its return value, which fits the existing "handlers
-  return controls" design better than a method on the event.
-
-Questions the design has to answer:
-
-- What receives keys when nothing is focused? Dispatching to the root and bubbling nowhere
-  would keep today's global handlers working only if they sit on the root.
-- How does focus move (Tab order, mouse click, explicit control), and is that in scope for
-  the first version?
-- Whether to keep a migration path where unfocused apps behave as they do today.
-- How the Elm recipe's keyboard handling survives. It puts one `on_key` on the root element,
-  which acts as Elm's global keyboard subscription only if keys bubble to the root whenever
-  the focused element doesn't stop them.
+**Status:** Done (#402)
 
 ### 6. Add context
 
@@ -201,13 +178,33 @@ A provider component and a `use_context` hook.
 immutable mapping of context values for the duration of its children's reconciliation, and
 `use_context` reads from it.
 
-This interacts with `plans/component-memoization.md`: a skipped subtree won't see a changed
-context value, so a provider whose value changed has to mark its consumers dirty.
-Whichever of the two lands second handles that.
+`update_shadow` skips components that don't have to re-run, so a consumer whose parent didn't
+re-run won't see a changed context value on its own.
+Marking consumers dirty can't go through `dirty`, because `update_shadow` fixes `dirty_nodes`
+and `paths` before reconciliation starts (`shadow.py:169`), and a `memo` child that `continues`
+off those paths keeps its whole previous subtree, consumer included.
+The provider extends them itself, for its own subtree:
+
+- A consumer's `UseContext` slot records the provider node it read from (its nearest provider of
+  that context, or none) and the value it read.
+  `ShadowTree` collects the nodes whose last run called `use_context`, as it does `measured`.
+- When the reconciler reaches a provider, it compares the value about to be provided with what
+  each consumer of that provider last read.
+  The ones that differ, and their ancestors up to the provider (through the previous tree's
+  `parents`), join `dirty_nodes` and `paths` in a new `Reconciliation` for the provider's children,
+  so a `memo` child on the way down is visited without re-running, and the consumer re-runs.
+- This holds whether the provider re-ran or was only visited on the way to a dirty node below it,
+  so the `ContextVar` is set whenever the reconciler reaches a provider's children.
+
+A consumer is matched to its provider by node, not by context,
+so a nested provider of the same context keeps its own consumers.
 
 Tests: a consumer reads the nearest provider's value; a nested provider shadows an outer one;
 a consumer with no provider gets the context's default; changing the provided value
-re-renders the consumer.
+re-renders the consumer in the same frame, including one below a `memo` component;
+changing an outer provider's value doesn't re-run a consumer of a nested provider of the same context;
+a provider that re-runs with an equal value re-runs no consumer below a `memo` component;
+a consumer that re-runs for its own state change, while its provider doesn't, reads the provider's value.
 
 ## Not in scope
 

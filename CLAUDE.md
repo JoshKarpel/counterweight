@@ -7,16 +7,60 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Counterweight is an experimental text user interface (TUI) framework for Python, inspired by React and Tailwind CSS.
 It builds declarative TUI applications using a component-based architecture with hooks for state management and styles for visual presentation.
 
+## Public API Scope
+
+Counterweight is a framework, so the people who need a feature are its users,
+and the examples, docs, and tests in this repository are only a sample of what they'll build.
+"Nothing here needs it yet" is not a reason to omit or defer public API.
+When a feature fits the design and is cheap to build, test, and document,
+build it with the change that makes it obvious:
+every variant in a family of utilities,
+or an option that browsers or React offer beside the one a change adds.
+Defer only what is expensive, or what has several plausible designs and no way yet to choose between them,
+and say which of those it is.
+
+This applies to the API users call, not to internal structure:
+don't add abstractions to the implementation ahead of a change that needs them.
+
+## Types Are the Contract
+
+Assume users type-check their code with mypy in strict mode.
+The public API's type annotations are its contract,
+so don't add runtime checks or coercions for input the types already reject,
+such as a `list` where a `tuple` is annotated.
+They cost time on every call (often on the render path) to help only code that is already a type error.
+
+## Ask How the Web Does It
+
+Counterweight borrows its models from browsers and React,
+so when a design question is open, first find out how the web answers it
+(CSS, the DOM, HTML elements, React's APIs, and the patterns apps build on them),
+and write that answer into the plan, issue or PR beside the design.
+It's the starting point, not the verdict:
+where counterweight differs (cells instead of pixels, taffy's layout,
+effects that start after the frame paints), say what the difference changes
+and why the design diverges.
+
 ## Architecture
 
 The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div` and `Text`, with style and event handling capabilities
-- **Hooks** (src/counterweight/hooks/): State management (`use_state`), side effects (`use_effect`), and UI interactions (`use_mouse`, `use_hovered`)
+- **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
+- **Shadow tree** (src/counterweight/shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
+- **Layout** (src/counterweight/layout.py): Lays the shadow tree out with [waxy](https://github.com/JoshKarpel/waxy) (taffy's flexbox and grid), wraps text, settles scroll offsets (anchoring, sticking to the end, the scroll controls), and clips
+- **Events and controls** (src/counterweight/events.py, src/counterweight/controls.py): What handlers receive (key presses, pastes, mouse events, and the `Receiver`) and what they return to act on the app (`Quit`, the focus and scroll controls, ...)
+- **Focus** (src/counterweight/focus.py): The values controls name their targets by: `FocusHandle` (a focusable component), `ElementHandle` (an element, to scroll), and `Subtree` (part of the tree)
+- **Input** (src/counterweight/input_parsing.py, src/counterweight/input.py): Pure, incremental parsing of terminal bytes into events, and the reader on the event loop that feeds it and times out cut-off escape sequences and pastes
+- **Routing** (src/counterweight/routing.py): Which handlers an input event reaches: its target (the focused node for keys), bubbling, and press capture; and where focus can move
+- **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
+- **Headless components** (src/counterweight/headless/): Hooks that give a component a common control's behavior and leave drawing it to the component, such as `use_text_input`, `use_text_area` and `use_scroll_area`, the text ones each beside its pure core (`text_editing.py`, `text_area_editing.py`): which edit each key press or paste makes, and what it does to a value and a cursor
+- **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input`, `text_area` and `scroll_area`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
+- **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -28,8 +72,11 @@ This project uses [Just](https://github.com/casey/just) as the task runner. Key 
 # Install dependencies
 just install
 
-# Run tests with type checking and coverage
-just test
+# Run type checking, then the tests with coverage, passing any arguments on to pytest
+just test [-k pattern | tests/test_paint.py ...]
+
+# Run mutation testing (mutmut), or re-run only the named mutants (see the cw-mutate skill)
+just mutate ['counterweight.shadow.*']
 
 # Build the documentation
 just docs-build
@@ -51,9 +98,8 @@ the `# Stop generated` marker.
 just codegen
 ```
 
-Don't omit utilities on the grounds that nothing needs them yet: we can't know what users will want.
 When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
-generate every member of it.
+generate every member of it (see [Public API Scope](#public-api-scope)).
 
 `docs/styles/utilities.md` lists every public utility through `<!-- utilities: <glob> ... -->` markers,
 which `mkdocs_hooks/utility_tables.py` renders from the module.
@@ -79,26 +125,31 @@ read that to check a layout instead of the SVG.
   - **styles/**: Styling system with utilities
 - **examples/**: Complete example applications (wordle.py, chess.py, etc.)
 - **tests/**: Test suites organized by module
-- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile` (see the `cw-profile` skill)
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing timings (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies
 
-- **pydantic**: Data validation and settings
-- **typer**: CLI interface
-- **without-logging**: The devlog, written off the render loop from stdlib `logging` records
-- **parsy**: Parser combinators for terminal input
+- **waxy**: The layout engine, Python bindings to [taffy](https://github.com/DioxusLabs/taffy)'s flexbox and grid
+- **without-cli**: The `counterweight` CLI and the benchmark CLI
+- **without-logging** and **without-streams**: The devlog, written off the render loop from stdlib `logging` records
 - **wcwidth**: How many terminal cells each grapheme cluster of text takes
 - **more-itertools**: Extended iteration utilities
+- **markdown-it-py**: Parses Markdown for `counterweight.markdown`
+- **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
+- **pygments**: Lexes and colors source code for `counterweight.highlighting`
 
 ## Code Style Guidelines
 - Line length: 120
 - Strict typing: All functions must be fully typed
-- Formatting and linting: Run `uv run pre-commit` to enforce
+- Formatting and linting: Run `just pre-commit` to enforce
 - Use pathlib instead of os.path
 - Follow PEP 8 conventions for naming
-- Use rich for terminal output
-- Pydantic for data modeling
+- Frozen, slotted dataclasses for data modeling
 - Use pytest for testing
+- Line and branch coverage of `src/counterweight` and `tests` is held at 100% (`fail_under` in `pyproject.toml`),
+  so new code comes with the tests that run it.
+  Mark a function a test builds only to compare or inspect (a handler `equivalent` compares) `# pragma: never runs`,
+  and use `# pragma: no cover` only for code the suite can't run, saying why.
 - No implicit optional types
 - Don't write lots of comments; the code and test names should be self-explanatory.

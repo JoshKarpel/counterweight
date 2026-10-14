@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Callable, Sequence, Union
+from typing import Union
 
 from counterweight._utils import flyweight
-from counterweight.controls import AnyControl
-from counterweight.events import KeyPressed, MouseEvent
+from counterweight.events import InputHandler
+from counterweight.focus import ElementHandle
 from counterweight.graphemes import grapheme_width, graphemes, visible
 from counterweight.styles import CellStyle, Style
 from counterweight.styles.styles import _DEFAULT_CELL_STYLE
@@ -17,9 +17,13 @@ _DEFAULT_STYLE = Style()
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Div:
     style: Style = _DEFAULT_STYLE
-    children: Sequence[Component | AnyElement] = ()
-    on_key: Callable[[KeyPressed], AnyControl | None] | None = None
-    on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    children: tuple[Component | AnyElement, ...] = ()
+    on_input: InputHandler | None = None
+    handle: ElementHandle | None = None
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -59,10 +63,14 @@ def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Text:
-    content: str | Sequence[Chunk]
+    content: str | tuple[Chunk, ...]
     style: Style = _DEFAULT_STYLE
-    on_key: Callable[[KeyPressed], AnyControl | None] | None = None
-    on_mouse: Callable[[MouseEvent], AnyControl | None] | None = None
+    on_input: InputHandler | None = None
+    handle: ElementHandle | None = None
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
 
     @property
     def children(self) -> tuple[Component | AnyElement, ...]:
@@ -70,8 +78,7 @@ class Text:
 
     @property
     def cells(self) -> tuple[StyledGrapheme, ...]:
-        content = self.content if isinstance(self.content, str) else tuple(self.content)
-        return text_cells(content, self.style.text_style)
+        return text_cells(self.content, self.style.text_style)
 
 
 AnyElement = Union[

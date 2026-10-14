@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseEvent, MouseUp
-from counterweight.hooks import Setter, use_memo, use_state
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.handlers import on_click
+from counterweight.hooks import Setter, use_focus, use_memo, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -22,39 +23,39 @@ class Process:
 
 @component(memo=True)
 def process_row(process: Process, is_selected: bool, select: Setter[int]) -> Text:
-    def on_mouse(event: MouseEvent) -> None:
-        match event:
-            case MouseUp(button=1):
-                select(process.pid)
-
     return Text(
         content=f"{process.pid:>6}  {process.name:<10} {process.cpu:>5.1f}%",
         style=text_bg("slate", 700) if is_selected else text_color("slate", 300),
-        on_mouse=on_mouse,
+        on_input=on_click(lambda: select(process.pid)),
     )
 
 
 @component
 def process_table(processes: tuple[Process, ...]) -> Div:
+    use_focus(auto_focus=True)
     by_cpu = use_memo(lambda: sorted(processes, key=lambda process: process.cpu, reverse=True), deps=(processes,))
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         pids = [process.pid for process in by_cpu]
         index = pids.index(selected_pid) if selected_pid in pids else 0
-        match event.key:
-            case Key.Up:
+        match event:
+            case KeyPressed(key=Key.Up):
                 set_selected_pid(pids[max(index - 1, 0)])
-            case Key.Down:
+                return ()
+            case KeyPressed(key=Key.Down):
                 set_selected_pid(pids[min(index + 1, len(pids) - 1)])
+                return ()
+            case _:
+                return None
 
     return Div(
         style=col,
-        on_key=on_key,
-        children=[
+        on_input=on_input,
+        children=tuple(
             process_row(process, process.pid == selected_pid, set_selected_pid).with_key(str(process.pid))
             for process in by_cpu
-        ],
+        ),
     )
 
 
@@ -71,7 +72,7 @@ PROCESSES = (
 
 @component
 def root() -> Div:
-    return Div(style=pad(1), children=[process_table(PROCESSES)])
+    return Div(style=pad(1), children=(process_table(PROCESSES),))
 
 
 SCREENSHOTS = [ScreenshotSpec(root(), "performance-process-table", (32, 7), events=(KeyPressed(key=Key.Down),))]

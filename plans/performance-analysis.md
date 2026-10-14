@@ -39,156 +39,22 @@ component functions running. This changes the priority of memoization vs. other 
 
 ## Optimization Opportunities
 
-### 1. Skip layout when tree is unchanged (saves ~4 ms/cycle, ~25%)
+The opportunities this analysis found, numbered as the runs below cite them:
 
-**Status:** TODO
-
-Layout runs every cycle even though the canvas workload has a completely static component
-tree and static styles — no sizing or structural changes ever occur. Adding a dirty flag
-(set when styles, structure, or terminal size change) to skip `compute_layout` would
-recover the full 4.1 ms on stable frames.
-
-Relevant code: `src/counterweight/app.py`, `src/counterweight/layout.py`
-
----
-
-### 2. Memoize stable component subtrees (saves ~2 ms/cycle, ~12%)
-
-**Status:** TODO
-
-**Revised priority:** now clearly #2, up from #3. `user_code_ns` shows that ~93% of shadow
-tree time is spent inside component functions — so skipping calls for unchanged subtrees
-would recover most of the 2.5ms. For the canvas workload, `header()` and `fps_display()`
-are static each frame and could be skipped entirely. Analogous to `React.memo`.
-
-The opt-in API would likely be a `@component(memo=True)` decorator flag or a `use_memo`
-hook. A component would be re-skipped if its args/kwargs are equal to the previous render.
-
-Relevant code: `src/counterweight/shadow.py` (`update_shadow`), `src/counterweight/components.py`
-
----
-
-### 3. Incremental paint for Text nodes (saves ~2–4 ms/cycle, ~15–25%)
-
-**Status:** DONE (user-side optimizations); framework-side incremental paint is N/A
-
-`canvas()` moved to `counterweight.utils` and optimized:
-- Coordinate pairs precomputed and cached per `(width, height)` via `_canvas_rows` —
-  eliminates 900 temp tuple allocations per call.
-- Row-structured iteration replaces flat `enumerate` + `i % width` modulo per cell.
-- `_canvas_chunk(fg, bg)` cached via `lru_cache(maxsize=512)` — each unique color pair
-  allocated once; subsequent calls return the interned `Chunk`. For the random walkers
-  workload (~31 unique pairs), drops canvas allocations from ~1,800 Chunks + 1,800
-  CellStyles per frame to ~31 cached objects after warmup.
-
-Framework-side incremental paint is not viable: user components are declarative and return
-a new element tree on every render, so the framework has no stable chunk references to diff
-against without re-running the component.
-
-Relevant code: `src/counterweight/utils.py`
-
----
-
-### 4. Use lazy initializers in `use_state` (fixed in canvas.py)
-
-**Status:** DONE
-
-`use_state(expensive_expr)` evaluates `expensive_expr` on every render even though the
-initial value is only used once. Pass a lambda instead: `use_state(lambda: expensive_expr)`.
-`use_state` already supports `Getter[T] | T` — if the argument is callable it is only
-invoked on first render.
-
-Fixed in `profiling/canvas.py`: `random.sample(...)` and the walkers list comprehension
-are now lambdas.
-
-Also a good pattern to document for framework users.
-
----
-
-### 5a. Cache `paint_edge()` output (saves est. ~0.5–1 ms/cycle on static layouts)
-
-**Status:** DONE
-
-`paint_edge()` fills margin/padding strips from `(outer, inner, color, z)` arguments — all hashable
-(`waxy.Rect` supports value equality, `Color` and `int` are trivially hashable). It does the same
-kind of point-by-point iteration as `fill_rect()`, which already has `@lru_cache`. Adding
-`@lru_cache(maxsize=2**10)` to `paint_edge()` would make static layouts hit the cache every frame.
-
-Relevant code: `src/counterweight/paint.py:145`
-
----
-
-### 5b. Cache `paint_text()` output (saves est. ~1–2 ms/cycle on static text)
-
-**Status:** DONE
-
-`paint_text()` rebuilds its full `Paint` dict every frame — running `wrap_cells`, `justify_line`,
-and dict construction — even when the `Text` element and rect are unchanged. `Text` is a frozen
-dataclass (hashable) and `waxy.Rect` supports value equality, so `@lru_cache` keyed on
-`(text, rect)` would return the cached dict by reference on subsequent calls.
-
-Note: the cached dict must not be mutated by callers. Currently `paint_element()` merges via
-`box | paint_text(...)` which creates a new dict — safe.
-
-Relevant code: `src/counterweight/paint.py:111`
-
----
-
-### 5c. Batch adjacent cells in `paint_to_instructions()` (reduces bytes written)
-
-**Status:** DONE
-
-`paint_to_instructions()` emits one `move_to + SGR + char + reset` per cell (~40 bytes each).
-For adjacent cells on the same row with the same style, only one `move_to` and one SGR are needed;
-subsequent chars on the same run can be concatenated. Sorting diff cells by `(y, x)` then grouping
-same-style runs would reduce output bytes substantially (e.g. a 60-char line of same-style text
-goes from ~2400 bytes to ~50 bytes). Impact on write time is modest at current scale but grows
-with terminal size or high-churn frames.
-
-Relevant code: `src/counterweight/output.py:89`
-
----
-
-### 6. Narrow border-healing hint set (saves ~0.4 ms/cycle, ~2.5%)
-
-**Status:** Done (2026-03-08)
-
-`hint_cells` was constant at 279 (canvas) / 784 (dashboard) every frame. Healing only
-ever produces fixes at corner positions — straight-edge overlaps always yield the same
-character. `paint_border()` now emits hints only for the (up to 4) corner positions of
-each bordered element, reducing hint_cells to ~16 (canvas) / ~48 (dashboard).
-
-Implemented in `src/counterweight/paint.py` `paint_border()` — replaced full `chars`
-dict broadcast with conditional corner-only population inside the `try/except/else` block.
-
----
-
-### 7. Sparse paint / dirty-region tracking (saves ~1 ms/cycle on static workloads)
-
-**Status:** TODO — tests written (`tests/test_paint_tracking.py`), implementation reverted; approach needs rethink
-
-`current_paint` is initialized as a full `w×h` dict of BLANK cells (`app.py:110`), so
-`diff_paint` iterates all `w×h` entries every frame — 1,920 iterations for an 80×24 terminal
-even when only 1 cell changed (dashboard frame counter).
-
-**Required changes:**
-
-1. **Initialize `current_paint` as `{}`** instead of pre-filling with BLANK. BLANK is the
-   implicit default (see `.get(pos, BLANK)` usage). Replace the explicit `CLEAR_SCREEN` write
-   (currently driven by the BLANK-filled paint dict) with a raw escape sequence instead.
-
-2. **Keep `new_paint` sparse** — `paint_layout` should not write BLANK cells into the dict;
-   callers already treat missing positions as BLANK.
-
-3. **`diff_paint` scans `new_paint.keys() | current_paint.keys()`** instead of only
-   `current_paint.keys()`. With both dicts sparse, this set is O(content cells), not
-   O(terminal size).
-
-**Expected gain:** Dashboard drops from ~1,920 iterations/frame to ~25 (one card's content),
-recovering most of the 1.0ms diff cost. Canvas (all cells change) gets no benefit.
-
-Relevant code: `src/counterweight/app.py:110` (init), `app.py:490` (`diff_paint`),
-`src/counterweight/paint.py` (`paint_layout`).
+- **#1 Skip layout when the tree is unchanged.** Partly done.
+  `LayoutTree` keeps taffy's tree across frames, so taffy reuses its cached layout for unchanged nodes (run 10),
+  and only the `layout_changes` are applied to it (run 18).
+  `LayoutTree.compute` still calls `compute_layout` and reads every node's layout back on every frame,
+  even with no changes: 0.12 ms of `dashboard-local`'s 0.73 ms mean frame, where only one counter changes (run 18).
+- **#2 Memoize stable component subtrees.** Done: `update_shadow` re-runs only the components that have to,
+  and `@component(memo=True)` skips one whose arguments are unchanged (run 18).
+- **#3 Incremental paint for `Text` nodes.** Done in user code, in `counterweight.utils.canvas` (run 3).
+- **#4 Lazy initializers in `use_state`.** Done in the canvas workload (run 2).
+- **#5a–5c Cache `paint_edge()` and `paint_text()`, and batch adjacent cells in `paint_to_instructions()`.**
+  Done (run 4). Run 12 replaced the caches with cached region fills and text rows.
+- **#6 Narrow the border-healing hints to corners.** Done (runs 6 and 7).
+- **#7 Sparse paint.** Reverted after run 6.
+  Run 12's screen-sized `Paint` addresses the same cost: `diff_paint` skips rows that compare equal.
 
 ---
 
@@ -541,7 +407,7 @@ What's left is mostly the emit phase in the caller: stdlib's `Logger.makeRecord`
 `findCaller`) and without-logging's `parse_record`. The sink task's JSON encoding runs between
 frames, so in an app with idle time it costs nothing per frame; these saturated runs count it.
 
-### Run 10 — all four benchmark workloads, per-frame layout (styling-foundations step 10)
+### Run 10 — all four benchmark workloads, per-frame layout (PR #385)
 
 **Date:** 2026-10-10
 
@@ -557,7 +423,7 @@ frames, so in an app with idle time it costs nothing per frame; these saturated 
    `set_children` only when a node's children changed, and `remove` for every unmounted node.
 3. `resolve`: `_resolve_layout`, which turns a node's absolute position and `waxy.Layout`
    into four `Region`s, is an `lru_cache` keyed on `(position, layout, order)`.
-   It isn't in the plan; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
+   It wasn't planned; the `reuse` profiles showed it as the largest part of layout on `top` and `dashboard`.
 
 Frame times (unprofiled runs):
 
@@ -775,11 +641,12 @@ Output bytes over 100 frames with `ResolvedCellStyle` interning off:
   Unverified explanation: `justify_line` builds its padding with `StyledChar(char=" ")`,
   which interning turns into a cache hit.
 
-### Run 15 — what styles cost per frame (styling-foundations step 12)
+### Run 15 — what styles cost per frame (PR #385)
 
 **Date:** 2026-10-11
 
-**Question:** what step 4's resolve step and step 5's derived border widths cost per frame,
+**Question:** what resolving authored styles to concrete ones (`resolve_style`, `resolve_cell_style`)
+and deriving border widths from `border_kind` (`layout_style`) cost per frame,
 and whether `Style` should cache its hash, now that `resolve_style`, `layout_style` and the merge cache
 all hash styles on every frame.
 
@@ -789,7 +656,7 @@ all hash styles on every frame.
   their bodies run on misses only, at most 0.5% of samples.
   What they cost is hashing the `Style` key: on `top`, the dataclass-generated `__hash__` called from
   `_update_node` (`layout_style`, and `resolve_style` for a `Text`'s wrap) is 1.6%, and from `paint_layout` 0.7%.
-  So step 5's derived border widths cost one key hash per element per frame, and nothing else.
+  So the derived border widths cost one key hash per element per frame, and nothing else.
 - Merging was the real cost. `StyleFragment.__or__` was 18.3% of `top`'s samples, 5.4% of `dashboard`'s:
   `top` merges four styles per cell of every process row, every frame.
   The merge cache was a cachetools `LRUCache`, whose `__getitem__` and `__touch` are Python and hash and
@@ -836,7 +703,7 @@ On `top` the rounds don't overlap: 11.92–12.55 ms before, 10.24–10.66 ms aft
   every construction; that's untested.
 - The last frame of every workload (`profiles/<name>.txt`) is identical before and after.
 
-### Run 16 — output independent of interning (incremental-rendering step 1)
+### Run 16 — output independent of interning (PR #394)
 
 **Date:** 2026-10-12
 
@@ -882,7 +749,7 @@ with the range across rounds:
 - The last frame of every workload (`profiles/<name>.txt`) and every docs screenshot is identical
   before and after.
 
-### Run 17 — frames timed from the key handler, and `dashboard-local` (incremental-rendering step 2)
+### Run 17 — frames timed from the key handler, and `dashboard-local` (PR #394)
 
 **Date:** 2026-10-12
 
@@ -912,17 +779,17 @@ Median frame time, median of three rounds, with the range across rounds:
 - `dashboard-local` does the same work as `dashboard` while every component re-runs every frame,
   and measures the same. Its column is the baseline for skipping unchanged components.
 
-### Run 18 — incremental rendering, and interning revisited (incremental-rendering steps 3 to 8)
+### Run 18 — incremental rendering, and interning revisited (PR #394)
 
 **Date:** 2026-10-12
 
-**Change:** steps 3 to 7 of the incremental rendering plan (PR #394): per-node state in the shadow tree,
+**Change:** the rest of PR #394's incremental rendering: per-node state in the shadow tree,
 layout reconciled by the pure `layout_changes`, re-running only components whose state, arguments or
 rectangles changed, `@component(memo=True)`, `use_memo`, and no layout reconciliation for reused subtrees.
 
-**Method:** the baseline is step 2's `src` and `benchmarks` (`f0d40df`), run from their own directory
+**Method:** the baseline is run 17's `src` and `benchmarks` (`f0d40df`), run from their own directory
 against the same environment (`PYTHONPATH`), so both sides time frames from key presses.
-Steps 1 and 2 change nothing observable, so the baseline is the code from before the restructuring.
+Runs 16 and 17 change no frame, so the baseline is the code from before the restructuring.
 Five interleaved rounds of unprofiled `benchmarks run` (500 frames), baseline and `HEAD` alternating per workload.
 Profiles are `<workload>-s8base` and `<workload>-s8`. The `-memo` workloads exist only on `HEAD`.
 Every round's last frame is identical between the baseline and `HEAD`, between each `-memo` workload and its twin,
@@ -939,7 +806,7 @@ Median frame time, median of five rounds, with the range across rounds:
 | dashboard-local | 0.74 ms (0.71–0.76) | 0.60 ms (0.58–0.63) | −19% | | |
 
 Stages, ms per mean frame (one profiled run each, so read them as shares of a frame rather than as frame times).
-Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, it's `layout_changes`:
+In the baseline, layout reconciliation ran inside `LayoutTree.compute`; on `HEAD`, it's `layout_changes`:
 
 | Run | Mean frame | `update_shadow` | `layout_changes` | `LayoutTree.compute` | `paint_layout` | `diff_paint` | `Logger.debug` |
 |---|---|---|---|---|---|---|---|
@@ -957,14 +824,14 @@ Before step 3, layout reconciliation ran inside `LayoutTree.compute`; after it, 
 | dashboard-local, baseline | 0.84 | 0.17 | | 0.09 | 0.28 | 0.02 | 0.15 |
 | dashboard-local | 0.73 | 0.04 | 0.02 | 0.12 | 0.29 | 0.02 | 0.12 |
 
-- **`dashboard-local`** does what the plan expected: `update_shadow` falls by three quarters and `layout_changes`
+- **`dashboard-local`** does what the change was for: `update_shadow` falls by three quarters and `layout_changes`
   is 0.02 ms, since only the frame counter re-runs. What's left of the frame is the whole-tree passes that call
   no user code: taffy's traversal and reading layouts back (`LayoutTree.compute`), paint, diff, and logging.
-- **The `-memo` workloads** differ as the plan predicted. `dashboard-memo` reuses every card and cuts
+- **The `-memo` workloads** differ as their designs predict. `dashboard-memo` reuses every card and cuts
   `update_shadow` by more than half. `agent-memo` re-runs only the streaming message. `top-memo` saves nothing,
   since its unkeyed rows reorder every frame and memo misses.
 - **`canvas` and `top`** are within the round-to-round spread of the baseline: their per-frame work dwarfs
-  the bookkeeping steps 3 to 7 added.
+  the bookkeeping the change added.
 - **`agent` and `dashboard`** are not: 0.08–0.09 ms per frame slower, with ranges that barely overlap.
   Profiles of 3,000 frames on each side (`<workload>-s8base-long`, `<workload>-s8-long`) put the extra samples
   in `update_shadow` and layout at +17% on `agent` and +18% on `dashboard`, spread across per-node bookkeeping
@@ -1006,3 +873,290 @@ Every `@flyweight` stays: each one's ranges don't overlap interning on for at le
 `Cell` on `canvas`, `top` and `agent`; `CellStyle` on `top`, `top-memo` and `agent`; `StyledChar` on `top`.
 Reused subtrees construct fewer values per frame, but the workloads that change most per frame build enough
 cells and styles that interning still pays where they're compared.
+
+### Run 19 — mouse routing and the per-render routing table (PR #402)
+
+**Date:** 2026-10-13
+
+**Change:** mouse events route to one target and bubble. Each render builds a `RoutingTable`
+(`routing.py:RoutingTable.of`): a map from each visible node's key to its handler, beside references to the
+layouts and the shadow tree's parent map. Mouse events hit-test the paint order and bubble through
+`ShadowTree.parents`; keys still go to every handler, now through `route_key`, which looks each visible
+node up in the handler map instead of reading its element.
+
+**Method:** the baseline is `HEAD` (`9ea3c2b`) in a separate worktree. One profiled `just profile` run of
+`dashboard-memo` on each side (`routing-before`, `routing-after`), chosen because it does the least other work
+per frame, so a fixed per-render cost shows most there. Then three interleaved unprofiled `benchmarks run`
+rounds of `top` (`top-routing-before`, `top-routing-after`), which has the most nodes,
+and one profiled run of `top` after the change (`top-routing-profiled`).
+Both workloads' last frames are identical before and after.
+
+`dashboard-memo`, one profiled run each:
+
+| Run | Median | Mean | P95 | `RoutingTable.of` | `route_key` |
+|---|---|---|---|---|---|
+| before | 0.757 ms | 0.865 ms | 1.217 ms | | |
+| after | 0.710 ms | 0.845 ms | 1.049 ms | 0.002 ms/frame | 0.002 ms/frame |
+
+`top`, median frame time of three interleaved rounds, with the range across rounds:
+
+| Run | Median |
+|---|---|
+| before | 11.77 ms (11.02–12.37) |
+| after | 12.30 ms (11.55–12.46) |
+
+- **Building the table** costs 0.002 ms per frame on `dashboard-memo` and 0.021 ms on `top`,
+  0.2% of each, so rebuilding it every render needs no caching.
+- **`top`'s rounds overlap**, and the machine was noisy (the first round's "after" was the slowest of all six).
+  The profile accounts for the difference without a regression: of `route_key`'s 0.53 ms per frame,
+  237 of its 275 samples are the workload's own `step`, the root key handler that the loop used to call directly.
+  Routing's own share is about 0.07 ms per frame, for a key delivered to every visible node,
+  which step 5 replaces with one bubble path.
+
+### Run 20 — key routing through focus, and focus reconciliation (PR #402)
+
+**Date:** 2026-10-13
+
+**Change:** a key press bubbles from the focused node,
+or from the root component's node when nothing is focused, instead of reaching every visible handler.
+`RoutingTable.of` also records each visible node that called `use_focus`, and checks that no two mounted
+components share a `FocusHandle`. After each render, `RoutingTable.reconciled_focus` clears focus that can no
+longer be held and applies `auto_focus` to the components that mounted.
+
+**Method:** the baseline is `HEAD` (`c362220`) in a separate worktree. One profiled `just profile` run of
+`dashboard-memo` on each side (`focus-before`, `focus-after`), then three interleaved unprofiled
+`benchmarks run` rounds of `dashboard-memo` and `top` on each side (`dm-focus-*`, `top-focus-i-*`),
+and one profiled run of `top` after the change (`top-focus-profiled`).
+`dashboard-memo`'s last frame is identical before and after.
+Neither workload has a focusable component, so every key goes to the root's handler.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | Before | After |
+|---|---|---|
+| `dashboard-memo` | 0.741 ms (0.721–0.854) | 0.801 ms (0.729–0.803) |
+| `top` | 12.57 ms (12.52–12.68) | 12.04 ms (11.43–12.10) |
+
+- **The rounds overlap on `dashboard-memo`**, and the profiled "after" run was slower in every stage,
+  paint and layout included, which this change doesn't touch, so the machine was noisy during it.
+  Its routing stages stay small: `RoutingTable.of` at 0.002 ms per frame on both sides,
+  and `route_key` at 0.007 and 0.012 ms per frame, from a handful of samples each.
+- **Routing's own cost on `top` falls** from about 0.07 ms per frame to about 0.014 ms:
+  of `route_key`'s 288 samples, 279 are the workload's root handler and 9 are routing,
+  against 38 of 275 in run 19, since a key now calls one handler rather than every visible node's.
+- **Reconciling focus doesn't show** in either profile, and `RoutingTable.of` costs 0.031 ms per frame on `top`,
+  against 0.021 ms in run 19, within the noise of one profiled run.
+
+### Run 21 — clipping (phase 1 of `plans/clipping-and-scrolling.md`, PR #415)
+
+**Date:** 2026-10-13
+
+**Change:** after taffy lays the tree out, `place` walks it from the root and gives each node a clip,
+which `_resolve_layout` takes as a third cache key and turns into `Rects.clip` and `Rects.visible`.
+`Paint.fill` and `Paint.write_row` bound their writes by the clip, `paint_element` drops healing hints outside it,
+and `target_at` hit-tests `visible`.
+`Region` caches its hash, as `CellStyle` and `Style` do, since it's now part of `_resolve_layout`'s key for every node.
+
+**Method:** the baseline is `HEAD` (`91ac4a0`) in a separate worktree, run with `PYTHONPATH` pointing at its `src`.
+One profiled `just profile` run of `dashboard` and `top` on each side (`before-clip-*`, `after-clip-*`),
+then three interleaved unprofiled `benchmarks run` rounds of `top`, `dashboard` and `agent` on each side
+before `Region` cached its hash (`ab-base-*`, `ab-clip-*`),
+and three more of the change without and with the cached hash (`ab-cur-*`, `ab-hash-*`).
+Both workloads' last frames are identical before and after.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | `HEAD` | Clipping | Clipping (second pair) | Clipping, `Region` caching its hash |
+|---|---|---|---|---|
+| `top` | 12.04 ms (11.31–13.26) | 12.80 ms (12.18–13.40) | 11.95 ms (11.92–12.22) | 11.67 ms (11.60–11.73) |
+| `dashboard` | 0.926 ms (0.895–0.936) | 0.980 ms (0.979–1.029) | 1.099 ms (0.996–1.506) | 1.111 ms (1.008–1.289) |
+| `agent` | 1.049 ms (1.039–1.099) | 1.121 ms (1.095–1.154) | 1.209 ms (1.192–1.261) | 1.151 ms (1.124–1.223) |
+
+- **The fixed cost of a frame rises by about 6%** on `dashboard` and `agent`, which draw few nodes per frame,
+  so the walk's per-node work shows. On `top` the rounds overlap.
+  The second pair of columns ran later, on a busier machine, so compare within a pair, not across them.
+- **`place` takes about 6% of the render loop on `top`**, but `LayoutTree.compute` without it falls from 26.4% to 22.2%,
+  since `place` took over the comprehension that resolved every node's layout.
+  Paint's share is unchanged (18.8% and 19.1%).
+- **Fresh objects per frame defeat identity checks in the caches.** A first version built the border's inner edge
+  as a new `Region` in every `paint_element` call, so `border_fills`' cache compared it field by field;
+  `border_fills` now takes the inner right and bottom edges as ints.
+  For a border box wholly inside its clip, `Region.intersection` returns the box itself,
+  so `paint_element` can tell by identity and keep the cached corners without filtering them.
+  The children of a clipping container still get a new clip `Region` each frame,
+  which `_resolve_layout`'s cache compares by value.
+- **`Region`'s cached hash is neutral or better**: `top` and `agent` were faster in most rounds,
+  and `dashboard`'s rounds overlap.
+
+### Run 22 — unclipped elements (phase 2 of `plans/clipping-and-scrolling.md`, PR #415)
+
+**Date:** 2026-10-13
+
+**Change:** `clip_to="screen"` resets a node's clip to the screen in `place`.
+A child's clip now depends on its own `clip_to` under any parent whose clip isn't the screen,
+so `place` hands a parent's clip straight to its children only when that clip is the screen and the parent clips nothing,
+and otherwise calls `child_clip` for each child, where run 21 did so only under a parent that clips.
+
+**Method:** the baseline is `HEAD` (`0d75557`) in a separate worktree, run with `PYTHONPATH` pointing at its `src`.
+Three interleaved unprofiled `benchmarks run` rounds of `top`, `dashboard` and `agent` on each side
+(`ab-base2-*`, `ab-screen-*`).
+Each workload's last frame is identical before and after.
+
+Median frame time of three interleaved rounds, with the range across rounds:
+
+| Workload | `HEAD` | Unclipped elements |
+|---|---|---|
+| `top` | 11.69 ms (11.33–12.68) | 11.58 ms (11.20–11.95) |
+| `dashboard` | 0.993 ms (0.984–1.018) | 0.977 ms (0.945–1.077) |
+| `agent` | 1.115 ms (1.090–1.145) | 1.134 ms (1.127–1.193) |
+
+- **No change beyond the noise** on any workload: every pair of ranges overlaps.
+  None of the workloads sets `clip_to_screen`, so this measures the walk's extra `child_clip` calls
+  under clipping ancestors, which the constraint utilities make common in `top`.
+
+### Run 23 — Markdown and syntax highlighting in `agent` (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** two new workloads, `agent-markdown` and `agent-markdown-memo`,
+step the same models as `agent` but render assistant messages with `markdown`
+(a fixed set of words marked up as code, emphasis, strong, or a link)
+and tool calls with `code_block` (`python` for reads, `diff` for edits).
+`block_gap=0` keeps each message the height `visible` estimates.
+The streaming message's source changes every frame, so it is parsed every frame;
+every other message is a hit in `markdown`'s cache.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `r<round>-<config>`,
+and one profiled `just profile` run of each workload.
+"Quiet" is `agent-markdown` with `logging.getLogger("markdown_it")` raised to `INFO` before the run,
+set in the runner and not in counterweight.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Median | Change against its plain twin |
+|---|---|---|
+| `agent` | 1.07 ms (1.04–1.11) | |
+| `agent-markdown` | 1.52 ms (1.50–1.58) | +42% |
+| `agent-markdown`, quiet | 1.33 ms (1.30–1.36) | +24% |
+| `agent-memo` | 0.99 ms (0.97–1.05) | |
+| `agent-markdown-memo` | 1.46 ms (1.42–1.49) | +47% |
+
+- **The added cost is all in `update_shadow`** (0.21 → 0.58 ms per mean frame in the profiles):
+  paint and layout are within noise of `agent`. Of `update_shadow`, `markdown` is 22% of running samples,
+  nearly all of it `MarkdownIt.parse` of the streaming message.
+- **About half of parsing is markdown-it's own logging.** Its block rules call `LOGGER.debug` on entry,
+  and the devlog captures every logger at `DEBUG`, so each parse makes dozens of records, built in the caller
+  (`makeRecord`, `findCaller`) and encoded by the sink task (whose stage grows from 0.05 to 0.13 ms per frame).
+  Quieting that one logger takes back 0.19 ms of the 0.45 ms median difference.
+- **`memo` saves nothing extra here:** the only message that re-renders is the streaming one,
+  whose source changes every frame, and the others already hit `markdown`'s cache.
+- **Max frames of 27–41 ms** in the Markdown runs, against about 5 ms for `agent`, are first use:
+  the first `highlight` of a language takes about 19 ms (Pygments loads the lexer and style),
+  and the first `markdown` about 17 ms (markdown-it builds its rules); later calls take about 0.1 ms.
+- `agent-markdown-memo` draws the same last frame as `agent-markdown`.
+
+### Run 24 — devlog levels by logger name, and where Markdown's time goes (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** the devlog captures counterweight and the app's own top-level package at `DEBUG`
+and everything else from `INFO`, and `app`'s `log_levels` (logger name to level, `""` the root logger)
+is merged over that base.
+The devlog sets each named logger's level while the app runs, so a third-party `DEBUG` record
+is rejected by `isEnabledFor` before it's built, where run 23's markdown-it records cost most.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `lv<round>-<workload>`.
+The breakdown comes from one profiled run of `agent-markdown` with markdown-it's logger at `INFO`
+and the `python` and `diff` lexers and the parser warmed up before the first frame (`md-quiet-warm`),
+its collapsed stacks bucketed by the innermost frame that names a phase,
+and `timeit` on one 185-word streaming message.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Run 23 | Run 24 | Change against its plain twin, run 24 |
+|---|---|---|---|
+| `agent` | 1.07 ms (1.04–1.11) | 1.05 ms (1.02–1.09) | |
+| `agent-markdown` | 1.52 ms (1.50–1.58) | 1.33 ms (1.22–1.36) | +27% |
+| `agent-memo` | 0.99 ms (0.97–1.05) | 1.00 ms (0.97–1.11) | |
+| `agent-markdown-memo` | 1.46 ms (1.42–1.49) | 1.25 ms (1.24–1.26) | +25% |
+
+`render_markdown_message`, ms per mean frame (1.53 ms):
+
+| Part | ms/frame | Whose |
+|---|---|---|
+| markdown-it inline pass | 0.138 | library |
+| markdown-it block pass | 0.047 | library |
+| `SyntaxTreeNode` | 0.031 | library |
+| markdown-it core rules | 0.020 | library |
+| Converting the tree to elements | 0.025 | counterweight |
+| `code_block`, warm | 0.020 | counterweight |
+| `marked_up` | 0.036 | the workload |
+
+- **About 70% is markdown-it**, and most of that is its inline pass, which scans every paragraph
+  of the streaming message character by character in Python, every frame.
+  Under `timeit`, one 185-word message takes 273 µs to parse, 39 µs to build its `SyntaxTreeNode`,
+  and 35 µs for counterweight to turn into elements.
+- **Counterweight's own share is small:** converting the tree, and wrapping cached highlights in a `Text`
+  (0.5 µs per `code_block` on a cache hit).
+- **The levers are on our side of the call, not inside markdown-it:** only the last paragraph of a streaming message
+  changes, so caching inline parsing per paragraph would take the inline pass from O(message) to O(last paragraph);
+  walking markdown-it's tokens directly would drop the `SyntaxTreeNode` step. Neither is tried yet.
+
+### Run 25 — `agent-markdown` shaped like real agent output (issue #330)
+
+**Date:** 2026-10-13
+
+**Change:** `agent-markdown` has its own model, in `benchmarks/agent_markdown.py`, instead of marking up `agent`'s.
+Runs 23 and 24 streamed one long run of prose with sparse markup, which real agent output isn't.
+Its shapes come from the assistant text blocks in the Claude Code transcripts on the development machine
+(5,075 main-thread blocks across 29 projects; only statistics were kept, never text):
+
+| Measure | p10 | p25 | p50 | p75 | p90 | p99 |
+|---|---|---|---|---|---|---|
+| Words per block | 9 | 14 | 22 | 36 | 278 | 702 |
+| Top-level blocks per block | 1 | 1 | 1 | 1 | 6 | 14 |
+| Tool calls before a block | 0 | 1 | 2 | 5 | 9 | 26 |
+| Words per paragraph | 6 | 13 | 22 | 34 | 54 | 96 |
+| Items per list | 2 | 2 | 3 | 4 | 5 | 7 |
+| Lines per code fence | 1 | 1 | 3 | 5 | 9 | 76 |
+
+- Every block has a paragraph; 14% have a bulleted list, 3% a numbered list, 3% a code fence,
+  2% a table and 2% a heading (nearly all `##`).
+- Per 100 words: 4.7 inline code spans, 1.2 bold, 0.05 links, 0.04 italics.
+- Tool calls are 53% shell commands, 28% edits and 18% reads, among those three.
+
+The generator draws narration (85%) or a summary (15%) from those percentiles, and reproduces them closely:
+a median of 21 words and a 90th percentile of 288, a mean of 2.1 top-level blocks, and the same share of lists.
+It streams three words a frame, so the streaming block's source is often unfinished Markdown,
+and a code fence that's still streaming misses `highlight`'s cache every frame.
+
+**Method:** three interleaved rounds of unprofiled `benchmarks run` (500 frames), named `real<round>-<workload>`,
+and one profiled run of `agent-markdown`, its collapsed stacks under `render_message`
+bucketed by the innermost frame that names a phase.
+
+Median frame time, median of three rounds, with the range across rounds:
+
+| Workload | Median | Change against its plain twin |
+|---|---|---|
+| `agent` | 1.09 ms (1.00–1.11) | |
+| `agent-markdown` | 1.34 ms (1.29–1.34) | +23% |
+| `agent-memo` | 0.98 ms (0.94–1.00) | |
+| `agent-markdown-memo` | 1.28 ms (1.24–1.32) | +31% |
+
+`render_message` is 23% of running samples. Within it:
+
+| Part | Share | Whose |
+|---|---|---|
+| markdown-it block pass | 28% | library |
+| markdown-it inline pass | 22% | library |
+| `SyntaxTreeNode` | 12% | library |
+| markdown-it core rules | 7% | library |
+| Pygments lexing | 14% | library |
+| Pygments loading a lexer for the first time | 1% | library |
+| Converting the tree to elements | 17% | counterweight |
+
+- **About 83% is library code.** With lists and tables in the mix, markdown-it's block pass now costs more
+  than its inline pass, and Pygments re-lexes a code fence on every frame that it grows.
+- **Counterweight's share is 17%,** larger than run 24's because real output has more blocks and inline spans per word.
+- Run 24's levers still apply, but the per-paragraph inline cache would save less here:
+  most blocks are a single short paragraph, and summaries spend more in the block pass.

@@ -30,7 +30,7 @@ flowchart TB
     end
 
     subgraph Input
-        i[Keyboard/Mouse Input]
+        i[Keyboard/Mouse/Paste Input]
         vp[Parse VT Commands]
         ev[Populate Event Stream]
         eh[Call Event Handlers]
@@ -53,12 +53,13 @@ flowchart TB
     d -- VT Commands --> t
 
     i -- VT Commands --> vp
-    vp -- Keys/Mouse Position --> ev
+    vp -- Keys/Pastes/Mouse Position --> ev
     ev -- Events --> eh
     l -- Handler Tree --> eh
     p -- Event Targets --> eh
 
     eh -- Set State --> r
+    eh -- Scroll Controls --> l
 
     l -- Mounted Components --> efm
     efm --> eff

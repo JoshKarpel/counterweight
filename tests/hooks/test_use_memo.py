@@ -6,7 +6,7 @@ import pytest
 
 from counterweight.components import Component, component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, Receiver
 from counterweight.hooks import Setter, use_memo, use_state
 from counterweight.hooks.impls import StaleMemo, UseMemo
 from counterweight.layout import NO_LAYOUTS
@@ -74,6 +74,17 @@ def test_compute_runs_on_mount_and_whenever_deps_change(
     assert [entry for entry in log if isinstance(entry, tuple)] == expected
 
 
+def test_compute_doesnt_run_again_once_changed_deps_stop_changing() -> None:
+    log: list[object] = []
+    setters: dict[str, Setter[int]] = {}
+
+    render_after_each(
+        memoizes(lambda count, other: (count,), log, setters), [step(setters, "count"), step(setters, "other")]
+    )
+
+    assert [entry for entry in log if isinstance(entry, tuple)] == [("compute", 1), ("compute", 2)]
+
+
 @component
 def caches_its_element(calls: list[str], setters: dict[str, Setter[int]]) -> Div:
     _, set_count = use_state(1)
@@ -85,7 +96,7 @@ def caches_its_element(calls: list[str], setters: dict[str, Setter[int]]) -> Div
         calls.append("child")
         return Text(content="child")
 
-    return use_memo(lambda: Div(children=[child()]), deps=())
+    return use_memo(lambda: Div(children=(child(),)), deps=())
 
 
 def test_component_returning_a_cached_element_does_not_rerun_the_components_below_it() -> None:
@@ -114,10 +125,10 @@ def caches_handler(deps: Callable[[int, int], tuple[object, ...]], setters: dict
     setters["count"] = set_count
     setters["other"] = set_other
 
-    def on_key(_: KeyPressed) -> None:
-        print(count)
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        print(count)  # pragma: never runs
 
-    return Text(content="", on_key=use_memo(lambda: on_key, deps(count, other)))
+    return Text(content="", on_input=use_memo(lambda: on_input, deps(count, other)))
 
 
 @pytest.mark.parametrize(
@@ -148,7 +159,7 @@ def test_check_purity_keeps_a_cached_handler_whose_deps_are_complete() -> None:
         caches_handler(lambda count, other: (count,), setters), [step(setters, "other")], check_purity=True
     )
 
-    assert second.root.element.on_key is first.root.element.on_key
+    assert second.root.element.on_input is first.root.element.on_input
 
 
 @component(memo=True)
@@ -161,7 +172,7 @@ def deps_read_setting(argument: object) -> Text:
 def holds_memo_child(setters: dict[str, Setter[int]]) -> Div:
     _, set_count = use_state(1)
     setters["parent"] = set_count
-    return Div(children=[deps_read_setting("same")])
+    return Div(children=(deps_read_setting("same"),))
 
 
 def test_check_purity_leaves_a_reused_components_memo_hooks_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:

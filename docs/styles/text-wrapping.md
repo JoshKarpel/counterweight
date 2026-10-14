@@ -6,7 +6,8 @@ Use the `text_wrap_*` style utilities to control how long text is broken across 
 
 ## Wrap Modes
 
-Counterweight supports four wrap modes, illustrated below with the same paragraph of text:
+Counterweight supports four wrap modes, illustrated below with the same paragraph of
+[Markdown](../rich-text/markdown.md), whose paragraphs wrap with the `paragraph` style of `MarkdownStyles`:
 
 ```python
 --8<-- "text_wrap.py:example"
@@ -17,7 +18,10 @@ Counterweight supports four wrap modes, illustrated below with the same paragrap
 ### `text_wrap_none` (default)
 
 No wrapping. The text renders as a single line regardless of the available width.
-Content that exceeds the container width is clipped.
+A line wider than its box overflows it and is drawn past it, as text is in CSS,
+unless the `Text` or one of its ancestors [clips](../layout/clipping.md) it.
+The comparison above gives the `none` paragraph `overflow_hidden`,
+which clips its line at the paragraph's own padding box.
 
 ### `text_wrap_stable`
 

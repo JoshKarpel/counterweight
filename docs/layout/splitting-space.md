@@ -130,7 +130,10 @@ A bare `waxy.Fraction` track has the same floor as a flex item:
 it is never narrower than its content's minimum size.
 In the top grid below, two lines of unwrapped text push their columns past the grid's edge.
 `fr(1)` is CSS's `minmax(0, 1fr)`, which lowers the floor to zero,
-so in the bottom grid the columns split the space and the text is cut off instead.
+so in the middle grid the columns split the space.
+Each line is still wider than its column, so it overflows the column, as text does in CSS,
+over the next column and the grid's border.
+In the bottom grid, `overflow_hidden` on each `Text` clips its line at its own padding box.
 
 ```python
 --8<-- "layout_splitting.py:overflow-grid"

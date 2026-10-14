@@ -32,18 +32,19 @@ and over Ratatui to have the framework own the state, the event loop and the lay
 | Event loop | Counterweight's | Textual's | Ink's | Yours |
 | Screen | Full screen (inline: [#393](https://github.com/JoshKarpel/counterweight/issues/393)) | Full screen or inline | Inline or full screen | Full screen, inline or a fixed area |
 | Mouse | Yes | Yes | No | Through the backend's events |
-| Focus | No ([#390](https://github.com/JoshKarpel/counterweight/issues/390)) | Yes | Yes | No |
-| Text input | No ([#391](https://github.com/JoshKarpel/counterweight/issues/391)) | Built in | Third-party packages | Third-party crates |
-| Scrolling | No ([#388](https://github.com/JoshKarpel/counterweight/issues/388), [#389](https://github.com/JoshKarpel/counterweight/issues/389)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
-| Wide characters | No ([#392](https://github.com/JoshKarpel/counterweight/issues/392)) | Yes | Yes | Yes |
+| Focus | Yes | Yes | Yes | No |
+| Text input | One line or wrapped rows, as [headless components](headless/index.md) and the bordered `text_input` and `text_area` widgets built on them | Built in | Third-party packages | Third-party crates |
+| Scrolling | [Scroll containers](layout/scrolling.md), without a visible scrollbar ([#417](https://github.com/JoshKarpel/counterweight/issues/417)) | Built in | Third-party packages | `Paragraph` scrolling and a scrollbar widget |
+| Markdown and syntax highlighting | [Built in](rich-text/markdown.md) | Built in | Third-party packages | Third-party crates |
+| Wide characters | [Yes](elements/text.md#wide-characters) | Yes | Yes | Yes |
 | Platforms | Linux, macOS | Linux, macOS, Windows | Not stated | Linux, macOS, Windows |
 
 ## Textual
 
 Textual is the closest alternative in the same language, and the most complete:
 it has a large [widget library](https://textual.textualize.io/widget_gallery/)
-with text inputs, text areas, tables, trees and Markdown viewers,
-focus handling, scrolling, an inline mode, Windows support,
+with data tables, trees, tabs, select menus, checkboxes and progress bars,
+text selection, visible scrollbars, an inline mode, Windows support,
 and a way to serve apps in a browser.
 
 The difference is how you describe a UI.
@@ -95,7 +96,7 @@ Beyond the language:
   a Counterweight effect is cancelled when its dependencies change or its component unmounts,
   so cleanup goes in a `try`/`finally` block (see [`use_effect`](hooks/use_effect.md)).
 - Counterweight lays out with grid as well as flexbox.
-- Counterweight has mouse input, through `on_mouse` handlers and the
+- Counterweight has mouse input, through `on_input` handlers and the
   [`use_mouse`](hooks/use_mouse.md) and [`use_hovered`](hooks/use_hovered.md) hooks.
   Ink has none.
 
@@ -131,23 +132,15 @@ or when frame time is the constraint: Counterweight renders in Python, and Ratat
 
 These are the gaps you're most likely to hit, with what to do instead:
 
-- **Text input.** There's no text input element.
-  Build one from a `KeyPressed` handler that edits a string in `use_state`.
-  Tracked in [#391](https://github.com/JoshKarpel/counterweight/issues/391).
-- **Scrolling and clipping.** There are no scroll containers,
-  and content that overflows its container isn't clipped:
-  it paints over the container's border and whatever lies beyond it.
-  Keep an offset in `use_state` and render only the slice of your data that fits.
-  Tracked in [#388](https://github.com/JoshKarpel/counterweight/issues/388) (clipping) and [#389](https://github.com/JoshKarpel/counterweight/issues/389) (scroll containers).
-- **Focus.** Every element's `on_key` handler receives every key press.
-  Keep which item is focused in state, and have the other handlers ignore keys.
-  Tracked in [#390](https://github.com/JoshKarpel/counterweight/issues/390).
-- **Wide characters.** Counterweight counts every character as one cell,
-  so CJK characters and most emoji, which terminals draw two cells wide, push the rest of their line out of alignment.
-  Tracked in [#392](https://github.com/JoshKarpel/counterweight/issues/392).
+- **Text selection, and scrolling a long line.** [`use_text_input`](headless/use_text_input.md)
+  and [`use_text_area`](headless/use_text_area.md) have no selection,
+  and a single-line value wider than its box doesn't scroll to keep the cursor in view.
+  Tracked in [#420](https://github.com/JoshKarpel/counterweight/issues/420) (scrolling a long line).
 - **Inline rendering.** Counterweight always uses the terminal's alternate screen,
   so nothing it draws remains in the scrollback when the app exits.
   Tracked in [#393](https://github.com/JoshKarpel/counterweight/issues/393).
 - **Windows.** Counterweight reads input through POSIX terminal APIs,
   and is tested on Linux and macOS.
-- **A widget library.** Counterweight provides elements, layout and styles, and you build the widgets.
+- **A widget library.** Counterweight's widgets are a text input and a text area,
+  and its [rich text](rich-text/markdown.md) renders Markdown and highlighted code.
+  Tables, trees, menus, tabs and the rest you build from elements, layout, styles and hooks.

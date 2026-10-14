@@ -8,7 +8,14 @@ from hypothesis import strategies as st
 
 from counterweight.geometry import Position
 from counterweight.graphemes import grapheme_width
-from counterweight.output import RESET_STYLE, move_to, paint_to_instructions, sgr_from_cell_style
+from counterweight.output import (
+    HYPERLINK_END,
+    RESET_STYLE,
+    hyperlink,
+    move_to,
+    paint_to_instructions,
+    sgr_from_cell_style,
+)
 from counterweight.paint import Cell, Paint, diff_paint, runs_of
 from counterweight.styles import CellStyle
 from counterweight.styles.styles import Color, resolve_cell_style
@@ -16,10 +23,13 @@ from counterweight.styles.styles import Color, resolve_cell_style
 DEFAULT = resolve_cell_style(CellStyle())
 RED_FG = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
 BOLD = resolve_cell_style(CellStyle(bold=True))
+LINKED = resolve_cell_style(CellStyle(link="https://example.com/a"))
+OTHER_LINKED = resolve_cell_style(CellStyle(link="https://example.com/b"))
 
 A = Cell("A", DEFAULT)
 B = Cell("B", DEFAULT)
 R = Cell("R", RED_FG)
+L = Cell("L", LINKED)
 
 
 def mt(x: int, y: int) -> str:
@@ -66,50 +76,81 @@ def test_style_carries_across_runs() -> None:
     )
 
 
-INSTRUCTION = re.compile(r"\x1b\[(\d+);(\d+)f|(\x1b\[[\d;]*m)|(.)", re.DOTALL)
+def test_link_opens_with_its_style_and_closes_at_the_end() -> None:
+    assert paint_to_instructions([(0, 0, [A, L, L])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A"
+        f"{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}LL{RESET_STYLE}{HYPERLINK_END}"
+    )
 
 
-def apply(instructions: str, screen: list[list[tuple[str, str]]]) -> None:
+def test_link_stays_open_across_runs() -> None:
+    assert paint_to_instructions([(0, 0, [L]), (0, 1, [L])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}L{mt(0, 1)}L"
+        f"{RESET_STYLE}{HYPERLINK_END}"
+    )
+
+
+def test_unlinked_cell_after_a_link_closes_it() -> None:
+    assert paint_to_instructions([(0, 0, [L, A])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}L"
+        f"{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}{HYPERLINK_END}A{RESET_STYLE}"
+    )
+
+
+INSTRUCTION = re.compile(r"\x1b\[(\d+);(\d+)f|(\x1b\[[\d;]*m)|\x1b\]8;;(.*?)\x1b\\|(.)", re.DOTALL)
+
+Appearance = tuple[str, str, str | None]
+
+
+def apply(instructions: str, screen: list[list[Appearance]]) -> str | None:
     """
-    Run `instructions` on `screen`, a grid of (char, active SGR) pairs, the way a terminal would,
-    for the subset of escape sequences that `paint_to_instructions` emits.
+    Run `instructions` on `screen`, a grid of (char, active SGR, active hyperlink) triples, the way a terminal would,
+    for the subset of escape sequences that `paint_to_instructions` emits,
+    returning the hyperlink still open at the end.
 
-    A wide character fills its own column and the next, which holds `""`, and drawing over either half
-    of one erases the other half to a space, as terminals do. Every character here is one code point.
+    A wide character fills its own column and the next, which holds `""`, and drawing over its left half
+    erases its right half to a space, as terminals do. Every character here is one code point.
+    Runs never start on a right half, so drawing over one without its left half first fails.
     """
     x = y = 0
     sgr = ""
+    link = None
     for match in INSTRUCTION.finditer(instructions):
-        row, column, escape, char = match.groups()
+        row, column, escape, uri, char = match.groups()
         if row is not None:
             y, x = int(row) - 1, int(column) - 1
         elif escape is not None:
             sgr = "" if escape == RESET_STYLE else sgr + escape
+        elif uri is not None:
+            link = uri or None
         else:
             line = screen[y]
             width = grapheme_width(char)
             for covered in range(x, x + width):
                 erase_other_half(line, covered)
-            line[x] = (char, sgr)
+            line[x] = (char, sgr, link)
             if width == 2:
-                line[x + 1] = ("", sgr)
+                line[x + 1] = ("", sgr, link)
             x += width
+    return link
 
 
-def erase_other_half(line: list[tuple[str, str]], x: int) -> None:
-    char, _ = line[x]
-    if not char:
-        line[x - 1] = (" ", line[x - 1][1])
-    elif grapheme_width(char) == 2:
-        line[x + 1] = (" ", line[x + 1][1])
+def erase_other_half(line: list[Appearance], x: int) -> None:
+    char, _, _ = line[x]
+    assert char, f"drew over the right half of a wide character at column {x} before its left half"
+    if grapheme_width(char) == 2:
+        _, sgr, link = line[x + 1]
+        line[x + 1] = (" ", sgr, link)
 
 
-def appearance(paint: Paint) -> list[list[tuple[str, str]]]:
-    return [[(cell.grapheme, sgr_from_cell_style(cell.style)) for cell in row] for row in paint.rows()]
+def appearance(paint: Paint) -> list[list[Appearance]]:
+    return [[(cell.grapheme, sgr_from_cell_style(cell.style), cell.style.link) for cell in row] for row in paint.rows()]
 
 
-narrow_cells = st.sampled_from([A, B, R, Cell("A", BOLD), Cell(" ", BOLD), Cell(" ", DEFAULT)])
-wide_cells = st.sampled_from([Cell("日", DEFAULT), Cell("本", DEFAULT), Cell("日", RED_FG)])
+narrow_cells = st.sampled_from(
+    [A, B, R, L, Cell("A", BOLD), Cell(" ", BOLD), Cell(" ", DEFAULT), Cell(" ", LINKED), Cell("O", OTHER_LINKED)]
+)
+wide_cells = st.sampled_from([Cell("日", DEFAULT), Cell("本", DEFAULT), Cell("日", RED_FG), Cell("本", LINKED)])
 
 
 @st.composite
@@ -142,16 +183,18 @@ def test_drawing_the_diff_over_the_current_paint_shows_the_new_paint(pair: tuple
     current, new = pair
     screen = appearance(current)
 
-    apply(paint_to_instructions(diff_paint(new, current)), screen)
+    open_link = apply(paint_to_instructions(diff_paint(new, current)), screen)
 
     assert screen == appearance(new)
+    assert open_link is None
 
 
 @given(paint_pairs())
 def test_drawing_every_run_shows_the_paint(pair: tuple[Paint, Paint]) -> None:
     _, paint = pair
-    screen = [[("?", "")] * paint.width for _ in range(paint.height)]
+    screen: list[list[Appearance]] = [[("?", "", None)] * paint.width for _ in range(paint.height)]
 
-    apply(paint_to_instructions(runs_of(paint)), screen)
+    open_link = apply(paint_to_instructions(runs_of(paint)), screen)
 
     assert screen == appearance(paint)
+    assert open_link is None

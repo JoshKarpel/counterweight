@@ -7,8 +7,9 @@ import waxy
 
 from counterweight.app import screen_element_style
 from counterweight.elements import AnyElement, Div, Text
+from counterweight.geometry import Rects
 from counterweight.hooks.impls import Hooks
-from counterweight.layout import Layouts, LayoutTree, ResolvedLayout, layout_changes
+from counterweight.layout import Layouts, LayoutTree, layout_changes
 from counterweight.shadow import ShadowNode, ShadowTree
 from counterweight.styles.styles import Style
 from counterweight.styles.utilities import (
@@ -16,6 +17,8 @@ from counterweight.styles.utilities import (
     align_children_center_unsafe,
     align_children_end,
     align_children_end_unsafe,
+    align_children_start,
+    aspect_ratio,
     border,
     border_collapse,
     border_lightrounded,
@@ -27,6 +30,9 @@ from counterweight.styles.utilities import (
     fr,
     full_height,
     full_width,
+    gap,
+    gap_height,
+    grid_column,
     grid_row,
     grid_template_columns,
     grid_template_rows,
@@ -46,7 +52,10 @@ from counterweight.styles.utilities import (
     margin_x,
     margin_y,
     max_content_width,
+    max_height,
+    max_width,
     min_content_width,
+    min_height,
     min_width,
     pad,
     percentage,
@@ -61,6 +70,7 @@ from counterweight.styles.utilities import (
     text_wrap_pretty,
     text_wrap_stable,
     width,
+    z,
 )
 
 
@@ -69,16 +79,15 @@ def _shadow(element: AnyElement, children: Sequence[ShadowNode] = ()) -> ShadowN
 
 
 def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
-    available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
     shadow = ShadowTree(root=root)
-    return LayoutTree().compute(layout_changes(None, shadow), shadow, available)
+    return LayoutTree().compute(layout_changes(None, shadow), shadow, w, h, {})
 
 
-def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
-    return _layouts(root, w, h).in_paint_order
+def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
+    return tuple((element, layout) for _, element, layout in _layouts(root, w, h).in_paint_order)
 
 
-def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, ResolvedLayout], ...]:
+def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
     """Wrap root in the element the app places the root component in."""
     screen = _shadow(Div(style=screen_element_style(w, h)), children=[root])
     return _layout(screen, w, h)
@@ -407,6 +416,102 @@ def test_hidden_subtree_has_no_layout_by_key() -> None:
     assert _layouts(root).by_key.keys() == {root.key, visible.key}
 
 
+def _painted(root: ShadowNode, /, **named: ShadowNode) -> list[str]:
+    """The names of `named`'s nodes in the order `root`'s layouts paint them, skipping unnamed ones."""
+    names = {id(node.element): name for name, node in named.items()}
+    return [names[id(element)] for element, _ in _layout(root) if id(element) in names]
+
+
+def test_elements_without_z_paint_in_tree_order() -> None:
+    first_child = _shadow(Text(content="first child"))
+    first = _shadow(Div(), children=[first_child])
+    second = _shadow(Text(content="second"))
+    root = _shadow(Div(), children=[first, second])
+
+    assert _painted(root, root=root, first=first, first_child=first_child, second=second) == [
+        "root",
+        "first",
+        "first_child",
+        "second",
+    ]
+
+
+def test_children_of_an_element_with_z_paint_over_it() -> None:
+    child = _shadow(Text(content="child"))
+    parent = _shadow(Div(style=z(1)), children=[child])
+    root = _shadow(Div(), children=[parent])
+
+    assert _painted(root, parent=parent, child=child) == ["parent", "child"]
+
+
+def test_child_that_sets_a_lower_z_than_its_parent_still_paints_over_it() -> None:
+    child = _shadow(Text(content="child", style=z(-2)))
+    parent = _shadow(Div(style=z(3)), children=[child])
+    root = _shadow(Div(), children=[parent])
+
+    assert _painted(root, parent=parent, child=child) == ["parent", "child"]
+
+
+def test_raised_child_of_an_element_without_z_paints_over_that_elements_later_siblings() -> None:
+    dropdown = _shadow(Text(content="dropdown", style=z(1)))
+    toolbar = _shadow(Div(), children=[dropdown])
+    content = _shadow(Text(content="content"))
+    root = _shadow(Div(), children=[toolbar, content])
+
+    assert _painted(root, toolbar=toolbar, dropdown=dropdown, content=content) == ["toolbar", "content", "dropdown"]
+
+
+def test_raised_child_of_an_element_with_z_0_paints_beneath_that_elements_later_siblings() -> None:
+    dropdown = _shadow(Text(content="dropdown", style=z(1)))
+    toolbar = _shadow(Div(style=z(0)), children=[dropdown])
+    content = _shadow(Text(content="content"))
+    root = _shadow(Div(), children=[toolbar, content])
+
+    assert _painted(root, toolbar=toolbar, dropdown=dropdown, content=content) == ["toolbar", "dropdown", "content"]
+
+
+def test_lowered_member_paints_over_its_contexts_element_and_beneath_its_other_members() -> None:
+    first = _shadow(Text(content="first"))
+    lowered = _shadow(Text(content="lowered", style=z(-1)))
+    context = _shadow(Div(style=z(1)), children=[first, lowered])
+    root = _shadow(Div(), children=[context])
+
+    assert _painted(root, context=context, first=first, lowered=lowered) == ["context", "lowered", "first"]
+
+
+def test_root_forms_a_stacking_context_whatever_it_sets() -> None:
+    lowered = _shadow(Text(content="lowered", style=z(-1)))
+    root = _shadow(Div(), children=[lowered])
+
+    assert _painted(root, root=root, lowered=lowered) == ["root", "lowered"]
+
+
+def test_members_of_one_context_sort_by_z_then_tree_order_at_any_depth() -> None:
+    deep_raised = _shadow(Text(content="deep raised", style=z(2)))
+    deep = _shadow(Text(content="deep"))
+    wrapper = _shadow(Div(), children=[deep_raised, deep])
+    raised = _shadow(Text(content="raised", style=z(2)))
+    lowered = _shadow(Text(content="lowered", style=z(-1)))
+    root = _shadow(Div(), children=[wrapper, raised, lowered])
+
+    assert _painted(root, wrapper=wrapper, deep_raised=deep_raised, deep=deep, raised=raised, lowered=lowered) == [
+        "lowered",
+        "wrapper",
+        "deep",
+        "deep_raised",
+        "raised",
+    ]
+
+
+def test_hidden_subtree_is_left_out_of_its_stacking_context() -> None:
+    hidden_child = _shadow(Text(content="hidden child", style=z(1)))
+    hidden = _shadow(Div(style=display_none), children=[hidden_child])
+    visible = _shadow(Text(content="visible", style=z(1)))
+    root = _shadow(Div(), children=[hidden, visible])
+
+    assert _painted(root, root=root, hidden=hidden, hidden_child=hidden_child, visible=visible) == ["root", "visible"]
+
+
 @pytest.mark.parametrize(
     "alignment",
     [justify_children_center, justify_children_end, align_children_center, align_children_end],
@@ -499,6 +604,12 @@ def test_constraints_split_a_column_whatever_the_content() -> None:
     assert [layout.border.height for _, layout in _layout(root)[1::2]] == [2, 3, 5]
 
 
+def test_lengths_keep_their_size_when_they_overflow_the_row() -> None:
+    root = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(length(30), length(25)))
+
+    assert _border_widths(root) == [30, 25]
+
+
 def test_min_width_holds_whichever_side_of_fill_it_is_merged_on() -> None:
     before = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(min_width(15) | fill(1), fill(3)))
     after = _shadow(Div(style=row | width(40)), children=_boxes_with_wide_content(fill(1) | min_width(15), fill(3)))
@@ -533,10 +644,54 @@ def test_int_track_gives_the_same_widths_as_length() -> None:
 
 
 def test_int_grid_line_and_span_place_a_child_like_their_waxy_values() -> None:
-    def placed(placement: Style) -> ResolvedLayout:
+    def placed(placement: Style) -> Rects:
         child = _shadow(Div(style=placement))
         root = _shadow(Div(style=display_grid | size(40, 12) | grid_template_rows(3, 3, 3, 3)), children=[child])
         return _layout(root)[1][1]
 
     assert placed(grid_row(2, span(3))) == placed(grid_row(waxy.GridLine(2), waxy.GridSpan(3)))
     assert placed(grid_row(2, span(3))).border.height == 9
+
+
+def _border_boxes(root: ShadowNode) -> list[tuple[int, int, int, int]]:
+    """The left, top, width and height of each child of `root`'s border box."""
+    return [
+        (layout.border.left, layout.border.top, layout.border.width, layout.border.height)
+        for _, layout in _layout(root)[1:]
+    ]
+
+
+@pytest.mark.parametrize(
+    ("parent", "child", "expected"),
+    [
+        pytest.param(col | height(10), min_height(4), (0, 0, 0, 4), id="min-height"),
+        pytest.param(col | height(10), fill(1) | max_height(3), (0, 0, 0, 3), id="max-height"),
+        pytest.param(row | width(40), fill(1) | max_width(12), (0, 0, 12, 0), id="max-width"),
+        pytest.param(col | align_children_start, width(8) | aspect_ratio(2.0), (0, 0, 8, 4), id="aspect-ratio"),
+        pytest.param(
+            display_grid | size(40, 12) | grid_template_columns(10, 10, 10, 10),
+            grid_column(2, span(2)),
+            (10, 0, 20, 12),
+            id="grid-column",
+        ),
+    ],
+)
+def test_size_and_placement_utilities_shape_a_child(parent: Style, child: Style, expected: tuple[int, ...]) -> None:
+    assert _border_boxes(_shadow(Div(style=parent), children=[_shadow(Div(style=child))])) == [expected]
+
+
+def test_gap_height_spaces_a_columns_children() -> None:
+    children = [_shadow(Div(style=height(2))), _shadow(Div(style=height(2)))]
+
+    assert _border_boxes(_shadow(Div(style=col | gap_height(3)), children=children)) == [(0, 0, 0, 2), (0, 5, 0, 2)]
+
+
+def test_gap_spaces_grid_cells_both_ways() -> None:
+    grid = display_grid | grid_template_columns(3, 3) | grid_template_rows(3, 3) | gap(2)
+
+    assert _border_boxes(_shadow(Div(style=grid), children=[_shadow(Div()) for _ in range(4)])) == [
+        (0, 0, 3, 3),
+        (5, 0, 3, 3),
+        (0, 5, 3, 3),
+        (5, 5, 3, 3),
+    ]

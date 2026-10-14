@@ -53,7 +53,7 @@ In a `col`, a width keyword doesn't size wrapping text correctly:
 taffy measures the box's height at the column's full width, before applying the keyword,
 and doesn't measure it again.
 Below, `min_content_width` keeps the one row its text takes at full width,
-so `sizes this` is cut off.
+so `sizes this`, wrapped onto a second row, overflows the box and is drawn over its bottom border.
 A `max_content_width` box wider than the column keeps extra rows for the same reason.
 Put the box in a `row`, as above, or in a grid.
 

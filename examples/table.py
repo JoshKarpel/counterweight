@@ -7,8 +7,8 @@ from typing import Any
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
-from counterweight.hooks import use_state
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.hooks import toggle, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
@@ -67,28 +67,30 @@ def root() -> Div:
     sort_col, set_sort_col = use_state(1)  # default: height
     sort_asc, set_sort_asc = use_state(False)  # default: descending
 
-    def on_key(event: KeyPressed) -> None:
-        match event.key:
-            case Key.Up:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        match event:
+            case KeyPressed(key=Key.Up):
                 set_selected(lambda s: max(0, s - 1))
-            case Key.Down:
+            case KeyPressed(key=Key.Down):
                 set_selected(lambda s: min(len(PEAKS) - 1, s + 1))
-            case "1" | "2" | "3" | "4" as k:
+            case KeyPressed(key="1" | "2" | "3" | "4" as k):
                 col = int(k) - 1
                 if col == sort_col:
-                    set_sort_asc(not sort_asc)
+                    set_sort_asc(toggle)
                 else:
                     set_sort_col(col)
                     set_sort_asc(True)
                 set_selected(0)
+            case _:
+                pass
 
     _, _, sort_key = COLUMNS[sort_col]
     sorted_peaks = tuple(sorted(PEAKS, key=sort_key, reverse=not sort_asc))
 
     return Div(
         style=col | center_children,
-        on_key=on_key,
-        children=[
+        on_input=on_input,
+        children=(
             Text(
                 content="Eight-Thousanders",
                 style=text_color("amber", 400) | pad_y(1),
@@ -98,7 +100,7 @@ def root() -> Div:
                 content=f"  ↑ / ↓  navigate  •  1-4  sort by column  •  {selected + 1} / {len(PEAKS)}",
                 style=text_color("slate", 400) | pad_y(1),
             ),
-        ],
+        ),
     )
 
 
@@ -106,10 +108,10 @@ def root() -> Div:
 def data_table(peaks: tuple[Peak, ...], selected: int, sort_col: int, sort_asc: bool) -> Div:
     return Div(
         style=col | border_collapse,
-        children=[
+        children=(
             header_row(sort_col=sort_col, sort_asc=sort_asc),
             *[data_row(peak=peaks[i], selected=(i == selected)) for i in range(len(peaks))],
-        ],
+        ),
     )
 
 
@@ -117,10 +119,10 @@ def data_table(peaks: tuple[Peak, ...], selected: int, sort_col: int, sort_asc: 
 def header_row(sort_col: int, sort_asc: bool) -> Div:
     return Div(
         style=row | border_collapse,
-        children=[
+        children=tuple(
             header_cell(label=label, col_width=COL_WIDTHS[idx], col_idx=idx, sort_col=sort_col, sort_asc=sort_asc)
             for idx, (label, _, _) in enumerate(COLUMNS)
-        ],
+        ),
     )
 
 
@@ -137,10 +139,10 @@ def header_cell(label: str, col_width: int, col_idx: int, sort_col: int, sort_as
 def data_row(peak: Peak, selected: bool) -> Div:
     return Div(
         style=row | border_collapse,
-        children=[
+        children=tuple(
             data_cell(value=display(peak), col_width=COL_WIDTHS[idx], selected=selected)
             for idx, (_, display, _) in enumerate(COLUMNS)
-        ],
+        ),
     )
 
 

@@ -5,9 +5,18 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import Component, component
-from counterweight.controls import Quit, Screenshot, Suspend, ToggleBorderHealing
+from counterweight.controls import (
+    AnyControl,
+    Bell,
+    Quit,
+    RestoreTitle,
+    Screenshot,
+    SetTitle,
+    Suspend,
+    ToggleBorderHealing,
+)
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseDown, MouseMoved, MouseUp, TerminalResized
+from counterweight.events import InputEvent, KeyPressed, MouseDown, MouseMoved, MouseUp, Receiver, TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks import use_effect, use_state
 from counterweight.styles.styles import Style
@@ -55,19 +64,32 @@ async def render_text(root: Component, dimensions: tuple[int, int]) -> list[str]
 async def test_root_fills_screen_whatever_its_content_width(root_style: Style) -> None:
     @component
     def root() -> Div:
-        return Div(style=root_style | border, children=[Text(content="wider than the screen")])
+        return Div(style=root_style | border, children=(Text(content="wider than the screen"),))
 
     assert await render_text(root(), (10, 3)) == [
         "┌────────┐",
-        "│wider th│",
+        "│wider tha",
         "└────────┘",
+    ]
+
+
+async def test_root_fills_screen_whatever_its_content_height() -> None:
+    @component
+    def root() -> Div:
+        return Div(style=border, children=(Text(content="\n".join("taller")),))
+
+    assert await render_text(root(), (6, 4)) == [
+        "┌────┐",
+        "│t   │",
+        "│a   │",
+        "└l───┘",
     ]
 
 
 async def test_wrapping_text_in_root_wraps_at_screen_width() -> None:
     @component
     def root() -> Div:
-        return Div(style=col, children=[Text(content="aaa bbb ccc", style=text_wrap_stable)])
+        return Div(style=col, children=(Text(content="aaa bbb ccc", style=text_wrap_stable),))
 
     assert await render_text(root(), (7, 3)) == [
         "aaa bbb",
@@ -86,18 +108,18 @@ def raises_in_render() -> Text:
     if is_pressed:
         raise Boom()
 
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         set_is_pressed(True)
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component
 def raises_in_handler() -> Text:
-    def on_key(_: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         raise Boom()
 
-    return Text(content="", on_key=on_key)
+    return Text(content="", on_input=on_input)
 
 
 @component
@@ -136,3 +158,22 @@ def raises_in_two_effects() -> Text:
 async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
     with pytest.RaisesGroup(Boom, Boom):
         await wait_for(app(raises_in_two_effects(), headless=True, dimensions=(10, 2), check_purity=True), timeout=5)
+
+
+@pytest.mark.parametrize(
+    "controls",
+    [[Bell()], [SetTitle(title="hi")], [SetTitle(title="hi"), RestoreTitle()]],
+    ids=["bell", "title", "restored-title"],
+)
+async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_the_terminal(
+    controls: list[AnyControl],
+) -> None:
+    @component
+    def root() -> Text:
+        return Text(content="hi")
+
+    output = io.StringIO()
+
+    await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[*controls, Quit()])
+
+    assert output.getvalue() == ""

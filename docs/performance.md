@@ -17,6 +17,9 @@ compares the paint with the previous frame's, and writes the difference to the t
 
 Every app writes a log of each frame to a file.
 Run `counterweight devlog` in another terminal to follow it as the app writes it.
+It holds counterweight's records and your app's at every level, and other loggers' from `INFO` up;
+pass `app` a `log_levels` mapping to change that by logger name,
+such as `{"some_library": logging.DEBUG}` to include a library's debug records.
 Each frame logs one line per stage, with microsecond timestamps,
 so the gaps between lines show where a slow frame went.
 Here is the [process table](#how-do-i-skip-a-component-whose-arguments-didnt-change)
@@ -88,7 +91,7 @@ though none of them shows anything that changed:
 ```mermaid
 flowchart TB
     dashboard["dashboard"]:::rerun --> column["Div"]:::rerun
-    column --> note_text["Text: Note: d"]:::rerun
+    column --> note_row["Div: Note: d"]:::rerun
     column --> cards_row["Div"]:::rerun
     cards_row --> cards["metric_card ×4"]:::rerun
 
@@ -202,19 +205,23 @@ def key_list(keys: list[str]) -> Text:
 
 @component
 def key_log() -> Div:
+    use_focus(auto_focus=True)
     keys = use_ref(list[str]())
     count, set_count = use_state(0)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        if not isinstance(event, KeyPressed):
+            return None
         keys.current.append(event.key)
-        set_count(count + 1)
+        set_count(lambda count: count + 1)
+        return ()
 
-    return Div(on_key=on_key, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=(key_list(keys.current),))
 ```
 
 `key_list` keeps showing the keys from when it last ran.
 Replace the value instead of changing it:
-hold a tuple in state, and set a new one with `set_keys((*keys, event.key))`.
+hold a tuple in state, and set a new one with `set_keys(lambda keys: (*keys, event.key))`.
 
 **A hidden input**, such as a module-level setting, isn't one of the arguments:
 
@@ -265,7 +272,7 @@ List every value `compute` reads: `deps=(processes, threshold)`.
 
 ```python
 count, set_count = use_state(0)
-on_key = use_memo(lambda: lambda event: set_count(count + 1), deps=())
+on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
 ```
 
 Every key press sets `count` to 1.
@@ -276,7 +283,12 @@ so the handler captures nothing that changes:
 **A dependency that's new every render** never equals the previous one:
 
 ```python
-on_key = use_memo(lambda: lambda event: on_submit(event.key), deps=(on_submit,))
+def submit(event: InputEvent, _: Receiver) -> None:
+    if isinstance(event, KeyPressed):
+        on_submit(event.key)
+
+
+on_input = use_memo(lambda: submit, deps=(on_submit,))
 ```
 
 When the parent passes `on_submit=lambda text: set_query(text)`,

@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind, TextJustify, TextWrap
+from counterweight.styles.styles import BorderKind, ClipTo, OverflowAnchor, TextJustify, TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -474,6 +474,11 @@ for width, width_suffix in ((1, ""), (0, "_0")):
 
 # --- Inset utilities (absolute positioning anchors) ---
 
+# A center axis leaves its insets auto, so the box stays where its parent's alignment puts it,
+# and centers only in a parent that centers its children.
+# CSS's insets of 0 with auto margins would center it in any parent, but taffy ignores those margins in a grid,
+# and a margin set to nudge the box would replace one of them.
+
 VERTICAL_INSETS = {
     "top": "inset_top=waxy.Length(0)",
     "center": "inset_top=waxy.Auto(), inset_bottom=waxy.Auto()",
@@ -489,6 +494,68 @@ for v_name, v_insets in VERTICAL_INSETS.items():
         generated_lines.append(
             f"inset_{v_name}_{h_name} = Style(layout=waxy.Style(position=waxy.Position.Absolute, {v_insets}, {h_insets}))"
         )
+
+generated_lines.append("")
+
+# --- Auto margin utilities ---
+
+# An auto margin takes the free space on its side, so a box with auto margins on opposite sides centers between them.
+MARGIN_AUTO_TARGETS = {
+    "": ["top", "bottom", "left", "right"],
+    "_x": ["left", "right"],
+    "_y": ["top", "bottom"],
+    "_top": ["top"],
+    "_bottom": ["bottom"],
+    "_left": ["left"],
+    "_right": ["right"],
+}
+for target_suffix, sides in MARGIN_AUTO_TARGETS.items():
+    margins = ", ".join(f"margin_{side}=waxy.Auto()" for side in sides)
+    generated_lines.append(f"margin{target_suffix}_auto = Style(layout=waxy.Style({margins}))")
+
+generated_lines.append("")
+
+# --- Overflow utilities ---
+
+OVERFLOW_MAP = {
+    "Visible": "visible",
+    "Hidden": "hidden",
+    "Clip": "clip",
+    "Scroll": "scroll",
+}
+OVERFLOW_AXES = {
+    "": ["x", "y"],
+    "_x": ["x"],
+    "_y": ["y"],
+}
+for name, alias in OVERFLOW_MAP.items():
+    for axis_suffix, axes in OVERFLOW_AXES.items():
+        overflows = ", ".join(f"overflow_{axis}=waxy.Overflow.{name}" for axis in axes)
+        generated_lines.append(f"overflow{axis_suffix}_{alias} = Style(layout=waxy.Style({overflows}))")
+
+generated_lines.append("")
+
+# --- Clip utilities ---
+
+for c in get_args(ClipTo):
+    generated_lines.append(f'clip_to_{c} = Style(clip_to="{c}")')
+
+generated_lines.append("")
+
+# --- Scroll anchoring and sticking to the end ---
+
+for a in get_args(OverflowAnchor):
+    generated_lines.append(f'overflow_anchor_{a} = Style(overflow_anchor="{a}")')
+
+STICK_AXES = {
+    "": ["x", "y"],
+    "_x": ["x"],
+    "_y": ["y"],
+}
+for name, value in {"stick_to_end": True, "unstick": False}.items():
+    for axis_suffix, axes in STICK_AXES.items():
+        sticks = ", ".join(f"stick_to_end_{axis}={value}" for axis in axes)
+        generated_lines.append(f"{name}{axis_suffix} = Style({sticks})")
 
 generated_lines.append("")
 

@@ -13,10 +13,11 @@ from counterweight._context_vars import current_event_queue, current_hook_idx, c
 from counterweight.clock import Instant, tick_index, until_next_tick
 from counterweight.equivalence import equivalent
 from counterweight.events import StateSet
+from counterweight.focus import ElementHandle, FocusHandle
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
 
 if TYPE_CHECKING:
-    from counterweight.hooks.hooks import Rects
+    from counterweight.geometry import Rects, Scroll
 
 # Identifies one mounted node across frames, for as long as its hooks carry over.
 NodeKey = NewType("NodeKey", int)
@@ -90,6 +91,22 @@ class UseMemo:
 
 
 @dataclass(slots=True)
+class UseFocus:
+    """
+    That a component called `use_focus`, with the arguments its last run passed,
+    and the handle it keeps for its lifetime.
+    Whether the component is focused isn't stored here: the render loop holds the focused node's key.
+    """
+
+    handle: FocusHandle
+    given: FocusHandle | None
+    """The handle the first run passed, which every later run has to pass too."""
+    auto_focus: bool
+    is_focusable: bool
+    in_focus_order: bool
+
+
+@dataclass(slots=True)
 class UseClock:
     """
     The readings `use_clock` has taken for one node.
@@ -118,7 +135,7 @@ class UseClock:
         )
 
 
-type AnyHook = UseState | UseRef | UseEffect | UseMemo | UseClock
+type AnyHook = UseState | UseRef | UseEffect | UseMemo | UseFocus | UseClock
 
 
 def detached_hook(hook: AnyHook) -> AnyHook:
@@ -128,7 +145,7 @@ def detached_hook(hook: AnyHook) -> AnyHook:
             return hook
         case UseRef(ref=ref):
             return UseRef(ref=Ref(current=ref.current))
-        case UseEffect() | UseMemo() | UseClock():
+        case UseEffect() | UseMemo() | UseFocus() | UseClock():
             return copy(hook)
         case _ as unreachable:
             assert_never(unreachable)
@@ -136,6 +153,17 @@ def detached_hook(hook: AnyHook) -> AnyHook:
 
 class InconsistentHookExecution(Exception):
     pass
+
+
+class DuplicateUseFocus(Exception):
+    """Raised when a component calls `use_focus` more than once, since every call would name the same node."""
+
+
+class ChangedFocusHandle(Exception):
+    """
+    Raised when a component passes `use_focus` a different `handle` from the one its first run passed,
+    usually because its parent builds a new `FocusHandle()` on every render rather than keeping one in `use_state`.
+    """
 
 
 class StaleMemo(Exception):
@@ -153,6 +181,14 @@ class Hooks:
     key: NodeKey = field(default_factory=_next_node_key)
     rects: Rects | None = None
     """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
+    scrolls: dict[ElementHandle | None, Scroll] | None = None
+    """
+    What each `use_scroll` call in this node's last run returned, by the handle it was given,
+    `None` for the node's own element, so the node re-renders once any of those scrolls changes.
+    It's `None` if the last run didn't call `use_scroll`.
+    """
+    focus: UseFocus | None = None
+    """The `use_focus` hook of this node's last run, if it called `use_focus`, which makes the node focusable."""
     clocks: list[UseClock] = field(default_factory=list)
     """The node's `use_clock` hooks, also in `data`, so the node re-renders once one of them is due."""
 
@@ -227,13 +263,55 @@ class Hooks:
                 new_deps=deps,
             )
             self.data.append(hook)
-
-        hook.setup = setup  # we must capture the new setup function to update its closure
-        hook.new_deps = deps  # ... but the decision about whether to actually rerun it will be made based on its deps
+        else:
+            # We must capture the new setup function to update its closure,
+            # but the decision about whether to actually rerun it will be made based on its deps.
+            hook.setup = setup
+            hook.new_deps = deps
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
         return None
+
+    def use_focus(
+        self, auto_focus: bool, handle: FocusHandle | None, is_focusable: bool, in_focus_order: bool
+    ) -> UseFocus:
+        if self.focus is not None:
+            raise DuplicateUseFocus(
+                "A component called use_focus more than once. Every call would make the same node focusable, "
+                "so call it once, or render a child component for each focusable part."
+            )
+
+        try:
+            hook = self.data[current_hook_idx.get()]
+            if not isinstance(hook, UseFocus):
+                raise InconsistentHookExecution(
+                    f"Expected a {UseFocus.__name__} hook, but got a {type(hook).__name__} hook instead."
+                )
+        except IndexError:
+            hook = UseFocus(
+                handle=FocusHandle() if handle is None else handle,
+                given=handle,
+                auto_focus=auto_focus,
+                is_focusable=is_focusable,
+                in_focus_order=in_focus_order,
+            )
+            self.data.append(hook)
+        else:
+            if handle is not hook.given:
+                raise ChangedFocusHandle(
+                    f"use_focus was passed {handle!r}, but {hook.given!r} on the component's first render. "
+                    "A component's handle can't change, so keep one in use_state (use_state(FocusHandle)) "
+                    "rather than building a new FocusHandle() on every render."
+                )
+            hook.auto_focus = auto_focus
+            hook.is_focusable = is_focusable
+            hook.in_focus_order = in_focus_order
+
+        self.focus = hook
+        current_hook_idx.set(current_hook_idx.get() + 1)
+
+        return hook
 
     def use_memo[T](self, compute: Getter[T], deps: tuple[object, ...]) -> T:
         index = current_hook_idx.get()

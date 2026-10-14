@@ -12,33 +12,46 @@ Read and write `current` in handlers and effects, which run after a render, not 
 ```python
 from counterweight.components import component
 from counterweight.elements import Text
-from counterweight.events import KeyPressed
-from counterweight.hooks import use_ref, use_state
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.hooks import use_focus, use_ref, use_state
 from counterweight.keys import Key
 
 
 @component
 def line_entry() -> Text:
+    use_focus(auto_focus=True)
     typed = use_ref(list[str]())
     line, set_line = use_state("")
 
-    def on_key(event: KeyPressed) -> None:
-        if event.key == Key.Enter:
-            set_line("".join(typed.current))
-            typed.current.clear()
-        else:
-            typed.current.append(event.key)
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Enter):
+                set_line("".join(typed.current))
+                typed.current.clear()
+                return ()
+            case KeyPressed(key=key):
+                typed.current.append(key)
+                return ()
+            case _:
+                return None
 
-    return Text(content=line, on_key=on_key)
+    return Text(content=line, on_input=on_input)
 ```
 
 `line_entry` collects keys without rendering, and renders only when Enter sets `line`.
 Rendering reads `line`, never `typed`.
+It shows a ref, not how to take text:
+it has no cursor or Backspace, and drops [pastes](../input-handling/events.md#handling-pastes).
+For a field, use [`use_text_input`](../headless/use_text_input.md).
 
 Refs fit:
 
 - **Values a handler builds up** before it sets state, as `typed` does above.
-- **Handles to things outside the tree**, such as a task or a client,
+- **Values a later event needs before the next render**, such as where a
+  [drag](../cookbook/draggable-components.md) began:
+  a handler sees the state of the render that built it,
+  so an event handled in the same batch as the one that set the state doesn't see the new value.
+- **Objects outside the tree**, such as a task or a client,
   that a handler or an effect uses.
 - **Something expensive to build once**, with a function as the initial value:
   `use_ref(lambda: build_index())` calls `build_index` only on the first render.

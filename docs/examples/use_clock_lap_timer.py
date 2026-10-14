@@ -5,7 +5,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
 from counterweight.hooks import use_clock, use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -24,18 +24,22 @@ def lap_time() -> Text:
 def lap_timer() -> Div:
     laps, set_laps = use_state(1)
 
-    def on_key(event: KeyPressed) -> None:
-        if event.key == Key.Space:
-            set_laps(laps + 1)
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Space):
+                set_laps(lambda laps: laps + 1)
+                return ()
+            case _:
+                return None
 
     return Div(
         style=row | gap(1),
-        on_key=on_key,
-        children=[
+        on_input=on_input,
+        children=(
             Text(content=f"Lap {laps}:", style=text_color("slate", 400)),
             # A new key each lap remounts lap_time, so its time since mounting starts again from zero.
             lap_time().with_key(str(laps)),
-        ],
+        ),
     )
 
 

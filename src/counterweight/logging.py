@@ -1,33 +1,57 @@
 """
-The devlog: every log record from a running app, written as JSON lines to one file, and the reader that renders them.
+The devlog: a running app's log records, written as JSON lines to one file, and the reader that renders them.
 
 The app only encodes JSON; rendering a record for a human happens in `counterweight devlog`,
 at read time, so the render loop pays for one encoding per record rather than one per output.
 """
 
 import json
-from collections.abc import AsyncIterator, Mapping
+import logging
+from asyncio import sleep
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import partial
 from pathlib import Path
 from shutil import get_terminal_size
 from tempfile import gettempdir
-from time import sleep
 
+from without_cli import Writer
 from without_logging import Level, capture, render_json, to_stream
 from without_streams.wiring import compose, offload
 
 from counterweight.constants import PACKAGE_NAME
 
 DEVLOG_FILE = Path(gettempdir()) / f"{PACKAGE_NAME}.log.jsonl"
+TAIL_POLL = timedelta(milliseconds=10)
 
 ENVELOPE = frozenset({"timestamp", "level", "logger", "message", "exception"})
 
+# The levels every app's devlog starts from: counterweight's records at every level, and everyone else's from INFO up.
+BASE_LOG_LEVELS: frozendict[str, int] = frozendict({"": logging.INFO, PACKAGE_NAME: logging.DEBUG})
+
+
+def app_log_levels(app_module: str, overrides: Mapping[str, int]) -> frozendict[str, int]:
+    """
+    The levels the devlog captures for an app whose root component is defined in `app_module`:
+    `BASE_LOG_LEVELS`, with the top-level package of `app_module` at `DEBUG`, then `overrides`, which win.
+
+    The top-level package covers every logger an app names with `getLogger(__name__)`,
+    including `__main__` for an app run as a script.
+    """
+    return frozendict({**BASE_LOG_LEVELS, app_module.partition(".")[0]: logging.DEBUG, **overrides})
+
 
 @asynccontextmanager
-async def devlog(path: Path = DEVLOG_FILE) -> AsyncIterator[None]:
+async def devlog(path: Path = DEVLOG_FILE, levels: Mapping[str, int] = BASE_LOG_LEVELS) -> AsyncIterator[None]:
     """
-    Capture every log record, at every level, into a freshly truncated `path` for the duration of the block.
+    Capture log records into a freshly truncated `path` for the duration of the block,
+    at the levels `levels` gives by logger name, as `logging.config` does, with `""` the root logger.
+
+    A logger the mapping doesn't name inherits its level from its nearest named ancestor, as stdlib loggers do,
+    and the root logger captures from the lowest level in the mapping if it isn't named.
+    Raising a logger's level skips its records before they're built, which is where most of a record's cost is,
+    so a library that logs at `DEBUG` on a hot path costs the app nothing unless the mapping asks for it.
 
     The queue is unbounded because a dropped record is worse than a late one in a debugging aid,
     and it can't grow without bound while the loop runs: with a single sink (no `tee`),
@@ -36,9 +60,25 @@ async def devlog(path: Path = DEVLOG_FILE) -> AsyncIterator[None]:
     with path.open("w") as file:
         async with (
             offload(to_stream(file)) as write,
-            capture(compose(render_json(), write), level=Level.DEBUG, capacity=None),
+            capture(compose(render_json(), write), level=min(levels.values(), default=Level.DEBUG), capacity=None),
+            # After `capture`, which lowers the root logger to its level, so these levels win until exit.
+            logger_levels(levels),
         ):
             yield
+
+
+@asynccontextmanager
+async def logger_levels(levels: Mapping[str, int]) -> AsyncIterator[None]:
+    """Set each named logger's level for the duration of the block, then restore the levels they had."""
+    loggers = {logging.getLogger(name): level for name, level in levels.items()}
+    previous = {logger: logger.level for logger in loggers}
+    for logger, level in loggers.items():
+        logger.setLevel(level)
+    try:
+        yield
+    finally:
+        for logger, level in previous.items():
+            logger.setLevel(level)
 
 
 def render_line(record: Mapping[str, object]) -> str:
@@ -78,30 +118,40 @@ def format_line(line: str, raw: bool) -> str:
     return line.rstrip("\n") if raw else render_line(json.loads(line))
 
 
-def tail_devlog(raw: bool = False) -> None:
+async def tail_devlog(
+    out: Writer,
+    raw: bool = False,
+    path: Path = DEVLOG_FILE,
+    wait: Callable[[], Awaitable[None]] = partial(sleep, TAIL_POLL.total_seconds()),
+) -> None:
     """
-    Print the devlog as it's written, starting over when an app truncates it.
-    Only complete lines are printed, since the writer may be partway through one.
+    Write the devlog to `out` as it's written, starting over when an app truncates it.
+    Only complete lines are written, since the writer may be partway through one.
+    `wait` is awaited whenever there is nothing new to read.
+
+    Waiting for more on the event loop, not in a blocking sleep, is what lets the first Ctrl-C stop it:
+    under `asyncio.run` that cancels the main task, which a blocking loop would never notice.
     """
     while True:
-        DEVLOG_FILE.touch(exist_ok=True)
-        with DEVLOG_FILE.open(mode="r") as f:
-            partial = ""
+        path.touch(exist_ok=True)
+        with path.open(mode="r") as f:
+            pending = ""
             while True:
-                partial += f.readline()
-                if partial.endswith("\n"):
-                    print(format_line(partial, raw))
-                    partial = ""
-                elif f.tell() > DEVLOG_FILE.stat().st_size:
-                    print(" DevLog Rotated ".center(get_terminal_size().columns, "━"))
+                pending += f.readline()
+                if pending.endswith("\n"):
+                    out.write(f"{format_line(pending, raw)}\n")
+                    out.flush()
+                    pending = ""
+                elif f.tell() > path.stat().st_size:
+                    out.write(f"{' DevLog Rotated '.center(get_terminal_size().columns, '━')}\n")
                     break
                 else:
-                    sleep(0.01)
+                    await wait()
 
 
-def last_devlog(n: int, raw: bool = False) -> None:
-    """Print the last `n` complete lines of the devlog."""
-    DEVLOG_FILE.touch(exist_ok=True)
-    lines = [line for line in DEVLOG_FILE.read_text().splitlines(keepends=True) if line.endswith("\n")]
+def last_devlog(out: Writer, n: int, raw: bool = False, path: Path = DEVLOG_FILE) -> None:
+    """Write the last `n` complete lines of the devlog to `out`."""
+    path.touch(exist_ok=True)
+    lines = [line for line in path.read_text().splitlines(keepends=True) if line.endswith("\n")]
     for line in lines[-n:]:
-        print(format_line(line, raw))
+        out.write(f"{format_line(line, raw)}\n")

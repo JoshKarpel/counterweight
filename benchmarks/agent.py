@@ -4,18 +4,26 @@ Lots of streaming text: a coding-agent transcript, where the newest message grow
 Older messages don't change, but each new word reflows the streaming message's wrapped text
 and moves everything below it, so this measures wrapping, text measurement and paint
 on a screen full of prose, code and diffs.
+The transcript is a scroll container holding the newest messages, which sticks to its end as they stream in,
+and which the wheel and the keyboard scroll back through in a live run, anchored so what's in view stays put.
+There, `[` jumps back to the start of each earlier tool call in turn, and End returns to the end.
 """
 
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import partial
-from math import ceil
 from typing import Literal
 
 from benchmarks.harness import Workload
 from counterweight.components import Component, component
+from counterweight.controls import ScrollBy, ScrollIntoView
 from counterweight.elements import Chunk, Div, Text
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
+from counterweight.focus import ElementHandle
+from counterweight.handlers import first, scroll_on_keys, scroll_on_wheel
+from counterweight.hooks import use_focus, use_state
+from counterweight.keys import Key
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.utilities import (
     amber_400,
@@ -27,18 +35,21 @@ from counterweight.styles.utilities import (
     fill,
     green_400,
     justify_children_space_between,
+    overflow_y_scroll,
     pad_x,
     red_400,
     row,
     slate_400,
     slate_500,
+    stick_to_end_y,
     text_color,
     text_wrap_stable,
 )
 
 WORDS_PER_FRAME = 3
-TRANSCRIPT_ROWS = 42
-WRAP_WIDTH = 112
+KEPT_MESSAGES = 12
+SCROLLED_BACK_AT = 150
+SCROLLED_BACK_ROWS = 20
 
 VOCABULARY = (
     "the layout tree component render frame cell style border paint diff text wrap measure width height "
@@ -68,9 +79,12 @@ CODE = (
 
 type Kind = Literal["user", "assistant", "read", "edit"]
 
+TOOL_CALLS: frozenset[Kind] = frozenset({"read", "edit"})
+
 
 @dataclass(frozen=True, slots=True)
 class Message:
+    id: int
     kind: Kind
     title: str
     lines: tuple[str, ...]
@@ -82,17 +96,19 @@ class Model:
     messages: tuple[Message, ...]
     target_words: int
     tokens: int
+    next_id: int
 
 
 def initial() -> Model:
     return Model(
         tick=0,
         messages=(
-            Message(kind="user", title="", lines=("Why is the dashboard slower since the merge-rule change?",)),
-            Message(kind="assistant", title="", lines=("",)),
+            Message(id=0, kind="user", title="", lines=("Why is the dashboard slower since the merge-rule change?",)),
+            Message(id=1, kind="assistant", title="", lines=("",)),
         ),
         target_words=60,
         tokens=0,
+        next_id=2,
     )
 
 
@@ -108,90 +124,136 @@ def step(model: Model) -> Model:
     if len(" ".join(grown.lines).split()) < model.target_words:
         messages = (*earlier, grown)
         target_words = model.target_words
+        next_id = model.next_id
     else:
-        messages = (*earlier, grown, tool_call(rng), Message(kind="assistant", title="", lines=("",)))
+        messages = (
+            *earlier,
+            grown,
+            tool_call(rng, model.next_id),
+            Message(id=model.next_id + 1, kind="assistant", title="", lines=("",)),
+        )
         target_words = rng.randrange(30, 120)
+        next_id = model.next_id + 2
 
     return Model(
         tick=model.tick + 1,
-        messages=visible(messages),
+        messages=messages[-KEPT_MESSAGES:],
         target_words=target_words,
         tokens=model.tokens + WORDS_PER_FRAME * 4 // 3,
+        next_id=next_id,
     )
 
 
-def tool_call(rng: random.Random) -> Message:
+def tool_call(rng: random.Random, id: int) -> Message:
     path = rng.choice(FILES)
     start = rng.randrange(len(CODE))
     lines = tuple(CODE[(start + offset) % len(CODE)] for offset in range(rng.randrange(3, 8)))
     if rng.random() < 0.5:
-        return Message(kind="read", title=f"Read {path}", lines=lines)
-    return Message(kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}"))
+        return Message(id=id, kind="read", title=f"Read {path}", lines=lines)
+    return Message(
+        id=id, kind="edit", title=f"Edit {path}", lines=(f"-{lines[0]}", f"+{lines[0].replace('tree', 'cached')}")
+    )
 
 
-def visible(messages: tuple[Message, ...]) -> tuple[Message, ...]:
-    """
-    The newest messages that fit in the transcript, estimating wrapped rows from the line lengths,
-    since there's no scrolling yet: older messages fall off the top as the transcript grows.
-    """
-    kept: list[Message] = []
-    rows = 0
-    for message in reversed(messages):
-        rows += sum(max(1, ceil(len(line) / WRAP_WIDTH)) for line in message.lines) + (
-            3 if message.kind in ("read", "edit") else 0
-        )
-        if rows > TRANSCRIPT_ROWS and kept:
-            break
-        kept.append(message)
-    return tuple(reversed(kept))
+TRANSCRIPT = ElementHandle()
 
 
-def view(model: Model, message_component: Callable[[Message], Component]) -> Div:
+type MessageComponent = Callable[[Message, ElementHandle | None], Component]
+
+
+def view(model: Model, message_component: MessageComponent) -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             header(model.tokens),
-            Div(style=fill(1) | col | pad_x(1), children=[message_component(message) for message in model.messages]),
+            transcript(model.messages, message_component, auto_focus=True),
             spinner(model.tick),
             prompt(),
-        ],
+        ),
     )
+
+
+@component
+def transcript(messages: tuple[Message, ...], message_component: MessageComponent, auto_focus: bool) -> Div:
+    """The newest messages, which take focus on mounting if `auto_focus`, for `scroll_on_keys` in a live run."""
+    use_focus(auto_focus=auto_focus)
+    no_jump: int | None = None
+    jumped_to, set_jumped_to = use_state(no_jump)
+    # On the message last jumped to, so ScrollIntoView names it once the render that moves it there is laid out.
+    landmark, _ = use_state(ElementHandle)
+
+    def jump(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key="["):
+                # An update, not a value, so each press in a batch steps back from where the one before it landed.
+                set_jumped_to(lambda current: previous_tool_call(messages, current))
+                return ScrollIntoView(landmark)
+            case KeyPressed(key=Key.End):
+                # Start the next jump from the newest tool call again, and let scroll_on_keys scroll to the end.
+                set_jumped_to(None)
+                return None
+            case _:
+                return None
+
+    return Div(
+        style=fill(1) | col | pad_x(1) | overflow_y_scroll | stick_to_end_y,
+        handle=TRANSCRIPT,
+        on_input=first(jump, scroll_on_keys(), scroll_on_wheel()),
+        # Keyed, so a message keeps its node, which anchoring follows, when older ones drop off the top.
+        children=tuple(
+            message_component(message, landmark if message.id == jumped_to else None).with_key(str(message.id))
+            for message in messages
+        ),
+    )
+
+
+def previous_tool_call(messages: tuple[Message, ...], before: int | None) -> int | None:
+    """
+    The id of the newest tool call in `messages` older than the message with id `before`, or than none if it's `None`,
+    or `before` itself if there's no such call, so jumping back from the oldest stays there.
+    """
+    earlier = [m.id for m in messages if m.kind in TOOL_CALLS and (before is None or m.id < before)]
+    return earlier[-1] if earlier else before
 
 
 @component
 def header(tokens: int) -> Div:
     return Div(
         style=row | justify_children_space_between | pad_x(1),
-        children=[
+        children=(
             Text(content="agent · ~/projects/counterweight", style=text_color("slate", 400)),
             Text(content=f"{tokens:,} tokens", style=text_color("slate", 500)),
-        ],
+        ),
     )
 
 
-def render_message(message: Message) -> Div:
+def render_message(message: Message, handle: ElementHandle | None = None) -> Div:
     match message.kind:
         case "user":
             return Div(
-                children=[Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300))]
+                handle=handle,
+                children=(Text(content=f"> {message.lines[0]}", style=text_wrap_stable | text_color("cyan", 300)),),
             )
         case "assistant":
             return Div(
                 style=col,
-                children=[Text(content=line or " ", style=text_wrap_stable) for line in message.lines],
+                handle=handle,
+                children=tuple(Text(content=line or " ", style=text_wrap_stable) for line in message.lines),
             )
         case "read":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
-                children=[
+                handle=handle,
+                children=(
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(Text(content=line, style=text_color("slate", 300)) for line in message.lines),
-                ],
+                ),
             )
         case "edit":
             return Div(
                 style=col | border | border_lightrounded | border_color("slate", 600),
-                children=[
+                handle=handle,
+                children=(
                     Text(content=message.title, style=text_color("amber", 400)),
                     *(
                         Text(
@@ -200,7 +262,7 @@ def render_message(message: Message) -> Div:
                         )
                         for line in message.lines
                     ),
-                ],
+                ),
             )
 
 
@@ -215,11 +277,11 @@ memo_message_view = component(memo=True)(render_message)
 def spinner(tick: int) -> Text:
     return Text(
         style=pad_x(1),
-        content=[
+        content=(
             Chunk(content=SPINNER[tick % len(SPINNER)], style=CellStyle(foreground=amber_400)),
             Chunk(content=f" Thinking… {tick // 60}s", style=CellStyle(foreground=slate_400)),
             Chunk(content=" · esc to interrupt", style=CellStyle(foreground=slate_500)),
-        ],
+        ),
     )
 
 
@@ -227,17 +289,17 @@ def spinner(tick: int) -> Text:
 def prompt() -> Div:
     return Div(
         style=border | border_lightrounded | border_color("slate", 500),
-        children=[
+        children=(
             Text(
-                content=[
+                content=(
                     Chunk(content="> ", style=CellStyle(foreground=cyan_400)),
                     Chunk(content="Try ", style=CellStyle(foreground=slate_500)),
                     Chunk(content="fix the failing test", style=CellStyle(foreground=green_400)),
                     Chunk(content=" or ", style=CellStyle(foreground=slate_500)),
                     Chunk(content="explain this diff", style=CellStyle(foreground=red_400)),
-                ]
-            )
-        ],
+                )
+            ),
+        ),
     )
 
 
@@ -260,4 +322,17 @@ Messages are only appended, and only the newest one grows, so every other messag
 this measures what reusing all but one message saves.
 """,
     view=partial(view, message_component=memo_message_view),
+)
+
+SCROLLED_WORKLOAD = replace(
+    WORKLOAD,
+    name="agent-scrolled",
+    description=f"""
+`agent`, scrolled back {SCROLLED_BACK_ROWS} rows at frame {SCROLLED_BACK_AT}, once the transcript overflows,
+so the rest of the run reads back while the newest message streams in below the view
+and older messages drop off above it.
+
+This measures picking each frame's scroll anchor and keeping it in place.
+""",
+    interjections={SCROLLED_BACK_AT: (ScrollBy(TRANSCRIPT, y=-SCROLLED_BACK_ROWS),)},
 )

@@ -13,10 +13,10 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 def root() -> Div:
     return Div(
         style=col,
-        children=[
+        children=(
             Div(
                 style=row | fill(1) | border | border_heavy | center_children,
-                children=[
+                children=(
                     Text(
                         style=position_absolute | inset_left(3) | inset_top(3),
                         content="position_absolute | inset_left(3) | inset_top(3)",
@@ -65,9 +65,9 @@ def root() -> Div:
                         style=inset_bottom_right,
                         content="inset_bottom_right",
                     ),
-                ],
-            )
-        ],
+                ),
+            ),
+        ),
     )
 
 

@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-import dataclasses
 import logging
 import shutil
 import sys
-from asyncio import CancelledError, Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
+from asyncio import Queue, QueueEmpty, TaskGroup, get_running_loop, timeout
 from collections import deque
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator, Mapping
 from datetime import timedelta
 from itertools import chain, repeat
-from signal import SIG_DFL, SIGWINCH, signal
-from threading import Event, Thread
-from typing import Iterable, TextIO
+from signal import SIG_DFL, SIGINT, SIGWINCH, getsignal, signal
+from types import FrameType
+from typing import Iterable, TextIO, assert_never
 from weakref import WeakSet
 
 import waxy
@@ -25,13 +24,22 @@ from counterweight.controls import (
     AdvanceClock,
     AnyControl,
     Bell,
+    ClearFocus,
+    FocusNext,
+    FocusOn,
+    FocusPrevious,
     Quit,
+    RestoreTitle,
     Screenshot,
+    ScrollBy,
+    ScrollIntoView,
+    ScrollTo,
+    SetTitle,
     Suspend,
     ToggleBorderHealing,
     _Control,
 )
-from counterweight.elements import AnyElement, Div
+from counterweight.elements import Div
 from counterweight.events import (
     AnyEvent,
     Dummy,
@@ -39,28 +47,38 @@ from counterweight.events import (
     MouseDown,
     MouseMoved,
     MouseScrolledDown,
+    MouseScrolledLeft,
+    MouseScrolledRight,
     MouseScrolledUp,
     MouseUp,
+    Pasted,
     StateSet,
     TerminalResized,
 )
+from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks, NodeKey
-from counterweight.input import read_keys, start_input_control, stop_input_control
-from counterweight.layout import NO_LAYOUTS, LayoutTree, layout_changes
-from counterweight.logging import devlog
+from counterweight.input import start_input_control, start_reading_keys, stop_input_control, stop_reading_keys
+from counterweight.layout import NO_LAYOUTS, Layouts, LayoutTree, ScrollRequest, layout_changes, prior_scrolls
+from counterweight.logging import app_log_levels, devlog
 from counterweight.output import (
     CLEAR_SCREEN,
     Frame,
     paint_to_instructions,
+    start_bracketed_paste,
     start_mouse_tracking,
     start_output_control,
+    stop_bracketed_paste,
     stop_mouse_tracking,
     stop_output_control,
+    synchronized,
+    title_instructions,
 )
 from counterweight.paint import Paint, diff_paint, paint_layout, runs_of
-from counterweight.shadow import ShadowNode, until_due, update_shadow
+from counterweight.routing import Press, RoutingTable, UnsettledFocus, named_key, route_key, route_mouse
+from counterweight.shadow import ShadowTree, until_due, update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -72,6 +90,29 @@ def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
 
 def stop_handling_resize_signal() -> None:
     signal(SIGWINCH, SIG_DFL)
+
+
+type SignalHandler = Callable[[int, FrameType | None], object] | int | None
+
+
+def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> SignalHandler:
+    """
+    Makes the first interrupt `request_quit`, so ctrl+c quits the app and `app` returns,
+    and returns the handler it replaced, which takes any interrupt after that,
+    so a second ctrl+c still stops an app whose render loop is stuck and can't quit.
+    """
+    previous = getsignal(SIGINT)
+
+    def interrupted(signum: int, frame: FrameType | None) -> None:
+        signal(SIGINT, previous)
+        request_quit()
+
+    signal(SIGINT, interrupted)
+    return previous
+
+
+def stop_handling_interrupt_signal(previous: SignalHandler) -> None:
+    signal(SIGINT, previous)
 
 
 def screen_element_style(width: int, height: int) -> Style:
@@ -101,6 +142,8 @@ async def app(
     autopilot: Iterable[AnyEvent | AnyControl] = (),
     check_purity: bool = False,
     clock: Clock = system_clock,
+    log_levels: Mapping[str, int] = frozendict(),
+    title: str | None = None,
 ) -> None:
     """
     Parameters:
@@ -133,10 +176,22 @@ async def app(
             Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to make output that doesn't depend on
             when the application runs, such as a screenshot, and move it with the
             [`AdvanceClock`][counterweight.controls.AdvanceClock] control.
+        log_levels: Levels by logger name, with `""` the root logger, as in `logging.config`,
+            for the records the devlog captures while the app runs.
+            They're merged over a base that captures counterweight's records and the app's own at every level,
+            and everyone else's from `INFO` up, where the app's own are those of the top-level package
+            of the module that defines `root`'s function (`__main__` for an app run as a script).
+            Pass `{"some_library": logging.DEBUG}` to see a library's debug records too,
+            or `{"my_app": logging.INFO}` to hide the app's own.
+        title: The title to give the terminal window when the application starts,
+            as [`SetTitle`][counterweight.controls.SetTitle] would, before the first frame is drawn.
+            If `None`, the terminal keeps the title it has.
     """
-    async with devlog():
+    async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
-            await render_loop(root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock)
+            await render_loop(
+                root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock, title
+            )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
             # and keeps callers from catching it by its own type.
@@ -159,16 +214,19 @@ async def render_loop(
     autopilot: Iterable[AnyEvent | AnyControl],
     check_purity: bool,
     clock: Clock,
+    title: str | None,
 ) -> None:
+    # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
+    # instead of drawing only the cells that changed.
+    should_clear = True
+
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
+        nonlocal should_clear
+
         w, h = override or dimensions or shutil.get_terminal_size()
+        should_clear = True
 
-        cp = Paint.blank(w, h)
-
-        if not headless:
-            output_stream.write(CLEAR_SCREEN + paint_to_instructions(runs_of(cp)))
-
-        return screen(screen_element_style(w, h)), cp, w, h
+        return screen(screen_element_style(w, h)), Paint.blank(w, h), w, h
 
     @component
     def screen(style: Style) -> Div:
@@ -187,31 +245,32 @@ async def render_loop(
     def put_event(event: AnyEvent) -> None:
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
+    def quit_from_signal() -> None:
+        """Quits as an autopilot `Quit` does, from a signal handler, which runs outside the loop."""
+
+        def apply_quit() -> None:
+            handle_control(Quit())
+            event_queue.put_nowait(Dummy())
+
+        loop.call_soon_threadsafe(apply_quit)
+
     if not headless:
         original = start_input_control(stream=input_stream)
+        previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
+        start_handling_resize_signal(put_event=put_event)
+        key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
-    allow_key_thread = Event()
-    allow_key_thread.set()
+    # Whether a suspension has handed the terminal back, so a suspend handler that raises an interrupt
+    # doesn't hand it back again: restoring the title a second time would pop a title the app never saved.
+    is_suspended = False
 
-    waiting_key_thread = Event()
-
+    # Taking output control is the first thing the try does, since the finally block hands it back,
+    # and restoring a title the app never saved would pop one off the terminal's title stack that isn't the app's.
     try:
         if not headless:
-            start_handling_resize_signal(put_event=put_event)
             start_output_control(stream=output_stream)
             start_mouse_tracking(stream=output_stream)
-
-            key_thread = Thread(
-                target=read_keys,
-                args=(
-                    input_stream,
-                    put_event,
-                    allow_key_thread,
-                    waiting_key_thread,
-                ),
-                daemon=True,
-            )
-            key_thread.start()
+            start_bracketed_paste(stream=output_stream)
 
         root_component, current_paint, w, h = handle_screen_size_change()
 
@@ -222,6 +281,10 @@ async def render_loop(
         should_bell = False
         pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
+
+        # The title the terminal shows, which is the one it started with if it's None,
+        # so the first pass of the loop sets the title `app` was given.
+        shown_title: str | None = None
 
         do_heal_borders = True
 
@@ -238,35 +301,63 @@ async def render_loop(
 
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
-        warmup_available = waxy.AvailableSize(width=waxy.Definite(w), height=waxy.Definite(h))
         layout_tree = LayoutTree()
-        shadow = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock()).tree
-        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, warmup_available)
+        warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
+        shadow = warmup.tree
+        layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
+        routing = RoutingTable.of(shadow, layouts)
+        focused = routing.reconciled_focus(None, warmup.mounted)
+        # The scroll controls to apply in the next layout, in order, including the ones focus moving adds.
+        pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = (
+            [] if focused is None else [focus_into_view(focused)]
+        )
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
             dirty.update(node.key for node in shadow.nodes)
 
         # The warmup started no effects, so the first painted frame has to re-run every component to start them.
+        # It re-runs them with the focus the warmup reconciled, too.
         rerun_everything()
 
-        def handle_control(control: AnyControl | None) -> None:
+        def refocus(key: NodeKey | None) -> None:
+            """
+            Focuses the node with `key`, or nothing if it's `None`,
+            and re-renders the mounted nodes that gain and lose focus, as a `use_state` setter would.
+            """
+            nonlocal focused
+
+            if key == focused:
+                return
+
+            for changed in (focused, key):
+                if changed is not None:
+                    event_queue.put_nowait(StateSet(key=changed))
+            focused = key
+            if key is not None:
+                pending_scrolls.append(focus_into_view(key))
+
+        def handle_control(control: AnyControl) -> None:
             nonlocal should_render
 
             nonlocal should_quit
             nonlocal should_bell
             nonlocal should_suspend
+            nonlocal title
 
             nonlocal do_heal_borders
             nonlocal clock_offset
+            nonlocal routing
 
             match control:
-                case None:
-                    pass
                 case Quit():
                     should_quit = True
                 case Bell():
                     should_bell = True
+                case SetTitle():
+                    title = control.title
+                case RestoreTitle():
+                    title = None
                 case Screenshot():
                     pending_screenshots.append(control)
                 case Suspend():
@@ -275,13 +366,33 @@ async def render_loop(
                 case ToggleBorderHealing():
                     do_heal_borders = not do_heal_borders
                     should_render = True
+                case FocusNext(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=True))
+                case FocusPrevious(within=within):
+                    refocus(routing.moved_focus(focused, within, is_forward=False))
+                case FocusOn(handle=handle):
+                    refocus(routing.focus_keys.get(handle, focused))
+                case ClearFocus():
+                    refocus(None)
                 case AdvanceClock(by=by):
                     clock_offset += by
+                case ScrollTo() | ScrollBy():
+                    # Pending even if it moves nothing now, since a render this batch causes may give it room to.
+                    pending_scrolls.append(control)
+                    if (scrolled := routing.scrolled(control)) is not routing:
+                        routing = scrolled
+                        should_render = True
+                case ScrollIntoView():
+                    pending_scrolls.append(control)
+                    should_render = True
+                case _ as unreachable:
+                    assert_never(unreachable)
 
         mouse_position = Position(x=-1, y=-1)
+        press: Press | None = None
 
         async with TaskGroup() as tg:
-            for ap in chain(autopilot, repeat(None)):
+            for ap in chain(autopilot, repeat(None)):  # pragma: no branch
                 if should_quit:
                     logger.info("Quitting application...")
                     raise KeyboardInterrupt
@@ -310,15 +421,14 @@ async def render_loop(
                     logger.debug("Suspending application", extra={"handler": should_suspend.handler})
 
                     if not headless:
+                        stop_reading_keys(key_reader)
+                        stop_bracketed_paste(stream=output_stream)
                         stop_mouse_tracking(stream=output_stream)
                         stop_output_control(stream=output_stream)
                         stop_input_control(stream=input_stream, original=original)
                         stop_handling_resize_signal()
-
-                        # Coordinate with the key thread to tell it to pause,
-                        # and to actually wait for it to pause.
-                        allow_key_thread.clear()
-                        waiting_key_thread.wait()
+                        stop_handling_interrupt_signal(previous_interrupt_handler)
+                    is_suspended = True
 
                     try:
                         await maybe_await(should_suspend.handler())
@@ -327,36 +437,101 @@ async def render_loop(
                             "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}
                         )
 
+                    is_suspended = False
                     if not headless:
                         original = start_input_control(stream=input_stream)
+                        previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
                         start_handling_resize_signal(put_event=put_event)
                         start_output_control(stream=output_stream)
                         start_mouse_tracking(stream=output_stream)
-
-                        allow_key_thread.set()
+                        start_bracketed_paste(stream=output_stream)
+                        key_reader = start_reading_keys(stream=input_stream, put_event=event_queue.put_nowait)
 
                     root_component, current_paint, w, h = handle_screen_size_change()
                     rerun_everything()
+                    shown_title = None
 
                     logger.debug("Resuming application", extra={"handler": should_suspend.handler})
 
                     should_suspend = None
 
+                # After a suspension, so the app that resumes sets its title again.
+                if not headless and title != shown_title:
+                    output_stream.write(title_instructions(title))
+                    output_stream.flush()
+                    shown_title = title
+
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
-                    update = update_shadow(root_component, shadow, layouts, frozenset(dirty), check_purity, instant)
+                    previous_layouts = layouts
+                    # Picked from the frame on screen, before the update below changes what's in it.
+                    priors = prior_scrolls(layouts)
+                    update = update_shadow(
+                        root_component,
+                        shadow,
+                        layouts,
+                        frozenset(dirty),
+                        check_purity,
+                        focused=focused,
+                        instant=instant,
+                    )
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                    available = waxy.AvailableSize(
-                        width=waxy.Definite(w),
-                        height=waxy.Definite(h),
+                    layouts = layout_tree.compute(
+                        layout_changes(previous_shadow, shadow),
+                        shadow,
+                        w,
+                        h,
+                        priors,
+                        scroll_requests(pending_scrolls, shadow),
                     )
-                    layouts = layout_tree.compute(layout_changes(previous_shadow, shadow), shadow, available)
                     logger.debug("Calculated layout")
 
-                    new_paint, border_healing_hints = paint_layout(layouts.in_paint_order, w, h)
+                    routing = RoutingTable.of(shadow, layouts)
+                    settled = routing.reconciled_focus(focused, update.mounted)
+
+                    # Re-render the components whose focus changed before painting,
+                    # so no frame shows focus where it was before the render moved it.
+                    if settled != focused:
+                        refocused = update_shadow(
+                            root_component,
+                            shadow,
+                            previous_layouts,
+                            frozenset(key for key in (focused, settled) if key is not None),
+                            check_purity,
+                            focused=settled,
+                            instant=instant,
+                        )
+                        previous_shadow, shadow = shadow, refocused.tree
+                        if settled is not None:
+                            pending_scrolls.append(focus_into_view(settled))
+                        layouts = layout_tree.compute(
+                            layout_changes(previous_shadow, shadow),
+                            shadow,
+                            w,
+                            h,
+                            priors,
+                            scroll_requests(pending_scrolls, shadow),
+                        )
+                        routing = RoutingTable.of(shadow, layouts)
+                        if routing.reconciled_focus(settled, refocused.mounted) != settled:
+                            raise UnsettledFocus(
+                                "Focus changed again after re-rendering the components that gained and lost it, "
+                                "so a component hid itself because it gained focus."
+                            )
+                        update = update.followed_by(refocused)
+                        focused = settled
+                        logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+
+                    pending_scrolls.clear()
+                    for key in stale_scroll_readers(shadow, layouts):
+                        event_queue.put_nowait(StateSet(key=key))
+
+                    new_paint, border_healing_hints = paint_layout(
+                        ((element, layout) for _, element, layout in layouts.in_paint_order), w, h
+                    )
                     logger.debug("Generated new paint")
 
                     if do_heal_borders:
@@ -368,14 +543,16 @@ async def render_loop(
                             extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
                         )
 
-                    diff = diff_paint(new_paint, current_paint)
+                    diff = runs_of(new_paint) if should_clear else diff_paint(new_paint, current_paint)
                     current_paint = new_paint
                     logger.debug(
                         "Diffed new paint from current paint",
                         extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
                     )
 
-                    instructions = paint_to_instructions(diff)
+                    # The clear goes in the same synchronized update as the frame, so the blank screen never shows.
+                    instructions = synchronized((CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff))
+                    should_clear = False
                     logger.debug("Generated instructions from paint diff")
 
                     if not headless:
@@ -391,6 +568,9 @@ async def render_loop(
                     should_render = False
 
                     logger.debug("Completed render cycle")
+                else:
+                    # Without a render, every pending control moves nothing, and mustn't wait to move a later layout.
+                    pending_scrolls.clear()
 
                 if ap is not None:
                     if isinstance(ap, _Control):
@@ -430,16 +610,21 @@ async def render_loop(
                             should_render = True
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
-                        case KeyPressed():
-                            for element, _ in reversed(layouts.in_paint_order):
-                                if element.on_key:
-                                    handle_control(element.on_key(event))
-                        case MouseMoved() | MouseDown() | MouseUp() | MouseScrolledDown() | MouseScrolledUp() as m:
-                            for element, resolved in reversed(layouts.in_paint_order):
-                                # Send mouse events if the current *or previous* position is in the border region
-                                if resolved.border.contains(mouse_position) or resolved.border.contains(m.absolute):
-                                    if element.on_mouse:
-                                        handle_control(element.on_mouse(event))
+                        case KeyPressed() | Pasted():
+                            for control in route_key(event, focused, routing):
+                                handle_control(control)
+                        case (
+                            MouseMoved()
+                            | MouseDown()
+                            | MouseUp()
+                            | MouseScrolledDown()
+                            | MouseScrolledUp()
+                            | MouseScrolledLeft()
+                            | MouseScrolledRight()
+                        ) as m:
+                            press, controls = route_mouse(m, press, focused, routing)
+                            for control in controls:
+                                handle_control(control)
 
                             if isinstance(m, (MouseMoved, MouseDown, MouseUp)):
                                 mouse = Mouse(
@@ -464,18 +649,45 @@ async def render_loop(
 
                 logger.debug("Handled events", extra={"num_events": num_events_handled})
 
-    except (KeyboardInterrupt, CancelledError) as ex:
+    except KeyboardInterrupt as ex:
         logger.debug(f"Caught {ex!r}")
     finally:
         logger.info("Application stopping...")
 
-        if not headless:
+        if not headless and not is_suspended:
+            # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
+            stop_reading_keys(key_reader)
+            stop_bracketed_paste(stream=output_stream)
             stop_mouse_tracking(stream=output_stream)
             stop_output_control(stream=output_stream)
             stop_input_control(stream=input_stream, original=original)
             stop_handling_resize_signal()
+            stop_handling_interrupt_signal(previous_interrupt_handler)
 
         logger.info("Application stopped")
+
+
+def focus_into_view(key: NodeKey) -> ScrollIntoView:
+    """What focusing the node with `key` scrolls into view: the node, by as little as it takes, as browsers do."""
+    return ScrollIntoView(Subtree(key=key), block="nearest", inline="nearest")
+
+
+def scroll_requests(pending: Iterable[ScrollTo | ScrollBy | ScrollIntoView], shadow: ShadowTree) -> list[ScrollRequest]:
+    """What `pending` asks of a layout of `shadow`, skipping a handle that names no mounted element."""
+    return [
+        ScrollRequest(key=key, control=control)
+        for control in pending
+        if (key := named_key(control.target, shadow.handled)) is not None
+    ]
+
+
+def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
+    """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
+    return (
+        node.key
+        for node in shadow.scroll_readers
+        if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
+    )
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:
@@ -499,13 +711,3 @@ async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], t
     for effect in reruns:
         effect.deps = effect.new_deps
         effect.task = task_group.create_task(effect.setup())
-
-
-def build_concrete_element_tree(root: ShadowNode) -> AnyElement:
-    match root.element:
-        case Div():
-            return dataclasses.replace(
-                root.element, children=tuple(build_concrete_element_tree(child) for child in root.children)
-            )
-        case _:
-            return root.element

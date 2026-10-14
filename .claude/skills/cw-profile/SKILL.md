@@ -1,6 +1,6 @@
 ---
 name: cw-profile
-description: Performance profiling workflow for the counterweight project. Use when profiling the render loop, benchmarking a change, finding hotspots, investigating a performance regression, or comparing before and after runs. Covers the benchmark workloads in `benchmarks/`, profiling them with Tachyon (Python's sampling profiler), reading the report, and comparing runs.
+description: Performance profiling workflow for the counterweight project. Use when profiling the render loop or input parsing, benchmarking a change, finding hotspots, investigating a performance regression, or comparing before and after runs. Covers the benchmark workloads in `benchmarks/`, profiling them with Tachyon (Python's sampling profiler), reading the report, and comparing runs.
 ---
 
 # Counterweight Performance Profiling
@@ -18,8 +18,18 @@ reusing last frame's layout matters most for `dashboard`, and text measurement d
 `agent` and `top`. `dashboard-local` draws what `dashboard` does, but holds its changing state
 in a leaf component rather than the root: compare the two to see what skipping components
 whose state didn't change saves. Each `-memo` workload (`dashboard-memo`, `top-memo`,
-`agent-memo`) draws what its twin does with the per-item component declared `memo`:
+`agent-memo`, `agent-markdown-memo`) draws what its twin does with the per-item component declared `memo`:
 compare the pair to see what skipping components whose arguments didn't change saves.
+`agent-markdown` streams Markdown shaped like a real coding agent's (short narration between tool calls,
+and now and then a summary with lists, tables and code), rendered with `markdown` and `code_block`:
+compare it with `agent` to see roughly what parsing and highlighting cost.
+`agent-scrolled` is `agent` with its transcript scrolled back partway through the run, so it reads back
+while messages stream in below and drop off above: compare it with `agent`, which follows the end,
+to see what scroll anchoring costs.
+`agent-typing` is `agent` with a `text_area` prompt that holds focus and takes one edit a frame while the transcript streams
+(typing, Backspace, Ctrl+J, a paste, and Enter to send, which empties it), wrapping past its maximum height so it scrolls.
+Each of its frames is two loop iterations, one that edits the prompt and one that streams,
+so compare it with `agent` to see what a key press costs on a busy screen.
 
 ## Profile a run
 
@@ -50,7 +60,8 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
   loop itself, with each stage's share of the mean frame time.
   Stages come from the call stack, so splitting a stage into named functions inside
   `render_loop` is how to get a finer breakdown.
-  `harness.py:...on_key` is the workload's own `step`, not framework time.
+  `harness.py:...on_input` is the workload's own `step`, not framework time,
+  and it sits under `routing.py:route_key`, so subtract it from that stage to see routing's own cost.
   Work moved off the render loop onto another task still costs frame time in these
   saturated runs; it only comes for free in an app with idle time between frames.
 - **Self and inclusive samples** per function below each stage's root.
@@ -73,6 +84,18 @@ frame times on a shared machine vary run to run.
 
 For a visual diff, `uv run python -m profiling.sampling replay --diff-flamegraph
 profiles/before.bin -o profiles/diff.html profiles/after.bin`.
+
+## Time input parsing
+
+Parsing terminal input isn't part of any workload's frames, so it has its own command,
+which times `parse_input` on whole reads (a key press, a read full of mouse motion, pasted text):
+
+```bash
+uv run python -m benchmarks parse --name before   # writes profiles/before.parsing.json
+# make the change
+uv run python -m benchmarks parse --name after
+uv run python -m benchmarks compare before after
+```
 
 ## Record results
 

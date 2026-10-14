@@ -1,8 +1,4 @@
-                                                                      
-                                                                      
-                                                                      
-                                    line 1                            
-┌─ justify_children_center ───────┐┌line 2                           ┐
+┌─ justify_children_center ───────┐┌─ justify_children_center_unsafe ┐
 │line 1                           ││line 3                           │
 │line 2                           ││line 4                           │
 │line 3                           ││line 5                           │
@@ -10,8 +6,4 @@
 │line 5                           ││line 7                           │
 │line 6                           ││line 8                           │
 │line 7                           ││line 9                           │
-└line 8                           ┘└line 10                          ┘
- line 9                             line 11                           
- line 10                            line 12                           
- line 11                                                              
- line 12                                                              
+└─────────────────────────────────┘└─────────────────────────────────┘

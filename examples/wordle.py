@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import zlib
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from random import choice
 from string import ascii_letters, ascii_uppercase
@@ -11,10 +14,11 @@ from more_itertools import padded
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.controls import AnyControl, Bell, Quit
+from counterweight.controls import Bell, Quit
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, MouseEvent, MouseUp
-from counterweight.hooks import Setter, use_clock, use_state
+from counterweight.events import InputEvent, InputResponse, KeyPressed, Pasted, Receiver
+from counterweight.handlers import on_click
+from counterweight.hooks import use_clock, use_focus, use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
@@ -41,6 +45,43 @@ GUESSABLE_WORDS = set(
 MAX_SUBMITS = 6
 
 
+@dataclass(frozen=True, slots=True)
+class Board:
+    """
+    One game: the guesses submitted so far, and the one being typed.
+    Each move returns a new board, built from the latest one, so keys that arrive together apply in order,
+    and returns the same board for a move the game refuses.
+    """
+
+    solution: str
+    submitted: tuple[str, ...] = ()
+    guess: str = ""
+
+    @property
+    def outcome(self) -> Literal["win", "loss", "playing"]:
+        if self.submitted and self.submitted[-1] == self.solution:
+            return "win"
+        return "playing" if len(self.submitted) < MAX_SUBMITS else "loss"
+
+    def typed(self, letters: str) -> Board:
+        if self.outcome != "playing":
+            return self
+        return replace(self, guess=(self.guess + letters.upper())[:5])
+
+    def deleted(self) -> Board:
+        if self.outcome != "playing":
+            return self
+        return replace(self, guess=self.guess[:-1])
+
+    def cleared(self) -> Board:
+        return replace(self, guess="")
+
+    def guessed(self) -> Board:
+        if self.outcome != "playing" or self.guess not in GUESSABLE_WORDS:
+            return self
+        return replace(self, submitted=(*self.submitted, self.guess), guess="")
+
+
 def daily_solution(day: date) -> str:
     return SOLUTION_WORDS[(day - date(1970, 1, 1)).days % len(SOLUTION_WORDS)]
 
@@ -60,13 +101,13 @@ def root() -> Div:
     if playing:
         return Div(
             style=col | align_children_center,
-            children=[
+            children=(
                 header,
                 play(
                     solution=solution,
                     stop_playing=stop_playing,
                 ).with_key(solution),
-            ],
+            ),
         )
     else:
 
@@ -82,43 +123,45 @@ def root() -> Div:
             set_solution(s)
             set_playing(True)
 
-        def on_key(event: KeyPressed) -> AnyControl | None:
-            match event.key:
-                case Key.F1:
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            match event:
+                case KeyPressed(key=Key.F1):
                     play_today()
-                case Key.F2:
+                    return ()
+                case KeyPressed(key=Key.F2):
                     play_random()
-                case "q":
+                    return ()
+                case KeyPressed(key="q"):
                     return Quit()
-
-            return None
+                case _:
+                    return None
 
         return Div(
             style=col | align_children_center,
-            children=[
+            children=(
                 header,
                 Div(
                     style=col | align_children_center | gap(2) | margin_top(4),
-                    children=[
+                    children=(
                         menu_button(
                             content=f"[F1] Play Daily ({today:%Y-%m-%d})",
                             hover_style=text_color("indigo", 500) | border_color("indigo", 500),
-                            on_mouse=lambda e: play_today() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click_action=play_today,
                         ),
                         menu_button(
                             content="[F2] Play Random",
                             hover_style=text_color("emerald", 500) | border_color("emerald", 500),
-                            on_mouse=lambda e: play_random() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click_action=play_random,
                         ),
                         menu_button(
                             content="[q] Quit",
                             hover_style=text_color("red", 500) | border_color("red", 500),
-                            on_mouse=lambda e: Quit() if isinstance(e, MouseUp) and e.button == 1 else None,
+                            on_click_action=Quit,
                         ),
-                    ],
+                    ),
                 ),
-            ],
-            on_key=on_key,
+            ),
+            on_input=on_input,
         )
 
 
@@ -128,7 +171,7 @@ button_style = pad_x(1) | border | border_lightrounded
 @component
 def menu_button(
     content: str,
-    on_mouse: Callable[[MouseEvent], AnyControl | None],
+    on_click_action: Callable[[], InputResponse],
     hover_style: Style,
 ) -> Text:
     hovered = use_hovered()
@@ -136,48 +179,63 @@ def menu_button(
     return Text(
         content=content,
         style=button_style | (hover_style if hovered.border else None),
-        on_mouse=on_mouse,
+        on_input=on_click(on_click_action),
     )
 
 
 @component
 def play(solution: str, stop_playing: Callable[[], None]) -> Div:
-    guess, set_guess = use_state("")
+    use_focus(auto_focus=True)
+    board, set_board = use_state(Board(solution=solution))
 
-    submitted: list[str]
-    set_submitted: Setter[list[str]]
-    submitted, set_submitted = use_state([])
+    def move(change: Callable[[Board], Board]) -> InputResponse:
+        """
+        Makes a move on the latest board, ringing the bell if the game refuses it.
+        The setter calls `apply` before it returns, so `is_refused` is set by then.
+        """
+        is_refused = False
 
-    state = "win" if submitted and submitted[-1] == solution else "playing" if len(submitted) < MAX_SUBMITS else "loss"
+        def apply(latest: Board) -> Board:
+            nonlocal is_refused
+            moved = change(latest)
+            is_refused = moved == latest
+            return moved
 
-    def on_key(event: KeyPressed) -> AnyControl | None:
-        match state, event.key:
-            case _, Key.Escape:
+        set_board(apply)
+        return Bell() if is_refused else ()
+
+    def type_letters(letters: str) -> InputResponse:
+        return move(lambda b: b.typed(letters))
+
+    def delete_letter() -> InputResponse:
+        return move(Board.deleted)
+
+    def submit_guess() -> InputResponse:
+        return move(Board.guessed)
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.Escape):
                 stop_playing()
-            case "playing", Key.Backspace:
-                if len(guess) > 0:
-                    set_guess(guess[:-1])
-                else:
-                    return Bell()
-            case "playing", Key.Enter:
-                if guess in GUESSABLE_WORDS:
-                    set_guess("")
-                    set_submitted(lambda s: [*s, guess])
-                else:
-                    return Bell()
-            case "playing", letter if letter in ascii_letters:
-                if len(guess) < 5:
-                    set_guess(lambda g: g + letter.upper())
-                else:
-                    return Bell()
-            case "win" | "loss", letter if letter in ascii_letters:
-                return Bell()
+                return ()
+            case KeyPressed(key=Key.Backspace):
+                return delete_letter()
+            case KeyPressed(key=Key.Enter):
+                return submit_guess()
+            case KeyPressed(key=letter) if letter in ascii_letters:
+                return type_letters(letter)
+            case Pasted(text=text):
+                letters = text.strip()
+                return type_letters(letters) if letters.isascii() and letters.isalpha() else Bell()
+            case _:
+                return None
 
-        return None
+    submitted, guess, state = board.submitted, board.guess, board.outcome
 
     guess_rows = [guess_row(s, solution=solution, type="submitted") for s in submitted]
     if state == "playing":
-        guess_rows.append(guess_row(guess, solution=solution, type="current"))
+        known_bad = frozenset("".join(submitted)) - frozenset(solution)
+        guess_rows.append(guess_row(guess, solution=solution, type="current", known_bad=known_bad))
     guess_rows += [guess_row(blank, solution=solution, type="pending")] * (MAX_SUBMITS - len(guess_rows))
 
     message = ""
@@ -198,29 +256,36 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     return Div(
         style=col,
-        children=[
+        on_input=on_input,
+        children=(
             Div(
                 style=col | justify_children_center | align_self_stretch | align_children_center | gap(1),
-                children=guess_rows,
-                on_key=on_key,
+                children=tuple(guess_rows),
             ),
             Div(
                 style=row | align_self_center | pad_y(1),
-                children=[Text(content=message, style=message_style)],
+                children=(Text(content=message, style=message_style),),
             ),
             keyboard(
                 submitted=submitted,
                 solution=solution,
-                on_key=on_key,
-                on_clear=lambda: set_guess(""),
+                on_letter=type_letters,
+                on_submit=submit_guess,
+                on_backspace=delete_letter,
+                on_clear=lambda: set_board(Board.cleared),
                 on_exit=stop_playing,
             ),
-        ],
+        ),
     )
 
 
 @component
-def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "pending"]) -> Div:
+def guess_row(
+    guess: str,
+    solution: str,
+    type: Literal["submitted", "current", "pending"],
+    known_bad: frozenset[str] = frozenset(),
+) -> Div:
     children = []
     for guess_letter, solution_letter in zip(padded(guess, fillvalue=" ", n=5), solution):
         style = {
@@ -239,13 +304,18 @@ def guess_row(guess: str, solution: str, type: Literal["submitted", "current", "
         elif type == "pending":
             style |= border_color("gray", 700)
         elif type == "current":
-            style |= border_color("gray", 300) if guess_letter != " " else border_color("gray", 500)
+            if guess_letter in known_bad:
+                style |= border_color("red", 700)
+            elif guess_letter != " ":
+                style |= border_color("gray", 300)
+            else:
+                style |= border_color("gray", 500)
 
         children.append(letter_box(letter=guess_letter, style=style))
 
     return Div(
         style=row | align_children_center | gap(1),
-        children=children,
+        children=tuple(children),
     )
 
 
@@ -258,9 +328,11 @@ KEYBOARD = (
 
 @component
 def keyboard(
-    submitted: list[str],
+    submitted: tuple[str, ...],
     solution: str,
-    on_key: Callable[[KeyPressed], AnyControl | None],
+    on_letter: Callable[[str], InputResponse],
+    on_submit: Callable[[], InputResponse],
+    on_backspace: Callable[[], InputResponse],
     on_clear: Callable[[], None],
     on_exit: Callable[[], None],
 ) -> Div:
@@ -278,76 +350,54 @@ def keyboard(
             if guess_letter == solution_letter:
                 kb_letter_styles[guess_letter] = border_color("green", 600)
 
-    def on_submit(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            return on_key(KeyPressed(key=Key.Enter))
-        return None
-
-    def on_backspace(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            return on_key(KeyPressed(key=Key.Backspace))
-        return None
-
-    def on_clear_click(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            on_clear()
-        return None
-
-    def on_exit_click(event: MouseEvent) -> AnyControl | None:
-        if isinstance(event, MouseUp) and event.button == 1:
-            on_exit()
-        return None
-
     return Div(
         style=row | gap(2),
-        children=[
+        children=(
             Div(
                 style=col | justify_children_space_between | align_children_start,
-                children=[
-                    menu_button(content="Exit [Esc]", on_mouse=on_exit_click, hover_style=border_color("red", 700)),
-                ],
+                children=(
+                    menu_button(content="Exit [Esc]", on_click_action=on_exit, hover_style=border_color("red", 700)),
+                ),
             ),
             Div(
                 style=col | center_children,
-                children=[
+                children=tuple(
                     Div(
                         style=row | align_children_center | gap(1),
-                        children=[
+                        children=tuple(
                             letter_box(
                                 kb_letter,
                                 style=kb_letter_styles[kb_letter],
-                                on_key=on_key,
+                                on_letter=on_letter,
                             )
                             for kb_letter in kb_row
-                        ],
+                        ),
                     )
                     for kb_row in KEYBOARD
-                ],
+                ),
             ),
             Div(
                 style=col | justify_children_space_between | align_children_end,
-                children=[
-                    menu_button(content="Submit [Enter]", on_mouse=on_submit, hover_style=border_color("green", 600)),
-                    menu_button(content="Back", on_mouse=on_backspace, hover_style=border_color("yellow", 300)),
-                    menu_button(content="Clear", on_mouse=on_clear_click, hover_style=border_color("red", 700)),
-                ],
+                children=(
+                    menu_button(
+                        content="Submit [Enter]", on_click_action=on_submit, hover_style=border_color("green", 600)
+                    ),
+                    menu_button(content="Back", on_click_action=on_backspace, hover_style=border_color("yellow", 300)),
+                    menu_button(content="Clear", on_click_action=on_clear, hover_style=border_color("red", 700)),
+                ),
             ),
-        ],
+        ),
     )
 
 
 @component
-def letter_box(letter: str, style: Style, on_key: Callable[[KeyPressed], AnyControl | None] | None = None) -> Text:
+def letter_box(letter: str, style: Style, on_letter: Callable[[str], InputResponse] | None = None) -> Text:
     hovered = use_hovered()
-
-    def on_mouse(event: MouseEvent) -> None:
-        if on_key and isinstance(event, MouseUp) and event.button == 1:
-            on_key(KeyPressed(key=letter))
 
     return Text(
         content=letter,
         style=style | pad_x(1) | pad_y(0) | (border | border_double if hovered.border else border | border_heavy),
-        on_mouse=on_mouse,
+        on_input=None if on_letter is None else on_click(lambda: on_letter(letter)),
     )
 
 

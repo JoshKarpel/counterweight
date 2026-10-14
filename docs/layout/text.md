@@ -3,7 +3,8 @@
 A `Text` is sized by measuring its content:
 unwrapped, it is as wide as its longest line;
 with a wrap mode, its height is the number of lines its content wraps to at the width it gets.
-Content that doesn't fit is cut off at the edge of the `Text`'s own box.
+Content that doesn't fit overflows the `Text`'s box and is drawn past it, as text is in CSS,
+unless the `Text` or one of its ancestors [clips](clipping.md) it.
 [Text wrapping](../styles/text-wrapping.md) compares the wrap modes themselves.
 
 ## Wrapping inside a pane
@@ -47,12 +48,22 @@ With a wrap mode, each line is aligned separately.
 
 ## Long unwrapped text in a narrow pane
 
-In a `col`, a `Text` is stretched to the column's width, however long its content,
-and the content is cut off at the `Text`'s edge.
-In a `row`, a `Text` can't shrink below its content's width, so it overflows the row's border.
-Give it `min_width(0)` to keep it inside the row
-(see [Content sets a minimum size](how-layout-sizes-things.md#content-sets-a-minimum-size)),
-or a wrap mode to break its lines instead.
+In the top panes below, a line too long for its pane overflows it, as unwrapped text does in CSS,
+drawing over the pane's border and past it.
+In a `col`, the `Text` is stretched to the column's width, however long its content,
+so its box fits the column and only its line overflows.
+In a `row`, a `Text` can't shrink below its content's width,
+so its whole box overflows the row
+(see [Content sets a minimum size](how-layout-sizes-things.md#content-sets-a-minimum-size)).
+
+In the bottom panes, `overflow_hidden` on the `Text` fixes both:
+it clips the line at the `Text`'s own padding box,
+and, as for any box that hides its overflow, lowers its minimum width to zero, so it shrinks to fit the row.
+A wrap mode breaks the lines to fit instead.
+`overflow_hidden` on the pane clips the `Text` at the pane's padding box (see [Clipping](clipping.md)),
+which in a `row` cuts off the `Text`'s own right border with its line.
+`overflow_x_scroll` on the pane makes it a [scroll container](scrolling.md)
+the reader can scroll along the line, in a `col` or a `row` alike.
 
 ```python
 --8<-- "layout_text.py:narrow"

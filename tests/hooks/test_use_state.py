@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
-from counterweight.events import KeyPressed
-from counterweight.hooks import Setter, use_state
+from counterweight.events import InputEvent, KeyPressed, Receiver
+from counterweight.hooks import Setter, toggle, use_state
+from counterweight.hooks.impls import MountStatus, NodeKey, UseState
+from tests.rendering import state_sets
 
 
 async def test_use_state() -> None:
@@ -18,10 +22,10 @@ async def test_use_state() -> None:
     def root() -> Div:
         state, set_state = track_state_changes()
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_state(state + 1)
 
-        return Div(on_key=on_key)
+        return Div(on_input=on_input)
 
     await app(
         root(),
@@ -33,3 +37,29 @@ async def test_use_state() -> None:
     )
 
     assert recorder == [0, 0, 1]
+
+
+def test_a_setter_outliving_its_state_does_nothing() -> None:
+    with state_sets() as queue:
+        setter = UseState(value=1, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7)).setter
+
+        setter(2)
+
+    assert queue.empty()
+
+
+def test_toggles_set_before_a_render_each_flip_the_latest_value() -> None:
+    with state_sets():
+        state = UseState(value=False, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7))
+
+        for _ in range(3):
+            state.setter(toggle)
+
+    assert state.value is True
+
+
+if TYPE_CHECKING:
+
+    def toggles(set_open: Setter[bool], set_count: Setter[int]) -> None:
+        set_open(toggle)
+        set_count(toggle)  # type: ignore[arg-type]

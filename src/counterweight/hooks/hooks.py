@@ -6,16 +6,18 @@ from datetime import timedelta
 from typing import overload
 
 from counterweight._context_vars import (
+    current_focused,
     current_hook_state,
     current_instant,
     current_layouts,
     current_use_mouse_listeners,
 )
 from counterweight._utils import forever
-from counterweight.geometry import Position, Region
+from counterweight.focus import ElementHandle, FocusHandle
+from counterweight.geometry import ORIGIN, Position, Rects, Scroll
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.types import Deps, Getter, Ref, Setter, Setup, Tick
-from counterweight.layout import INITIAL_RESOLVED_LAYOUT, Layouts
+from counterweight.layout import INITIAL_RECTS, Layouts
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,10 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
         A function that can be called to update the value of the state (e.g., in an event handler).
             It can either be called with the new value of the state,
             or a function that takes the current value of the state and returns the new value of the state.
+            When the new value depends on the current one, pass a function:
+            a value computed from the state a render saw loses every update made since,
+            such as from other key presses read before the next render
+            (see [Updating state from its previous value](../hooks/use_state.md#updating-state-from-its-previous-value)).
             If the value is not equal to the current of the state,
             Counterweight will trigger a render cycle.
             It is the same object on every render,
@@ -47,6 +53,16 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
             Once the component unmounts, calling it does nothing.
     """
     return current_hook_state.get().use_state(initial_value)
+
+
+def toggle(value: bool) -> bool:
+    """
+    Flips a flag: pass it to a [`use_state`][counterweight.hooks.use_state] setter, as `set_open(toggle)`,
+    so each toggle flips the latest value, even when several land before the next render.
+    It takes only a `bool`, so a type checker rejects it for state of any other type,
+    where `operator.not_` would quietly turn the state into one.
+    """
+    return not value
 
 
 def use_ref[T](initial_value: Getter[T] | T) -> Ref[T]:
@@ -122,14 +138,6 @@ def use_clock(interval: timedelta) -> Tick:
     return current_hook_state.get().use_clock(interval, current_instant.get())
 
 
-@dataclass(frozen=True, slots=True)
-class Rects:
-    content: Region
-    padding: Region
-    border: Region
-    margin: Region
-
-
 def use_rects() -> Rects:
     """
     Returns:
@@ -150,14 +158,42 @@ def use_rects() -> Rects:
 def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
     """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
-    dims = layouts.by_key.get(key, INITIAL_RESOLVED_LAYOUT)
+    return layouts.by_key.get(key, INITIAL_RECTS)
 
-    return Rects(
-        content=dims.content,
-        padding=dims.padding,
-        border=dims.border,
-        margin=dims.margin,
-    )
+
+def use_scroll(handle: ElementHandle | None = None) -> Scroll:
+    """
+    Parameters:
+        handle: The element to report on, by the [`ElementHandle`][counterweight.focus.ElementHandle]
+            passed to its `handle`, as a React component reads another element's `scrollTop` through a ref,
+            or `None` for the calling component's top-level element.
+
+    Returns:
+        How far the element is scrolled, and how far it can be,
+            if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
+            A component that calls `use_scroll` renders again as soon as that scroll changes,
+            whether a control scrolled it or its content changed size.
+            It's all zeros on the initial render, for an element that isn't a scroll container,
+            and for a `handle` that named no visible element in the previous render cycle.
+    """
+    hooks = current_hook_state.get()
+    scroll = scroll_in(current_layouts.get(), hooks.key, handle)
+    if hooks.scrolls is None:
+        hooks.scrolls = {}
+    hooks.scrolls[handle] = scroll
+    return scroll
+
+
+NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0)
+
+
+def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -> Scroll:
+    """
+    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    the scroll of the element `handle` names, or of `reader`'s own element if it's `None`.
+    """
+    key = reader if handle is None else layouts.handles.get(handle)
+    return NO_SCROLL if key is None else layouts.scrolls.get(key, NO_SCROLL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,14 +249,77 @@ def use_hovered() -> Hovered:
     """
     Returns:
         A record describing which of the calling component's top-level element's
-            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside.
+            `content`, `padding`, `border`, and `margin` rectangles the mouse is currently inside,
+            counting only the parts inside its [`clip`][counterweight.geometry.Rects.clip],
+            so the mouse over a part its ancestors clip away is outside all of them.
     """
     mouse = use_mouse()
     rects = use_rects()
 
+    position = mouse.absolute
+    if rects.clip is None or not rects.clip.contains(position):
+        return Hovered(content=False, padding=False, border=False, margin=False)
+
     return Hovered(
-        content=rects.content.contains(mouse.absolute),
-        padding=rects.padding.contains(mouse.absolute),
-        border=rects.border.contains(mouse.absolute),
-        margin=rects.margin.contains(mouse.absolute),
+        content=rects.content.contains(position),
+        padding=rects.padding.contains(position),
+        border=rects.border.contains(position),
+        margin=rects.margin.contains(position),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Focus:
+    """What [`use_focus`][counterweight.hooks.use_focus] returns to the calling component."""
+
+    is_focused: bool
+    """Whether the calling component is focused, so it receives key presses, as of this render."""
+
+    handle: FocusHandle
+    """The handle that names the calling component, for [`FocusOn`][counterweight.controls.FocusOn]."""
+
+
+def use_focus(
+    auto_focus: bool = False,
+    handle: FocusHandle | None = None,
+    is_focusable: bool = True,
+    in_focus_order: bool = True,
+) -> Focus:
+    """
+    Makes the calling component focusable.
+    Its top-level element, the one it returns, is the one that's focused,
+    so a component that handles key presses puts its handler on that element.
+    A component can call it only once.
+
+    Parameters:
+        auto_focus: Whether the component takes focus when it mounts visible and focusable while nothing is focused.
+            When several mount in the same render, the first in tree order takes focus.
+            A component that mounts hidden or unfocusable doesn't take focus when it's shown or made focusable later.
+
+        handle: The handle that names the component, which a parent creates with `use_state(FocusHandle)`
+            to focus a child it renders with [`FocusOn`][counterweight.controls.FocusOn].
+            If `None`, `use_focus` creates one on the first render and keeps it.
+            Every render MUST pass the same handle as the first,
+            or `use_focus` raises `ChangedFocusHandle`,
+            and two mounted components given the same handle raise `DuplicateFocusHandle`.
+
+        is_focusable: Whether the component can be focused, like a browser's `disabled` attribute when `False`.
+            Nothing can focus an unfocusable component,
+            and making the focused component unfocusable clears focus.
+            It still receives the mouse events routed to it.
+
+        in_focus_order: Whether [`FocusNext`][counterweight.controls.FocusNext]
+            and [`FocusPrevious`][counterweight.controls.FocusPrevious] stop on the component,
+            like a browser's `tabindex="-1"` when `False`.
+            A component out of the focus order can still be focused with
+            [`FocusOn`][counterweight.controls.FocusOn], `auto_focus`, or a press,
+            and keeps focus once it has it.
+
+    Returns:
+        Whether the component is focused, and its handle, which is the same object on every render.
+    """
+    hooks = current_hook_state.get()
+    focus = hooks.use_focus(
+        auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order
+    )
+    return Focus(is_focused=is_focusable and current_focused.get() == hooks.key, handle=focus.handle)

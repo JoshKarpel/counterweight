@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+import re
 
 import pytest
 
@@ -41,7 +41,7 @@ def test_texts_have_no_children() -> None:
     ),
 )
 def test_text_cells(
-    content: str | Sequence[Chunk],
+    content: str | tuple[Chunk, ...],
     style: Style,
     expected: tuple[StyledGrapheme],
 ) -> None:
@@ -71,7 +71,7 @@ def test_styled_grapheme_carries_its_width(grapheme: str, expected: int) -> None
 
 @pytest.mark.parametrize("grapheme", ["", "ab", "日本"])
 def test_styled_grapheme_rejects_anything_but_one_cluster(grapheme: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape(repr(grapheme))):
         StyledGrapheme(grapheme=grapheme)
 
 

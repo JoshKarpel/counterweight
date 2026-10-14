@@ -20,7 +20,8 @@ and text after one is drawn to the right of where layout put it.
 A two-cell cluster is never split across lines or cut in half.
 When one would cross the right edge of its `Text`,
 it moves to the next line if the text wraps,
-or is left out, with a space in its place, if it doesn't.
+or overflows the box with the rest of its line if it doesn't.
+Where a [clip](../layout/clipping.md) cuts across one, it is left out, with a space in its place.
 
 ## Control Characters
 

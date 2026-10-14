@@ -122,7 +122,7 @@ See [Sizing one box](../layout/sizing-one-box.md).
 
 See [Gap, margin and padding](../layout/spacing-and-borders.md#gap-margin-and-padding).
 
-<!-- utilities: margin margin_x margin_y margin_top margin_bottom margin_left margin_right gap gap_width gap_height pad pad_* -->
+<!-- utilities: margin margin_x margin_y margin_top margin_bottom margin_left margin_right margin_sides margin_*auto gap gap_width gap_height pad pad_* -->
 
 ### Borders
 
@@ -148,8 +148,25 @@ See [Grids and wrapping](../layout/grids-and-wrapping.md) for the grid utilities
 ### Positioning and layering
 
 See [Layering](../layout/layering.md).
+The `inset_*` utilities with a `center` axis, such as `inset_bottom_center`, center a box on that axis
+only in a parent that centers its children, such as with `center_children`.
+To center a box in any parent, see [A dialog centered over the app](../layout/layering.md#a-dialog-centered-over-the-app).
 
-<!-- utilities: position_* inset_* z -->
+<!-- utilities: position_* inset inset_* z -->
+
+### Overflow, clipping and scrolling
+
+`overflow_hidden`, `overflow_clip` and `overflow_scroll` clip a box's children (and a `Text`'s own lines) to its padding box, on both axes or, with `_x` or `_y`, on one,
+and `overflow_scroll` makes the box a [scroll container](../layout/scrolling.md) there.
+`clip_to_border` lets a child, such as a border title, draw on its parent's border instead,
+and `clip_to_screen` lets one, such as a dropdown, escape every clip above it.
+See [Clipping](../layout/clipping.md).
+
+`overflow_anchor_none` turns off [scroll anchoring](../layout/scrolling.md#keeping-the-content-in-view),
+and `stick_to_end` makes a scroll container [follow its end](../layout/scrolling.md#following-the-end),
+on both axes or, with `_x` or `_y`, on one; `unstick` undoes it.
+
+<!-- utilities: overflow_* clip_to_* stick_to_end* unstick* -->
 
 ### Text
 

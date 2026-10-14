@@ -29,9 +29,9 @@ def canvas(
     height: int,
     cells: dict[tuple[int, int], Color],
     default: Color = _BLACK,
-) -> list[Chunk]:
+) -> tuple[Chunk, ...]:
     """
-    Render a pixel grid as a list of Chunks using half-block characters (▀).
+    Render a pixel grid as a tuple of Chunks using half-block characters (▀).
 
     Each character cell represents two vertically-stacked pixels: the upper pixel maps to
     the foreground color and the lower pixel maps to the background color. This doubles the
@@ -50,7 +50,7 @@ def canvas(
             chunks.append(NEWLINE)
         for top, bot in row:
             chunks.append(_canvas_chunk(cells.get(top, default), cells.get(bot, default)))
-    return chunks
+    return tuple(chunks)
 
 
 __all__ = ["canvas", "clamp"]

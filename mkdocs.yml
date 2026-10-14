@@ -114,10 +114,18 @@ nav:
     - hooks/use_clock.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
+    - hooks/use_scroll.md
+    - hooks/use_focus.md
     - hooks/use_hovered.md
+  - Headless Components:
+    - headless/index.md
+    - headless/use_text_input.md
+    - headless/use_text_area.md
+    - headless/use_scroll_area.md
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md
+    - input-handling/handlers.md
     - input-handling/controls.md
   - Layout:
     - layout/index.md
@@ -128,6 +136,8 @@ nav:
     - layout/alignment.md
     - layout/spacing-and-borders.md
     - layout/layering.md
+    - layout/clipping.md
+    - layout/scrolling.md
     - layout/grids-and-wrapping.md
     - layout/text.md
     - layout/app-shells.md
@@ -135,9 +145,15 @@ nav:
     - styles/index.md
     - styles/text-wrapping.md
     - styles/utilities.md
+  - Rich Text:
+    - rich-text/hyperlinks.md
+    - rich-text/syntax-highlighting.md
+    - rich-text/markdown.md
   - Cookbook:
+    - cookbook/autocomplete.md
     - cookbook/border-titles.md
     - cookbook/border-healing.md
+    - cookbook/draggable-components.md
     - cookbook/spinners.md
   - performance.md
   - utilities.md

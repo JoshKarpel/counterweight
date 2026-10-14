@@ -6,18 +6,19 @@ The harness holds the model in a root component and advances it on every autopil
 so each run renders exactly `frames` frames after the first, and two runs of the same workload
 do the same work frame for frame, whatever the machine's speed.
 
-A frame's time is the interval between two consecutive key presses, as seen by a key handler on the
-root element. The autopilot presses one key per loop iteration, and the render loop calls every element's
-key handler whether or not its component re-ran, so the interval covers one whole iteration:
-the shadow tree, layout, paint, output, effects and events. `frames` key presses time `frames - 1` frames.
+A frame's time is the interval between two consecutive presses of the workload's step key, as seen by a key handler
+on the root element. The autopilot sends one event or control per loop iteration, and every key that no focused
+component stops bubbles to the root element's handler, whether or not its component re-ran, so the interval covers
+one whole iteration (the shadow tree, layout, paint, output, effects and events) and one more for each interjection
+the autopilot sent between the two presses. `frames` key presses time `frames - 1` frames.
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """
 
 import asyncio
 import json
 import statistics
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -29,7 +30,7 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import AnyControl, Quit, Screenshot
 from counterweight.elements import Div
-from counterweight.events import AnyEvent, KeyPressed
+from counterweight.events import AnyEvent, InputEvent, KeyPressed, Receiver
 from counterweight.hooks import use_effect, use_state
 from counterweight.output import Frame
 
@@ -45,6 +46,15 @@ class Runnable(Protocol):
 
     @property
     def dimensions(self) -> tuple[int, int]: ...
+
+    @property
+    def interjections(self) -> Mapping[int, tuple[AnyEvent | AnyControl, ...]]: ...
+
+    @property
+    def cycled_interjections(self) -> tuple[AnyEvent | AnyControl, ...]: ...
+
+    @property
+    def step_key(self) -> str: ...
 
     def root(self, key_press_times: list[int]) -> Component: ...
 
@@ -64,20 +74,34 @@ class Workload[M]:
     step: Callable[[M], M]
     view: Callable[[M], Div]
     dimensions: tuple[int, int]
+    interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]] = field(default_factory=dict)
+    """
+    Events and controls the autopilot sends before the key press that steps the model to each frame, by frame,
+    such as a scroll partway through a run.
+    """
+    cycled_interjections: tuple[AnyEvent | AnyControl, ...] = ()
+    """
+    Events and controls the autopilot sends one a frame, in turn and starting over after the last,
+    after that frame's `interjections` and before its key press, such as typing into a focused text area.
+    """
+    step_key: str = "n"
+    """The key the autopilot presses to step the model, which no focused component may stop from bubbling to the root."""
 
     @component
     def root(self, key_press_times: list[int]) -> Div:
         """
         A root component that renders the model, with a key handler on the view's root that steps it
-        and appends the time to `key_press_times`.
+        on each press of `step_key` and appends the time to `key_press_times`.
         """
         model, set_model = use_state(self.initial)
 
-        def on_key(_: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            if not (isinstance(event, KeyPressed) and event.key == self.step_key):
+                return
             key_press_times.append(perf_counter_ns())
             set_model(self.step)
 
-        return replace(self.view(model), on_key=on_key)
+        return replace(self.view(model), on_input=on_input)
 
     @component
     def live_root(self, frame_interval: timedelta) -> Div:
@@ -144,12 +168,29 @@ class Timings:
         return max(self.frame_ms)
 
 
-def autopilot(frames: int, snapshot: Path | None) -> list[AnyEvent | AnyControl]:
-    """One key press per frame, then an optional text snapshot of the last frame, then quit."""
+def autopilot(
+    frames: int,
+    snapshot: Path | None,
+    interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]],
+    cycled_interjections: tuple[AnyEvent | AnyControl, ...],
+    step_key: str,
+) -> list[AnyEvent | AnyControl]:
+    """
+    One press of `step_key` per frame, each after that frame's `interjections` and then its `cycled_interjections`,
+    then an optional text snapshot of the last frame, then quit.
+    """
     end: list[AnyEvent | AnyControl] = [Quit()]
     if snapshot is not None:
         end.insert(0, Screenshot(handler=lambda frame: write_snapshot(frame, snapshot)))
-    return [*(KeyPressed(key="n") for _ in range(frames)), *end]
+    step = KeyPressed(key=step_key)
+
+    def cycled(frame: int) -> tuple[AnyEvent | AnyControl, ...]:
+        return (cycled_interjections[frame % len(cycled_interjections)],) if cycled_interjections else ()
+
+    return [
+        *(item for frame in range(frames) for item in (*interjections.get(frame, ()), *cycled(frame), step)),
+        *end,
+    ]
 
 
 def write_snapshot(frame: Frame, path: Path) -> None:
@@ -175,7 +216,7 @@ async def run(
         workload.root(key_press_times),
         headless=True,
         dimensions=dims,
-        autopilot=autopilot(frames, snapshot),
+        autopilot=autopilot(frames, snapshot, workload.interjections, workload.cycled_interjections, workload.step_key),
         check_purity=check_purity,
     )
     frame_ms = [(end - start) / 1e6 for start, end in pairwise(key_press_times)]

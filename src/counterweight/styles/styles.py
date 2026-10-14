@@ -12,6 +12,8 @@ from counterweight._utils import flyweight
 
 TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
+ClipTo = Literal["padding", "border", "screen"]
+OverflowAnchor = Literal["auto", "none"]
 
 
 UNSET = sentinel("UNSET")
@@ -66,7 +68,15 @@ class Color(NamedTuple):
     @classmethod
     @lru_cache(maxsize=2**14)
     def from_hex(cls, hex: str) -> Color:
+        """
+        A color from `#rrggbb` or the CSS shorthand `#rgb`, with or without the `#`.
+        Any other number of digits, like `#rrggbbaa`'s alpha, raises `ValueError`.
+        """
         hex = hex.lstrip("#")
+        if len(hex) == 3:
+            hex = "".join(digit * 2 for digit in hex)
+        if len(hex) != 6:
+            raise ValueError(f"A hex color has 3 or 6 digits, not {hex!r}")
         return cls(
             int(hex[0:2], 16),
             int(hex[2:4], 16),
@@ -235,6 +245,14 @@ _WHITE = COLORS_BY_NAME["white"]
 _BLACK = COLORS_BY_NAME["black"]
 
 
+def is_osc_8_uri(uri: str) -> bool:
+    """
+    Whether `uri` can go in an OSC 8 hyperlink: non-empty, and only printable ASCII,
+    since any other character could end the escape sequence early or start another one.
+    """
+    return bool(uri) and all(" " <= c <= "~" for c in uri)
+
+
 @flyweight(maxsize=2**10)
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CellStyle(StyleFragment):
@@ -245,6 +263,12 @@ class CellStyle(StyleFragment):
     including when it is set to the default, so `CellStyle(bold=False)` turns bold off.
     Unset fields resolve to the defaults in
     [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
+
+    `link` makes the cell a hyperlink to that URI, which the terminal opens when it's clicked
+    (an [OSC 8](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda) hyperlink);
+    `None` makes it not a link, overriding a `link` it would otherwise inherit.
+    The URI must be printable ASCII, so percent-encode anything else,
+    or `CellStyle` raises `ValueError`.
     """
 
     foreground: Color | UNSET = UNSET
@@ -254,14 +278,26 @@ class CellStyle(StyleFragment):
     italic: bool | UNSET = UNSET
     underline: bool | UNSET = UNSET
     strikethrough: bool | UNSET = UNSET
+    link: str | UNSET | None = UNSET
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
 
     def __post_init__(self) -> None:
+        if isinstance(self.link, str) and not is_osc_8_uri(self.link):
+            raise ValueError(f"A link must be a non-empty URI of printable ASCII characters, not {self.link!r}")
         object.__setattr__(
             self,
             "_hash",
             hash(
-                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+                (
+                    self.foreground,
+                    self.background,
+                    self.bold,
+                    self.dim,
+                    self.italic,
+                    self.underline,
+                    self.strikethrough,
+                    self.link,
+                )
             ),
         )
 
@@ -284,6 +320,7 @@ class ResolvedCellStyle:
     italic: bool
     underline: bool
     strikethrough: bool
+    link: str | None
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
 
     def __post_init__(self) -> None:
@@ -291,7 +328,16 @@ class ResolvedCellStyle:
             self,
             "_hash",
             hash(
-                (self.foreground, self.background, self.bold, self.dim, self.italic, self.underline, self.strikethrough)
+                (
+                    self.foreground,
+                    self.background,
+                    self.bold,
+                    self.dim,
+                    self.italic,
+                    self.underline,
+                    self.strikethrough,
+                    self.link,
+                )
             ),
         )
 
@@ -307,6 +353,7 @@ CELL_STYLE_DEFAULTS = ResolvedCellStyle(
     italic=False,
     underline=False,
     strikethrough=False,
+    link=None,
 )
 
 
@@ -326,6 +373,7 @@ def resolve_cell_style(style: CellStyle, defaults: ResolvedCellStyle = CELL_STYL
         italic=or_default(style.italic, defaults.italic),
         underline=or_default(style.underline, defaults.underline),
         strikethrough=or_default(style.strikethrough, defaults.strikethrough),
+        link=or_default(style.link, defaults.link),
     )
 
 
@@ -617,7 +665,51 @@ LAYOUT_BORDER_FIELDS = frozenset({"border_top", "border_bottom", "border_left", 
 BORDER_WIDTHS = (waxy.Length(0), waxy.Length(1))
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ResolvedStyle:
+    """
+    The fields of a [`Style`][counterweight.styles.Style] other than `layout`, every one filled in,
+    as paint and the placement of scrolled boxes read them,
+    except `z`, which stays `None` when unset, because an element that sets no `z` forms no stacking context.
+    """
+
+    z: int | None
+    clip_to: ClipTo
+    overflow_anchor: OverflowAnchor
+    stick_to_end_x: bool
+    stick_to_end_y: bool
+    margin_color: Color
+    padding_color: Color
+    content_color: Color
+
+    border_kind: BorderKind | None
+    border_style: ResolvedCellStyle
+    border_contract: int
+
+    text_style: ResolvedCellStyle
+    text_justify: TextJustify
+    text_wrap: TextWrap
+
+
+STYLE_DEFAULTS = ResolvedStyle(
+    z=None,
+    clip_to="padding",
+    overflow_anchor="auto",
+    stick_to_end_x=False,
+    stick_to_end_y=False,
+    margin_color=_BLACK,
+    padding_color=_BLACK,
+    content_color=_BLACK,
+    border_kind=BorderKind.Light,
+    border_style=CELL_STYLE_DEFAULTS,
+    border_contract=0,
+    text_style=CELL_STYLE_DEFAULTS,
+    text_justify="left",
+    text_wrap="none",
+)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Style(StyleFragment):
     """
     How an element is laid out and drawn.
@@ -633,11 +725,32 @@ class Style(StyleFragment):
     A `border_kind` of `None` removes the border, along with the space reserved for it.
     Each side is one cell, so a `Style` whose `layout` sets a border width other than
     `Length(0)` or `Length(1)` raises `ValueError`.
+
+    `clip_to` chooses what clips the element.
+    With `"padding"`, the default, or `"border"`, it's its parent's padding or border box,
+    on each axis where the parent's overflow is `Hidden`, `Clip` or `Scroll`,
+    and every clip above the parent clips the element too;
+    `"border"` lets a title be drawn on its parent's border.
+    With `"screen"`, the element is unclipped: no ancestor clips it, so a popup can reach past them,
+    though its own overflow still clips its descendants.
+
+    `overflow_anchor` and `stick_to_end_x` and `stick_to_end_y` choose how a scroll container's offset follows
+    its content when the content changes.
+    With `overflow_anchor` `"auto"`, the default, a scroll container keeps the content in view where it was,
+    as CSS's [`overflow-anchor`](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-anchor) does;
+    with `"none"`, a scroll container keeps its offset, and nothing inside an element that sets it is
+    an anchor for the scroll container around it.
+    A scroll container that sticks to its end on an axis and is scrolled to its end there
+    stays scrolled to its end when its content grows.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)
 
     z: int | UNSET = UNSET
+    clip_to: ClipTo | UNSET = UNSET
+    overflow_anchor: OverflowAnchor | UNSET = UNSET
+    stick_to_end_x: bool | UNSET = UNSET
+    stick_to_end_y: bool | UNSET = UNSET
     margin_color: Color | UNSET = UNSET
     padding_color: Color | UNSET = UNSET
     content_color: Color | UNSET = UNSET
@@ -651,6 +764,11 @@ class Style(StyleFragment):
     text_wrap: TextWrap | UNSET = UNSET
 
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+    resolved: ResolvedStyle = field(init=False, repr=False, compare=False, hash=False)
+    """
+    This style's drawing fields, with the unset ones filled from `STYLE_DEFAULTS`,
+    resolved once when the style is built, since paint reads them for every element on every frame.
+    """
 
     def __post_init__(self) -> None:
         for name in sorted(self.layout.fields_set & LAYOUT_BORDER_FIELDS):
@@ -667,6 +785,10 @@ class Style(StyleFragment):
                 (
                     self.layout,
                     self.z,
+                    self.clip_to,
+                    self.overflow_anchor,
+                    self.stick_to_end_x,
+                    self.stick_to_end_y,
                     self.margin_color,
                     self.padding_color,
                     self.content_color,
@@ -679,9 +801,30 @@ class Style(StyleFragment):
                 )
             ),
         )
+        object.__setattr__(self, "resolved", self._resolve())
 
     def __hash__(self) -> int:
         return self._hash
+
+    def _resolve(self) -> ResolvedStyle:
+        """Fill this style's unset drawing fields from `STYLE_DEFAULTS`."""
+        defaults = STYLE_DEFAULTS
+        return ResolvedStyle(
+            z=or_default(self.z, defaults.z),
+            clip_to=or_default(self.clip_to, defaults.clip_to),
+            overflow_anchor=or_default(self.overflow_anchor, defaults.overflow_anchor),
+            stick_to_end_x=or_default(self.stick_to_end_x, defaults.stick_to_end_x),
+            stick_to_end_y=or_default(self.stick_to_end_y, defaults.stick_to_end_y),
+            margin_color=or_default(self.margin_color, defaults.margin_color),
+            padding_color=or_default(self.padding_color, defaults.padding_color),
+            content_color=or_default(self.content_color, defaults.content_color),
+            border_kind=or_default(self.border_kind, defaults.border_kind),
+            border_style=resolve_cell_style(self.border_style, defaults.border_style),
+            border_contract=or_default(self.border_contract, defaults.border_contract),
+            text_style=resolve_cell_style(self.text_style, defaults.text_style),
+            text_justify=or_default(self.text_justify, defaults.text_justify),
+            text_wrap=or_default(self.text_wrap, defaults.text_wrap),
+        )
 
 
 _EMPTY_STYLE = Style()
@@ -699,53 +842,3 @@ def merge(*styles: Style | None) -> Style:
     for style in styles:
         merged = merged | style
     return merged
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ResolvedStyle:
-    """The drawing fields of a [`Style`][counterweight.styles.Style], every one filled in, as paint reads them."""
-
-    z: int
-    margin_color: Color
-    padding_color: Color
-    content_color: Color
-
-    border_kind: BorderKind | None
-    border_style: ResolvedCellStyle
-    border_contract: int
-
-    text_style: ResolvedCellStyle
-    text_justify: TextJustify
-    text_wrap: TextWrap
-
-
-STYLE_DEFAULTS = ResolvedStyle(
-    z=0,
-    margin_color=_BLACK,
-    padding_color=_BLACK,
-    content_color=_BLACK,
-    border_kind=BorderKind.Light,
-    border_style=CELL_STYLE_DEFAULTS,
-    border_contract=0,
-    text_style=CELL_STYLE_DEFAULTS,
-    text_justify="left",
-    text_wrap="none",
-)
-
-
-@lru_cache(maxsize=2**12)
-def resolve_style(style: Style) -> ResolvedStyle:
-    """Fill `style`'s unset drawing fields from `STYLE_DEFAULTS`."""
-    defaults = STYLE_DEFAULTS
-    return ResolvedStyle(
-        z=or_default(style.z, defaults.z),
-        margin_color=or_default(style.margin_color, defaults.margin_color),
-        padding_color=or_default(style.padding_color, defaults.padding_color),
-        content_color=or_default(style.content_color, defaults.content_color),
-        border_kind=or_default(style.border_kind, defaults.border_kind),
-        border_style=resolve_cell_style(style.border_style, defaults.border_style),
-        border_contract=or_default(style.border_contract, defaults.border_contract),
-        text_style=resolve_cell_style(style.text_style, defaults.text_style),
-        text_justify=or_default(style.text_justify, defaults.text_justify),
-        text_wrap=or_default(style.text_wrap, defaults.text_wrap),
-    )

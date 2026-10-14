@@ -23,7 +23,7 @@ def canvas(
     width: int,
     height: int,
     cells: dict[tuple[int, int], Color],
-) -> list[Chunk]:
+) -> tuple[Chunk, ...]:
     c: list[Chunk] = []
     for y_top, y_bot in grouper(range(height), 2):
         c.extend(
@@ -37,42 +37,42 @@ def canvas(
             for x in range(width)
         )
         c.append(Chunk.newline())
-    return c[:-1]  # strip off last newline
+    return tuple(c[:-1])  # strip off last newline
 
 
 @component
 def root() -> Div:
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
-        children=[
+        children=(
             header(),
             Div(
                 style=col | center_children,
-                children=[
+                children=(
                     Div(
                         style=row | align_children_center | justify_children_space_evenly,
-                        children=[
+                        children=(
                             random_walkers(),
                             random_walkers(),
-                        ],
+                        ),
                     ),
                     Div(
                         style=row | align_children_center | justify_children_space_evenly,
-                        children=[
+                        children=(
                             random_walkers(),
                             random_walkers(),
-                        ],
+                        ),
                     ),
-                ],
+                ),
             ),
-        ],
+        ),
     )
 
 
 @component
 def header() -> Text:
     return Text(
-        content=[
+        content=(
             Chunk(
                 content="Canvas",
                 style=CellStyle(foreground=amber_600),
@@ -87,7 +87,7 @@ def header() -> Text:
                 content="App",
                 style=CellStyle(foreground=pink_600),
             ),
-        ],
+        ),
         style=text_justify_center,
     )
 

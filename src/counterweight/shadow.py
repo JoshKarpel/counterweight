@@ -7,6 +7,7 @@ from datetime import timedelta
 from itertools import chain
 
 from counterweight._context_vars import (
+    current_focused,
     current_hook_idx,
     current_hook_state,
     current_instant,
@@ -17,8 +18,9 @@ from counterweight.clock import BEGINNING, Instant
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
+from counterweight.focus import ElementHandle
 from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey
+from counterweight.hooks.impls import Hooks, InconsistentHookExecution, NodeKey, UseFocus
 from counterweight.layout import Layouts
 
 logger = logging.getLogger(__name__)
@@ -64,6 +66,8 @@ class ShadowTree:
     root: ShadowNode
     nodes: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
     """Every node, in pre-order."""
+    by_key: Mapping[NodeKey, ShadowNode] = field(init=False, repr=False, compare=False)
+    """Every node, by its key, in pre-order."""
     parents: Mapping[NodeKey, NodeKey | None] = field(init=False, repr=False, compare=False)
     """The key of each node's parent, by the node's key, with `None` for the root's."""
     measured: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
@@ -71,26 +75,50 @@ class ShadowTree:
     The nodes whose last run called `use_rects`.
     A node's `rects` change only when it runs, which only happens while building the next tree.
     """
+    scroll_readers: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
+    """The nodes whose last run called `use_scroll`, which the render loop re-renders when their scroll changes."""
+    handled: Mapping[ElementHandle, NodeKey] = field(init=False, repr=False, compare=False)
+    """The key of each element given a `handle`, hidden ones included, by its handle."""
+    focusable: Mapping[NodeKey, UseFocus] = field(init=False, repr=False, compare=False)
+    """The `use_focus` hook of each node whose last run called `use_focus`, hidden ones included, in pre-order."""
     clocked: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
     """The nodes that call `use_clock`, which a node does on every run if it does on any."""
 
     def __post_init__(self) -> None:
-        nodes = []
+        by_key: dict[NodeKey, ShadowNode] = {}
         parents: dict[NodeKey, NodeKey | None] = {self.root.key: None}
         measured = []
+        scroll_readers = []
+        handled: dict[ElementHandle, NodeKey] = {}
+        focusable = {}
         clocked = []
         for node in self.root.walk():
-            nodes.append(node)
+            by_key[node.key] = node
             for child in node.children:
                 parents[child.key] = node.key
             if node.hooks.rects is not None:
                 measured.append(node)
+            if node.hooks.scrolls is not None:
+                scroll_readers.append(node)
+            if (handle := node.element.handle) is not None:
+                if handle in handled:
+                    raise DuplicateElementHandle(
+                        f"Two mounted elements were given the same handle, {handle!r}. "
+                        "Give each element its own, such as from its own use_state(ElementHandle)."
+                    )
+                handled[handle] = node.key
+            if node.hooks.focus is not None:
+                focusable[node.key] = node.hooks.focus
             if node.hooks.clocks:
                 clocked.append(node)
 
-        object.__setattr__(self, "nodes", tuple(nodes))
+        object.__setattr__(self, "nodes", tuple(by_key.values()))
+        object.__setattr__(self, "by_key", by_key)
         object.__setattr__(self, "parents", parents)
         object.__setattr__(self, "measured", tuple(measured))
+        object.__setattr__(self, "scroll_readers", tuple(scroll_readers))
+        object.__setattr__(self, "handled", handled)
+        object.__setattr__(self, "focusable", focusable)
         object.__setattr__(self, "clocked", tuple(clocked))
 
 
@@ -98,12 +126,33 @@ class ShadowTree:
 class ShadowUpdate:
     """
     One frame's shadow tree, with the hooks of the components that ran to build it
-    and of every previous node it unmounted, so effects can follow exactly the renders that happened.
+    and of every previous node it unmounted, so effects can follow exactly the renders that happened,
+    and the keys of the components it mounted, which `auto_focus` reads.
     """
 
     tree: ShadowTree
     ran: tuple[Hooks, ...]
     unmounted: tuple[Hooks, ...]
+    mounted: frozenset[NodeKey]
+
+    def followed_by(self, later: ShadowUpdate) -> ShadowUpdate:
+        """
+        One update for this one and a `later` one built from its tree before any effects ran,
+        so a node that ran in both runs its effects once,
+        and one that mounted here but `later` unmounted counts as neither ran nor mounted.
+        """
+        unmounted_later = {hooks.key for hooks in later.unmounted}
+        ran = {hooks.key: hooks for hooks in chain(self.ran, later.ran) if hooks.key not in unmounted_later}
+        return ShadowUpdate(
+            tree=later.tree,
+            ran=tuple(ran.values()),
+            unmounted=self.unmounted + later.unmounted,
+            mounted=(self.mounted | later.mounted) - unmounted_later,
+        )
+
+
+class DuplicateElementHandle(Exception):
+    """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
 
 
 class DuplicateKey(Exception):
@@ -170,12 +219,14 @@ class Reconciliation:
     """What one `update_shadow` call reads, and the hooks it collects as it goes."""
 
     layouts: Layouts
+    focused: NodeKey | None
     instant: Instant
     dirty_nodes: frozenset[NodeKey]
     paths: frozenset[NodeKey]
     check_purity: bool
     ran: list[Hooks] = field(default_factory=list)
     unmounted: list[Hooks] = field(default_factory=list)
+    mounted: list[NodeKey] = field(default_factory=list)
 
 
 def update_shadow(
@@ -184,6 +235,7 @@ def update_shadow(
     layouts: Layouts,
     dirty: frozenset[NodeKey] = frozenset(),
     check_purity: bool = False,
+    focused: NodeKey | None = None,
     instant: Instant = BEGINNING,
 ) -> ShadowUpdate:
     """
@@ -193,7 +245,8 @@ def update_shadow(
     unless it's a `memo` component equal to its previous one (see `continues`).
     A component that doesn't re-run keeps its previous node, whole subtree included,
     unless a dirty node is below it, in which case its children are reconciled again to reach it.
-    `layouts` are the previous frame's, which `use_rects` reads.
+    `layouts` are the previous frame's, which `use_rects` reads, and `focused` is the focused node's key,
+    which `use_focus` reads.
     `instant` is this frame's, which `use_clock` reads, with its monotonic time measured from the app's start.
     With `check_purity`, the tree is then built again with every component re-run (see `check_is_pure`).
     """
@@ -201,14 +254,19 @@ def update_shadow(
         (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts, instant)
     )
     reconciliation = Reconciliation(
-        layouts=layouts, instant=instant, dirty_nodes=dirty_nodes, paths=paths, check_purity=False
+        layouts=layouts, focused=focused, instant=instant, dirty_nodes=dirty_nodes, paths=paths, check_purity=False
     )
     tree = ShadowTree(root=update_node(next, None if previous is None else previous.root, reconciliation))
 
     if check_purity:
-        check_is_pure(next, tree, layouts, instant)
+        check_is_pure(next, tree, layouts, focused, instant)
 
-    return ShadowUpdate(tree=tree, ran=tuple(reconciliation.ran), unmounted=tuple(reconciliation.unmounted))
+    return ShadowUpdate(
+        tree=tree,
+        ran=tuple(reconciliation.ran),
+        unmounted=tuple(reconciliation.unmounted),
+        mounted=frozenset(reconciliation.mounted),
+    )
 
 
 def update_node(
@@ -262,6 +320,7 @@ def update_node(
             hook_state = Hooks()
             element, _ = call_component(next_component, hook_state, reconciliation)
             reconciliation.ran.append(hook_state)
+            reconciliation.mounted.append(hook_state.key)
 
             new = ShadowNode(
                 component=next_component,
@@ -291,9 +350,9 @@ def update_node(
                 children=reconcile_children(element.children, (), reconciliation),
                 hooks=Hooks(),
             )
-        case _:
+        case _:  # pragma: no cover
             # Not assert_never: mypy narrows this tuple match unsoundly to tuple[Never, Never], even with an arm missing.
-            raise Exception("Unreachable!")
+            raise Exception("Unreachable!")  # pragma: no mutate
 
     # A previous node is continued exactly when its hooks carry over.
     if previous is not None and new.hooks is not previous.hooks:
@@ -311,39 +370,41 @@ def continues(next: Component, previous: Component) -> bool:
     return next is previous or (next.memo and next == previous)
 
 
-def check_is_pure(next: Component | AnyElement, tree: ShadowTree, layouts: Layouts, instant: Instant) -> None:
+def check_is_pure(
+    next: Component | AnyElement, tree: ShadowTree, layouts: Layouts, focused: NodeKey | None, instant: Instant
+) -> None:
     """
     Builds `tree` again from `next`, re-running every component against a `ShadowNode.detached` copy of it,
-    and raises `ImpureComponent` naming the component that owns the first node whose element isn't `equivalent`.
-    A node is compared only once all its ancestors matched, so the component named is where the difference starts.
+    and raises `ImpureComponent` naming the first component whose element isn't `equivalent`.
+    A component is compared only once all its ancestors matched, so the one named is where the difference starts.
+    Only components are compared: an element that isn't a component's is part of its parent's element,
+    or is `next` itself, which both runs share.
     Re-running also checks each component's hook count (see `update_node`),
     and each `use_memo` that keeps its cached value (see `Hooks.use_memo`).
     """
     every_key = frozenset(tree.parents)
     reconciliation = Reconciliation(
-        layouts=layouts, instant=instant, dirty_nodes=every_key, paths=every_key, check_purity=True
+        layouts=layouts, focused=focused, instant=instant, dirty_nodes=every_key, paths=every_key, check_purity=True
     )
     rerun = update_node(next, tree.root.detached(), reconciliation)
 
-    pairs: list[tuple[ShadowNode, ShadowNode, Component | None]] = [(tree.root, rerun, tree.root.component)]
+    pairs = [(tree.root, rerun)]
     while pairs:
-        kept, again, owner = pairs.pop()
-        owner = kept.component if kept.component is not None else owner
-        if not equivalent(kept.element, again.element):
-            name = "The root element" if owner is None else owner.func.__qualname__
+        kept, again = pairs.pop()
+        if kept.component is not None and not equivalent(kept.element, again.element):
             raise ImpureComponent(
-                f"{name} returned a different element when every component was run again "
+                f"{kept.component.func.__qualname__} returned a different element when every component was run again "
                 "with the same arguments and hooks, so its output depends on something else, "
                 "such as a module-level value or the time. "
                 "A component must depend only on its arguments and its hooks."
             )
-        pairs.extend((k, a, owner) for k, a in reversed(tuple(zip(kept.children, again.children, strict=True))))
+        pairs.extend(reversed(tuple(zip(kept.children, again.children, strict=True))))
 
 
 def call_component(component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:
     """
     Calls a component function with `hooks` as the current hook state,
-    and the previous frame's layouts and this frame's instant from `reconciliation`,
+    and the previous frame's layouts, the focused key, and this frame's instant from `reconciliation`,
     restoring the outer hook context even if it raises.
     With `check_purity`, each `use_memo` that keeps its cached value also checks it (see `Hooks.use_memo`).
     Returns the element and how many hooks it called.
@@ -351,10 +412,15 @@ def call_component(component: Component, hooks: Hooks, reconciliation: Reconcili
     reset_current_hook_idx = current_hook_idx.set(0)
     reset_current_hook_state = current_hook_state.set(hooks)
     reset_current_layouts = current_layouts.set(reconciliation.layouts)
+    reset_current_focused = current_focused.set(reconciliation.focused)
     reset_current_instant = current_instant.set(reconciliation.instant)
     reset_current_purity_checked = current_purity_checked.set(component if reconciliation.check_purity else None)
-    # use_rects isn't positional, so a run that stops calling it must stop the node re-running when its layout moves.
+    # use_rects and use_scroll aren't positional, so a run that stops calling one must stop the node re-running
+    # when what it reports changes.
     hooks.rects = None
+    hooks.scrolls = None
+    # use_focus raises when it's called twice in one run, which it tells by this being set.
+    hooks.focus = None
     try:
         element = component.func(*component.args, **component.kwargs)
         return element, current_hook_idx.get()
@@ -362,6 +428,7 @@ def call_component(component: Component, hooks: Hooks, reconciliation: Reconcili
         current_hook_idx.reset(reset_current_hook_idx)
         current_hook_state.reset(reset_current_hook_state)
         current_layouts.reset(reset_current_layouts)
+        current_focused.reset(reset_current_focused)
         current_instant.reset(reset_current_instant)
         current_purity_checked.reset(reset_current_purity_checked)
 

@@ -3,6 +3,8 @@
 Counterweight uses "hooks",
 inspired by [React hooks](https://react.dev/reference/react/hooks),
 to manage state and side effects in components.
+The [headless components](../headless/index.md), such as `use_text_input`,
+are hooks too, built on these, that give a component a common control's behavior.
 
 A component MUST call the same hooks in the same order on every render,
 because each hook finds its state by its position in that order.
@@ -41,7 +43,7 @@ def advanced_settings() -> Text:
 
 @component
 def settings(is_advanced: bool) -> Div:
-    return Div(children=[advanced_settings()] if is_advanced else [])
+    return Div(children=(advanced_settings(),) if is_advanced else ())
 ```
 
 Showing `advanced_settings` mounts it with fresh state, and hiding it unmounts it,

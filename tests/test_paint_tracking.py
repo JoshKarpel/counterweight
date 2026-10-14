@@ -20,7 +20,7 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
-from counterweight.events import KeyPressed, TerminalResized
+from counterweight.events import InputEvent, KeyPressed, Receiver, TerminalResized
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import col, size
 
@@ -63,7 +63,7 @@ async def _two_frames(root: Component, dimensions: tuple[int, int]) -> tuple[str
 async def test_initial_render_shows_text() -> None:
     @component
     def root() -> Div:
-        return Div(children=[Text(content="Hello")])
+        return Div(children=(Text(content="Hello"),))
 
     assert await _render(root(), (10, 1)) == "Hello     "
 
@@ -83,7 +83,7 @@ async def test_initial_render_uncovered_rows_are_spaces() -> None:
     def root() -> Div:
         return Div(
             style=size(5, 1),
-            children=[Text(content="Hello")],
+            children=(Text(content="Hello"),),
         )
 
     assert await _render(root(), (5, 3)) == "\n".join(["Hello", "     ", "     "])
@@ -114,7 +114,7 @@ async def test_ansi_uncovered_area_has_explicit_black_background() -> None:
 
     @component
     def root() -> Div:
-        return Div(style=size(1, 1), children=[Text(content="X")])
+        return Div(style=size(1, 1), children=(Text(content="X"),))
 
     capture = io.StringIO()
     await app(
@@ -160,10 +160,10 @@ async def test_initial_render_multiline() -> None:
     def root() -> Div:
         return Div(
             style=col | size(6, 2),
-            children=[
+            children=(
                 Text(content="Hello"),
                 Text(content="World"),
-            ],
+            ),
         )
 
     assert await _render(root(), (6, 2)) == "\n".join(["Hello ", "World "])
@@ -179,10 +179,10 @@ async def test_replacement_new_text_appears() -> None:
     def root() -> Div:
         text, set_text = use_state("Hello")
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_text("World")
 
-        return Div(on_key=on_key, children=[Text(content=text)])
+        return Div(on_input=on_input, children=(Text(content=text),))
 
     before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
@@ -196,10 +196,10 @@ async def test_replacement_shorter_text_pads_with_spaces() -> None:
     def root() -> Div:
         text, set_text = use_state("Hello")
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_text("Hi")
 
-        return Div(on_key=on_key, children=[Text(content=text)])
+        return Div(on_input=on_input, children=(Text(content=text),))
 
     before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
@@ -211,10 +211,10 @@ async def test_replacement_longer_text_fills_space() -> None:
     def root() -> Div:
         text, set_text = use_state("Hi")
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_text("Hello")
 
-        return Div(on_key=on_key, children=[Text(content=text)])
+        return Div(on_input=on_input, children=(Text(content=text),))
 
     before, after = await _two_frames(root(), (10, 1))
     assert before == "Hi        "
@@ -231,11 +231,11 @@ async def test_removal_positions_become_spaces() -> None:
     def root() -> Div:
         visible, set_visible = use_state(True)
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_visible(False)
 
-        children = [Text(content="Hello")] if visible else []
-        return Div(on_key=on_key, children=children)
+        children = (Text(content="Hello"),) if visible else ()
+        return Div(on_input=on_input, children=children)
 
     before, after = await _two_frames(root(), (10, 1))
     assert before == "Hello     "
@@ -247,13 +247,11 @@ async def test_removal_of_second_row_becomes_spaces() -> None:
     def root() -> Div:
         two_lines, set_two_lines = use_state(True)
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_two_lines(False)
 
-        children: list[Text] = [Text(content="Line 1")]
-        if two_lines:
-            children.append(Text(content="Line 2"))
-        return Div(style=col | size(6, 2), on_key=on_key, children=children)
+        children = (Text(content="Line 1"), Text(content="Line 2")) if two_lines else (Text(content="Line 1"),)
+        return Div(style=col | size(6, 2), on_input=on_input, children=children)
 
     before, after = await _two_frames(root(), (6, 2))
     assert before == "\n".join(["Line 1", "Line 2"])
@@ -270,11 +268,11 @@ async def test_addition_positions_fill_in() -> None:
     def root() -> Div:
         visible, set_visible = use_state(False)
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_visible(True)
 
-        children = [Text(content="Hello")] if visible else []
-        return Div(on_key=on_key, children=children)
+        children = (Text(content="Hello"),) if visible else ()
+        return Div(on_input=on_input, children=children)
 
     before, after = await _two_frames(root(), (10, 1))
     assert before == "          "
@@ -286,13 +284,11 @@ async def test_addition_of_second_row_fills_in() -> None:
     def root() -> Div:
         two_lines, set_two_lines = use_state(False)
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_two_lines(True)
 
-        children: list[Text] = [Text(content="Line 1")]
-        if two_lines:
-            children.append(Text(content="Line 2"))
-        return Div(style=col | size(6, 2), on_key=on_key, children=children)
+        children = (Text(content="Line 1"), Text(content="Line 2")) if two_lines else (Text(content="Line 1"),)
+        return Div(style=col | size(6, 2), on_input=on_input, children=children)
 
     before, after = await _two_frames(root(), (6, 2))
     assert before == "\n".join(["Line 1", "      "])
@@ -309,7 +305,7 @@ async def test_resize_rerenders_content_correctly() -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[Text(content="Hello")])
+        return Div(children=(Text(content="Hello"),))
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
@@ -333,7 +329,7 @@ async def test_resize_with_new_dimensions() -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[Text(content="Hi")])
+        return Div(children=(Text(content="Hi"),))
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
@@ -357,7 +353,7 @@ async def test_resize_to_larger_new_area_is_spaces() -> None:
 
     @component
     def root() -> Div:
-        return Div(children=[Text(content="Hi")])
+        return Div(children=(Text(content="Hi"),))
 
     c1, c2 = io.StringIO(), io.StringIO()
     await app(
@@ -383,7 +379,7 @@ async def test_resize_to_smaller_no_stale_rows() -> None:
     def root() -> Div:
         return Div(
             style=col | size(5, 3),
-            children=[Text(content="L1"), Text(content="L2"), Text(content="L3")],
+            children=(Text(content="L1"), Text(content="L2"), Text(content="L3")),
         )
 
     c1, c2 = io.StringIO(), io.StringIO()
@@ -410,10 +406,10 @@ async def test_resize_clears_stale_content() -> None:
     def root() -> Div:
         text, set_text = use_state("Hello")
 
-        def on_key(event: KeyPressed) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> None:
             set_text("Hi")
 
-        return Div(on_key=on_key, children=[Text(content=text)])
+        return Div(on_input=on_input, children=(Text(content=text),))
 
     c1, c2, c3 = io.StringIO(), io.StringIO(), io.StringIO()
     await app(

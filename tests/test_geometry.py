@@ -89,3 +89,25 @@ def test_contains_includes_left_and_top_edges_but_not_right_and_bottom(position:
 def test_intersection(other: Region, expected: Region | None) -> None:
     assert REGION.intersection(other) == expected
     assert other.intersection(REGION) == expected
+
+
+def test_adding_positions_adds_each_coordinate() -> None:
+    assert Position(x=3, y=5) + Position(x=11, y=17) == Position(x=14, y=22)
+
+
+def test_subtracting_positions_subtracts_each_coordinate() -> None:
+    assert Position(x=3, y=5) - Position(x=11, y=17) == Position(x=-8, y=-12)
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [
+        (Position(x=2, y=7), Position(x=4, y=8)),
+        (Position(x=4, y=8), Position(x=2, y=7)),
+    ],
+)
+def test_fill_to_covers_the_rectangle_between_corners_column_by_column(start: Position, end: Position) -> None:
+    xs = (2, 3, 4) if start.x < end.x else (4, 3, 2)
+    ys = (7, 8) if start.y < end.y else (8, 7)
+
+    assert list(start.fill_to(end)) == [Position(x=x, y=y) for x in xs for y in ys]

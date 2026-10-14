@@ -9,6 +9,7 @@ from asyncio import Queue
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 import pytest
 
@@ -16,14 +17,16 @@ from counterweight.app import app
 from counterweight.components import Component, component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement, Div, Text
-from counterweight.events import AnyEvent, KeyPressed
+from counterweight.events import AnyEvent, InputEvent, InputHandler, KeyPressed, Receiver
+from counterweight.focus import Subtree
 from counterweight.hooks import Setter, use_memo, use_ref, use_state
 from counterweight.hooks.impls import InconsistentHookExecution, StaleMemo, UseState
 from counterweight.keys import Key
-from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import INITIAL_RECTS, NO_LAYOUTS
 from counterweight.shadow import ImpureComponent, ShadowNode, ShadowTree, ShadowUpdate, update_shadow
 from docs.examples import performance_process_table, performance_state_in_root, performance_state_moved_down
 from docs.examples.performance_process_table import PROCESSES, Process, process_row, process_table
+from tests.devlog import devlog_lines
 from tests.rendering import state_set_keys, state_sets
 
 
@@ -74,17 +77,24 @@ def setter_of(node: ShadowNode) -> Setter[object]:
 
 
 def content(node: ShadowNode) -> object:
-    match node.element:
-        case Text(content=content):
-            return content
-        case _:
-            return None
+    assert isinstance(node.element, Text)
+    return node.element.content
 
 
 def press(node: ShadowNode, key: str) -> None:
-    on_key = node.element.on_key
-    assert on_key is not None
-    on_key(KeyPressed(key=key))
+    on_input = node.element.on_input
+    assert on_input is not None
+    on_input(
+        KeyPressed(key=key),
+        Receiver(
+            rects=INITIAL_RECTS,
+            is_target=True,
+            focus_handle=None,
+            is_focused=False,
+            subtree=Subtree(key=node.key),
+            scroll=None,
+        ),
+    )
 
 
 # Which components run in a frame?
@@ -146,13 +156,13 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
     by_cpu = use_memo(lambda: sorted(processes, key=lambda process: process.cpu, reverse=True), deps=(processes,))
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
         pids = [process.pid for process in by_cpu]
         set_selected_pid(pids[min(pids.index(selected_pid) + 1, len(pids) - 1)])
 
     return Div(
-        on_key=on_key,
-        children=[
+        on_input=on_input,
+        children=tuple(
             # The wrapping lambda is the mistake under test: a new object every render.
             process_row(
                 process,
@@ -160,7 +170,7 @@ def process_table_with_inline_handler(processes: tuple[Process, ...]) -> Div:
                 lambda pid: set_selected_pid(pid),  # noqa: PLW0108
             ).with_key(str(process.pid))
             for process in by_cpu
-        ],
+        ),
     )
 
 
@@ -178,7 +188,7 @@ def unkeyed_process_table(processes: tuple[Process, ...]) -> Div:
     selected_pid, set_selected_pid = use_state(by_cpu[0].pid)
 
     return Div(
-        children=[process_row(process, process.pid == selected_pid, set_selected_pid) for process in by_cpu],
+        children=tuple(process_row(process, process.pid == selected_pid, set_selected_pid) for process in by_cpu),
     )
 
 
@@ -200,11 +210,12 @@ def key_log_mutating() -> Div:
     keys = use_ref(list[str]())
     count, set_count = use_state(0)
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        assert isinstance(event, KeyPressed)
         keys.current.append(event.key)
         set_count(count + 1)
 
-    return Div(on_key=on_key, children=[key_list(keys.current)])
+    return Div(on_input=on_input, children=(key_list(keys.current),))
 
 
 @component(memo=True)
@@ -216,10 +227,11 @@ def key_tuple(keys: tuple[str, ...]) -> Text:
 def key_log_with_tuple() -> Div:
     keys, set_keys = use_state(tuple[str, ...]())
 
-    def on_key(event: KeyPressed) -> None:
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        assert isinstance(event, KeyPressed)
         set_keys((*keys, event.key))
 
-    return Div(on_key=on_key, children=[key_tuple(keys)])
+    return Div(on_input=on_input, children=(key_tuple(keys),))
 
 
 @pytest.mark.parametrize("check_purity", [False, True], ids=["stale", "check-purity"])
@@ -260,7 +272,7 @@ def title_with_accent(text: str, accent: str) -> Text:
 def page(use_argument: bool) -> Div:
     count, set_count = use_state(0)
     child = title_with_accent("Processes", SETTINGS["accent"]) if use_argument else title("Processes")
-    return Div(on_key=lambda _: set_count(count + 1), children=[child, Text(content=str(count))])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=(child, Text(content=str(count))))
 
 
 @pytest.mark.parametrize(("use_argument", "is_stale"), [(False, True), (True, False)], ids=["hidden", "argument"])
@@ -292,7 +304,7 @@ class Line:
         return isinstance(other, Line) and self.text == other.text
 
     def __hash__(self) -> int:
-        return hash(self.text)
+        return hash(self.text)  # pragma: never runs
 
 
 @component(memo=True)
@@ -308,7 +320,7 @@ def log_view(lines: tuple[str, ...], comparisons: list[str], keep: bool) -> Div:
         return tuple(Line(text=line.upper(), comparisons=comparisons) for line in lines)
 
     argument = use_memo(upper, deps=(lines,)) if keep else upper()
-    return Div(on_key=lambda _: set_count(count + 1), children=[line_list(argument)])
+    return Div(on_input=lambda event, _: set_count(count + 1), children=(line_list(argument),))
 
 
 @pytest.mark.parametrize(("keep", "expected"), [(False, 3), (True, 0)], ids=["rebuilt", "kept"])
@@ -358,15 +370,15 @@ def test_a_dependency_missing_from_use_memo_keeps_its_value_stale(
 @component
 def counter_capturing() -> Text:
     count, set_count = use_state(0)
-    on_key = use_memo(lambda: lambda _: set_count(count + 1), deps=())
-    return Text(content=str(count), on_key=on_key)
+    on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
+    return Text(content=str(count), on_input=on_input)
 
 
 @component
 def counter() -> Text:
     count, set_count = use_state(0)
-    on_key = use_memo(lambda: lambda _: set_count(lambda count: count + 1), deps=())
-    return Text(content=str(count), on_key=on_key)
+    on_input = use_memo(lambda: lambda event, _: set_count(lambda count: count + 1), deps=())
+    return Text(content=str(count), on_input=on_input)
 
 
 def test_a_cached_handler_that_captured_state_keeps_acting_on_it() -> None:
@@ -402,18 +414,23 @@ def test_a_cached_handler_with_a_functional_update_counts_every_press() -> None:
 
 @component
 def search(on_submit: Callable[[str], None], log: list[str]) -> Text:
-    def submit() -> Callable[[KeyPressed], None]:
+    def submit() -> InputHandler:
         log.append("compute")
-        return lambda event: on_submit(event.key)
 
-    return Text(content="", on_key=use_memo(submit, deps=(on_submit,)))
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            assert isinstance(event, KeyPressed)
+            on_submit(event.key)
+
+        return on_input
+
+    return Text(content="", on_input=use_memo(submit, deps=(on_submit,)))
 
 
 @component
 def search_page(log: list[str], inline: bool) -> Div:
     query, set_query = use_state("")
     on_submit = (lambda text: set_query(text)) if inline else set_query  # noqa: PLW0108
-    return Div(children=[search(on_submit, log), Text(content=query)])
+    return Div(children=(search(on_submit, log), Text(content=query)))
 
 
 @pytest.mark.parametrize(("inline", "expected"), [(True, 3), (False, 1)], ids=["inline", "setter"])
@@ -432,7 +449,7 @@ def test_a_dependency_built_every_render_recomputes_every_render(inline: bool, e
 @component
 def process_labels(processes: tuple[Process, ...]) -> Div:
     labels = [use_memo(lambda: f"{process.name} ({process.pid})", deps=(process,)) for process in processes]
-    return Div(children=[Text(content=label) for label in labels])
+    return Div(children=tuple(Text(content=label) for label in labels))
 
 
 def test_use_memo_in_a_loop_raises_when_the_loop_length_changes() -> None:
@@ -454,3 +471,25 @@ async def test_process_table_is_pure() -> None:
         autopilot=[KeyPressed(key=Key.Down), KeyPressed(key=Key.Down), KeyPressed(key=Key.Up), Quit()],
         check_purity=True,
     )
+
+
+def documented_devlog_frame() -> list[str]:
+    """The devlog lines the guide shows for one frame, without their timestamps."""
+    page = (Path(__file__).parent.parent / "docs" / "performance.md").read_text()
+    block = page.split("### The devlog", 1)[1].split("```text\n", 1)[1].split("```", 1)[0]
+    return [line.split(" ", 1)[1] for line in block.splitlines()]
+
+
+async def test_the_devlog_logs_the_frame_the_guide_shows_for_the_process_table() -> None:
+    with devlog_lines() as lines:
+        await app(
+            performance_process_table.root(),
+            headless=True,
+            dimensions=(32, 7),
+            autopilot=[KeyPressed(key=Key.Down), Quit()],
+        )
+
+    documented = documented_devlog_frame()
+    frames_start = [i for i, line in enumerate(lines) if "Updated shadow tree" in line]
+    assert documented
+    assert lines[frames_start[1] : frames_start[1] + len(documented)] == documented

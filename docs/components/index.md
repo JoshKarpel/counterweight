@@ -44,7 +44,7 @@ Here each row of a to-do list holds its own checkmark:
 ```python
 from counterweight.components import component
 from counterweight.elements import Div, Text
-from counterweight.events import MouseEvent, MouseUp
+from counterweight.handlers import on_click
 from counterweight.hooks import use_state
 
 
@@ -52,17 +52,12 @@ from counterweight.hooks import use_state
 def todo_row(title: str) -> Text:
     done, set_done = use_state(False)
 
-    def on_mouse(event: MouseEvent) -> None:
-        match event:
-            case MouseUp(button=1):
-                set_done(not done)
-
-    return Text(content=f"[{'x' if done else ' '}] {title}", on_mouse=on_mouse)
+    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_click(lambda: set_done(not done)))
 
 
 @component
 def todo_list(titles: list[str]) -> Div:
-    return Div(children=[todo_row(title) for title in titles])
+    return Div(children=tuple(todo_row(title) for title in titles))
 ```
 
 Check off `a`, then remove it from `titles`:
@@ -84,7 +79,7 @@ Key each row by the item it shows, and the state follows the item instead:
 ```python
 @component
 def todo_list(titles: list[str]) -> Div:
-    return Div(children=[todo_row(title).with_key(title) for title in titles])
+    return Div(children=tuple(todo_row(title).with_key(title) for title in titles))
 ```
 
 ```text
@@ -101,7 +96,7 @@ The same shift happens without any list,
 when a child conditionally appears in front of a component:
 
 ```python
-Div(children=[*([Text(content="Saved!")] if saved else []), editor()])
+Div(children=(Text(content="Saved!"), editor()) if saved else (editor(),))
 ```
 
 When `saved` becomes true, `editor` moves from index 0 to index 1,
@@ -110,7 +105,7 @@ Either key it (`editor().with_key("editor")`),
 or keep its position fixed by always rendering the slot in front of it:
 
 ```python
-Div(children=[Text(content="Saved!" if saved else ""), editor()])
+Div(children=(Text(content="Saved!" if saved else ""), editor()))
 ```
 
 ### Choosing a key
