@@ -144,6 +144,9 @@ nav:
     - styles/index.md
     - styles/text-wrapping.md
     - styles/utilities.md
+  - Terminals:
+    - terminals/commands.md
+    - terminals/emulators.md
   - Rich Text:
     - rich-text/hyperlinks.md
     - rich-text/syntax-highlighting.md

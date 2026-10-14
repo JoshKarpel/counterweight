@@ -887,18 +887,7 @@ A program that exits with a failing status is a result like any other, not an er
 ### The run
 
 ```python
-@dataclass(frozen=True, slots=True)
-class Running: ...
-
-
-@dataclass(frozen=True, slots=True)
-class Exited:
-    status: int  # negative for a signal, as asyncio reports it
-
-
-@dataclass(frozen=True, slots=True)
-class FailedToStart:
-    reason: str  # the OSError's message, such as "No such file or directory"
+# Starting, Running, Exited and FailedToStart are phase 3's, re-exported from counterweight.commands.
 
 
 @dataclass(frozen=True, slots=True)
@@ -909,7 +898,7 @@ class Cancelled: ...
 class TimedOut: ...
 
 
-type Outcome = Running | Exited | FailedToStart | Cancelled | TimedOut
+type Outcome = Starting | Running | Exited | FailedToStart | Cancelled | TimedOut
 
 
 @dataclass(frozen=True, slots=True)
@@ -929,12 +918,22 @@ class Command:
 def use_command(
     columns: int,
     rows: int = 24,
-    env: Mapping[str, str] | None = None,
+    env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
     timeout: timedelta | None = None,
     max_lines: int = 10_000,
+    hangup_grace: timedelta = timedelta(seconds=1),
 ) -> Command: ...
+
+
+@component
+def command_output(run: CommandRun | None, viewport: ElementHandle, style: Style = default, ...) -> Div: ...
 ```
+
+A run is `Starting` from the moment `run` is called until its program spawns,
+which covers waiting for a width, so the UI shows the new run at once.
+`command_output` lives in `counterweight.commands` beside the hook, as `markdown_document` lives in `counterweight.markdown`,
+so `counterweight.widgets` doesn't import the `emulator` extra.
 
 A finished run is a value that outlives its program,
 so a component can keep it in state, show it again, or show it beside the next run.
@@ -957,6 +956,9 @@ so `use_rects(viewport)` measures the box the transcript fills (see [Measuring t
 
 - **`run` records a request in state, and an effect keyed on the request runs it.**
   Cancelling, starting another run, and unmounting all end that effect, which hangs the program up.
+  A request is compared by identity, so running the same `argv` again starts another run.
+  The effect sets state through an updater that applies only while its request is still the current one,
+  so a snapshot that lands after a cancel or a new `run` can't overwrite it.
 - **Cancelling is a key the app binds**, such as Escape.
   Until phase 5's raw input mode, Ctrl+C quits the whole app,
   and it never reaches the program, which runs in its own session.
@@ -1013,7 +1015,13 @@ It follows `use_scroll(handle)` in the details too:
 - A handle that named no visible element in the previous render reports the initial rects (all zero),
   so a run requested before the widget mounts waits for its width, as it does on the first render.
 - The caller records the rects it read per handle, as `use_scroll` records scrolls,
-  and renders again when any of them move.
+  and renders again as soon as any of them move, as a `ResizeObserver` reports a resize.
+  `use_rects()` used to render again only once something else started a render,
+  so a component that mounted after the first frame read zero rects until then,
+  and a slide shown by a key press would never have started its run.
+  The render loop now queues a render for every node whose `use_rects` or `use_scroll` reads went stale (`stale_readers`).
+  The cost is that a component that grows whenever it reads its own size renders without end, as one can with a `ResizeObserver`;
+  the docs say so.
 - The handle comes from `use_state(ElementHandle)`, and the widget passes it on to its `scroll_area` as `viewport`.
 
 Without it, the slide example would measure the right box only when the widget was all that the calling component rendered.
@@ -1046,8 +1054,35 @@ The embed in phase 6 feeds its emulator the same way.
   So the emulator keeps at least `max_lines` rows of scrollback.
   Anything that scrolls off it before a snapshot is then older than the last `max_lines` rows,
   which the transcript would have dropped anyway, so no gap opens in its middle.
+- **Reading what scrolled off.**
+  `Emulator(scrollback=n)` keeps `n` rows of scrollback, and `scrolled_off()` returns the rows that scrolled off
+  the screen since its last call, each once, as they were when they scrolled off (at most the newest `n`).
+  Three things the probes found shape it:
+  - **Overscan costs time per row captured.**
+    Capturing 10,000 rows above a 120-column screen took about 5 ms to update and 12 to 19 ms to iterate,
+    every snapshot, against microseconds for 100.
+    So each update asks for as many rows as the screen has (or as the last update needed, rounded up to the screen's rows times a power of two),
+    and doubles the request until the newest row it already set aside, found by id, is among them,
+    or the top of the scrollback is, or it's asking for all `n`.
+    The work then follows how much scrolled, and never exceeds `n` rows.
+  - **One render state, not two.**
+    An update takes the terminal's dirty rows, so a second render state for the scrollback hid every change
+    from the screen's snapshot after it.
+    The screen and the rows above it come from the same render state:
+    every update sets the rows that scrolled off aside, `scrolled_off()` hands them over,
+    and `snapshot()` converts only the screen's rows.
+    A second update before a `clean` keeps the first's dirty flags, so updating twice is safe,
+    but changing the overscan request marks every row dirty, which is why the request changes only when the output's rate does.
+  - **libghostty prunes scrollback a page at a time**, so it can keep a page fewer rows than its line limit:
+    5 of 1,000 at 20 columns, where a page holds about 2,200 rows.
+    A page holds about 46,000 cells, so the emulator's line limit is `n` plus `ceil(65,536 / columns)`,
+    which kept at least `n` rows at every width from 1 to 1,000 columns, and a test holds it to that at three widths.
+  `n` is at most 65,535 (`MAX_SCROLLBACK`), the most rows overscan captures at once.
 - **The transcript is a painter with a natural size**, `(columns, lines)`,
   so it sizes its `Canvas` as an image does, and a `scroll_area` scrolls through it.
+  `transcript.followed_by(scrolled_off, screen)` is the next transcript, a value from a value.
+  In a `command_output` on an 80-by-40 screen, a frame with a new 10,000-line transcript took about 2 ms,
+  since paint resolves only the rows inside the scroll area's clip.
 - **Recorded output.**
   Building a transcript from bytes is a function from a value to a value,
   so `Transcript.of(output, columns, rows)` renders output captured ahead of time the same way, with no program run.
@@ -1055,19 +1090,26 @@ The embed in phase 6 feeds its emulator the same way.
 
 ### Phase 4 work
 
-1. `use_rects(handle)`, with tests and docs alongside `use_scroll(handle)`'s.
-   It stands alone, so it can land first.
-2. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
-3. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
-   (and scrollback to match, read through overscan with libghostty's byte cap removed;
-   see [Choosing an emulator](#choosing-an-emulator)), the pager defaults, and `clear_env`.
-4. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
+Items 1 to 5 are built, with tests at 100% coverage; the mutation testing pass in item 6 is in progress.
+
+1. Done: `use_rects(handle)`, with tests and docs alongside `use_scroll(handle)`'s,
+   and `use_rects` readers rendering again as soon as what they read moves.
+2. Done: `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output,
+   and `Emulator(scrollback=...)` with `scrolled_off()`.
+3. Done: `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
+   (and scrollback to match, read through overscan with libghostty's byte cap removed),
+   the pager defaults, `clear_env` and `hangup_grace`.
+4. Done: `command_output`, which shows a run's transcript in a `scroll_area` that sticks to its end,
    with its outcome beneath, taking the `viewport` handle its caller measures.
-5. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.
-   Docs with screenshots from `docs/examples/`, drawn from recorded output through `Transcript.of`.
+5. Done: `examples/slides.py`, a presentation whose slides each run a command when shown,
+   and `docs/examples/commands.py`'s slide and code runner (F5 runs a `text_area`'s Python, Escape cancels).
+   Docs pages for one-shot commands and for emulators and pseudo-terminals,
+   with screenshots drawn from recorded output through `Transcript.of`.
+   Both examples were driven in tmux: output, colors, a scroll that follows the end, `exited 2`, and Escape hanging up a loop.
 6. Tests against real programs (colors, a progress bar's last frame, a failing status, a program that doesn't exist,
-   cancelling and timing out a program that sleeps, and the pager defaults), to 100% coverage,
-   and a mutation testing pass over the new code.
+   cancelling and timing out a program that sleeps, the pager defaults, a query answered, a 30,000-line burst),
+   and an app reading keys from a pseudo-terminal that runs a slide's command at its box's width, to 100% coverage (done),
+   and a mutation testing pass over the new code (in progress).
 
 ## Phase 5: Framework fixes for the embed
 

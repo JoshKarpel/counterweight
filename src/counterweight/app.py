@@ -74,6 +74,7 @@ from counterweight.events import TerminalResized
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks
 from counterweight.hooks.impls import NodeKey
@@ -560,7 +561,7 @@ async def render_loop(
                         logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
 
                     pending_scrolls.clear()
-                    for key in stale_scroll_readers(shadow, layouts):
+                    for key in stale_readers(shadow, layouts):
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
@@ -717,13 +718,22 @@ def scroll_requests(pending: Iterable[ScrollTo | ScrollBy | ScrollIntoView], sha
     ]
 
 
-def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
-    """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
-    return (
+def stale_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
+    """
+    The keys of the nodes whose `use_rects` or `use_scroll` returned something different from what they'd read
+    from `layouts`, so that they render again as soon as it changes, as a `ResizeObserver` reports a resize.
+    """
+    stale_rects = (
+        node.key
+        for node in shadow.measured
+        if any(rects != rects_in(layouts, node.key, handle) for handle, rects in (node.hooks.rects or {}).items())
+    )
+    stale_scrolls = (
         node.key
         for node in shadow.scroll_readers
         if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
     )
+    return chain(stale_rects, stale_scrolls)
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

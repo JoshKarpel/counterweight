@@ -243,8 +243,11 @@
   An `Emulator` is fed bytes, answers the program's queries through `on_reply`, and snapshots into immutable `Screen` values:
   rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
   A snapshot of an unchanged terminal is the same `Screen`, and rows that didn't change are shared between snapshots.
+  An emulator given a `scrollback` keeps that many rows that scrolled off the top of its screen,
+  and `scrolled_off` returns those that scrolled off since it was last called, each once.
   `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`,
   leaving the program's default colors to the canvas's `text_style`, and drawing the cursor when asked.
+  See [Emulators and Pseudo-Terminals](terminals/emulators.md).
 
 - Added `counterweight.pseudoterminal`, which runs a program on a pseudo-terminal, as a terminal window does,
   and hands back the bytes it writes, standard output and standard error together.
@@ -260,6 +263,22 @@
   Cancelled, or once the program exits, its process group is hung up as closing a terminal window does,
   with `SIGHUP`, then `SIGTERM` and `SIGKILL` a `hangup_grace` apart for whatever ignores it,
   so nothing it started outlives it, even a background job holding the terminal open.
+
+- Added [one-shot commands](terminals/commands.md) in `counterweight.commands`:
+  running a program that's expected to exit, and showing everything it printed, colors and all,
+  as a terminal would have shown it.
+  `use_command` runs one when its `run` is called, on a pseudo-terminal `columns` wide (waiting until that's positive,
+  so it can come from `use_rects`) and `rows` tall, with standard input on `/dev/null`
+  and `PAGER` and `GIT_PAGER` set to `cat`, and returns the latest run, a `CommandRun` value
+  whose output updates at most once a frame while the program runs,
+  and whose outcome is `Starting`, `Running`, `Exited`, `FailedToStart`, `Cancelled` or `TimedOut`.
+  `cancel`, another `run`, a `timeout`, and unmounting hang the program up.
+  A run's output is a `counterweight.painters.terminal.Transcript`, a `Canvas` painter as wide as the run's terminal
+  and as tall as the lines it printed: the rows that scrolled off its screen, then the screen,
+  keeping the last `max_lines`, and `Transcript.of` builds one from output recorded ahead of time.
+  `command_output` shows a run in a `scroll_area` that follows its end, with its outcome beneath.
+  The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
+  runs a command on each slide when it's shown.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
@@ -316,6 +335,13 @@
   Add styling for content area background color.
 
 ### Changed
+
+- [`use_rects`](hooks/use_rects.md) takes an optional `ElementHandle`, and reports the rectangles of the element
+  with that handle rather than the calling component's own, as a React component measures an element through a ref,
+  so a component can measure an element a child component draws.
+  A component that calls it renders again as soon as any of the rectangles it read move, as one that calls `use_scroll` does.
+  Previously it rendered again only once something else started a render,
+  so a component that mounted after the first frame read empty rectangles until then.
 
 - [#416](https://github.com/JoshKarpel/counterweight/pull/416)
   **Breaking:** a `Text` overflows its box, as CSS's text does:

@@ -64,8 +64,9 @@ The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div`, `Text` and `Canvas`, with style and event handling capabilities
-- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`) and `terminal` (`ScreenView`)
+- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`) and `terminal` (`ScreenView` and `Transcript`)
 - **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt, from the optional `emulator` extra) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
+- **One-shot commands** (src/counterweight/commands.py): `use_command`, which runs a program on a pseudo-terminal when asked, feeds an emulator, and snapshots it at most once a frame into `CommandRun` values whose output is a `Transcript` painter, and `command_output`, the widget that shows a run
 - **Pseudo-terminals** (src/counterweight/pseudoterminal.py): Runs a program on a pseudo-terminal and hands back the bytes it writes: `run_pty` until it exits, and `use_pty` while a component is mounted; hangs the program's process group up when it ends
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing

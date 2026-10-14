@@ -9,16 +9,19 @@ from counterweight.controls import Screenshot
 from counterweight.elements import Canvas
 from counterweight.elements import Div
 from counterweight.elements import StyledGrapheme
+from counterweight.elements import Text
 from counterweight.emulator import Emulator
 from counterweight.emulator import Modes
 from counterweight.emulator import Screen
 from counterweight.geometry import Position
 from counterweight.output import Frame
 from counterweight.painters.terminal import ScreenView
+from counterweight.painters.terminal import Transcript
 from counterweight.painters.terminal import column_index
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
 from counterweight.styles.styles import Color
+from counterweight.styles.utilities import col
 from counterweight.styles.utilities import size
 
 FOREGROUND = Color(230, 220, 210)
@@ -144,3 +147,80 @@ async def test_a_canvas_shows_a_screens_default_colors_in_its_own_text_style() -
     cells = first(frames[0].paint.rows())
     assert [(cell.grapheme, cell.style.background) for cell in cells[:2]] == [("a", BLUE), ("b", BLUE)]
     assert cells[1].style.foreground == RED
+
+
+def transcript_text(transcript: Transcript) -> list[str]:
+    return [graphemes(line).rstrip() for line in transcript.lines]
+
+
+def test_a_transcript_is_the_rows_that_scrolled_off_then_the_screen() -> None:
+    transcript = Transcript.of(b"one\r\ntwo\r\nthree\r\nfour", columns=6, rows=2)
+
+    assert transcript_text(transcript) == ["one", "two", "three", "four"]
+
+
+def test_a_transcript_drops_the_blank_rows_at_the_end_of_the_screen() -> None:
+    transcript = Transcript.of(b"one\r\n\r\ntwo\r\n\r\n", columns=6, rows=8)
+
+    assert transcript_text(transcript) == ["one", "", "two"]
+
+
+def test_a_transcript_keeps_a_row_whose_blank_cells_have_a_background() -> None:
+    transcript = Transcript.of(b"one\r\n\x1b[48;2;1;2;3m\x1b[K\x1b[0m", columns=6, rows=4)
+
+    assert transcript_text(transcript) == ["one", ""]
+
+
+def test_a_transcript_of_nothing_has_no_lines() -> None:
+    assert Transcript.of(b"", columns=6).natural_size == (6, 0)
+
+
+def test_a_transcript_shows_what_a_rewritten_line_last_showed() -> None:
+    transcript = Transcript.of(b"10%\r50%\r100%\r\ndone\r\n", columns=6, rows=4)
+
+    assert transcript_text(transcript) == ["100%", "done"]
+
+
+def test_a_transcript_keeps_its_last_max_lines() -> None:
+    transcript = Transcript.of(b"".join(b"%d\r\n" % number for number in range(30)), columns=4, rows=3, max_lines=5)
+
+    assert transcript_text(transcript) == ["25", "26", "27", "28", "29"]
+
+
+def test_a_transcripts_natural_size_is_its_columns_and_its_lines_and_it_keeps_no_aspect_ratio() -> None:
+    transcript = Transcript.of(b"a\r\nb\r\nc", columns=7, rows=2)
+
+    assert (transcript.natural_size, transcript.keeps_aspect_ratio) == ((7, 3), False)
+
+
+def test_a_transcript_draws_its_first_lines_that_fit() -> None:
+    transcript = Transcript.of(b"a\r\nb\r\nc", columns=4, rows=2)
+
+    assert [graphemes(line) for line in transcript.draw(4, 2)] == ["a   ", "b   "]
+
+
+def test_a_transcript_followed_by_more_output_appends_what_scrolled_off_and_replaces_the_screen() -> None:
+    with Emulator(4, 2, ignore_replies, scrollback=10) as emulator:
+        emulator.feed(b"a\r\nb")
+        before = Transcript(columns=4).followed_by(emulator.scrolled_off(), emulator.snapshot())
+        emulator.feed(b"\r\nc\r\nd")
+        after = before.followed_by(emulator.scrolled_off(), emulator.snapshot())
+
+    assert (transcript_text(before), transcript_text(after)) == (["a", "b"], ["a", "b", "c", "d"])
+
+
+def test_a_transcript_answers_no_queries() -> None:
+    assert transcript_text(Transcript.of(b"a\x1b[6nb", columns=4, rows=1)) == ["ab"]
+
+
+async def test_a_canvas_takes_its_height_from_a_transcript_and_its_width_from_its_parent() -> None:
+    frames: list[Frame] = []
+    transcript = Transcript.of(b"a\r\nb\r\nc", columns=3, rows=2)
+
+    @component
+    def root() -> Div:
+        return Div(style=col | size(6, 5), children=(Canvas(painter=transcript), Text(content="end")))
+
+    await app(root(), headless=True, dimensions=(6, 5), autopilot=[Screenshot(handler=frames.append), Quit()])
+
+    assert [line.rstrip() for line in frames[0].text(ansi=False).splitlines()] == ["a", "b", "c", "end", ""]

@@ -33,6 +33,7 @@ from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import Receiver
 from counterweight.events import TerminalResized
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Region
 from counterweight.hooks import Rects
 from counterweight.hooks import Setter
@@ -348,7 +349,12 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
+        read: list[dict[ElementHandle | None, Rects] | None] = [
+            None,
+            {None: rects_in(NO_LAYOUTS, hooks.key)},
+            {None: MOVED},
+        ]
+        hooks.rects = draw(st.sampled_from(read))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,

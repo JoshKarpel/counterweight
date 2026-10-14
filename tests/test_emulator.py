@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
+from counterweight.emulator import MAX_SCROLLBACK
 from counterweight.emulator import PLAIN_CELLS_KEPT
 from counterweight.emulator import Emulator
 from counterweight.emulator import Modes
@@ -293,3 +295,89 @@ def test_more_distinct_plain_characters_than_are_kept_are_all_drawn() -> None:
     screen = snapshot(characters, columns=columns, rows=rows)
 
     assert "".join(text(screen)).strip() == characters
+
+
+def rows_text(rows: Rows) -> list[str]:
+    return ["".join(cell.grapheme for cell in row).rstrip() for row in rows]
+
+
+def numbered_lines(start: int, stop: int) -> bytes:
+    return b"".join(b"line %d\r\n" % number for number in range(start, stop))
+
+
+def test_scrolled_off_returns_the_rows_that_scrolled_off_the_top_of_the_screen_oldest_first() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(numbered_lines(0, 4))
+
+        assert rows_text(emulator.scrolled_off()) == ["line 0", "line 1"]
+
+
+def test_scrolled_off_returns_each_row_once() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(numbered_lines(0, 4))
+        emulator.scrolled_off()
+        emulator.feed(numbered_lines(4, 5))
+
+        assert (rows_text(emulator.scrolled_off()), emulator.scrolled_off()) == (["line 2"], ())
+
+
+def test_scrolled_off_returns_the_newest_rows_up_to_its_scrollback() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=4) as emulator:
+        emulator.feed(numbered_lines(0, 30))
+
+        assert rows_text(emulator.scrolled_off()) == ["line 24", "line 25", "line 26", "line 27"]
+
+
+def test_scrolled_off_returns_nothing_without_scrollback() -> None:
+    with Emulator(10, 3, ignore_replies) as emulator:
+        emulator.feed(numbered_lines(0, 10))
+
+        assert emulator.scrolled_off() == ()
+
+
+def test_scrolled_off_keeps_the_styles_of_the_rows_it_returns() -> None:
+    with Emulator(10, 2, ignore_replies, scrollback=4) as emulator:
+        emulator.feed(b"\x1b[38;2;1;2;3ma\x1b[0m\r\n\r\n\r\n")
+
+        assert emulator.scrolled_off()[0][0].style.foreground == Color(1, 2, 3)
+
+
+def test_scrolled_off_returns_the_rows_after_the_scrollback_is_erased() -> None:
+    with Emulator(10, 2, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(numbered_lines(0, 4))
+        emulator.scrolled_off()
+        emulator.feed(b"\x1b[3J" + numbered_lines(4, 6))
+
+        assert rows_text(emulator.scrolled_off()) == ["line 3", "line 4"]
+
+
+def test_drawing_on_the_alternate_screen_scrolls_nothing_off() -> None:
+    with Emulator(10, 2, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(b"\x1b[?1049h" + numbered_lines(0, 6))
+
+        assert emulator.scrolled_off() == ()
+
+
+@pytest.mark.parametrize("columns", [5, 20, 300])
+def test_scrolled_off_returns_every_row_since_the_last_call_up_to_its_scrollback_however_many_scrolled(
+    columns: int,
+) -> None:
+    # libghostty drops its scrollback a page at a time, and a page's rows depend on the terminal's width.
+    scrollback = 3_000
+    with Emulator(columns, 2, ignore_replies, scrollback=scrollback) as emulator:
+        returned: list[tuple[StyledGrapheme, ...]] = []
+        for chunk in range(5):
+            emulator.feed(b"%d\r\n" % chunk * 1_500)
+            returned.extend(emulator.scrolled_off())
+        emulator.feed(b"\r\n".join(b"%d" % number for number in range(10_000)) + b"\r\n")
+        newest = emulator.scrolled_off()
+
+    assert (len(returned), len(newest)) == (5 * 1_500 - 1, scrollback)
+    # The last line printed is on the screen, with the cursor on the row below it.
+    assert rows_text(newest) == [str(number) for number in range(9_999 - scrollback, 9_999)]
+
+
+@pytest.mark.parametrize("scrollback", [-1, MAX_SCROLLBACK + 1])
+def test_an_emulators_scrollback_must_fit_what_libghostty_captures_at_once(scrollback: int) -> None:
+    with pytest.raises(ValueError, match="scrollback"):
+        Emulator(10, 2, ignore_replies, scrollback=scrollback)

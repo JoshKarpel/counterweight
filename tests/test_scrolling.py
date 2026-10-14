@@ -6,7 +6,7 @@ import pytest
 import waxy
 
 from counterweight.app import app
-from counterweight.app import stale_scroll_readers
+from counterweight.app import stale_readers
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -600,7 +600,7 @@ def test_a_key_bubbles_once_an_earlier_control_in_its_batch_scrolls_its_containe
     )
 
 
-def test_stale_scroll_readers_are_the_nodes_whose_scroll_changed() -> None:
+def test_stale_readers_are_the_nodes_whose_scroll_changed() -> None:
     @component
     def reads() -> Div:
         use_scroll()
@@ -610,7 +610,7 @@ def test_stale_scroll_readers_are_the_nodes_whose_scroll_changed() -> None:
     _, _, third = shadow.root.children
     moved = Layouts(in_paint_order=(), by_key={}, scrolls={third.key: SCROLLS[KEY]})
 
-    assert (list(stale_scroll_readers(shadow, NO_LAYOUTS)), list(stale_scroll_readers(shadow, moved))) == (
+    assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == (
         [],
         [third.key],
     )

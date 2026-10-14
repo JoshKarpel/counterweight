@@ -79,7 +79,7 @@ class Screen:
     One row of cells for each of the terminal's rows, each taking exactly `columns` cells.
 
     A cell in the program's default colors leaves them unset, so they follow the style of the canvas showing it.
-    Where the emulator and [`grapheme_width`][counterweight.graphemes.grapheme_width] disagree on how wide
+    Where the emulator and counterweight's `grapheme_width` disagree on how wide
     a grapheme cluster is, the row keeps the emulator's columns, which the program laid its line out by:
     a cluster narrower here is followed by spaces, and one wider here, or with no width, is drawn as spaces.
     """
@@ -108,6 +108,9 @@ class Emulator:
     `foreground` and `background` are the colors the program's default colors stand for wherever a cell has to name them
     (see [`Screen.background`][counterweight.emulator.Screen.background]), until the program changes them.
 
+    `scrollback` is how many of the rows that scroll off the top of the screen
+    [`scrolled_off`][counterweight.emulator.Emulator.scrolled_off] can return, at most `MAX_SCROLLBACK`.
+
     Use it as a context manager, or call `close`, to free the emulator's memory as soon as it's done with.
     """
 
@@ -118,10 +121,33 @@ class Emulator:
         on_reply: Callable[[bytes], None],
         foreground: Color = CELL_STYLE_DEFAULTS.foreground,
         background: Color = CELL_STYLE_DEFAULTS.background,
+        scrollback: int = 0,
     ) -> None:
-        self.terminal = Terminal(cols=columns, rows=rows, scrollback=0, fg=foreground, bg=background)
+        if not 0 <= scrollback <= MAX_SCROLLBACK:
+            raise ValueError(f"An emulator's scrollback must be from 0 to {MAX_SCROLLBACK:_}, but got {scrollback:_}")
+        self.scrollback = scrollback
+        self.terminal = Terminal(
+            cols=columns,
+            rows=rows,
+            scrollback=scrollback and scrollback + rows_per_page(columns),
+            fg=foreground,
+            bg=background,
+        )
+        if scrollback:
+            # libghostty also caps its scrollback at 10,000 bytes by default, a few hundred rows,
+            # so only the line limit above bounds it.
+            check(
+                lib.ghostty_terminal_set(
+                    self.terminal._t[0],  # noqa: SLF001
+                    lib.GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES,
+                    ffi.NULL,
+                ),
+                "scrollback_max_bytes",
+            )
         self.terminal.on_reply(on_reply)
 
+        # One render state reads both the screen and the rows that scrolled off it:
+        # an update takes the terminal's dirty rows, so a second render state would hide them from the first.
         self.state = ffi.new("GhosttyRenderState*")
         check(lib.ghostty_render_state_new(ffi.NULL, self.state), "render_state_new")
         self.row_iterator = ffi.new("GhosttyRenderStateRowIterator*")
@@ -171,6 +197,10 @@ class Emulator:
         self.is_dirty = ffi.new("bool*")
         self.row_id = ffi.new("GhosttyRenderStateRowId*")
         self.title_out = ffi.new("GhosttyString*")
+        self.overscan = ffi.new("GhosttyRenderStateOverscan*")
+        self.captured = ffi.new("GhosttyRenderStateOverscan*")
+        if scrollback:
+            self.request_overscan(min(rows, scrollback))
 
         # The cells of each cell value with no style, which holds only a codepoint and its width,
         # so each maps to the same cells for good. A styled cell's value holds a style id that means something
@@ -180,6 +210,10 @@ class Emulator:
         # so a program that changes one row has one row converted rather than all of them.
         self.converted: dict[tuple[int, int], tuple[StyledGrapheme, ...]] = {}
         self.last: Screen | None = None
+        # The rows that scrolled off the screen that `scrolled_off` hasn't returned yet, oldest first,
+        # and the id of the newest of them, which marks where the rows not yet set aside start.
+        self.pending: list[tuple[StyledGrapheme, ...]] = []
+        self.last_scrolled_off: tuple[int, int] | None = None
 
     def __enter__(self) -> Self:
         return self
@@ -208,11 +242,7 @@ class Emulator:
     def snapshot(self) -> Screen:
         """What the terminal shows now."""
         state = self.state[0]
-        check(lib.ghostty_render_state_update(state, self.terminal._t[0]), "render_state_update")  # noqa: SLF001
-
-        check(lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_COLORS, self.colors), "colors")
-        foreground = rgb_color(self.colors.foreground)
-        background = rgb_color(self.colors.background)
+        foreground, background = self.update()
         last = self.last
         if last is not None and (foreground, background) != (last.foreground, last.background):
             # Inverse and invisible cells name the default colors, so they change with them.
@@ -222,6 +252,8 @@ class Emulator:
             lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, self.row_iterator), "rows"
         )
         rows = self.row_iterator[0]
+        for _ in range(self.captured.above):
+            lib.ghostty_render_state_row_iterator_next(rows)
         previous = self.converted
         converted: dict[tuple[int, int], tuple[StyledGrapheme, ...]] = {}
         lines = []
@@ -252,6 +284,102 @@ class Emulator:
             return last
         self.last = screen
         return screen
+
+    def scrolled_off(self) -> Rows:
+        """
+        The rows that scrolled off the top of the screen since the last call, oldest first,
+        or the newest `scrollback` of them if more did.
+
+        It returns each row once, as it was when it scrolled off, so a program's whole output
+        is what each call returns in turn, followed by the screen.
+        Erasing the scrollback (`ESC [ 3 J`) doesn't take back rows it already returned,
+        and a program drawing on the alternate screen scrolls nothing off.
+        """
+        self.update()
+        scrolled_off = tuple(self.pending)
+        self.pending = []
+        return scrolled_off
+
+    def update(self) -> tuple[Color, Color]:
+        """
+        Brings the render state up to date with the terminal, setting aside the rows that scrolled off the screen
+        since the last update, and returns the colors the program's default colors stand for.
+
+        The render state's rows stay dirty until a snapshot cleans them, however many updates come first.
+        """
+        state = self.state[0]
+        terminal = self.terminal._t[0]  # noqa: SLF001
+        check(lib.ghostty_render_state_update(state, terminal), "render_state_update")
+        check(lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_OVERSCAN, self.captured), "overscan")
+        check(lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_COLORS, self.colors), "colors")
+        foreground = rgb_color(self.colors.foreground)
+        background = rgb_color(self.colors.background)
+        if not self.scrollback:
+            return foreground, background
+
+        last = self.last_scrolled_off
+        while True:
+            ids = self.row_ids(self.captured.above)
+            if last in ids:
+                start = len(ids) - ids[::-1].index(last)
+                break
+            requested = self.overscan.above
+            if self.captured.above < requested or requested == self.scrollback:
+                # Every row above the screen is new, or at least the newest `scrollback` of them are.
+                start = 0
+                break
+            # The last row set aside is further up than the rows captured above the screen, so capture twice as many.
+            self.request_overscan(min(requested * 2, self.scrollback))
+            check(lib.ghostty_render_state_update(state, terminal), "render_state_update")
+            check(
+                lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_OVERSCAN, self.captured), "overscan"
+            )
+
+        scrolled = len(ids) - start
+        if scrolled:
+            self.last_scrolled_off = ids[-1]
+            check(
+                lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, self.row_iterator),
+                "rows",
+            )
+            rows = self.row_iterator[0]
+            for index in range(len(ids)):
+                lib.ghostty_render_state_row_iterator_next(rows)
+                if index >= start:
+                    self.pending.append(self.convert_row(rows, foreground, background))
+            del self.pending[: -self.scrollback]
+
+        # Capturing rows above the screen costs time for each row, and changing how many marks every row dirty,
+        # so the next update captures what this one needed, rounded up to the screen's rows times a power of two.
+        needed = self.terminal.size[1]
+        while needed < 2 * scrolled:
+            needed *= 2
+        if (needed := min(needed, self.scrollback)) != self.overscan.above:
+            self.request_overscan(needed)
+        return foreground, background
+
+    def request_overscan(self, above: int) -> None:
+        """Asks the next update to capture `above` rows above the screen, or as many as there are."""
+        self.overscan.above = above
+        check(
+            lib.ghostty_render_state_set(self.state[0], lib.GHOSTTY_RENDER_STATE_OPTION_OVERSCAN, self.overscan),
+            "overscan",
+        )
+
+    def row_ids(self, count: int) -> list[tuple[int, int]]:
+        """The ids of the first `count` rows the render state captured, top to bottom."""
+        check(
+            lib.ghostty_render_state_get(self.state[0], lib.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, self.row_iterator),
+            "rows",
+        )
+        rows = self.row_iterator[0]
+        row_id = self.row_id
+        ids = []
+        for _ in range(count):
+            lib.ghostty_render_state_row_iterator_next(rows)
+            lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_ID, row_id)
+            ids.append((row_id.bits[0], row_id.bits[1]))
+        return ids
 
     def convert_row(self, rows: object, foreground: Color, background: Color) -> tuple[StyledGrapheme, ...]:
         """
@@ -397,6 +525,19 @@ class Emulator:
 # How many cell values with no style an emulator keeps the cells of, before starting over.
 PLAIN_CELLS_KEPT = 2**12
 
+MAX_SCROLLBACK = 2**16 - 1
+"""The most rows an emulator's scrollback can hold: as many as libghostty captures above its screen at once."""
+
+
+def rows_per_page(columns: int) -> int:
+    """
+    At least as many rows as one of libghostty's pages holds at `columns` wide.
+    libghostty drops scrollback a page at a time, so it can keep a page fewer rows than its line limit.
+    A page holds about 46,000 cells, more than a row of each width.
+    """
+    return -(-(2**16) // columns)
+
+
 SPACE = ord(" ")
 CELL_SIZE = ffi.sizeof("GhosttyCell")
 UNSTYLED = CellStyle()
@@ -475,4 +616,4 @@ def cells_for(text: str, columns: int, style: CellStyle) -> tuple[StyledGrapheme
     )
 
 
-__all__ = ["Emulator", "Modes", "MouseTracking", "Screen"]
+__all__ = ["MAX_SCROLLBACK", "Emulator", "Modes", "MouseTracking", "Screen"]

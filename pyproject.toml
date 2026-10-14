@@ -224,6 +224,7 @@ extend-immutable-calls = [
     "counterweight.styles.styles.Style",
     "counterweight.styles.styles.CellStyle",
     "counterweight.styles.utilities.*",
+    "counterweight.commands.CommandOutputStyles",
     "counterweight.markdown.MarkdownStyles",
     "counterweight.widgets.ScrollAreaStyles",
     "counterweight.widgets.TextFieldStyles",

@@ -4,16 +4,12 @@ import os
 import sys
 from asyncio import CancelledError
 from asyncio import Event
-from asyncio import Queue
-from asyncio import TaskGroup
 from asyncio import create_task
 from asyncio import get_running_loop
 from asyncio import sleep
 from asyncio import wait_for
-from collections.abc import AsyncIterator
 from collections.abc import Callable
 from collections.abc import Mapping
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import timedelta
@@ -22,13 +18,8 @@ from pathlib import Path
 import pytest
 from more_itertools import unique_justseen
 
-from counterweight._utils import cancel_tasks
-from counterweight.components import Component
 from counterweight.components import component
-from counterweight.elements import AnyElement
 from counterweight.elements import Text
-from counterweight.events import AnyEvent
-from counterweight.events import StateSet
 from counterweight.pseudoterminal import Exited
 from counterweight.pseudoterminal import FailedToStart
 from counterweight.pseudoterminal import Pty
@@ -39,14 +30,8 @@ from counterweight.pseudoterminal import Starting
 from counterweight.pseudoterminal import program_environment
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
-from counterweight.shadow import ShadowTree
-from tests.rendering import effect_tasks
-from tests.rendering import render
-from tests.rendering import state_set_keys
-from tests.rendering import state_sets
-
-# Generous, so a loaded machine doesn't fail a test; each test that waits finishes as soon as what it waits for happens.
-TIMEOUT = 10
+from tests.rendering import TIMEOUT
+from tests.rendering import mounted
 
 
 def open_fds() -> set[str]:
@@ -384,43 +369,6 @@ def terminal(
         use_pty(argv, columns, rows, on_output=on_output, env=env, clear_env=clear_env, hangup_grace=hangup_grace)
     )
     return Text(content="")
-
-
-@dataclass(slots=True)
-class Mounted:
-    """Renders an element tree, and renders it again as its components set state, as the app loop would."""
-
-    task_group: TaskGroup
-    queue: Queue[AnyEvent]
-    root: Component | AnyElement | None = None
-    tree: ShadowTree | None = None
-
-    async def render(self, root: Component | AnyElement) -> None:
-        self.root = root
-        self.tree = await render(root, self.tree, self.task_group)
-
-    async def wait_until(self, is_done: Callable[[], bool]) -> None:
-        while not is_done():
-            assert self.root is not None
-            first = await wait_for(self.queue.get(), TIMEOUT)
-            assert isinstance(first, StateSet)
-            dirty = state_set_keys(self.queue) | {first.key}
-            self.tree = await render(self.root, self.tree, self.task_group, dirty)
-
-    async def unmount(self) -> None:
-        assert self.tree is not None
-        await cancel_tasks(effect_tasks(self.tree))
-
-
-@asynccontextmanager
-async def mounted() -> AsyncIterator[Mounted]:
-    with state_sets() as queue:
-        async with TaskGroup() as task_group:
-            m = Mounted(task_group=task_group, queue=queue)
-            try:
-                yield m
-            finally:
-                await m.unmount()
 
 
 def statuses(ptys: list[Pty]) -> list[PtyStatus]:

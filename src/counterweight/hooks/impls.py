@@ -194,8 +194,12 @@ class Hooks:
     data: list[AnyHook] = field(default_factory=list)
     mount_status: MountStatus = field(default_factory=MountStatus)
     key: NodeKey = field(default_factory=_next_node_key)
-    rects: Rects | None = None
-    """What `use_rects` last returned to this node, so the node re-renders once its layout moves."""
+    rects: dict[ElementHandle | None, Rects] | None = None
+    """
+    What each `use_rects` call in this node's last run returned, by the handle it was given,
+    `None` for the node's own element, so the node re-renders once any of those rectangles move.
+    It's `None` if the last run didn't call `use_rects`.
+    """
     scrolls: dict[ElementHandle | None, Scroll] | None = None
     """
     What each `use_scroll` call in this node's last run returned, by the handle it was given,
