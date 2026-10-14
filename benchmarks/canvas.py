@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from itertools import product
 
 from benchmarks.harness import Workload
-from counterweight.components import component
-from counterweight.elements import Chunk, Div, Text
+from counterweight.components import Component, component
+from counterweight.elements import Canvas, Chunk, Div, Text
 from counterweight.styles.styles import COLORS_BY_NAME, CellStyle, Color
 from counterweight.styles.utilities import (
     align_children_center,
@@ -26,7 +26,7 @@ from counterweight.styles.utilities import (
     row,
     text_justify_center,
 )
-from counterweight.utils import canvas, clamp
+from counterweight.utils import HalfBlocks, canvas, clamp
 
 WIDTH = 30
 HEIGHT = 30
@@ -75,6 +75,15 @@ def walk(walkers: Walkers, rng: random.Random) -> Walkers:
 
 def view(model: Model) -> Div:
     canvases = tuple(walker_canvas(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
+    return layout(canvases)
+
+
+def element_view(model: Model) -> Div:
+    canvases = tuple(walker_canvas_element(colors, walkers) for colors, walkers in zip(model.colors, model.walkers))
+    return layout(canvases)
+
+
+def layout(canvases: tuple[Component, ...]) -> Div:
     return Div(
         style=col | align_children_center | justify_children_space_evenly,
         children=(
@@ -106,6 +115,27 @@ def walker_canvas(colors: tuple[Color, ...], walkers: Walkers) -> Text:
         style=border | border_heavy | border_color("slate", 400),
     )
 
+
+@component
+def walker_canvas_element(colors: tuple[Color, ...], walkers: Walkers) -> Canvas:
+    painter = HalfBlocks(WIDTH, HEIGHT, tuple(zip(walkers, colors)))
+    width, height = painter.cells
+    return Canvas(
+        draw=painter,
+        width=width,
+        height=height,
+        style=border | border_heavy | border_color("slate", 400),
+    )
+
+
+ELEMENT_WORKLOAD = Workload(
+    name="canvas-element",
+    description="`canvas` drawn with `Canvas` elements and a `HalfBlocks` painter instead of `Text` chunks.",
+    initial=initial,
+    step=step,
+    view=element_view,
+    dimensions=(80, 40),
+)
 
 WORKLOAD = Workload(
     name="canvas",
