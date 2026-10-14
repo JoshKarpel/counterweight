@@ -286,8 +286,6 @@ class Hooks:
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
-        return
-
     def use_focus(
         self, auto_focus: bool, handle: FocusHandle | None, is_focusable: bool, in_focus_order: bool
     ) -> UseFocus:

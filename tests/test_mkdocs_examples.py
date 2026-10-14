@@ -62,6 +62,23 @@ def test_indented_marker_keeps_its_indentation_on_every_line_but_blank_ones() ->
 
 
 @pytest.mark.parametrize(
+    ("code", "fence"),
+    [
+        ("x = '`a`'", "```"),
+        ('README = """\n```python\nx = 1\n```\n"""', "````"),
+        ('README = """\n`````\n"""', "``````"),
+    ],
+    ids=["inline", "fenced", "long-fence"],
+)
+def test_the_fence_is_longer_than_any_backticks_in_the_code(code: str, fence: str) -> None:
+    source = f"# --8<-- [start:readme]\n{code}\n# --8<-- [end:readme]\n"
+
+    result = include_examples("<!-- example: readme.py:readme -->\n", {"readme.py": source}.__getitem__)
+
+    assert result == f"{fence}python\n{code}\n{fence}\n"
+
+
+@pytest.mark.parametrize(
     "markdown",
     [
         "<!-- a comment about panes.py:split-panes -->\n",

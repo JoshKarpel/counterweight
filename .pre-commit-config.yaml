@@ -1,11 +1,7 @@
 # Every hook is `local` and runs a tool from the `dev` group through `uv run`, so the hooks, the editor, `just` and CI
 # all run the version `uv.lock` holds, under the same cooldown as every other dependency.
 # `--frozen` so a hook never re-locks: the `uv-lock` hook is the one that reports a stale lock.
-#
-# Each definition is a copy of upstream's `.pre-commit-hooks.yaml` at the version named above its block,
-# so after bumping a tool (`uv lock --upgrade-package`), compare that file at the new version against the block.
 repos:
-  # pre-commit/pre-commit-hooks v6.0.0
   - repo: local
     hooks:
       - id: check-added-large-files
@@ -59,7 +55,6 @@ repos:
         # Text screenshots are exact character grids, trailing blanks included.
         exclude: ^docs/assets/.*\.txt$
 
-  # python-jsonschema/check-jsonschema 0.38.2
   - repo: local
     hooks:
       - id: check-dependabot
@@ -85,7 +80,6 @@ repos:
           )$
         types: [yaml]
 
-  # zizmorcore/zizmor-pre-commit v1.30.1
   - repo: local
     hooks:
       - id: zizmor
@@ -122,7 +116,6 @@ repos:
         files: ^(src/|docs/examples/|docs/assets/.*\.svg$|uv\.lock$)
         pass_filenames: false
 
-  # astral-sh/ruff-pre-commit v0.16.10
   - repo: local
     hooks:
       # Check before formatting: a fix can leave code the formatter would change.
@@ -139,7 +132,7 @@ repos:
         types_or: [python, pyi, jupyter, markdown]
         require_serial: true
 
-  # astral-sh/uv-pre-commit. `uv` itself is whichever is on `PATH`, not a package in the lock it checks.
+  # `uv` itself is whichever is on `PATH`, not a package in the lock it checks.
   - repo: local
     hooks:
       - id: uv-lock

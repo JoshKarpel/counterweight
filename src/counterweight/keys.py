@@ -7,7 +7,7 @@ from enum import Enum
 # which breaks code that formats keys.
 class Key(str, Enum):  # noqa: UP042
     """
-    The named keys, each equal to its name as text, such as `"ctrl+a"`.
+    The named keys, each equal to the text that names it, such as `Key.ControlA == "ctrl+a"`.
 
     Derived from [Textual's keys](https://github.com/Textualize/textual/blob/c966243b059f0352e2a23b9695776838195364a3/src/textual/keys.py).
     """

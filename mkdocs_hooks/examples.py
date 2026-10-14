@@ -40,17 +40,19 @@ def include_examples(markdown: str, read_module: Callable[[str], str]) -> str:
     Replace every example marker line with a Python code block of that section of the module.
 
     `read_module` returns the source of a module in `docs/examples/` by file name.
-    The code block keeps the marker's indentation, so an example inside a tab stays inside it.
+    The code block keeps the marker's indentation, so an example inside a tab stays inside it,
+    and its fence is longer than any run of backticks in the code, so a fence in a string doesn't close it.
     """
 
     def code_block(match: re.Match[str]) -> str:
         indent = match["indent"]
         code = section(read_module(match["module"]), match["section"])
+        fence = "`" * (max([2, *(len(run) for run in re.findall(r"`+", code))]) + 1)
         return "\n".join(
             [
-                f"{indent}```python",
+                f"{indent}{fence}python",
                 *(f"{indent}{line}" if line else "" for line in code.splitlines()),
-                f"{indent}```",
+                f"{indent}{fence}",
             ]
         )
 
