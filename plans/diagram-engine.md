@@ -5,10 +5,11 @@ the way dot lays out graphs for SVG,
 with taffy (through waxy) still doing the box layout.
 It covers how a diagram engine splits into separable features,
 where placement plugs into the render loop,
+how diagrams nest clusters,
 a working prototype and what it established,
 and the prior art it draws on.
-It does not settle the public API,
-and its implementation steps depend on the open questions at the end.
+It does not settle the public API.
+The decisions its steps rest on are listed before the steps.
 
 The use cases are an ASCII diagram editor,
 and diagrams whose layout is decoupled from their content:
@@ -239,9 +240,11 @@ that can measure its children,
 and sends every other mode to taffy's built-in algorithms.
 That gives proper coordinate assignment on real sizes, inside taffy's own pass,
 and a general extension point for masonry, radial, and other custom layouts.
-The cost is in waxy:
-it becomes a `LayoutPartialTree` implementor,
-and Python calling back into Rust to lay out a child,
+The cost is in waxy.
+It wraps `taffy::TaffyTree` and lays out through `compute_layout_with_measure`,
+so becoming a `LayoutPartialTree` implementor means owning its node storage
+and implementing taffy's cache traits itself, a rewrite of its core rather than a new hook.
+On top of that, Python calling back into Rust to lay out a child,
 from inside a layout, is the hard part in pyo3.
 
 The prior art for B is the
@@ -271,13 +274,63 @@ for unchanged nodes.
 Measuring nodes inside that tree at sizes other than the ones the final layout gives them
 may evict those entries, or a scratch tree may be cheaper; that needs measuring with `just profile`.
 
-### Recommendation
+### Choice
 
 C, with the graph core written as pure functions
 (graph and node sizes in, positions and routes out),
 and the measuring done inside the frame.
-B is where that core moves if counterweight wants custom layouts in general.
+It costs a second layout pass in every frame that renders a graph container.
+B is where that core moves if counterweight wants custom layouts in general,
+and keeping the core pure keeps that move cheap, but nothing waits on it.
 A is ruled out: it skips coordinate assignment.
+
+## Clusters
+
+A diagram can nest clusters (Mermaid's subgraphs) with edges into their insides.
+The engines that do this disagree on how:
+
+- [dot](https://graphviz.org/pdf/dotguide.pdf) lays clusters out with the rest of the graph,
+  each in its own rectangle.
+  Edges join real nodes only;
+  `compound=true` with `lhead` or `ltail` clips an edge at a cluster's border,
+  so it reads as pointing at the cluster.
+  Its original ranking is recursive on clusters,
+  which is why ranking a node inside a cluster level with one outside needs `newrank`.
+- [ELK](https://eclipse.dev/elk/reference/options/org-eclipse-elk-hierarchyHandling.html)
+  offers both through `hierarchyHandling`:
+  by default each compound node gets its own layout run (`SEPARATE_CHILDREN`),
+  and `INCLUDE_CHILDREN` lays a node and all its descendants out in one run.
+- [Mermaid](https://mermaid.js.org/syntax/flowchart.html) shows the cost of the first:
+  "If any of a subgraph's nodes are linked to the outside, subgraph direction will be ignored",
+  because a linked subgraph is laid out with its parent and inherits its direction.
+
+Counterweight lays clusters out recursively, innermost first:
+
+- Each cluster's run sees its own nodes plus one node per child cluster,
+  sized by that child's run, so every level is the flat core the probe already runs.
+  This is also plan C at each level: a laid-out cluster is one more measured node.
+- An edge between nodes in different clusters is split at each cluster border it crosses.
+  Inside a cluster, its half runs to or from a port on the border:
+  an edge into the cluster enters its top, and an edge out leaves its bottom.
+  The inner run places that port as a dummy node above its first rank or below its last,
+  and the parent's run treats it as a fixed port on the cluster's box.
+- An edge may name a cluster as its end, as dot's `lhead` does,
+  and then stops at the parent's level.
+- One graph container holds the whole cluster tree,
+  so the core sees every crossing edge and the container draws the cluster boxes.
+
+What recursion costs:
+the two halves of a crossing edge are placed by separate runs,
+so the edge can kink where it crosses the border,
+and a cluster's nodes never share a rank with nodes outside it.
+A global layout, as dot's, fixes both by changing every phase:
+ordering keeps each cluster's members contiguous within each rank,
+and coordinate assignment keeps cluster boxes apart.
+It takes the same input, a tree of clusters and edges between nodes at any depth,
+so it can replace the recursive core later without changing the container.
+Recursion would also let a cluster lay out in its own direction,
+but then a crossing edge's port no longer sits on the side the cluster's ranks flow from,
+so that waits for a design.
 
 ## Routing
 
@@ -290,6 +343,7 @@ That is the piece the editor case needs most.
   `counterweight.routing` routes input events to handlers.
 - Clipping and scrolling: `by_key` holds each node's rects on screen, already moved by the scroll containers above it,
   with its `clip` and `visible` region, and has no entry for a hidden node.
+  Routing in those screen coordinates lets a connector join elements in different containers at no extra cost.
   A connector has to decide what it draws when an endpoint is scrolled out of view, partly clipped, or hidden,
   and a connector between two nodes in one scroll container should scroll with them.
 - Path search: A* over cells, scored by length plus a penalty per bend.
@@ -436,46 +490,48 @@ Stability matters for an editor and for reactive re-renders alike:
 Parsing a subset of Mermaid's flowchart syntax splits the work cleanly for LLM output:
 the model writes the nodes and edges, and the engine lays them out.
 
-## Open questions
+## Decisions
 
-1. Which comes first:
-   routing between arbitrary elements (editor first),
-   or the graph container (diagrams first)?
-   Routing first is the better default, since the graph container uses it too,
-   and `ElementHandle` already names its endpoints.
-2. Can edges cross container boundaries,
-   as in nested diagrams with edges between their insides?
-   Every engine below struggles there;
-   ruling it out at first keeps the core simple.
-3. Is a custom display mode in waxy on the table?
-   That decides whether placement ends up inside taffy's pass (B)
-   or stays a measure-then-place step (C).
+The use cases rank diagrams above the editor.
+
+1. The line canvas comes first, because both features draw on it.
+   It's all they share: the graph container draws its edges from the core's ports and channel tracks,
+   not with the connectors' A*.
+   The diagram steps follow, then connectors,
+   so the least explored part (A*, nudging, and the rules for clipped endpoints) is proven last,
+   and the editor waits for it.
+2. Edges cross container boundaries in both features:
+   connectors in screen space (see [Routing](#routing)),
+   and graph edges into recursively laid-out clusters (see [Clusters](#clusters)).
+3. Placement measures, then places (C).
+   A custom display mode in waxy (B) stays open for custom layouts in general,
+   and nothing here waits on it.
 
 ## Proposed steps
-
-These depend on the open questions; the order assumes routing first.
 
 1. Line canvas: per-cell direction bits with a weight per direction,
    resolved to glyphs at paint time, with node borders protected and clips respected.
    Border healing moves onto it, healing along whole edges rather than only corners.
-2. Connectors: a post-layout pass between elements named by `ElementHandle`,
+2. Graph core: pure functions for cycle breaking, ranking, ordering, coordinate assignment,
+   ports, and channel tracks, tested directly on plain data,
+   then clusters laid out innermost first, with crossing edges split at border ports.
+   Each takes its spacing (the gap between neighbours) as an argument.
+   Tests cover cycles, sinks above the last rank, isolated nodes,
+   boxes with more inputs than their label is wide,
+   and edges into, out of, and between clusters, or naming a cluster as their end.
+3. Graph container: measure nodes, run the core,
+   compile positions into the taffy tree, and draw nodes, cluster boxes, and edges onto the line canvas,
+   with a second layout pass in the frame, as focus settling already does.
+4. Fitting: narrow boxes, shrink gaps, then flip direction, when the diagram doesn't fit.
+5. Drop shadows: document the wrapper pattern (a cookbook page),
+   and have the graph container leave room for a node's shadow by passing a wider gap to the core.
+6. Mermaid subset: flowchart syntax, subgraphs included, parsed into the graph container,
+   with nodes declared by the edges that name them.
+   Self-loops need routing around a box's side before they can be accepted.
+7. Connectors: a post-layout pass between elements named by `ElementHandle`, in any containers,
    with A* using bend and soft-obstacle costs, port spreading, and arrowheads,
    then ordering and nudging in shared channels,
    and a rule for endpoints that are scrolled away, clipped, or hidden.
-3. Graph core: pure functions for cycle breaking, ranking, ordering, coordinate assignment,
-   ports, and channel tracks, tested directly on plain data.
-   Each takes its spacing (the gap between neighbours) as an argument.
-   Tests cover cycles, sinks above the last rank, isolated nodes,
-   and boxes with more inputs than their label is wide.
-4. Graph container: measure nodes, run the core,
-   compile positions into the taffy tree, and route through step 2's channels,
-   with a second layout pass in the frame, as focus settling already does.
-5. Fitting: narrow boxes, shrink gaps, then flip direction, when the diagram doesn't fit.
-6. Drop shadows: document the wrapper pattern (a cookbook page),
-   and have the graph container leave room for a node's shadow by passing a wider gap to the core.
-7. Mermaid subset: flowchart syntax parsed into the graph container,
-   with nodes declared by the edges that name them.
-   Self-loops need routing around a box's side before they can be accepted.
 
 ## Prior art
 
