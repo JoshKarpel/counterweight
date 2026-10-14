@@ -1,5 +1,7 @@
 # Plan: Canvas, One-Shot Commands and Embedded Terminals
 
+Artifact: https://claude.ai/code/artifact/d1d450c4-611b-4225-b9f7-aac8f9fc1a90
+
 This plan lands three features that share one stack.
 A `Canvas` element paints cells directly, skipping text layout.
 A one-shot command runs a program that's expected to exit, and shows what it printed, colors and all.
@@ -7,6 +9,25 @@ An embedded terminal runs a program on a pseudo-terminal and shows it in a box, 
 which is enough to build a terminal multiplexer in counterweight.
 Neither of the last two needs an element of its own:
 each is a `Canvas` whose painter draws what an emulator made of a program's output.
+
+A one-shot command is a terminal you read, and an embedded terminal is one you use.
+Both run a program on a pseudo-terminal, feed an emulator, snapshot it at most once per frame,
+answer the program's queries, and draw the result in a `Canvas`.
+They differ in everything about input and lifetime:
+
+| | One-shot command | Embedded terminal |
+| --- | --- | --- |
+| The program | expected to exit, successfully or not | interactive, running as long as its pane |
+| Starts | when the app calls `run(argv)`, from a key press or an effect on mount | when the pane mounts |
+| Input | none: stdin is `/dev/null`, and `PAGER=cat` by default | key presses, pastes and mouse events, re-encoded as the bytes a terminal sends |
+| Focus | none | focusable, with handlers such as a prefix key put before its own |
+| Shows | the transcript: everything printed, scrollback then the screen | the current screen, with its cursor |
+| Size | width fixed when the run starts and `rows` a knob (24), growing with its output and scrolling | its box's size, with a resize sending the program `SIGWINCH` |
+| Result | a `CommandRun` value that outlives the program | live state, tied to the mounted pane |
+| Ends | when the program exits, or the run is cancelled or times out | when the program exits, or the pane unmounts |
+| Asks of the emulator | scrollback with its styles | dirty rows, and key and mouse encoding |
+
+Input and focus are why the one-shot command needs none of [phase 5](#phase-5-framework-fixes-for-the-embed).
 
 It lands in six phases, each of which stands alone:
 
