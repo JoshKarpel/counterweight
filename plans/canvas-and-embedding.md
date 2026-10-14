@@ -1,23 +1,47 @@
-# Plan: Canvas and Embedding Terminals
+# Plan: Canvas, One-Shot Commands and Embedded Terminals
 
-This plan lands two features that turned out to be one stack.
+This plan lands three features that share one stack.
 A `Canvas` element paints cells directly, skipping text layout.
+A one-shot command runs a program that's expected to exit, and shows what it printed, colors and all.
 An embedded terminal runs a program on a pseudo-terminal and shows it in a box, with input routed to it,
 which is enough to build a terminal multiplexer in counterweight.
-The embed needs no element of its own: it is a `Canvas` whose painter draws an emulator's screen.
+Neither of the last two needs an element of its own:
+each is a `Canvas` whose painter draws what an emulator made of a program's output.
 
-It lands in three phases, each of which stands alone:
+It lands in six phases, each of which stands alone:
 
-1. [**Canvas**](#phase-1-canvas): the element, painters, and pixel images.
-2. [**Framework fixes**](#phase-2-framework-fixes-for-the-embed): the changes to counterweight itself that the embed needs,
-   each useful to any app with modal keys or dynamic panes.
-3. [**Embed**](#phase-3-embedding-terminals): choose an emulator, then land `use_pty`, `use_terminal` and a `terminal` widget.
+| Phase | What it adds | Needs |
+| --- | --- | --- |
+| 1. [Canvas](#phase-1-canvas) | the element, painters, and pixel images | |
+| 2. [Emulator](#phase-2-emulator) | a terminal emulator behind `Emulator` and `Screen`, and the screen painter | 1 |
+| 3. [Pseudo-terminals](#phase-3-pseudo-terminals) | `use_pty`: a program on a PTY, its output, its exit, and resizing | |
+| 4. [One-shot commands](#phase-4-one-shot-commands) | `use_command`, the transcript painter, and a widget | 1, 2, 3 |
+| 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input, focusing a new component, and modal keys | |
+| 6. [Embed](#phase-6-embedding-terminals) | input encoding, `use_terminal`, and a `terminal` widget | 1, 2, 3, 5 |
 
-It doesn't cover detaching sessions, scrollback or copy mode, or graphics protocols (sixel, kitty images).
+Each arrow points from a phase to one that needs it:
+
+```text
+1 Canvas ──> 2 Emulator ──┐
+                          ├──> 4 One-shot commands
+3 Pseudo-terminals ───────┤
+                          └──> 6 Embed
+                                 ^
+                                 │
+                               5 Framework fixes
+```
+
+One-shot commands don't need phase 5, so they can ship before the embed.
+Phase 3 can be written alongside phases 1 and 2, and phase 5 any time before phase 6.
+[Fidelity](#later-fidelity) improvements that neither feature needs come last.
+
+It doesn't cover detaching sessions, scrollback or copy mode in an embedded terminal,
+or graphics protocols (sixel, kitty images).
 
 ## The spike
 
-A spike answered whether each phase is feasible.
+A spike answered whether the canvas and the embed are feasible.
+It didn't build one-shot commands, which phase 4 builds from the pieces it did.
 Its code is in [the appendix](#appendix-the-spike-code):
 diffs against `main` for the files it changed, and the full source of the files it added.
 It ran with `uv run --with pyghostty==0.1.3 ...`, since the dependency wasn't in `pyproject.toml`.
@@ -28,13 +52,12 @@ The existing tests passed and mypy was clean; the new code had no tests.
 | `elements.py`, `layout.py`, `paint.py` | the `Canvas` element | 1 |
 | `utils.py` | `HalfBlocks`, a `Canvas` painter equivalent to `canvas()` | 1 |
 | `benchmarks/canvas.py` | a `canvas-element` workload: `canvas` redrawn with `Canvas` and `HalfBlocks` | 1 |
-| `emulator.py` | libghostty-vt behind `Emulator`, which produces immutable `Screen` values | 3 |
-| `input_encoding.py` | pure functions from key, paste and mouse events back to the bytes a terminal sends | 3 |
-| `headless/terminal.py` | `use_pty` and `use_terminal` | 3 |
-| `examples/multiplexer.py` | shells side by side, with a tmux-style `Ctrl+B` prefix | 3 |
+| `emulator.py` | libghostty-vt behind `Emulator`, which produces immutable `Screen` values | 2 |
+| `headless/terminal.py` | `use_pty` and `use_terminal` | 3 and 6 |
+| `input_encoding.py` | pure functions from key, paste and mouse events back to the bytes a terminal sends | 6 |
+| `examples/multiplexer.py` | shells side by side, with a tmux-style `Ctrl+B` prefix | 6 |
 
-All three phases land on this branch, in order, starting from `main`'s code.
-Each phase writes its code fresh, with tests, using the appendix as a reference.
+Each phase writes its code fresh, with tests, starting from `main`'s code and using the appendix as a reference.
 
 ## Phase 1: Canvas
 
@@ -109,7 +132,7 @@ and resolve again only when the rows or the `text_style` change.
 
 Painters live in a `counterweight.painters` package, one module per kind:
 `counterweight.painters.pixels` holds `Pixels` and `HalfBlocks` (phase 1),
-phase 3 adds the terminal's screen painter,
+`counterweight.painters.terminal` the terminal's screen painter (phase 2) and transcript painter (phase 4),
 and later ones could include a plotter that draws data as braille curves with text tick labels.
 The plotter is why `draw` returns cells rather than pixels: its labels are text, which pixels can't hold.
 
@@ -403,57 +426,7 @@ Deferred, each for a different reason:
    Whether the image example makes Pillow a docs dependency or decodes a bundled file another way is open.
 5. Tests to 100% coverage, and a mutation testing pass over the new code.
 
-## Phase 2: Framework fixes for the embed
-
-The spike hit these limits in counterweight itself, which a multiplexer can't work around.
-Each is also useful to apps that never embed a terminal.
-
-### Needed for the embed
-
-1. **Ctrl+C quits the host.**
-   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
-   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
-   and Ctrl+S/Ctrl+Q are eaten as flow control.
-   None of them can reach an embedded program.
-   The spike's test session died this way.
-   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
-   with Ctrl+C then arriving as a key the app can bind to `Quit`.
-2. **`FocusOn` can't focus a component that mounts in the same update.**
-   The routing table doesn't know the new handle yet, so the control is dropped.
-   The spike's multiplexer works around it with `ClearFocus` and `auto_focus`.
-   React's answer is an effect after mount that calls `ref.focus()`.
-   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
-   that mounts its target, or a way for an effect to send a control.
-3. **A mode that changes routing must be readable synchronously.**
-   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
-   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
-   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
-   `use_text_input` hits the same thing and solves it with updater functions.
-   This needs a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
-
-### Fidelity, which can follow phase 3
-
-The embed works without these, but each makes embedded programs look or behave less like they do in a real terminal.
-
-4. **Colors are truecolor only.**
-   `Color` is RGB, so a program's palette indices are resolved to libghostty's default palette.
-   Its "default" foreground and background are left unset, so they follow the canvas's `text_style`,
-   but that is RGB too.
-   An embedded `ls --color` uses xterm's red, not the user's theme's red.
-   tmux keeps palette indices and default colors through to the outer terminal.
-   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
-5. **The cursor is drawn, not placed.**
-   Counterweight hides the real cursor, so the terminal painter draws a reversed cell.
-   That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.
-   A framework way for the focused element to place the real cursor would serve `use_text_input` too.
-6. **The key model is legacy.**
-   `KeyPressed` can't represent what the kitty keyboard protocol adds
-   (Ctrl+Shift+letter, key release, Ctrl+I distinct from Tab), so neither can the embed's encoder.
-   libghostty's key encoder could produce kitty encodings once the input side carries the information.
-
-## Phase 3: Embedding terminals
-
-### How terminal multiplexers work
+## Background: how terminal multiplexers work
 
 The research behind this section read tmux at [`f0a2ed3001`](https://github.com/tmux/tmux/tree/f0a2ed3001)
 and zellij at [`dfa40f44a4`](https://github.com/zellij-org/zellij/tree/dfa40f44a4).
@@ -500,6 +473,14 @@ child program <-> PTY master fd <-> parser (VT state machine) -> grid/screen mod
   A resize is `ioctl(TIOCSWINSZ)` on the master, which sends the child `SIGWINCH`.
   Closing the master hangs up the session.
 
+## Phase 2: Emulator
+
+A terminal emulator's grid model turns the bytes a program writes into what a terminal shows:
+rows of styled cells, scrollback, a cursor, and the modes that change how input is encoded.
+This phase puts one behind `Emulator`, a place that only `emulator.py` touches, which produces immutable `Screen` values,
+and adds the painter that draws them.
+It runs no programs: its tests feed it bytes.
+
 ### Choosing an emulator
 
 The grid model is the part not to write.
@@ -526,25 +507,320 @@ The cost is supply chain:
 - It bundles a prebuilt `libghostty-vt` from a pinned Ghostty revision, and libghostty-vt is pre-1.0.
 - It is cffi in ABI mode: no compiler at install time, but no type information, and several calls per cell.
 
+Phase 4 adds a requirement the spike didn't test: reading scrollback with its styles.
+A transcript is everything a program printed, and most of a long one has scrolled off the screen by the time the program exits.
+pyghostty 0.1.3 keeps scrollback (`Terminal(scrollback=10000)`), but its only reader is `contents()`, which returns plain text.
+The spike reads styled cells through libghostty's render state, which covers the active screen.
+Whether libghostty-vt's C API reaches styled scrollback rows, so that pyghostty's `lib` can read them as the spike reads the screen,
+needs checking.
+If it doesn't, this requirement decides for an owned binding.
+
 The alternative fits counterweight's own pattern.
 waxy is PyO3 bindings to taffy, and the same could wrap an emulator crate
 (`libghostty-rs`, `alacritty_terminal`, or `vt100`).
 The binding would expose a snapshot that returns whole rows as Python tuples in one call.
-That removes the 3 to 10 ms snapshot cost (see [Output](#output-places-in-the-effect-values-in-the-render))
+That removes the 3 to 10 ms snapshot cost (see [Snapshots](#snapshots))
 and gives typed stubs, at the price of building and maintaining another binding.
 I'd keep the `Emulator`/`Screen` boundary either way: nothing outside `emulator.py` touches the emulator.
+
+### Snapshots
+
+A snapshot shares unchanged rows.
+`Screen` compares by identity, so a `Canvas` redraws only when the program's output changed.
+The emulator keeps each converted row by libghostty's row id while it isn't dirty.
+Unstyled cells are cached by their raw 64-bit value,
+which holds only a codepoint and a width when the cell has no style.
+A styled cell's raw value holds a page-local style id, so those can't be cached.
+
+Reading cells through cffi costs several calls per cell, and that is the bottleneck.
+
+These are medians on a 120×40 screen after one line scrolls, when libghostty marks every row dirty:
+
+| Output | Snapshot |
+| --- | --- |
+| plain text | 2.8 ms |
+| every line colored | 10.5 ms |
+| nothing changed | 0.1 ms |
+
+### The screen painter
+
+The screen painter draws a `Screen`, with the cursor as a reversed cell when asked (see [Fidelity](#later-fidelity)).
+It lives in `counterweight.painters.terminal`, and phase 4's transcript painter joins it there.
+The box sizes the terminal rather than the other way round,
+so it is a painter with no natural size (see [Sizing](#sizing)).
+It leaves a program's default colors unset, so they follow the canvas's `text_style`.
+
+Paint adds a wide grapheme's continuation cell, and `StyledGrapheme(grapheme="")` raises,
+so the screen painter drops libghostty's spacer tails.
+A row then has one entry per grapheme, not per column,
+so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
+which would put it on the wrong cell after any wide character on its line.
+
+### Phase 2 work
+
+1. Choose between `pyghostty` and an owned binding, against styled scrollback as well as what the spike needed,
+   and add the dependency.
+2. `Emulator` and `Screen`, ported from the spike, with bounded color and style caches:
+   the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
+3. The screen painter.
+4. Tests that feed bytes (colors, wide characters, the alternate screen, scrolling, query replies),
+   and a benchmark of snapshot cost.
+
+## Phase 3: Pseudo-terminals
+
+`use_pty` runs a program on a pseudo-terminal while its component is mounted, and hands back the bytes the program writes.
+It knows nothing about emulators or painters, so it can be written alongside phases 1 and 2.
+
+- **The program's terminal.**
+  The child runs in its own session with the PTY as its controlling terminal,
+  and a resize is `ioctl(TIOCSWINSZ)` on the master (see [Lifecycle](#background-how-terminal-multiplexers-work)).
+  Cancelling the effect hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
+- **Writes never block.**
+  Bytes the program isn't reading yet are buffered and flushed when the master is writable,
+  so a handler that writes never blocks the event loop.
+- **Standard input.**
+  An interactive program reads its keys from the PTY.
+  A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice.
+
+The spike's `use_pty` needs hardening:
+
+- EOF and exit together (tmux's `window_pane_destroy_ready`), and grandchildren that hold the PTY open.
+  The spike's drain re-raises its `TimeoutError` out of the effect,
+  and an effect's exception ends the app's task group,
+  so a shell that exits leaving a background job on the PTY quits the whole app, and its exit status is never set.
+- A spawn that fails (an `argv` that doesn't exist) closes both PTY fds and reports the failure as the hook's state,
+  rather than raising out of the effect with the fds leaked.
+- The program starts at its real size.
+  `use_rects` is zero on the first render, so the spike spawns at 0×0,
+  and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
+  leaving the program at 0×0 until the pane's size next changes.
+  Applying the latest size on connect closes that gap.
+- A configurable `TERM`.
+
+### Phase 3 work
+
+1. `run_pty` and `use_pty`, with the choice of standard input and the hardening above.
+2. Tests against real programs:
+   output, an exit status, a background job that holds the PTY open, an `argv` that doesn't exist, and a resize.
+
+## Phase 4: One-shot commands
+
+A one-shot command runs a program that's expected to exit, though not necessarily to succeed,
+and shows everything it printed, colors and all, as a terminal would have shown it.
+A presentation can run an example command on a slide,
+and an editor can run the code in a text area and show what it printed.
+This is the first feature of the stack that ships.
+It needs phases 1 to 3 but none of phase 5, since it takes no input and holds no focus.
+
+### Why a terminal, not pipes
+
+Pipes are simpler, and they keep stdout and stderr apart.
+However, they lose what this feature is for:
+
+- **Colors.**
+  Most programs color their output only when `isatty(stdout)` is true.
+  `FORCE_COLOR` and `CLICOLOR_FORCE` work tool by tool, not everywhere.
+- **Cursor movement.**
+  Progress bars rewrite their line with `\r`, and live displays (rich, tqdm) move the cursor up and redraw.
+  Run through an emulator, the transcript shows what the program left on the screen.
+  Turning only the color codes into styled text would show every frame of a progress bar on one garbled line.
+
+So a run gets a pseudo-terminal and an emulator, and its stdout and stderr arrive interleaved, as they do in a terminal.
+A hook that runs a program on pipes, for a caller that must tell the streams apart, needs no emulator and is outside this plan.
+
+The program sees a terminal, so it acts as it would on one:
+
+- Standard input is `/dev/null`, so a program that reads input gets end of file rather than waiting.
+- `git log` and other commands start a pager, which waits for keys that never come,
+  so the hook sets `PAGER=cat` unless `env` overrides it.
+- Queries (CPR, DA) are answered from the emulator and written back to the PTY, as in the embed,
+  so a program that asks its terminal something doesn't wait for a reply.
+- Anything else that waits ends when the run is cancelled or times out.
+
+### How the web shapes it
+
+The closest web answer is a `fetch` whose body streams, run through React Query's hooks:
+
+- `useQuery` runs when its component mounts, and again when its key changes:
+  a slide that runs its command when shown.
+- `useMutation` runs on an event, through `mutate()`, and exposes the latest run's status and result:
+  an editor that runs its code on a key press.
+- An `AbortController` cancels a request, and `AbortSignal.timeout` bounds one.
+
+A query is a mutation started by an effect keyed on its inputs, but a mutation can't be built from a query,
+so the hook takes the mutation's shape and the slide's case is an effect on top of it.
+It differs from `fetch` in two ways.
+The result streams, so a run shows its output so far while the program is still running.
+A program that exits with a failing status is a result like any other, not an error.
+
+### The run
+
+```python
+@dataclass(frozen=True, slots=True)
+class Running: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Exited:
+    status: int  # negative for a signal, as asyncio reports it
+
+
+@dataclass(frozen=True, slots=True)
+class FailedToStart:
+    reason: str  # the OSError's message, such as "No such file or directory"
+
+
+@dataclass(frozen=True, slots=True)
+class Cancelled: ...
+
+
+@dataclass(frozen=True, slots=True)
+class TimedOut: ...
+
+
+type Outcome = Running | Exited | FailedToStart | Cancelled | TimedOut
+
+
+@dataclass(frozen=True, slots=True)
+class CommandRun:
+    argv: tuple[str, ...]
+    output: Transcript  # a Painter, sized (columns, lines)
+    outcome: Outcome
+
+
+@dataclass(frozen=True, slots=True)
+class Command:
+    run: Callable[[Sequence[str]], None]  # starts a run, cancelling one in progress
+    cancel: Callable[[], None]
+    latest: CommandRun | None
+
+
+def use_command(
+    columns: int,
+    rows: int = 24,
+    env: Mapping[str, str] | None = None,
+    timeout: timedelta | None = None,
+    max_lines: int = 10_000,
+) -> Command: ...
+```
+
+A finished run is a value that outlives its program,
+so a component can keep it in state, show it again, or show it beside the next run.
+A slide runs its command when it's shown:
+
+```python
+command = use_command(columns=use_rects().content.width)
+
+
+async def start() -> None:
+    command.run(argv)
+
+
+use_effect(start, deps=(tuple(argv),))
+```
+
+- **`run` records a request in state, and an effect keyed on the request runs it.**
+  Cancelling, starting another run, and unmounting all end that effect, which hangs the program up.
+- **The width is fixed when the run starts.**
+  The program formats its output for the PTY's columns, so `columns` is read when the run starts,
+  and a run requested before the box has a width (`use_rects` is zero on the first render) waits for one.
+  A later resize doesn't rewrap the transcript; running again at the new width is the caller's choice.
+- **`rows` is the height the program sees**:
+  what a live display sizes itself to, and how much output stays on the screen rather than in scrollback.
+  It defaults to 24, a fresh xterm's height, rather than the box's height,
+  because the transcript scrolls in its box, so the box isn't the program's screen.
+- **Cancelling is a key the app binds**, such as Escape.
+  Until phase 5's raw input mode, Ctrl+C quits the whole app,
+  and it never reaches the program, which runs in its own session.
+
+### Output: places in the effect, values in the render
+
+The emulator is mutable (a place).
+It lives only inside the run's effect, which feeds it on the event loop as the PTY becomes readable.
+Rendering only ever sees `CommandRun` values.
+The embed in phase 6 feeds its emulator the same way.
+
+- **Parse on read.**
+  `loop.add_reader` on the master fd reads up to 64 KiB and feeds the emulator immediately.
+  Since nothing is read faster than it's parsed, unparsed bytes never pile up.
+  When the app falls behind, the kernel's PTY buffer fills and blocks the child,
+  which is the backpressure tmux gets by disabling `EV_READ`.
+- **Snapshot at most once per frame.**
+  A read schedules a snapshot at most every `SNAPSHOT_INTERVAL` (1/60 s).
+  The snapshot sets state, which re-renders the component.
+  This is the coalescing zellij (8 ms), neovim (10 ms) and wezterm (3 ms) do.
+  In the spike's multiplexer, `seq 1 300000` took 0.18 s of wall time, and the UI stayed responsive.
+- **The transcript is scrollback, then the screen**, with trailing blank rows dropped.
+  A run's terminal never resizes, so a row that has scrolled into scrollback doesn't change again,
+  and the transcript converts each row once.
+  A snapshot then costs the screen plus whatever scrolled since the last one,
+  and the emulator's scrollback only has to hold what a run prints between two snapshots.
+  A runaway `yes` would grow the transcript without bound, so it keeps the last `max_lines` rows.
+- **The transcript is a painter with a natural size**, `(columns, lines)`,
+  so it sizes its `Canvas` as an image does, and a `scroll_area` scrolls through it.
+- **Recorded output.**
+  Building a transcript from bytes is a function from a value to a value,
+  so `Transcript.of(output, columns, rows)` renders output captured ahead of time the same way, with no program run.
+  A slide can show a command's output without running it, and docs screenshots stay deterministic.
+
+### Phase 4 work
+
+1. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
+2. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`, and the `PAGER` default.
+3. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
+   with its outcome beneath.
+4. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.
+   Docs with screenshots from `docs/examples/`, drawn from recorded output through `Transcript.of`.
+5. Tests against real programs (colors, a progress bar's last frame, a failing status, a program that doesn't exist,
+   cancelling and timing out a program that sleeps, and the pager default), to 100% coverage,
+   and a mutation testing pass over the new code.
+
+## Phase 5: Framework fixes for the embed
+
+The spike hit these limits in counterweight itself, which a multiplexer can't work around.
+Each is also useful to apps that never embed a terminal.
+Nothing before phase 6 needs them, so this phase can land any time before it.
+
+1. **Ctrl+C quits the host.**
+   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
+   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
+   and Ctrl+S/Ctrl+Q are eaten as flow control.
+   None of them can reach an embedded program.
+   The spike's test session died this way.
+   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
+   with Ctrl+C then arriving as a key the app can bind to `Quit`,
+   or that a code runner (phase 4) can bind to cancel a run.
+2. **`FocusOn` can't focus a component that mounts in the same update.**
+   The routing table doesn't know the new handle yet, so the control is dropped.
+   The spike's multiplexer works around it with `ClearFocus` and `auto_focus`.
+   React's answer is an effect after mount that calls `ref.focus()`.
+   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
+   that mounts its target, or a way for an effect to send a control.
+3. **A mode that changes routing must be readable synchronously.**
+   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
+   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
+   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
+   `use_text_input` hits the same thing and solves it with updater functions.
+   This needs a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
+
+## Phase 6: Embedding terminals
+
+The embed runs an interactive program in a pane:
+it shows the screen as the program draws it, and routes keys, pastes and mouse events to the program.
 
 ### The layers
 
 ```text
-Canvas(painter=ScreenView(screen, show_cursor))         element: paints the snapshot, no text layout
+Canvas(painter=ScreenView(screen, show_cursor))         element (phase 1): paints the snapshot, no text layout
   ^
-use_terminal(argv, columns, rows) -> EmbeddedTerminal   headless: emulator, snapshots, input forwarding, focus
+use_terminal(argv, columns, rows) -> EmbeddedTerminal   headless (phase 6): emulator, snapshots, input forwarding, focus
   ^
-use_pty(argv, columns, rows, on_output) -> Pty          headless: PTY, child process, writes, resize, exit status
+use_pty(argv, columns, rows, on_output) -> Pty          headless (phase 3): PTY, child process, writes, resize, exit status
   ^
-Emulator (place) -> Screen (value)                      emulator.py: the only module that knows about the emulator
+Emulator (place) -> Screen (value)                      emulator.py (phase 2): the only module that knows about the emulator
 ```
+
+`use_command` sits on the same two lower layers, beside `use_terminal`.
 
 The embed needs no element of its own:
 a component calls `use_terminal`, measures its own content box with `use_rects`, and returns a `Canvas`.
@@ -559,43 +835,14 @@ def pane(pane_id: int, prefix: InputHandler, handle: FocusHandle, on_title: Call
     return Canvas(draw=terminal.view, style=fill(1) | border | ..., on_input=first(prefix, terminal.on_input))
 ```
 
+### Output and resizing
+
+The emulator is fed and snapshotted as phase 4 feeds it (see [Output](#output-places-in-the-effect-values-in-the-render)),
+except that the snapshot is the screen rather than a transcript.
+
 The pane's size feeds back into the program's terminal size.
 `use_rects` reports last frame's box, and an effect keyed on `(columns, rows)` resizes the PTY and the emulator.
 So a resize shows the old screen, cropped or padded, for one frame, as tmux does.
-Because the box sizes the terminal rather than the other way round,
-the terminal painter is one with no natural size (see [Sizing](#sizing)).
-
-### Output: places in the effect, values in the render
-
-The emulator is mutable (a place).
-It lives only inside `use_terminal`'s effects, which feed it on the event loop as the PTY becomes readable.
-Rendering only ever sees `Screen` values:
-
-- **Parse on read.**
-  `loop.add_reader` on the master fd reads up to 64 KiB and feeds the emulator immediately.
-  Since nothing is read faster than it's parsed, unparsed bytes never pile up.
-  When the app falls behind, the kernel's PTY buffer fills and blocks the child,
-  which is the backpressure tmux gets by disabling `EV_READ`.
-- **Snapshot at most once per frame.**
-  A read schedules a snapshot at most every `SNAPSHOT_INTERVAL` (1/60 s).
-  The snapshot sets state, which re-renders the component.
-  This is the coalescing zellij (8 ms), neovim (10 ms) and wezterm (3 ms) do.
-  In the spike's multiplexer, `seq 1 300000` took 0.18 s of wall time, and the UI stayed responsive.
-- **Share unchanged rows.**
-  `Screen` compares by identity, so a `Canvas` redraws only when the program's output changed.
-  The emulator keeps each converted row by libghostty's row id while it isn't dirty.
-  Unstyled cells are cached by their raw 64-bit value,
-  which holds only a codepoint and a width when the cell has no style.
-  A styled cell's raw value holds a page-local style id, so those can't be cached.
-
-Reading cells through cffi costs several calls per cell, and that is the bottleneck.
-These are medians on a 120×40 screen after one line scrolls, when libghostty marks every row dirty:
-
-| Output | Snapshot |
-| --- | --- |
-| plain text | 2.8 ms |
-| every line colored | 10.5 ms |
-| nothing changed | 0.1 ms |
 
 ### Input: when keys reach the program
 
@@ -648,49 +895,47 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
   `\x1b[<0;20;7M`, `\x1b[<32;22;7M`, `\x1b[<0;22;7m`: pane-local, 1-based, button tracking.
 - The app idled at 0.6% CPU with two shells open.
 
-### Phase 3 work
+### Phase 6 work
 
-1. Choose between `pyghostty` and an owned binding, and add the dependency.
-2. Port the spike's layers to the phase 1 `Painter` protocol and the phase 2 fixes,
-   moving the screen painter to `counterweight.painters`, leaving a program's default colors unset,
-   and dropping the multiplexer's `ClearFocus` and closure-state workarounds.
-   - Paint adds a wide grapheme's continuation cell, and `StyledGrapheme(grapheme="")` raises,
-     so the screen painter drops libghostty's spacer tails.
-     A row then has one entry per grapheme, not per column,
-     so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
-     which would put it on the wrong cell after any wide character on its line.
-   - The multiplexer's `%` split reads `next_id` from its closure,
-     so two splits in one read open two panes with the same id and key.
-     The new id comes from the updater instead.
-   - The emulator's color and style caches are bounded:
-     the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
-3. Harden `use_pty`:
-   - EOF and exit together (tmux's `window_pane_destroy_ready`), and grandchildren that hold the PTY open.
-     The spike's drain re-raises its `TimeoutError` out of the effect,
-     and an effect's exception ends the app's task group,
-     so a shell that exits leaving a background job on the PTY quits the whole app, and its exit status is never set.
-   - A spawn that fails (an `argv` that doesn't exist) closes both PTY fds and reports the failure as the pane's state,
-     rather than raising out of the effect with the fds leaked.
-   - The program starts at its real size.
-     `use_rects` is zero on the first render, so the spike spawns at 0×0,
-     and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
-     leaving the program at 0×0 until the pane's size next changes.
-     Applying the latest size on connect closes that gap.
-   - A configurable `TERM`.
-4. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
+1. `input_encoding`: key presses, pastes and mouse events back to the bytes a terminal sends,
+   with xterm's spellings for F1 to F4, and a press outside the program's screen only focusing the pane.
+2. `use_terminal`, ported from the spike onto phases 2 and 3,
+   using phase 5's fixes to drop the multiplexer's `ClearFocus` and closure-state workarounds.
+   The multiplexer's `%` split reads `next_id` from its closure,
+   so two splits in one read open two panes with the same id and key.
+   The new id comes from the updater instead.
+3. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
    with an effect keyed on `focus.is_focused`.
-5. `use_terminal` as a public headless component, and a `terminal` widget on top of it,
-   with tests, docs, and the multiplexer as an example.
+4. A `terminal` widget on top of `use_terminal`, with tests, docs, and the multiplexer as an example.
 
-`use_subprocess` (pipes, no PTY) is `use_pty` without the terminal and needs no emulator.
-It can land beside `use_pty` or after it.
+## Later: fidelity
+
+The embed and one-shot commands work without these,
+but each makes a program's output look, or the program behave, less like it does in a real terminal.
+
+1. **Colors are truecolor only.**
+   `Color` is RGB, so a program's palette indices are resolved to libghostty's default palette.
+   Its "default" foreground and background are left unset, so they follow the canvas's `text_style`,
+   but that is RGB too.
+   An embedded `ls --color`, and one in a transcript, uses xterm's red, not the user's theme's red.
+   tmux keeps palette indices and default colors through to the outer terminal.
+   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
+   Since transcripts show it too, it could land before phase 6.
+2. **The cursor is drawn, not placed.**
+   Counterweight hides the real cursor, so the terminal painter draws a reversed cell.
+   That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.
+   A framework way for the focused element to place the real cursor would serve `use_text_input` too.
+3. **The key model is legacy.**
+   `KeyPressed` can't represent what the kitty keyboard protocol adds
+   (Ctrl+Shift+letter, key release, Ctrl+I distinct from Tab), so neither can the embed's encoder.
+   libghostty's key encoder could produce kitty encodings once the input side carries the information.
 
 ## Appendix: the spike code
 
 The spike's code, kept here as a reference for writing each phase.
 Changed files are diffs against `main`; added files are in full.
 
-### Phase 1: Canvas
+### Canvas (phase 1)
 
 #### `src/counterweight/elements.py`
 
@@ -1134,7 +1379,7 @@ index 37747ae..379daa7 100644
          agent.WORKLOAD,
 ````
 
-### Phase 3: embedding terminals
+### Emulator, pseudo-terminals and the embed (phases 2, 3 and 6)
 
 #### `src/counterweight/emulator.py`
 
