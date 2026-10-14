@@ -218,7 +218,7 @@ Known weaknesses:
   Finding the fewest edges to reverse is NP-hard, so dot and ELK use heuristics too.
 - Self-loops need a route around a box's side, which the probe doesn't have.
 - Overflow: a diagram wider than the screen runs off its right edge,
-  until fitting (below) narrows it.
+  until fitting (below) narrows it or a scroll container holds it.
 
 ## Where placement plugs into taffy
 
@@ -261,6 +261,16 @@ It costs a measuring pass before the layout pass,
 which has to happen within one frame (across frames, through `use_rects`, it would flicker),
 and a node that wraps text needs a chosen width to measure at.
 
+The render loop already has this shape.
+When focus moves, `app.py` re-renders the components whose focus changed and lays the tree out again,
+all before painting, and raises `UnsettledFocus` if the second pass doesn't settle.
+A graph container can follow it: lay out, run the core on the measured sizes,
+re-render the container with its positions, and lay out again, at the cost of a second layout pass.
+`LayoutTree` keeps one taffy tree across frames so taffy reuses the layouts it cached
+for unchanged nodes.
+Measuring nodes inside that tree at sizes other than the ones the final layout gives them
+may evict those entries, or a scratch tree may be cheaper; that needs measuring with `just profile`.
+
 ### Recommendation
 
 C, with the graph core written as pure functions
@@ -276,6 +286,12 @@ That is the piece the editor case needs most.
 
 - Where it runs: a pass after layout that reads `Layouts.by_key`,
   as border healing reads the paint.
+  It needs a module name other than `routing`:
+  `counterweight.routing` routes input events to handlers.
+- Clipping and scrolling: `by_key` holds each node's rects on screen, already moved by the scroll containers above it,
+  with its `clip` and `visible` region, and has no entry for a hidden node.
+  A connector has to decide what it draws when an endpoint is scrolled out of view, partly clipped, or hidden,
+  and a connector between two nodes in one scroll container should scroll with them.
 - Path search: A* over cells, scored by length plus a penalty per bend.
   Earlier edges are soft obstacles (termaid charges +2 per cell),
   so later edges avoid them without being blocked.
@@ -284,10 +300,11 @@ That is the piece the editor case needs most.
   Overlapping edges are mermaid-ascii's most-complained-about flaw.
 - Ports: spread edges that land on the same side of a box,
   and leave a straight run before each arrowhead.
-- Naming endpoints (open): inside a graph container,
-  ids local to that container are simple.
-  Connectors anywhere in the tree need an element-reference mechanism
-  counterweight doesn't have; a hook like `use_anchor()` is one possible shape.
+- Naming endpoints: an `ElementHandle`, which names an element as a React ref names a DOM node.
+  A component creates one with `use_state(ElementHandle)` and passes it to an element's `handle`,
+  and `Layouts.handles` maps it to the node's key, so a connector finds its endpoints' rects through `by_key`.
+  Inside a graph container, ids local to that container are simpler for the author,
+  and the container can turn them into handles itself.
 
 ## Glyphs and effects
 
@@ -302,6 +319,10 @@ That is the piece the editor case needs most.
   `border_fills` emits healing hints for a border's four corners only,
   so an edge meeting the middle of a border never becomes a tee.
 - Protect node borders: an edge may add a tee to a border (`├`) but never overwrite it.
+- Respect clips: paint drops a healing hint for a corner outside the element's clip,
+  because healing only checks that the cell under a hint is a border character
+  and would rewrite another element's border there.
+  Line-canvas bits outside a clip need the same rule.
 - Tell crossings from merges: `┼` alone can't say whether two edges cross or join.
   Routing should penalize crossings at junctions,
   and merging needs to know which edge each bit came from.
@@ -395,6 +416,8 @@ which is why the probe's nodes don't shrink.
 On top of narrowing boxes, the engine can shrink gaps
 (mermaid-ascii's `--max-width` and termaid's auto-fit both do)
 and flip direction from down to right by aspect ratio.
+A diagram that still doesn't fit can sit in a scroll container (`scroll_area`),
+as a wide SVG sits in a scrolling `div` on the web, instead of running off the screen's edge.
 
 Stability matters for an editor and for reactive re-renders alike:
 
@@ -418,7 +441,8 @@ the model writes the nodes and edges, and the engine lays them out.
 1. Which comes first:
    routing between arbitrary elements (editor first),
    or the graph container (diagrams first)?
-   Routing first is the better default, since the graph container uses it too.
+   Routing first is the better default, since the graph container uses it too,
+   and `ElementHandle` already names its endpoints.
 2. Can edges cross container boundaries,
    as in nested diagrams with edges between their insides?
    Every engine below struggles there;
@@ -432,18 +456,20 @@ the model writes the nodes and edges, and the engine lays them out.
 These depend on the open questions; the order assumes routing first.
 
 1. Line canvas: per-cell direction bits with a weight per direction,
-   resolved to glyphs at paint time, with node borders protected.
+   resolved to glyphs at paint time, with node borders protected and clips respected.
    Border healing moves onto it, healing along whole edges rather than only corners.
-2. Connectors: a post-layout routing pass,
+2. Connectors: a post-layout pass between elements named by `ElementHandle`,
    with A* using bend and soft-obstacle costs, port spreading, and arrowheads,
-   then ordering and nudging in shared channels.
+   then ordering and nudging in shared channels,
+   and a rule for endpoints that are scrolled away, clipped, or hidden.
 3. Graph core: pure functions for cycle breaking, ranking, ordering, coordinate assignment,
    ports, and channel tracks, tested directly on plain data.
    Each takes its spacing (the gap between neighbours) as an argument.
    Tests cover cycles, sinks above the last rank, isolated nodes,
    and boxes with more inputs than their label is wide.
 4. Graph container: measure nodes, run the core,
-   compile positions into the taffy tree in one layout pass, and route through step 2's channels.
+   compile positions into the taffy tree, and route through step 2's channels,
+   with a second layout pass in the frame, as focus settling already does.
 5. Fitting: narrow boxes, shrink gaps, then flip direction, when the diagram doesn't fit.
 6. Drop shadows: document the wrapper pattern (a cookbook page),
    and have the graph container leave room for a node's shadow by passing a wider gap to the core.
