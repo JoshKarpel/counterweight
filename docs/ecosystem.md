@@ -178,6 +178,9 @@ These are the gaps you're most likely to hit, with what to do instead:
 - **Inline rendering.** Counterweight always uses the terminal's alternate screen,
   so nothing it draws remains in the scrollback when the app exits.
   Tracked in [#393](https://github.com/JoshKarpel/counterweight/issues/393).
+- **Fewer colors.** Counterweight always writes 24-bit color, and ignores `NO_COLOR`,
+  so a terminal limited to 256 or 16 colors shows the wrong ones.
+  Use a terminal with 24-bit color, and in tmux turn it on with the `RGB` terminal feature.
 - **Windows.** Counterweight reads input through POSIX terminal APIs,
   and is tested on Linux and macOS.
 - **A widget library.** Counterweight's widgets are a text input and a text area,
