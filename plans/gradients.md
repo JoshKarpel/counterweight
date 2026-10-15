@@ -11,7 +11,7 @@ It takes its geometry from CSS Images 4,
 and says where cells change the answer.
 
 It doesn't cover transparency or layering gradients over what's beneath them
-(`Color` has no alpha), gradients inside a `Canvas` painter,
+(`Color` has no alpha),
 or Tailwind's `from-*`/`via-*`/`to-*` composition (see [Deferred](#deferred)).
 
 ## Where the old branch went wrong
@@ -103,7 +103,8 @@ Only angles (`linear` and `conic`) and circles depend on it.
 
 Gradients compute in **visual units**:
 a row is `cell_aspect_ratio` columns tall, 2 by default.
-The ratio is a value passed into paint (from a parameter of `app()`),
+The ratio is a parameter of `app()`, passed to the layout tree that builds fields
+(see [Where the caches go](#where-the-caches-go)),
 since the right one depends on the user's font.
 A terminal can report its cell size in pixels (`CSI 16 t`),
 which could replace the default later (see [Deferred](#deferred)).
@@ -220,6 +221,12 @@ radial_gradient(white, sky_700, shape="circle", at=(0.25, 0.5))
 conic_gradient(red_500, amber_400, green_500, blue_500, red_500, start=90)
 ```
 
+A stop is an RGB `Color`, not an `IndexedColor` or `TerminalDefault`.
+The terminal decides what those look like, so the app has no color to interpolate from.
+CSS can take `currentcolor` and system colors as stops because the browser knows their values;
+counterweight knows a palette entry only as `DEFAULT_PALETTE` guesses it,
+and interpolating from that guess would draw a gradient that doesn't meet the user's theme at either end.
+
 Hints are `Hint(0.3)` among the stops.
 The constructors parse once:
 they fix up stop positions into a resolved form the painter reads,
@@ -228,11 +235,11 @@ or a hint that isn't between two of them.
 Every field is hashable, so a `Style` holding a gradient hashes and caches as it does today,
 and `|` replaces a gradient whole rather than merging its fields.
 
-The slots widen from `Color` to `Color | Gradient`:
+The slots widen from `AnyColor` to `AnyColor | Gradient`:
 `Style.margin_color`, `padding_color` and `content_color`,
 and `CellStyle.foreground` and `background`,
-which `text_style`, `border_style` and chunks share.
-`ResolvedCellStyle`, which output reads, stays `Color`-only:
+which `text_style`, `border_style`, chunks and a canvas painter's cells share.
+`ResolvedCellStyle`, which output reads, stays `AnyColor`:
 paint turns a gradient into each cell's color before anything reaches output.
 
 Hand-written utilities give every slot a gradient helper,
@@ -263,6 +270,20 @@ whose foreground or background is the ramp's color),
 indexed by the field.
 Only the rows inside the clip are built, as text's are,
 so a gradient behind a long scroll container costs only the rows in view.
+
+Text and canvas rows can't take that lookup whole.
+A grapheme's own style can set the color the gradient would give it,
+so only the graphemes that leave it unset take the field's color,
+and that's known only before they're resolved.
+Paint's shared `line_cells` cache resolves a row against one `ResolvedCellStyle`,
+which has no gradient to hold,
+so a gradient text's rows are resolved against the field cell by cell
+and kept per node with the field (see [Where the caches go](#where-the-caches-go)),
+rebuilt when the lines, the style or the field change.
+A canvas reaches the same path from its background:
+`canvas_text_style` resolves a painter's unset background to the canvas's `content_color`,
+so a transparent pixel over a gradient `content_color` shows the field's color at that cell,
+as it shows a solid `content_color` today.
 
 A linear field is cheap to build row by row:
 the position along the gradient is affine in `x` and `y`,
@@ -304,13 +325,16 @@ Following the project's cache placement rules:
 - **Ramps: shared, at the source.**
   An `lru_cache` keyed by the gradient's stops and interpolation.
   The gradients an app uses are few, and recur across nodes and frames.
-- **Fields and their cells: per node.**
+- **Fields and their cells: per node, in `LayoutTree`.**
   They're keyed by one node's geometry, and how many are live grows with the app.
-  They go in the per-node paint cache that the
-  [Canvas plan](canvas-and-embedding.md#open-decisions) builds,
-  kept across frames the way `LayoutTree` keeps texts and placements.
-  The Canvas work lands first,
-  and this plan is revised against the cache it builds before gradients are implemented.
+  `LayoutTree.drawings` already keeps each canvas's rows by node
+  with the painter and size that drew them, and reuses them while both compare equal
+  (see the [Canvas plan](canvas-and-embedding.md#the-element-and-its-painter)).
+  Fields follow it: a `LayoutTree.fields` keeps each node's fields by slot,
+  with the gradient, the box size and the aspect ratio each was built for,
+  and `LayoutTree.painted` hands them to paint beside the node's lines,
+  building one only when one of those changed.
+  `LayoutTree.apply` drops a node's fields when it drops the node, as it does its drawing.
 
 Both get their hit rates checked (`cache_info()`)
 on a workload with more gradient boxes than any shared `maxsize`.
@@ -320,6 +344,8 @@ on a workload with more gradient boxes than any shared `maxsize`.
 `paint_to_instructions` resets and re-sends the whole SGR whenever a cell's style differs from the last.
 Gradient cells differ only in color,
 so sending just the changed foreground or background, without the reset, halves the output (269 to 125 KiB).
+`sgr_color` already builds one color's parameters on its own,
+for RGB, palette and default colors alike, so the change is to `paint_to_instructions` alone.
 Syntax highlighting and any other per-cell colors gain the same,
 so it lands as its own change, measured on the existing benchmarks too.
 
@@ -361,13 +387,62 @@ Gradient screenshots in the docs stay small instead,
 filling part of a frame rather than all of it.
 A test pins a gradient frame's SVG, so the per-cell colors are checked in that output too.
 
+## On a canvas
+
+A canvas has no slots to put a gradient in: its painter draws every cell.
+`counterweight.painters.pixels` gets two pieces that draw one there,
+at two samples per cell:
+
+```python
+@classmethod
+def from_gradient(cls, width: int, height: int, gradient: Gradient) -> Pixels: ...  # on Pixels
+
+
+@dataclass(frozen=True, slots=True)
+class HalfBlockGradient:
+    gradient: Gradient
+
+    natural_size = (0, 0)  # size it with its style, as a terminal canvas is
+    keeps_aspect_ratio = False
+
+    def draw(self, width: int, height: int) -> Rows:
+        return HalfBlocks(Pixels.from_gradient(width, 2 * height, self.gradient)).draw(width, height)
+```
+
+- **`Pixels.from_gradient`** is a picture to draw on:
+  a gradient background that a paint program or a plot then sets points over with `with_points`.
+  It builds the gradient's field over the picture's pixels and looks each one up in the ramp,
+  with the same functions an element's slots use.
+  Pixels under `HalfBlocks` are about square, so the field takes them as square
+  rather than taking the cell aspect ratio,
+  as `HalfBlocks` keeps an image's proportions without correction.
+  The gradient box spans pixel centers, so the corner pixels take the end colors,
+  and lengths (`at`, a radius) are in pixels.
+  A gradient's `box` names one of an element's boxes, so it doesn't apply here:
+  the gradient maps over the whole picture.
+- **`HalfBlockGradient`** is a painter that fills its canvas with a gradient at whatever size the canvas is.
+  A `Pixels` has a fixed size, and `HalfBlocks` scaling it to a larger box repeats pixels into visible bands,
+  so the painter builds its picture at the box's size, `width` by `2 * height` pixels, on each draw.
+  `LayoutTree.drawings` reuses what it drew while the gradient and the box's size are unchanged,
+  so a gradient that doesn't move is drawn once, with no cache of its own.
+
+The browser's canvas takes gradients too, as a `fillStyle`:
+`createLinearGradient(x0, y0, x1, y1)`, `createRadialGradient` with two circles,
+and `createConicGradient(angle, x, y)`, all in the canvas's own pixels.
+These take the CSS geometry instead,
+so the `Gradient` value an element's style holds draws the same on a canvas.
+The canvas API's points and two-circle radials have no counterpart (see [Decisions](#decisions)).
+
 ## Deferred
 
 - **Two samples per cell.**
   Drawing an empty cell as `▀`, with one sample in its foreground and one in its background,
   doubles vertical resolution, which a short vertical gradient needs most.
-  It changes the cell's grapheme, which the text screenshots, copying text from the terminal,
-  and border healing all see, and text cells can't do it at all.
+  `HalfBlocks` (`counterweight.painters.pixels`) already draws a canvas this way,
+  and `HalfBlockGradient` uses it to show a gradient on a canvas at two samples per cell
+  (see [On a canvas](#on-a-canvas)).
+  For an element's slots, it changes the cell's grapheme, which the text screenshots,
+  copying text from the terminal, and border healing all see, and text cells can't do it at all.
   Several plausible designs (opt-in per gradient, per slot, or automatic for empty cells),
   and no way yet to choose between them.
 - **Tailwind's composition** (`bg-linear-to-r from-red-500 via-amber-400 to-blue-500`).
@@ -377,6 +452,11 @@ A test pins a gradient frame's SVG, so the per-cell colors are checked in that o
 - **The cell aspect ratio from the terminal** (`CSI 16 t`).
   Cheap to ask for, but it's an input-parsing change with a reply some terminals never send,
   and the knob covers it.
+- **Palette and default colors as stops.**
+  A terminal reports its palette entries (`OSC 4`) and its default colors (`OSC 10` and `OSC 11`) when asked,
+  which would give the app the RGB values to interpolate.
+  It's the same kind of change as asking for the cell size, with replies some terminals never send,
+  and a gradient between them goes stale when the user changes their theme.
 - **`background-attachment: local`**, a scroll container's own gradient scrolling with its content.
   A child's gradient already moves with it, since layout scrolls its box.
 - **Dithering.** Truecolor output has 8 bits per channel and needs none.
@@ -400,6 +480,16 @@ Each settled choice, with what it costs:
 - **Each slot maps over the box it paints**, with `box` to override.
   A margin gradient spans the margin, and so on for each slot.
   It costs alignment: a border and a background with the same stops line up only when `box` says so.
+- **Stops are RGB `Color`s.**
+  A gradient looks the same in every terminal, and its ramp is computed in the app.
+  It costs following the user's theme: `IndexedColor` and `TerminalDefault` can fill a slot but not stop a gradient.
+- **Fields are kept in `LayoutTree`**, beside each canvas's drawing.
+  They live and die with the node, as drawings do, with no second per-node store to keep in step.
+  It costs layout knowing which box each slot maps over, which is a question of paint,
+  and the aspect ratio reaching layout, which otherwise has no use for it.
+- **A canvas takes the CSS geometry**, through `Pixels.from_gradient` and `HalfBlockGradient`.
+  One `Gradient` value draws the same in an element's slot and on a canvas.
+  It costs the browser canvas's gradients: there are no point-to-point lines or two-circle radials.
 - **Chunks take gradients**, mapped over the element's content box.
   Widening `CellStyle` gives them gradients without a second style type.
   It costs CSS's per-span mapping: a chunk's gradient continues the element's rather than spanning the chunk.
@@ -409,18 +499,22 @@ Each settled choice, with what it costs:
 
 ## Work
 
-1. Bring in the Canvas work and its per-node paint cache, and revise this plan against them.
-2. `counterweight.gradients`: `Stop`, `Hint`, the three gradient types and their constructors,
+1. `counterweight.gradients`: `Stop`, `Hint`, the three gradient types and their constructors,
    stop fixup and hints, color-space conversion (sRGB, Oklab, Oklch with hue methods),
    ramps, and fields for each geometry.
    Pure functions, tested directly, with property tests that a ramp lookup matches the exact color
    to within a channel step, and that magic corners land the end colors on the corners.
-3. Paint: widen the slots, paint each slot from its field kept in the per-node paint cache,
-   and pass the cell aspect ratio in from `app()`.
+2. Paint: widen the slots, keep each node's fields in `LayoutTree.fields`,
+   paint each slot from its field, resolve gradient text and canvas rows against it,
+   and pass the cell aspect ratio from `app()` to `LayoutTree.compute`.
    A `gradients` benchmark workload with a static and a rotating gradient,
    profiled with the `cw-profile` workflow.
+3. Canvas: `Pixels.from_gradient` and `HalfBlockGradient` in `counterweight.painters.pixels`,
+   and a section on them in `docs/elements/canvas.md`.
 4. Output: send only the colors that changed between styles that differ only in color.
 5. Utilities, a `docs/styles/gradients.md` page with screenshots from `docs/examples/`,
    and an `examples/gradients.py` that rotates a gradient, as the old branch's did.
 6. Tests to 100% coverage, including a gradient frame's SVG and text output,
+   a canvas with transparent pixels over a gradient `content_color`,
+   and the corner pixels of `Pixels.from_gradient` taking the end colors,
    and a mutation testing pass over the new code.
