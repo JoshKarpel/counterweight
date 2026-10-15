@@ -59,6 +59,7 @@ from counterweight.controls import ToggleBorderHealing
 from counterweight.controls import _Control
 from counterweight.elements import Div
 from counterweight.events import AnyEvent
+from counterweight.events import ControlSent
 from counterweight.events import Dummy
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
@@ -691,6 +692,8 @@ async def render_loop(
                         case StateSet(key=key):
                             should_render = True
                             dirty.add(key)
+                        case ControlSent(control=control):
+                            handle_control(control)
                         case TerminalResized(dimensions=override):
                             should_render = True
                             root_component, current_paint, w, h = handle_screen_size_change(override)

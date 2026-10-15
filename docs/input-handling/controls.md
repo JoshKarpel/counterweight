@@ -10,6 +10,7 @@ or a tuple of controls, which Counterweight applies in order (`return Bell(), Sc
 skipping any `None` in it, as `merge` skips `None` styles.
 Returning `()`, a tuple of no controls, says the handler handled the event with nothing more to do,
 and returning any control or tuple stops the event, as `()` does (see [Events](events.md#handling-input)).
+Code outside a handler, such as an effect, sends controls with [`use_controls`](../hooks/use_controls.md).
 
 ## API
 

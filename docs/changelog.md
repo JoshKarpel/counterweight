@@ -180,6 +180,10 @@
   and the `AdvanceClock` control moves it forward.
   The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
 
+- Added [`use_controls`](hooks/use_controls.md), which gives a component a sender that hands the app a control
+  from outside an input handler, such as an effect that quits when a program exits.
+  The app handles a sent control as it handles one a handler returns, after the events already waiting.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
@@ -305,7 +309,8 @@
   `counterweight.input_encoding` holds the pure functions that encode key presses, pastes, mouse events and focus changes
   back into a terminal's bytes, built from the input parser's own tables.
   The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
-  runs shells side by side with a tmux-style prefix.
+  runs shells side by side with a tmux-style prefix, showing the keys that follow it along the bottom, as zellij does,
+  and closes a pane when its shell exits.
 
 - Added [running programs on the app's terminal](terminals/programs.md), as `git commit` runs an editor.
   `Suspend.to_program` suspends the app, runs a program on the app's `input_stream` and `output_stream`

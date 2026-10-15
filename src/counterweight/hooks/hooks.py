@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import logging
+from asyncio import Queue
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import overload
 
+from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_focused
 from counterweight._context_vars import current_hook_state
 from counterweight._context_vars import current_instant
 from counterweight._context_vars import current_layouts
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import forever
+from counterweight.controls import AnyControl
+from counterweight.events import AnyEvent
+from counterweight.events import ControlSent
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.geometry import ORIGIN
@@ -144,6 +149,36 @@ def use_clock(interval: timedelta) -> Tick:
         raise ValueError(f"use_clock needs a positive interval, but got {interval!r}")
 
     return current_hook_state.get().use_clock(interval, current_instant.get())
+
+
+@dataclass(frozen=True, slots=True)
+class ControlSender:
+    """
+    What [`use_controls`][counterweight.hooks.use_controls] returns:
+    call it with a control to send it to the app, as `send_control(Quit())`.
+    """
+
+    queue: Queue[AnyEvent]
+
+    def __call__(self, control: AnyControl) -> None:
+        self.queue.put_nowait(ControlSent(control=control))
+
+
+def use_controls() -> ControlSender:
+    """
+    Sends the app controls from outside an input handler,
+    such as from an effect, or a callback a program or a timer calls.
+    An input handler returns its controls instead.
+
+    Returns:
+        A sender that hands the app each control it's called with,
+        which the app handles as it handles a control an input handler returns,
+        after the events already waiting.
+        Every render returns an equal sender, so it can be left out of an effect's `deps`,
+        and including it never reruns the effect.
+        It keeps working after the component unmounts, so a control sent as it goes, such as `Quit`, still arrives.
+    """
+    return ControlSender(queue=current_event_queue.get())
 
 
 def use_rects(handle: ElementHandle | None = None) -> Rects:
