@@ -6,7 +6,7 @@ import pytest
 import waxy
 
 from counterweight.app import app
-from counterweight.app import stale_scroll_readers
+from counterweight.app import stale_readers
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -469,7 +469,7 @@ async def test_a_scroll_that_moves_nothing_does_not_wait_to_move_a_later_layout(
 def test_a_text_whose_overflow_is_scroll_raises() -> None:
     shadow = update_shadow(Text(content="x", style=overflow_y_scroll), None, NO_LAYOUTS).tree
 
-    with pytest.raises(ValueError, match="Text doesn't scroll"):
+    with pytest.raises(ValueError, match="Text doesn't scroll its own content"):
         LayoutTree().compute(layout_changes(None, shadow), shadow, 4, 2, {})
 
 
@@ -508,12 +508,19 @@ def test_nested_horizontal_scroll_containers_move_their_content_by_the_sum_of_th
     assert layouts.by_key[inner_node.children[0].key].border.left == -3
 
 
-def test_the_view_excludes_the_space_a_scrollbar_width_reserves() -> None:
+@pytest.mark.parametrize(
+    ("overflow", "expected"),
+    [
+        pytest.param(overflow_y_scroll, (6, 3), id="vertical"),
+        pytest.param(overflow_x_scroll, (8, 1), id="horizontal"),
+    ],
+)
+def test_the_view_excludes_the_space_a_scrollbar_width_reserves(overflow: Style, expected: tuple[int, int]) -> None:
     reserved = Style(layout=waxy.Style(scrollbar_width=2))
 
-    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow_y_scroll | reserved, children=lines(8)))
+    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow | reserved, children=lines(8)))
 
-    assert (scroll.view_width, scroll.view_height) == (6, 3)
+    assert (scroll.view_width, scroll.view_height) == expected
 
 
 @pytest.mark.parametrize(
@@ -592,15 +599,15 @@ def test_a_key_bubbles_once_an_earlier_control_in_its_batch_scrolls_its_containe
     table = scrolled_table(outer, {2: scrolled_to(Position(0, 1))}, 6, 2)
     outer_key, inner_key = table.root, table.layouts.scroll_containers[1].key
 
-    (moved,) = route_key(KeyPressed(key=Key.Down), inner_key, table)
+    (moved,) = route_key(KeyPressed(key=Key.Down), inner_key, table, {})
     assert isinstance(moved, ScrollBy)
 
-    assert route_key(KeyPressed(key=Key.Down), inner_key, table.scrolled(moved)) == (
+    assert route_key(KeyPressed(key=Key.Down), inner_key, table.scrolled(moved), {}) == (
         ScrollBy(Subtree(key=outer_key), y=1),
     )
 
 
-def test_stale_scroll_readers_are_the_nodes_whose_scroll_changed() -> None:
+def test_stale_readers_are_the_nodes_whose_scroll_changed() -> None:
     @component
     def reads() -> Div:
         use_scroll()
@@ -610,7 +617,7 @@ def test_stale_scroll_readers_are_the_nodes_whose_scroll_changed() -> None:
     _, _, third = shadow.root.children
     moved = Layouts(in_paint_order=(), by_key={}, scrolls={third.key: SCROLLS[KEY]})
 
-    assert (list(stale_scroll_readers(shadow, NO_LAYOUTS)), list(stale_scroll_readers(shadow, moved))) == (
+    assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == (
         [],
         [third.key],
     )

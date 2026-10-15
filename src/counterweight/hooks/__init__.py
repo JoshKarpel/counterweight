@@ -2,11 +2,13 @@ from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.geometry import Rects
 from counterweight.geometry import Scroll
+from counterweight.hooks.hooks import ControlSender
 from counterweight.hooks.hooks import Focus
 from counterweight.hooks.hooks import Hovered
 from counterweight.hooks.hooks import Mouse
 from counterweight.hooks.hooks import toggle
 from counterweight.hooks.hooks import use_clock
+from counterweight.hooks.hooks import use_controls
 from counterweight.hooks.hooks import use_effect
 from counterweight.hooks.hooks import use_focus
 from counterweight.hooks.hooks import use_hovered
@@ -24,6 +26,7 @@ from counterweight.hooks.types import Setup
 from counterweight.hooks.types import Tick
 
 __all__ = [
+    "ControlSender",
     "Deps",
     "ElementHandle",
     "Focus",
@@ -39,6 +42,7 @@ __all__ = [
     "Tick",
     "toggle",
     "use_clock",
+    "use_controls",
     "use_effect",
     "use_focus",
     "use_hovered",

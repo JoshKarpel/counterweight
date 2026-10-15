@@ -3,7 +3,8 @@ The benchmark CLI: `uv run python -m benchmarks --help`.
 
 A workload run named `NAME` leaves its files in the output directory: `NAME.json` (frame times),
 `NAME.txt` (the last frame), and, under `just profile`, `NAME.bin` (the Tachyon profile)
-and `NAME.html` (its flamegraph). A `parse` run leaves `NAME.parsing.json` (time per read of input).
+and `NAME.html` (its flamegraph). A `parse` run leaves `NAME.parsing.json` (time per read of input),
+and a `snapshot` run `NAME.snapshots.json` (time per emulator snapshot).
 `report` and `compare` read runs back by name.
 """
 
@@ -37,6 +38,10 @@ from benchmarks.parsing import INPUTS
 from benchmarks.parsing import ParsingTimings
 from benchmarks.parsing import parsing_table
 from benchmarks.parsing import time_parsing
+from benchmarks.snapshots import SCENARIOS
+from benchmarks.snapshots import SnapshotTimings
+from benchmarks.snapshots import snapshots_table
+from benchmarks.snapshots import time_snapshots
 from benchmarks.stacks import STARTUP
 from benchmarks.stacks import Summary
 from benchmarks.stacks import parse_collapsed
@@ -135,6 +140,21 @@ async def parse(streams: Streams, name: str, repeat: int, output: Path) -> int:
 
 
 @command(
+    "snapshot",
+    option("--name", default("snapshot", STR), summary="The run's name (default snapshot)."),
+    option("--repeat", default(5, INT), summary="Rounds to time each scenario, keeping the best (default 5)."),
+    option("--number", default(50, INT), summary="Snapshots to time in each round (default 50)."),
+    OUTPUT,
+)
+async def snapshot(streams: Streams, name: str, repeat: int, number: int, output: Path) -> int:
+    """Time terminal emulator snapshots after pieces of a program's output, then write and print the time per snapshot."""
+    timings = time_snapshots(SCENARIOS, repeat=repeat, number=number)
+    timings.dump(output / f"{name}.snapshots.json")
+    streams.stdout.write(snapshots_table({name: timings}))
+    return 0
+
+
+@command(
     "report",
     argument("name", once(STR), summary="The run to report on."),
     option("--top", default(25, INT), summary="Functions to show in each hotspot table (default 25)."),
@@ -177,11 +197,16 @@ async def report(streams: Streams, name: str, top: int, output: Path) -> int:
 async def compare(streams: Streams, before: str, after: str, output: Path) -> int:
     """
     Compare two workload runs' frame times and, if both were profiled, their stages,
-    or two `parse` runs' times per read.
+    two `parse` runs' times per read, or two `snapshot` runs' times per snapshot.
     """
     parsing = {name: output / f"{name}.parsing.json" for name in (before, after)}
     if all(path.exists() for path in parsing.values()):
         streams.stdout.write(parsing_table({name: ParsingTimings.load(path) for name, path in parsing.items()}))
+        return 0
+
+    snapshots = {name: output / f"{name}.snapshots.json" for name in (before, after)}
+    if all(path.exists() for path in snapshots.values()):
+        streams.stdout.write(snapshots_table({name: SnapshotTimings.load(path) for name, path in snapshots.items()}))
         return 0
 
     timings = {name: Timings.load(output / f"{name}.json") for name in (before, after)}
@@ -278,8 +303,8 @@ def percent(part: float, whole: float) -> str:
 
 cli = group(
     "benchmarks",
-    commands=(list_workloads, run_workload, show, parse, report, compare),
-    summary="Run, profile, and compare the render-loop benchmark workloads, and time input parsing.",
+    commands=(list_workloads, run_workload, show, parse, snapshot, report, compare),
+    summary="Run, profile, and compare the render-loop benchmark workloads, and time input parsing and emulator snapshots.",
 )
 
 raise SystemExit(run_cli(cli))

@@ -229,6 +229,42 @@ unless the terminal is set to send it as Meta (Terminal.app's "Use Option as Met
 or iTerm2's "Esc+" for the Option key).
 Run `counterweight check-input` to see which events a terminal's keys arrive as.
 
+### Keys the terminal would act on
+
+A terminal acts on a few Ctrl keys itself unless the program reading it asks otherwise:
+Ctrl+C and Ctrl+\\ send signals that interrupt and kill the program, Ctrl+Z one that stops it,
+and Ctrl+S and Ctrl+Q pause and resume its output.
+Counterweight asks otherwise, as tmux does: it reads the terminal raw,
+so every one of those keys arrives as a key press (`Key.ControlC`, `Key.ControlBackslash`, `Key.ControlZ`,
+`Key.ControlS` and `Key.ControlQ`), and an editor can save on Ctrl+S,
+or an app can pass Ctrl+C on to a program it runs.
+
+A key press that no handler on its path claims then takes its default from `app`'s `unclaimed_keys`,
+as a browser takes a key's default action unless a listener prevents it.
+[`DEFAULT_UNCLAIMED_KEYS`][counterweight.app.DEFAULT_UNCLAIMED_KEYS] gives Ctrl+C and Ctrl+Z
+what they'd do in a terminal:
+Ctrl+C quits, and Ctrl+Z suspends the app as a shell job, with
+[`Suspend.to_shell()`][counterweight.controls.Suspend.to_shell], until the shell resumes it with `fg`.
+A handler that claims one of them keeps it from taking its default,
+and `unclaimed_keys` changes the defaults for the whole app:
+
+```python
+# No defaults: Ctrl+C and Ctrl+Z do nothing unless a handler handles them.
+asyncio.run(app(root(), unclaimed_keys={}))
+
+# Ctrl+Q quits too, as well as Ctrl+C.
+asyncio.run(app(root(), unclaimed_keys=DEFAULT_UNCLAIMED_KEYS | {Key.ControlQ: Quit()}))
+```
+
+A key the terminal would turn into a signal only does something once the app reads it,
+so an app whose render loop is stuck, such as in a handler that never returns, can't be quit with Ctrl+C.
+Stop it from outside with `kill`: the first interrupt quits it as Ctrl+C would,
+and a second one goes to whatever handled interrupts before the app started.
+A focused component that claims every key, such as one that passes keys on to a program,
+takes Ctrl+C and Ctrl+Z too, so an app that has one needs another way to quit, such as a key that it doesn't claim.
+
+::: counterweight.app.DEFAULT_UNCLAIMED_KEYS
+
 ## Handling Pastes
 
 Counterweight turns on the terminal's bracketed paste mode,

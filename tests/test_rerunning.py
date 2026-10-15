@@ -33,6 +33,7 @@ from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import Receiver
 from counterweight.events import TerminalResized
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Region
 from counterweight.hooks import Rects
 from counterweight.hooks import Setter
@@ -258,6 +259,43 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     assert calls.names == expected
 
 
+NAMED = ElementHandle()
+
+
+@component
+def measures_named(calls: Calls) -> Div:
+    use_rects(NAMED)
+    calls.names.append("measures_named")
+    return Div()
+
+
+@pytest.mark.parametrize(
+    ("moved", "expected"),
+    [
+        pytest.param("named", ["measures_named"], id="named-moved"),
+        pytest.param("own", [], id="own-moved"),
+    ],
+)
+def test_component_calling_use_rects_with_a_handle_reruns_only_when_the_element_it_names_moved(
+    moved: str, expected: list[str]
+) -> None:
+    calls = Calls()
+    root = Div(children=(measures_named(calls), Div(handle=NAMED)))
+    previous = update_shadow(root, None, NO_LAYOUTS).tree
+    reader, named = previous.root.children
+    layouts = Layouts(
+        in_paint_order=(),
+        by_key={(named if moved == "named" else reader).key: MOVED},
+        scrolls={},
+        handles={NAMED: named.key},
+    )
+    calls.names.clear()
+
+    update_shadow(root, previous, layouts)
+
+    assert calls.names == expected
+
+
 @component
 def measures_until_set(calls: Calls) -> Div:
     is_measuring, set_is_measuring = use_state(True)
@@ -348,7 +386,12 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
+        read: list[dict[ElementHandle | None, Rects] | None] = [
+            None,
+            {None: rects_in(NO_LAYOUTS, hooks.key)},
+            {None: MOVED},
+        ]
+        hooks.rects = draw(st.sampled_from(read))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,

@@ -319,6 +319,20 @@ generated_lines.extend(
 )
 generated_lines.append("")
 
+# The terminal's default colors, which follow the user's theme
+generated_lines.extend(
+    (
+        "text_terminal_default = Style(text_style=CellStyle(foreground=TERMINAL_DEFAULT))",
+        "text_bg_terminal_default = Style(text_style=CellStyle(background=TERMINAL_DEFAULT))",
+        "border_terminal_default = Style(border_style=CellStyle(foreground=TERMINAL_DEFAULT))",
+        "border_bg_terminal_default = Style(border_style=CellStyle(background=TERMINAL_DEFAULT))",
+        "margin_terminal_default = Style(margin_color=TERMINAL_DEFAULT)",
+        "padding_terminal_default = Style(padding_color=TERMINAL_DEFAULT)",
+        "content_terminal_default = Style(content_color=TERMINAL_DEFAULT)",
+    )
+)
+generated_lines.append("")
+
 # Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():

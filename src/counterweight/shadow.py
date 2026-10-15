@@ -195,7 +195,7 @@ def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts, inst
     """
     return (
         node.key in dirty
-        or (node.hooks.rects is not None and node.hooks.rects != rects_in(layouts, node.key))
+        or any(rects != rects_in(layouts, node.key, handle) for handle, rects in (node.hooks.rects or {}).items())
         or any(clock.is_due(instant) for clock in node.hooks.clocks)
     )
 

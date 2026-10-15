@@ -1,12 +1,10 @@
 import asyncio
 import logging
-from functools import lru_cache
-
-from more_itertools import intersperse
+from collections.abc import Iterable
 
 from counterweight.app import app
 from counterweight.components import component
-from counterweight.elements import Chunk
+from counterweight.elements import Canvas
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
@@ -16,37 +14,29 @@ from counterweight.events import MouseMoved
 from counterweight.events import MouseUp
 from counterweight.events import Receiver
 from counterweight.geometry import Position
+from counterweight.geometry import Region
 from counterweight.hooks import Ref
 from counterweight.hooks import use_hovered
 from counterweight.hooks import use_mouse
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
+from counterweight.painters.pixels import HalfBlocks
+from counterweight.painters.pixels import Pixels
 from counterweight.styles.utilities import *
 
 logger = logging.getLogger(__name__)
 
 
-BLACK = Color.from_name("black")
+# 20x20 pixels, which half blocks draw in 20x10 cells.
+BLANK = Pixels.blank(20, 20, Color.from_name("black"))
 
 
-@lru_cache(maxsize=2**10)
-def canvas_chunk(color: Color) -> Chunk:
-    return Chunk(content="█", style=CellStyle(foreground=color))
-
-
-def canvas(
-    width: int,
-    height: int,
-    cells: dict[Position, Color],
-) -> tuple[Chunk, ...]:
-    return tuple(
-        intersperse(
-            Chunk.newline(),
-            (canvas_chunk(cells.get(Position(x, y), BLACK)) for y in range(height) for x in range(width)),
-            n=width,
-        )
-    )
+def painted(cells: Iterable[Position], color: Color, box: Region) -> HalfBlocks:
+    """The blank picture with both of the pixels in each of `cells` of a canvas whose content box is `box` set to `color`."""
+    blank = HalfBlocks(BLANK)
+    pixels = {pixel: color for cell in cells for pixel in blank.pixels_at(cell, box.width, box.height)}
+    return HalfBlocks(BLANK.with_points(pixels))
 
 
 @component
@@ -84,23 +74,24 @@ hover_style = border | border_heavy | border_color("amber", 600)
 
 
 @component
-def tracking_box() -> Text:
+def tracking_box() -> Canvas:
     mouse = use_mouse()
     rects = use_rects()
     hovered = use_hovered()
 
-    return Text(
+    return Canvas(
         style=canvas_style | (hover_style if hovered.border else None),
-        content=canvas(
-            20,
-            10,
-            ({mouse.absolute - rects.content.top_left: Color.from_name("red")} if hovered.content else {}),
+        painter=painted(
+            [mouse.absolute - rects.content.top_left] if hovered.content else [],
+            Color.from_name("red"),
+            rects.content,
         ),
     )
 
 
 @component
-def last_clicked_box() -> Text:
+def last_clicked_box() -> Canvas:
+    rects = use_rects()
     hovered = use_hovered()
 
     clicked, set_clicked = use_state(Position(0, 0))
@@ -113,21 +104,16 @@ def last_clicked_box() -> Text:
             case _:
                 return None
 
-    return Text(
+    return Canvas(
         on_input=on_input,
         style=canvas_style | (hover_style if hovered.border else None),
-        content=canvas(
-            20,
-            10,
-            {
-                clicked: Color.from_name("green"),
-            },
-        ),
+        painter=painted([clicked], Color.from_name("green"), rects.content),
     )
 
 
 @component
-def last_dragged_box() -> Text:
+def last_dragged_box() -> Canvas:
+    rects = use_rects()
     hovered = use_hovered()
 
     start, set_start = use_state(Position(0, 0))
@@ -145,14 +131,10 @@ def last_dragged_box() -> Text:
             case _:
                 return None
 
-    return Text(
+    return Canvas(
         on_input=on_input,
         style=canvas_style | (hover_style if hovered.border else None),
-        content=canvas(
-            20,
-            10,
-            {p: Color.from_name("khaki") for p in start.fill_to(end)} if start != end else {},
-        ),
+        painter=painted(start.fill_to(end) if start != end else [], Color.from_name("khaki"), rects.content),
     )
 
 

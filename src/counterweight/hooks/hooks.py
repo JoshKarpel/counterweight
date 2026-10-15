@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import logging
+from asyncio import Queue
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import overload
 
+from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_focused
 from counterweight._context_vars import current_hook_state
 from counterweight._context_vars import current_instant
 from counterweight._context_vars import current_layouts
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import forever
+from counterweight.controls import AnyControl
+from counterweight.events import AnyEvent
+from counterweight.events import ControlSent
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.geometry import ORIGIN
@@ -146,27 +151,69 @@ def use_clock(interval: timedelta) -> Tick:
     return current_hook_state.get().use_clock(interval, current_instant.get())
 
 
-def use_rects() -> Rects:
+@dataclass(frozen=True, slots=True)
+class ControlSender:
     """
+    What [`use_controls`][counterweight.hooks.use_controls] returns:
+    call it with a control to send it to the app, as `send_control(Quit())`.
+    """
+
+    queue: Queue[AnyEvent]
+
+    def __call__(self, control: AnyControl) -> None:
+        self.queue.put_nowait(ControlSent(control=control))
+
+
+def use_controls() -> ControlSender:
+    """
+    Sends the app controls from outside an input handler,
+    such as from an effect, or a callback a program or a timer calls.
+    An input handler returns its controls instead.
+
+    Returns:
+        A sender that hands the app each control it's called with,
+        which the app handles as it handles a control an input handler returns,
+        after the events already waiting.
+        Every render returns an equal sender, so it can be left out of an effect's `deps`,
+        and including it never reruns the effect.
+        It keeps working after the component unmounts, so a control sent as it goes, such as `Quit`, still arrives.
+    """
+    return ControlSender(queue=current_event_queue.get())
+
+
+def use_rects(handle: ElementHandle | None = None) -> Rects:
+    """
+    Parameters:
+        handle: The element to report on, by the [`ElementHandle`][counterweight.focus.ElementHandle]
+            passed to its `handle`, as a React component measures another element through a ref,
+            or `None` for the calling component's top-level element.
+
     Returns:
         A recording describing the rectangular areas of the
             `content`, `padding`, `border`, and `margin` of
-            the calling component's top-level element
-            *on the previous render cycle*.
-            In the initial render, the returned rectangles will all be positioned
+            the element *on the previous render cycle*.
+            In the initial render, and for a `handle` that named no visible element in the previous render cycle,
+            the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
-            A component that calls `use_rects` also renders on the next render cycle after its rectangles move.
+            A component that calls `use_rects` also renders on the next render cycle after any of the rectangles
+            it read move.
     """
     hooks = current_hook_state.get()
-    rects = rects_in(current_layouts.get(), hooks.key)
-    hooks.rects = rects
+    rects = rects_in(current_layouts.get(), hooks.key, handle)
+    if hooks.rects is None:
+        hooks.rects = {}
+    hooks.rects[handle] = rects
     return rects
 
 
-def rects_in(layouts: Layouts, key: NodeKey) -> Rects:
-    """The rectangles `use_rects` reports for the node with `key`, given the previous frame's `layouts`."""
+def rects_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None = None) -> Rects:
+    """
+    The rectangles `use_rects(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    those of the element `handle` names, or of `reader`'s own element if it's `None`.
+    """
+    key = reader if handle is None else layouts.handles.get(handle)
     # A node absent from the previous frame's layouts was hidden or not yet mounted.
-    return layouts.by_key.get(key, INITIAL_RECTS)
+    return INITIAL_RECTS if key is None else layouts.by_key.get(key, INITIAL_RECTS)
 
 
 def use_scroll(handle: ElementHandle | None = None) -> Scroll:

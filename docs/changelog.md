@@ -180,6 +180,10 @@
   and the `AdvanceClock` control moves it forward.
   The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
 
+- Added [`use_controls`](hooks/use_controls.md), which gives a component a sender that hands the app a control
+  from outside an input handler, such as an effect that quits when a program exits.
+  The app handles a sent control as it handles one a handler returns, after the events already waiting.
+
 - [#394](https://github.com/JoshKarpel/counterweight/pull/394)
   Added `@component(memo=True)`, which skips re-running a component when its parent re-runs
   and passes it arguments equal to the previous render's,
@@ -224,9 +228,124 @@
   A wrapping `Text`'s minimum size is its widest word, so wrapping `Text`s side by side
   in a row shrink to share it.
 
-- [#315](https://github.com/JoshKarpel/counterweight/pull/315)
-  Added `canvas(width, height, cells, default)` to `counterweight.utils` for rendering
-  half-block pixel art in a terminal canvas using `▀` characters, as a tuple of chunks for a `Text`.
+- Added the [`Canvas`](elements/canvas.md) element, a leaf whose content box its painter draws cell by cell,
+  skipping the text layout a `Text` of chunks goes through every frame.
+  It's sized as an `<img>` is: its painter's natural size is its intrinsic size, which it takes on each axis
+  its style and its parent's layout leave undetermined, and a painter that keeps its aspect ratio gives a canvas
+  sized on one axis the other by that ratio.
+  A painter is any object with a `natural_size`, `keeps_aspect_ratio` and `draw(width, height)`,
+  which returns rows of styled graphemes whose unset styles come from the canvas;
+  a canvas draws again only when its painter isn't equal to the last one or its box changes size.
+  `counterweight.painters.pixels` holds `Pixels`, a picture as RGBA bytes,
+  which `Pixels.from_image` makes from an image decoded by [Pillow](https://pillow.readthedocs.io/), a new dependency,
+  and `HalfBlocks`, a painter that draws one two pixels to a cell with `▀`,
+  scaling and placing it as CSS's `object-fit` and `object-position` do,
+  and whose `pixels_at` finds the pixels a cell shows, for mouse input.
+
+- Added `counterweight.emulator`, a terminal emulator ([libghostty-vt](https://ghostty.org), through [pyghostty](https://github.com/AnswerDotAI/pyghostty), a new dependency)
+  that turns the bytes a program writes into what its terminal shows.
+  An `Emulator` is fed bytes, answers the program's queries through `on_reply`, and snapshots into immutable `Screen` values:
+  rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
+  A snapshot of an unchanged terminal is the same `Screen`, and rows that didn't change are shared between snapshots.
+  An emulator given a `scrollback` keeps that many rows that scrolled off the top of its screen,
+  and `scrolled_off` returns those that scrolled off since it was last called, each once.
+  `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`,
+  leaving the program's default colors to the canvas's `text_style`, and drawing the cursor when asked.
+  A cell that has to name the default colors takes the emulator's, which `set_default_colors` changes as it runs.
+  A program's palette colors stay palette entries, so they follow the user's theme,
+  except an entry the program changed, which is the color it changed it to.
+  See [Emulators and Pseudo-Terminals](terminals/emulators.md).
+
+- Added colors the terminal decides, which follow the user's theme:
+  `IndexedColor(n)`, entry `n` of the terminal's 256-color palette,
+  and `TERMINAL_DEFAULT`, the terminal's default foreground where it colors text and default background where it fills one.
+  Every style field that took a `Color` takes either (`AnyColor`),
+  and the `*_indexed(n)` and `*_terminal_default` utilities set them wherever the color utilities do.
+  Screenshots draw palette entries in `DEFAULT_PALETTE` and the defaults as white on black.
+  See [Terminal colors](styles/utilities.md#terminal-colors).
+
+- Added `counterweight.pseudoterminal`, which runs a program on a pseudo-terminal, as a terminal window does,
+  and hands back the bytes it writes, standard output and standard error together.
+  `run_pty` runs one until it exits, returning `Exited` with its status, `FailedToStart` with the reason,
+  such as for an `argv` that doesn't exist, or `TimedOut` if it outran its `timeout`,
+  and hands out a `PtyConnection` that writes to the program
+  without blocking, buffering what it isn't reading yet, and resizes its terminal, which sends it `SIGWINCH`.
+  Its standard input is the terminal, or `/dev/null` for a program that shouldn't wait for keys.
+  `use_pty` runs one while its component is mounted, starting it once its size is positive,
+  so a terminal sized from `use_rects` starts at its real size rather than 0 by 0,
+  resizing it as its size changes, and starting it again when its `argv` or environment change.
+  A program gets the app's environment without `COLUMNS` and `LINES`, which describe the app's terminal,
+  then `TERM=xterm-256color` and `COLORTERM=truecolor`, then the caller's `env`, or only the last two with `clear_env`.
+  Cancelled, or once the program exits, its process group is hung up as closing a terminal window does,
+  with `SIGHUP`, then `SIGTERM` and `SIGKILL` a `hangup_grace` apart for whatever ignores it,
+  or `SIGKILL` at once if that's cancelled too,
+  so nothing it started outlives it, even a background job holding the terminal open.
+  `use_pty` hangs it up in the background, so a program slow to exit doesn't hold up rendering,
+  and the app waits for it when it stops.
+
+- Added [one-shot commands](terminals/commands.md) in `counterweight.commands`:
+  running a program that's expected to exit, and showing everything it printed, colors and all,
+  as a terminal would have shown it.
+  `use_command` runs one when its `run` is called, on a pseudo-terminal `columns` wide (waiting until that's positive,
+  so it can come from `use_rects`) and `rows` tall, with standard input on `/dev/null`
+  and `PAGER` and `GIT_PAGER` set to `cat`, and returns the latest run, a `CommandRun` value
+  whose output updates at most once a frame while the program runs,
+  and whose outcome is `Starting`, `Running`, `Exited`, `FailedToStart`, `Cancelled` or `TimedOut`.
+  `cancel`, another `run`, a `timeout`, and unmounting hang the program up, in the background as `use_pty` does.
+  A run's output is a `counterweight.painters.terminal.Transcript`, a `Canvas` painter as wide as the run's terminal
+  and as tall as the lines it printed: the rows that scrolled off its screen, then the screen,
+  keeping the last `max_lines`, and `Transcript.of` builds one from output recorded ahead of time.
+  `command_output` shows a run in a `scroll_area` that follows its end, with its outcome beneath.
+  The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
+  runs a command on each slide when it's shown.
+
+- Added [embedded terminals](terminals/embedding.md): running an interactive program, such as a shell or an editor,
+  in a box that shows its screen and sends it the input the box receives, as a multiplexer's pane does.
+  `counterweight.headless.use_terminal` runs one on a pseudo-terminal while its component is mounted,
+  emulates its terminal, snapshotting it at most once a frame, and makes the component focusable,
+  returning the `Screen`, a `ScreenView` painter that draws the cursor while focused, the program's status,
+  and an `on_input` handler for the `Canvas` the component draws it in.
+  While focused, the handler sends the program every key press and paste, Ctrl+C included,
+  and the mouse events it asked for, encoded as xterm sends them for the modes the program set,
+  and a program that asked gets focus events as the component gains and loses focus.
+  A handler put before it with `first` takes keys first, as a prefix key does.
+  `counterweight.widgets.terminal` is a bordered box built on it, sized by its `style`,
+  whose `intercept` handler sees each event before the program does.
+  `counterweight.input_encoding` holds the pure functions that encode key presses, pastes, mouse events and focus changes
+  back into a terminal's bytes, built from the input parser's own tables.
+  The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
+  runs shells side by side with a tmux-style prefix, showing the keys that follow it along the bottom, as zellij does,
+  and closes a pane when its shell exits.
+
+- Added [running programs on the app's terminal](terminals/programs.md), as `git commit` runs an editor.
+  `Suspend.to_program` suspends the app, runs a program on the app's `input_stream` and `output_stream`
+  until it exits, with the app's environment and `env` (or only `env` with `clear_env`) in `cwd`,
+  and calls `on_exit` with `Exited` or `FailedToStart`.
+  While it runs, the app swallows `SIGINT` and `SIGQUIT`, as POSIX's `system()` does,
+  so Ctrl+C in a pager reaches the pager without quitting the app.
+  `Suspend.to_edit_file` opens a file in the user's editor, `$VISUAL`, then `$EDITOR`, then `vi`,
+  and calls `on_exit` with how the editor exited.
+  `Suspend.to_edit_text` edits a string the same way, through a file whose name sets the editor's highlighting,
+  and calls `on_edit` with the edited text, or with how the editor failed, so vim's `:cq` abandons the edit.
+  `counterweight.programs` holds the functions they run,
+  `run_program`, `edit_file`, `edit_text` and `preferred_editor`,
+  and `Exited` and `FailedToStart`, which `run_pty` returns too, beside `TimedOut`.
+
+- `app` takes `unclaimed_keys`, what a key press does when no handler on its path claims it,
+  as a browser takes a key's default action unless a listener prevents it.
+  `DEFAULT_UNCLAIMED_KEYS` gives Ctrl+C `Quit` and Ctrl+Z `Suspend.to_shell()`,
+  which suspends the app as a shell job until the shell resumes it with `fg`,
+  stopping its whole process group as the terminal's Ctrl+Z does, so `uv run` and the like stop with it.
+  Pass `{}` for no defaults, or merge onto them to change some.
+  See [Keys the terminal would act on](input-handling/events.md#keys-the-terminal-would-act-on).
+
+- Added `Key.ControlBackslash`, `Key.ControlRightBracket`, `Key.ControlCaret` and `Key.ControlUnderscore`,
+  and their Ctrl+Alt forms, so every control byte a terminal sends is a key.
+  Previously Ctrl+\\, Ctrl+], Ctrl+^ and Ctrl+_ were skipped.
+
+- Added a [Prefix Keys](cookbook/prefix-keys.md) cookbook page: a tmux-style prefix key,
+  kept in a ref so a prefix and its key typed together still work,
+  and a pane it opens focused with `FocusOn`.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
   Added `clamp(min_, val, max_)` to `counterweight.utils` for clamping numeric values to a range.
@@ -283,6 +402,31 @@
   Add styling for content area background color.
 
 ### Changed
+
+- A `Suspend` handler receives the terminal the app handed back, as `TerminalStreams`,
+  so it can run a program on the terminal the app draws on even when that isn't standard output.
+  A handler that took no arguments takes one now.
+
+- The app reads the terminal raw, as tmux does, so Ctrl+C, Ctrl+Z, Ctrl+\\, Ctrl+S and Ctrl+Q reach it as key presses
+  rather than the terminal acting on them.
+  Ctrl+C still quits, now as its [unclaimed default](input-handling/events.md#keys-the-terminal-would-act-on),
+  so a handler that claims it keeps it, such as to cancel a command.
+  Previously Ctrl+Z and Ctrl+\\ stopped and killed the app without handing the terminal back,
+  and Ctrl+S froze its output until Ctrl+Q.
+  An interrupt sent from outside, with `kill -INT`, still quits it, and a second one still reaches the handler it replaced,
+  but an app whose render loop is stuck can no longer be quit with Ctrl+C, since nothing reads it.
+
+- [`FocusOn`](hooks/use_focus.md#focusing-a-component-as-it-mounts) focuses a component that mounts
+  in the render its handler causes: one whose handle no component can take focus with yet
+  waits for the next render, and focuses it before the frame is drawn, unless another control moves focus first.
+  Previously it did nothing, so a handler that added a component had to clear focus for its `auto_focus`.
+
+- [`use_rects`](hooks/use_rects.md) takes an optional `ElementHandle`, and reports the rectangles of the element
+  with that handle rather than the calling component's own, as a React component measures an element through a ref,
+  so a component can measure an element a child component draws.
+  A component that calls it renders again as soon as any of the rectangles it read move, as one that calls `use_scroll` does.
+  Previously it rendered again only once something else started a render,
+  so a component that mounted after the first frame read empty rectangles until then.
 
 - [#416](https://github.com/JoshKarpel/counterweight/pull/416)
   **Breaking:** a `Text` overflows its box, as CSS's text does:

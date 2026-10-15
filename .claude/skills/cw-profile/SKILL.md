@@ -101,6 +101,19 @@ uv run python -m benchmarks parse --name after
 uv run python -m benchmarks compare before after
 ```
 
+## Time emulator snapshots
+
+Snapshotting the terminal emulator (`Emulator.snapshot`) isn't part of any workload either,
+so `snapshot` times it on a 120x40 terminal after pieces of output (a scrolling line, plain, colored or wide,
+a progress bar rewriting its row, and nothing), timing only the snapshots:
+
+```bash
+uv run python -m benchmarks snapshot --name before   # writes profiles/before.snapshots.json
+# make the change
+uv run python -m benchmarks snapshot --name after
+uv run python -m benchmarks compare before after
+```
+
 ## Record results
 
 Add a section to `plans/performance-analysis.md`, numbered after the last run and with a
