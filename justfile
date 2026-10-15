@@ -28,7 +28,7 @@ alias p := pre-commit
 [positional-arguments]
 test *ARGS:
     uv run mypy
-    uv run pytest --failed-first "$@" --cov {{ if ARGS == "" { "" } else { "--cov-fail-under=0" } }}
+    uv run pytest -n auto --dist worksteal --failed-first "$@" --cov {{ if ARGS == "" { "" } else { "--cov-fail-under=0" } }}
 
 alias t := test
 
@@ -38,10 +38,11 @@ docs-serve PORT="8000":
 
 alias d := docs-serve
 
+# Two workers per CPU, because many tests mostly wait (on a program, a timeout), and a waiting worker holds its slot.
 [doc('Run mutation testing, or re-run only the named mutants (globs work)')]
 [positional-arguments]
 mutate *MUTANTS:
-    uv run mutmut run "$@"
+    uv run mutmut run --max-children $(( {{ num_cpus() }} * 2 )) "$@"
 
 [doc('Build documentation with strict mode')]
 docs-build:
