@@ -140,6 +140,7 @@ def use_terminal(
 
         foreground: What the program's default colors stand for wherever a cell has to name them,
             as for [`Emulator`][counterweight.emulator.Emulator], as `background` is.
+            A change to either recolors the program's terminal, keeping what it shows.
 
         auto_focus: Passed to [`use_focus`][counterweight.hooks.use_focus], as are `handle`, `is_focusable`
             and `in_focus_order`.
@@ -189,8 +190,16 @@ def use_terminal(
                 snapshot_due.cancel()
             emulator.close()
 
-    # A program started again gets a fresh terminal, as use_pty starts it again.
-    use_effect(run_emulator, deps=(tuple(argv), env, clear_env, foreground, background))
+    # A program started again gets a fresh terminal, as use_pty starts it again, so these deps must stay use_pty's.
+    use_effect(run_emulator, deps=(tuple(argv), env, clear_env))
+
+    async def recolor() -> None:
+        if (current := live.current) is None:  # pragma: no cover, a recolor racing the emulator's teardown
+            return
+        current.emulator.set_default_colors(foreground, background)
+        current.schedule_snapshot()
+
+    use_effect(recolor, deps=(foreground, background))
 
     async def resize() -> None:
         if columns <= 0 or rows <= 0 or (current := live.current) is None:

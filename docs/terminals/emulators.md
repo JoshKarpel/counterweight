@@ -15,7 +15,8 @@ Pseudo-terminals need Linux or macOS.
 in its own session with the terminal as its controlling terminal,
 calling `on_output` with what the program writes, standard output and standard error together.
 It returns how the program exited ([`Exited`][counterweight.programs.Exited]),
-or why it couldn't start ([`FailedToStart`][counterweight.programs.FailedToStart]),
+why it couldn't start ([`FailedToStart`][counterweight.programs.FailedToStart]),
+or that it outran its `timeout` ([`TimedOut`][counterweight.programs.TimedOut]),
 and hands out a [`PtyConnection`][counterweight.pseudoterminal.PtyConnection] that writes to the program
 without blocking and resizes its terminal.
 Cancelling it hangs the program up, as closing a terminal window does.
@@ -24,6 +25,44 @@ Cancelling it hangs the program up, as closing a terminal window does.
 as a terminal window or a multiplexer's pane does:
 it starts once its size is positive, resizes the terminal as its size changes,
 and starts the program again when its `argv` or environment change.
+It hangs the program up in the background, so a program slow to exit doesn't hold up the app's rendering.
+
+### Hanging up in the background
+
+The render loop waits for a cancelled effect to finish before it renders again,
+and hanging up a program that ignores `SIGHUP` takes up to two `hangup_grace`s.
+So `use_pty`, and [`use_command`](commands.md) for each run, call `run_pty` in a task of the app's task group
+and await that task through `asyncio.shield`, which keeps their effect's cancellation from waiting for it:
+
+```mermaid
+sequenceDiagram
+    participant L as Render loop
+    participant E as Effect
+    participant R as run_pty, in the app's task group
+
+    L->>E: Start the effect
+    E->>R: Start run_pty and await it through shield
+    alt The program exits, or outruns its timeout
+        R->>R: Hang up whatever it left running
+        R-->>E: Exited or TimedOut
+        E->>E: Set the status, or report the run's outcome
+    else Cancelled, by cancel, another run or argv, or unmounting
+        L->>E: Cancel, then wait for it to finish
+        E->>R: Cancel
+        E-->>L: Finished at once
+        Note over L: Renders again
+        R->>R: Hang up the program, for up to two hangup_graces
+        R-->>R: Ends cancelled, with no outcome to return
+    end
+    Note over L,R: An app that stops waits for every hangup still going
+```
+
+A program that ends by itself returns its outcome through the effect as usual,
+but only once `run_pty` has hung up what it left running.
+Only that effect waits for it, not the render loop,
+but a program that exits leaving a background job that ignores `SIGHUP` reads as running until that job is gone.
+A cancelled run has no outcome to return:
+`cancel` has already made it `Cancelled`, and another run or `argv` reports its own.
 
 ## Emulators
 
@@ -57,6 +96,8 @@ as `text_terminal_default | text_bg_terminal_default | content_terminal_default`
 A cell whose colors the program swapped (inverse video) or hid (invisible text) has to name its default colors,
 so it takes the emulator's `foreground` and `background` instead, which are white and black unless the program
 changes them (with OSC 10 and 11).
+`set_default_colors` changes them on a running emulator, as the user changing their terminal's theme does,
+though a color the program set stays what it set.
 
 ## API
 

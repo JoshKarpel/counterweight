@@ -192,6 +192,12 @@ def test_a_transcript_keeps_its_last_max_lines() -> None:
     assert transcript_text(transcript) == ["25", "26", "27", "28", "29"]
 
 
+def test_a_transcript_that_keeps_no_lines_has_none() -> None:
+    transcript = Transcript.of(b"one\r\ntwo\r\nthree", columns=6, rows=2, max_lines=0)
+
+    assert (transcript.history, transcript.lines) == ((), ())
+
+
 def test_a_transcripts_natural_size_is_its_columns_and_its_lines_and_it_keeps_no_aspect_ratio() -> None:
     transcript = Transcript.of(b"a\r\nb\r\nc", columns=7, rows=2)
 

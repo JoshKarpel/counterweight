@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import sys
 from asyncio import CancelledError
 from asyncio import Event
@@ -9,12 +10,14 @@ from asyncio import create_task
 from asyncio import get_running_loop
 from asyncio import sleep
 from asyncio import wait_for
+from asyncio.subprocess import PIPE
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import call
 
 import pytest
 from more_itertools import unique_justseen
@@ -22,6 +25,8 @@ from pytest_mock import MockerFixture
 
 from counterweight.components import component
 from counterweight.elements import Text
+from counterweight.programs import NO_PROGRAM
+from counterweight.programs import TimedOut
 from counterweight.pseudoterminal import Exited
 from counterweight.pseudoterminal import FailedToStart
 from counterweight.pseudoterminal import Pty
@@ -31,6 +36,7 @@ from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import Starting
 from counterweight.pseudoterminal import end_process_group
 from counterweight.pseudoterminal import group_ended
+from counterweight.pseudoterminal import has_members
 from counterweight.pseudoterminal import program_environment
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
@@ -174,12 +180,69 @@ async def test_run_pty_returns_once_the_program_exits_despite_a_background_job_h
     assert_group_ended((await started.wait()).pid)
 
 
+async def test_run_pty_hangs_up_a_program_still_running_when_its_timeout_runs_out(tmp_path: Path) -> None:
+    signals = tmp_path / "signals"
+    output = Output()
+
+    outcome = await wait_for(
+        run_pty(
+            ["sh", "-c", f"trap 'echo hup >> {signals}; exit' HUP; echo started; while :; do sleep 0.01; done"],
+            20,
+            4,
+            on_output=output,
+            timeout=timedelta(milliseconds=100),
+        ),
+        TIMEOUT,
+    )
+
+    assert outcome == TimedOut()
+    assert output.data.strip() == b"started"
+    assert signals.read_text() == "hup\n"
+
+
+async def test_run_pty_returns_how_a_program_exited_in_time_however_long_its_background_job_holds_the_terminal() -> (
+    None
+):
+    # Reading until the background job lets go of the terminal, and hanging it up, both outlast the timeout.
+    outcome = await wait_for(
+        run_pty(
+            ["sh", "-c", "trap '' HUP; sleep 30 & exit 3"],
+            20,
+            4,
+            on_output=Output(),
+            hangup_grace=timedelta(milliseconds=100),
+            timeout=timedelta(milliseconds=100),
+        ),
+        TIMEOUT,
+    )
+
+    assert outcome == Exited(status=3)
+
+
+async def test_run_pty_signals_nothing_once_a_program_exits_leaving_nothing_running(mocker: MockerFixture) -> None:
+    killpg = mocker.patch("os.killpg", wraps=os.killpg)
+    started = Started()
+
+    assert await run_pty(["true"], 20, 4, on_output=Output(), on_start=started) == Exited(status=0)
+
+    assert killpg.call_args_list == [call((await started.wait()).pid, 0)]
+
+
 async def test_run_pty_reports_a_program_that_does_not_exist_as_failing_to_start_and_closes_its_terminal() -> None:
     before = open_fds()
 
     outcome = await run_pty(["counterweight-no-such-program"], 20, 4, on_output=Output())
 
     assert outcome == FailedToStart(reason="No such file or directory")
+    assert open_fds() == before
+
+
+async def test_run_pty_reports_an_empty_argv_as_failing_to_start_and_opens_no_terminal() -> None:
+    before = open_fds()
+
+    outcome = await run_pty([], 20, 4, on_output=Output())
+
+    assert outcome == NO_PROGRAM
     assert open_fds() == before
 
 
@@ -493,8 +556,12 @@ async def test_use_pty_keeps_the_terminals_size_when_given_one_that_is_not_posit
 
 
 def hangs_up(signals: Path, message: str) -> tuple[str, ...]:
-    """A program that records being hung up in `signals`, after writing `message`."""
-    return ("sh", "-c", f"trap 'echo hup >> {signals}; exit' HUP; echo {message}; while :; do sleep 0.01; done")
+    """A program that writes `message`, then records being hung up in `signals`, naming itself by `message`."""
+    return (
+        "sh",
+        "-c",
+        f"trap 'echo hup {message} >> {signals}; exit' HUP; echo {message}; while :; do sleep 0.01; done",
+    )
 
 
 async def test_use_pty_hangs_up_the_program_and_starts_it_again_when_argv_changes(tmp_path: Path) -> None:
@@ -507,9 +574,9 @@ async def test_use_pty_hangs_up_the_program_and_starts_it_again_when_argv_change
         await output.wait_for(b"first")
         await m.render(terminal(hangs_up(signals, "second"), 20, 4, output, ptys))
         await output.wait_for(b"second")
-        hung_up = signals.read_text()
 
-    assert hung_up == "hup\n"
+    # The first is hung up when argv changes, and the second only when it unmounts.
+    assert signals.read_text() == "hup first\nhup second\n"
 
 
 async def test_use_pty_starts_the_program_again_when_env_changes() -> None:
@@ -533,9 +600,24 @@ async def test_use_pty_hangs_up_the_program_when_its_component_unmounts(tmp_path
         await m.render(terminal(hangs_up(signals, "ready"), 20, 4, output, ptys))
         await output.wait_for(b"ready")
         await m.render(Text(content="gone"))
-        hung_up = signals.read_text()
 
-    assert hung_up == "hup\n"
+    assert signals.read_text() == "hup ready\n"
+
+
+async def test_use_pty_unmounts_without_waiting_for_its_program_to_be_hung_up() -> None:
+    ptys: list[Pty] = []
+    output = Output()
+    argv = ("sh", "-c", "trap '' HUP; echo $$; while :; do sleep 0.01; done")
+
+    async with mounted() as m:
+        await m.render(terminal(argv, 20, 4, output, ptys, hangup_grace=timedelta(seconds=1)))
+        await output.wait_for(b"\n")
+        group = int(output.data)
+        await m.render(Text(content="gone"))
+        is_running_once_unmounted = has_members(group)
+
+    assert is_running_once_unmounted
+    assert_group_ended(group)
 
 
 async def test_use_pty_starts_a_terminal_one_cell_across() -> None:
@@ -617,3 +699,20 @@ async def test_ending_a_group_that_refuses_to_be_signalled_stops_signalling_it(m
     await wait_for(end_process_group(process, timedelta(seconds=10)), TIMEOUT)
 
     assert killpg.call_count == 1
+
+
+async def test_cancelling_the_end_of_a_process_group_partway_kills_it_at_once() -> None:
+    process = await create_subprocess_exec(
+        "sh", "-c", "trap '' HUP TERM; echo ready; while :; do sleep 0.01; done", stdout=PIPE, start_new_session=True
+    )
+    assert process.stdout is not None
+    await wait_for(process.stdout.readline(), TIMEOUT)
+    task = create_task(end_process_group(process, timedelta(seconds=TIMEOUT)))
+    await sleep(0)  # The group is sent SIGHUP, which it ignores, and given its grace.
+
+    task.cancel()
+
+    with pytest.raises(CancelledError):
+        await task
+    await wait_for(process.communicate(), TIMEOUT)
+    assert process.returncode == -signal.SIGKILL

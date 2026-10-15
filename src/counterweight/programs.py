@@ -9,7 +9,8 @@ which edit a file or a string in the user's editor.
 
 It also holds how a program ends, [`Exited`][counterweight.programs.Exited] or
 [`FailedToStart`][counterweight.programs.FailedToStart],
-which programs run on a pseudo-terminal share.
+which programs run on a pseudo-terminal share, and [`TimedOut`][counterweight.programs.TimedOut],
+for one run there with a time limit.
 """
 
 from __future__ import annotations
@@ -64,6 +65,14 @@ class FailedToStart:
     reason: str
     """Why, from the operating system, such as `"No such file or directory"`."""
 
+
+@dataclass(frozen=True, slots=True)
+class TimedOut:
+    """The program was still running when its `timeout` ran out, so it was hung up."""
+
+
+NO_PROGRAM = FailedToStart(reason="No program to run: argv is empty")
+"""How running an empty `argv` ends, rather than with the `TypeError` spawning nothing raises."""
 
 type ProgramOutcome = Exited | FailedToStart
 """How a program that ran until it exited ended."""
@@ -131,6 +140,8 @@ async def run_program(
     Returns:
         How the program exited, or why it couldn't start.
     """
+    if not argv:
+        return NO_PROGRAM
     with swallowed_signals(FOREGROUND_SIGNALS):
         try:
             process = await create_subprocess_exec(

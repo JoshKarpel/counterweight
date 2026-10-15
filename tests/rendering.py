@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from counterweight._context_vars import current_event_queue
+from counterweight._context_vars import current_task_group
 from counterweight._utils import cancel_tasks
 from counterweight.app import handle_effects
 from counterweight.components import Component
@@ -99,8 +100,10 @@ class Mounted:
 async def mounted() -> AsyncIterator[Mounted]:
     with state_sets() as queue:
         async with TaskGroup() as task_group:
+            token = current_task_group.set(task_group)
             m = Mounted(task_group=task_group, queue=queue)
             try:
                 yield m
             finally:
                 await m.unmount()
+                current_task_group.reset(token)

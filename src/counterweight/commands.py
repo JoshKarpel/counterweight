@@ -14,7 +14,6 @@ import signal
 from asyncio import Event
 from asyncio import TimerHandle
 from asyncio import get_running_loop
-from asyncio import timeout as time_limit
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
@@ -40,11 +39,13 @@ from counterweight.painters.terminal import MAX_LINES
 from counterweight.painters.terminal import Transcript
 from counterweight.programs import Exited
 from counterweight.programs import FailedToStart
+from counterweight.programs import TimedOut
 from counterweight.pseudoterminal import HANGUP_GRACE
 from counterweight.pseudoterminal import PtyConnection
 from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import Starting
 from counterweight.pseudoterminal import run_pty
+from counterweight.pseudoterminal import tear_down_in_background
 from counterweight.styles import Style
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import default
@@ -63,11 +64,6 @@ pagers that print rather than wait for keys that never come.
 @dataclass(frozen=True, slots=True)
 class Cancelled:
     """The run was cancelled, by [`Command.cancel`][counterweight.commands.Command.cancel], before the program exited."""
-
-
-@dataclass(frozen=True, slots=True)
-class TimedOut:
-    """The program was still running when the run's `timeout` ran out."""
 
 
 type Outcome = Starting | Running | Exited | FailedToStart | Cancelled | TimedOut
@@ -147,7 +143,8 @@ def use_command(
     with its standard input on `/dev/null`, so a program that reads input gets end of file rather than waiting,
     and returns the latest run, with everything it printed so far, which updates at most once a frame while it runs.
     Starting another run, cancelling, and unmounting the component each hang the program up
-    (see [`run_pty`][counterweight.pseudoterminal.run_pty]).
+    (see [`run_pty`][counterweight.pseudoterminal.run_pty]) in the background,
+    so a program slow to exit doesn't hold up the app's rendering, and an app that stops waits for it.
 
     Parameters:
         columns: How wide the program's terminal is, which it formats its output for,
@@ -166,7 +163,8 @@ def use_command(
 
         clear_env: Leave out the app's environment (see [`run_pty`][counterweight.pseudoterminal.run_pty]).
 
-        timeout: How long the program may run before it's hung up and its outcome is `TimedOut`, or `None` for no limit.
+        timeout: How long the program may run before it's hung up and its outcome is `TimedOut`, or `None` for no limit
+            (see [`run_pty`][counterweight.pseudoterminal.run_pty]).
 
         max_lines: How many lines of output a run keeps, dropping the oldest, at most `MAX_SCROLLBACK`.
 
@@ -193,7 +191,9 @@ def use_command(
             return
 
         await is_sized.current.wait()
-        run_columns = width.current
+        await tear_down_in_background(run_to_end(request, width.current))
+
+    async def run_to_end(request: Request, run_columns: int) -> None:
         transcript = Transcript(columns=run_columns, max_lines=max_lines)
         # Set before the program's first output, and so before any reply to it.
         connection: PtyConnection
@@ -225,20 +225,18 @@ def use_command(
 
         with Emulator(run_columns, rows, on_reply=reply, scrollback=max_lines) as emulator:
             try:
-                async with time_limit(None if timeout is None else timeout.total_seconds()):
-                    outcome: Exited | FailedToStart | TimedOut = await run_pty(
-                        request.argv,
-                        run_columns,
-                        rows,
-                        on_output=output,
-                        on_start=start,
-                        env={**COMMAND_ENVIRONMENT, **env},
-                        clear_env=clear_env,
-                        stdin="devnull",
-                        hangup_grace=hangup_grace,
-                    )
-            except TimeoutError:
-                outcome = TimedOut()
+                outcome = await run_pty(
+                    request.argv,
+                    run_columns,
+                    rows,
+                    on_output=output,
+                    on_start=start,
+                    env={**COMMAND_ENVIRONMENT, **env},
+                    clear_env=clear_env,
+                    stdin="devnull",
+                    hangup_grace=hangup_grace,
+                    timeout=timeout,
+                )
             finally:
                 if snapshot_due is not None:
                     snapshot_due.cancel()

@@ -30,6 +30,7 @@ from weakref import WeakSet
 import waxy
 
 from counterweight._context_vars import current_event_queue
+from counterweight._context_vars import current_task_group
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import cancel_tasks
 from counterweight._utils import drain_queue
@@ -472,6 +473,7 @@ async def render_loop(
         press: Press | None = None
 
         async with TaskGroup() as tg:
+            current_task_group.set(tg)
             for ap in chain(autopilot, repeat(None)):  # pragma: no branch
                 if should_quit:
                     logger.info("Quitting application...")

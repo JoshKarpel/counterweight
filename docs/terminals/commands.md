@@ -103,13 +103,18 @@ Starting another run and unmounting the component hang it up too.
 Hanging up sends the program's process group `SIGHUP`, as closing a terminal window does,
 and `SIGTERM` and then `SIGKILL` to whatever is still running a second apart,
 so nothing a run started outlives it.
+That goes on in the background, so a program slow to exit doesn't hold up the app,
+which waits for it when it stops
+(see [Hanging up in the background](emulators.md#hanging-up-in-the-background)).
 
 A program never gets the keys the app reads, so it can't be interrupted with Ctrl+C:
 bind a key to `cancel`, as the runner does with Escape.
 Ctrl+C [reaches the app as a key press](../input-handling/events.md#keys-the-terminal-would-act-on),
 so an app can bind it to `cancel`, as a shell does, rather than leaving it to quit the app.
 `timeout` bounds a run: a program still running when it runs out is hung up,
-and its outcome is [`TimedOut`][counterweight.commands.TimedOut].
+and its outcome is [`TimedOut`][counterweight.programs.TimedOut].
+Only the program's own run counts against it: one that exits in time has exited,
+even if a background job it left keeps its terminal open past the timeout.
 
 A run keeps the last `max_lines` lines of its output, 10,000 by default, dropping the oldest,
 so a program that never stops printing can't grow it without bound.
@@ -133,7 +138,6 @@ so a canvas can show it without `command_output`.
 ::: counterweight.commands.CommandRun
 ::: counterweight.commands.Outcome
 ::: counterweight.commands.Cancelled
-::: counterweight.commands.TimedOut
 ::: counterweight.commands.command_output
 ::: counterweight.commands.CommandOutputStyles
 ::: counterweight.commands.COMMAND_ENVIRONMENT

@@ -286,6 +286,8 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   A `None` entry reads as a miss, so the cell is classified again and gives no cells again,
   and a spacer tail's cells are `()` whatever its style.
 - **`convert_row`'s `len(plain) > PLAIN_CELLS_KEPT`**: keeping one more entry before clearing only bounds memory.
+- **`convert_row`'s `length >= len(self.grapheme_buffer)`**: a cluster exactly the buffer's size only gets
+  a new buffer of the same size.
 - **`convert_row`'s `styles.get(None)`**: every lookup misses, so each styled cell's style is read again, the same.
 - **`convert_row`'s `cells_for("XX XX", ...)` for an erased cell**: the text is wider than any cell's 1 or 2 columns,
   so `cells_for` draws it as spaces, as it does `" "`.
@@ -320,8 +322,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 - **`use_terminal`'s `use_effect(resize, deps=None)` or with no deps.** Resizing the emulator to the size it already has
   is a no-op in libghostty (probed: it keeps the scroll margins and tab stops, unlike resizing away and back),
-  and the snapshot it schedules equals the last one, which `use_state`'s setter drops.
-- **`key_sequences`' `\x0D` for `\x0d`**: a hex escape's case doesn't change the byte.
+  and the snapshot it schedules equals the last one, which `use_state`'s setter drops.- **`key_sequences`' `\x0D` for `\x0d`**: a hex escape's case doesn't change the byte.
 
 ### Programs and controls
 

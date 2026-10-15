@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from counterweight.programs import DEFAULT_EDITOR
+from counterweight.programs import NO_PROGRAM
 from counterweight.programs import Edited
 from counterweight.programs import Exited
 from counterweight.programs import FailedToStart
@@ -71,6 +72,10 @@ async def test_a_program_that_does_not_exist_fails_to_start(file_terminal: FileT
     assert await run_program(["/no/such/program"], file_terminal.streams) == FailedToStart(
         reason="No such file or directory"
     )
+
+
+async def test_an_empty_argv_fails_to_start(file_terminal: FileTerminal) -> None:
+    assert await run_program([], file_terminal.streams) == NO_PROGRAM
 
 
 async def test_a_program_gets_the_apps_environment_with_env_over_it(

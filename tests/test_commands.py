@@ -46,6 +46,7 @@ from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.painters.terminal import MAX_LINES
 from counterweight.painters.terminal import Transcript
+from counterweight.pseudoterminal import has_members
 from counterweight.styles import Style
 from counterweight.styles.styles import Color
 from counterweight.styles.utilities import col
@@ -258,10 +259,25 @@ async def test_cancelling_a_run_hangs_up_its_program_and_keeps_its_output_so_far
         commands[-1].run(sh(f"trap 'echo HUP > {signals}; exit 1' HUP; echo started; while :; do sleep 0.01; done"))
         await wait_for_output(m, commands, "started")
         commands[-1].cancel()
-        await m.wait_until(signals.exists)
+        await m.wait_until(lambda: latest(commands).outcome == Cancelled())
 
     assert (output_text(latest(commands).output), latest(commands).outcome) == (["started"], Cancelled())
     assert signals.read_text() == "HUP\n"
+
+
+async def test_cancelling_a_run_does_not_wait_for_its_program_to_be_hung_up() -> None:
+    commands: list[Command] = []
+    async with mounted() as m:
+        await m.render(runner(20, commands, hangup_grace=timedelta(seconds=1)))
+        commands[-1].run(sh("trap '' HUP; echo $$; while :; do sleep 0.01; done"))
+        await m.wait_until(lambda: commands[-1].latest is not None and output_text(commands[-1].latest.output) != [])
+        group = int(output_text(latest(commands).output)[0])
+        commands[-1].cancel()
+        await m.wait_until(lambda: latest(commands).outcome == Cancelled())
+        is_running_once_cancelled = has_members(group)
+
+    assert is_running_once_cancelled
+    assert not has_members(group)
 
 
 async def test_cancelling_when_no_run_is_in_progress_changes_nothing() -> None:
@@ -286,9 +302,9 @@ async def test_running_again_cancels_the_run_in_progress_and_shows_the_new_one(t
         await wait_for_output(m, commands, "first")
         commands[-1].run(sh("echo second"))
         await m.wait_until(has_ended(commands))
-        await m.wait_until(signals.exists)
 
     assert (output_text(latest(commands).output), latest(commands).outcome) == (["second"], Exited(status=0))
+    assert signals.read_text() == "HUP\n"
 
 
 async def test_running_the_same_argv_again_starts_another_run() -> None:
@@ -525,7 +541,7 @@ async def test_cancelling_terminates_a_program_that_ignores_hanging_up_after_its
         commands[-1].run(script)
         await wait_for_output(m, commands, "ready")
         commands[-1].cancel()
-        await m.wait_until(signals.exists)
+        await m.wait_until(lambda: latest(commands).outcome == Cancelled())
 
     assert signals.read_text() == "term\n"
 

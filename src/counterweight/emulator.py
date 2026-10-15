@@ -254,6 +254,21 @@ class Emulator:
         """Resize the terminal, reflowing what it shows, as resizing a terminal window does."""
         self.terminal.resize(columns, rows)
 
+    def set_default_colors(self, foreground: Color, background: Color) -> None:
+        """
+        Changes the colors the program's default colors stand for wherever a cell has to name them
+        (see [`Screen.background`][counterweight.emulator.Screen.background]),
+        as the user changing their terminal's theme does, keeping everything else the terminal shows.
+        A color the program set (with OSC 10 or 11) stays what it set.
+        """
+        terminal = self.terminal._t[0]  # noqa: SLF001
+        for option, color in (
+            (lib.GHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND, foreground),
+            (lib.GHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND, background),
+        ):
+            rgb = ffi.new("GhosttyColorRgb*", {"r": color.red, "g": color.green, "b": color.blue})
+            check(lib.ghostty_terminal_set(terminal, option, rgb), "default_colors")
+
     def close(self) -> None:
         """Free the emulator's memory. It can't be fed or snapshotted after."""
         self.free()
@@ -460,8 +475,12 @@ class Emulator:
             check(select(cells, x), "select")
             if content == lib.GHOSTTY_CELL_CONTENT_CODEPOINT_GRAPHEME:
                 get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN, self.grapheme_length)
+                length = self.grapheme_length[0]
+                # libghostty writes every code point of the cluster, however many, so the buffer has to hold them all.
+                if length > len(self.grapheme_buffer):
+                    self.grapheme_buffer = ffi.new("uint32_t[]", length)
                 get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF, self.grapheme_buffer)
-                text = "".join(map(chr, self.grapheme_buffer[0 : self.grapheme_length[0]]))
+                text = "".join(map(chr, self.grapheme_buffer[0:length]))
                 row.extend(cells_for(text, columns, self.read_style(cells, foreground, background)))
                 continue
 

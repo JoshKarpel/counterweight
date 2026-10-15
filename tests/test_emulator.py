@@ -214,6 +214,13 @@ def test_a_grapheme_cluster_of_several_code_points_is_one_cell() -> None:
     assert [cell.grapheme for cell in line] == ["é", "x", " "]
 
 
+def test_a_grapheme_cluster_of_more_code_points_than_the_buffer_starts_with_is_one_cell() -> None:
+    line = snapshot("e" + "́" * 100 + "x", columns=3, rows=1).lines[0]
+
+    assert [cell.grapheme.rstrip("́") for cell in line] == ["e", "x", " "]
+    assert len(line[0].grapheme) > 32
+
+
 def test_a_grapheme_cluster_of_several_code_points_carries_its_style() -> None:
     cell = first_cell(snapshot("\x1b[7;1mé"))
 
@@ -302,6 +309,28 @@ def test_changing_the_default_colors_converts_the_rows_that_name_them_again() ->
 
     assert (before.background, after.background) == (BACKGROUND, Color(0x12, 0x34, 0x56))
     assert first_cell(after).style.foreground == Color(0x12, 0x34, 0x56)
+
+
+def test_setting_the_default_colors_converts_the_rows_that_name_them_and_keeps_the_rest() -> None:
+    foreground, background = Color(1, 2, 3), Color(4, 5, 6)
+    with Emulator(4, 1, ignore_replies, foreground=FOREGROUND, background=BACKGROUND) as emulator:
+        emulator.feed(b"\x1b[?2004h\x1b[7ma")
+        emulator.snapshot()
+        emulator.set_default_colors(foreground, background)
+        screen = emulator.snapshot()
+
+    assert (screen.foreground, screen.background) == (foreground, background)
+    assert (first_cell(screen).grapheme, first_cell(screen).style.foreground) == ("a", background)
+    assert screen.modes.bracketed_paste
+
+
+def test_setting_the_default_colors_keeps_a_color_the_program_set() -> None:
+    with Emulator(4, 1, ignore_replies, foreground=FOREGROUND, background=BACKGROUND) as emulator:
+        emulator.feed(b"\x1b]11;rgb:12/34/56\x07")
+        emulator.set_default_colors(Color(1, 2, 3), Color(4, 5, 6))
+        screen = emulator.snapshot()
+
+    assert screen.background == Color(0x12, 0x34, 0x56)
 
 
 def test_the_cursor_is_where_the_program_left_it() -> None:

@@ -172,6 +172,52 @@ async def test_a_terminal_names_the_default_colors_it_was_given_for_swapped_cell
     assert (style.foreground, style.background) == (Color(4, 5, 6), Color(1, 2, 3))
 
 
+async def test_a_terminal_names_the_default_colors_it_was_given_for_a_new_programs_swapped_cells() -> None:
+    terminals: list[EmbeddedTerminal] = []
+    colors = {"foreground": Color(1, 2, 3), "background": Color(4, 5, 6)}
+    async with mounted() as m:
+        await m.render(embed(sh("printf first; sleep 10"), 10, 2, terminals, **colors))
+        await m.wait_until(shows(terminals, "first"))
+        await m.render(embed(sh("printf '\\033[7msecond'; sleep 10"), 10, 2, terminals, **colors))
+        await m.wait_until(shows(terminals, "second"))
+
+    style = terminals[-1].screen.lines[0][0].style
+    assert (style.foreground, style.background) == (Color(4, 5, 6), Color(1, 2, 3))
+
+
+async def test_a_terminal_given_new_default_colors_keeps_its_screen_and_modes() -> None:
+    terminals: list[EmbeddedTerminal] = []
+    argv = sh("printf '\\033[?2004h\\033[7mx'; sleep 10")
+    async with mounted() as m:
+        await m.render(embed(argv, 10, 2, terminals, foreground=Color(1, 2, 3), background=Color(4, 5, 6)))
+        await m.wait_until(shows(terminals, "x"))
+        await m.render(embed(argv, 10, 2, terminals, foreground=Color(7, 8, 9), background=Color(10, 11, 12)))
+        await m.wait_until(lambda: terminals[-1].screen.background == Color(10, 11, 12))
+
+    screen = terminals[-1].screen
+    style = screen.lines[0][0].style
+    assert (text(screen)[0], screen.modes.bracketed_paste) == ("x", True)
+    assert (style.foreground, style.background) == (Color(10, 11, 12), Color(7, 8, 9))
+
+
+async def test_a_terminal_rendered_again_with_the_same_default_colors_renders_again_only_for_its_programs_output() -> (
+    None
+):
+    terminals: list[EmbeddedTerminal] = []
+    colors = {"foreground": Color(1, 2, 3), "background": Color(4, 5, 6)}
+    # Several frames pass while the program sleeps, each a chance for a needless snapshot to render again.
+    argv = sh("stty -echo; printf x; read line; sleep 0.2; printf y; sleep 10")
+    async with mounted() as m:
+        await m.render(embed(argv, 10, 2, terminals, **colors))
+        await m.wait_until(shows(terminals, "x"))
+        await m.render(embed(argv, 10, 2, terminals, **colors))
+        renders = len(terminals)
+        terminals[-1].write(b"\n")
+        await m.wait_until(shows(terminals, "xy"))
+
+    assert len(terminals) == renders + 1
+
+
 async def test_a_terminal_answers_its_programs_queries() -> None:
     terminals: list[EmbeddedTerminal] = []
     async with mounted() as m:

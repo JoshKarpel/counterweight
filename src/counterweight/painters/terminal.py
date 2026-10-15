@@ -117,7 +117,7 @@ class Transcript:
     """The `history`, then the `screen`, keeping the last `max_lines` rows."""
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "lines", (self.history + self.screen)[-self.max_lines :])
+        object.__setattr__(self, "lines", last_rows(self.history + self.screen, self.max_lines))
 
     @classmethod
     def of(cls, output: bytes, columns: int, rows: int = 24, max_lines: int = MAX_LINES) -> Self:
@@ -138,7 +138,7 @@ class Transcript:
         """
         return type(self)(
             columns=self.columns,
-            history=(self.history + scrolled_off)[-self.max_lines :],
+            history=last_rows(self.history + scrolled_off, self.max_lines),
             screen=without_trailing_blank_rows(screen.lines),
             max_lines=self.max_lines,
         )
@@ -154,6 +154,11 @@ class Transcript:
     def draw(self, width: int, height: int) -> Rows:
         """The transcript's first `height` lines."""
         return self.lines[:height]
+
+
+def last_rows(rows: Rows, count: int) -> Rows:
+    """The last `count` of `rows`, which `rows[-count:]` would get wrong for a `count` of zero, keeping them all."""
+    return rows[max(len(rows) - count, 0) :]
 
 
 def without_trailing_blank_rows(lines: Rows) -> Rows:

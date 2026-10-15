@@ -110,6 +110,7 @@ as it does during any suspension.
 ::: counterweight.programs.ProgramOutcome
 ::: counterweight.programs.Exited
 ::: counterweight.programs.FailedToStart
+::: counterweight.programs.TimedOut
 ::: counterweight.programs.edit_file
 ::: counterweight.programs.edit_text
 ::: counterweight.programs.EditOutcome

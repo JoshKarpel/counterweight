@@ -15,15 +15,18 @@ import os
 import signal
 import struct
 import termios
+from asyncio import CancelledError
 from asyncio import Event
 from asyncio import create_subprocess_exec
 from asyncio import get_running_loop
+from asyncio import shield
 from asyncio import sleep
-from asyncio import timeout
+from asyncio import timeout as time_limit
 from asyncio import wait_for
 from asyncio.subprocess import DEVNULL
 from asyncio.subprocess import Process
 from collections.abc import Callable
+from collections.abc import Coroutine
 from collections.abc import Mapping
 from collections.abc import Sequence
 from contextlib import suppress
@@ -31,14 +34,18 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import timedelta
 from typing import Literal
+from typing import overload
 
+from counterweight._context_vars import current_task_group
 from counterweight.hooks import Ref
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
+from counterweight.programs import NO_PROGRAM
 from counterweight.programs import Exited
 from counterweight.programs import FailedToStart
+from counterweight.programs import TimedOut
 
 READ_SIZE = 2**16
 
@@ -168,6 +175,36 @@ def make_controlling_terminal() -> None:  # pragma: no cover, runs in the child 
     fcntl.ioctl(1, termios.TIOCSCTTY, 0)
 
 
+@overload
+async def run_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    on_start: Callable[[PtyConnection], None] = ...,
+    env: Mapping[str, str] = ...,
+    clear_env: bool = ...,
+    stdin: StandardInput = ...,
+    hangup_grace: timedelta = ...,
+    timeout: None = None,  # noqa: ASYNC109 (see the implementation)
+) -> Exited | FailedToStart: ...
+
+
+@overload
+async def run_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    on_start: Callable[[PtyConnection], None] = ...,
+    env: Mapping[str, str] = ...,
+    clear_env: bool = ...,
+    stdin: StandardInput = ...,
+    hangup_grace: timedelta = ...,
+    timeout: timedelta | None = ...,  # noqa: ASYNC109 (see the implementation)
+) -> Exited | FailedToStart | TimedOut: ...
+
+
 async def run_pty(
     argv: Sequence[str],
     columns: int,
@@ -178,7 +215,9 @@ async def run_pty(
     clear_env: bool = False,
     stdin: StandardInput = "pty",
     hangup_grace: timedelta = HANGUP_GRACE,
-) -> Exited | FailedToStart:
+    # An `asyncio.timeout` around the call would also cut short reading the program's last output and hanging it up.
+    timeout: timedelta | None = None,  # noqa: ASYNC109
+) -> Exited | FailedToStart | TimedOut:
     """
     Runs `argv` on a new pseudo-terminal `columns` by `rows`, in its own session with the terminal as its controlling
     terminal, until it exits.
@@ -193,16 +232,22 @@ async def run_pty(
         clear_env: Leave out the app's environment, so the program gets only the terminal's variables and `env`.
         stdin: Where the program reads its standard input from.
         hangup_grace: How long the program has to exit after each signal that ends it (see below).
+        timeout: How long the program may run before it's hung up and `TimedOut` is returned, or `None` for no limit.
+            Only the program's own run counts against it: once it exits, it has exited,
+            however long reading what it wrote last and hanging up what it left running take.
 
     Returns:
-        How the program exited, or why it couldn't start.
+        How the program exited, why it couldn't start, or that it ran out of time.
 
     Once the program exits, what it wrote just before is read for up to `DRAIN_TIMEOUT`.
-    Then, or when cancelled, the program is hung up, as closing a terminal window does:
+    Then, or when cancelled or out of time, the program is hung up, as closing a terminal window does:
     its process group, which includes anything it started in the background, gets `SIGHUP`,
     and whatever is still running `hangup_grace` later gets `SIGTERM`, then `SIGKILL` after another,
     so no program outlives the call that ran it.
+    Cancelled while hanging up, it sends `SIGKILL` at once.
     """
+    if not argv:
+        return NO_PROGRAM
     master, slave = os.openpty()
     try:
         os.set_blocking(master, False)
@@ -241,16 +286,30 @@ async def run_pty(
         on_output(data)
 
     loop.add_reader(master, read)
+    is_group_empty = False
     try:
         on_start(connection)
-        status = await process.wait()
+        try:
+            async with time_limit(None if timeout is None else timeout.total_seconds()):
+                status = await process.wait()
+        except TimeoutError:
+            return TimedOut()
+        # The group's id is the program's pid, which the kernel won't reuse while the group has members.
+        # asyncio has just reaped the program, so an empty group's id is already free, and signalling it could reach
+        # whatever process reuses it, so an empty group isn't hung up at all.
+        # Remaining risk: the id is free and unchecked from the reap to this check (one turn of the event loop),
+        # and from the group's last member exiting, during the drain or the hangup, to the next signal or poll
+        # (up to `DRAIN_TIMEOUT` or `GROUP_POLL_INTERVAL` later). That signals an unrelated group only if pids
+        # wrap around within the window and the process given this pid leads a group of its own, as a shell's jobs do.
+        is_group_empty = not has_members(process.pid)
         with suppress(TimeoutError):
             await wait_for(closed.wait(), timeout=DRAIN_TIMEOUT.total_seconds())
         return Exited(status=status)
     finally:
         loop.remove_reader(master)
         try:
-            await end_process_group(process, hangup_grace)
+            if not is_group_empty:
+                await end_process_group(process, hangup_grace)
         finally:
             connection.close()
 
@@ -259,24 +318,51 @@ async def end_process_group(process: Process, grace: timedelta) -> None:
     """
     Signals `process`'s group with `SIGHUP`, `SIGTERM` and `SIGKILL` in turn, `grace` apart,
     until nothing in it is running, then waits for `process` itself.
+    Cancelled partway, such as by an app quitting while a program it cancelled is still being hung up,
+    it sends `SIGKILL` at once, so nothing in the group outlives it.
     """
-    with suppress(*NOTHING_TO_SIGNAL):
-        for signal_number in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):
-            os.killpg(process.pid, signal_number)
-            with suppress(TimeoutError):
-                async with timeout(grace.total_seconds()):
-                    await group_ended(process.pid)
+    try:
+        with suppress(*NOTHING_TO_SIGNAL):
+            for signal_number in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):
+                os.killpg(process.pid, signal_number)
+                with suppress(TimeoutError):
+                    async with time_limit(grace.total_seconds()):
+                        await group_ended(process.pid)
+    except CancelledError:
+        with suppress(*NOTHING_TO_SIGNAL):
+            os.killpg(process.pid, signal.SIGKILL)
+        raise
     await process.wait()
 
 
 async def group_ended(group: int) -> None:
     """Returns once nothing in the process group `group` is running."""
-    while True:
-        try:
-            os.killpg(group, 0)
-        except NOTHING_TO_SIGNAL:
-            return
+    while has_members(group):  # noqa: ASYNC110 (nothing signals when a group empties: it's polled)
         await sleep(GROUP_POLL_INTERVAL.total_seconds())
+
+
+def has_members(group: int) -> bool:
+    """Whether anything in the process group `group` is still running."""
+    try:
+        os.killpg(group, 0)
+    except NOTHING_TO_SIGNAL:
+        return False
+    return True
+
+
+async def tear_down_in_background[T](run: Coroutine[object, object, T]) -> T:
+    """
+    Awaits `run` in a task of the app's task group, so that cancelling the caller, such as an effect,
+    cancels `run` and returns at once, leaving `run` to tear down, such as hanging up its program, in the background,
+    where it doesn't hold up the render loop, which waits for a cancelled effect to finish before it renders again.
+    The task group waits for `run` when the app stops.
+    """
+    task = current_task_group.get().create_task(run)
+    try:
+        return await shield(task)
+    except CancelledError:
+        task.cancel()
+        raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,6 +397,8 @@ def use_pty(
     from its own box with `use_rects`, which is zero on its first render, starts the program at its real size.
     Later changes to them resize the terminal, which sends the program `SIGWINCH`, except to a size that isn't positive.
     A change to `argv`, `env` or `clear_env` hangs the program up and starts it again.
+    Hanging up goes on in the background, so a program slow to exit doesn't hold up the app's rendering,
+    and an app that stops waits for it.
 
     Parameters:
         on_output: Called, from the event loop rather than during a render, with each read of what the program writes.
@@ -353,14 +441,16 @@ def use_pty(
             output.current(data)
 
         try:
-            outcome = await run_pty(
-                argv,
-                *spawned_size,
-                on_output=forward,
-                on_start=start,
-                env=env,
-                clear_env=clear_env,
-                hangup_grace=hangup_grace,
+            outcome = await tear_down_in_background(
+                run_pty(
+                    argv,
+                    *spawned_size,
+                    on_output=forward,
+                    on_start=start,
+                    env=env,
+                    clear_env=clear_env,
+                    hangup_grace=hangup_grace,
+                )
             )
         finally:
             connection.current = None
