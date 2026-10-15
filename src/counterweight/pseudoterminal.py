@@ -245,6 +245,7 @@ async def run_pty(
     and whatever is still running `hangup_grace` later gets `SIGTERM`, then `SIGKILL` after another,
     so no program outlives the call that ran it.
     Cancelled while hanging up, it sends `SIGKILL` at once.
+    What the program writes while it's hung up isn't passed to `on_output`.
     """
     if not argv:
         return NO_PROGRAM
@@ -285,6 +286,14 @@ async def run_pty(
             return
         on_output(data)
 
+    def discard() -> None:
+        try:
+            data = os.read(master, READ_SIZE)
+        except OSError:
+            data = b""
+        if not data:
+            loop.remove_reader(master)
+
     loop.add_reader(master, read)
     is_group_empty = False
     try:
@@ -306,11 +315,16 @@ async def run_pty(
             await wait_for(closed.wait(), timeout=DRAIN_TIMEOUT.total_seconds())
         return Exited(status=status)
     finally:
+        # What the program writes while it's hung up, such as the report a shell prints when a signal kills its job,
+        # is read and dropped: on macOS, a session leader's exit waits until its terminal's output has been read,
+        # so a terminal nobody reads keeps it exiting forever, which `killpg` reports as nothing left to signal.
         loop.remove_reader(master)
+        loop.add_reader(master, discard)
         try:
             if not is_group_empty:
                 await end_process_group(process, hangup_grace)
         finally:
+            loop.remove_reader(master)
             connection.close()
 
 

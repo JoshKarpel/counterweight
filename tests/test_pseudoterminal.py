@@ -342,6 +342,37 @@ async def test_cancelling_run_pty_hangs_up_the_program(tmp_path: Path) -> None:
     assert_group_ended(connection.pid)
 
 
+async def test_hanging_up_run_pty_reads_and_drops_what_the_program_writes_meanwhile(tmp_path: Path) -> None:
+    signals = tmp_path / "signals"
+    output = Output()
+    started = Started()
+    # Hung up, it writes far more than its terminal holds, which it can only finish if the terminal is read.
+    task = create_task(
+        run_pty(
+            [
+                "sh",
+                "-c",
+                f"trap 'head -c 1000000 /dev/zero; echo done >> {signals}; exit' HUP; "
+                "echo ready; while :; do sleep 0.01; done",
+            ],
+            20,
+            4,
+            on_output=output,
+            on_start=started,
+            hangup_grace=timedelta(seconds=TIMEOUT),
+        )
+    )
+    await started.wait()
+    await output.wait_for(b"ready")
+
+    task.cancel()
+
+    with pytest.raises(CancelledError):
+        await task
+    assert signals.read_text() == "done\n"
+    assert output.data == b"ready\r\n"
+
+
 async def test_cancelling_run_pty_terminates_then_kills_a_program_that_ignores_hanging_up(tmp_path: Path) -> None:
     signals = tmp_path / "signals"
     output = Output()
