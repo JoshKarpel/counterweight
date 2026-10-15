@@ -64,6 +64,7 @@ dev = [
     "ruff>=0.16.10",
     "mutmut>=3.8.0",
     "types-pygments>=2.17",
+    "coverage-conditional-plugin>=0.9.0",
 ]
 
 [project.scripts]
@@ -95,6 +96,12 @@ faulthandler_exit_on_timeout = true
 [tool.coverage.run]
 branch = true
 source = ["src/counterweight/", "tests/"]
+plugins = ["coverage_conditional_plugin"]
+
+# Each marker is ignored wherever its condition holds, so a line only one platform runs stays measured there.
+[tool.coverage.coverage_conditional_plugin.rules]
+"pragma: linux only" = "sys_platform != 'linux'"
+"pragma: macos only" = "sys_platform != 'darwin'"
 
 [tool.coverage.report]
 show_missing = true

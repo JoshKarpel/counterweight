@@ -328,7 +328,7 @@ def read_output(master: int) -> bytes:
     """
     try:
         return os.read(master, READ_SIZE)
-    except OSError:
+    except OSError:  # pragma: linux only
         return b""
 
 

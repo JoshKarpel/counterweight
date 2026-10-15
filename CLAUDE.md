@@ -179,6 +179,8 @@ read that to check a layout instead of the SVG.
 - Line and branch coverage of `src/counterweight` and `tests` is held at 100% (`fail_under` in `pyproject.toml`),
   so new code comes with the tests that run it.
   Mark a function a test builds only to compare or inspect (a handler `equivalent` compares) `# pragma: never runs`,
-  and use `# pragma: no cover` only for code the suite can't run, saying why.
+  a line only Linux or only macOS runs `# pragma: linux only` or `# pragma: macos only`,
+  which coverage ignores on the other platform (see `coverage_conditional_plugin` in `pyproject.toml`),
+  and use `# pragma: no cover` only for code the suite can't run on any platform, saying why.
 - No implicit optional types
 - Don't write lots of comments; the code and test names should be self-explanatory.

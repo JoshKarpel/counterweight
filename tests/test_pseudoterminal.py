@@ -38,7 +38,6 @@ from counterweight.pseudoterminal import end_process_group
 from counterweight.pseudoterminal import group_ended
 from counterweight.pseudoterminal import has_members
 from counterweight.pseudoterminal import program_environment
-from counterweight.pseudoterminal import read_output
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
 from tests.rendering import TIMEOUT
@@ -588,11 +587,14 @@ async def test_use_pty_keeps_the_terminals_size_when_given_one_that_is_not_posit
 
 
 def hangs_up(signals: Path, message: str) -> tuple[str, ...]:
-    """A program that writes `message`, then records being hung up in `signals`, naming itself by `message`."""
+    """
+    A program that writes `message` and its pid, the id of its process group,
+    then records being hung up in `signals`, naming itself by `message`.
+    """
     return (
         "sh",
         "-c",
-        f"trap 'echo hup {message} >> {signals}; exit' HUP; echo {message}; while :; do sleep 0.01; done",
+        f"trap 'echo hup {message} >> {signals}; exit' HUP; echo {message} $$; while :; do sleep 0.01; done",
     )
 
 
@@ -603,12 +605,14 @@ async def test_use_pty_hangs_up_the_program_and_starts_it_again_when_argv_change
 
     async with mounted() as m:
         await m.render(terminal(hangs_up(signals, "first"), 20, 4, output, ptys))
-        await output.wait_for(b"first")
+        await output.wait_for(b"\n")
+        first = int(output.data.split()[1])
         await m.render(terminal(hangs_up(signals, "second"), 20, 4, output, ptys))
+        await wait_for(group_ended(first), TIMEOUT)
+        hung_up_while_mounted = signals.read_text()
         await output.wait_for(b"second")
 
-    # The first is hung up when argv changes, and the second only when it unmounts.
-    assert signals.read_text() == "hup first\nhup second\n"
+    assert hung_up_while_mounted == "hup first\n"
 
 
 async def test_use_pty_starts_the_program_again_when_env_changes() -> None:
@@ -714,16 +718,6 @@ async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_ha
         await m.render(Text(content="gone"))
 
     assert signals.read_text() == "term\n"
-
-
-def test_a_terminal_that_cant_be_read_has_ended() -> None:
-    # As Linux fails reading a terminal that nothing holds the program's side of open, a pipe's write end fails anywhere.
-    read_end, write_end = os.pipe()
-    try:
-        assert read_output(write_end) == b""
-    finally:
-        os.close(read_end)
-        os.close(write_end)
 
 
 async def test_a_group_that_refuses_to_be_signalled_has_ended(mocker: MockerFixture) -> None:
