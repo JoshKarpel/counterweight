@@ -1,12 +1,13 @@
 # Emulators and Pseudo-Terminals
 
-[One-shot commands](commands.md) are built from two lower layers, which this page covers for code that needs them directly:
+[One-shot commands](commands.md) and [embedded terminals](embedding.md) are built from two lower layers,
+which this page covers for code that needs them directly:
 a pseudo-terminal, which runs a program as a terminal window does and hands back the bytes it writes,
 and a terminal emulator, which turns those bytes into what the terminal shows.
 Neither knows about the other, so output recorded ahead of time can be fed to an emulator with no program run,
 and a program's output can go somewhere other than an emulator.
 
-They need the `emulator` extra (`counterweight[emulator]`), and pseudo-terminals need Linux or macOS.
+Pseudo-terminals need Linux or macOS.
 
 ## Pseudo-terminals
 
@@ -39,6 +40,23 @@ since it was last called, for an emulator given a `scrollback`.
 that draws a `Screen`, with its cursor when asked,
 and [`Transcript`][counterweight.painters.terminal.Transcript] the one that draws
 everything a program printed.
+
+### Colors
+
+A program's colors reach the app's terminal as the program chose them, so they follow the user's theme as they would
+had the program run there:
+a palette color (`ESC [ 31 m`, or `ESC [ 38 ; 5 ; n m`) stays an [`IndexedColor`][counterweight.styles.IndexedColor],
+and an RGB color a `Color`.
+A palette entry the program changed (with OSC 4) is the RGB color it changed it to,
+since the user's terminal doesn't know it.
+
+A cell in the program's default colors leaves them unset, so it follows the `text_style` of the canvas showing it.
+To have those follow the user's theme too, give the canvas the terminal's default colors,
+as `text_terminal_default | text_bg_terminal_default | content_terminal_default`
+(see [Terminal colors](../styles/utilities.md#terminal-colors)).
+A cell whose colors the program swapped (inverse video) or hid (invisible text) has to name its default colors,
+so it takes the emulator's `foreground` and `background` instead, which are white and black unless the program
+changes them (with OSC 10 and 11).
 
 ## API
 

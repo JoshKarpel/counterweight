@@ -171,6 +171,11 @@ def test_a_transcript_keeps_a_row_whose_blank_cells_have_a_background() -> None:
     assert transcript_text(transcript) == ["one", ""]
 
 
+def test_a_transcript_is_recorded_on_a_terminal_24_rows_high_unless_told_otherwise() -> None:
+    # Moving the cursor further down than the screen goes puts it on the bottom row.
+    assert Transcript.of(b"\x1b[999Hend", columns=4).natural_size == (4, 24)
+
+
 def test_a_transcript_of_nothing_has_no_lines() -> None:
     assert Transcript.of(b"", columns=6).natural_size == (6, 0)
 

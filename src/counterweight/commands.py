@@ -6,7 +6,6 @@ and showing everything it printed, colors and all, as a terminal would have show
 on a pseudo-terminal, feeding what it prints to an emulator, which snapshots at most once a frame
 into a [`CommandRun`][counterweight.commands.CommandRun] value
 whose output is a [`Transcript`][counterweight.painters.terminal.Transcript] painter.
-It needs the `emulator` extra (`counterweight[emulator]`).
 """
 
 from __future__ import annotations
@@ -28,6 +27,7 @@ from counterweight.components import component
 from counterweight.elements import Canvas
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.emulator import SNAPSHOT_INTERVAL
 from counterweight.emulator import Emulator
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
@@ -58,9 +58,6 @@ COMMAND_ENVIRONMENT = frozendict({"PAGER": "cat", "GIT_PAGER": "cat"})
 What every one-shot command's environment sets, under the caller's `env`:
 pagers that print rather than wait for keys that never come.
 """
-
-SNAPSHOT_INTERVAL = timedelta(seconds=1 / 60)
-"""The least time between two snapshots of a running program's output, so at most one is taken a frame."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,7 +130,7 @@ class Runs:
         latest = self.latest
         if latest is not None and isinstance(latest.outcome, Starting | Running):
             latest = replace(latest, outcome=Cancelled())
-        return Runs(request=None, latest=latest)
+        return replace(self, request=None, latest=latest)
 
 
 def use_command(
@@ -200,9 +197,9 @@ def use_command(
         transcript = Transcript(columns=run_columns, max_lines=max_lines)
         # Set before the program's first output, and so before any reply to it.
         connection: PtyConnection
+        last_snapshot: float
         loop = get_running_loop()
         snapshot_due: TimerHandle | None = None
-        last_snapshot = loop.time()
 
         def reply(data: bytes) -> None:
             connection.write(data)

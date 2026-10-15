@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
@@ -8,6 +9,7 @@ from functools import lru_cache
 from typing import Literal
 from typing import NamedTuple
 from typing import Self
+from typing import assert_never
 
 import waxy
 
@@ -248,6 +250,107 @@ _WHITE = COLORS_BY_NAME["white"]
 _BLACK = COLORS_BY_NAME["black"]
 
 
+@dataclass(frozen=True, slots=True)
+class IndexedColor:
+    """
+    Entry `index`, from 0 to 255, of the terminal's palette, whose color the terminal decides,
+    as the SGR sequences `38;5;n` and `48;5;n` name it.
+
+    Entries 0 to 7 are black, red, green, yellow, blue, magenta, cyan and white, and 8 to 15 their bright forms,
+    all of which the user's theme sets; 16 to 231 are a 6x6x6 color cube and 232 to 255 a gray ramp,
+    which terminals define as xterm does.
+    Where no terminal decides, as in a screenshot, it's drawn as [`DEFAULT_PALETTE`][counterweight.styles.DEFAULT_PALETTE]`[index]`.
+    An index outside the palette raises `ValueError`.
+    """
+
+    index: int
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.index < PALETTE_SIZE:
+            raise ValueError(f"A palette index is from 0 to {PALETTE_SIZE - 1}, not {self.index}")
+
+
+@dataclass(frozen=True, slots=True)
+class TerminalDefault:
+    """
+    The terminal's default color, which the user's theme sets:
+    its default foreground where it colors text (SGR `39`), and its default background where it fills one (SGR `49`).
+    Where no terminal decides, as in a screenshot, it's drawn as white text on black.
+
+    Every `TerminalDefault` is equal, so use [`TERMINAL_DEFAULT`][counterweight.styles.TERMINAL_DEFAULT].
+    """
+
+
+TERMINAL_DEFAULT = TerminalDefault()
+"""The terminal's default color (see [`TerminalDefault`][counterweight.styles.TerminalDefault])."""
+
+type AnyColor = Color | IndexedColor | TerminalDefault
+"""
+A color a cell can be drawn in: an RGB `Color`, which looks the same in every terminal,
+or an `IndexedColor` or `TerminalDefault`, which follow the user's theme.
+"""
+
+PALETTE_SIZE = 256
+CUBE_LEVELS = (0, 95, 135, 175, 215, 255)
+
+
+def palette(ansi: Sequence[Color]) -> tuple[Color, ...]:
+    """
+    A whole 256-color palette with `ansi` as its first 16 entries,
+    then xterm's 6x6x6 color cube and its ramp of 24 grays.
+    """
+    cube = tuple(Color(red, green, blue) for red in CUBE_LEVELS for green in CUBE_LEVELS for blue in CUBE_LEVELS)
+    grays = tuple(Color(level, level, level) for level in range(8, 248, 10))
+    return (*ansi, *cube, *grays)
+
+
+DEFAULT_PALETTE = palette(
+    tuple(
+        Color.from_hex(hex)
+        for hex in (
+            "#1d1f21",
+            "#cc6666",
+            "#b5bd68",
+            "#f0c674",
+            "#81a2be",
+            "#b294bb",
+            "#8abeb7",
+            "#c5c8c6",
+            "#666666",
+            "#d54e53",
+            "#b9ca4a",
+            "#e7c547",
+            "#7aa6da",
+            "#c397d8",
+            "#70c0b1",
+            "#eaeaea",
+        )
+    )
+)
+"""
+The colors each [`IndexedColor`][counterweight.styles.IndexedColor] is drawn in where no terminal decides,
+as in a screenshot, and that an [`Emulator`][counterweight.emulator.Emulator]'s palette starts with:
+[Tomorrow Night](https://github.com/chriskempson/tomorrow-theme)'s 16 colors, as libghostty's default palette has,
+then xterm's color cube and grays.
+"""
+
+
+def rgb_of(color: AnyColor, terminal_default: Color) -> Color:
+    """
+    The RGB `color` is drawn in where no terminal decides, as in a screenshot:
+    `DEFAULT_PALETTE`'s entry for an `IndexedColor`, and `terminal_default` for `TerminalDefault`.
+    """
+    match color:
+        case Color():
+            return color
+        case IndexedColor(index=index):
+            return DEFAULT_PALETTE[index]
+        case TerminalDefault():
+            return terminal_default
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
 def is_osc_8_uri(uri: str) -> bool:
     """
     Whether `uri` can go in an OSC 8 hyperlink: non-empty, and only printable ASCII,
@@ -274,8 +377,8 @@ class CellStyle(StyleFragment):
     or `CellStyle` raises `ValueError`.
     """
 
-    foreground: Color | UNSET = UNSET
-    background: Color | UNSET = UNSET
+    foreground: AnyColor | UNSET = UNSET
+    background: AnyColor | UNSET = UNSET
     bold: bool | UNSET = UNSET
     dim: bool | UNSET = UNSET
     italic: bool | UNSET = UNSET
@@ -316,8 +419,8 @@ _DEFAULT_CELL_STYLE = CellStyle()
 class ResolvedCellStyle:
     """A [`CellStyle`][counterweight.styles.CellStyle] with every field filled in, as paint and output read it."""
 
-    foreground: Color
-    background: Color
+    foreground: AnyColor
+    background: AnyColor
     bold: bool
     dim: bool
     italic: bool
@@ -681,9 +784,9 @@ class ResolvedStyle:
     overflow_anchor: OverflowAnchor
     stick_to_end_x: bool
     stick_to_end_y: bool
-    margin_color: Color
-    padding_color: Color
-    content_color: Color
+    margin_color: AnyColor
+    padding_color: AnyColor
+    content_color: AnyColor
 
     border_kind: BorderKind | None
     border_style: ResolvedCellStyle
@@ -754,9 +857,9 @@ class Style(StyleFragment):
     overflow_anchor: OverflowAnchor | UNSET = UNSET
     stick_to_end_x: bool | UNSET = UNSET
     stick_to_end_y: bool | UNSET = UNSET
-    margin_color: Color | UNSET = UNSET
-    padding_color: Color | UNSET = UNSET
-    content_color: Color | UNSET = UNSET
+    margin_color: AnyColor | UNSET = UNSET
+    padding_color: AnyColor | UNSET = UNSET
+    content_color: AnyColor | UNSET = UNSET
 
     border_kind: BorderKind | UNSET | None = UNSET
     border_style: CellStyle = _DEFAULT_CELL_STYLE

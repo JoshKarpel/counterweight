@@ -13,7 +13,9 @@ from counterweight.emulator import Screen
 from counterweight.geometry import Position
 from counterweight.styles import CellStyle
 from counterweight.styles.styles import UNSET
+from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import IndexedColor
 
 FOREGROUND = Color(230, 220, 210)
 BACKGROUND = Color(10, 20, 30)
@@ -73,11 +75,62 @@ def test_styled_cells_carry_their_colors_and_attributes(sequence: str, style: Ce
     assert first_cell(snapshot(f"{sequence}a")).style == unset | style
 
 
-def test_palette_colors_are_resolved_through_the_palette() -> None:
-    assert (
-        snapshot("\x1b[38;5;196ma\x1b[38;5;21mb").lines[0][:2]
-        == snapshot("\x1b[38;2;255;0;0ma\x1b[38;2;0;0;255mb").lines[0][:2]
+@pytest.mark.parametrize(
+    ("sequence", "foreground", "background"),
+    [
+        ("\x1b[31m", IndexedColor(1), UNSET),
+        ("\x1b[94m", IndexedColor(12), UNSET),
+        ("\x1b[38;5;196m", IndexedColor(196), UNSET),
+        ("\x1b[42m", UNSET, IndexedColor(2)),
+        ("\x1b[103m", UNSET, IndexedColor(11)),
+        ("\x1b[48;5;21m", UNSET, IndexedColor(21)),
+    ],
+    ids=[
+        "foreground",
+        "bright foreground",
+        "256-color foreground",
+        "background",
+        "bright background",
+        "256-color background",
+    ],
+)
+def test_palette_colors_stay_palette_entries(
+    sequence: str, foreground: IndexedColor | UNSET, background: IndexedColor | UNSET
+) -> None:
+    style = first_cell(snapshot(f"{sequence}a")).style
+
+    assert (style.foreground, style.background) == (foreground, background)
+
+
+def test_a_palette_entry_the_program_changed_is_the_color_it_changed_it_to() -> None:
+    style = first_cell(snapshot("\x1b]4;1;rgb:12/34/56\x1b\\\x1b[31;41ma")).style
+
+    assert (style.foreground, style.background) == (Color(0x12, 0x34, 0x56), Color(0x12, 0x34, 0x56))
+
+
+def test_a_palette_entry_the_program_changed_back_is_a_palette_entry_again() -> None:
+    style = first_cell(snapshot("\x1b]4;1;rgb:12/34/56\x1b\\\x1b]104;1\x1b\\\x1b[31ma")).style
+
+    assert style.foreground == IndexedColor(1)
+
+
+def test_changing_a_palette_entry_converts_the_rows_that_use_it_again() -> None:
+    with Emulator(4, 1, ignore_replies) as emulator:
+        emulator.feed(b"\x1b[31ma")
+        before = emulator.snapshot()
+        emulator.feed(b"\x1b]4;1;rgb:12/34/56\x1b\\")
+        after = emulator.snapshot()
+
+    assert (first_cell(before).style.foreground, first_cell(after).style.foreground) == (
+        IndexedColor(1),
+        Color(0x12, 0x34, 0x56),
     )
+
+
+def test_inverse_swaps_palette_entries() -> None:
+    style = first_cell(snapshot("\x1b[7;31;42ma")).style
+
+    assert (style.foreground, style.background) == (IndexedColor(2), IndexedColor(1))
 
 
 @pytest.mark.parametrize(
@@ -105,10 +158,21 @@ def test_swapped_and_invisible_cells_name_the_default_colors_they_take(
     assert (style.foreground, style.background) == (foreground, background)
 
 
-def test_a_blank_cell_erased_with_a_background_has_it() -> None:
-    style = first_cell(snapshot("\x1b[48;2;4;5;6m\x1b[K")).style
+@pytest.mark.parametrize(
+    ("sequence", "background"),
+    [
+        ("\x1b[48;2;4;5;6m", Color(4, 5, 6)),
+        ("\x1b[43m", IndexedColor(3)),
+        ("\x1b]4;3;rgb:12/34/56\x1b\\\x1b[43m", Color(0x12, 0x34, 0x56)),
+    ],
+    ids=["rgb", "palette entry", "changed palette entry"],
+)
+def test_a_blank_cell_erased_with_a_background_has_it(sequence: str, background: AnyColor) -> None:
+    style = first_cell(snapshot(f"{sequence}\x1b[K")).style
 
-    assert style.background == Color(4, 5, 6)
+    assert style == CellStyle(
+        background=background, bold=False, dim=False, italic=False, underline=False, strikethrough=False
+    )
 
 
 def test_a_styled_character_repeated_in_a_row_is_the_same_cell_each_time() -> None:
@@ -124,6 +188,20 @@ def test_a_wide_character_is_one_cell_and_takes_two_columns() -> None:
     assert [(cell.grapheme, cell.width) for cell in line] == [("日", 2), ("本", 2), ("x", 1), (" ", 1)]
 
 
+@pytest.mark.parametrize("style", ["", "\x1b[32m"], ids=["plain", "styled"])
+def test_a_character_repeated_in_a_row_is_the_same_cell_however_many_cells_come_between(style: str) -> None:
+    between = "".join(chr(0x4E00 + index) for index in range(PLAIN_CELLS_KEPT))
+    line = snapshot(f"{style}a\x1b[31m{between}\x1b[0m{style}a", columns=2 * len(between) + 2, rows=1).lines[0]
+
+    assert line[-1] is line[0]
+
+
+def test_cells_in_different_styles_in_one_row_keep_their_own_styles() -> None:
+    line = snapshot("\x1b[31ma\x1b[32mb\x1b[31mc").lines[0]
+
+    assert [cell.style.foreground for cell in line[:3]] == [IndexedColor(1), IndexedColor(2), IndexedColor(1)]
+
+
 def test_a_styled_wide_character_is_one_cell_and_takes_two_columns() -> None:
     line = snapshot("\x1b[31m日本", columns=4, rows=1).lines[0]
 
@@ -134,6 +212,23 @@ def test_a_grapheme_cluster_of_several_code_points_is_one_cell() -> None:
     line = snapshot("éx", columns=3, rows=1).lines[0]
 
     assert [cell.grapheme for cell in line] == ["é", "x", " "]
+
+
+def test_a_grapheme_cluster_of_several_code_points_carries_its_style() -> None:
+    cell = first_cell(snapshot("\x1b[7;1mé"))
+
+    assert (cell.grapheme, cell.style) == (
+        "é",
+        CellStyle(
+            foreground=BACKGROUND,
+            background=FOREGROUND,
+            bold=True,
+            dim=False,
+            italic=False,
+            underline=False,
+            strikethrough=False,
+        ),
+    )
 
 
 def test_a_zero_width_character_libghostty_puts_in_the_cell_before_is_kept_and_takes_no_column() -> None:
@@ -186,6 +281,18 @@ def test_snapshotting_a_changed_terminal_returns_a_new_screen_sharing_the_rows_t
     assert text(second) == ["ab  ", "cde "]
 
 
+def test_rows_that_didnt_change_keep_their_cells_on_a_screen_wider_than_one_of_libghosttys_pages_holds() -> None:
+    # libghostty's pages hold about 23 rows 2,000 cells wide, and number their rows from 1 in each page.
+    rows = 50
+    with Emulator(2_000, rows, ignore_replies) as emulator:
+        emulator.feed(b"".join(b"\x1b[%d;1Hrow %d" % (row + 1, row) for row in range(rows)))
+        emulator.snapshot()
+        emulator.feed(b"\x1b[%d;1Hchanged" % rows)
+        screen = emulator.snapshot()
+
+    assert rows_text(screen.lines) == [f"row {row}" for row in range(rows - 1)] + ["changed"]
+
+
 def test_changing_the_default_colors_converts_the_rows_that_name_them_again() -> None:
     with Emulator(4, 1, ignore_replies, foreground=FOREGROUND, background=BACKGROUND) as emulator:
         emulator.feed(b"\x1b[7ma")
@@ -215,6 +322,10 @@ def test_the_title_is_what_the_program_set() -> None:
 
 def test_the_title_is_empty_until_the_program_sets_one() -> None:
     assert snapshot("a").title == ""
+
+
+def test_a_title_that_isnt_utf8_leaves_the_title_as_it_was() -> None:
+    assert snapshot(b"\x1b]2;kept\x07\x1b]2;a\xffb\x07").title == "kept"
 
 
 def test_the_default_modes_are_unset() -> None:
@@ -342,6 +453,14 @@ def test_scrolled_off_keeps_the_styles_of_the_rows_it_returns() -> None:
         assert emulator.scrolled_off()[0][0].style.foreground == Color(1, 2, 3)
 
 
+def test_scrolled_off_rows_name_the_default_colors_their_swapped_cells_take() -> None:
+    with Emulator(10, 2, ignore_replies, foreground=FOREGROUND, background=BACKGROUND, scrollback=4) as emulator:
+        emulator.feed(b"\x1b[7ma\x1b[0m\r\n\r\n\r\n")
+        style = emulator.scrolled_off()[0][0].style
+
+    assert (style.foreground, style.background) == (BACKGROUND, FOREGROUND)
+
+
 def test_scrolled_off_returns_the_rows_after_the_scrollback_is_erased() -> None:
     with Emulator(10, 2, ignore_replies, scrollback=20) as emulator:
         emulator.feed(numbered_lines(0, 4))
@@ -375,6 +494,31 @@ def test_scrolled_off_returns_every_row_since_the_last_call_up_to_its_scrollback
     assert (len(returned), len(newest)) == (5 * 1_500 - 1, scrollback)
     # The last line printed is on the screen, with the cursor on the row below it.
     assert rows_text(newest) == [str(number) for number in range(9_999 - scrollback, 9_999)]
+
+
+@pytest.mark.parametrize(
+    ("scrolled", "captured"),
+    [(0, 4), (2, 4), (3, 8), (5, 16), (40, 50)],
+)
+def test_the_next_update_captures_twice_the_rows_that_scrolled_off_rounded_up_to_the_screens_rows_times_a_power_of_two(
+    scrolled: int, captured: int
+) -> None:
+    with Emulator(10, 4, ignore_replies, scrollback=50) as emulator:
+        emulator.feed(numbered_lines(0, 6))
+        emulator.scrolled_off()
+        emulator.feed(numbered_lines(6, 6 + scrolled))
+        emulator.scrolled_off()
+
+        assert emulator.overscan.above == captured
+
+
+def test_an_emulators_scrollback_can_hold_as_many_rows_as_libghostty_captures_at_once() -> None:
+    lines = MAX_SCROLLBACK + 1_000
+    with Emulator(6, 2, ignore_replies, scrollback=MAX_SCROLLBACK) as emulator:
+        emulator.feed(b"".join(b"%d\r\n" % number for number in range(lines)))
+        scrolled_off = emulator.scrolled_off()
+
+    assert rows_text(scrolled_off) == [str(number) for number in range(lines - 1 - MAX_SCROLLBACK, lines - 1)]
 
 
 @pytest.mark.parametrize("scrollback", [-1, MAX_SCROLLBACK + 1])

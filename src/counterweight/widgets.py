@@ -6,14 +6,19 @@ so an app that wants another look starts from the hook rather than from these.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.elements import AnyElement
+from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.graphemes import graphemes
@@ -23,9 +28,11 @@ from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import ScrollAxis
 from counterweight.headless import use_scroll_area
+from counterweight.headless import use_terminal
 from counterweight.headless import use_text_area
 from counterweight.headless import use_text_input
 from counterweight.hooks import use_rects
+from counterweight.pseudoterminal import HANGUP_GRACE
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
 from counterweight.styles.utilities import border
@@ -303,6 +310,79 @@ def scroll_area(
     # The area's style merges last, since a `style` such as `fill(1)` sets overflow too, and the box must scroll.
     box = col | styles.box_style(style, area.focus.is_focused) | area.style
     return Div(style=box, handle=area.viewport, on_input=area.on_input, children=children)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class TerminalStyles:
+    """
+    How [`terminal`][counterweight.widgets.terminal] draws its box.
+
+    The box is styled by `box`, then the `style` passed to the widget, then `focused_box` while it's focused,
+    as [`ScrollAreaStyles`][counterweight.widgets.ScrollAreaStyles] styles a scroll area's box.
+    """
+
+    box: Style = border | border_lightrounded | border_color("slate", 600)
+    """The box around the terminal."""
+    focused_box: Style = border_color("indigo", 400)
+    """Merged over `box` and the widget's `style` while the widget is focused."""
+
+    def box_style(self, style: Style, is_focused: bool) -> Style:
+        """The style of the widget's box, with `style` merged over `box`, under `focused_box` while it's focused."""
+        return self.box | style | (self.focused_box if is_focused else default)
+
+
+@component
+def terminal(
+    argv: Sequence[str],
+    style: Style = default,
+    styles: TerminalStyles = TerminalStyles(),
+    intercept: InputHandler | None = None,
+    env: Mapping[str, str] = frozendict(),
+    clear_env: bool = False,
+    hangup_grace: timedelta = HANGUP_GRACE,
+    auto_focus: bool = False,
+    handle: FocusHandle | None = None,
+    is_focusable: bool = True,
+    in_focus_order: bool = True,
+) -> Canvas:
+    """
+    A bordered box that runs an interactive program, such as a shell or an editor, in a terminal the size of its content,
+    built on [`use_terminal`][counterweight.headless.use_terminal],
+    which takes `argv`, `env`, `clear_env`, `hangup_grace` and the focus parameters, `handle` being a focus handle.
+    While it's focused, the program gets every key, the cursor shows, and its border shows it's focused;
+    a press on it focuses it.
+
+    The box takes no size from the program, so size it with `style`, as with `fill(1)` or `size(82, 26)`:
+    the program starts once the box has room, and its terminal resizes with the box.
+
+    Parameters:
+        style: Merged over the box's style from `styles`, as for a size.
+
+        styles: How the box is drawn.
+
+        intercept: A handler that sees each event before the terminal does, and keeps an event from the program
+            by claiming it, as a multiplexer's prefix key does.
+            The terminal claims every key while it's focused, Ctrl+C included,
+            so an app needs some key here, or some other way, to move focus out of it.
+    """
+    content = use_rects().content
+    embedded = use_terminal(
+        argv,
+        content.width,
+        content.height,
+        env=env,
+        clear_env=clear_env,
+        hangup_grace=hangup_grace,
+        auto_focus=auto_focus,
+        handle=handle,
+        is_focusable=is_focusable,
+        in_focus_order=in_focus_order,
+    )
+    return Canvas(
+        painter=embedded.view,
+        style=styles.box_style(style, embedded.focus.is_focused),
+        on_input=embedded.on_input if intercept is None else first(intercept, embedded.on_input),
+    )
 
 
 def cursor_chunks(

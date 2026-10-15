@@ -100,6 +100,27 @@ async def test_suspending_to_a_program_needs_no_on_exit(streams: TerminalStreams
     assert (tmp_path / "shown").read_text() == "ran\n"
 
 
+async def test_suspending_to_a_program_runs_it_with_the_apps_environment_by_default(
+    streams: TerminalStreams, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FROM_APP", "inherited")
+
+    await maybe_await(Suspend.to_program(["sh", "-c", 'echo "${FROM_APP-unset}"']).handler(streams))
+
+    assert (tmp_path / "shown").read_text() == "inherited\n"
+
+
+async def test_suspending_to_edit_a_file_edits_it_with_the_preferred_editor_by_default(
+    streams: TerminalStreams, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VISUAL", "sh -c 'echo visual > \"$1\"' sh")
+    path = tmp_path / "notes.md"
+
+    await maybe_await(Suspend.to_edit_file(path).handler(streams))
+
+    assert path.read_text() == "visual\n"
+
+
 async def test_suspending_to_edit_a_file_edits_it_with_editor_and_passes_on_exit_how_it_exited(
     streams: TerminalStreams, tmp_path: Path
 ) -> None:
@@ -120,14 +141,35 @@ async def test_suspending_to_edit_a_file_needs_no_on_exit(streams: TerminalStrea
     assert path.read_text() == "edited\n"
 
 
+NAME_EDITOR = ("sh", "-c", 'printf "%s %s" "$(cat "$1")" "$(basename "$1")" > "$1"', "sh")
+
+
 async def test_suspending_to_edit_text_passes_on_edit_the_edited_text(streams: TerminalStreams) -> None:
     outcomes: list[EditOutcome] = []
-    name_editor = ("sh", "-c", 'printf "%s %s" "$(cat "$1")" "$(basename "$1")" > "$1"', "sh")
 
     await maybe_await(
-        Suspend.to_edit_text("draft", on_edit=outcomes.append, file_name="notes.md", editor=name_editor).handler(
+        Suspend.to_edit_text("draft", on_edit=outcomes.append, file_name="notes.md", editor=NAME_EDITOR).handler(
             streams
         )
     )
 
     assert outcomes == [Edited(text="draft notes.md")]
+
+
+async def test_suspending_to_edit_text_names_its_file_edit_txt_by_default(streams: TerminalStreams) -> None:
+    outcomes: list[EditOutcome] = []
+
+    await maybe_await(Suspend.to_edit_text("memo", on_edit=outcomes.append, editor=NAME_EDITOR).handler(streams))
+
+    assert outcomes == [Edited(text="memo edit.txt")]
+
+
+async def test_suspending_to_edit_text_edits_it_with_the_preferred_editor_by_default(
+    streams: TerminalStreams, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VISUAL", "sh -c 'printf visual > \"$1\"' sh")
+    outcomes: list[EditOutcome] = []
+
+    await maybe_await(Suspend.to_edit_text("draft", on_edit=outcomes.append, file_name="notes.md").handler(streams))
+
+    assert outcomes == [Edited(text="visual")]

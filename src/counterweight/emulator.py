@@ -3,7 +3,7 @@ A terminal emulator, which turns the bytes a program writes to its terminal into
 and the immutable [`Screen`][counterweight.emulator.Screen] values it shows them as.
 
 The emulator is [libghostty-vt](https://ghostty.org), through [pyghostty](https://github.com/AnswerDotAI/pyghostty)'s
-cffi bindings, which the `emulator` extra installs (`counterweight[emulator]`).
+cffi bindings.
 Nothing outside this module touches it, so everything else sees only `Screen` and `Modes` values.
 An `Emulator` is a place: the bytes fed to it change it. `snapshot` turns what it shows into a `Screen`.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from functools import lru_cache
 from types import TracebackType
 from typing import Literal
@@ -29,10 +30,15 @@ from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.graphemes import grapheme_width
 from counterweight.graphemes import graphemes
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS
+from counterweight.styles.styles import DEFAULT_PALETTE
 from counterweight.styles.styles import UNSET
+from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import IndexedColor
+
+WHITE = Color.from_name("white")
+BLACK = Color.from_name("black")
 
 type MouseTracking = Literal["none", "x10", "normal", "button", "any"]
 """Which mouse events a program asked its terminal to report, from fewest to most."""
@@ -78,7 +84,9 @@ class Screen:
     """
     One row of cells for each of the terminal's rows, each taking exactly `columns` cells.
 
-    A cell in the program's default colors leaves them unset, so they follow the style of the canvas showing it.
+    A cell in the program's default colors leaves them unset, so they follow the style of the canvas showing it,
+    and one in a palette color is an [`IndexedColor`][counterweight.styles.IndexedColor], which follows the user's theme,
+    unless the program changed that palette entry (with OSC 4), which makes it the RGB `Color` the program chose.
     Where the emulator and counterweight's `grapheme_width` disagree on how wide
     a grapheme cluster is, the row keeps the emulator's columns, which the program laid its line out by:
     a cluster narrower here is followed by spaces, and one wider here, or with no width, is drawn as spaces.
@@ -107,6 +115,7 @@ class Emulator:
     (cursor position reports, device attributes), which belong on the program's input, as a terminal would send them.
     `foreground` and `background` are the colors the program's default colors stand for wherever a cell has to name them
     (see [`Screen.background`][counterweight.emulator.Screen.background]), until the program changes them.
+    Its palette starts as [`DEFAULT_PALETTE`][counterweight.styles.DEFAULT_PALETTE].
 
     `scrollback` is how many of the rows that scroll off the top of the screen
     [`scrolled_off`][counterweight.emulator.Emulator.scrolled_off] can return, at most `MAX_SCROLLBACK`.
@@ -119,8 +128,8 @@ class Emulator:
         columns: int,
         rows: int,
         on_reply: Callable[[bytes], None],
-        foreground: Color = CELL_STYLE_DEFAULTS.foreground,
-        background: Color = CELL_STYLE_DEFAULTS.background,
+        foreground: Color = WHITE,
+        background: Color = BLACK,
         scrollback: int = 0,
     ) -> None:
         if not 0 <= scrollback <= MAX_SCROLLBACK:
@@ -132,6 +141,14 @@ class Emulator:
             scrollback=scrollback and scrollback + rows_per_page(columns),
             fg=foreground,
             bg=background,
+        )
+        check(
+            lib.ghostty_terminal_set(
+                self.terminal._t[0],  # noqa: SLF001
+                lib.GHOSTTY_TERMINAL_OPT_COLOR_PALETTE,
+                ffi.new("GhosttyColorRgb[]", [{"r": r, "g": g, "b": b} for r, g, b in DEFAULT_PALETTE]),
+            ),
+            "color_palette",
         )
         if scrollback:
             # libghostty also caps its scrollback at 10,000 bytes by default, a few hundred rows,
@@ -166,6 +183,7 @@ class Emulator:
         self.colors = init_sized("GhosttyRenderStateColors")
         self.style = init_sized("GhosttyStyle")
         self.rgb = ffi.new("GhosttyColorRgb*")
+        self.palette_index = ffi.new("GhosttyColorPaletteIndex*")
         self.cells_view = ffi.new("GhosttyCellsView*")
         self.wide = ffi.new("int*")
         self.has_styling = ffi.new("bool*")
@@ -210,6 +228,8 @@ class Emulator:
         # so a program that changes one row has one row converted rather than all of them.
         self.converted: dict[tuple[int, int], tuple[StyledGrapheme, ...]] = {}
         self.last: Screen | None = None
+        # The palette as of the last update, as libghostty's RGB bytes, to tell which entries the program changed.
+        self.palette: bytes
         # The rows that scrolled off the screen that `scrolled_off` hasn't returned yet, oldest first,
         # and the id of the newest of them, which marks where the rows not yet set aside start.
         self.pending: list[tuple[StyledGrapheme, ...]] = []
@@ -314,6 +334,9 @@ class Emulator:
         check(lib.ghostty_render_state_get(state, lib.GHOSTTY_RENDER_STATE_DATA_COLORS, self.colors), "colors")
         foreground = rgb_color(self.colors.foreground)
         background = rgb_color(self.colors.background)
+        # Cells in a palette entry the program changed name the color it changed it to.
+        # Changing the palette marks every row dirty, so the rows converted before are converted again.
+        self.palette = bytes(ffi.buffer(self.colors.palette))
         if not self.scrollback:
             return foreground, background
 
@@ -398,6 +421,7 @@ class Emulator:
         get = lib.ghostty_render_state_row_cells_get
         select = lib.ghostty_render_state_row_cells_select
         plain = self.plain
+        classified = len(self.classify_keys)
         seen: dict[int, tuple[StyledGrapheme, ...]] = {}
         styles: dict[int, CellStyle] = {}
         row: list[StyledGrapheme] = []
@@ -409,7 +433,7 @@ class Emulator:
                 row.extend(known)
                 continue
 
-            lib.ghostty_cell_get_multi(value, 5, self.classify_keys, self.classify_values, ffi.NULL)
+            lib.ghostty_cell_get_multi(value, classified, self.classify_keys, self.classify_values, ffi.NULL)
             wide = self.wide[0]
             if wide == lib.GHOSTTY_CELL_WIDE_SPACER_TAIL:
                 # The wide cell before it drew both its columns.
@@ -442,25 +466,29 @@ class Emulator:
                 continue
 
             # A blank cell whose background the program set by erasing, which its value holds rather than a style.
-            known = seen[value] = cells_for(" ", columns, self.read_style(cells, foreground, background))
+            known = seen[value] = cells_for(" ", columns, self.erased_style(value, content))
             row.extend(known)
         return tuple(row)
+
+    def erased_style(self, value: int, content: int) -> CellStyle:
+        """The style of a blank cell whose value holds the background the program erased it with, and no style."""
+        if content == lib.GHOSTTY_CELL_CONTENT_BG_COLOR_PALETTE:
+            check(lib.ghostty_cell_get(value, lib.GHOSTTY_CELL_DATA_COLOR_PALETTE, self.palette_index), "color_palette")
+            return erased(self.palette_color(self.palette_index[0]))
+        check(lib.ghostty_cell_get(value, lib.GHOSTTY_CELL_DATA_COLOR_RGB, self.rgb), "color_rgb")
+        return erased(rgb_color(self.rgb[0]))
 
     def read_style(self, cells: object, foreground: Color, background: Color) -> CellStyle:
         """
         The style of the cell `cells` is at, leaving colors that are the program's defaults unset,
         but where it has to name them, as `foreground` and `background`.
         """
-        get = lib.ghostty_render_state_row_cells_get
-        rgb = self.rgb
-        cell_foreground: Color | None = None
-        if get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_FG_COLOR, rgb) == lib.GHOSTTY_SUCCESS:
-            cell_foreground = rgb_color(rgb[0])
-        cell_background: Color | None = None
-        if get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR, rgb) == lib.GHOSTTY_SUCCESS:
-            cell_background = rgb_color(rgb[0])
         style = self.style
-        get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, style)
+        check(
+            lib.ghostty_render_state_row_cells_get(cells, lib.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, style), "style"
+        )
+        cell_foreground = self.style_color(style.fg_color)
+        cell_background = self.style_color(style.bg_color)
         if style.inverse:
             cell_foreground, cell_background = (
                 background if cell_background is None else cell_background,
@@ -477,6 +505,26 @@ class Emulator:
             style.underline != 0,
             bool(style.strikethrough),
         )
+
+    def style_color(self, color: object) -> AnyColor | None:
+        """A style's color, or `None` for the program's default."""
+        tag = color.tag  # type: ignore[attr-defined]
+        if tag == lib.GHOSTTY_STYLE_COLOR_PALETTE:
+            return self.palette_color(color.value.palette)  # type: ignore[attr-defined]
+        if tag == lib.GHOSTTY_STYLE_COLOR_RGB:
+            return rgb_color(color.value.rgb)  # type: ignore[attr-defined]
+        return None
+
+    def palette_color(self, index: int) -> AnyColor:
+        """
+        Palette entry `index`, which follows the user's theme as an `IndexedColor`,
+        unless the program changed it, since the user's terminal doesn't know the color it changed it to.
+        """
+        start = 3 * index
+        entry = self.palette[start : start + 3]
+        if entry == DEFAULT_PALETTE_BYTES[start : start + 3]:
+            return INDEXED_COLORS[index]
+        return Color(*entry)
 
     def cursor_position(self) -> Position | None:
         """Where the cursor is, at the first column of a wide cell it's on, or `None` if it's hidden."""
@@ -519,8 +567,27 @@ class Emulator:
         )
         if not title.len:
             return ""
-        return bytes(ffi.buffer(title.ptr, title.len)).decode(errors="replace")
+        # libghostty ignores a title that isn't UTF-8.
+        return bytes(ffi.buffer(title.ptr, title.len)).decode()
 
+
+SNAPSHOT_INTERVAL = timedelta(seconds=1 / 60)
+"""
+The least time between two snapshots of a running program's terminal, so at most one is taken a frame
+however fast the program writes.
+"""
+
+BLANK_SCREEN = Screen(
+    columns=0,
+    rows=0,
+    lines=(),
+    cursor=None,
+    modes=Modes(),
+    title="",
+    foreground=WHITE,
+    background=BLACK,
+)
+"""A screen with nothing on it, for before a terminal's first snapshot."""
 
 # How many cell values with no style an emulator keeps the cells of, before starting over.
 PLAIN_CELLS_KEPT = 2**12
@@ -539,6 +606,8 @@ def rows_per_page(columns: int) -> int:
 
 
 SPACE = ord(" ")
+DEFAULT_PALETTE_BYTES = bytes(channel for color in DEFAULT_PALETTE for channel in color)
+INDEXED_COLORS = tuple(IndexedColor(index) for index in range(len(DEFAULT_PALETTE)))
 CELL_SIZE = ffi.sizeof("GhosttyCell")
 UNSTYLED = CellStyle()
 
@@ -575,8 +644,8 @@ def is_unchanged(last: Screen, screen: Screen) -> bool:
 
 @lru_cache(maxsize=2**10)
 def cell_style(
-    foreground: Color | None,
-    background: Color | None,
+    foreground: AnyColor | None,
+    background: AnyColor | None,
     bold: bool,
     dim: bool,
     italic: bool,
@@ -593,6 +662,11 @@ def cell_style(
         underline=underline,
         strikethrough=strikethrough,
     )
+
+
+def erased(background: AnyColor) -> CellStyle:
+    """The style of a blank cell the program erased with `background`."""
+    return cell_style(None, background, False, False, False, False, False)
 
 
 @lru_cache(maxsize=2**12)
@@ -616,4 +690,4 @@ def cells_for(text: str, columns: int, style: CellStyle) -> tuple[StyledGrapheme
     )
 
 
-__all__ = ["MAX_SCROLLBACK", "Emulator", "Modes", "MouseTracking", "Screen"]
+__all__ = ["BLANK_SCREEN", "MAX_SCROLLBACK", "SNAPSHOT_INTERVAL", "Emulator", "Modes", "MouseTracking", "Screen"]

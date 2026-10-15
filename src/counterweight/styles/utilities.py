@@ -3,9 +3,11 @@ from typing import Literal
 
 import waxy
 
+from counterweight.styles import TERMINAL_DEFAULT
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
+from counterweight.styles import IndexedColor
 from counterweight.styles import Style
 
 Side = Literal["top", "bottom", "left", "right"]
@@ -14,6 +16,14 @@ Side = Literal["top", "bottom", "left", "right"]
 
 text_white = Style(text_style=CellStyle(foreground=Color.from_hex("#ffffff")))
 text_black = Style(text_style=CellStyle(foreground=Color.from_hex("#000000")))
+
+text_terminal_default = Style(text_style=CellStyle(foreground=TERMINAL_DEFAULT))
+text_bg_terminal_default = Style(text_style=CellStyle(background=TERMINAL_DEFAULT))
+border_terminal_default = Style(border_style=CellStyle(foreground=TERMINAL_DEFAULT))
+border_bg_terminal_default = Style(border_style=CellStyle(background=TERMINAL_DEFAULT))
+margin_terminal_default = Style(margin_color=TERMINAL_DEFAULT)
+padding_terminal_default = Style(padding_color=TERMINAL_DEFAULT)
+content_terminal_default = Style(content_color=TERMINAL_DEFAULT)
 
 slate_50 = Color.from_hex("#f8fafc")
 slate_100 = Color.from_hex("#f1f5f9")
@@ -1181,3 +1191,45 @@ def padding_color(color: ColorName, shade: Shade) -> Style:
 def content_color(color: ColorName, shade: Shade) -> Style:
     """Fill the whole box with a palette color, under any margin, padding and border colors."""
     return Style(content_color=_COLOR_MAP[(color, shade)])
+
+
+@lru_cache(maxsize=256)
+def text_indexed(index: int) -> Style:
+    """Color the text with entry `index` of the terminal's palette, which follows the user's theme."""
+    return Style(text_style=CellStyle(foreground=IndexedColor(index)))
+
+
+@lru_cache(maxsize=256)
+def text_bg_indexed(index: int) -> Style:
+    """Color the background behind the text with entry `index` of the terminal's palette."""
+    return Style(text_style=CellStyle(background=IndexedColor(index)))
+
+
+@lru_cache(maxsize=256)
+def border_indexed(index: int) -> Style:
+    """Color the border characters with entry `index` of the terminal's palette."""
+    return Style(border_style=CellStyle(foreground=IndexedColor(index)))
+
+
+@lru_cache(maxsize=256)
+def border_bg_indexed(index: int) -> Style:
+    """Color the background behind the border characters with entry `index` of the terminal's palette."""
+    return Style(border_style=CellStyle(background=IndexedColor(index)))
+
+
+@lru_cache(maxsize=256)
+def margin_indexed(index: int) -> Style:
+    """Fill the margin with entry `index` of the terminal's palette."""
+    return Style(margin_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def padding_indexed(index: int) -> Style:
+    """Fill the padding with entry `index` of the terminal's palette."""
+    return Style(padding_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def content_indexed(index: int) -> Style:
+    """Fill the whole box with entry `index` of the terminal's palette, under any margin, padding and border colors."""
+    return Style(content_color=IndexedColor(index))

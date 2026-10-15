@@ -508,12 +508,19 @@ def test_nested_horizontal_scroll_containers_move_their_content_by_the_sum_of_th
     assert layouts.by_key[inner_node.children[0].key].border.left == -3
 
 
-def test_the_view_excludes_the_space_a_scrollbar_width_reserves() -> None:
+@pytest.mark.parametrize(
+    ("overflow", "expected"),
+    [
+        pytest.param(overflow_y_scroll, (6, 3), id="vertical"),
+        pytest.param(overflow_x_scroll, (8, 1), id="horizontal"),
+    ],
+)
+def test_the_view_excludes_the_space_a_scrollbar_width_reserves(overflow: Style, expected: tuple[int, int]) -> None:
     reserved = Style(layout=waxy.Style(scrollbar_width=2))
 
-    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow_y_scroll | reserved, children=lines(8)))
+    scroll = scroll_of_root(Div(style=border | size(10, 5) | overflow | reserved, children=lines(8)))
 
-    assert (scroll.view_width, scroll.view_height) == (6, 3)
+    assert (scroll.view_width, scroll.view_height) == expected
 
 
 @pytest.mark.parametrize(

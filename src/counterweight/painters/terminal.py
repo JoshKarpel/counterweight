@@ -2,8 +2,6 @@
 Painters for what a terminal emulator shows, from the [`Screen`][counterweight.emulator.Screen] values it produces:
 [`ScreenView`][counterweight.painters.terminal.ScreenView], a terminal's screen as it is now,
 and [`Transcript`][counterweight.painters.terminal.Transcript], everything a program printed.
-
-They need the `emulator` extra (`counterweight[emulator]`).
 """
 
 from __future__ import annotations

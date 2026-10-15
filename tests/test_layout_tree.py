@@ -34,6 +34,7 @@ from counterweight.shadow import ShadowTree
 from counterweight.shadow import update_shadow
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import fill
@@ -260,6 +261,10 @@ SEQUENCES = {
         Div(style=col, children=(Canvas(painter=Blocks(natural_size=(6, 3))), Text(content="below"))),
         Div(style=col, children=(Canvas(painter=Blocks(natural_size=(6, 3), keeps_aspect_ratio=False)),)),
     ],
+    "unmount a canvas": [
+        Div(children=(Text(content="sibling"), Canvas(painter=Blocks()))),
+        Div(children=(Text(content="sibling"),)),
+    ],
     "a clip shrinks": [
         Div(style=col | overflow_hidden | height(6), children=(Text(content="a\nb\nc\nd"),)),
         Div(style=col | overflow_hidden | height(2), children=(Text(content="a\nb\nc\nd"),)),
@@ -310,15 +315,19 @@ def test_text_is_not_wrapped_again_at_a_width_it_was_measured_at(mocker: MockerF
     assert wrap_cells.call_count == 1
 
 
-def test_node_that_did_not_move_keeps_its_rects() -> None:
+def test_node_that_did_not_move_keeps_its_rects_from_frame_to_frame() -> None:
     tree = LayoutTree()
     shadow = frames(tree, [panes("alpha", "beta")])
     before = dict(tree.placed)
 
-    next = update_shadow(panes("alpha", "beta"), shadow, NO_LAYOUTS).tree
-    layouts = tree.compute(layout_changes(shadow, next), next, WIDTH, HEIGHT, {})
+    kept = []
+    for _ in range(2):
+        next = update_shadow(panes("alpha", "beta"), shadow, NO_LAYOUTS).tree
+        layouts = tree.compute(layout_changes(shadow, next), next, WIDTH, HEIGHT, {})
+        kept.append(all(layouts.by_key[key] is rects for key, (_, rects) in before.items()))
+        shadow = next
 
-    assert all(layouts.by_key[key] is rects for key, (_, rects) in before.items())
+    assert kept == [True, True]
 
 
 def test_placements_are_kept_only_for_nodes_in_the_last_layout() -> None:
@@ -336,9 +345,53 @@ def leaf_keys(shadow: ShadowTree, kind: type[Text | Canvas]) -> set[NodeKey]:
 @pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
 def test_tree_keeps_texts_only_for_texts_and_drawings_only_for_canvases(elements: list[AnyElement]) -> None:
     tree = LayoutTree()
-    shadow = frames(tree, elements)
+    shadow: ShadowTree | None = None
 
-    assert (set(tree.texts), set(tree.drawings)) == (leaf_keys(shadow, Text), leaf_keys(shadow, Canvas))
+    kept = []
+    for element in elements:
+        next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
+        tree.compute(layout_changes(shadow, next_shadow), next_shadow, WIDTH, HEIGHT, {})
+        kept.append(
+            (set(tree.texts), set(tree.drawings)) == (leaf_keys(next_shadow, Text), leaf_keys(next_shadow, Canvas))
+        )
+        shadow = next_shadow
+
+    assert kept == [True] * len(elements)
+
+
+KEY = NodeKey(1)
+
+
+def test_changed_text_builds_cells_only_for_the_pieces_it_does_not_share_with_its_last_version(
+    mocker: MockerFixture,
+) -> None:
+    tree = LayoutTree()
+    tree.apply([CreateLeaf(key=KEY, style=waxy.Style(), source=("kept\nbefore", CellStyle(), "stable"))])
+    styled_cells = mocker.spy(layout, "styled_cells")
+
+    tree.apply([SetSource(key=KEY, source=("kept\nafter", CellStyle(), "stable"))])
+
+    assert [call.args for call in styled_cells.call_args_list] == [("after", CellStyle())]
+
+
+def test_text_of_one_piece_keeps_its_cells_when_only_its_wrap_changes() -> None:
+    chunks = (Chunk(content="one piece", style=CellStyle(foreground=Color.from_name("red"))),)
+    tree = LayoutTree()
+    tree.apply([CreateLeaf(key=KEY, style=waxy.Style(), source=(chunks, CellStyle(), "stable"))])
+    before = tree.texts[KEY].cells
+
+    tree.apply([SetSource(key=KEY, source=(chunks, CellStyle(), "pretty"))])
+
+    assert tree.texts[KEY].cells is before
+
+
+@pytest.mark.parametrize("wrap", ["none", "stable", "balance", "pretty"])
+def test_text_at_zero_width_has_no_lines(wrap: TextWrap) -> None:
+    text = MeasurableText.of(("two\nlines", CellStyle(), wrap))
+
+    measured = _measure_leaf(waxy.KnownSize(width=0.0), waxy.AvailableSize(waxy.Definite(0), waxy.MaxContent()), text)
+
+    assert (text.lines_at(0), measured) == ((), waxy.Size(0.0, 0.0))
 
 
 def test_canvas_with_an_equal_painter_has_no_layout_changes() -> None:
@@ -372,8 +425,9 @@ def test_canvas_whose_natural_size_changes_is_one_set_source() -> None:
         (Blocks(natural_size=(6, 2), keeps_aspect_ratio=False), False),
         (Blocks(natural_size=(0, 2)), False),
         (Blocks(natural_size=(6, 0)), False),
+        (Blocks(natural_size=(1, 1)), True),
     ],
-    ids=["keeps its ratio", "doesn't keep its ratio", "no width", "no height"],
+    ids=["keeps its ratio", "doesn't keep its ratio", "no width", "no height", "one cell"],
 )
 def test_canvas_keeps_its_painters_aspect_ratio_only_if_it_has_one(painter: Blocks, expected: bool) -> None:
     assert IntrinsicSize.of(painter).keeps_aspect_ratio is expected

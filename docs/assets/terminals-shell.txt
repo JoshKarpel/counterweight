@@ -1,0 +1,8 @@
+╭──────────────────────────────────────╮
+│~/project $ ls --color                │
+│docs  src  tests  README.md  build.sh │
+│~/project $ git status --short        │
+│ M src/app.py                         │
+│A  tests/test_app.py                  │
+│~/project $                           │
+╰──────────────────────────────────────╯

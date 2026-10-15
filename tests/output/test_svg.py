@@ -5,8 +5,11 @@ from counterweight.paint import Cell
 from counterweight.paint import Paint
 from counterweight.paint import svg
 from counterweight.paint import svg_text_style
+from counterweight.styles.styles import DEFAULT_PALETTE
+from counterweight.styles.styles import TERMINAL_DEFAULT
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import IndexedColor
 from counterweight.styles.styles import ResolvedCellStyle
 from counterweight.styles.styles import resolve_cell_style
 
@@ -94,3 +97,29 @@ def test_svg_draws_each_grapheme_with_its_text_style() -> None:
         {"x": "0.00em", "fill": "#ff0000", "font-weight": "bold"},
         {"x": "0.55em", "font-style": "italic"},
     ]
+
+
+def test_svg_draws_palette_entries_in_the_default_palette() -> None:
+    paint = Paint(
+        width=1,
+        height=1,
+        cells=[Cell("a", resolve_cell_style(CellStyle(foreground=IndexedColor(1), background=IndexedColor(4))))],
+    )
+
+    root = svg(paint)
+
+    assert [rect.get("fill") for rect in root.iter("rect")] == ["#000000", DEFAULT_PALETTE[4].hex]
+    assert [tspan.get("fill") for tspan in root.iter("tspan") if tspan.text == "a"] == [DEFAULT_PALETTE[1].hex]
+
+
+def test_svg_draws_the_terminal_defaults_as_white_on_black() -> None:
+    paint = Paint(
+        width=1,
+        height=1,
+        cells=[Cell("a", resolve_cell_style(CellStyle(foreground=TERMINAL_DEFAULT, background=TERMINAL_DEFAULT)))],
+    )
+
+    root = svg(paint)
+
+    assert [rect.get("fill") for rect in root.iter("rect")] == ["#000000", "#000000"]
+    assert [tspan.get("fill") for tspan in root.iter("tspan") if tspan.text == "a"] == [None]

@@ -233,13 +233,13 @@
   which returns rows of styled graphemes whose unset styles come from the canvas;
   a canvas draws again only when its painter isn't equal to the last one or its box changes size.
   `counterweight.painters.pixels` holds `Pixels`, a picture as RGBA bytes,
-  which `Pixels.from_image` makes from a Pillow image (installed by the `images` extra),
+  which `Pixels.from_image` makes from an image decoded by [Pillow](https://pillow.readthedocs.io/), a new dependency,
   and `HalfBlocks`, a painter that draws one two pixels to a cell with `▀`,
   scaling and placing it as CSS's `object-fit` and `object-position` do,
   and whose `pixels_at` finds the pixels a cell shows, for mouse input.
 
-- Added `counterweight.emulator`, a terminal emulator ([libghostty-vt](https://ghostty.org), through pyghostty,
-  installed by the `emulator` extra) that turns the bytes a program writes into what its terminal shows.
+- Added `counterweight.emulator`, a terminal emulator ([libghostty-vt](https://ghostty.org), through [pyghostty](https://github.com/AnswerDotAI/pyghostty), a new dependency)
+  that turns the bytes a program writes into what its terminal shows.
   An `Emulator` is fed bytes, answers the program's queries through `on_reply`, and snapshots into immutable `Screen` values:
   rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
   A snapshot of an unchanged terminal is the same `Screen`, and rows that didn't change are shared between snapshots.
@@ -247,7 +247,17 @@
   and `scrolled_off` returns those that scrolled off since it was last called, each once.
   `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`,
   leaving the program's default colors to the canvas's `text_style`, and drawing the cursor when asked.
+  A program's palette colors stay palette entries, so they follow the user's theme,
+  except an entry the program changed, which is the color it changed it to.
   See [Emulators and Pseudo-Terminals](terminals/emulators.md).
+
+- Added colors the terminal decides, which follow the user's theme:
+  `IndexedColor(n)`, entry `n` of the terminal's 256-color palette,
+  and `TERMINAL_DEFAULT`, the terminal's default foreground where it colors text and default background where it fills one.
+  Every style field that took a `Color` takes either (`AnyColor`),
+  and the `*_indexed(n)` and `*_terminal_default` utilities set them wherever the color utilities do.
+  Screenshots draw palette entries in `DEFAULT_PALETTE` and the defaults as white on black.
+  See [Terminal colors](styles/utilities.md#terminal-colors).
 
 - Added `counterweight.pseudoterminal`, which runs a program on a pseudo-terminal, as a terminal window does,
   and hands back the bytes it writes, standard output and standard error together.
@@ -279,6 +289,23 @@
   `command_output` shows a run in a `scroll_area` that follows its end, with its outcome beneath.
   The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
   runs a command on each slide when it's shown.
+
+- Added [embedded terminals](terminals/embedding.md): running an interactive program, such as a shell or an editor,
+  in a box that shows its screen and sends it the input the box receives, as a multiplexer's pane does.
+  `counterweight.headless.use_terminal` runs one on a pseudo-terminal while its component is mounted,
+  emulates its terminal, snapshotting it at most once a frame, and makes the component focusable,
+  returning the `Screen`, a `ScreenView` painter that draws the cursor while focused, the program's status,
+  and an `on_input` handler for the `Canvas` the component draws it in.
+  While focused, the handler sends the program every key press and paste, Ctrl+C included,
+  and the mouse events it asked for, encoded as xterm sends them for the modes the program set,
+  and a program that asked gets focus events as the component gains and loses focus.
+  A handler put before it with `first` takes keys first, as a prefix key does.
+  `counterweight.widgets.terminal` is a bordered box built on it, sized by its `style`,
+  whose `intercept` handler sees each event before the program does.
+  `counterweight.input_encoding` holds the pure functions that encode key presses, pastes, mouse events and focus changes
+  back into a terminal's bytes, built from the input parser's own tables.
+  The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
+  runs shells side by side with a tmux-style prefix.
 
 - Added [running programs on the app's terminal](terminals/programs.md), as `git commit` runs an editor.
   `Suspend.to_program` suspends the app, runs a program on the app's `input_stream` and `output_stream`

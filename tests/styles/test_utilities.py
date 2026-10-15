@@ -1,7 +1,11 @@
+from collections.abc import Callable
+
 import pytest
 import waxy
 
 from counterweight.styles import BorderKind
+from counterweight.styles import CellStyle
+from counterweight.styles import IndexedColor
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
@@ -350,3 +354,21 @@ AUTO = waxy.Auto()
 def test_side_utility_sets_only_its_own_sides(utility: Style, expected: dict[str, object]) -> None:
     assert utility.layout.fields_set == expected.keys()
     assert {field: getattr(utility.layout, field) for field in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (text_indexed, lambda c: Style(text_style=CellStyle(foreground=c))),
+        (text_bg_indexed, lambda c: Style(text_style=CellStyle(background=c))),
+        (border_indexed, lambda c: Style(border_style=CellStyle(foreground=c))),
+        (border_bg_indexed, lambda c: Style(border_style=CellStyle(background=c))),
+        (margin_indexed, lambda c: Style(margin_color=c)),
+        (padding_indexed, lambda c: Style(padding_color=c)),
+        (content_indexed, lambda c: Style(content_color=c)),
+    ],
+)
+def test_indexed_utilities_set_their_place_to_the_palette_entry(
+    utility: Callable[[int], Style], expected: Callable[[IndexedColor], Style]
+) -> None:
+    assert utility(9) == expected(IndexedColor(9))

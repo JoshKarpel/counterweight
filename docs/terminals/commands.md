@@ -7,7 +7,6 @@ and an editor can run the code in a text area and show what it printed.
 
 This page covers running a command, how its output is sized,
 the terminal it runs on, cancelling and timing out a run, and showing output recorded ahead of time.
-It needs the `emulator` extra (`counterweight[emulator]`), which installs the terminal emulator.
 
 ## Running a command
 

@@ -94,9 +94,7 @@ so a canvas with only a `content_color` shows it everywhere the picture doesn't.
 ## Loading an Image
 
 `Pixels.from_image` takes a [Pillow](https://pillow.readthedocs.io/) `Image`,
-or anything else with Pillow's `size`, `convert` and `tobytes`,
-so counterweight doesn't depend on Pillow itself.
-Install counterweight with its `images` extra (`counterweight[images]`) to get Pillow alongside it.
+or anything else with Pillow's `size`, `convert` and `tobytes`.
 Decoding costs as much as the image has pixels, so do it once, before the app starts,
 or in an effect that sets state, never in a render.
 

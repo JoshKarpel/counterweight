@@ -65,6 +65,13 @@ but a background job the program started can hold it open indefinitely.
 # so ending one checks this often whether any of them are left.
 GROUP_POLL_INTERVAL = timedelta(milliseconds=10)
 
+NOTHING_TO_SIGNAL = (ProcessLookupError, PermissionError)
+"""
+What signalling a process group with nothing left running in it raises:
+`ProcessLookupError` once every member is gone, and on macOS, `PermissionError` while the members that are left
+have all exited but haven't been reaped yet, as the program has until `run_pty` waits for it.
+"""
+
 type StandardInput = Literal["pty", "devnull"]
 """
 Where the program reads its standard input from: its terminal, for a program that takes keys,
@@ -202,7 +209,7 @@ async def run_pty(
         fcntl.ioctl(slave, termios.TIOCSWINSZ, window_size(columns, rows))
         process = await create_subprocess_exec(
             *argv,
-            stdin=slave if stdin == "pty" else DEVNULL,
+            stdin={"pty": slave, "devnull": DEVNULL}[stdin],
             stdout=slave,
             stderr=slave,
             env=program_environment({} if clear_env else os.environ, env),
@@ -253,7 +260,7 @@ async def end_process_group(process: Process, grace: timedelta) -> None:
     Signals `process`'s group with `SIGHUP`, `SIGTERM` and `SIGKILL` in turn, `grace` apart,
     until nothing in it is running, then waits for `process` itself.
     """
-    with suppress(ProcessLookupError):  # raised by signalling a group with nothing left in it
+    with suppress(*NOTHING_TO_SIGNAL):
         for signal_number in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):
             os.killpg(process.pid, signal_number)
             with suppress(TimeoutError):
@@ -267,7 +274,7 @@ async def group_ended(group: int) -> None:
     while True:
         try:
             os.killpg(group, 0)
-        except ProcessLookupError:
+        except NOTHING_TO_SIGNAL:
             return
         await sleep(GROUP_POLL_INTERVAL.total_seconds())
 

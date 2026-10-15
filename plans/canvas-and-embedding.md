@@ -447,13 +447,15 @@ transparency arrives only through raw bytes and `from_image`.
   `pixels_at` inverts `draw` for one cell:
   the source pixels its two halves sample, none where the cell is outside the picture.
   A paint program sets those pixels, as `examples/mouse.py` and the docs' paint example do.
-- **No Pillow dependency.**
+- **Any decoder.**
   The constructor takes raw bytes, so Pillow, numpy, or any decoder reaches `Pixels` the same way.
   `from_image` takes a `Protocol` with Pillow's `size`, `convert` and `tobytes`,
-  which gives the one-liner without importing PIL.
-  Pillow is a dev dependency only, for the docs' image example, which decodes `docs/assets/favicon.png`.
-  As a runtime dependency it would be about 20 MB installed, most of it bundled native image libraries,
-  for a feature most apps don't use; an optional `images` extra can follow if users ask for one.
+  which gives the one-liner without counterweight importing PIL.
+  Pillow is a dependency of counterweight, so the one-liner works on install,
+  and the docs' image example decodes `docs/assets/favicon.png` with it.
+  It's about 20 MB installed, most of it bundled native image libraries;
+  showing images is central enough to the canvas that the size is worth it,
+  and Pillow's long release history keeps its supply-chain risk low.
   The docs say to decode before `app()` or in an effect that sets state, never in render.
 - **Nearest-neighbor.**
   It reads only the pixels it outputs, which keeps it cheap,
@@ -598,12 +600,15 @@ The cost is supply chain:
 - It installs about 11 MB, most of it the bundled library,
   and ships only wheels, for macOS 13+ and manylinux 2.28 (x86_64 and aarch64), with no sdist.
 
-So it is an optional dependency, the `emulator` extra (`counterweight[emulator]`),
-which only `counterweight.emulator` and the terminal painters import:
-an app that never shows a program's output doesn't pay its size,
-and counterweight still installs where pyghostty has no wheel.
-Pillow moved to an `images` extra by the same reasoning, though nothing in counterweight imports it.
-The dev group installs both.
+It is a dependency of counterweight itself, as Pillow is.
+An optional extra would spare an app that never shows a program's output its size,
+and keep counterweight installable where pyghostty has no wheel,
+but showing programs is central enough to counterweight that neither is worth an extra to install,
+and the size and the platforms matter less than the supply chain.
+Of the supply-chain costs, the one taken on knowingly is the intermediate binding between counterweight and Ghostty:
+pyghostty is young and has one maintainer.
+The `Emulator`/`Screen` boundary below keeps replacing it with an owned binding open.
+Nothing outside `counterweight.emulator` imports pyghostty.
 
 Phase 4 needs what the spike didn't test: reading scrollback with its styles.
 A transcript is everything a program printed, and most of a long one has scrolled off the screen by the time the program exits.
@@ -671,7 +676,8 @@ It lives in `counterweight.painters.terminal`, and phase 4's transcript painter 
 The box sizes the terminal rather than the other way round,
 so it is a painter with no natural size (see [Sizing](#sizing)).
 
-A `Screen`'s cells leave a program's default colors unset, so they follow the canvas's `text_style`.
+A `Screen`'s cells leave a program's default colors unset, so they follow the canvas's `text_style`,
+and keep its palette colors as palette entries (see [Fidelity](#later-fidelity)).
 A cell that has to name them, because the program swapped its colors (inverse video) or hid its text (invisible),
 names the colors the emulator was given (`foreground` and `background`, white on black by default),
 or those the program set with OSC 10 and 11.
@@ -704,7 +710,7 @@ so it runs once per converted row, and phase 4's transcript gets rows that alrea
 Done: the work below, with tests at 100% coverage and a mutation testing pass over the new code.
 
 1. pyghostty over an owned binding (see [Choosing an emulator](#choosing-an-emulator)),
-   as the `emulator` extra, with Pillow moved to an `images` extra.
+   as a dependency, with Pillow beside it.
 2. `Emulator` and `Screen` in `counterweight.emulator`, with shared, bounded caches of styles and cells
    (`lru_cache`s of `cell_style` and `cells_for`) in place of the spike's unbounded `_STYLES` and `colors`.
 3. `ScreenView` in `counterweight.painters.terminal`, with the emulator keeping libghostty's columns.
@@ -767,6 +773,10 @@ Phase 4 reuses `Running`, `Exited` and `FailedToStart` in its `Outcome`.
   The same happens once the program exits, to whatever it left running in its group.
   Nothing signals when a process group empties, since its members other than the program aren't the app's children,
   so the wait checks every 10 ms.
+  Signalling a group with nothing left running in it raises `ProcessLookupError` on Linux,
+  but on macOS, while the members left have all exited and the program hasn't been reaped yet,
+  it raises `PermissionError` (`EPERM`), which failed every hang-up test in macOS CI.
+  Both mean nothing is left to signal (`NOTHING_TO_SIGNAL`).
 - **Exit and end of file.**
   Once the program exits, `run_pty` keeps reading what it wrote just before, until end of file or `DRAIN_TIMEOUT` (0.5 s).
   End of file comes once nothing holds the program's side of the PTY open, which a background job can do indefinitely.
@@ -932,8 +942,7 @@ def command_output(run: CommandRun | None, viewport: ElementHandle, style: Style
 
 A run is `Starting` from the moment `run` is called until its program spawns,
 which covers waiting for a width, so the UI shows the new run at once.
-`command_output` lives in `counterweight.commands` beside the hook, as `markdown_document` lives in `counterweight.markdown`,
-so `counterweight.widgets` doesn't import the `emulator` extra.
+`command_output` lives in `counterweight.commands` beside the hook, as `markdown_document` lives in `counterweight.markdown`.
 
 A finished run is a value that outlives its program,
 so a component can keep it in state, show it again, or show it beside the next run.
@@ -1261,8 +1270,10 @@ So a resize shows the old screen, cropped or padded, for one frame, as tmux does
 ### Input: when keys reach the program
 
 The embed is a focusable component.
-Its `on_input`, while focused, sends the program every key press and paste it can encode and claims them,
+Its `on_input`, while focused and while the program runs, sends the program every key press and paste and claims them,
 so nothing bubbles past it.
+Once the program exits, keys and pastes pass on, so the app's unclaimed defaults (Ctrl+C quitting) work again.
+Every `Key` has an encoding, so the encoder always returns bytes.
 
 - **Keys** are re-encoded, as tmux does, rather than passed through, which counterweight couldn't do anyway:
   its input parser has already turned bytes into `KeyPressed`.
@@ -1280,12 +1291,19 @@ so nothing bubbles past it.
   with every end marker in the text removed, so a paste can't end itself early.
   Removal repeats until none is left: one pass of `replace` turns `ESC [ 20 ESC [ 201 ~ 1 ~` into an end marker.
 - **Mouse events** inside the canvas are encoded only if the program enabled tracking,
-  filtered by its tracking level, and translated to pane-local coordinates, as SGR or X10.
+  filtered by its tracking level, and translated to pane-local coordinates, as SGR or the legacy encoding.
+  `?9` (X10) reports presses only, without modifiers; `?1000` adds releases and the wheel,
+  `?1002` motion with a button held, and `?1003` all motion.
+  The legacy encoding reports a release as button code 3, and can't reach past column or row 223,
+  where an event isn't sent.
   A press also focuses the pane.
   A press outside the program's screen (on the pane's border or padding) only focuses it:
   the spike encodes it too, sending the program a column or row of 0 or past its edge.
   Counterweight's press capture already does what terminals expect of a drag:
   the pane that claimed the press gets its motion and release, wherever the pointer goes.
+  Those are clamped to the screen's edges, as xterm reports a drag that leaves its window,
+  so the program sees the release of a press it was sent.
+  A wheel the program didn't ask for isn't claimed, so a scroll container around the pane still scrolls.
 - **The prefix key.**
   The DOM would intercept with a capture-phase listener on an ancestor.
   Counterweight only bubbles from the focused node, and that turned out not to matter:
@@ -1314,33 +1332,86 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
   `\x1b[<0;20;7M`, `\x1b[<32;22;7M`, `\x1b[<0;22;7m`: pane-local, 1-based, button tracking.
 - The app idled at 0.6% CPU with two shells open.
 
+### What phase 6 verified
+
+The same checks, on phase 6's `examples/multiplexer.py` in a detached tmux session:
+
+- bash with a starship prompt, colors and emoji widths, and typed commands with their output.
+- `Ctrl+B %` split, focusing the new pane in the frame that shows it: `tput cols lines` reported 48 by 17 in it,
+  and the left pane reflowed.
+- `Ctrl+B o` moved focus to the other pane.
+- vim: insert mode, arrow keys, Escape, and `:wq` (the file was written).
+- `Ctrl+C` interrupted a `sleep 30` in the pane rather than quitting the app.
+- `exit 3` showed `exited 3` in the status bar, and a title set with OSC 0 showed beside the pane's number.
+- `top` drew in a pane, and resizing the outer window resized it.
+- `Ctrl+B q` quit, and nothing was left running.
+- With two shells open and idle, the app used no measurable CPU over ten seconds.
+
 ### Phase 6 work
 
-1. `input_encoding`: key presses, pastes and mouse events back to the bytes a terminal sends,
-   with xterm's spellings for F1 to F4, `alt+space`, and a press outside the program's screen only focusing the pane.
-2. `use_terminal`, ported from the spike onto phases 2 and 3,
-   with phase 5's waiting `FocusOn` in place of the multiplexer's `ClearFocus` and `auto_focus`,
-   and its prefix kept in a ref as the Prefix Keys cookbook page does.
-   The multiplexer's `%` split reads `next_id` from its closure,
-   so two splits in one read open two panes with the same id and key.
-   The new id comes from the updater instead.
-3. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
-   with an effect keyed on `focus.is_focused`.
-4. A `terminal` widget on top of `use_terminal`, with tests, docs, and the multiplexer as an example.
+Done: the work below, with tests at 100% coverage.
+
+1. `input_encoding`: key presses, pastes, mouse events and focus changes back to the bytes a terminal sends,
+   with xterm's spellings (F1 to F4 as `SS3`, a letter over a number, xterm's modifier parameter over the VT220's
+   numbers for F13 and up), Alt with any key as `ESC` and the key, end markers removed from a bracketed paste
+   until none is left, and a press outside the program's screen only focusing the pane.
+   Tests round-trip every `Key` and SGR mouse events through the parser.
+2. `use_terminal` in `counterweight.headless`, on phases 2 and 3:
+   an effect keyed on `argv`, `env` and `clear_env` owns the emulator, as `use_pty`'s restarts the program,
+   so a program started again gets a fresh screen; an effect keyed on the size resizes the emulator.
+   The multiplexer uses phase 5's waiting `FocusOn` in place of `ClearFocus` and `auto_focus`,
+   keeps its prefix in a ref, and numbers a new pane from the latest panes inside the updater,
+   as the Prefix Keys cookbook page does, so two splits in one read open two panes with different keys.
+3. Focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
+   from an effect keyed on `focus.is_focused`, with a test that presses an unfocused pane in an app.
+4. A `terminal` widget in `counterweight.widgets` on top of `use_terminal`: a bordered `Canvas` sized by its `style`,
+   whose `intercept` handler sees each event before the program does, with a test that types into it in an app.
+   `docs/terminals/embedding.md` covers the widget, the hook, input and sizing,
+   with a screenshot of a recorded screen through `ScreenView`,
+   and `examples/multiplexer.py` is the multiplexer.
 
 ## Later: fidelity
 
 The embed and one-shot commands work without these,
 but each makes a program's output look, or the program behave, less like it does in a real terminal.
+The first is done; the other two remain.
 
-1. **Colors are truecolor only.**
-   `Color` is RGB, so a program's palette indices are resolved to libghostty's default palette.
-   Its "default" foreground and background are left unset, so they follow the canvas's `text_style`,
-   but that is RGB too.
-   An embedded `ls --color`, and one in a transcript, uses xterm's red, not the user's theme's red.
-   tmux keeps palette indices and default colors through to the outer terminal.
-   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
-   Since transcripts show it too, it could land before phase 6.
+1. **Colors the terminal decides** (done).
+   `Color` was RGB only, so a program's palette indices were resolved to libghostty's default palette,
+   and an embedded `ls --color`, or one in a transcript, used that red, not the user's theme's red.
+   tmux keeps palette indices and default colors through to the outer terminal, and so does counterweight now.
+
+   The web's closest answer is CSS's system colors (`Canvas`, `CanvasText`), colors the user agent decides
+   from the user's settings rather than the page.
+   A terminal decides two kinds: palette entries, and its default foreground and background.
+   The difference is that a terminal's default color is positional:
+   SGR `39` is the default foreground and `49` the default background, and nothing sets text to the default background.
+   So `TERMINAL_DEFAULT` is one value that means the default foreground where it colors text
+   and the default background where it fills one, rather than two system colors usable anywhere.
+
+   - `IndexedColor(index)` is a palette entry (0 to 255, `ValueError` otherwise),
+     and `TERMINAL_DEFAULT` (a `TerminalDefault`) the default color.
+     `AnyColor` is `Color | IndexedColor | TerminalDefault`, and every style field that took a `Color` takes one:
+     `CellStyle`'s and `ResolvedCellStyle`'s colors, and `margin_color`, `padding_color` and `content_color`.
+     `Color.blend` and `Pixels` stay RGB, since only RGB can be blended or put in a picture.
+   - `output.py` emits `30`-`37` and `90`-`97` (and `40`-`47`, `100`-`107`) for the first 16 entries,
+     which every terminal with colors understands, `38;5;n` for the rest, and `39`/`49` for the default.
+   - Screenshots draw a palette entry in `DEFAULT_PALETTE`, and the default as white text on black.
+     `DEFAULT_PALETTE` is Tomorrow Night's 16 colors, which libghostty's default palette starts with,
+     then xterm's color cube and grays, so it matches libghostty's exactly, and no screenshot changed.
+     The emulator's palette is set to it, so the two can't drift.
+   - The emulator reads a cell's colors from its style's tagged colors rather than the resolved RGB,
+     and an erased cell's from its value (`GHOSTTY_CELL_DATA_COLOR_PALETTE`).
+     A palette entry the program changed (OSC 4) is the RGB it changed it to, since the user's terminal doesn't have it;
+     the emulator compares the render state's palette bytes with `DEFAULT_PALETTE`'s for that.
+     Changing the palette marks every row dirty, so converted rows need no cache reset, which a probe confirmed;
+     changing the default colors doesn't, so that reset stays.
+   - Inverse and invisible cells in the default colors still name `Screen.foreground` and `Screen.background` in RGB:
+     no SGR sets text to the terminal's default background, so a swapped default can't follow the theme.
+   - The `*_indexed(n)` utilities and the generated `*_terminal_default` constants set them wherever the color
+     utilities do, so `text_terminal_default | text_bg_terminal_default | content_terminal_default`
+     makes a canvas showing a transcript follow the user's theme for the program's default colors too.
+     The widgets keep their RGB defaults, so an app's look doesn't change with the terminal's theme unless it asks.
 2. **The cursor is drawn, not placed.**
    Counterweight hides the real cursor, so the terminal painter draws a reversed cell.
    That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.

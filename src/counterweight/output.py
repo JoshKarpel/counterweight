@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
 from typing import TextIO
+from typing import assert_never
 from xml.etree.ElementTree import indent as indent_svg
 from xml.etree.ElementTree import tostring
 
@@ -17,7 +18,11 @@ from counterweight.paint import Cell
 from counterweight.paint import Paint
 from counterweight.paint import Run
 from counterweight.paint import svg
+from counterweight.styles.styles import AnyColor
+from counterweight.styles.styles import Color
+from counterweight.styles.styles import IndexedColor
 from counterweight.styles.styles import ResolvedCellStyle
+from counterweight.styles.styles import TerminalDefault
 
 if TYPE_CHECKING:
     pass
@@ -109,12 +114,29 @@ def move_to(position: Position) -> str:
     return f"\x1b[{position.y + 1};{position.x + 1}f"
 
 
+def sgr_color(color: AnyColor, base: int) -> str:
+    """
+    The SGR parameters that set the foreground (`base` 30) or background (`base` 40) to `color`.
+    The first 16 palette entries take their short forms, which every terminal with colors understands.
+    """
+    match color:
+        case Color(red, green, blue):
+            return f"{base + 8};2;{red};{green};{blue}"
+        case IndexedColor(index=index) if index < 8:
+            return f"{base + index}"
+        case IndexedColor(index=index) if index < 16:
+            return f"{base + 60 + index - 8}"
+        case IndexedColor(index=index):
+            return f"{base + 8};5;{index}"
+        case TerminalDefault():
+            return f"{base + 9}"
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
 @lru_cache(maxsize=2**10)
 def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
-    fg_r, fg_g, fg_b = style.foreground
-    bg_r, bg_g, bg_b = style.background
-
-    sgr = f"\x1b[38;2;{fg_r};{fg_g};{fg_b}m\x1b[48;2;{bg_r};{bg_g};{bg_b}m"
+    sgr = f"\x1b[{sgr_color(style.foreground, 30)}m\x1b[{sgr_color(style.background, 40)}m"
 
     if style.bold:
         sgr += "\x1b[1m"

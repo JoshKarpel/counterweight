@@ -4,6 +4,7 @@ import os
 import sys
 from asyncio import CancelledError
 from asyncio import Event
+from asyncio import create_subprocess_exec
 from asyncio import create_task
 from asyncio import get_running_loop
 from asyncio import sleep
@@ -17,6 +18,7 @@ from pathlib import Path
 
 import pytest
 from more_itertools import unique_justseen
+from pytest_mock import MockerFixture
 
 from counterweight.components import component
 from counterweight.elements import Text
@@ -27,6 +29,8 @@ from counterweight.pseudoterminal import PtyConnection
 from counterweight.pseudoterminal import PtyStatus
 from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import Starting
+from counterweight.pseudoterminal import end_process_group
+from counterweight.pseudoterminal import group_ended
 from counterweight.pseudoterminal import program_environment
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
@@ -596,3 +600,20 @@ async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_ha
         await m.render(Text(content="gone"))
 
     assert signals.read_text() == "term\n"
+
+
+async def test_a_group_that_refuses_to_be_signalled_has_ended(mocker: MockerFixture) -> None:
+    # As macOS refuses, for a group whose members have all exited but haven't been reaped.
+    mocker.patch("os.killpg", side_effect=PermissionError)
+
+    await wait_for(group_ended(os.getpgrp()), TIMEOUT)
+
+
+async def test_ending_a_group_that_refuses_to_be_signalled_stops_signalling_it(mocker: MockerFixture) -> None:
+    process = await create_subprocess_exec("true", start_new_session=True)
+    await process.wait()
+    killpg = mocker.patch("os.killpg", side_effect=PermissionError)
+
+    await wait_for(end_process_group(process, timedelta(seconds=10)), TIMEOUT)
+
+    assert killpg.call_count == 1

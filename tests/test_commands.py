@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from more_itertools import unique_justseen
 
 from counterweight.app import app
 from counterweight.commands import Cancelled
@@ -24,7 +25,9 @@ from counterweight.commands import CommandRun
 from counterweight.commands import Exited
 from counterweight.commands import FailedToStart
 from counterweight.commands import Outcome
+from counterweight.commands import Request
 from counterweight.commands import Running
+from counterweight.commands import Runs
 from counterweight.commands import Starting
 from counterweight.commands import TimedOut
 from counterweight.commands import command_output
@@ -219,6 +222,24 @@ async def test_a_run_with_clear_env_leaves_out_the_apps_environment(monkeypatch:
     assert output_text(run.output) == ["unset cat"]
 
 
+@component
+def inheriting_runner(commands: list[Command]) -> Text:
+    commands.append(use_command(20))
+    return Text(content="")
+
+
+async def test_a_run_inherits_the_apps_environment_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COUNTERWEIGHT_INHERITED", "inherited")
+    commands: list[Command] = []
+
+    async with mounted() as m:
+        await m.render(inheriting_runner(commands))
+        commands[-1].run(("/bin/sh", "-c", 'echo "${COUNTERWEIGHT_INHERITED-unset}"'))
+        await m.wait_until(has_ended(commands))
+
+    assert output_text(latest(commands).output) == ["inherited"]
+
+
 async def test_a_run_that_outlasts_its_timeout_times_out_with_its_output_so_far() -> None:
     run = await run_to_end(sh("echo started; sleep 30"), timeout=timedelta(milliseconds=500))
 
@@ -290,11 +311,17 @@ async def test_a_run_waits_to_start_until_its_columns_are_positive() -> None:
         await m.render(runner(0, commands, rows=7))
         commands[-1].run(STTY_SIZE)
         await m.render(runner(0, commands, rows=7))
-        assert latest(commands).outcome == Starting()
+        assert latest(commands) == CommandRun(argv=STTY_SIZE, output=Transcript(columns=0), outcome=Starting())
         await m.render(runner(29, commands, rows=7))
         await m.wait_until(has_ended(commands))
 
     assert output_text(latest(commands).output) == ["7 29"]
+
+
+async def test_a_run_starts_at_one_column() -> None:
+    run = await run_to_end(STTY_SIZE, columns=1, rows=7)
+
+    assert (output_text(run.output), run.output.columns, run.outcome) == (["7", "", "1"], 1, Exited(status=0))
 
 
 async def test_a_change_to_columns_during_a_run_does_not_rewrap_it() -> None:
@@ -318,6 +345,20 @@ async def test_unmounting_hangs_up_the_program(tmp_path: Path) -> None:
         await wait_for_output(m, commands, "started")
 
     assert signals.read_text() == "HUP\n"
+
+
+async def test_a_running_programs_output_waits_for_the_next_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Longer than the run, so the output printed while it runs is only shown once it times out.
+    monkeypatch.setattr("counterweight.commands.SNAPSHOT_INTERVAL", timedelta(hours=1))
+    commands: list[Command] = []
+
+    async with mounted() as m:
+        await m.render(runner(20, commands, timeout=timedelta(milliseconds=500)))
+        commands[-1].run(sh("echo early; sleep 30"))
+        await m.wait_until(has_ended(commands))
+
+    shown = [(output_text(c.latest.output), c.latest.outcome) for c in commands if c.latest is not None]
+    assert list(unique_justseen(shown)) == [([], Starting()), ([], Running()), (["early"], TimedOut())]
 
 
 async def test_run_and_cancel_are_the_same_functions_on_every_render() -> None:
@@ -487,3 +528,42 @@ async def test_cancelling_terminates_a_program_that_ignores_hanging_up_after_its
         await m.wait_until(signals.exists)
 
     assert signals.read_text() == "term\n"
+
+
+REQUEST = Request(argv=("make", "docs"))
+
+
+def command_run(outcome: Outcome) -> CommandRun:
+    return CommandRun(argv=REQUEST.argv, output=Transcript(columns=13), outcome=outcome)
+
+
+def test_runs_take_a_run_of_the_request_they_are_running() -> None:
+    runs = Runs(request=REQUEST, latest=command_run(Starting()))
+
+    assert runs.updated(REQUEST, command_run(Running())) == Runs(request=REQUEST, latest=command_run(Running()))
+
+
+@pytest.mark.parametrize(
+    "runs",
+    [
+        pytest.param(Runs(request=Request(argv=REQUEST.argv), latest=command_run(Starting())), id="another request"),
+        pytest.param(Runs(request=None, latest=command_run(Cancelled())), id="cancelled"),
+    ],
+)
+def test_runs_ignore_a_run_of_a_request_they_are_not_running(runs: Runs) -> None:
+    assert runs.updated(REQUEST, command_run(Running())) == runs
+
+
+@pytest.mark.parametrize(
+    ("latest", "expected"),
+    [
+        pytest.param(None, None, id="none"),
+        pytest.param(command_run(Starting()), command_run(Cancelled()), id="starting"),
+        pytest.param(command_run(Running()), command_run(Cancelled()), id="running"),
+        pytest.param(command_run(Exited(status=4)), command_run(Exited(status=4)), id="exited"),
+    ],
+)
+def test_cancelled_runs_run_nothing_and_cancel_a_run_in_progress(
+    latest: CommandRun | None, expected: CommandRun | None
+) -> None:
+    assert Runs(request=REQUEST, latest=latest).cancelled() == Runs(request=None, latest=expected)

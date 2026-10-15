@@ -161,8 +161,15 @@ def test_half_blocks_with_an_odd_height_cover_their_last_half_cell_only_if_they_
     assert HalfBlocks(pixels, fit=fit).draw(1, 2) == tuple((cell,) for cell in expected)
 
 
-def test_half_blocks_of_an_empty_picture_draw_nothing_in_their_box() -> None:
-    assert HalfBlocks(Pixels(0, 0, b"")).draw(2, 1) == ((EMPTY, EMPTY),)
+@pytest.mark.parametrize(("width", "height"), [(0, 0), (0, 3), (3, 0)])
+def test_half_blocks_of_an_empty_picture_draw_nothing_in_their_box(width: int, height: int) -> None:
+    assert HalfBlocks(Pixels(width, height, b"")).draw(2, 1) == ((EMPTY, EMPTY),)
+
+
+def test_half_blocks_draw_nothing_beside_a_picture_narrower_than_their_box() -> None:
+    pixels = picture((RED,), (GREEN,))
+
+    assert HalfBlocks(pixels, fit="none").draw(3, 1) == ((EMPTY, upper(RED, GREEN), EMPTY),)
 
 
 # A 2x2 picture in a 4x1 box, which is 4x2 pixels: twice as wide as the picture, and as tall.
@@ -216,6 +223,24 @@ def test_half_blocks_contain_and_cover_scale_both_axes_alike(
 
 
 @pytest.mark.parametrize(
+    ("size", "box", "columns", "rows"),
+    [
+        ((1, 1), (4, 2), (None, 0, None, None), (None, 0, None, None)),
+        ((4, 2), (2, 2), (1, 3), (None, 1, None, None)),
+        ((2, 8), (4, 2), (None, 1, None, None), (1, 3, 5, 7)),
+    ],
+    ids=["smaller on both axes", "wider than the box", "taller than the box"],
+)
+def test_half_blocks_scale_down_shrinks_a_picture_to_fit_its_box_but_never_enlarges_it(
+    size: tuple[int, int],
+    box: tuple[int, int],
+    columns: tuple[int | None, ...],
+    rows: tuple[int | None, ...],
+) -> None:
+    assert HalfBlocks(Pixels.blank(*size, RED), fit="scale-down").sources(*box) == (columns, rows)
+
+
+@pytest.mark.parametrize(
     ("position", "columns", "rows"),
     [
         ((0, 0), (0, None, None, None), (0, None, None, None)),
@@ -265,6 +290,12 @@ def test_half_blocks_draw_their_whole_box() -> None:
 )
 def test_half_blocks_find_the_pixels_a_cell_shows(cell: Position, expected: tuple[Position, ...]) -> None:
     assert HalfBlocks(Pixels.blank(2, 3, RED), fit="none", position=(0, 0)).pixels_at(cell, 2, 2) == expected
+
+
+def test_half_blocks_find_only_the_two_pixels_of_a_cell_with_more_rows_below_it() -> None:
+    pixels = Pixels.blank(2, 6, RED)
+
+    assert HalfBlocks(pixels, fit="none").pixels_at(Position(1, 1), 2, 3) == (Position(1, 2), Position(1, 3))
 
 
 def test_half_blocks_find_one_pixel_for_a_cell_whose_halves_show_the_same_pixel() -> None:

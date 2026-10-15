@@ -65,8 +65,9 @@ The framework follows a React-like architecture:
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div`, `Text` and `Canvas`, with style and event handling capabilities
 - **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`) and `terminal` (`ScreenView` and `Transcript`)
-- **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt, from the optional `emulator` extra) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
+- **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
 - **One-shot commands** (src/counterweight/commands.py): `use_command`, which runs a program on a pseudo-terminal when asked, feeds an emulator, and snapshots it at most once a frame into `CommandRun` values whose output is a `Transcript` painter, and `command_output`, the widget that shows a run
+- **Embedded terminals** (src/counterweight/headless/terminal.py, src/counterweight/input_encoding.py): `use_terminal`, which runs an interactive program on a pseudo-terminal while its component is mounted, feeds an emulator, snapshots it at most once a frame into `Screen` values, and sends the program the input its focused `Canvas` receives, re-encoded by `input_encoding`'s pure functions (the inverse of `input_parsing`); the `terminal` widget is built on it
 - **Programs on the app's terminal** (src/counterweight/programs.py): `run_program`, which runs a program on the terminal a suspended app hands back, swallowing the Ctrl+C meant for it, and `edit_file` and `edit_text`, which edit a file or a string in the user's editor; `Suspend.to_program`, `Suspend.to_edit_file` and `Suspend.to_edit_text` run them; also `Exited` and `FailedToStart`, how any program ends
 - **Pseudo-terminals** (src/counterweight/pseudoterminal.py): Runs a program on a pseudo-terminal and hands back the bytes it writes: `run_pty` until it exits, and `use_pty` while a component is mounted; hangs the program's process group up when it ends
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
@@ -80,7 +81,7 @@ The framework follows a React-like architecture:
 - **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
 - **Headless components** (src/counterweight/headless/): Hooks that give a component a common control's behavior and leave drawing it to the component, such as `use_text_input`, `use_text_area` and `use_scroll_area`, the text ones each beside its pure core (`text_editing.py`, `text_area_editing.py`): which edit each key press or paste makes, and what it does to a value and a cursor
 - **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input`, `text_area` and `scroll_area`
-- **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system
+- **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system; colors are RGB `Color`s, or `IndexedColor` and `TERMINAL_DEFAULT`, which the terminal decides and so follow the user's theme
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output
 - **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks, and `markdown_document`, the `memo` component that renders a Markdown document
 
@@ -164,8 +165,8 @@ read that to check a layout instead of the SVG.
 - **markdown-it-py**: Parses Markdown for `counterweight.markdown`
 - **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
 - **pygments**: Lexes and colors source code for `counterweight.highlighting`
-- **pyghostty** (the `emulator` extra): libghostty-vt's cffi bindings, the terminal emulator behind `counterweight.emulator`
-- **pillow** (the `images` extra): Decodes images for `Pixels.from_image`, which counterweight itself never imports
+- **pyghostty**: libghostty-vt's cffi bindings, the terminal emulator behind `counterweight.emulator`
+- **pillow**: Decodes images for `Pixels.from_image`, which counterweight itself never imports
 
 ## Code Style Guidelines
 - Line length: 120
