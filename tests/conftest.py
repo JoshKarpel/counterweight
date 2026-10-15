@@ -75,8 +75,9 @@ def programs_end_with_their_test(monkeypatch: pytest.MonkeyPatch) -> Iterator[No
 
     def recording_init(popen: subprocess.Popen[bytes], *args: object, **kwargs: object) -> None:
         popen_init(popen, *args, **kwargs)
-        if (group := os.getpgid(popen.pid)) != os.getpgrp():
-            groups.append(group)
+        # From the arguments, not `os.getpgid`, which macOS fails for a program that has already exited.
+        if kwargs.get("start_new_session") or kwargs.get("process_group") == 0:
+            groups.append(popen.pid)
 
     monkeypatch.setattr(subprocess.Popen, "__init__", recording_init)
     yield
