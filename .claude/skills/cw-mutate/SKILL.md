@@ -33,6 +33,12 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   `tests/conftest.py` caps each mutmut worker's address space on Linux so such a mutant raises
   `MemoryError` and counts as killed. Without that cap, two of them exhaust a small VM's memory before
   mutmut's timeout fires, and a VM without swap hangs.
+- **Programs that outlive their worker.** mutmut kills a worker that times out, but not the programs it started.
+  A mutant of `edit_file` that ignores the editor a test passes runs the preferred editor instead,
+  which on a stream that isn't a terminal waits forever, then lives on after its worker.
+  `tests/conftest.py` makes `VISUAL` and `EDITOR` `false` for every test that doesn't set them,
+  so such a mutant fails at once and counts as killed. A test that runs a program which could wait on input
+  needs the same: a stand-in that exits.
 - **Warm caches hide mutants.** Each mutmut worker forks from a parent that has already run every test,
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
   `paint.justify_line` sits behind `line_cells`, `CellStyle.__post_init__` behind its flyweight.

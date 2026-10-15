@@ -46,6 +46,17 @@ def cold_memos_while_mutmut_maps_tests() -> None:
 
 
 @pytest.fixture(autouse=True)
+def editor_that_fails_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Makes the preferred editor `false` for tests that don't set their own, so code that wrongly falls back to it,
+    as a mutant of `edit_file` can, fails the test at once rather than opening the developer's editor
+    on a stream that isn't a terminal, where it waits forever, and outlives a mutmut worker killed for timing out.
+    """
+    monkeypatch.setenv("VISUAL", "false")
+    monkeypatch.setenv("EDITOR", "false")
+
+
+@pytest.fixture(autouse=True)
 def hang_report_for_async_tests(request: pytest.FixtureRequest) -> None:
     """Gives every async test a `hang_report`, which needs the test's event loop, and so has to be async itself."""
     if inspect.iscoroutinefunction(getattr(request.node, "obj", None)):
