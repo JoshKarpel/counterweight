@@ -222,10 +222,8 @@ async def test_a_terminal_answers_its_programs_queries() -> None:
     terminals: list[EmbeddedTerminal] = []
     async with mounted() as m:
         # Asks where the cursor is, which a terminal answers with `ESC [ 1 ; 1 R`.
-        await m.render(
-            embed(sh("stty raw -echo; printf '\\033[6n'; head -c 6 | od -An -tx1; sleep 10"), 40, 4, terminals)
-        )
-        await m.wait_until(shows(terminals, "1b 5b 31 3b 31 52"))
+        await ready(m, reads(6, setup="\\033[6n"), terminals)
+        assert await bytes_received(m, terminals, 6) == b"\x1b[1;1R"
 
 
 async def test_a_focused_terminal_sends_its_program_key_presses_and_claims_them() -> None:
