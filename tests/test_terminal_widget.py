@@ -94,11 +94,6 @@ def has(text: str) -> Callable[[list[str]], bool]:
     return lambda rows: any(text in row for row in rows)
 
 
-def has_spaced(words: str) -> Callable[[list[str]], bool]:
-    """Like `has`, but for space-separated `words` in rows spaced any amount, as macOS's `od` pads its columns wider."""
-    return lambda rows: any(words in " ".join(row.split()) for row in rows)
-
-
 @component
 def focused_terminal(shots: Shots) -> Div:
     use_effect(shots.start, deps=())
@@ -131,11 +126,17 @@ def unfocused_terminal(shots: Shots, argv: tuple[str, ...]) -> Div:
 
 async def test_pressing_a_terminal_focuses_it_and_tells_a_program_that_asked(terminal: Terminal) -> None:
     shots = Shots()
-    argv = ("/bin/sh", "-c", "stty raw -echo; printf '\\033[?1004h'; echo ready; head -c 3 | od -An -tx1; sleep 10")
+    # `xargs` prints the bytes single-spaced, as macOS's `od` doesn't: it pads its line to 16 bytes' columns,
+    # which wraps in this terminal and scrolls the bytes off its three rows.
+    argv = (
+        "/bin/sh",
+        "-c",
+        "stty raw -echo; printf '\\033[?1004h'; echo ready; head -c 3 | od -An -tx1 | xargs; sleep 10",
+    )
     async with running(unfocused_terminal(shots, argv), terminal, (30, 5)):
         await shots.until(terminal.keyboard, has("ready"))
         os.write(terminal.keyboard, b"\x1b[<0;3;3M\x1b[<0;3;3m")
-        rows = await shots.until(terminal.keyboard, has_spaced("1b 5b 49"))
+        rows = await shots.until(terminal.keyboard, has("1b 5b 49"))
 
     assert rows[0] == "╭────────────────────────────╮"
 

@@ -14,6 +14,7 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_effect
 from counterweight.keys import Key
 from counterweight.output import Frame
 from counterweight.styles.utilities import full
@@ -40,11 +41,15 @@ async def test_a_prefix_and_its_key_in_one_read_open_a_pane_that_the_next_read_t
     def screenshot_on_ctrl_t(event: InputEvent, _: Receiver) -> InputResponse:
         return Screenshot(handler=record) if event == KeyPressed(key=Key.ControlT) else None
 
+    # Typed once the app has the terminal in raw mode: before that, macOS's terminal driver swallows Ctrl+T,
+    # its status key.
+    async def type_first_read() -> None:
+        os.write(terminal.keyboard, b"hi" + CTRL_B + b"c" + CTRL_T)
+
     @component
     def root() -> Div:
+        use_effect(type_first_read, deps=())
         return Div(style=full, on_input=screenshot_on_ctrl_t, children=(prefix_keys.root(),))
-
-    os.write(terminal.keyboard, b"hi" + CTRL_B + b"c" + CTRL_T)
 
     await wait_for(app(root(), output_stream=io.StringIO(), input_stream=terminal.stream, dimensions=(60, 5)), TIMEOUT)
 
