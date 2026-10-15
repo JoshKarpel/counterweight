@@ -38,6 +38,7 @@ from counterweight.pseudoterminal import end_process_group
 from counterweight.pseudoterminal import group_ended
 from counterweight.pseudoterminal import has_members
 from counterweight.pseudoterminal import program_environment
+from counterweight.pseudoterminal import read_output
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
 from tests.rendering import TIMEOUT
@@ -713,6 +714,16 @@ async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_ha
         await m.render(Text(content="gone"))
 
     assert signals.read_text() == "term\n"
+
+
+def test_a_terminal_that_cant_be_read_has_ended() -> None:
+    # As Linux fails reading a terminal that nothing holds the program's side of open, a pipe's write end fails anywhere.
+    read_end, write_end = os.pipe()
+    try:
+        assert read_output(write_end) == b""
+    finally:
+        os.close(read_end)
+        os.close(write_end)
 
 
 async def test_a_group_that_refuses_to_be_signalled_has_ended(mocker: MockerFixture) -> None:

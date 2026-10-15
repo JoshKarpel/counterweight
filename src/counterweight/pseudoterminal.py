@@ -276,22 +276,14 @@ async def run_pty(
     closed = Event()
 
     def read() -> None:
-        try:
-            data = os.read(master, READ_SIZE)
-        except OSError:  # EIO, on Linux, once nothing holds the program's side of the terminal open
-            data = b""
-        if not data:
+        if not (data := read_output(master)):
             loop.remove_reader(master)
             closed.set()
             return
         on_output(data)
 
     def discard() -> None:
-        try:
-            data = os.read(master, READ_SIZE)
-        except OSError:
-            data = b""
-        if not data:
+        if not read_output(master):
             loop.remove_reader(master)
 
     loop.add_reader(master, read)
@@ -326,6 +318,18 @@ async def run_pty(
         finally:
             loop.remove_reader(master)
             connection.close()
+
+
+def read_output(master: int) -> bytes:
+    """
+    The next read of what the program on the terminal `master` wrote, or `b""` at end of file,
+    which comes once nothing holds the program's side of the terminal open:
+    macOS reads it as nothing, and Linux fails the read with `EIO`, as it does any read it can't make.
+    """
+    try:
+        return os.read(master, READ_SIZE)
+    except OSError:
+        return b""
 
 
 async def end_process_group(process: Process, grace: timedelta) -> None:
