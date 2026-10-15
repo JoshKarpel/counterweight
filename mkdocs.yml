@@ -103,6 +103,7 @@ nav:
     - elements/index.md
     - elements/div.md
     - elements/text.md
+    - elements/canvas.md
   - Hooks:
     - hooks/index.md
     - hooks/use_state.md
@@ -110,6 +111,7 @@ nav:
     - hooks/use_ref.md
     - hooks/use_memo.md
     - hooks/use_clock.md
+    - hooks/use_controls.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
     - hooks/use_scroll.md
@@ -143,6 +145,11 @@ nav:
     - styles/index.md
     - styles/text-wrapping.md
     - styles/utilities.md
+  - Terminals:
+    - terminals/commands.md
+    - terminals/programs.md
+    - terminals/embedding.md
+    - terminals/emulators.md
   - Rich Text:
     - rich-text/hyperlinks.md
     - rich-text/syntax-highlighting.md
@@ -152,6 +159,7 @@ nav:
     - cookbook/border-titles.md
     - cookbook/border-healing.md
     - cookbook/draggable-components.md
+    - cookbook/prefix-keys.md
     - cookbook/spinners.md
   - performance.md
   - utilities.md

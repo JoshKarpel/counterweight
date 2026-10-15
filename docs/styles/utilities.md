@@ -86,6 +86,20 @@ Hover over a swatch to see its name and hex code.
 
 <!-- utilities-palette -->
 
+#### Terminal colors
+
+A `Color` looks the same in every terminal.
+The terminal's own colors follow the user's theme instead, as the colors of a program run in it do:
+an `IndexedColor` is an entry of the terminal's 256-color palette,
+whose first 16 are the black, red, green, yellow, blue, magenta, cyan and white that themes set, then their bright forms,
+and `TERMINAL_DEFAULT` is the terminal's default foreground where it colors text,
+and its default background where it fills one.
+These utilities set them in each place the color utilities above do,
+the `*_indexed` ones taking a palette index from 0 to 255.
+Screenshots draw them in `DEFAULT_PALETTE`, and the defaults as white on black.
+
+<!-- utilities: *_terminal_default *_indexed -->
+
 ### Direction and wrapping
 
 These set the flexbox main axis, and whether children wrap onto more lines when they don't fit.

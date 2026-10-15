@@ -1,20 +1,30 @@
 from counterweight import app
+from counterweight.app import stale_readers
 from counterweight.components import component
 from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Region
 from counterweight.hooks import Rects
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
+from counterweight.layout import NO_LAYOUTS
+from counterweight.layout import Layouts
+from counterweight.shadow import update_shadow
 from counterweight.styles.utilities import border
+from counterweight.styles.utilities import col
 from counterweight.styles.utilities import display_none
 from counterweight.styles.utilities import margin
 from counterweight.styles.utilities import pad
 from counterweight.styles.utilities import size
 
+# Taking a screenshot lets the render loop run the frame that a state change before it queued.
+SHOT = Screenshot(handler=lambda frame: None)
 EMPTY = Region(left=0, top=0, right=0, bottom=0)
 VISIBLE = Region(left=0, top=0, right=7, bottom=4)
 
@@ -75,3 +85,88 @@ async def test_use_rects_reports_each_box_and_the_purity_check_rereads_them() ->
 
     # The painted frame's render, then the purity check's re-run of it.
     assert recorded[-2:] == [NESTED_BOXES, NESTED_BOXES]
+
+
+async def test_a_component_that_mounts_after_the_first_frame_renders_again_once_its_rects_are_known() -> None:
+    recorded: list[Rects] = []
+
+    @component
+    def root() -> Div:
+        is_shown, set_is_shown = use_state(False)
+
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            set_is_shown(True)
+
+        return Div(children=(measured(False, recorded),) if is_shown else (), on_input=on_input)
+
+    await app(root(), headless=True, dimensions=(20, 10), autopilot=(KeyPressed(key="s"), SHOT, Quit()))
+
+    # The frame that mounts it, then the frame its rects moved in, with nothing else happening.
+    assert [rects.border for rects in recorded] == [EMPTY, VISIBLE]
+
+
+HANDLE = ElementHandle()
+SIBLING = Region(left=0, top=1, right=7, bottom=5)
+
+
+async def test_use_rects_with_a_handle_reports_the_rects_of_the_element_it_names() -> None:
+    recorded: list[Rects] = []
+
+    @component
+    def beside() -> Div:
+        recorded.append(use_rects(HANDLE))
+        return Div(style=col, children=(Text(content="above"), Div(style=size(7, 4), handle=HANDLE)))
+
+    await app(beside(), headless=True, dimensions=(20, 10), autopilot=(Quit(),))
+
+    assert recorded[-1].border == SIBLING
+
+
+async def test_use_rects_with_a_handle_on_no_mounted_element_reports_empty_regions() -> None:
+    recorded: list[Rects] = []
+
+    @component
+    def unnamed() -> Div:
+        recorded.append(use_rects(ElementHandle()))
+        return Div(style=size(7, 4))
+
+    await app(unnamed(), headless=True, dimensions=(20, 10), autopilot=(Quit(),))
+
+    assert recorded[-1].border == EMPTY
+
+
+async def test_a_component_reading_its_own_and_another_elements_rects_renders_again_once_either_moves() -> None:
+    recorded: list[tuple[int, int]] = []
+
+    @component
+    def both() -> Div:
+        own = use_rects()
+        inner = use_rects(HANDLE)
+        recorded.append((own.border.height, inner.border.height))
+        grown, set_grown = use_state(False)
+
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            set_grown(True)
+
+        return Div(
+            style=col | size(7, 6),
+            on_input=on_input,
+            children=(Div(style=size(7, 4 if grown else 2), handle=HANDLE),),
+        )
+
+    await app(both(), headless=True, dimensions=(20, 10), autopilot=(KeyPressed(key="g"), SHOT, Quit()))
+
+    assert recorded[-1] == (6, 4)
+
+
+def test_stale_readers_are_the_nodes_whose_rects_moved() -> None:
+    @component
+    def reads() -> Div:
+        use_rects(HANDLE)
+        return Div()
+
+    shadow = update_shadow(Div(children=(reads(), Div(handle=HANDLE))), None, NO_LAYOUTS).tree
+    reader, named = shadow.root.children
+    moved = Layouts(in_paint_order=(), by_key={named.key: NESTED_BOXES}, scrolls={}, handles={HANDLE: named.key})
+
+    assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == ([], [reader.key])

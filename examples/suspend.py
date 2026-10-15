@@ -1,10 +1,7 @@
-import os
 import subprocess
-import sys
 from asyncio import run
 from asyncio import to_thread
 from collections.abc import Callable
-from functools import partial
 from pathlib import Path
 
 from counterweight.app import app
@@ -63,16 +60,6 @@ def _list_files(glob: str) -> tuple[Path, ...]:
     return tuple(sorted(cwd / f for f in result.stdout.splitlines() if f))
 
 
-def open_editor(file: Path) -> None:
-    subprocess.run(
-        [os.environ.get("EDITOR", "vim"), str(file)],
-        stdin=sys.stdin,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        check=False,
-    )
-
-
 @component
 def picker() -> Div:
     glob, set_glob = use_state("**/*.py")
@@ -90,7 +77,7 @@ def picker() -> Div:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Enter) if files:
-                return Suspend(handler=partial(open_editor, files[selected_file_idx]))
+                return Suspend.to_edit_file(files[selected_file_idx])
             case KeyPressed(key=Key.Down):
                 set_selected_file_idx(lambda i: clamp(0, i + 1, len(files) - 1))
                 return ScrollIntoView(selected_row, block="center")

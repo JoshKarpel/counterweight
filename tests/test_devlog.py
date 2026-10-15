@@ -14,6 +14,7 @@ from counterweight.events import KeyPressed
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.output import Frame
+from counterweight.programs import TerminalStreams
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_collapse
 from counterweight.styles.utilities import row
@@ -29,11 +30,11 @@ def broken_screenshot(frame: Frame) -> None:
     raise ValueError("no screenshot")
 
 
-def suspended() -> None:
+def suspended(terminal: TerminalStreams) -> None:
     pass
 
 
-def broken_suspension() -> None:
+def broken_suspension(terminal: TerminalStreams) -> None:
     raise ValueError("no suspension")
 
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from functools import lru_cache
 from itertools import chain
+from typing import Protocol
 
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
@@ -73,7 +74,75 @@ class Text:
         return text_cells(self.content, self.style.text_style)
 
 
-AnyElement = Div | Text
+class Painter(Protocol):
+    """
+    What draws a [`Canvas`][counterweight.elements.Canvas]'s content box.
+
+    A painter is compared with `==` to the one its canvas had in the last frame,
+    and `draw` isn't called again while it's equal and the box is the same size,
+    so what `draw` returns must depend only on the painter and the size it's given.
+    A frozen dataclass built from the same values in each render is equal to the last one,
+    so a component can build its painter in every render.
+    """
+
+    @property
+    def natural_size(self) -> tuple[int, int]:
+        """
+        The canvas's intrinsic size in cells, as `(width, height)`,
+        which it takes on each axis that its style and its parent's layout leave undetermined.
+        """
+
+    @property
+    def keeps_aspect_ratio(self) -> bool:
+        """
+        Whether a canvas sized on one axis takes its size on the other from the ratio of `natural_size`,
+        as an `<img>` with only a `width` keeps its picture's proportions.
+        A natural size of zero on either axis has no ratio to keep.
+        """
+
+    def draw(self, width: int, height: int) -> Rows:
+        """
+        The rows of cells to show in a `width` by `height` content box, top to bottom,
+        each drawn rightward from the box's left edge.
+
+        Each cell's style is resolved against the canvas's, so whatever a cell leaves unset comes from the canvas:
+        its foreground from the `text_style`, and its background as the `Canvas` describes.
+        Cells past the box's edges are cut off, and any part of the box the rows don't reach shows the canvas's background.
+        It isn't called for a box with no cells.
+        """
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Canvas:
+    """
+    A leaf element whose content box its `painter` draws, cell by cell, instead of laying out text.
+
+    It's sized as HTML's replaced elements (`<img>`, `<canvas>`) are:
+    its painter's `natural_size` is its intrinsic size, which it takes on each axis that its style
+    and its parent's layout leave undetermined, and `draw` is called with the size its content box ends up.
+    A painter that keeps its aspect ratio gives a canvas sized on only one axis the other by that ratio.
+    In a flex row, a canvas shrinks no narrower than its intrinsic width, as an `<img>` doesn't,
+    unless its style sets `min_width(0)`.
+
+    A background that its painter leaves unset is the canvas's `text_style` background if its style sets one,
+    and its `content_color` otherwise, so a cell the painter leaves transparent matches the rest of the box.
+    """
+
+    painter: Painter
+    style: Style = _DEFAULT_STYLE
+    on_input: InputHandler | None = None
+    handle: ElementHandle | None = None
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
+
+    @property
+    def children(self) -> tuple[Component | AnyElement, ...]:
+        return ()
+
+
+AnyElement = Div | Text | Canvas
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 
@@ -91,6 +160,10 @@ class StyledGrapheme:
         if len(self.grapheme) != 1 and len(graphemes(self.grapheme)) != 1:
             raise ValueError(f"A StyledGrapheme holds exactly one grapheme cluster, not {self.grapheme!r}")
         object.__setattr__(self, "width", grapheme_width(self.grapheme))
+
+
+# Rows of grapheme clusters, top to bottom, each drawn left to right.
+type Rows = tuple[tuple[StyledGrapheme, ...], ...]
 
 
 class _StyledGraphemes(dict[str, StyledGrapheme]):

@@ -234,13 +234,19 @@ class RoutingTable:
 
         return next((key for key in candidates if self.focus[key].in_focus_order), focused)
 
-    def reconciled_focus(self, focused: NodeKey | None, mounted: Collection[NodeKey]) -> NodeKey | None:
+    def reconciled_focus(
+        self, focused: NodeKey | None, mounted: Collection[NodeKey], requested: FocusHandle | None
+    ) -> NodeKey | None:
         """
         The focused key after a render that built this table and `mounted` the components with those keys:
-        `focused`, unless it can no longer be focused because it unmounted, is hidden, or is unfocusable,
+        the node with the `requested` handle, from a `FocusOn` that named no focusable node before the render,
+        if it's focusable now.
+        Otherwise it's `focused`, unless it can no longer be focused because it unmounted, is hidden, or is unfocusable,
         in which case it's cleared.
         Then, if nothing is focused, it's the first focusable node in tree order that mounted with `auto_focus`.
         """
+        if requested is not None and (key := self.focus_keys.get(requested)) is not None:
+            return key
         if focused is not None and self.can_focus(focused):
             return focused
         return next(
@@ -263,12 +269,24 @@ def named_key(target: ElementHandle | Subtree, element_keys: Mapping[ElementHand
             assert_never(unreachable)
 
 
-def route_key(event: KeyPressed | Pasted, focused: NodeKey | None, table: RoutingTable) -> tuple[AnyControl, ...]:
+def route_key(
+    event: KeyPressed | Pasted,
+    focused: NodeKey | None,
+    table: RoutingTable,
+    unclaimed_keys: Mapping[str, AnyControl],
+) -> tuple[AnyControl, ...]:
     """
     Bubbles a key press or paste from the `focused` node, or from the root component's node if nothing is focused,
-    and returns the controls of the handler that claimed it, if any.
+    and returns the controls of the handler that claimed it,
+    or, for a key press no handler claimed, its control in `unclaimed_keys`, if it has one,
+    as a browser takes a key's default action unless a listener prevents it.
     """
-    return claimed_controls(table.bubble(event, table.root if focused is None else focused, focused))
+    claim = table.bubble(event, table.root if focused is None else focused, focused)
+    if claim is not None:
+        return claim.controls
+    if isinstance(event, KeyPressed) and (control := unclaimed_keys.get(event.key)) is not None:
+        return (control,)
+    return ()
 
 
 def route_mouse(

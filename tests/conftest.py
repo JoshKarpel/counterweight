@@ -1,8 +1,13 @@
+import asyncio
 import gc
+import inspect
 import os
 import pty
 import resource
+import signal
+import subprocess
 import sys
+from collections.abc import AsyncIterator
 from collections.abc import Iterator
 from contextlib import suppress
 from functools import lru_cache
@@ -14,6 +19,9 @@ import pytest
 from tests.terminal import Terminal
 
 MUTANT_MEMORY_HEADROOM = 1 << 30
+
+HANG_REPORT_LEAD = 5
+"""How many seconds before `faulthandler_timeout` an async test still running reports what it's waiting on."""
 
 LRU_CACHE = type(lru_cache(lambda: None))
 
@@ -35,6 +43,74 @@ def cold_memos_while_mutmut_maps_tests() -> None:
     """
     if os.environ.get("MUTANT_UNDER_TEST") == "stats":  # pragma: no cover
         clear_memos()
+
+
+@pytest.fixture(autouse=True)
+def editor_that_fails_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Makes the preferred editor `false` for tests that don't set their own, so code that wrongly falls back to it,
+    as a mutant of `edit_file` can, fails the test at once rather than opening the developer's editor
+    on a stream that isn't a terminal, where it waits forever, and outlives a mutmut worker killed for timing out.
+    """
+    monkeypatch.setenv("VISUAL", "false")
+    monkeypatch.setenv("EDITOR", "false")
+
+
+@pytest.fixture(autouse=True)
+def hang_report_for_async_tests(request: pytest.FixtureRequest) -> None:
+    """Gives every async test a `hang_report`, which needs the test's event loop, and so has to be async itself."""
+    if inspect.iscoroutinefunction(getattr(request.node, "obj", None)):
+        request.getfixturevalue("hang_report")
+
+
+@pytest.fixture
+async def hang_report(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[None]:
+    """
+    Reports what a test is waiting on `HANG_REPORT_LEAD` seconds before `faulthandler_timeout` would end the whole run.
+    faulthandler dumps only threads, where a hung async test is an event loop idle in `select`,
+    and a run it ends shows none of the test's captured output.
+    So this reports each task's await chain, every process group the test signalled, and the processes still running,
+    then cancels the test's tasks, so the test fails with the report as its captured output, and the run goes on.
+    """
+    loop = asyncio.get_running_loop()
+    signalled: list[tuple[str, int]] = []
+    killpg = os.killpg
+
+    def recording_killpg(group: int, signal_number: int) -> None:
+        call = f"{loop.time():.3f} killpg({group}, {signal.Signals(signal_number).name if signal_number else 0})"
+        try:
+            killpg(group, signal_number)
+        except OSError as e:
+            signalled.append((f"{call} raised {e!r}", group))
+            raise
+        signalled.append((call, group))
+
+    monkeypatch.setattr(os, "killpg", recording_killpg)
+    timeout = float(request.config.getini("faulthandler_timeout"))
+    report = loop.call_later(timeout - HANG_REPORT_LEAD, report_hang, signalled)
+    yield
+    report.cancel()
+
+
+def report_hang(signalled: list[tuple[str, int]]) -> None:  # pragma: no cover, runs only in a test that hangs
+    """
+    Prints what `hang_report` reports, then cancels every task, which fails the test that hung.
+    The processes it lists are the test process's children and everything in their process groups or in a group
+    the test signalled, which a program run in its own session, and anything it started, are.
+    """
+    print(f"{asyncio.get_running_loop().time():.3f} The test is about to time out. Its tasks:", file=sys.stderr)
+    for task in asyncio.all_tasks():
+        asyncio.print_call_graph(task, file=sys.stderr)
+    print("Process groups it signalled:", *(call for call, _ in signalled), sep="\n  ", file=sys.stderr)
+    listing = subprocess.run(
+        ["ps", "-A", "-o", "pid=,ppid=,pgid=,stat=,command="], capture_output=True, text=True, check=False
+    ).stdout.splitlines()
+    rows = [(line, line.split()) for line in listing if len(line.split()) >= 5]
+    groups = {fields[2] for _, fields in rows if fields[1] == str(os.getpid())} | {str(g) for _, g in signalled}
+    related = [line for line, fields in rows if fields[1] == str(os.getpid()) or fields[2] in groups]
+    print("Its processes (pid, ppid, pgid, state, command):", *related, sep="\n  ", file=sys.stderr)
+    for task in asyncio.all_tasks():
+        task.cancel()
 
 
 def clear_memos() -> None:  # pragma: no cover

@@ -4,15 +4,17 @@ import random
 from asyncio import sleep
 from itertools import product
 
-from more_itertools import grouper
-
 from counterweight.app import app
 from counterweight.components import component
+from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.geometry import Position
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
+from counterweight.painters.pixels import HalfBlocks
+from counterweight.painters.pixels import Pixels
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
@@ -20,27 +22,6 @@ from counterweight.utils import clamp
 logger = logging.getLogger(__name__)
 
 BLACK = Color.from_name("black")
-
-
-def canvas(
-    width: int,
-    height: int,
-    cells: dict[tuple[int, int], Color],
-) -> tuple[Chunk, ...]:
-    c: list[Chunk] = []
-    for y_top, y_bot in grouper(range(height), 2):
-        c.extend(
-            Chunk(
-                content="▀",
-                style=CellStyle(
-                    foreground=cells.get((x, y_top), BLACK),
-                    background=cells.get((x, y_bot), BLACK),
-                ),
-            )
-            for x in range(width)
-        )
-        c.append(Chunk.newline())
-    return tuple(c[:-1])  # strip off last newline
 
 
 @component
@@ -102,20 +83,15 @@ n = 30
 
 
 @component
-def random_walkers() -> Text:
+def random_walkers() -> Canvas:
     colors, _set_colors = use_state(random.sample(list(COLORS_BY_NAME.values()), k=n))
-    walkers, set_walkers = use_state([(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
+    walkers, set_walkers = use_state([Position(random.randrange(w), random.randrange(h)) for _ in range(len(colors))])
 
-    def update_movers(m: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    def update_movers(m: list[Position]) -> list[Position]:
         new = []
-        for x, y in m:
+        for p in m:
             dx, dy = random.choice(moves)
-            new.append(
-                (
-                    clamp(0, x + dx, w - 1),
-                    clamp(0, y + dy, h - 1),
-                )
-            )
+            new.append(Position(clamp(0, p.x + dx, w - 1), clamp(0, p.y + dy, h - 1)))
         return new
 
     async def tick() -> None:
@@ -125,12 +101,8 @@ def random_walkers() -> Text:
 
     use_effect(tick, deps=())
 
-    return Text(
-        content=canvas(
-            width=w,
-            height=h,
-            cells=dict(zip(walkers, colors, strict=True)),
-        ),
+    return Canvas(
+        painter=HalfBlocks(Pixels.from_points(w, h, dict(zip(walkers, colors, strict=True)), default=BLACK)),
         style=border | border_heavy | border_color("slate", 400),
     )
 

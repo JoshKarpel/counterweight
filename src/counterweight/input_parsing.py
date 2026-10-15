@@ -33,6 +33,7 @@ from counterweight.keys import Key
 
 ESC = 0x1B
 
+# Every control byte but `ESC` is a key, since `parse_control` looks each one up here without a default.
 CONTROL_KEYS: Mapping[int, Key] = {
     0x00: Key.ControlSpace,
     0x01: Key.ControlA,
@@ -61,6 +62,10 @@ CONTROL_KEYS: Mapping[int, Key] = {
     0x18: Key.ControlX,
     0x19: Key.ControlY,
     0x1A: Key.ControlZ,
+    0x1C: Key.ControlBackslash,
+    0x1D: Key.ControlRightBracket,
+    0x1E: Key.ControlCaret,
+    0x1F: Key.ControlUnderscore,
     0x7F: Key.Backspace,
 }
 
@@ -339,8 +344,6 @@ def parse_alt(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:
         step = parse_escaped_sequence(buffer, following, is_final)
     elif CONTROL_BYTE.match(buffer, following):
         step = parse_control(buffer, following)
-        if not step.events:
-            return Step(end=step.end, skipped=(bytes(buffer[start : step.end]),))
     else:
         step = parse_text(buffer, following, is_final)
 
@@ -476,10 +479,8 @@ def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
 
 
 def parse_control(buffer: bytes | bytearray, start: int) -> Step:
-    """Parse one control byte other than `ESC`."""
-    if key := CONTROL_KEYS.get(buffer[start]):
-        return Step(end=start + 1, events=(KeyPressed(key=key),))
-    return Step(end=start + 1, skipped=(bytes(buffer[start : start + 1]),))
+    """Parse one control byte other than `ESC`, each of which is a key."""
+    return Step(end=start + 1, events=(KeyPressed(key=CONTROL_KEYS[buffer[start]]),))
 
 
 def parse_text(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:

@@ -14,6 +14,7 @@ WORKLOADS: dict[str, Runnable] = {
     workload.name: workload
     for workload in (
         canvas.WORKLOAD,
+        canvas.ELEMENT_WORKLOAD,
         top.WORKLOAD,
         top.MEMO_WORKLOAD,
         agent.WORKLOAD,
