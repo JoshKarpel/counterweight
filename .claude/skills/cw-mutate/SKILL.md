@@ -297,7 +297,8 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **`make_controlling_terminal` has no tests.** It runs in the child between fork and exec, where mutmut's
   stats pass can't see it; breaking it fails the `stdin="devnull"` test, which spawns through it.
 - **`window_size`'s `"hhhh"`**: signed and unsigned shorts pack the same bytes for sizes under 32,768.
-- **`run_pty`'s `data = None` on a read error, and `set_blocking(master, None)`**: each is only read for truthiness.
+- **`run_pty`'s `data = None` on a read error, `set_blocking(master, None)`, and its initial `is_group_empty = None`**:
+  each is only read for truthiness.
 - **`run_pty`'s `repr(None)` for a spawn error without a message**: `asyncio`'s spawn raises the child's exec error
   as `OSError(errno, strerror)`, so `strerror` is always set; the fallback narrows its type for the checker.
 - **`use_pty`'s initial ref values**: `output` (`None`, `lambda: None`) is assigned on every render before
