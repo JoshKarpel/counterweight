@@ -1,3 +1,10 @@
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/JoshKarpel/counterweight/main/docs/assets/logo/wordmark-dark.svg">
+    <img alt="Counterweight" src="https://raw.githubusercontent.com/JoshKarpel/counterweight/main/docs/assets/logo/wordmark-light.svg">
+  </picture>
+</h1>
+
 [![PyPI](https://img.shields.io/pypi/v/counterweight)](https://pypi.org/project/counterweight)
 [![PyPI - License](https://img.shields.io/pypi/l/counterweight)](https://pypi.org/project/counterweight)
 [![Docs](https://img.shields.io/badge/docs-exist-brightgreen)](https://www.counterweight.dev)
@@ -6,8 +13,6 @@
 
 [![GitHub issues](https://img.shields.io/github/issues/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/JoshKarpel/counterweight)](https://github.com/JoshKarpel/counterweight/pulls)
-
-# Counterweight
 
 Counterweight is an experimental text user interface (TUI) framework for Python,
 inspired by [React](https://react.dev/) and [Tailwind CSS](https://tailwindcss.com/).

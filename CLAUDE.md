@@ -130,6 +130,15 @@ which `mkdocs_hooks/utility_tables.py` renders from the module.
 The docs build fails until each new utility, generated or hand-written, matches exactly one marker,
 and hand-written utility functions need a docstring to describe them there.
 
+## Logo
+
+`codegen/generate_logo.py` draws every file in `docs/assets/logo/`
+from the JetBrains Mono outlines in `codegen/fonts/`, so `just codegen` regenerates them and nothing edits them by hand.
+They live apart from the screenshots because the screenshot generator fails on any `docs/assets/*.svg` no example writes.
+The favicon's PNGs aren't committed, because Pillow encodes the same pixels to different bytes on macOS and Linux:
+`mkdocs_hooks/logo_icons.py` draws them into the site on every docs build.
+The text logo in `counterweight --help` is `LOGO` in `src/counterweight/cli.py`.
+
 ## Docs Screenshots
 
 Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list.
@@ -166,7 +175,8 @@ read that to check a layout instead of the SVG.
 - **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
 - **pygments**: Lexes and colors source code for `counterweight.highlighting`
 - **pyghostty**: libghostty-vt's cffi bindings, the terminal emulator behind `counterweight.emulator`
-- **pillow**: Decodes images for `Pixels.from_image`, which counterweight itself never imports
+- **pillow**: Decodes images for `Pixels.from_image`, which counterweight itself never imports, and draws the logo's PNGs
+- **fonttools** (dev): Outlines the logo's letters for `codegen/generate_logo.py`
 
 ## Code Style Guidelines
 - Line length: 120

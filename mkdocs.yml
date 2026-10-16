@@ -12,14 +12,15 @@ watch:
 
 hooks:
   - mkdocs_hooks/examples.py
+  - mkdocs_hooks/logo_icons.py
   - mkdocs_hooks/screenshot_tabs.py
   - mkdocs_hooks/utility_tables.py
 
 theme:
   name: material
-  favicon: assets/favicon.png
-  icon:
-    logo: fontawesome/solid/terminal
+  custom_dir: overrides
+  favicon: assets/logo/favicon.png
+  logo: assets/logo/favicon.svg
   palette:
     - scheme: default
       toggle:

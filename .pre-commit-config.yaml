@@ -109,6 +109,12 @@ repos:
         language: unsupported
         always_run: true
         pass_filenames: false
+      - id: generate-logo
+        name: generate logo
+        entry: uv run --frozen python codegen/generate_logo.py
+        language: unsupported
+        files: ^(codegen/(generate_logo\.py|fonts/)|src/counterweight/styles/utilities\.py$|docs/assets/logo/)
+        pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
         entry: uv run --frozen python -m docs.examples.generate_screenshots
