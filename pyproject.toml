@@ -65,6 +65,7 @@ dev = [
     "mutmut>=3.8.0",
     "types-pygments>=2.17",
     "coverage-conditional-plugin>=0.9.0",
+    "fonttools>=4.40",
 ]
 
 [project.scripts]
@@ -204,6 +205,8 @@ ignore = [
     "D205",  # would force a single-physical-line summary; summary sentences wrap naturally over a few lines
     "D212",  # the summary starts on the line after the opening quotes
 ]
+
+allowed-confusables = ["╱"]  # the logo's line, a box-drawing character
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"  # mkdocstrings' default docstring style

@@ -1,4 +1,5 @@
-# Counterweight
+![Counterweight](assets/logo/wordmark-light.svg#only-light){ .wordmark }
+![Counterweight](assets/logo/wordmark-dark.svg#only-dark){ .wordmark }
 
 Counterweight is an experimental text user interface (TUI) framework for Python,
 inspired by [React](https://react.dev/) and [Tailwind CSS](https://tailwindcss.com/).
