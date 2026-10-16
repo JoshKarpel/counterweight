@@ -14,8 +14,10 @@ import pkgutil
 import subprocess
 import sys
 from collections import Counter
+from contextlib import suppress
 from datetime import UTC
 from datetime import datetime
+from pathlib import Path
 
 import docs.examples
 from counterweight.app import app
@@ -61,8 +63,19 @@ async def render(spec: ScreenshotSpec) -> None:
 
 def write_files(spec: ScreenshotSpec, frame: Frame) -> None:
     """Write the frame as SVG, and as plain text to copy from in the docs and to diff readably."""
-    spec.svg_path.write_text(frame.svg() + "\n")
-    spec.text_path.write_text(frame.text(ansi=False) + "\n")
+    write_if_changed(spec.svg_path, frame.svg() + "\n")
+    write_if_changed(spec.text_path, frame.text(ansi=False) + "\n")
+
+
+def write_if_changed(path: Path, text: str) -> None:
+    """
+    Write `text` to `path` unless it already holds it,
+    so an unchanged screenshot doesn't touch its file and restart `just docs-serve`, which watches them.
+    """
+    with suppress(FileNotFoundError):
+        if path.read_text() == text:
+            return
+    path.write_text(text)
 
 
 def check_assets(specs: list[ScreenshotSpec], all_modules: bool) -> None:

@@ -65,7 +65,7 @@ jobs:
         run: uv run mypy
 
       - name: Test code
-        run: uv run pytest -v --cov --durations=20
+        run: uv run pytest -n auto --dist worksteal -v --cov --durations=20
         timeout-minutes: 5
 
       - name: Test docs

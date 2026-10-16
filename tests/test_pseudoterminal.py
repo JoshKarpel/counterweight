@@ -38,6 +38,7 @@ from counterweight.pseudoterminal import end_process_group
 from counterweight.pseudoterminal import group_ended
 from counterweight.pseudoterminal import has_members
 from counterweight.pseudoterminal import program_environment
+from counterweight.pseudoterminal import read_output
 from counterweight.pseudoterminal import run_pty
 from counterweight.pseudoterminal import use_pty
 from tests.rendering import TIMEOUT
@@ -103,9 +104,29 @@ async def test_run_pty_reports_a_program_ended_by_a_signal_as_its_negated_number
 async def test_run_pty_starts_the_program_at_the_given_size() -> None:
     output = Output()
 
-    await run_pty(["stty", "size"], 37, 11, on_output=output)
+    outcome = await run_pty(["stty", "size"], 37, 11, on_output=output)
 
-    assert output.data.split() == [b"11", b"37"]
+    assert (outcome, output.data.split()) == (Exited(status=0), [b"11", b"37"])
+
+
+def test_read_output_is_none_while_nothing_has_been_written() -> None:
+    master, slave = os.openpty()
+    os.set_blocking(master, False)
+    try:
+        assert read_output(master) is None
+    finally:
+        os.close(master)
+        os.close(slave)
+
+
+def test_read_output_raises_an_error_other_than_end_of_file() -> None:
+    read_end, write_end = os.pipe()
+    try:
+        with pytest.raises(OSError, match="Bad file descriptor"):
+            read_output(write_end)
+    finally:
+        os.close(read_end)
+        os.close(write_end)
 
 
 async def test_run_pty_tells_the_program_its_terminals_size_in_pixels_is_unknown() -> None:
@@ -363,7 +384,8 @@ async def test_hanging_up_run_pty_reads_and_drops_what_the_program_writes_meanwh
         )
     )
     await started.wait()
-    await output.wait_for(b"ready")
+    # The whole line: the terminal can send its `\r\n` in a read of its own, after `ready`.
+    await output.wait_for(b"ready\r\n")
 
     task.cancel()
 
@@ -664,7 +686,7 @@ async def test_use_pty_starts_a_terminal_one_cell_across() -> None:
         await m.render(terminal(("stty", "size"), 1, 1, output, ptys))
         await m.wait_until(lambda: isinstance(ptys[-1].status, Exited))
 
-    assert output.data.split() == [b"1", b"1"]
+    assert (ptys[-1].status, output.data.split()) == (Exited(status=0), [b"1", b"1"])
 
 
 @component
