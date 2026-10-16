@@ -7,9 +7,12 @@ import resource
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import AsyncIterator
+from collections.abc import Callable
 from collections.abc import Iterator
 from contextlib import suppress
+from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
 from threading import Thread
@@ -24,6 +27,9 @@ HANG_REPORT_LEAD = 5
 """How many seconds before `faulthandler_timeout` an async test still running reports what it's waiting on."""
 
 LRU_CACHE = type(lru_cache(lambda: None))
+
+GROUP_DRAIN_GRACE = timedelta(seconds=1)
+GROUP_POLL_INTERVAL = timedelta(milliseconds=10)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -54,6 +60,56 @@ def editor_that_fails_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setenv("VISUAL", "false")
     monkeypatch.setenv("EDITOR", "false")
+
+
+@pytest.fixture(autouse=True)
+def programs_end_with_their_test(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """
+    Fails a test that leaves running a program it started in a process group of its own, and kills that group.
+    Such a program escapes the group mutmut kills a timed-out worker in, and a mutant that skips hanging one up
+    (as a mutant of `end_process_group` can) would otherwise leave it running after the whole run:
+    a program that ignores hanging up and loops on `sleep` starts a process a hundred times a second, forever.
+    """
+    groups: list[int] = []
+    popen_init: Callable[..., None] = subprocess.Popen.__init__
+
+    def recording_init(popen: subprocess.Popen[bytes], *args: object, **kwargs: object) -> None:
+        popen_init(popen, *args, **kwargs)
+        # From the arguments, not `os.getpgid`, which macOS fails for a program that has already exited.
+        if kwargs.get("start_new_session") or kwargs.get("process_group") == 0:
+            groups.append(popen.pid)
+
+    monkeypatch.setattr(subprocess.Popen, "__init__", recording_init)
+    yield
+    if left_running := [group for group in groups if not has_drained(group)]:  # pragma: no cover, only a leaking test
+        for group in left_running:
+            with suppress(ProcessLookupError, PermissionError):
+                os.killpg(group, signal.SIGKILL)
+        pytest.fail(f"The test left these process groups running, so they were killed: {left_running}")
+
+
+def has_drained(group: int) -> bool:
+    """
+    Whether nothing in the process group `group` is running, waiting up to `GROUP_DRAIN_GRACE` for it to empty.
+    A group can still have members just after it's killed: a child its parent left behind dies with it,
+    but whatever adopted the child reaps it, a moment after the test saw the parent end.
+    """
+    deadline = time.monotonic() + GROUP_DRAIN_GRACE.total_seconds()
+    while is_running(group) and time.monotonic() < deadline:
+        time.sleep(GROUP_POLL_INTERVAL.total_seconds())  # pragma: no cover, only while a killed group is reaped
+    return not is_running(group)
+
+
+def is_running(group: int) -> bool:
+    """
+    Whether anything in the process group `group` is still running.
+    The same check as `counterweight.pseudoterminal.has_members`, which a mutant may break, so not that function.
+    """
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError, PermissionError:
+        return False
+    return True  # pragma: no cover, only a leaking test
 
 
 @pytest.fixture(autouse=True)

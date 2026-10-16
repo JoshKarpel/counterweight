@@ -39,6 +39,11 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   `tests/conftest.py` makes `VISUAL` and `EDITOR` `false` for every test that doesn't set them,
   so such a mutant fails at once and counts as killed. A test that runs a program which could wait on input
   needs the same: a stand-in that exits.
+  A mutant that skips hanging up a program in a process group of its own (a mutant of `end_process_group`, say)
+  would leave it running after the whole run, and a test program that ignores `SIGHUP` and loops on `sleep`
+  starts a process a hundred times a second, which slows every mutant after it.
+  `tests/conftest.py`'s `programs_end_with_their_test` kills any such group still running when a test ends,
+  and fails the test, so the mutant counts as killed.
 - **Warm caches hide mutants.** Each mutmut worker forks from a parent that has already run every test,
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
   `paint.justify_line` sits behind `line_cells`, `CellStyle.__post_init__` behind its flyweight.
