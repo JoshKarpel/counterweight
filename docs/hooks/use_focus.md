@@ -95,6 +95,10 @@ though Enter and Tab never stop on it, and Right then shows its next tip:
 
 ![The help panel focused, showing its second tip](../assets/focus-form-help.svg)
 
+The whole walk through the form, from Enter on the first field to the help panel's next tip:
+
+<!-- cast: focus-form -->
+
 ## Moving focus
 
 Focus moves only through [controls](../input-handling/controls.md), `auto_focus`,

@@ -1,6 +1,8 @@
 # Every hook is `local` and runs a tool from the `dev` group through `uv run`, so the hooks, the editor, `just` and CI
 # all run the version `uv.lock` holds, under the same cooldown as every other dependency.
 # `--frozen` so a hook never re-locks: the `uv-lock` hook is the one that reports a stale lock.
+# Vendored files stay byte for byte as their project publishes them.
+exclude: ^docs/assets/vendor/
 repos:
   - repo: local
     hooks:
@@ -113,7 +115,7 @@ repos:
         name: generate docs screenshots
         entry: uv run --frozen python -m docs.examples.generate_screenshots
         language: unsupported
-        files: ^(src/|docs/examples/|docs/assets/.*\.svg$|uv\.lock$)
+        files: ^(src/|docs/examples/|docs/assets/.*\.(svg|cast)$|uv\.lock$)
         pass_filenames: false
 
   - repo: local

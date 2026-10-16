@@ -364,6 +364,18 @@ class AdvanceClock(_Control):
 
 
 @dataclass(frozen=True, slots=True)
+class Marker(_Control):
+    """
+    Mark this point in the app's [`Recording`][counterweight.asciicast.Recording] with `label`,
+    which asciinema-player shows as a chapter to jump to,
+    such as each step of an autopilot's demo, or each view a user opens.
+    It does nothing if the app isn't recording.
+    """
+
+    label: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class ScrollTo(_Control):
     """
     Scroll the scroll container `target` names so its offset is `x` and `y`,
@@ -459,6 +471,7 @@ AnyControl = (
     | FocusOn
     | ClearFocus
     | AdvanceClock
+    | Marker
     | ScrollTo
     | ScrollBy
     | ScrollIntoView

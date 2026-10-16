@@ -4,6 +4,7 @@ from datetime import timedelta
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
+from counterweight.controls import Marker
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
@@ -14,6 +15,7 @@ from counterweight.hooks import use_clock
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]
@@ -60,6 +62,18 @@ SCREENSHOTS = [
             KeyPressed(key=Key.Space),
             AdvanceClock(by=timedelta(seconds=42)),
         ],
+    )
+]
+
+SECOND = AdvanceClock(by=timedelta(seconds=1))
+SPACE = KeyPressed(key=Key.Space)
+
+CASTS = [
+    CastSpec(
+        lap_timer(),
+        "use-clock-lap-timer",
+        (20, 1),
+        steps=[*[SECOND] * 4, SPACE, Marker("Lap 2"), *[SECOND] * 3, SPACE, Marker("Lap 3"), *[SECOND] * 3],
     )
 ]
 

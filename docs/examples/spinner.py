@@ -9,6 +9,7 @@ from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.hooks import use_clock
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:example]
@@ -51,6 +52,8 @@ SCREENSHOTS = [
         events=[AdvanceClock(by=timedelta(seconds=4, milliseconds=160))],
     )
 ]
+
+CASTS = [CastSpec(agent_progress(), "spinner", (40, 3), steps=[AdvanceClock(by=FRAME_TIME)] * 50)]
 
 
 if __name__ == "__main__":

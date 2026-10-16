@@ -40,6 +40,10 @@ which remounts it and starts its `since_mount` again from zero:
 
 ![Lap timer](../assets/use-clock-lap-timer.svg)
 
+Each press of Space starts the next lap from zero:
+
+<!-- cast: use-clock-lap-timer -->
+
 A handler sees the reading from the latest tick,
 so a time it records, such as the lap time when a lap ends, is up to one `interval` early.
 Choose an `interval` as fine as the precision the time needs.

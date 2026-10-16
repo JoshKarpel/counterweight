@@ -33,6 +33,10 @@ Typing edits the value, and the list below it re-renders from the new value:
 
 ![The search box holding "an", above the fruits that contain it](../assets/text-input-search-typed.svg)
 
+Scrolling the list with Down, then typing and deleting, as it runs:
+
+<!-- cast: text-input-search -->
+
 Left, three times, moves the cursor back between the `m` and the `n` of `mngo`,
 and an `a` typed there lands at the cursor:
 
