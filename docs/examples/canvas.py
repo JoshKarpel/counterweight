@@ -115,7 +115,7 @@ def fits() -> Div:
 # --8<-- [start:image]
 
 # Decode the image once, before the app starts, rather than in a render.
-LOGO = Pixels.from_image(Image.open(Path(__file__).parent.parent / "assets" / "favicon.png"))
+LOGO = Pixels.from_image(Image.open(Path(__file__).parent.parent / "assets" / "logo" / "favicon.png"))
 
 
 @component

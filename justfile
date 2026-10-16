@@ -49,9 +49,10 @@ docs-build:
 
 alias db := docs-build
 
-[doc('Regenerate style utility constants from codegen/generate_utilities.py')]
+[doc('Regenerate the style utility constants and the logo files in docs/assets/')]
 codegen:
     uv run python codegen/generate_utilities.py
+    uv run python codegen/generate_logo.py
 
 alias c := codegen
 
