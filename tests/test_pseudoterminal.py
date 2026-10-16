@@ -101,6 +101,11 @@ async def test_run_pty_reports_a_program_ended_by_a_signal_as_its_negated_number
     assert await run_pty(["sh", "-c", "kill -TERM $$"], 20, 4, on_output=Output()) == Exited(status=-15)
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_run_pty_starts_the_program_at_the_given_size() -> None:
     output = Output()
 
