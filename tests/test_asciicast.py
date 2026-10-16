@@ -24,8 +24,7 @@ from counterweight.asciicast import input_bytes
 from counterweight.asciicast import milliseconds
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import Wait
-from counterweight.clock import Instant
-from counterweight.clock import frozen_clock
+from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
@@ -57,7 +56,6 @@ from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import Frame
 from counterweight.output import stop_output_control
-from counterweight.programs import TerminalStreams
 from counterweight.styles.styles import Color
 from counterweight.styles.utilities import text_black
 from tests.terminal import Terminal
@@ -204,7 +202,7 @@ async def record(
         root or typing(),
         headless=True,
         dimensions=dimensions,
-        clock=frozen_clock(STARTED),
+        clock=FrozenClock(STARTED),
         autopilot=[*autopilot, Quit()],
         recording=Recording(path, input=is_recording_input),
     )
@@ -253,10 +251,10 @@ async def test_a_frozen_clock_recording_is_timed_by_its_advances(tmp_path: Path)
     assert [time for time, code, _ in events if code == "o"][-2:] == [300, 2305]
 
 
-async def test_waiting_in_real_time_does_not_move_a_frozen_clock_recording(tmp_path: Path) -> None:
+async def test_a_wait_moves_a_frozen_clock_recording_on_by_exactly_its_duration(tmp_path: Path) -> None:
     events = await record(tmp_path / "x.cast", [Wait(timedelta(milliseconds=20)), KeyPressed(key="a")])
 
-    assert {time for time, _, _ in events} == {0}
+    assert [time for time, code, _ in events if code == "o"][-1] == 20
 
 
 async def test_a_frame_records_only_what_changed(tmp_path: Path) -> None:
@@ -359,31 +357,28 @@ async def test_an_app_that_stops_with_an_error_records_an_exit_of_1(tmp_path: Pa
     assert read(path)[1][-1][1:] == ["x", "1"]
 
 
-async def test_a_suspension_is_cut_out_of_the_recording_and_marked(tmp_path: Path) -> None:
-    now = [Instant(wall=STARTED, monotonic=timedelta())]
+def test_a_suspension_is_cut_out_of_the_recording_and_marked() -> None:
+    stream = io.StringIO()
+    now = [timedelta()]
+    recorder = Recorder(stream=stream, elapsed=lambda: now[0], is_recording_input=False, size=(1, 1))
 
-    def suspended_for_ten_seconds(streams: TerminalStreams) -> None:
-        now[0] += timedelta(seconds=10)
+    now[0] = timedelta(seconds=1)
+    recorder.suspend()
+    now[0] += timedelta(seconds=10)
+    recorder.resume()
+    now[0] += timedelta(seconds=2)
+    recorder.output("a")
 
+    events = times(json.loads(line) for line in stream.getvalue().splitlines())
+    assert [(time, code, data) for time, code, data in events] == [(1000, "m", SUSPENDED), (3000, "o", "a")]
+
+
+async def test_an_app_marks_where_it_was_suspended_in_its_recording(tmp_path: Path) -> None:
     path = tmp_path / "x.cast"
-    await app(
-        typing(),
-        headless=True,
-        dimensions=(10, 2),
-        clock=lambda: now[0],
-        autopilot=[
-            AdvanceClock(by=timedelta(seconds=1)),
-            Suspend(handler=suspended_for_ten_seconds),
-            AdvanceClock(by=timedelta(seconds=2)),
-            KeyPressed(key="a"),
-            Quit(),
-        ],
-        recording=Recording(path),
-    )
 
-    events = times(read(path)[1])
-    assert [(time, data) for time, code, data in events if code == "m"] == [(1000, SUSPENDED)]
-    assert [time for time, code, _ in events if code == "o"][-1] == 3000
+    await record(path, [AdvanceClock(by=timedelta(seconds=1)), Suspend(handler=lambda streams: None)])
+
+    assert [(time, data) for time, code, data in times(read(path)[1]) if code == "m"] == [(1000, SUSPENDED)]
 
 
 async def test_a_headful_recording_holds_what_the_app_draws_on_its_terminal(tmp_path: Path, terminal: Terminal) -> None:

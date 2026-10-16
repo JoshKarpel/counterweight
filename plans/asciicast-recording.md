@@ -8,6 +8,7 @@ the format [asciinema-player](https://docs.asciinema.org/manual/player/) plays b
 whether it runs on a terminal or headless under an autopilot.
 It adds two autopilot steps that wait, `Wait` and `WaitFor`, so an autopilot can let real work finish,
 and a `Marker` control that marks chapters in a recording.
+It makes the app's clock one of exactly two, the system's or a frozen one that only the autopilot moves.
 It ends with the docs showing recordings of examples beside their screenshots.
 It doesn't cover recording a program the app hands the terminal to while suspended,
 or a CLI command that records an app.
@@ -27,8 +28,8 @@ Timestamping events with that one reading covers both uses:
 
 | Clock | Where it comes from | What the recording's timing is |
 | --- | --- | --- |
-| `system_clock` (the default) | headful use, or an autopilot that waits on real work | real time: the app records itself, with no `asciinema rec` |
-| `frozen_clock` | a scripted autopilot | only the `AdvanceClock`s: a 10-minute timer records in milliseconds, the same on every run |
+| `SystemClock()` (the default) | headful use, or an autopilot that waits on real work | real time: the app records itself, with no `asciinema rec` |
+| `FrozenClock(start)` | a scripted autopilot | the `AdvanceClock`s, and the real time its waits take: a 10-minute timer records in milliseconds, the same on every run unless it waits |
 
 ## How the web does it
 
@@ -49,6 +50,13 @@ Two of their answers carry over:
 Where counterweight differs: Playwright can't fake time in a recording,
 and its clock mocking ([`page.clock`](https://playwright.dev/docs/clock)) is separate from its video.
 Counterweight's recording reads the app's clock, so a frozen clock makes the recording's time fake too.
+
+`page.clock` is also the model for the clocks themselves.
+A test gets real time, or a fake clock it controls:
+`pauseAt` stops time, `fastForward` jumps it, and `resume` lets it flow in real time again.
+Sinon's and Jest's fake timers offer the same two modes, and none of them take an arbitrary time source.
+`AdvanceClock` is counterweight's `fastForward`,
+and a frozen clock runs in real time while the autopilot waits, as if each wait were a `resume` and a pause.
 
 ## Public API
 
@@ -98,11 +106,9 @@ WaitFor(condition: Callable[[Frame], bool], timeout: timedelta)
 Autopilot steps, not controls: a handler has nothing to wait for, so the autopilot's type grows
 to `AnyEvent | AnyControl | Wait | WaitFor`, named `AutopilotStep`, in a new `counterweight.autopilot` module.
 
-- `Wait` holds the autopilot back for `duration` of real time,
-  measured on the event loop's clock, not the app's.
+- `Wait` holds the autopilot back for `duration` of real time, measured on the event loop's clock.
   The app keeps rendering and handling events meanwhile, so a subprocess's output arrives and paints.
-  With a `system_clock` the app's time passes as it waits; with a `frozen_clock` it doesn't,
-  and `AdvanceClock` is still what moves app time.
+  The app's time passes as it waits, with either clock (see below).
 - `WaitFor` holds the autopilot back until `condition` is true of a rendered frame,
   checked after each render, and raises `AutopilotTimedOut` if `timeout` passes first.
   It's the one to reach for when waiting on work like a subprocess, as Playwright's docs recommend,
@@ -111,6 +117,34 @@ to `AnyEvent | AnyControl | Wait | WaitFor`, named `AutopilotStep`, in a new `co
   (`current_paint`), and `WaitFor` hands the condition a copy of it, as `Screenshot` does,
   so conditions can read it with `frame.text(ansi=False)`.
   A condition sees what's drawn and not app state, as Playwright's locators see the page and not the app's state.
+
+### `SystemClock` and `FrozenClock`
+
+```python
+SystemClock(timezone: tzinfo = UTC)
+FrozenClock(start: datetime)
+
+type Clock = SystemClock | FrozenClock
+```
+
+`app`'s `clock` is one of two frozen dataclasses, not an arbitrary callable,
+so the render loop knows what each means and computes a frozen clock's time itself.
+
+- `SystemClock` reads the system's time in `timezone`, UTC unless it's given another,
+  and ticks follow that zone, so an app that wants local midnight asks for its zone.
+  Time passes on it as it really does, waits included.
+- `FrozenClock` reads `start` (which must have a timezone) moved on by the `AdvanceClock`s
+  and by the real time the autopilot has spent waiting:
+  each `Wait` exactly its duration, however late the event loop wakes from it,
+  and each `WaitFor` until its condition held.
+  While a wait is in progress the clock runs in real time,
+  so a component that reads it, such as a spinner, keeps moving while the work goes on.
+  Each step of an autopilot picks its own kind of time:
+  an `AdvanceClock` skips ahead, and a wait lets the time the work really takes pass.
+
+Waiting brings real time into a frozen clock, so an autopilot that waits doesn't record the same thing on every run:
+frames during a wait are timed by when the event loop wakes, and a `WaitFor` moves the clock by however long the work took.
+The docstrings and the docs page warn about it, in a `!!! warning` admonition.
 
 Pacing a scripted autopilot needs no new API:
 [`more_itertools.intersperse`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse)
@@ -179,7 +213,10 @@ and the intervals of a frozen-clock recording are exactly its `AdvanceClock`s.
    The loop's `for ap in chain(autopilot, repeat(None))` becomes a step that yields nothing while a wait is pending,
    and the queue's timeout wakes for the earliest of the next clock tick, the end of a `Wait`,
    and the timeout of a `WaitFor`.
-5. **`Marker`** in `controls.py`, handled by recording an `m` event.
+   The autopilot keeps how long its waits have taken, which `read_clock()` hands the clock.
+5. **Clocks** (`counterweight/clock.py`): `SystemClock`, `FrozenClock`, and a pure `reading(clock, waited)`
+   that gives each one's time, with the system's clock ignoring `waited`, which real time has already passed.
+6. **`Marker`** in `controls.py`, handled by recording an `m` event.
 
 ## Tests
 
@@ -191,24 +228,33 @@ and the intervals of a frozen-clock recording are exactly its `AdvanceClock`s.
   and that a paste's and a mouse event's do.
 - A resize records an `r`, a `Marker` an `m`, and quitting an `x` of `0`; an error records `x` of `1`.
 - A `Marker` without a recording does nothing.
-- A suspension's time is cut out of later timestamps, and a `suspended` marker is recorded at the cut.
+- A suspension's time is cut out of later timestamps, and a `suspended` marker is recorded at the cut,
+  tested on the `Recorder` with an injected time source, since neither clock moves during a suspension handler.
 - An autopilot recording with `input` left alone records no `i` events.
 - `WaitFor` releases the autopilot on the first frame its condition holds for, and raises `AutopilotTimedOut` after its timeout.
 - `WaitFor`'s condition sees the whole screen, including cells the last frame's diff didn't touch.
 - `Wait` holds the autopilot while events keep being handled, using a short duration
   and asserting order (an event put during the wait is handled before the next step), not elapsed time.
+- The time the autopilot has waited: a `Wait` counts no more than its duration however late it ends,
+  a `WaitFor` counts until its condition held, and waits add up.
+- A frozen clock runs while the autopilot waits: a component ticking every 10 ms reaches a count a `WaitFor` waits for,
+  and a `Wait` moves a frozen-clock recording on by exactly its duration.
+- `SystemClock` reads UTC unless given a timezone, and ignores the time waited;
+  `FrozenClock` reads its start plus the time waited, and rejects a naive start.
 - Coverage stays at 100%.
 
 ## Docs
 
 - **A page, "Autopilot and Recording"**, since autopilot has no page of its own:
-  driving an app with an autopilot, `frozen_clock` and `AdvanceClock`, `Wait` and `WaitFor`,
+  driving an app with an autopilot, `FrozenClock` and `AdvanceClock`, `Wait` and `WaitFor`
+  with the warning that waiting brings real time into a frozen clock,
   pacing with `intersperse`, `Recording` with the warning about `input`, and `Marker`.
 - **Recordings of examples.**
   Example modules declare a `CASTS` list of `CastSpec(root, asset, dimensions, steps)` beside `SCREENSHOTS`,
   and `docs.examples.generate_screenshots` renders them to `docs/assets/<asset>.cast`
   with the frozen clock, writing only what changed, so the pre-commit hook regenerates them without churn.
-  Docs recordings use the frozen clock only: a real-clock `Wait` would change the file on every run.
+  Docs recordings pace their steps with `AdvanceClock` only: a wait would change the file on every run.
+- **`use_clock`'s page** says the clock reads UTC, and shows `SystemClock(timezone=...)` for another zone.
   First candidates: the spinner, typing into the text input, the lap timer, and the tailing scroll area.
 - **asciinema-player 3.17.0**, vendored into `docs/assets/vendor/` (its JS and CSS, version in the path)
   and loaded through `extra_javascript` and `extra_css`, so the docs build offline

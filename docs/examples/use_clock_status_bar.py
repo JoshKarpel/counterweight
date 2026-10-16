@@ -16,7 +16,7 @@ from docs.examples.screenshot_spec import ScreenshotSpec
 @component
 def wall_clock() -> Text:
     tick = use_clock(timedelta(minutes=1))
-    return Text(content=f"{tick.now:%H:%M}", style=text_color("amber", 400))
+    return Text(content=f"{tick.now:%H:%M %Z}", style=text_color("amber", 400))
 
 
 @component

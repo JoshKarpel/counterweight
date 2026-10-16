@@ -71,10 +71,10 @@ class Recording:
 
     The recording holds what the app draws, as it draws it on a terminal,
     with each frame's time as the app's clock reads it:
-    with [`system_clock`][counterweight.clock.system_clock] that's real time,
-    and with a [`frozen_clock`][counterweight.clock.frozen_clock] only
-    [`AdvanceClock`][counterweight.controls.AdvanceClock] moves it,
-    so an autopilot can record a minute of an app in milliseconds, the same on every run.
+    with a [`SystemClock`][counterweight.clock.SystemClock] that's real time,
+    and with a [`FrozenClock`][counterweight.clock.FrozenClock] only the autopilot moves it,
+    so an autopilot can record a minute of an app in milliseconds, the same on every run
+    unless it waits in real time.
     [`Marker`][counterweight.controls.Marker] marks a point in it that players can jump to.
 
     While the app is suspended, the recording can't see what the program it hands the terminal to draws,

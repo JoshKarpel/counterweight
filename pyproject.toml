@@ -215,8 +215,9 @@ convention = "google"  # mkdocstrings' default docstring style
 force-single-line = true
 
 [tool.ruff.lint.flake8-bugbear]
-# Styles are immutable values, so they're safe as defaults.
+# Styles and clocks are immutable values, so they're safe as defaults.
 extend-immutable-calls = [
+    "counterweight.clock.SystemClock",
     "counterweight.styles.Style",
     "counterweight.styles.CellStyle",
     "counterweight.styles.styles.Style",

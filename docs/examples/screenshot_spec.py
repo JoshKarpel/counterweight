@@ -29,7 +29,8 @@ class ScreenshotSpec:
 
     `events` are fed to the app before the screenshot is taken,
     so one example can be shown in several states.
-    The app's clock is frozen, so an `AdvanceClock` among them is the only way time passes.
+    The app's clock is frozen, so an `AdvanceClock` among them is the only way time passes
+    that comes out the same on every run.
     """
 
     root: Component
@@ -54,8 +55,8 @@ class CastSpec:
     A headless recording of `root` at `dimensions` as `steps` drive it, saved as `docs/assets/<asset>.cast`,
     which a page plays where it has a `<!-- cast: <asset> -->` line.
 
-    The app's clock is frozen, so the `AdvanceClock`s among `steps` are the only time that passes in the recording,
-    which comes out the same on every run.
+    The app's clock is frozen, so the `AdvanceClock`s among `steps` are the time that passes in the recording,
+    which comes out the same on every run as long as no step waits in real time.
     Its input is recorded too, so the player can show the keys as they're pressed.
     """
 

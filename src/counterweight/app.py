@@ -41,7 +41,8 @@ from counterweight.autopilot import AutopilotStep
 from counterweight.border_healing import heal_borders
 from counterweight.clock import Clock
 from counterweight.clock import Instant
-from counterweight.clock import system_clock
+from counterweight.clock import SystemClock
+from counterweight.clock import reading
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
@@ -194,7 +195,7 @@ async def app(
     dimensions: tuple[int, int] | None = None,
     autopilot: Iterable[AutopilotStep] = (),
     check_purity: bool = False,
-    clock: Clock = system_clock,
+    clock: Clock = SystemClock(),
     log_levels: Mapping[str, int] = frozendict(),
     title: str | None = None,
     unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
@@ -230,7 +231,8 @@ async def app(
             raising `StaleMemo` if the result differs, naming the component and the hook.
             It costs as much as a render that re-runs everything, so turn it on in tests rather than in production.
         clock: Where [`use_clock`][counterweight.hooks.use_clock] reads the time, once per render.
-            Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to make output that doesn't depend on
+            The [`SystemClock`][counterweight.clock.SystemClock] reads the time in UTC unless it's given a timezone.
+            Pass a [`FrozenClock`][counterweight.clock.FrozenClock] to make output that doesn't depend on
             when the application runs, such as a screenshot, and move it with the
             [`AdvanceClock`][counterweight.controls.AdvanceClock] control.
         log_levels: Levels by logger name, with `""` the root logger, as in `logging.config`,
@@ -388,15 +390,19 @@ async def render_loop(
 
         do_heal_borders = True
 
-        started = clock()
+        pilot = Autopilot(steps=iter(autopilot))
+        started = reading(clock, timedelta())
         clock_offset = timedelta()
 
         def read_clock() -> Instant:
-            """The time now, moved on by any `AdvanceClock`, with its monotonic time measured from the start."""
-            reading = clock()
+            """
+            The time now, after the autopilot's waits so far, moved on by any `AdvanceClock`,
+            with its monotonic time measured from the start.
+            """
+            now = reading(clock, pilot.time_waited(loop.time()))
             return Instant(
-                wall=reading.wall + clock_offset,
-                monotonic=reading.monotonic - started.monotonic + clock_offset,
+                wall=now.wall + clock_offset,
+                monotonic=now.monotonic - started.monotonic + clock_offset,
             )
 
         if recording is not None:
@@ -513,8 +519,6 @@ async def render_loop(
 
         mouse_position = Position(x=-1, y=-1)
         press: Press | None = None
-
-        pilot = Autopilot(steps=iter(autopilot))
 
         def frame_on_screen() -> Frame:
             """A copy of the frame on screen, so a condition that changes its frame can't change `current_paint`."""

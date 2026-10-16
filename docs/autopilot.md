@@ -33,8 +33,8 @@ await app(
 ## Controlling time
 
 An app reads the time from its `clock`, the system's by default.
-A [`frozen_clock`][counterweight.clock.frozen_clock] reads the same time until
-[`AdvanceClock`][counterweight.controls.AdvanceClock] moves it on,
+A [`FrozenClock`][counterweight.clock.FrozenClock] reads the same time until the autopilot moves it on,
+with [`AdvanceClock`][counterweight.controls.AdvanceClock] or by [waiting](#waiting-for-real-work),
 so an autopilot can show a minute of a clock-driven app in milliseconds,
 and show the same thing on every run.
 To pace an autopilot, put an `AdvanceClock` between its steps with
@@ -47,7 +47,7 @@ await app(
     search(),
     headless=True,
     dimensions=(30, 8),
-    clock=frozen_clock(datetime(2026, 3, 14, tzinfo=UTC)),
+    clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
     autopilot=[*intersperse(AdvanceClock(by=timedelta(milliseconds=300)), typed), Quit()],
 )
 ```
@@ -79,9 +79,21 @@ await app(
 )
 ```
 
-Both wait in real time, measured on the event loop's clock rather than the app's:
-with a `frozen_clock` the app's time stands still while the autopilot waits,
-and only `AdvanceClock` moves it.
+Both wait in real time, and a `FrozenClock` runs in real time while they do,
+so a component that reads the clock, such as a spinner, keeps moving while the work goes on.
+Each step of an autopilot can pick its own kind of time:
+an `AdvanceClock` skips ahead at once, and a wait lets the time the work really takes pass.
+A `Wait` moves the clock on by exactly its duration,
+and a `WaitFor` by however long its condition took to hold.
+
+!!! warning "Waiting brings real time into a frozen clock"
+
+    An app under an autopilot that waits doesn't come out the same on every run, even with a `FrozenClock`.
+    The frames it renders during a wait are timed by when the event loop wakes,
+    and a `WaitFor` moves the clock on by however long the work took,
+    which shifts everything the app shows of the time from then on.
+    For screenshots and recordings that must not change between runs,
+    such as ones checked into a repository, pace the autopilot with `AdvanceClock` alone.
 
 ## Recording
 
@@ -97,8 +109,8 @@ which a player applies to the screen it already shows, as a terminal does.
 Each frame is timed by the app's clock.
 With the system's clock, run the app on a terminal and use it,
 and it records itself, with no `asciinema rec` around it.
-With a `frozen_clock` and an autopilot, its timing is the autopilot's `AdvanceClock`s,
-so it records as fast as the app renders and comes out the same on every run,
+With a `FrozenClock` and an autopilot, its timing is the autopilot's `AdvanceClock`s and waits,
+so with no waits it records as fast as the app renders and comes out the same on every run,
 as this one, from the [spinner recipe](cookbook/spinners.md), does:
 
 <!-- cast: spinner -->

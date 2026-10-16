@@ -27,7 +27,7 @@ class Tick:
     """
 
     now: datetime
-    """The wall-clock time, in the clock's timezone: the local one unless the app is given another clock."""
+    """The wall-clock time, in the clock's timezone: UTC unless the app's clock is given another."""
 
     since_start: timedelta
     """How long the app had been running."""

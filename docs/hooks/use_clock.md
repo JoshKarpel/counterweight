@@ -29,6 +29,23 @@ so call `use_clock` in the component that shows the time,
 not in one that also renders things that don't change with it.
 See [Performance](../performance.md#which-components-run-in-a-frame).
 
+## Time zones
+
+The app's clock reads the wall-clock time in UTC,
+so an app shows the same time wherever it runs unless it asks for another zone.
+Give `app` a [`SystemClock`][counterweight.clock.SystemClock] with a `timezone`
+to read the time in that zone instead:
+
+```python
+await app(status_bar(), clock=SystemClock(timezone=ZoneInfo("America/New_York")))
+```
+
+Ticks follow the clock's zone too, so an `interval` of a day ticks at that zone's midnight.
+Converting a UTC reading with `tick.now.astimezone(zone)` shows the right time,
+but its ticks still start on UTC's boundaries:
+a day-long tick at UTC's midnight rather than the zone's,
+and an hour-long tick off the zone's hour where it's offset by a fraction of one, such as India's.
+
 ## Timing from an event
 
 `since_mount` is how long the component has been mounted.
@@ -92,7 +109,7 @@ It also needs no state or effect, so a tick re-renders once instead of twice.
 
 ## Testing
 
-Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to `app` to fix the time,
+Pass a [`FrozenClock`][counterweight.clock.FrozenClock] to `app` to fix the time,
 and move it on with [`AdvanceClock`][counterweight.controls.AdvanceClock] in the autopilot,
 so a test or a screenshot doesn't depend on when it runs or how long it takes:
 
@@ -101,7 +118,7 @@ async def test_the_lap_timer_counts_from_the_last_lap() -> None:
     await app(
         lap_timer(),
         headless=True,
-        clock=frozen_clock(datetime(2026, 3, 14, 15, 9, 26)),
+        clock=FrozenClock(datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC)),
         autopilot=[
             AdvanceClock(by=timedelta(seconds=75)),
             KeyPressed(key=Key.Space),
@@ -117,6 +134,6 @@ async def test_the_lap_timer_counts_from_the_last_lap() -> None:
 
 ::: counterweight.hooks.use_clock
 ::: counterweight.hooks.Tick
-::: counterweight.clock.frozen_clock
-::: counterweight.clock.system_clock
+::: counterweight.clock.FrozenClock
+::: counterweight.clock.SystemClock
 ::: counterweight.clock.Instant

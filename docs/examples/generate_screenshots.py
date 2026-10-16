@@ -23,7 +23,7 @@ from tempfile import TemporaryDirectory
 import docs.examples
 from counterweight.app import app
 from counterweight.asciicast import Recording
-from counterweight.clock import frozen_clock
+from counterweight.clock import FrozenClock
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.output import Frame
@@ -68,7 +68,7 @@ async def render(spec: ScreenshotSpec) -> None:
         dimensions=spec.dimensions,
         autopilot=[*spec.events, Screenshot(handler=functools.partial(write_files, spec)), Quit()],
         check_purity=True,
-        clock=frozen_clock(SCREENSHOT_TIME),
+        clock=FrozenClock(SCREENSHOT_TIME),
     )
 
 
@@ -85,7 +85,7 @@ async def record(spec: CastSpec) -> None:
             dimensions=spec.dimensions,
             autopilot=[*spec.steps, Quit()],
             check_purity=True,
-            clock=frozen_clock(SCREENSHOT_TIME),
+            clock=FrozenClock(SCREENSHOT_TIME),
             recording=Recording(recorded, input=True),
         )
         write_if_changed(spec.cast_path, recorded.read_text())

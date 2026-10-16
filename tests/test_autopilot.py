@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from asyncio import Event
 from asyncio import wait_for
+from datetime import UTC
+from datetime import datetime
 from datetime import timedelta
 
 import pytest
@@ -12,6 +14,7 @@ from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import AutopilotTimedOut
 from counterweight.autopilot import Wait
 from counterweight.autopilot import WaitFor
+from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import Quit
@@ -20,6 +23,7 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from counterweight.output import Frame
@@ -101,6 +105,46 @@ def test_a_wait_for_whose_condition_never_holds_times_out() -> None:
     assert pilot.next(4.9, blank) is None
     with pytest.raises(AutopilotTimedOut, match="never"):
         pilot.next(5, blank)
+
+
+def test_an_autopilot_that_has_not_waited_has_waited_no_time() -> None:
+    assert Autopilot(steps=iter([Quit()])).time_waited(10) == timedelta()
+
+
+def test_a_wait_counts_the_time_it_has_waited_so_far() -> None:
+    pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
+    pilot.next(10, blank)
+
+    assert pilot.time_waited(11.5) == timedelta(seconds=1.5)
+
+
+def test_a_wait_counts_no_more_than_its_duration_however_late_it_ends() -> None:
+    pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
+    pilot.next(10, blank)
+    pilot.next(12.75, blank)
+
+    assert pilot.time_waited(20) == timedelta(seconds=2)
+
+
+def test_a_wait_for_counts_the_time_until_its_condition_holds() -> None:
+    shown = [False]
+    pilot = Autopilot(steps=iter([WaitFor(lambda frame: shown[0], timeout=timedelta(seconds=5)), Quit()]))
+    pilot.next(10, blank)
+    shown[0] = True
+    pilot.next(13.25, blank)
+
+    assert pilot.time_waited(20) == timedelta(seconds=3.25)
+
+
+def test_the_time_waited_adds_up_across_waits() -> None:
+    pilot = Autopilot(
+        steps=iter([Wait(timedelta(seconds=2)), KeyPressed(key="a"), WaitFor(never, timeout=timedelta(seconds=9))])
+    )
+    pilot.next(10, blank)
+    pilot.next(12.5, blank)
+    pilot.next(13, blank)
+
+    assert pilot.time_waited(14) == timedelta(seconds=3)
 
 
 def test_an_autopilot_that_is_not_waiting_has_no_deadline() -> None:
@@ -205,3 +249,47 @@ async def test_a_wait_for_sees_the_whole_screen_not_only_what_the_last_frame_cha
     )
 
     assert frames[0].text(ansi=False) == "ac"
+
+
+@component
+def time_since_mount() -> Text:
+    tick = use_clock(timedelta(milliseconds=10))
+    return Text(content=f"{tick.since_mount // timedelta(milliseconds=10)}")
+
+
+async def test_a_frozen_clock_runs_while_the_autopilot_waits_for_a_condition() -> None:
+    frames: list[Frame] = []
+
+    await wait_for(
+        app(
+            time_since_mount(),
+            headless=True,
+            dimensions=(4, 1),
+            clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
+            autopilot=[
+                WaitFor(lambda frame: frame.text(ansi=False).strip() == "3", timeout=timedelta(seconds=5)),
+                Screenshot(frames.append),
+                Quit(),
+            ],
+        ),
+        timeout=TIMEOUT,
+    )
+
+    assert frames[0].text(ansi=False).strip() == "3"
+
+
+async def test_a_wait_moves_a_frozen_clock_on_by_exactly_its_duration() -> None:
+    frames: list[Frame] = []
+
+    await wait_for(
+        app(
+            time_since_mount(),
+            headless=True,
+            dimensions=(4, 1),
+            clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
+            autopilot=[Wait(timedelta(milliseconds=55)), Screenshot(frames.append), Quit()],
+        ),
+        timeout=TIMEOUT,
+    )
+
+    assert frames[0].text(ansi=False).strip() == "5"

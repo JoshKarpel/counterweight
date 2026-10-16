@@ -95,7 +95,7 @@ def time() -> Text:
     tick = use_clock(timedelta(seconds=1))
 
     return Text(
-        content=f"{tick.now:%Y-%m-%d %H:%M:%S}",
+        content=f"{tick.now:%Y-%m-%d %H:%M:%S %Z}",
         style=text_color("rose", 500) | border_color("teal", 600) | pad(1) | border | border_lightrounded,
     )
 

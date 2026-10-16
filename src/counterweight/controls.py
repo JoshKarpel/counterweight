@@ -356,7 +356,7 @@ class AdvanceClock(_Control):
     Move the application's clock forward by `by`, as if that much more time had passed,
     and render the components whose [`use_clock`][counterweight.hooks.use_clock] that makes due.
 
-    This is primarily useful in an autopilot, with a [`frozen_clock`][counterweight.clock.frozen_clock],
+    This is primarily useful in an autopilot, with a [`FrozenClock`][counterweight.clock.FrozenClock],
     to show how an app changes over time without waiting for it.
     """
 
