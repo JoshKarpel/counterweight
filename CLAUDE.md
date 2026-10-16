@@ -135,6 +135,8 @@ and hand-written utility functions need a docstring to describe them there.
 `codegen/generate_logo.py` draws every file in `docs/assets/logo/`
 from the JetBrains Mono outlines in `codegen/fonts/`, so `just codegen` regenerates them and nothing edits them by hand.
 They live apart from the screenshots because the screenshot generator fails on any `docs/assets/*.svg` no example writes.
+The favicon's PNGs aren't committed, because Pillow encodes the same pixels to different bytes on macOS and Linux:
+`mkdocs_hooks/logo_icons.py` draws them into the site on every docs build.
 The text logo in `counterweight --help` is `LOGO` in `src/counterweight/cli.py`.
 
 ## Docs Screenshots

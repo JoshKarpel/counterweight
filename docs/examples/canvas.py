@@ -1,10 +1,8 @@
 import asyncio
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 
-from PIL import Image
-
+from codegen.generate_logo import icons
 from counterweight.app import app
 from counterweight.components import component
 from counterweight.elements import Canvas
@@ -114,8 +112,8 @@ def fits() -> Div:
 
 # --8<-- [start:image]
 
-# Decode the image once, before the app starts, rather than in a render.
-LOGO = Pixels.from_image(Image.open(Path(__file__).parent.parent / "assets" / "logo" / "favicon.png"))
+# Convert the image once, before the app starts, rather than in a render.
+LOGO = Pixels.from_image(icons()["favicon.png"])
 
 
 @component

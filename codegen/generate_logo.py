@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Draws counterweight's logo into `docs/assets/logo/`: the wordmark (`counter`, a line falling one terminal cell per row,
-then `weight` a row lower) for dark and light backgrounds, and the `c╱w` favicon.
+then `weight` a row lower) for dark and light backgrounds, and the `c╱w` favicon,
+whose PNGs `icons` draws for `mkdocs_hooks/logo_icons.py` to add to the docs site.
 
 The letters are JetBrains Mono's outlines (from `codegen/fonts/`, version 2.304) rather than text,
 because docs pages and READMEs show these files as images, which can't load fonts.
@@ -133,6 +134,14 @@ class Metrics:
     units_per_em: int
     cell_width: int
     x_height: int
+
+    @classmethod
+    def of(cls, font: TTFont) -> Metrics:
+        return cls(
+            units_per_em=font["head"].unitsPerEm,
+            cell_width=font["hmtx"][font.getBestCmap()[ord("0")]][0],
+            x_height=font["OS/2"].sxHeight,
+        )
 
 
 WORDMARK = Mark(
@@ -286,25 +295,36 @@ def icon_png(drawing: Drawing, place: Placement, pixels: int, radius: float) -> 
     return image.resize((pixels, pixels), Image.Resampling.LANCZOS)
 
 
+def light_font() -> TTFont:
+    return instantiateVariableFont(TTFont(FONT), {"wght": LIGHT})
+
+
+def icons() -> dict[str, Image.Image]:
+    """
+    The favicon's PNGs, by file name.
+    The docs build adds them to the site rather than the repository holding them:
+    Pillow's wheels compress with a different zlib-ng build on each platform,
+    so the same pixels encode to different bytes on macOS than on Linux.
+    """
+    monogram = layout(MONOGRAM, Metrics.of(light_font()))
+    place = icon_placement(monogram)
+    return {
+        "favicon.png": icon_png(monogram, place, pixels=32, radius=ICON_RADIUS),
+        # iOS rounds the corners of a touch icon itself, so it gets a square tile.
+        "apple-touch-icon.png": icon_png(monogram, place, pixels=180, radius=0),
+    }
+
+
 def main() -> None:
-    outlines = {weight: instantiateVariableFont(TTFont(FONT), {"wght": weight}) for weight in (LIGHT, BOLD)}
-    font = outlines[LIGHT]
-    metrics = Metrics(
-        units_per_em=font["head"].unitsPerEm,
-        cell_width=font["hmtx"][font.getBestCmap()[ord("0")]][0],
-        x_height=font["OS/2"].sxHeight,
-    )
+    outlines = {LIGHT: light_font(), BOLD: instantiateVariableFont(TTFont(FONT), {"wght": BOLD})}
+    metrics = Metrics.of(outlines[LIGHT])
 
     wordmark = layout(WORDMARK, metrics)
     (ASSETS / "wordmark-dark.svg").write_text(wordmark_svg(wordmark, outlines, ON_DARK, pixels_per_em=40))
     (ASSETS / "wordmark-light.svg").write_text(wordmark_svg(wordmark, outlines, ON_LIGHT, pixels_per_em=40))
 
     monogram = layout(MONOGRAM, metrics)
-    place = icon_placement(monogram)
-    (ASSETS / "favicon.svg").write_text(icon_svg(monogram, outlines, place))
-    icon_png(monogram, place, pixels=32, radius=ICON_RADIUS).save(ASSETS / "favicon.png", optimize=True)
-    # iOS rounds the corners of a touch icon itself, so it gets a square tile.
-    icon_png(monogram, place, pixels=180, radius=0).save(ASSETS / "apple-touch-icon.png", optimize=True)
+    (ASSETS / "favicon.svg").write_text(icon_svg(monogram, outlines, icon_placement(monogram)))
 
 
 if __name__ == "__main__":

@@ -32,9 +32,9 @@ test *ARGS:
 
 alias t := test
 
-[doc('Serve documentation locally, restarting when the config, a hook, or a screenshot changes')]
+[doc('Serve documentation locally, restarting when the config, a hook, a screenshot, or the logo changes')]
 docs-serve PORT="8000":
-    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/
+    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/ codegen/generate_logo.py
 
 alias d := docs-serve
 
