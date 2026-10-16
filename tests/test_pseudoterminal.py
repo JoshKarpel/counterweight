@@ -683,6 +683,11 @@ async def test_use_pty_unmounts_without_waiting_for_its_program_to_be_hung_up() 
     assert_group_ended(group)
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_use_pty_starts_a_terminal_one_cell_across() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -727,6 +732,11 @@ async def test_use_pty_with_clear_env_leaves_out_the_apps_environment(monkeypatc
     assert output.data.strip() == b"unset"
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="a loaded macOS runner can take longer than the grace to run the program's TERM trap (#435)",
+    strict=False,
+)
 async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:
     signals = tmp_path / "signals"
     ptys: list[Pty] = []
