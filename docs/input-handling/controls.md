@@ -25,6 +25,7 @@ Code outside a handler, such as an effect, sends controls with [`use_controls`](
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
 ::: counterweight.controls.AdvanceClock
+::: counterweight.controls.Marker
 
 ### Focus
 

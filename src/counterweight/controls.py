@@ -356,11 +356,23 @@ class AdvanceClock(_Control):
     Move the application's clock forward by `by`, as if that much more time had passed,
     and render the components whose [`use_clock`][counterweight.hooks.use_clock] that makes due.
 
-    This is primarily useful in an autopilot, with a [`frozen_clock`][counterweight.clock.frozen_clock],
+    This is primarily useful in an autopilot, with a [`FrozenClock`][counterweight.clock.FrozenClock],
     to show how an app changes over time without waiting for it.
     """
 
     by: timedelta
+
+
+@dataclass(frozen=True, slots=True)
+class Marker(_Control):
+    """
+    Mark this point in the app's [`Recording`][counterweight.asciicast.Recording] with `label`,
+    which asciinema-player shows as a chapter to jump to,
+    such as each step of an autopilot's demo, or each view a user opens.
+    It does nothing if the app isn't recording.
+    """
+
+    label: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -459,6 +471,7 @@ AnyControl = (
     | FocusOn
     | ClearFocus
     | AdvanceClock
+    | Marker
     | ScrollTo
     | ScrollBy
     | ScrollIntoView

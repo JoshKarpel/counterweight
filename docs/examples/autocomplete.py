@@ -5,6 +5,7 @@ import glob
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import replace
+from datetime import timedelta
 from fnmatch import fnmatchcase
 from functools import partial
 
@@ -39,7 +40,9 @@ from counterweight.keys import Key
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:example]
 
@@ -243,6 +246,19 @@ SCREENSHOTS = [
         DIMENSIONS,
         events=(TAB, TAB, *typed("3"), *(MouseScrolledDown(absolute=Position(4, 1)) for _ in range(3))),
     ),
+]
+
+
+CASTS = [
+    CastSpec(
+        root(),
+        "autocomplete",
+        DIMENSIONS,
+        steps=paced(
+            [*typed("py"), DOWN, DOWN, KeyPressed(key=Key.Enter), TAB, TAB, TAB, TAB, *typed("dc"), DOWN],
+            every=timedelta(milliseconds=400),
+        ),
+    )
 ]
 
 

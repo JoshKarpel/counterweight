@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import component
@@ -19,7 +20,9 @@ from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:example]
 
@@ -123,6 +126,26 @@ SCREENSHOTS = [
     ScreenshotSpec(root(), "prefix-keys", (60, 5), events=TYPED),
     ScreenshotSpec(root(), "prefix-keys-armed", (60, 5), events=ARMED),
     ScreenshotSpec(root(), "prefix-keys-new-pane", (60, 5), events=NEW_PANE),
+]
+
+
+CASTS = [
+    CastSpec(
+        root(),
+        "prefix-keys",
+        (60, 5),
+        steps=paced(
+            [
+                *NEW_PANE,
+                KeyPressed(key=Key.ControlB),
+                KeyPressed(key="n"),
+                KeyPressed(key="!"),
+                KeyPressed(key=Key.ControlB),
+                KeyPressed(key="x"),
+            ],
+            every=timedelta(milliseconds=500),
+        ),
+    )
 ]
 
 

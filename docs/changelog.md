@@ -176,8 +176,9 @@
   (the wall-clock time, and how long since the app started and since the component mounted)
   while it stays pure: it re-runs when its next tick starts, ticks follow the wall clock,
   and components reading it in the same frame see the same time.
-  `app` takes a `clock` to read the time from, such as a `frozen_clock` for tests and screenshots,
-  and the `AdvanceClock` control moves it forward.
+  `app` takes a `clock` to read the time from: a `SystemClock`, in UTC unless it's given a timezone,
+  or a `FrozenClock` for tests and screenshots, which only an autopilot moves,
+  and the `AdvanceClock` control moves either forward.
   The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
 
 - Added [`use_controls`](hooks/use_controls.md), which gives a component a sender that hands the app a control
@@ -400,6 +401,26 @@
 
 - [#123](https://github.com/JoshKarpel/counterweight/pull/123)
   Add styling for content area background color.
+
+- Added [recording](autopilot.md#recording): `app` takes a `Recording`, and writes what the app draws,
+  with its timing, to an [asciicast v3](https://docs.asciinema.org/manual/asciicast/v3/) file
+  that asciinema-player and `asciinema play` play back, whether it's headless or on a terminal.
+  Each frame is recorded as the cells it changed, timed by the app's clock,
+  so with a `FrozenClock` an autopilot's `AdvanceClock`s are the recording's timing,
+  and it comes out the same on every run.
+  It records the screen's size when it changes, and how the app exited,
+  and cuts the time the app spends suspended out, with a `suspended` marker where the cut is.
+  `Recording(input=True)` records the input the app handles too; it's off by default, since it records everything typed.
+  The [`Marker`](input-handling/controls.md) control marks a point in the recording that players show as a chapter.
+  The docs play recordings of examples beside their screenshots,
+  which example modules declare in `CASTS` beside `SCREENSHOTS`.
+
+- Added the autopilot steps [`Wait`](autopilot.md#waiting-for-real-work), which holds the autopilot back
+  for a duration of real time, and `WaitFor`, which holds it back until a condition is true of the frame on screen,
+  raising `AutopilotTimedOut` after its timeout,
+  while the app keeps handling events and rendering, so it can wait on work like a subprocess.
+  A `FrozenClock` runs in real time while the autopilot waits,
+  so a recording can show real work at its real pace between steps that `AdvanceClock` paces.
 
 ### Changed
 

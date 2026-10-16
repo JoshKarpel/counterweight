@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import component
@@ -19,7 +20,9 @@ from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:example]
 
@@ -96,6 +99,32 @@ SCREENSHOTS = [
     ScreenshotSpec(root(), "draggable", (40, 10)),
     ScreenshotSpec(root(), "draggable-dragged", (40, 10), events=DRAG),
     ScreenshotSpec(root(), "draggable-past-the-edge", (40, 10), events=DRAG_PAST_THE_EDGE),
+]
+
+
+def drag(start: Position, end: Position, moves: int) -> list[MouseDown | MouseMoved | MouseUp]:
+    """A drag from `start` to `end` in `moves` even steps, as a hand moves the mouse."""
+    path = [
+        Position(start.x + (end.x - start.x) * step // moves, start.y + (end.y - start.y) * step // moves)
+        for step in range(1, moves + 1)
+    ]
+    return [
+        MouseDown(absolute=start, button=1),
+        *(MouseMoved(absolute=position, button=1) for position in path),
+        MouseUp(absolute=end, button=1),
+    ]
+
+
+CASTS = [
+    CastSpec(
+        root(),
+        "draggable",
+        (40, 10),
+        steps=paced(
+            [*drag(Position(5, 3), Position(9, 7), moves=8), *drag(Position(24, 6), Position(44, 14), moves=12)],
+            every=timedelta(milliseconds=60),
+        ),
+    )
 ]
 
 

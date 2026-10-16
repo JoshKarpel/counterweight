@@ -72,6 +72,8 @@ The framework follows a React-like architecture:
 - **Pseudo-terminals** (src/counterweight/pseudoterminal.py): Runs a program on a pseudo-terminal and hands back the bytes it writes: `run_pty` until it exits, and `use_pty` while a component is mounted; hangs the program's process group up when it ends, which the hooks leave to the app's task group so it doesn't hold up rendering
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`, `use_controls`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
+- **Autopilot** (src/counterweight/autopilot.py): What an autopilot drives an app with beyond events and controls, `Wait` and `WaitFor`, which hold it back until real time passes or the screen shows something, and the `Autopilot` that hands the render loop its next step
+- **Recording** (src/counterweight/asciicast.py): `Recording`, which records an app as an asciicast v3 file, the pure encoding of its lines, and the `Recorder` the render loop records each frame's diff, input, resizes, markers and its exit into, timed by the app's clock with suspensions cut out
 - **Shadow tree** (src/counterweight/shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
 - **Layout** (src/counterweight/layout.py): Lays the shadow tree out with [waxy](https://github.com/JoshKarpel/waxy) (taffy's flexbox and grid), wraps text, settles scroll offsets (anchoring, sticking to the end, the scroll controls), and clips
 - **Events and controls** (src/counterweight/events.py, src/counterweight/controls.py): What handlers receive (key presses, pastes, mouse events, and the `Receiver`) and what they return to act on the app (`Quit`, the focus and scroll controls, ...)
@@ -153,6 +155,13 @@ Regenerate them with `uv run python -m docs.examples.generate_screenshots [modul
 Every `docs/assets/<name>.svg` has a plain-text twin, `<name>.txt`:
 read that to check a layout instead of the SVG.
 `mkdocs_hooks/screenshot_tabs.py` shows both in the built docs.
+
+A module may also declare recordings in a `CASTS` list of `CastSpec`s, which the same command records,
+with a frozen clock, to `docs/assets/<name>.cast`; `paced` puts a pause before each step and holds on the last.
+A page plays one with a `<!-- cast: <name> -->` line, which `mkdocs_hooks/casts.py` replaces
+with the element `docs/assets/casts.js` starts the vendored asciinema-player in.
+Files in `docs/assets/vendor/` are third-party releases, kept byte for byte as published with their licenses,
+which pre-commit leaves alone.
 
 ## Project Structure
 

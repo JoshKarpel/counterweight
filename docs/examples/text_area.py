@@ -2,6 +2,7 @@ import asyncio
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import component
@@ -21,7 +22,9 @@ from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.widgets import text_area
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:hook]
 
@@ -139,6 +142,9 @@ SCREENSHOTS = [
     ),
     ScreenshotSpec(notes(), "text-area-notes-pasted", (30, 6), events=(Pasted(text="if done:\n\tship()\n\treturn"),)),
 ]
+
+
+CASTS = [CastSpec(chat(), "text-area-chat", (34, 9), steps=paced(CHATTED, every=timedelta(milliseconds=80)))]
 
 
 if __name__ == "__main__":

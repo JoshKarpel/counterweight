@@ -68,11 +68,12 @@ BELL = "\x07"
 logger = logging.getLogger(__name__)
 
 
+OUTPUT_CONTROL_START = ALT_SCREEN_ON + CURSOR_OFF + CLEAR_SCREEN + SAVE_TITLE
+"""What the app writes when it takes its terminal over, which a recording of it starts with too."""
+
+
 def start_output_control(stream: TextIO) -> None:
-    stream.write(ALT_SCREEN_ON)
-    stream.write(CURSOR_OFF)
-    stream.write(CLEAR_SCREEN)
-    stream.write(SAVE_TITLE)
+    stream.write(OUTPUT_CONTROL_START)
 
     stream.flush()
 

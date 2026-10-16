@@ -6,11 +6,17 @@ edit_uri: edit/main/docs/
 
 extra_css:
   - assets/style.css
+  - assets/vendor/asciinema-player-3.17.0/asciinema-player.css
+
+extra_javascript:
+  - assets/vendor/asciinema-player-3.17.0/asciinema-player.min.js
+  - assets/casts.js
 
 watch:
   - src/
 
 hooks:
+  - mkdocs_hooks/casts.py
   - mkdocs_hooks/examples.py
   - mkdocs_hooks/logo_icons.py
   - mkdocs_hooks/screenshot_tabs.py
@@ -163,6 +169,7 @@ nav:
     - cookbook/prefix-keys.md
     - cookbook/spinners.md
   - performance.md
+  - autopilot.md
   - utilities.md
   - Under the Hood:
     - under-the-hood/index.md

@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Callable
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import Component
@@ -31,7 +32,9 @@ from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:example]
 
@@ -273,6 +276,29 @@ SCREENSHOTS = [
     ScreenshotSpec(order_form(), "focus-form-modal-tab", (40, 14), events=MODAL_TABBED),
     ScreenshotSpec(order_form(), "focus-form-modal-closed", (40, 14), events=MODAL_CLOSED),
     ScreenshotSpec(order_form(), "focus-form-help", (40, 14), events=(*press(*HELP_PANEL), KeyPressed(key=Key.Right))),
+]
+
+
+CASTS = [
+    CastSpec(
+        order_form(),
+        "focus-form",
+        (40, 14),
+        steps=paced(
+            [
+                ENTER,
+                *press(*GIFT_WRAP_LABEL),
+                ENTER,
+                ENTER,
+                TAB,
+                TAB,
+                ENTER,
+                *press(*HELP_PANEL),
+                KeyPressed(key=Key.Right),
+            ],
+            every=timedelta(milliseconds=800),
+        ),
+    )
 ]
 
 

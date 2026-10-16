@@ -44,6 +44,10 @@ Older messages scroll up out of view, and the wheel scrolls back to them:
 
 ![Three sent messages, the first scrolled partly out of view](../assets/text-area-chat-scrolled.svg)
 
+Typing the messages, with Ctrl+J for the line break and Enter to send each one:
+
+<!-- cast: text-area-chat -->
+
 ## Line breaks
 
 Pass `enter_inserts_newline=True` for Enter to insert a line break, as in a text editor,

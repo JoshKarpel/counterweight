@@ -12,7 +12,7 @@ from itertools import count
 import pytest
 
 from counterweight.app import app
-from counterweight.clock import frozen_clock
+from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import Quit
@@ -61,7 +61,7 @@ async def screenshot_after_toggle(root: Component, check_purity: bool = False, a
         dimensions=(9, 1),
         autopilot=[TOGGLE, Screenshot(handler=frames.append), Quit()],
         check_purity=check_purity,
-        clock=frozen_clock(at),
+        clock=FrozenClock(at),
     )
     (frame,) = frames
     return frame.text(ansi=False)
