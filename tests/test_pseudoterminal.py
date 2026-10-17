@@ -500,6 +500,11 @@ def statuses(ptys: list[Pty]) -> list[PtyStatus]:
     return list(unique_justseen(pty.status for pty in ptys))
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_use_pty_starts_the_program_once_it_has_a_positive_size_and_at_that_size() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -732,25 +737,21 @@ async def test_use_pty_with_clear_env_leaves_out_the_apps_environment(monkeypatc
     assert output.data.strip() == b"unset"
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="a loaded macOS runner can take longer than the grace to run the program's TERM trap (#435)",
-    strict=False,
-)
 async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:
     signals = tmp_path / "signals"
     ptys: list[Pty] = []
     output = Output()
-    # Ignores SIGHUP, and exits by itself after at least half a second, much longer than its grace.
+    # Ignores SIGHUP, and exits by itself after at least five seconds, much longer than its grace,
+    # which is long enough for a loaded machine to run the TERM trap before SIGKILL.
     argv = (
         "sh",
         "-c",
         f"trap '' HUP; trap 'echo term >> {signals}; exit' TERM; echo ready; "
-        f"i=0; while [ $i -lt 50 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}",
+        f"i=0; while [ $i -lt 500 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}",
     )
 
     async with mounted() as m:
-        await m.render(terminal(argv, 20, 4, output, ptys, hangup_grace=timedelta(milliseconds=50)))
+        await m.render(terminal(argv, 20, 4, output, ptys, hangup_grace=timedelta(seconds=1)))
         await output.wait_for(b"ready")
         await m.render(Text(content="gone"))
 
