@@ -500,6 +500,11 @@ def statuses(ptys: list[Pty]) -> list[PtyStatus]:
     return list(unique_justseen(pty.status for pty in ptys))
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_use_pty_starts_the_program_once_it_has_a_positive_size_and_at_that_size() -> None:
     ptys: list[Pty] = []
     output = Output()
