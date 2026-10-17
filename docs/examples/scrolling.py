@@ -7,6 +7,7 @@ from counterweight.app import app
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
+from counterweight.controls import Marker
 from counterweight.controls import Screenshot
 from counterweight.controls import ScrollIntoView
 from counterweight.controls import ScrollTo
@@ -35,7 +36,9 @@ from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 EVENTS = [
     "deploy started",
@@ -320,6 +323,36 @@ SCREENSHOTS = [
     ScreenshotSpec(pager(), "scrolling-keys-half", (30, 8), events=[PAGE_DOWN, KeyPressed(key="d")]),
     ScreenshotSpec(contents(), "scrolling-contents", (40, 6)),
     ScreenshotSpec(contents(), "scrolling-contents-jumped", (40, 6), events=click(2, 2)),
+]
+
+SECOND = AdvanceClock(by=timedelta(seconds=1))
+GLANCE = AdvanceClock(by=timedelta(milliseconds=400))
+
+CASTS = [
+    CastSpec(
+        tail(),
+        "scrolling-tail",
+        (30, 6),
+        steps=[
+            *[SECOND] * 6,
+            Marker("Scrolled back"),
+            WHEEL_UP,
+            GLANCE,
+            WHEEL_UP,
+            *[SECOND] * 4,
+            Marker("Following again"),
+            WHEEL,
+            GLANCE,
+            WHEEL,
+            *[SECOND] * 4,
+        ],
+    ),
+    CastSpec(
+        jump_to_end(),
+        "scrolling-jump",
+        (30, 6),
+        steps=paced([WHEEL_UP, WHEEL_UP, WHEEL_UP, SETTLE, *click(15, 4), SETTLE], every=timedelta(milliseconds=600)),
+    ),
 ]
 
 

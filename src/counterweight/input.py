@@ -121,13 +121,20 @@ TCGetAttr = list[int | list[int | bytes]]
 
 
 def start_input_control(stream: TextIO) -> TCGetAttr:
+    r"""
+    Puts the terminal `stream` reads from in raw mode, as `cfmakeraw` and tmux's outer terminal do,
+    and returns the mode it replaced.
+    The terminal stops echoing keys and buffering them into lines, and stops acting on the keys it would otherwise
+    turn into signals (Ctrl+C, Ctrl+Z, Ctrl+\), flow control (Ctrl+S, Ctrl+Q),
+    and literal-next and discard (Ctrl+V and Ctrl+O, on BSD and macOS), so every key reaches the app.
+    """
     original = termios.tcgetattr(stream)
 
     modified = deepcopy(original)
 
     # Enter sends a carriage return and Ctrl+J a line feed, so neither is translated into the other.
-    modified[IFLAG] = original[IFLAG] & ~(termios.ICRNL | termios.INLCR | termios.IGNCR)
-    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON)
+    modified[IFLAG] = original[IFLAG] & ~(termios.ICRNL | termios.INLCR | termios.IGNCR | termios.IXON)
+    modified[LFLAG] = original[LFLAG] & ~(termios.ECHO | termios.ICANON | termios.ISIG | termios.IEXTEN)
     modified[CC][termios.VMIN] = 1
     modified[CC][termios.VTIME] = 0
 
@@ -137,4 +144,5 @@ def start_input_control(stream: TextIO) -> TCGetAttr:
 
 
 def stop_input_control(stream: TextIO, original: TCGetAttr) -> None:
+    """Puts the terminal `stream` reads from back in the `original` mode `start_input_control` returned."""
     termios.tcsetattr(stream.fileno(), termios.TCSADRAIN, original)

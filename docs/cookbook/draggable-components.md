@@ -58,6 +58,10 @@ The clamp happens when the offset is set, so the state always holds where the co
 and the next press grabs it there.
 Once the pointer comes back inside, the component follows it again from the cell the press grabbed.
 
+Both drags, as the mouse moves:
+
+<!-- cast: draggable -->
+
 `use_rects` reports the previous frame's rectangles, and empty ones on the first render,
 which doesn't matter here, because handlers only run once the parent has been laid out.
 A parent that shrinks, such as when the terminal is resized,

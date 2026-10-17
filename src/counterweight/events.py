@@ -181,6 +181,13 @@ class StateSet(_Event):
 
 
 @dataclass(frozen=True, slots=True)
+class ControlSent(_Event):
+    control: AnyControl
+    """The control a [`use_controls`][counterweight.hooks.use_controls] sender sent, which the app handles as it
+    handles a control an input handler returns."""
+
+
+@dataclass(frozen=True, slots=True)
 class Dummy(_Event):
     pass
 
@@ -258,4 +265,4 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
             return (response,)
 
 
-AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | MouseEvent | Dummy
+AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | ControlSent | MouseEvent | Dummy

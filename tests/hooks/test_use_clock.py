@@ -13,9 +13,9 @@ from datetime import timezone
 import pytest
 
 from counterweight.app import app
+from counterweight.clock import FrozenClock
 from counterweight.clock import Instant
-from counterweight.clock import frozen_clock
-from counterweight.clock import system_clock
+from counterweight.clock import SystemClock
 from counterweight.clock import tick_index
 from counterweight.clock import until_next_tick
 from counterweight.components import component
@@ -257,7 +257,7 @@ async def test_advancing_a_frozen_clock_rerenders_the_components_reading_it() ->
             Quit(),
         ],
         check_purity=True,
-        clock=frozen_clock(MOUNTED.wall),
+        clock=FrozenClock(MOUNTED.wall),
     )
 
     assert frames == [
@@ -278,7 +278,7 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
             ticked_three_times.set()
         return Text(content="")
 
-    task = create_task(app(recorder(), headless=True, dimensions=(20, 1), clock=system_clock))
+    task = create_task(app(recorder(), headless=True, dimensions=(20, 1), clock=SystemClock()))
     try:
         await wait_for(ticked_three_times.wait(), timeout=5)
     finally:
@@ -289,7 +289,7 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
     assert ticked_three_times.is_set()
 
 
-async def test_advances_add_up_and_time_since_start_counts_from_the_first_reading() -> None:
+async def test_advances_add_up() -> None:
     frames: list[str] = []
 
     def capture(frame: Frame) -> None:
@@ -307,7 +307,7 @@ async def test_advances_add_up_and_time_since_start_counts_from_the_first_readin
             Quit(),
         ],
         check_purity=True,
-        clock=lambda: MOUNTED,
+        clock=FrozenClock(MOUNTED.wall),
     )
 
     assert frames == [

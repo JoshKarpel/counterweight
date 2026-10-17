@@ -37,7 +37,7 @@ It lands in six phases, each of which stands alone:
 | 2. [Emulator](#phase-2-emulator) | a terminal emulator behind `Emulator` and `Screen`, and the screen painter | 1 |
 | 3. [Pseudo-terminals](#phase-3-pseudo-terminals) | `use_pty`: a program on a PTY, its output, its exit, and resizing | |
 | 4. [One-shot commands](#phase-4-one-shot-commands) | `use_command`, the transcript painter, a widget, and `use_rects(handle)` | 1, 2, 3 |
-| 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input, focusing a new component, and modal keys | |
+| 5. [Framework fixes](#phase-5-framework-fixes-for-the-embed) | raw input with defaults for unclaimed keys, focusing a new component, and modal keys | |
 | 6. [Embed](#phase-6-embedding-terminals) | input encoding, `use_terminal`, and a `terminal` widget | 1, 2, 3, 5 |
 
 Each arrow points from a phase to one that needs it:
@@ -104,10 +104,15 @@ The stage ratios held across runs.
 Every walker moves every frame in this workload, so the painter's cache never hits;
 a canvas that changes less often skips its painter entirely.
 
+Phase 1's `Canvas` and `HalfBlocks` measured a 1.89 ms median frame on `canvas-element` against 3.34 ms on `canvas`,
+on a quiet machine, and a test holds the two workloads to the same last frame.
+Its profile puts about 15% of the frame in `HalfBlocks.draw` and 12% in `paint.line_cells`,
+which resolves the drawn rows against the canvas's style.
+
 ### The element and its painter
 
 ```python
-type Rows = Sequence[Sequence[StyledGrapheme]]  # top to bottom, each from the content box's left edge
+type Rows = tuple[tuple[StyledGrapheme, ...], ...]  # top to bottom, each from the content box's left edge
 
 
 class Painter(Protocol):
@@ -141,18 +146,33 @@ A protocol fixes two problems with that:
   A painter with a named `draw` method isn't callable, so it can be held in state like any other value.
 
 `draw` returns `StyledGrapheme`s, the cells a `Text`'s chunks become, and paint resolves them the same way:
-whatever a grapheme's `CellStyle` leaves unset comes from the element's `text_style`,
+whatever a grapheme's `CellStyle` leaves unset comes from the element's style,
 and a two-cell grapheme gets its continuation cell.
 So a painter never needs the element's style.
 A pixel painter leaves a transparent pixel's color unset to show the canvas's background,
 and the terminal painter leaves a program's default colors unset to follow the app's.
 Building a cell is `StyledGrapheme(grapheme="▀", style=CellStyle(foreground=top, background=bottom))`,
 with no resolved style to fill in.
-`draw`'s rows don't depend on the style, so the paint cache stays keyed by `(painter, width, height)`.
+`Rows` is tuples rather than `Sequence`s because paint's `line_cells` caches each row,
+which needs it hashable; the types say so rather than a runtime conversion.
+
+`draw`'s rows don't depend on the style, so the cache of what a canvas drew is keyed by its painter and size alone.
+It's per node: `LayoutTree.drawings` keeps each canvas's last rows with the painter and size that drew them,
+alongside the texts it keeps for each `Text`, and `LayoutTree.painted` calls `draw` only when either changed.
+It needs only `==` of a painter, holds one entry per canvas, and is dropped when the node is removed
+or stops being a canvas.
+A box with no cells isn't drawn at all, so a painter never sees a zero size.
 Resolving runs after it and costs what it costs a `Text`:
-one cached `resolve_cell_style` per run of graphemes that share a style.
-The per-node cache (see [Open decisions](#open-decisions)) can keep the resolved rows too,
-and resolve again only when the rows or the `text_style` change.
+the rows go through paint's shared `line_cells` cache, with one cached `resolve_cell_style` per run of graphemes
+that share a style.
+Keeping resolved rows on the node too, resolving again only when the rows or the style change,
+waits for a canvas large enough to show `line_cells` missing, such as phase 2's terminal.
+
+A canvas resolves against its `text_style` with one change:
+a background its style's `text_style` leaves unset is its `content_color`, not the `text_style` default of black.
+Paint fills the content box with `content_color`, so without that, a canvas styled with only `content_color`
+would show it where the rows don't reach but black behind a transparent pixel.
+Rows are drawn from the left whatever the canvas's `text_justify`, and clipped to its content box.
 
 Painters live in a `counterweight.painters` package, one module per kind:
 `counterweight.painters.pixels` holds `Pixels` and `HalfBlocks` (phase 1),
@@ -183,7 +203,7 @@ Prior art splits on two questions, and `Canvas` takes the same side as Textual a
 - **When does the painter re-run?**
   Ratatui re-renders everything every frame and saves only terminal output through its buffer diff.
   Flutter's `CustomPainter.shouldRepaint(old)` and Compose's `drawWithCache` skip the painter when its inputs are unchanged.
-  The spike caches `draw(width, height)` by `(painter, width, height)` (`paint.canvas_rows`),
+  A canvas keeps what its painter drew with the painter and size that drew it (`LayoutTree.drawings`),
   so a painter that's a frozen dataclass equal to last frame's isn't called at all.
   This is Flutter's `shouldRepaint` with `==` as the test, which is already how counterweight decides everything else.
 
@@ -213,30 +233,40 @@ intrinsic 6x2, style width(10)       intrinsic 20x1, min_width(0)
   Flex items get `min-width: auto`, which for a replaced element resolves to its intrinsic size,
   so a 20-cell canvas overflowed its row, drew over the border, and pushed `TXT` out of view.
   `min_width(0)` lets it shrink, as `min-width: 0` does for an `<img>`.
-  The `Canvas` docstring and docs need to say so.
+  The `Canvas` docstring and docs say so.
 - Every canvas drew 2 rows even with an intrinsic height of 1: the row stretches its children (`align-items: stretch`).
 
-Two changes complete the replaced-element model:
+Two more pieces complete the replaced-element model:
 
-- **Transfer the aspect ratio.**
+- **Transferring the aspect ratio.**
   An `<img>` with only `width` set scales its height to keep its natural aspect ratio.
-  The spike's `_measure_text` returns the intrinsic height whatever the width.
-  A canvas should transfer a known size through its painter's natural ratio,
-  most likely by giving its taffy node an `aspect_ratio` when the style doesn't set one,
-  so that taffy also applies the ratio through min and max sizes.
-  That taffy does this for leaf nodes with a measure function needs checking.
+  The spike's `_measure_text` returned the intrinsic height whatever the width.
   Only a picture has a ratio to keep, so a painter opts in with `keeps_aspect_ratio`:
   `HalfBlocks` does, while a transcript (phase 4) or a plotter doesn't,
   since a transcript stretched wider than its columns would otherwise grow taller by the same ratio,
   padding itself with blank rows.
+
+  Giving the canvas's taffy node an `aspect_ratio` doesn't work, as taffy 0.14's `compute_leaf_layout` shows:
+  it applies `aspect_ratio` to the border box, so a bordered canvas comes out of proportion,
+  and it doesn't apply it to the size flex shrinking gives a leaf, so `min_width(0)` shrank a canvas's width only.
+  So the measure function (`_measure_leaf`) transfers the ratio instead, between content boxes.
+  Taffy hands it a known size as a border box, but on an axis with a known size,
+  the available space it hands over is that size less padding and border,
+  and it adds padding and border back to whatever the measure returns,
+  so the measure applies the ratio to the available space and returns a content size.
+  A probe across columns and rows, stretched or not, with and without borders, matched an `<img>`
+  for styled sizes, stretching, flex shrinking, and borders.
+  The one case it misses: a `max_width` on a canvas in a column that doesn't stretch its children
+  narrows it without shortening it, because taffy clamps the available space there without passing a known size.
+  The docs say to set a `width` instead, or let the column stretch it.
 - **A painter with no natural size.**
   Flutter and Compose default the intrinsic size to zero, and an invisible canvas is a known complaint.
   HTML's `<canvas>` defaults to 300×150.
   Under the protocol every painter states its size,
-  so the question becomes what an unsized painter (a terminal, which takes whatever box it gets) should report.
-  Zero with a documented "size it with its style" is the simplest answer.
+  so the question becomes what an unsized painter (a terminal, which takes whatever box it gets) should report:
+  zero, with "size it with its style" in the docs.
   A painter whose natural size is zero on either axis has no aspect ratio to transfer,
-  so its node gets none, rather than a ratio of `0 / 0`.
+  so `IntrinsicSize.of` drops `keeps_aspect_ratio` for it, rather than dividing by zero.
 
 ### Pixels and images
 
@@ -304,21 +334,15 @@ Cells change three things:
 class Pixels:
     width: int
     height: int
-    rgba: bytes  # row-major, width * height * 4
+    rgba: bytes  # row-major, width * height * 4; ValueError unless the length matches, left out of repr
 
     @classmethod
     def blank(cls, width: int, height: int, color: Color) -> Pixels: ...
     @classmethod
-    def from_points(
-        cls, width: int, height: int, points: Mapping[tuple[int, int], Color], default: Color
-    ) -> Pixels: ...
-    @classmethod
-    def from_rgba(
-        cls, width: int, height: int, rgba: bytes
-    ) -> Pixels: ...  # raises unless len(rgba) == width * height * 4
+    def from_points(cls, width: int, height: int, points: Mapping[Position, Color], default: Color) -> Pixels: ...
     @classmethod
     def from_image(cls, image: SupportsRGBA) -> Pixels: ...  # Pillow, matched structurally
-    def with_points(self, points: Mapping[tuple[int, int], Color]) -> Pixels: ...
+    def with_points(self, points: Mapping[Position, Color]) -> Pixels: ...  # ValueError for a point outside
 
 
 type Fit = Literal["fill", "contain", "cover", "none", "scale-down"]
@@ -341,12 +365,20 @@ class HalfBlocks:
     def draw(self, width: int, height: int) -> Rows: ...
 
     def pixels_at(self, cell: Position, width: int, height: int) -> tuple[Position, ...]: ...  # draw, inverted
+
+    def sources(
+        self, width: int, height: int
+    ) -> tuple[tuple[int | None, ...], tuple[int | None, ...]]: ...  # the picture column and row each box pixel shows
 ```
+
+The constructor checks the bytes' length itself, so there's no `from_rgba` beside it:
+`Pixels(width, height, rgba)` is the same call.
+Points are `Position`s, the type `pixels_at` returns, so a paint program passes them straight back to `with_points`.
 
 Drawing and loading then share one painter:
 
 ```python
-pixels = Pixels.from_points(30, 30, {walker: color for walker, color in ...}, default=black)
+pixels = Pixels.from_points(30, 30, {Position(x, y): color for (x, y), color in ...}, default=black)
 Canvas(painter=HalfBlocks(pixels), style=border)  # 30x15 cells, from the painter
 
 image = PIL.Image.open(path)
@@ -369,9 +401,13 @@ Without `min_width(0)`, an image wider than the screen would floor its flex item
 2. **Place.**
    `position` places the scaled picture in the box's `width` × `2 * height` pixels.
    It places in whole pixels, which are half cells vertically, so a picture can start halfway down a cell.
+   A half pixel of offset rounds down, so a centered picture with an odd pixel left over has it after the picture,
+   which puts the spare half cell of an odd-height picture at the bottom.
    Where the picture is bigger than the box (`cover`, `none`), the overflow is cropped.
 3. **Sample.**
-   Each box pixel the picture covers takes its nearest source pixel.
+   Each box pixel the picture covers takes the source pixel nearest its middle.
+   The mapping is separable, one source column per box column and one source row per box row,
+   so `sources` computes it once per axis and caches it by box size, picture size, scaled size and position.
    A box pixel it doesn't cover, and a transparent pixel, is left unset,
    so it shows the element's background,
    as a contained image in a browser shows its `<img>`'s background around it.
@@ -389,10 +425,9 @@ For an even pixel height, every `fit` is the identity at the natural size,
 so the default matters only when a style or a stretch sizes the box.
 A row that stretches its children distorts a `fill` picture, as it does an `<img>` in a flex row, and `contain` keeps the ratio.
 An odd pixel height has half a cell more box than picture even at the natural size:
-`fill` and `cover` stretch the picture over it, and `contain`, `none` and `scale-down` leave the bottom half of the last row unset
-(`utils.canvas` rejects odd heights instead).
+`fill` and `cover` stretch the picture over it, and `contain`, `none` and `scale-down` leave the bottom half of the last row unset.
 A `Pixels` built from `Color`s is opaque, since `Color` has no alpha;
-transparency arrives only through `from_rgba` and `from_image`.
+transparency arrives only through raw bytes and `from_image`.
 
 - **Bytes, not tuples of `Color`.**
   The paint cache hashes its key on every lookup and compares it on every hit.
@@ -411,19 +446,24 @@ transparency arrives only through `from_rgba` and `from_image`.
   A mouse event gives the canvas a cell, and the cell shows two pixels, scaled and placed by `fit` and `position`.
   `pixels_at` inverts `draw` for one cell:
   the source pixels its two halves sample, none where the cell is outside the picture.
-  A paint program sets those pixels.
-  `examples/mouse.py` draws one full block per cell today, and sets both pixels to look the same.
-- **No Pillow dependency.**
-  `from_rgba` takes raw bytes, so Pillow, numpy, or any decoder reaches `Pixels` the same way.
+  A paint program sets those pixels, as `examples/mouse.py` and the docs' paint example do.
+- **Any decoder.**
+  The constructor takes raw bytes, so Pillow, numpy, or any decoder reaches `Pixels` the same way.
   `from_image` takes a `Protocol` with Pillow's `size`, `convert` and `tobytes`,
-  which gives the one-liner without importing PIL.
+  which gives the one-liner without counterweight importing PIL.
+  Pillow is a dependency of counterweight, so the one-liner works on install,
+  and the docs' image example decodes `docs/assets/favicon.png` with it.
+  It's about 20 MB installed, most of it bundled native image libraries;
+  showing images is central enough to the canvas that the size is worth it,
+  and Pillow's long release history keeps its supply-chain risk low.
   The docs say to decode before `app()` or in an effect that sets state, never in render.
 - **Nearest-neighbor.**
   It reads only the pixels it outputs, which keeps it cheap,
   but it's rough when shrinking a photo a long way.
   Averaging reads every source pixel, which in Python is too slow for a large image.
   The docs point to Pillow's `Image.thumbnail` for quality.
-  These costs are estimates to measure in the benchmark.
+  Each cell looks its two pixels up in a cache of cells by their RGBA words (`_half_block`),
+  which in the `canvas-element` benchmark leaves `draw` at about 15% of a frame in which every canvas changes.
 
 Deferred, each for a different reason:
 
@@ -440,37 +480,42 @@ Deferred, each for a different reason:
   Quadrants also make pixels twice as tall as wide, so they need an aspect correction.
   The color split is the same question for all three, so they're best designed together.
 
-### Open decisions
+### Decisions
 
-- **The paint cache.**
-  `paint.canvas_rows` is a shared `lru_cache`, so a painter must be hashable,
-  and a frozen dataclass holding a `dict` raises `TypeError` at paint time.
-  It also holds 256 entries for every canvas in the app, so many canvases evict each other.
-  A per-node cache, kept across frames the way `LayoutTree` is, needs only `==` and holds one entry per canvas.
-  I'd pick the per-node cache.
-- **Which background an unset cell shows.**
+- **The paint cache is per node.**
+  The spike's `paint.canvas_rows` was a shared `lru_cache`, so a painter had to be hashable
+  (a frozen dataclass holding a `dict` raised `TypeError` at paint time),
+  and its 256 entries were shared by every canvas in the app, so many canvases evicted each other.
+  `LayoutTree.drawings` needs only `==` and holds one entry per canvas
+  (see [The element and its painter](#the-element-and-its-painter)).
+- **An unset background is the canvas's background.**
   Paint fills the content box with `content_color`,
-  but resolves a grapheme's unset background against `text_style.background`, which defaults to black on its own.
-  So on a canvas styled with only `content_bg`, a cell the picture doesn't reach at all shows `content_color`,
-  while a transparent pixel, or the uncovered half of a `▀` or `▄` cell, shows `text_style.background`.
-  Either `Canvas` resolves unset backgrounds against `content_color`,
-  or the docs say a canvas sets both, as a `Text` with a background does.
-- **`utils.canvas`.**
-  `examples/canvas.py` carries its own copy of it, and `examples/mouse.py` a full-block variant.
-  Once they draw with `Pixels` and `HalfBlocks`, `canvas()` can be deprecated.
+  but resolved a grapheme's unset background against `text_style.background`, which defaults to black on its own,
+  so a canvas styled with only `content_color` showed it where the picture didn't reach and black behind a transparent pixel.
+  A canvas resolves an unset background against its `text_style` background if its style sets one,
+  and its `content_color` otherwise, so `content_color` alone is enough.
+- **`utils.canvas` is removed, not deprecated.**
+  It was added after `v0.0.9`, so it never shipped,
+  and deprecating it would release a function that's deprecated from its first version.
+  `examples/canvas.py` and `examples/mouse.py` draw with `Pixels` and `HalfBlocks`,
+  and the `canvas` benchmark builds its half-block chunks itself.
 
 ### Phase 1 work
 
-1. `Painter`, drawing `StyledGrapheme` rows that paint resolves against the element's `text_style`;
+Items 1 to 4 are built, with tests at 100% coverage; the mutation testing pass in item 5 remains.
+
+1. Done: `Painter`, drawing `StyledGrapheme` rows that paint resolves against the canvas's style;
    `Canvas`, taking its intrinsic size from the painter, and its aspect ratio when the painter keeps one;
    and the per-node paint cache.
-2. `counterweight.painters.pixels`: `Pixels`, and `HalfBlocks(pixels, fit, position)` with `pixels_at`.
-3. Port `examples/canvas.py`, `examples/mouse.py` (setting both pixels of a clicked cell)
-   and the `canvas-element` benchmark, and deprecate `utils.canvas`.
-4. Docs: a `Canvas` page covering sizing (the shrink floor and `min_width(0)`), writing a painter, and loading an image,
-   with screenshots from `docs/examples/`.
-   Whether the image example makes Pillow a docs dependency or decodes a bundled file another way is open.
-5. Tests to 100% coverage, and a mutation testing pass over the new code.
+2. Done: `counterweight.painters.pixels`: `Pixels`, and `HalfBlocks(pixels, fit, position)` with `pixels_at`.
+3. Done: port `examples/canvas.py`, `examples/mouse.py` (setting both pixels of a clicked cell)
+   and the `canvas-element` benchmark, with a test that it draws the same last frame as `canvas`,
+   and remove `utils.canvas`.
+4. Done: `docs/elements/canvas.md`, covering drawing pixels, sizing (the shrink floor and `min_width(0)`),
+   `fit` and `position`, transparency, loading an image, mouse input, and writing a painter,
+   with screenshots from `docs/examples/canvas.py`.
+   The image example decodes `docs/assets/favicon.png` with Pillow, a dev dependency.
+5. Tests to 100% coverage (done), and a mutation testing pass over the new code (remaining).
 
 ## Background: how terminal multiplexers work
 
@@ -543,7 +588,7 @@ At pyte's speed, `cat` of a 5 MB log freezes the pane for about nine seconds.
 it rebuilds every row as Rich text on every read, drops UTF-8 split across reads,
 always sends application-mode cursor keys, and never answers DA or CPR.
 
-libghostty-vt fits best.
+libghostty-vt fits best, through pyghostty.
 It is Ghostty's core, has the fidelity of a real terminal, and its API was designed for this kind of embedding.
 That API covers dirty rows with stable ids, key, mouse, paste and focus encoders that read the terminal's modes,
 reply callbacks, and color callbacks.
@@ -552,98 +597,213 @@ The cost is supply chain:
 - `pyghostty` has had three releases since July 2026, the latest 0.1.3.
 - It bundles a prebuilt `libghostty-vt` from a pinned Ghostty revision, and libghostty-vt is pre-1.0.
 - It is cffi in ABI mode: no compiler at install time, but no type information, and several calls per cell.
+- It installs about 11 MB, most of it the bundled library,
+  and ships only wheels, for macOS 13+ and manylinux 2.28 (x86_64 and aarch64), with no sdist.
 
-Phase 4 adds a requirement the spike didn't test: reading scrollback with its styles.
+It is a dependency of counterweight itself, as Pillow is.
+An optional extra would spare an app that never shows a program's output its size,
+and keep counterweight installable where pyghostty has no wheel,
+but showing programs is central enough to counterweight that neither is worth an extra to install,
+and the size and the platforms matter less than the supply chain.
+Of the supply-chain costs, the one taken on knowingly is the intermediate binding between counterweight and Ghostty:
+pyghostty is young and has one maintainer.
+The `Emulator`/`Screen` boundary below keeps replacing it with an owned binding open.
+Nothing outside `counterweight.emulator` imports pyghostty.
+
+Phase 4 needs what the spike didn't test: reading scrollback with its styles.
 A transcript is everything a program printed, and most of a long one has scrolled off the screen by the time the program exits.
-pyghostty 0.1.3 keeps scrollback (`Terminal(scrollback=10000)`), but its only reader is `contents()`, which returns plain text.
-The spike reads styled cells through libghostty's render state, which covers the active screen.
-Whether libghostty-vt's C API reaches styled scrollback rows, so that pyghostty's `lib` can read them as the spike reads the screen,
-needs checking.
-If it doesn't, this requirement decides for an owned binding.
+pyghostty's `Terminal` reads scrollback only as plain text (`contents()`),
+but libghostty's render state reaches it through its own fast path:
+the `GHOSTTY_RENDER_STATE_OPTION_OVERSCAN` option asks an update to capture up to 65,535 rows above the viewport,
+which the row iterator visits before the screen's rows, with negative `VIEWPORT_Y`s,
+carrying the same cells, styles, dirty flags and row ids.
+A probe read styled scrollback rows that way, and their ids survived the screen scrolling.
+Dirty flags don't help there, since libghostty marks every row dirty when the screen scrolls,
+but a row in the scrollback can't change, so a row converted while already in the scrollback can be kept by id alone.
+A row converted on the screen has to be converted again once it scrolls off,
+since it may have changed after that snapshot and before it scrolled.
+The probe also found that libghostty caps scrollback at 10,000 _bytes_ by default
+(`GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES`), whatever the line limit:
+at 120 columns it kept 673 of 10,000 lines.
+Phase 4's emulator removes the byte cap (a null value) and bounds scrollback by lines alone.
+So styled scrollback doesn't decide for an owned binding.
 
 The alternative fits counterweight's own pattern.
 waxy is PyO3 bindings to taffy, and the same could wrap an emulator crate
 (`libghostty-rs`, `alacritty_terminal`, or `vt100`).
 The binding would expose a snapshot that returns whole rows as Python tuples in one call.
-That removes the 3 to 10 ms snapshot cost (see [Snapshots](#snapshots))
-and gives typed stubs, at the price of building and maintaining another binding.
-I'd keep the `Emulator`/`Screen` boundary either way: nothing outside `emulator.py` touches the emulator.
+That would remove what remains of the snapshot cost (see [Snapshots](#snapshots))
+and give typed stubs, at the price of building and maintaining another binding.
+The `Emulator`/`Screen` boundary keeps that open: nothing outside `emulator.py` touches the emulator.
 
 ### Snapshots
 
 A snapshot shares unchanged rows.
-`Screen` compares by identity, so a `Canvas` redraws only when the program's output changed.
-The emulator keeps each converted row by libghostty's row id while it isn't dirty.
-Unstyled cells are cached by their raw 64-bit value,
-which holds only a codepoint and a width when the cell has no style.
-A styled cell's raw value holds a page-local style id, so those can't be cached.
+`Screen` compares by identity, and a snapshot of a terminal that didn't change returns the previous `Screen`,
+so a `Canvas` redraws only when the program's output changed.
+The emulator keeps each converted row by libghostty's row id while it isn't dirty,
+and converts every row again when the program changes its default colors, which inverse and invisible cells name.
 
-Reading cells through cffi costs several calls per cell, and that is the bottleneck.
+Reading cells through cffi costs several calls per cell, and that is the bottleneck, so a row is read in bulk:
+`GHOSTTY_RENDER_STATE_ROW_DATA_CELLS_RAW` hands over the row's raw 64-bit cell values as one array,
+which a `memoryview` turns into Python ints in one call,
+and a cell is read through the cell iterator (selected by column) only when its value is new.
+An unstyled cell's value holds only its codepoint and width, so the emulator keeps its cells by value for good
+(at most `PLAIN_CELLS_KEPT`, 4,096, before starting over).
+A styled cell's value holds a style id that means something only within its page,
+so within one row the emulator keeps cells by value and styles by style id,
+which saves reading a style's colors and attributes for each cell that uses it.
+Decoding the raw values' bits in Python would save the rest, but libghostty's header says their positions aren't ABI-stable.
 
-These are medians on a 120×40 screen after one line scrolls, when libghostty marks every row dirty:
+`uv run python -m benchmarks snapshot` times snapshots on a 120×40 screen,
+each after one more piece of output (`benchmarks/snapshots.py`), and `compare` compares two runs.
+A line that scrolls the screen leaves libghostty marking every row dirty, so those snapshots convert the whole screen.
+Best times per snapshot:
 
-| Output | Snapshot |
-| --- | --- |
-| plain text | 2.8 ms |
-| every line colored | 10.5 ms |
-| nothing changed | 0.1 ms |
+| Output | Spike | Phase 2 |
+| --- | --- | --- |
+| a plain line, scrolling | 2.8 ms | 0.42 ms |
+| a line with every word colored, scrolling | 10.5 ms | 3.6 ms |
+| a line of wide characters, scrolling | | 0.51 ms |
+| a progress bar rewriting its row | | 0.07 ms |
+| nothing | 0.1 ms | 0.06 ms |
 
 ### The screen painter
 
-The screen painter draws a `Screen`, with the cursor as a reversed cell when asked (see [Fidelity](#later-fidelity)).
+The screen painter, `ScreenView(screen, show_cursor)`, draws a `Screen`,
+with the cursor as a cell with its colors swapped when asked (see [Fidelity](#later-fidelity)).
 It lives in `counterweight.painters.terminal`, and phase 4's transcript painter joins it there.
 The box sizes the terminal rather than the other way round,
 so it is a painter with no natural size (see [Sizing](#sizing)).
-It leaves a program's default colors unset, so they follow the canvas's `text_style`.
+
+A `Screen`'s cells leave a program's default colors unset, so they follow the canvas's `text_style`,
+and keep its palette colors as palette entries (see [Fidelity](#later-fidelity)).
+A cell that has to name them, because the program swapped its colors (inverse video) or hid its text (invisible),
+names the colors the emulator was given (`foreground` and `background`, white on black by default),
+or those the program set with OSC 10 and 11.
+The `Screen` carries them too, for the drawn cursor.
+`CellStyle` has no reverse attribute, so a swapped cell can't follow the canvas's colors.
 
 Paint adds a wide grapheme's continuation cell, and `StyledGrapheme(grapheme="")` raises,
-so the screen painter drops libghostty's spacer tails.
+so the emulator drops libghostty's spacer tails.
 A row then has one entry per grapheme, not per column,
 so drawing the cursor maps its column to an index rather than indexing the row by `cursor.x`,
 which would put it on the wrong cell after any wide character on its line.
+On the second column of a wide cell, the cursor is at its first.
 
 Paint measures each grapheme with counterweight's own `grapheme_width`, not libghostty's,
 and the program laid its line out by libghostty's.
-Where the two disagree (an emoji with a variation selector, a character newer than one of the width tables),
-the rest of the line would shift by a column, and paint drops a cluster it measures as zero wide, shifting it back.
-So the screen painter keeps one column per libghostty column:
-a cell libghostty draws two wide that `grapheme_width` measures as one gets a space after it,
-and a cell it draws one wide that `grapheme_width` measures as zero or two is drawn as a space.
+Where the two disagree, the rest of the line would shift, and paint drops a cluster it measures as zero wide.
+They also split text into clusters differently.
+Unless a program sets mode 2027, libghostty splits ZWJ emoji and flags across cells,
+and attaches zero-width spaces and bidirectional marks to the cell before them,
+so one libghostty cell can be several clusters here.
+So the emulator keeps one column per libghostty column, cell by cell, as it converts a row:
+a cell whose clusters add up to its columns is drawn as them,
+one narrower here (libghostty gives a two-em dash two columns, and wcwidth one) gets spaces after it,
+and one wider here (an emoji with a variation selector) or with no width (a lone Devanagari vowel sign) is drawn as spaces.
+That happens in the emulator rather than the painter,
+so it runs once per converted row, and phase 4's transcript gets rows that already keep libghostty's columns.
 
 ### Phase 2 work
 
-1. Choose between `pyghostty` and an owned binding, against styled scrollback as well as what the spike needed,
-   and add the dependency.
-2. `Emulator` and `Screen`, ported from the spike, with bounded color and style caches:
-   the spike's module-level `_STYLES` and per-emulator `colors` grow with every truecolor value a program prints.
-3. The screen painter, keeping libghostty's column widths where `grapheme_width` disagrees.
-4. Tests that feed bytes (colors, wide characters and width disagreements, the alternate screen, scrolling, query replies),
-   and a benchmark of snapshot cost.
+Done: the work below, with tests at 100% coverage and a mutation testing pass over the new code.
+
+1. pyghostty over an owned binding (see [Choosing an emulator](#choosing-an-emulator)),
+   as a dependency, with Pillow beside it.
+2. `Emulator` and `Screen` in `counterweight.emulator`, with shared, bounded caches of styles and cells
+   (`lru_cache`s of `cell_style` and `cells_for`) in place of the spike's unbounded `_STYLES` and `colors`.
+3. `ScreenView` in `counterweight.painters.terminal`, with the emulator keeping libghostty's columns.
+4. Tests that feed bytes (colors and attributes, inverse and invisible cells, wide characters, width and cluster disagreements,
+   the alternate screen, scrolling, modes, the title, the cursor, query replies, resizing),
+   and the `snapshot` benchmark.
 
 ## Phase 3: Pseudo-terminals
 
-`use_pty` runs a program on a pseudo-terminal while its component is mounted, and hands back the bytes the program writes.
+`counterweight.pseudoterminal` runs a program on a pseudo-terminal and hands back the bytes the program writes:
+`run_pty` until the program exits, and `use_pty` while its component is mounted.
 It knows nothing about emulators or painters, so it can be written alongside phases 1 and 2.
+It's a module of its own beside `emulator.py`, rather than in `counterweight.headless` as the spike had it,
+since a pseudo-terminal is no control's behavior; `pty.py` would shadow the standard library's `pty`.
+
+```python
+type PtyStatus = Starting | Running | Exited | FailedToStart  # Exited(status), FailedToStart(reason)
+
+
+async def run_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    on_start: Callable[[PtyConnection], None] = ...,  # writes (buffered) and resizes, until run_pty returns
+    env: Mapping[str, str] = frozendict(),
+    clear_env: bool = False,
+    stdin: Literal["pty", "devnull"] = "pty",
+    hangup_grace: timedelta = timedelta(seconds=1),
+) -> Exited | FailedToStart: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Pty:
+    write: Callable[[bytes], None]  # the same function every render; does nothing while nothing runs
+    status: PtyStatus
+
+
+def use_pty(
+    argv: Sequence[str],
+    columns: int,
+    rows: int,
+    on_output: Callable[[bytes], None],
+    env: Mapping[str, str] = frozendict(),
+    clear_env: bool = False,
+    hangup_grace: timedelta = timedelta(seconds=1),
+) -> Pty: ...
+```
+
+Phase 4 reuses `Running`, `Exited` and `FailedToStart` in its `Outcome`.
 
 - **The program's terminal.**
   The child runs in its own session with the PTY as its controlling terminal,
   and a resize is `ioctl(TIOCSWINSZ)` on the master (see [Lifecycle](#background-how-terminal-multiplexers-work)).
-  Cancelling the effect hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
-  A program can ignore `SIGHUP` (`nohup`, `trap '' HUP`), so if its group is still running after a grace period
-  (a knob, one second by default), it gets `SIGTERM`, and then `SIGKILL` after another,
-  so that no program outlives the effect that ran it.
+- **Hanging up.**
+  Cancelling `run_pty` hangs the program up, sending `SIGHUP` to its process group, as closing a terminal window does.
+  A program can ignore `SIGHUP` (`nohup`, `trap '' HUP`), so if its group is still running after `hangup_grace`
+  (one second by default), it gets `SIGTERM`, and then `SIGKILL` after another,
+  so that no program outlives the call that ran it.
+  The same happens once the program exits, to whatever it left running in its group.
+  Nothing signals when a process group empties, since its members other than the program aren't the app's children,
+  so the wait checks every 10 ms.
+  Signalling a group with nothing left running in it raises `ProcessLookupError` on Linux,
+  but on macOS, while the members left have all exited and the program hasn't been reaped yet,
+  it raises `PermissionError` (`EPERM`), which failed every hang-up test in macOS CI.
+  Both mean nothing is left to signal (`NOTHING_TO_SIGNAL`).
+- **Exit and end of file.**
+  Once the program exits, `run_pty` keeps reading what it wrote just before, until end of file or `DRAIN_TIMEOUT` (0.5 s).
+  End of file comes once nothing holds the program's side of the PTY open, which a background job can do indefinitely.
+  When the session leader exits, Linux already sends `SIGHUP` to the terminal's foreground process group,
+  which a non-interactive shell's background jobs are in,
+  so only a job that ignores `SIGHUP` holds the PTY open; the hang-up's `SIGTERM` then ends it.
+  The spike's drain re-raised its `TimeoutError` out of the effect, which ended the app's task group,
+  so a shell exiting with such a job running quit the whole app; here the timeout only ends the drain.
+- **A failed spawn is a result.**
+  An `argv` that doesn't exist closes both PTY fds and returns `FailedToStart` with the `OSError`'s message,
+  which `use_pty` reports as its status, rather than raising out of the effect with the fds leaked.
+  A spawn cancelled partway closes them too.
 - **Writes never block.**
   Bytes the program isn't reading yet are buffered and flushed when the master is writable,
   so a handler that writes never blocks the event loop.
+  Once `run_pty` returns, the connection is closed, and writing to it or resizing it does nothing,
+  rather than touching an fd number the process may have reused.
 - **Standard input.**
   An interactive program reads its keys from the PTY.
-  A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice.
+  A one-shot run (phase 4) gives the program `/dev/null` instead, so `run_pty` takes the choice (`stdin`).
   The child then can't make its controlling terminal from standard input, as the spike's `make_controlling_terminal` does
   (`TIOCSCTTY` on fd 0): on `/dev/null` that fails with `ENOTTY`, so every one-shot spawn would fail.
   It uses standard output, which is the PTY either way.
+  `use_pty` always reads from the PTY: a program run on `/dev/null` is phase 4's `use_command`.
 - **The environment.**
-  A program gets the environment the app started with, the hook's defaults over that, and the caller's `env` over those:
-  `os.environ | defaults | env`, with later layers winning.
+  A program gets the environment the app started with, the terminal's defaults over that, and the caller's `env` over those,
+  with later layers winning.
   The defaults say what terminal the program is on (`TERM=xterm-256color`, `COLORTERM=truecolor`),
   phase 4 adds its pager defaults, and a caller changes any of them through `env`.
   Inheriting is the default because a program run without `PATH`, `HOME` or a locale rarely does what anyone wants.
@@ -659,30 +819,27 @@ It knows nothing about emulators or painters, so it can be written alongside pha
   Python's `shutil.get_terminal_size` does, so an inherited `COLUMNS=200` on a 77-column PTY formats for 200.
   Setting them to the PTY's size would be right only until the embed resizes,
   after which they'd be stale and still win, so the hooks leave the size to the PTY alone.
-
-The spike's `use_pty` needs hardening:
-
-- EOF and exit together (tmux's `window_pane_destroy_ready`), and grandchildren that hold the PTY open.
-  The spike's drain re-raises its `TimeoutError` out of the effect,
-  and an effect's exception ends the app's task group,
-  so a shell that exits leaving a background job on the PTY quits the whole app, and its exit status is never set.
-- A spawn that fails (an `argv` that doesn't exist) closes both PTY fds and reports the failure as the hook's state,
-  rather than raising out of the effect with the fds leaked.
-- The program starts at its real size.
-  `use_rects` is zero on the first render, so the spike spawns at 0×0,
-  and a resize that arrives while `create_subprocess_exec` is still awaited finds no connection and is dropped,
-  leaving the program at 0×0 until the pane's size next changes.
-  Applying the latest size on connect closes that gap.
-- The spike hardcodes `TERM` and `COLORTERM` over the inherited environment, and passes `COLUMNS` and `LINES` through;
-  the environment's layers above replace that.
+- **The program starts at its real size.**
+  `use_rects` is zero on the first render, so the spike spawned at 0×0,
+  and a resize that arrived while `create_subprocess_exec` was still awaited found no connection and was dropped,
+  leaving the program at 0×0 until the pane's size next changed.
+  `use_pty` waits until both `columns` and `rows` are positive before starting the program,
+  and applies the latest size once the spawn connects, if it changed meanwhile.
+  A later size that isn't positive leaves the terminal at its last size.
+- **What restarts it.**
+  A change to `argv`, `env` or `clear_env` hangs the program up and starts it again;
+  `on_output` is read through a ref, so the latest render's callback gets the output without a restart.
 
 ### Phase 3 work
+
+Done: the work below, with tests at 100% coverage and a mutation testing pass over the new code.
 
 1. `run_pty` and `use_pty`, with the choice of standard input, the environment's layers, and the hardening above.
 2. Tests against real programs:
    output, an exit status, a background job that holds the PTY open, an `argv` that doesn't exist, a resize,
    standard input on `/dev/null`, cancelling a program that ignores `SIGHUP`,
-   and the environment (a default overridden by `env`, `clear_env`, and an inherited `COLUMNS` dropped).
+   and the environment (a default overridden by `env`, `clear_env`, and an inherited `COLUMNS` dropped),
+   and `use_pty` through renders: waiting for a positive size, a resize while spawning, restarts, and unmounting.
 
 ## Phase 4: One-shot commands
 
@@ -740,18 +897,7 @@ A program that exits with a failing status is a result like any other, not an er
 ### The run
 
 ```python
-@dataclass(frozen=True, slots=True)
-class Running: ...
-
-
-@dataclass(frozen=True, slots=True)
-class Exited:
-    status: int  # negative for a signal, as asyncio reports it
-
-
-@dataclass(frozen=True, slots=True)
-class FailedToStart:
-    reason: str  # the OSError's message, such as "No such file or directory"
+# Starting, Running, Exited and FailedToStart are phase 3's, re-exported from counterweight.commands.
 
 
 @dataclass(frozen=True, slots=True)
@@ -762,7 +908,7 @@ class Cancelled: ...
 class TimedOut: ...
 
 
-type Outcome = Running | Exited | FailedToStart | Cancelled | TimedOut
+type Outcome = Starting | Running | Exited | FailedToStart | Cancelled | TimedOut
 
 
 @dataclass(frozen=True, slots=True)
@@ -782,12 +928,21 @@ class Command:
 def use_command(
     columns: int,
     rows: int = 24,
-    env: Mapping[str, str] | None = None,
+    env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
     timeout: timedelta | None = None,
     max_lines: int = 10_000,
+    hangup_grace: timedelta = timedelta(seconds=1),
 ) -> Command: ...
+
+
+@component
+def command_output(run: CommandRun | None, viewport: ElementHandle, style: Style = default, ...) -> Div: ...
 ```
+
+A run is `Starting` from the moment `run` is called until its program spawns,
+which covers waiting for a width, so the UI shows the new run at once.
+`command_output` lives in `counterweight.commands` beside the hook, as `markdown_document` lives in `counterweight.markdown`.
 
 A finished run is a value that outlives its program,
 so a component can keep it in state, show it again, or show it beside the next run.
@@ -810,9 +965,12 @@ so `use_rects(viewport)` measures the box the transcript fills (see [Measuring t
 
 - **`run` records a request in state, and an effect keyed on the request runs it.**
   Cancelling, starting another run, and unmounting all end that effect, which hangs the program up.
-- **Cancelling is a key the app binds**, such as Escape.
-  Until phase 5's raw input mode, Ctrl+C quits the whole app,
-  and it never reaches the program, which runs in its own session.
+  A request is compared by identity, so running the same `argv` again starts another run.
+  The effect sets state through an updater that applies only while its request is still the current one,
+  so a snapshot that lands after a cancel or a new `run` can't overwrite it.
+- **Cancelling is a key the app binds**, such as Escape, or Ctrl+C, which reaches the app as a key press
+  since [phase 5](#every-key-reaches-the-app); unclaimed, Ctrl+C quits the app.
+  It never reaches the program, which runs in its own session with standard input on `/dev/null`.
 
 ### How a run is sized
 
@@ -866,7 +1024,13 @@ It follows `use_scroll(handle)` in the details too:
 - A handle that named no visible element in the previous render reports the initial rects (all zero),
   so a run requested before the widget mounts waits for its width, as it does on the first render.
 - The caller records the rects it read per handle, as `use_scroll` records scrolls,
-  and renders again when any of them move.
+  and renders again as soon as any of them move, as a `ResizeObserver` reports a resize.
+  `use_rects()` used to render again only once something else started a render,
+  so a component that mounted after the first frame read zero rects until then,
+  and a slide shown by a key press would never have started its run.
+  The render loop now queues a render for every node whose `use_rects` or `use_scroll` reads went stale (`stale_readers`).
+  The cost is that a component that grows whenever it reads its own size renders without end, as one can with a `ResizeObserver`;
+  the docs say so.
 - The handle comes from `use_state(ElementHandle)`, and the widget passes it on to its `scroll_area` as `viewport`.
 
 Without it, the slide example would measure the right box only when the widget was all that the calling component rendered.
@@ -899,8 +1063,35 @@ The embed in phase 6 feeds its emulator the same way.
   So the emulator keeps at least `max_lines` rows of scrollback.
   Anything that scrolls off it before a snapshot is then older than the last `max_lines` rows,
   which the transcript would have dropped anyway, so no gap opens in its middle.
+- **Reading what scrolled off.**
+  `Emulator(scrollback=n)` keeps `n` rows of scrollback, and `scrolled_off()` returns the rows that scrolled off
+  the screen since its last call, each once, as they were when they scrolled off (at most the newest `n`).
+  Three things the probes found shape it:
+  - **Overscan costs time per row captured.**
+    Capturing 10,000 rows above a 120-column screen took about 5 ms to update and 12 to 19 ms to iterate,
+    every snapshot, against microseconds for 100.
+    So each update asks for as many rows as the screen has (or as the last update needed, rounded up to the screen's rows times a power of two),
+    and doubles the request until the newest row it already set aside, found by id, is among them,
+    or the top of the scrollback is, or it's asking for all `n`.
+    The work then follows how much scrolled, and never exceeds `n` rows.
+  - **One render state, not two.**
+    An update takes the terminal's dirty rows, so a second render state for the scrollback hid every change
+    from the screen's snapshot after it.
+    The screen and the rows above it come from the same render state:
+    every update sets the rows that scrolled off aside, `scrolled_off()` hands them over,
+    and `snapshot()` converts only the screen's rows.
+    A second update before a `clean` keeps the first's dirty flags, so updating twice is safe,
+    but changing the overscan request marks every row dirty, which is why the request changes only when the output's rate does.
+  - **libghostty prunes scrollback a page at a time**, so it can keep a page fewer rows than its line limit:
+    5 of 1,000 at 20 columns, where a page holds about 2,200 rows.
+    A page holds about 46,000 cells, so the emulator's line limit is `n` plus `ceil(65,536 / columns)`,
+    which kept at least `n` rows at every width from 1 to 1,000 columns, and a test holds it to that at three widths.
+  `n` is at most 65,535 (`MAX_SCROLLBACK`), the most rows overscan captures at once.
 - **The transcript is a painter with a natural size**, `(columns, lines)`,
   so it sizes its `Canvas` as an image does, and a `scroll_area` scrolls through it.
+  `transcript.followed_by(scrolled_off, screen)` is the next transcript, a value from a value.
+  In a `command_output` on an 80-by-40 screen, a frame with a new 10,000-line transcript took about 2 ms,
+  since paint resolves only the rows inside the scroll area's clip.
 - **Recorded output.**
   Building a transcript from bytes is a function from a value to a value,
   so `Transcript.of(output, columns, rows)` renders output captured ahead of time the same way, with no program run.
@@ -908,18 +1099,26 @@ The embed in phase 6 feeds its emulator the same way.
 
 ### Phase 4 work
 
-1. `use_rects(handle)`, with tests and docs alongside `use_scroll(handle)`'s.
-   It stands alone, so it can land first.
-2. `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output.
-3. `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
-   (and scrollback to match), the pager defaults, and `clear_env`.
-4. A widget that shows a run's transcript in a `scroll_area` that follows its end while the program runs,
+Items 1 to 5 are built, with tests at 100% coverage; the mutation testing pass in item 6 is in progress.
+
+1. Done: `use_rects(handle)`, with tests and docs alongside `use_scroll(handle)`'s,
+   and `use_rects` readers rendering again as soon as what they read moves.
+2. Done: `Transcript`, in `counterweight.painters.terminal`, with `Transcript.of` for recorded output,
+   and `Emulator(scrollback=...)` with `scrolled_off()`.
+3. Done: `use_command` and its `CommandRun` values, with cancelling, the timeout, `max_lines`
+   (and scrollback to match, read through overscan with libghostty's byte cap removed),
+   the pager defaults, `clear_env` and `hangup_grace`.
+4. Done: `command_output`, which shows a run's transcript in a `scroll_area` that sticks to its end,
    with its outcome beneath, taking the `viewport` handle its caller measures.
-5. Examples: a slide that runs a command when shown, and a code runner that runs a `text_area`'s Python on a key press.
-   Docs with screenshots from `docs/examples/`, drawn from recorded output through `Transcript.of`.
+5. Done: `examples/slides.py`, a presentation whose slides each run a command when shown,
+   and `docs/examples/commands.py`'s slide and code runner (F5 runs a `text_area`'s Python, Escape cancels).
+   Docs pages for one-shot commands and for emulators and pseudo-terminals,
+   with screenshots drawn from recorded output through `Transcript.of`.
+   Both examples were driven in tmux: output, colors, a scroll that follows the end, `exited 2`, and Escape hanging up a loop.
 6. Tests against real programs (colors, a progress bar's last frame, a failing status, a program that doesn't exist,
-   cancelling and timing out a program that sleeps, and the pager defaults), to 100% coverage,
-   and a mutation testing pass over the new code.
+   cancelling and timing out a program that sleeps, the pager defaults, a query answered, a 30,000-line burst),
+   and an app reading keys from a pseudo-terminal that runs a slide's command at its box's width, to 100% coverage (done),
+   and a mutation testing pass over the new code (in progress).
 
 ## Phase 5: Framework fixes for the embed
 
@@ -927,27 +1126,105 @@ The spike hit these limits in counterweight itself, which a multiplexer can't wo
 Each is also useful to apps that never embed a terminal.
 Nothing before phase 6 needs them, so this phase can land any time before it.
 
-1. **Ctrl+C quits the host.**
-   `start_input_control` turns off `ECHO` and `ICANON` but leaves `ISIG` and `IXON` on.
-   So Ctrl+C is a `SIGINT` that quits the app, Ctrl+Z (`SIGTSTP`) stops it, Ctrl+\\ is `SIGQUIT`,
-   and Ctrl+S/Ctrl+Q are eaten as flow control.
-   None of them can reach an embedded program.
-   The spike's test session died this way.
-   An app that hosts terminals needs a raw input mode, which tmux puts its outer tty in: a knob on `app()`,
-   with Ctrl+C then arriving as a key the app can bind to `Quit`,
-   or that a code runner (phase 4) can bind to cancel a run.
-2. **`FocusOn` can't focus a component that mounts in the same update.**
-   The routing table doesn't know the new handle yet, so the control is dropped.
-   The spike's multiplexer works around it with `ClearFocus` and `auto_focus`.
-   React's answer is an effect after mount that calls `ref.focus()`.
-   Counterweight's effects can't return controls, so this needs either a pending `FocusOn` that applies after the render
-   that mounts its target, or a way for an effect to send a control.
-3. **A mode that changes routing must be readable synchronously.**
-   `Ctrl+B %` in one read arrives as two key presses handled before the next render,
-   so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
-   The prefix state has to live in a `use_ref`, with state alongside only to re-render.
-   `use_text_input` hits the same thing and solves it with updater functions.
-   This needs a documented pattern, since every modal key handler (vim-style modes, chords) hits it.
+### Every key reaches the app
+
+`start_input_control` turned off `ECHO` and `ICANON` but left `ISIG` and `IXON` on.
+So Ctrl+C was a `SIGINT` that quit the app, Ctrl+Z (`SIGTSTP`) stopped it, Ctrl+\\ (`SIGQUIT`) killed it,
+and Ctrl+S/Ctrl+Q were eaten as flow control.
+None of them could reach an embedded program, and the spike's test session died this way.
+Three of them were wrong even for apps that embed nothing:
+counterweight installs no `SIGTSTP` or `SIGQUIT` handler,
+so Ctrl+Z and Ctrl+\\ left the terminal in the alternate screen with mouse tracking on,
+and Ctrl+S froze the app's output until Ctrl+Q.
+
+The app reads the terminal raw, as tmux puts its outer terminal and as `cfmakeraw` does:
+`ISIG`, `IEXTEN` and `IXON` are off too, so every key arrives as a key press.
+On Linux `IEXTEN` changes nothing once `ICANON` is off (a probe on a pseudo-terminal read Ctrl+V and Ctrl+O either way),
+but BSD and macOS act on `VLNEXT` and `VDISCARD` in either mode.
+`0x1c` to `0x1f` (Ctrl+\\, Ctrl+], Ctrl+^, Ctrl+_) had no `Key` and were skipped,
+so they're keys now too, with their Ctrl+Alt forms, and every control byte but `ESC` is one.
+
+Raw input is the mechanism; what the keys do is policy, and the web splits the two the same way.
+A browser dispatches `keydown` to the page first,
+and takes its default action (Ctrl+S saves the page, Space scrolls) only if no listener calls `preventDefault()`.
+Claiming an event is counterweight's `preventDefault()`,
+so a key press that no handler on its path claims takes its default from `app(unclaimed_keys=...)`,
+a mapping from keys to controls applied once bubbling ends (`route_key`).
+`DEFAULT_UNCLAIMED_KEYS` gives Ctrl+C `Quit` and Ctrl+Z `Suspend.to_shell()`,
+which is what they do to a program in a terminal.
+`{}` turns the defaults off, and `DEFAULT_UNCLAIMED_KEYS | {...}` changes some.
+Textual and prompt_toolkit also read raw and make Ctrl+C and Ctrl+Z bindings an app can override.
+
+- **Defaults are data, not a handler.**
+  The screen element is never a routing target, so a handler on it couldn't run after the root's anyway.
+  A mapping is a value an app can merge, compare and inspect;
+  a handler-shaped default (`unclaimed: InputHandler`) could cover mouse events too, but nothing needs that.
+- **Suspending to the shell stops the process group.**
+  `Suspend` already hands the terminal back and takes it again on resume,
+  so `Suspend.to_shell()` only needs a handler that stops the app.
+  Stopping the app's own process wasn't enough when driven in tmux:
+  under `uv run`, the shell's job is `uv`, which kept waiting, so the shell never took the terminal back.
+  `os.killpg(os.getpgrp(), SIGTSTP)` stops the group, as the terminal's Ctrl+Z does,
+  and `fg` resumed the app with its state.
+- **The cost is the escape hatch.**
+  A second Ctrl+C used to reach the interrupt handler `app` replaced, which stopped an app whose render loop was stuck.
+  Raw, a key only does something once the loop reads it, so a stuck app can be stopped only from outside;
+  `kill -INT` still quits it, and a second one still reaches the replaced handler.
+  A focused component that claims every key, as the embed does, takes Ctrl+C and Ctrl+Z too,
+  so an app that embeds a terminal needs a way out that the embed doesn't claim, such as the multiplexer's prefix.
+
+### Focusing a component as it mounts
+
+`FocusOn` couldn't focus a component that mounts in the same update:
+the routing table didn't know the new handle yet, so the control was dropped.
+The spike's multiplexer worked around it with `ClearFocus` and `auto_focus`.
+
+The web has three answers.
+`element.focus()` on an element that isn't rendered yet does nothing, as `FocusOn` did.
+React's is to mount, then focus in an effect after the commit (`useEffect(() => ref.current.focus())`),
+or to `flushSync` the state change and focus right after it.
+And `<dialog>`'s `showModal()` focuses a field inside the dialog as it opens.
+Counterweight's effects run after the frame paints and can't return controls,
+so focusing from an effect would show one frame with focus in the wrong place,
+and would need a new way for effects to act on the app.
+
+So `FocusOn` waits, as `ScrollIntoView` already names "the element with that handle in the next render":
+a `FocusOn` whose handle no component can take focus with yet is kept, and the next render's focus settles to it
+if a component with that handle can take focus then, before the frame is drawn
+(`RoutingTable.reconciled_focus(..., requested)`).
+It's dropped by any later control that moves focus, by a batch that causes no render,
+and once that render has settled focus, whether or not it applied.
+Keys read in the same batch still go to the component focused when they arrive, as they do for `auto_focus`.
+A component that hides itself because a waiting `FocusOn` focused it raises `UnsettledFocus`, as an `auto_focus` one does.
+
+### Modes that change routing
+
+`Ctrl+B %` in one read arrives as two key presses handled before the next render,
+so the second handler saw `is_armed=False` from its closure and sent `%` to the shell.
+In the DOM, each `keydown` is its own task, and React renders a discrete event's updates before the next one,
+so a handler rarely sees state from before the previous key.
+Counterweight handles every event it has read before rendering again, which keeps a burst of typing to one render,
+so a mode the next key's handler reads has to live in a ref, with state beside it only to draw it.
+That's how `use_text_input` takes typing with updater functions, and how the drag cookbook keeps its grab.
+The cookbook's Prefix Keys page documents the pattern, with a tmux-style prefix whose pane opens focused with `FocusOn`.
+A helper hook for modes is deferred: prefix keys, vim's modes and chords are several plausible designs,
+and nothing yet chooses between them.
+
+### Phase 5 work
+
+Done: the work below, with tests at 100% coverage.
+
+1. Raw input: `start_input_control` turns off `ISIG`, `IEXTEN` and `IXON`, every control byte but `ESC` is a key,
+   and `app(unclaimed_keys=...)` with `DEFAULT_UNCLAIMED_KEYS` and `Suspend.to_shell()`.
+   Tests read Ctrl+C, Ctrl+Z, Ctrl+\\, Ctrl+S and Ctrl+Q from a pseudo-terminal, before and after a suspension,
+   and stop a child's whole process group with `Suspend.to_shell()`.
+   A probe app was driven in tmux: the keys arrived, and Ctrl+Z, `fg` and Ctrl+Q worked.
+2. A `FocusOn` that waits for the next render, with tests for a component mounted beside it,
+   later and earlier focus controls, a batch with no render, the first frame, `UnsettledFocus`,
+   and a key read in the same batch.
+3. `docs/cookbook/prefix-keys.md`, with a test that a prefix and its key typed in one read open a focused pane.
+4. Docs: the events page's keys the terminal would act on, `use_focus`'s focusing a component as it mounts,
+   and the changelog.
 
 ## Phase 6: Embedding terminals
 
@@ -961,7 +1238,7 @@ Canvas(painter=ScreenView(screen, show_cursor))         element (phase 1): paint
   ^
 use_terminal(argv, columns, rows) -> EmbeddedTerminal   headless (phase 6): emulator, snapshots, input forwarding, focus
   ^
-use_pty(argv, columns, rows, on_output) -> Pty          headless (phase 3): PTY, child process, writes, resize, exit status
+use_pty(argv, columns, rows, on_output) -> Pty          pseudoterminal.py (phase 3): PTY, child process, writes, resize, status
   ^
 Emulator (place) -> Screen (value)                      emulator.py (phase 2): the only module that knows about the emulator
 ```
@@ -993,8 +1270,10 @@ So a resize shows the old screen, cropped or padded, for one frame, as tmux does
 ### Input: when keys reach the program
 
 The embed is a focusable component.
-Its `on_input`, while focused, sends the program every key press and paste it can encode and claims them,
+Its `on_input`, while focused and while the program runs, sends the program every key press and paste and claims them,
 so nothing bubbles past it.
+Once the program exits, keys and pastes pass on, so the app's unclaimed defaults (Ctrl+C quitting) work again.
+Every `Key` has an encoding, so the encoder always returns bytes.
 
 - **Keys** are re-encoded, as tmux does, rather than passed through, which counterweight couldn't do anyway:
   its input parser has already turned bytes into `KeyPressed`.
@@ -1012,17 +1291,27 @@ so nothing bubbles past it.
   with every end marker in the text removed, so a paste can't end itself early.
   Removal repeats until none is left: one pass of `replace` turns `ESC [ 20 ESC [ 201 ~ 1 ~` into an end marker.
 - **Mouse events** inside the canvas are encoded only if the program enabled tracking,
-  filtered by its tracking level, and translated to pane-local coordinates, as SGR or X10.
+  filtered by its tracking level, and translated to pane-local coordinates, as SGR or the legacy encoding.
+  `?9` (X10) reports presses only, without modifiers; `?1000` adds releases and the wheel,
+  `?1002` motion with a button held, and `?1003` all motion.
+  The legacy encoding reports a release as button code 3, and can't reach past column or row 223,
+  where an event isn't sent.
   A press also focuses the pane.
   A press outside the program's screen (on the pane's border or padding) only focuses it:
   the spike encodes it too, sending the program a column or row of 0 or past its edge.
   Counterweight's press capture already does what terminals expect of a drag:
   the pane that claimed the press gets its motion and release, wherever the pointer goes.
+  Those are clamped to the screen's edges, as xterm reports a drag that leaves its window,
+  so the program sees the release of a press it was sent.
+  A wheel the program didn't ask for isn't claimed, so a scroll container around the pane still scrolls.
 - **The prefix key.**
   The DOM would intercept with a capture-phase listener on an ancestor.
   Counterweight only bubbles from the focused node, and that turned out not to matter:
   the multiplexer puts its prefix handler before the terminal's with `first(prefix, terminal.on_input)`.
   The embed exposes its handler, and composition does the rest.
+- **Ctrl+C and Ctrl+Z** reach the embed as key presses (see [phase 5](#every-key-reaches-the-app)),
+  and it claims them, so they go to the program rather than taking the app's unclaimed defaults.
+  The multiplexer quits and suspends through its prefix instead (`Ctrl+B q`, and `Ctrl+B Ctrl+Z` with `Suspend.to_shell()`).
 - **Queries** are answered by libghostty from emulator state, and the replies are written back to the PTY.
   This covers CPR, DA1, DA2 and the other queries a multiplexer answers from its own state.
   Forwarding to the outer terminal is deferred: it has several plausible designs, and nothing has needed it yet.
@@ -1043,32 +1332,86 @@ driving it with `send-keys` and reading the screen with `capture-pane`:
   `\x1b[<0;20;7M`, `\x1b[<32;22;7M`, `\x1b[<0;22;7m`: pane-local, 1-based, button tracking.
 - The app idled at 0.6% CPU with two shells open.
 
+### What phase 6 verified
+
+The same checks, on phase 6's `examples/multiplexer.py` in a detached tmux session:
+
+- bash with a starship prompt, colors and emoji widths, and typed commands with their output.
+- `Ctrl+B %` split, focusing the new pane in the frame that shows it: `tput cols lines` reported 48 by 17 in it,
+  and the left pane reflowed.
+- `Ctrl+B o` moved focus to the other pane.
+- vim: insert mode, arrow keys, Escape, and `:wq` (the file was written).
+- `Ctrl+C` interrupted a `sleep 30` in the pane rather than quitting the app.
+- `exit 3` showed `exited 3` in the status bar, and a title set with OSC 0 showed beside the pane's number.
+- `top` drew in a pane, and resizing the outer window resized it.
+- `Ctrl+B q` quit, and nothing was left running.
+- With two shells open and idle, the app used no measurable CPU over ten seconds.
+
 ### Phase 6 work
 
-1. `input_encoding`: key presses, pastes and mouse events back to the bytes a terminal sends,
-   with xterm's spellings for F1 to F4, `alt+space`, and a press outside the program's screen only focusing the pane.
-2. `use_terminal`, ported from the spike onto phases 2 and 3,
-   using phase 5's fixes to drop the multiplexer's `ClearFocus` and closure-state workarounds.
-   The multiplexer's `%` split reads `next_id` from its closure,
-   so two splits in one read open two panes with the same id and key.
-   The new id comes from the updater instead.
-3. Send focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
-   with an effect keyed on `focus.is_focused`.
-4. A `terminal` widget on top of `use_terminal`, with tests, docs, and the multiplexer as an example.
+Done: the work below, with tests at 100% coverage.
+
+1. `input_encoding`: key presses, pastes, mouse events and focus changes back to the bytes a terminal sends,
+   with xterm's spellings (F1 to F4 as `SS3`, a letter over a number, xterm's modifier parameter over the VT220's
+   numbers for F13 and up), Alt with any key as `ESC` and the key, end markers removed from a bracketed paste
+   until none is left, and a press outside the program's screen only focusing the pane.
+   Tests round-trip every `Key` and SGR mouse events through the parser.
+2. `use_terminal` in `counterweight.headless`, on phases 2 and 3:
+   an effect keyed on `argv`, `env` and `clear_env` owns the emulator, as `use_pty`'s restarts the program,
+   so a program started again gets a fresh screen; an effect keyed on the size resizes the emulator.
+   The multiplexer uses phase 5's waiting `FocusOn` in place of `ClearFocus` and `auto_focus`,
+   keeps its prefix in a ref, and numbers a new pane from the latest panes inside the updater,
+   as the Prefix Keys cookbook page does, so two splits in one read open two panes with different keys.
+3. Focus events: `CSI I`/`CSI O` under `?1004` when the embed gains and loses focus,
+   from an effect keyed on `focus.is_focused`, with a test that presses an unfocused pane in an app.
+4. A `terminal` widget in `counterweight.widgets` on top of `use_terminal`: a bordered `Canvas` sized by its `style`,
+   whose `intercept` handler sees each event before the program does, with a test that types into it in an app.
+   `docs/terminals/embedding.md` covers the widget, the hook, input and sizing,
+   with a screenshot of a recorded screen through `ScreenView`,
+   and `examples/multiplexer.py` is the multiplexer.
 
 ## Later: fidelity
 
 The embed and one-shot commands work without these,
 but each makes a program's output look, or the program behave, less like it does in a real terminal.
+The first is done; the other two remain.
 
-1. **Colors are truecolor only.**
-   `Color` is RGB, so a program's palette indices are resolved to libghostty's default palette.
-   Its "default" foreground and background are left unset, so they follow the canvas's `text_style`,
-   but that is RGB too.
-   An embedded `ls --color`, and one in a transcript, uses xterm's red, not the user's theme's red.
-   tmux keeps palette indices and default colors through to the outer terminal.
-   Fixing this means `Color` gaining palette and default variants, and `output.py` emitting them.
-   Since transcripts show it too, it could land before phase 6.
+1. **Colors the terminal decides** (done).
+   `Color` was RGB only, so a program's palette indices were resolved to libghostty's default palette,
+   and an embedded `ls --color`, or one in a transcript, used that red, not the user's theme's red.
+   tmux keeps palette indices and default colors through to the outer terminal, and so does counterweight now.
+
+   The web's closest answer is CSS's system colors (`Canvas`, `CanvasText`), colors the user agent decides
+   from the user's settings rather than the page.
+   A terminal decides two kinds: palette entries, and its default foreground and background.
+   The difference is that a terminal's default color is positional:
+   SGR `39` is the default foreground and `49` the default background, and nothing sets text to the default background.
+   So `TERMINAL_DEFAULT` is one value that means the default foreground where it colors text
+   and the default background where it fills one, rather than two system colors usable anywhere.
+
+   - `IndexedColor(index)` is a palette entry (0 to 255, `ValueError` otherwise),
+     and `TERMINAL_DEFAULT` (a `TerminalDefault`) the default color.
+     `AnyColor` is `Color | IndexedColor | TerminalDefault`, and every style field that took a `Color` takes one:
+     `CellStyle`'s and `ResolvedCellStyle`'s colors, and `margin_color`, `padding_color` and `content_color`.
+     `Color.blend` and `Pixels` stay RGB, since only RGB can be blended or put in a picture.
+   - `output.py` emits `30`-`37` and `90`-`97` (and `40`-`47`, `100`-`107`) for the first 16 entries,
+     which every terminal with colors understands, `38;5;n` for the rest, and `39`/`49` for the default.
+   - Screenshots draw a palette entry in `DEFAULT_PALETTE`, and the default as white text on black.
+     `DEFAULT_PALETTE` is Tomorrow Night's 16 colors, which libghostty's default palette starts with,
+     then xterm's color cube and grays, so it matches libghostty's exactly, and no screenshot changed.
+     The emulator's palette is set to it, so the two can't drift.
+   - The emulator reads a cell's colors from its style's tagged colors rather than the resolved RGB,
+     and an erased cell's from its value (`GHOSTTY_CELL_DATA_COLOR_PALETTE`).
+     A palette entry the program changed (OSC 4) is the RGB it changed it to, since the user's terminal doesn't have it;
+     the emulator compares the render state's palette bytes with `DEFAULT_PALETTE`'s for that.
+     Changing the palette marks every row dirty, so converted rows need no cache reset, which a probe confirmed;
+     changing the default colors doesn't, so that reset stays.
+   - Inverse and invisible cells in the default colors still name `Screen.foreground` and `Screen.background` in RGB:
+     no SGR sets text to the terminal's default background, so a swapped default can't follow the theme.
+   - The `*_indexed(n)` utilities and the generated `*_terminal_default` constants set them wherever the color
+     utilities do, so `text_terminal_default | text_bg_terminal_default | content_terminal_default`
+     makes a canvas showing a transcript follow the user's theme for the program's default colors too.
+     The widgets keep their RGB defaults, so an app's look doesn't change with the terminal's theme unless it asks.
 2. **The cursor is drawn, not placed.**
    Counterweight hides the real cursor, so the terminal painter draws a reversed cell.
    That loses cursor shapes (DECSCUSR), blinking, and the position input methods read.

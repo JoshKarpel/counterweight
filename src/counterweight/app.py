@@ -16,7 +16,6 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import timedelta
 from itertools import chain
-from itertools import repeat
 from signal import SIG_DFL
 from signal import SIGINT
 from signal import SIGWINCH
@@ -30,14 +29,20 @@ from weakref import WeakSet
 import waxy
 
 from counterweight._context_vars import current_event_queue
+from counterweight._context_vars import current_task_group
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import cancel_tasks
 from counterweight._utils import drain_queue
 from counterweight._utils import maybe_await
+from counterweight.asciicast import Recorder
+from counterweight.asciicast import Recording
+from counterweight.autopilot import Autopilot
+from counterweight.autopilot import AutopilotStep
 from counterweight.border_healing import heal_borders
 from counterweight.clock import Clock
 from counterweight.clock import Instant
-from counterweight.clock import system_clock
+from counterweight.clock import SystemClock
+from counterweight.clock import reading
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
@@ -47,6 +52,7 @@ from counterweight.controls import ClearFocus
 from counterweight.controls import FocusNext
 from counterweight.controls import FocusOn
 from counterweight.controls import FocusPrevious
+from counterweight.controls import Marker
 from counterweight.controls import Quit
 from counterweight.controls import RestoreTitle
 from counterweight.controls import Screenshot
@@ -59,6 +65,7 @@ from counterweight.controls import ToggleBorderHealing
 from counterweight.controls import _Control
 from counterweight.elements import Div
 from counterweight.events import AnyEvent
+from counterweight.events import ControlSent
 from counterweight.events import Dummy
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
@@ -71,9 +78,11 @@ from counterweight.events import MouseUp
 from counterweight.events import Pasted
 from counterweight.events import StateSet
 from counterweight.events import TerminalResized
+from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.hooks import scroll_in
 from counterweight.hooks.impls import Hooks
 from counterweight.hooks.impls import NodeKey
@@ -81,6 +90,7 @@ from counterweight.input import start_input_control
 from counterweight.input import start_reading_keys
 from counterweight.input import stop_input_control
 from counterweight.input import stop_reading_keys
+from counterweight.keys import Key
 from counterweight.layout import NO_LAYOUTS
 from counterweight.layout import Layouts
 from counterweight.layout import LayoutTree
@@ -90,6 +100,7 @@ from counterweight.layout import prior_scrolls
 from counterweight.logging import app_log_levels
 from counterweight.logging import devlog
 from counterweight.output import CLEAR_SCREEN
+from counterweight.output import OUTPUT_CONTROL_START
 from counterweight.output import Frame
 from counterweight.output import paint_to_instructions
 from counterweight.output import start_bracketed_paste
@@ -104,6 +115,7 @@ from counterweight.paint import Paint
 from counterweight.paint import diff_paint
 from counterweight.paint import paint_layout
 from counterweight.paint import runs_of
+from counterweight.programs import TerminalStreams
 from counterweight.routing import Press
 from counterweight.routing import RoutingTable
 from counterweight.routing import UnsettledFocus
@@ -131,9 +143,10 @@ type SignalHandler = Callable[[int, FrameType | None], object] | int | None
 
 def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> SignalHandler:
     """
-    Makes the first interrupt `request_quit`, so ctrl+c quits the app and `app` returns,
-    and returns the handler it replaced, which takes any interrupt after that,
-    so a second ctrl+c still stops an app whose render loop is stuck and can't quit.
+    Makes the first interrupt `request_quit`, so an interrupt sent from outside (`kill -INT`) quits the app
+    and `app` returns, and returns the handler it replaced, which takes any interrupt after that,
+    so a second one still stops an app whose render loop is stuck and can't quit.
+    Ctrl+C is a key press, not an interrupt, since the app reads the terminal raw.
     """
     previous = getsignal(SIGINT)
 
@@ -147,6 +160,13 @@ def start_handling_interrupt_signal(request_quit: Callable[[], object]) -> Signa
 
 def stop_handling_interrupt_signal(previous: SignalHandler) -> None:
     signal(SIGINT, previous)
+
+
+DEFAULT_UNCLAIMED_KEYS: Mapping[str, AnyControl] = frozendict({Key.ControlC: Quit(), Key.ControlZ: Suspend.to_shell()})
+"""
+What `app` does with a key press no handler claims, by default:
+Ctrl+C quits, and Ctrl+Z suspends the application as a shell job, as they do to a program in a terminal.
+"""
 
 
 def screen_element_style(width: int, height: int) -> Style:
@@ -173,11 +193,13 @@ async def app(
     input_stream: TextIO = sys.stdin,
     headless: bool = False,
     dimensions: tuple[int, int] | None = None,
-    autopilot: Iterable[AnyEvent | AnyControl] = (),
+    autopilot: Iterable[AutopilotStep] = (),
     check_purity: bool = False,
-    clock: Clock = system_clock,
+    clock: Clock = SystemClock(),
     log_levels: Mapping[str, int] = frozendict(),
     title: str | None = None,
+    unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
+    recording: Recording | None = None,
 ) -> None:
     """
     Parameters:
@@ -189,8 +211,10 @@ async def app(
             This is primarily useful when combined with the `autopilot` parameter.
         dimensions: The dimensions of the terminal window, in characters.
             If `None`, the dimensions of the terminal window will be used.
-        autopilot: An iterable of events and controls to be processed by the application.
-            This is primarily useful for testing or generating screenshots programmatically.
+        autopilot: An iterable of events and controls to be processed by the application,
+            and of [`Wait`][counterweight.autopilot.Wait] and [`WaitFor`][counterweight.autopilot.WaitFor],
+            which hold the rest back until real time has passed or the screen shows something.
+            This is primarily useful for testing or generating screenshots and recordings programmatically.
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
         check_purity: If `True`, check that components are pure: that their output depends only on their arguments
@@ -207,7 +231,8 @@ async def app(
             raising `StaleMemo` if the result differs, naming the component and the hook.
             It costs as much as a render that re-runs everything, so turn it on in tests rather than in production.
         clock: Where [`use_clock`][counterweight.hooks.use_clock] reads the time, once per render.
-            Pass a [`frozen_clock`][counterweight.clock.frozen_clock] to make output that doesn't depend on
+            The [`SystemClock`][counterweight.clock.SystemClock] reads the time in UTC unless it's given a timezone.
+            Pass a [`FrozenClock`][counterweight.clock.FrozenClock] to make output that doesn't depend on
             when the application runs, such as a screenshot, and move it with the
             [`AdvanceClock`][counterweight.controls.AdvanceClock] control.
         log_levels: Levels by logger name, with `""` the root logger, as in `logging.config`,
@@ -220,11 +245,36 @@ async def app(
         title: The title to give the terminal window when the application starts,
             as [`SetTitle`][counterweight.controls.SetTitle] would, before the first frame is drawn.
             If `None`, the terminal keeps the title it has.
+        unclaimed_keys: What a key press does when no handler claims it, by its key,
+            as a browser takes a key's default action unless a listener prevents it.
+            The application reads the terminal raw, so every key reaches it as a key press,
+            including Ctrl+C and Ctrl+Z, which a terminal otherwise turns into signals,
+            and the defaults, [`DEFAULT_UNCLAIMED_KEYS`][counterweight.app.DEFAULT_UNCLAIMED_KEYS],
+            give those two what they'd do there:
+            Ctrl+C returns [`Quit`][counterweight.controls.Quit],
+            and Ctrl+Z [`Suspend.to_shell()`][counterweight.controls.Suspend.to_shell].
+            A handler that claims one of those keys, such as one that passes keys on to a program,
+            keeps it from taking its default.
+            Pass `{}` to give unclaimed keys no defaults, or merge onto the defaults to change some,
+            as in `DEFAULT_UNCLAIMED_KEYS | {Key.ControlQ: Quit()}`.
+        recording: Where and how to record the application as an asciicast,
+            which asciinema-player plays back, whether it's headless or not.
+            If `None`, the application isn't recorded.
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
             await render_loop(
-                root, output_stream, input_stream, headless, dimensions, autopilot, check_purity, clock, title
+                root,
+                output_stream,
+                input_stream,
+                headless,
+                dimensions,
+                autopilot,
+                check_purity,
+                clock,
+                title,
+                unclaimed_keys,
+                recording,
             )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
@@ -245,22 +295,37 @@ async def render_loop(
     input_stream: TextIO,
     headless: bool,
     dimensions: tuple[int, int] | None,
-    autopilot: Iterable[AnyEvent | AnyControl],
+    autopilot: Iterable[AutopilotStep],
     check_purity: bool,
     clock: Clock,
     title: str | None,
+    unclaimed_keys: Mapping[str, AnyControl],
+    recording: Recording | None,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
     should_clear = True
+
+    # Started once the clock and the screen's size are known, and stopped when the app stops.
+    recorder: Recorder | None = None
 
     def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
         nonlocal should_clear
 
         w, h = override or dimensions or shutil.get_terminal_size()
         should_clear = True
+        if recorder is not None:
+            recorder.resize(w, h)
 
         return screen(screen_element_style(w, h)), Paint.blank(w, h), w, h
+
+    def write(instructions: str) -> None:
+        """Writes `instructions` to the terminal, unless the app is headless, and records them."""
+        if not headless:
+            output_stream.write(instructions)
+            output_stream.flush()
+        if recorder is not None:
+            recorder.output(instructions)
 
     @component
     def screen(style: Style) -> Div:
@@ -298,6 +363,9 @@ async def render_loop(
     # doesn't hand it back again: restoring the title a second time would pop a title the app never saved.
     is_suspended = False
 
+    # What the recording says the app exited with: 0 once it quits, and 1 if it stops any other way.
+    exit_status = 1
+
     # Taking output control is the first thing the try does, since the finally block hands it back,
     # and restoring a title the app never saved would pop one off the terminal's title stack that isn't the app's.
     try:
@@ -322,15 +390,29 @@ async def render_loop(
 
         do_heal_borders = True
 
-        started = clock()
+        pilot = Autopilot(steps=iter(autopilot))
+        started = reading(clock, timedelta())
         clock_offset = timedelta()
 
         def read_clock() -> Instant:
-            """The time now, moved on by any `AdvanceClock`, with its monotonic time measured from the start."""
-            reading = clock()
+            """
+            The time now, after the autopilot's waits so far, moved on by any `AdvanceClock`,
+            with its monotonic time measured from the start.
+            """
+            now = reading(clock, pilot.time_waited(loop.time()))
             return Instant(
-                wall=reading.wall + clock_offset,
-                monotonic=reading.monotonic - started.monotonic + clock_offset,
+                wall=now.wall + clock_offset,
+                monotonic=now.monotonic - started.monotonic + clock_offset,
+            )
+
+        if recording is not None:
+            recorder = Recorder.start(
+                recording,
+                elapsed=lambda: read_clock().monotonic,
+                cols=w,
+                rows=h,
+                started=started.wall,
+                preamble=OUTPUT_CONTROL_START,
             )
 
         # Warmup: render and lay out once without painting so that use_rects()
@@ -340,7 +422,10 @@ async def render_loop(
         shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
         routing = RoutingTable.of(shadow, layouts)
-        focused = routing.reconciled_focus(None, warmup.mounted)
+        focused = routing.reconciled_focus(None, warmup.mounted, requested=None)
+        # The handle of a `FocusOn` that named no focusable component when it arrived,
+        # which the next render focuses if a component with it can take focus then.
+        requested_focus: FocusHandle | None = None
         # The scroll controls to apply in the next layout, in order, including the ones focus moving adds.
         pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = (
             [] if focused is None else [focus_into_view(focused)]
@@ -360,7 +445,10 @@ async def render_loop(
             and re-renders the mounted nodes that gain and lose focus, as a `use_state` setter would.
             """
             nonlocal focused
+            nonlocal requested_focus
 
+            # A later control that moves focus wins over a request that waits for the next render.
+            requested_focus = None
             if key == focused:
                 return
 
@@ -382,6 +470,7 @@ async def render_loop(
             nonlocal do_heal_borders
             nonlocal clock_offset
             nonlocal routing
+            nonlocal requested_focus
 
             match control:
                 case Quit():
@@ -405,11 +494,17 @@ async def render_loop(
                 case FocusPrevious(within=within):
                     refocus(routing.moved_focus(focused, within, is_forward=False))
                 case FocusOn(handle=handle):
-                    refocus(routing.focus_keys.get(handle, focused))
+                    if (key := routing.focus_keys.get(handle)) is not None:
+                        refocus(key)
+                    else:
+                        requested_focus = handle
                 case ClearFocus():
                     refocus(None)
                 case AdvanceClock(by=by):
                     clock_offset += by
+                case Marker(label=label):
+                    if recorder is not None:
+                        recorder.marker(label)
                 case ScrollTo() | ScrollBy():
                     # Pending even if it moves nothing now, since a render this batch causes may give it room to.
                     pending_scrolls.append(control)
@@ -425,16 +520,19 @@ async def render_loop(
         mouse_position = Position(x=-1, y=-1)
         press: Press | None = None
 
+        def frame_on_screen() -> Frame:
+            """A copy of the frame on screen, so a condition that changes its frame can't change `current_paint`."""
+            return Frame(paint=current_paint.copy())
+
         async with TaskGroup() as tg:
-            for ap in chain(autopilot, repeat(None)):  # pragma: no branch
+            current_task_group.set(tg)
+            while True:
                 if should_quit:
                     logger.info("Quitting application...")
                     raise KeyboardInterrupt
 
                 if should_bell:
-                    if not headless:
-                        output_stream.write("\a")
-                        output_stream.flush()
+                    write("\a")
                     should_bell = False
 
                 if pending_screenshots:
@@ -463,15 +561,21 @@ async def render_loop(
                         stop_handling_resize_signal()
                         stop_handling_interrupt_signal(previous_interrupt_handler)
                     is_suspended = True
+                    if recorder is not None:
+                        recorder.suspend()
 
                     try:
-                        await maybe_await(should_suspend.handler())
+                        await maybe_await(
+                            should_suspend.handler(TerminalStreams(input=input_stream, output=output_stream))
+                        )
                     except Exception as ex:  # noqa: BLE001 (a failing user handler is logged, not fatal)
                         logger.error(
                             "Error in suspend handler", extra={"handler": should_suspend.handler, "error": repr(ex)}
                         )
 
                     is_suspended = False
+                    if recorder is not None:
+                        recorder.resume()
                     if not headless:
                         original = start_input_control(stream=input_stream)
                         previous_interrupt_handler = start_handling_interrupt_signal(request_quit=quit_from_signal)
@@ -490,9 +594,8 @@ async def render_loop(
                     should_suspend = None
 
                 # After a suspension, so the app that resumes sets its title again.
-                if not headless and title != shown_title:
-                    output_stream.write(title_instructions(title))
-                    output_stream.flush()
+                if title != shown_title:
+                    write(title_instructions(title))
                     shown_title = title
 
                 instant = read_clock()
@@ -524,7 +627,8 @@ async def render_loop(
                     logger.debug("Calculated layout")
 
                     routing = RoutingTable.of(shadow, layouts)
-                    settled = routing.reconciled_focus(focused, update.mounted)
+                    settled = routing.reconciled_focus(focused, update.mounted, requested_focus)
+                    requested_focus = None
 
                     # Re-render the components whose focus changed before painting,
                     # so no frame shows focus where it was before the render moved it.
@@ -550,7 +654,7 @@ async def render_loop(
                             scroll_requests(pending_scrolls, shadow),
                         )
                         routing = RoutingTable.of(shadow, layouts)
-                        if routing.reconciled_focus(settled, refocused.mounted) != settled:
+                        if routing.reconciled_focus(settled, refocused.mounted, requested=None) != settled:
                             raise UnsettledFocus(
                                 "Focus changed again after re-rendering the components that gained and lost it, "
                                 "so a component hid itself because it gained focus."
@@ -560,7 +664,7 @@ async def render_loop(
                         logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
 
                     pending_scrolls.clear()
-                    for key in stale_scroll_readers(shadow, layouts):
+                    for key in stale_readers(shadow, layouts):
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
@@ -591,9 +695,8 @@ async def render_loop(
                     should_clear = False
                     logger.debug("Generated instructions from paint diff")
 
+                    write(instructions)
                     if not headless:
-                        output_stream.write(instructions)
-                        output_stream.flush()
                         logger.debug(
                             "Wrote and flushed instructions to output stream", extra={"bytes": f"{len(instructions):_}"}
                         )
@@ -607,7 +710,9 @@ async def render_loop(
                 else:
                     # Without a render, every pending control moves nothing, and mustn't wait to move a later layout.
                     pending_scrolls.clear()
+                    requested_focus = None
 
+                ap = pilot.next(loop.time(), frame=frame_on_screen)
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)
@@ -629,8 +734,16 @@ async def render_loop(
                 # wall clock, so the timer can fire a little early while the system adjusts the wall clock.
                 num_events_handled = 0
                 next_tick = until_due(shadow, read_clock())
+                wakes = [
+                    seconds
+                    for seconds in (
+                        None if next_tick is None else next_tick.total_seconds(),
+                        pilot.until_deadline(loop.time()),
+                    )
+                    if seconds is not None
+                ]
                 try:
-                    async with timeout(None if next_tick is None else next_tick.total_seconds()):
+                    async with timeout(min(wakes, default=None)):
                         events = deque(await drain_queue(event_queue))
                 except TimeoutError:
                     events = deque()
@@ -642,12 +755,16 @@ async def render_loop(
                         case StateSet(key=key):
                             should_render = True
                             dirty.add(key)
+                        case ControlSent(control=control):
+                            handle_control(control)
                         case TerminalResized(dimensions=override):
                             should_render = True
                             root_component, current_paint, w, h = handle_screen_size_change(override)
                             rerun_everything()
                         case KeyPressed() | Pasted():
-                            for control in route_key(event, focused, routing):
+                            if recorder is not None:
+                                recorder.input(event)
+                            for control in route_key(event, focused, routing, unclaimed_keys):
                                 handle_control(control)
                         case (
                             MouseMoved()
@@ -658,6 +775,8 @@ async def render_loop(
                             | MouseScrolledLeft()
                             | MouseScrolledRight()
                         ) as m:
+                            if recorder is not None:
+                                recorder.input(m)
                             press, controls = route_mouse(m, press, focused, routing)
                             for control in controls:
                                 handle_control(control)
@@ -687,8 +806,12 @@ async def render_loop(
 
     except KeyboardInterrupt as ex:
         logger.debug(f"Caught {ex!r}")
+        exit_status = 0
     finally:
         logger.info("Application stopping...")
+
+        if recorder is not None:
+            recorder.stop(exit_status)
 
         if not headless and not is_suspended:
             # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
@@ -717,13 +840,22 @@ def scroll_requests(pending: Iterable[ScrollTo | ScrollBy | ScrollIntoView], sha
     ]
 
 
-def stale_scroll_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
-    """The keys of the nodes whose `use_scroll` returned a different scroll from the one they have in `layouts`."""
-    return (
+def stale_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
+    """
+    The keys of the nodes whose `use_rects` or `use_scroll` returned something different from what they'd read
+    from `layouts`, so that they render again as soon as it changes, as a `ResizeObserver` reports a resize.
+    """
+    stale_rects = (
+        node.key
+        for node in shadow.measured
+        if any(rects != rects_in(layouts, node.key, handle) for handle, rects in (node.hooks.rects or {}).items())
+    )
+    stale_scrolls = (
         node.key
         for node in shadow.scroll_readers
         if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
     )
+    return chain(stale_rects, stale_scrolls)
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

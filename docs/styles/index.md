@@ -33,6 +33,11 @@ and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 ::: counterweight.styles.merge
 
 ::: counterweight.styles.Color
+::: counterweight.styles.IndexedColor
+::: counterweight.styles.TerminalDefault
+::: counterweight.styles.TERMINAL_DEFAULT
+::: counterweight.styles.AnyColor
+::: counterweight.styles.DEFAULT_PALETTE
 ::: counterweight.styles.CellStyle
 ::: counterweight.styles.STYLE_DEFAULTS
 ::: counterweight.styles.CELL_STYLE_DEFAULTS

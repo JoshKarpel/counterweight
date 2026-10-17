@@ -1,0 +1,8 @@
+╭──────────────────────────────────────╮
+│ Building web v4.2.0                  │
+│ [##########] 100%                    │
+│ ✓ compiled 42 modules                │
+│ ! 2 warnings in src/app.ts           │
+│ ✓ wrote dist/web.js (184 kB)         │
+╰──────────────────────────────────────╯
+exited 0                                

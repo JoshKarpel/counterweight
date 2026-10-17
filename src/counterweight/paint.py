@@ -17,6 +17,7 @@ import waxy
 from counterweight._utils import flyweight
 from counterweight._utils import halve_integer
 from counterweight.elements import AnyElement
+from counterweight.elements import Canvas
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
@@ -26,6 +27,7 @@ from counterweight.layout import cells_width
 from counterweight.layout import child_clip
 from counterweight.layout import clipped_axes
 from counterweight.styles.styles import UNSET
+from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import BorderKind
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
@@ -36,6 +38,7 @@ from counterweight.styles.styles import ResolvedStyle
 from counterweight.styles.styles import Style
 from counterweight.styles.styles import TextJustify
 from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles.styles import rgb_of
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +58,7 @@ class Cell:
 
     @classmethod
     @lru_cache(maxsize=2**10)
-    def blank(cls, color: Color) -> Cell:
+    def blank(cls, color: AnyColor) -> Cell:
         """A space on a `color` background."""
         return cls(" ", resolve_cell_style(CellStyle(background=color)))
 
@@ -257,10 +260,12 @@ def paint_element(
     Paint the part of one element inside its clip onto `paint`,
     returning the border healing hints for its corners inside the clip.
 
-    `lines` are the rows a `Text` wraps to, which layout wrapped it to, and are empty for a `Div`.
+    `lines` are the rows a `Text` wraps to, which layout wrapped it to, or the rows a `Canvas`'s painter drew,
+    and are empty for a `Div`.
     Only the rows inside the clip are built, so a long text in a scroll container costs only the rows in view,
     and an element paints nothing if its border box, its text and any `margin_color` margin all miss the clip.
     Text overflows its box down and to the right, so the border box alone can't decide that.
+    A canvas's rows never leave its content box, which clips them.
 
     The margin edge, border, padding edge and text each cover different cells,
     so only the background fill underneath them has to come first.
@@ -279,10 +284,19 @@ def paint_element(
     content = resolved.content
     rows = range(0)
     text_clip = clip
-    # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
-    if lines and (own_clip := child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))) is not None:
-        text_clip = own_clip
-        rows = range(max(text_clip.top, content.top), min(text_clip.bottom, content.top + len(lines)))
+    text_justify = style.text_justify
+    text_style = style.text_style
+    if lines:
+        if isinstance(element, Canvas):
+            own_clip = clip.intersection(content)
+            text_justify = "left"
+            text_style = canvas_text_style(element.style)
+        else:
+            # Text overflows its box, as CSS's does, unless the Text's own overflow clips it to its padding box.
+            own_clip = child_clip(clip, clip, resolved, "padding", *clipped_axes(element.style))
+        if own_clip is not None:
+            text_clip = own_clip
+            rows = range(max(text_clip.top, content.top), min(text_clip.bottom, content.top + len(lines)))
 
     has_margin_color = element.style.margin_color is not UNSET
     if (
@@ -318,15 +332,27 @@ def paint_element(
         paint.write_row(
             content.left,
             y,
-            line_cells(lines[y - content.top], style.text_justify, style.text_style, content.width),
+            line_cells(lines[y - content.top], text_justify, text_style, content.width),
             text_clip,
         )
 
     return hints
 
 
+@lru_cache(maxsize=2**8)
+def canvas_text_style(style: Style) -> ResolvedCellStyle:
+    """
+    The style a `Canvas` with `style` resolves its painter's cells against:
+    its `text_style`, whose background is its `content_color` unless the `text_style` sets one.
+    """
+    resolved = style.resolved
+    if style.text_style.background is not UNSET:
+        return resolved.text_style
+    return resolve_cell_style(CellStyle(background=resolved.content_color), resolved.text_style)
+
+
 @lru_cache(maxsize=2**12)
-def edge_fills(outer: Region, inner: Region, color: Color) -> tuple[Fill, ...]:
+def edge_fills(outer: Region, inner: Region, color: AnyColor) -> tuple[Fill, ...]:
     """The parts of `outer` outside `inner`, as up to four strips filled with blank cells of `color`."""
     cell = Cell.blank(color=color)
     strips = (
@@ -475,6 +501,11 @@ def border_fills(
     return tuple(fills), tuple((corner, jbv) for corner in corners)
 
 
+SVG_FOREGROUND = Color.from_name("white")
+SVG_BACKGROUND = Color.from_name("black")
+"""What `svg` draws the terminal's default foreground and background in."""
+
+
 def svg(paint: Paint) -> Element:
     w, h = paint.width, paint.height
 
@@ -522,7 +553,7 @@ def svg(paint: Paint) -> Element:
             "y": f"{0 * y_mul:{fmt}}{unit}",
             "width": f"{w * x_mul:{fmt}}{unit}",
             "height": f"{h * y_mul:{fmt}}{unit}",
-            "fill": Color.from_name("black").hex,
+            "fill": SVG_BACKGROUND.hex,
         },
     )
 
@@ -530,7 +561,7 @@ def svg(paint: Paint) -> Element:
         root,
         "text",
         {
-            "fill": Color.from_name("white").hex,
+            "fill": SVG_FOREGROUND.hex,
             "font-family": "monospace",
         },
     )
@@ -545,7 +576,9 @@ def svg(paint: Paint) -> Element:
             },
         )
 
-        for bg_color, x_cells_group in groupby(cells, key=lambda x_cell: x_cell[1].style.background.hex):
+        for bg_color, x_cells_group in groupby(
+            cells, key=lambda x_cell: rgb_of(x_cell[1].style.background, SVG_BACKGROUND).hex
+        ):
             # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
             x_cells = tuple(x_cells_group)
             first_x, _first_cell = x_cells[0]
@@ -575,9 +608,9 @@ def svg(paint: Paint) -> Element:
                     },
                 )
 
-                # optimization: don't write white, it's the default
-                if cell.style.foreground != Color.from_name("white"):
-                    ts.attrib["fill"] = cell.style.foreground.hex
+                # optimization: don't write the default foreground
+                if (foreground := rgb_of(cell.style.foreground, SVG_FOREGROUND)) != SVG_FOREGROUND:
+                    ts.attrib["fill"] = foreground.hex
                 ts.attrib.update(svg_text_style(cell.style))
                 ts.text = cell.grapheme
 
