@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="13.20em" height="1.13em">
+ <style>svg {
+  dominant-baseline: hanging;
+  font-size: 1rem;
+}
+</style>
+ <g shape-rendering="crispEdges">
+  <rect x="0.00em" y="0.00em" width="13.20em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="12.65em" height="1.13em" fill="#000000" />
+  <rect x="12.65em" y="0.00em" width="0.55em" height="1.13em" fill="#fcd34d" />
+ </g>
+ <text fill="#ffffff" font-family="monospace">
+  <tspan y="0.00em">
+   <tspan x="0.00em" fill="#fbbf24">$</tspan>
+   <tspan x="1.65em">"</tspan>
+   <tspan x="2.20em">S</tspan>
+   <tspan x="2.75em">c</tspan>
+   <tspan x="3.30em">r</tspan>
+   <tspan x="3.85em">o</tspan>
+   <tspan x="4.40em">l</tspan>
+   <tspan x="4.95em">l</tspan>
+   <tspan x="6.05em">l</tspan>
+   <tspan x="6.60em">o</tspan>
+   <tspan x="7.15em">n</tspan>
+   <tspan x="7.70em">g</tspan>
+   <tspan x="8.80em">v</tspan>
+   <tspan x="9.35em">a</tspan>
+   <tspan x="9.90em">l</tspan>
+   <tspan x="10.45em">u</tspan>
+   <tspan x="11.00em">e</tspan>
+   <tspan x="11.55em">s</tspan>
+   <tspan x="12.10em">"</tspan>
+  </tspan>
+ </text>
+</svg>

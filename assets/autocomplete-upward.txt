@@ -1,0 +1,14 @@
+╭─ Add a dependency ───────────────────╮
+│   Group                              │
+│                                      │
+│  Python                              │
+│                                      │
+│   Index                              │
+╰──────────────────────────────────────╯
+                                        
+ Type to see suggestions. Down and      
+ Up move╭──────────────────────╮Tab     
+ chooses│ docs-build           │them.   
+        │ docs-serve           │        
+        ╰──────────────────────╯        
+   just dc                              
