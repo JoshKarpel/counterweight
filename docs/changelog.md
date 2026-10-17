@@ -202,7 +202,7 @@
   and how to skip the rest with `memo=True` and `use_memo`, with their failure modes,
   in [Performance](performance.md).
 
-- Documented how Counterweight compares with Textual, Ink and Ratatui,
+- Documented how Counterweight compares with Textual, Ink, Bubble Tea and Ratatui,
   and what it doesn't do, in [Ecosystem](ecosystem.md).
 
 - Documented how components keep their state across renders,
