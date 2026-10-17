@@ -126,6 +126,10 @@ The corner cells get exactly the 0% and 100% colors,
 and the interior divides evenly between them,
 as Textual's `VerticalGradient` does (`y / (height - 1)`).
 A one-cell axis has no span and samples at its center.
+That makes some gradients degenerate:
+a radial gradient whose radius is zero on an axis (`closest-side` in a one-row box, say),
+and a repeating gradient whose stops span nothing.
+Those follow CSS Images 4's rules for degenerate gradients rather than dividing by zero.
 
 ### Which box a slot maps over
 
@@ -146,7 +150,9 @@ so each maps its gradient over the box it paints:
 
 A gradient's `box` field overrides this, as `background-origin` does,
 so a border and a background with the same stops can share one box and line up.
-Text overflows its content box down and to the right, and the end colors extend there.
+Text overflows its content box down and to the right,
+and a `box` override can name a box smaller than the region its slot paints.
+What color those cells take is an [open question](#what-color-do-cells-outside-the-mapping-box-take).
 
 A chunk's gradient maps over the element's content box too.
 CSS maps a `<span>`'s background over the span's own box,
@@ -232,6 +238,8 @@ The constructors parse once:
 they fix up stop positions into a resolved form the painter reads,
 and raise `ValueError` for fewer than two color stops
 or a hint that isn't between two of them.
+That holds only if every position is a fraction:
+whether `At` takes a `waxy.Length` is an [open question](#can-stops-be-lengths-in-cells).
 Every field is hashable, so a `Style` holding a gradient hashes and caches as it does today,
 and `|` replaces a gradient whole rather than merging its fields.
 
@@ -241,6 +249,8 @@ and `CellStyle.foreground` and `background`,
 which `text_style`, `border_style`, chunks and a canvas painter's cells share.
 `ResolvedCellStyle`, which output reads, stays `AnyColor`:
 paint turns a gradient into each cell's color before anything reaches output.
+Where `ResolvedStyle` holds a cell style's gradient until then
+is an [open question](#where-does-resolvedstyle-keep-a-slots-gradient).
 
 Hand-written utilities give every slot a gradient helper,
 beside the existing `text_color`, `border_bg` and the rest:
@@ -256,9 +266,13 @@ A gradient splits into two parts that change for different reasons,
 and each is computed once and reused:
 
 - **The ramp** maps a position along the gradient to a color.
-  It depends only on the stops, `repeating` and the interpolation,
-  so it's a lookup table of colors (256 entries per pair of adjacent stops to start),
-  built once per gradient value with the color math, hints and color-space conversion.
+  It depends only on the stops, `repeating`, the interpolation and the hue method,
+  so it's a lookup table of colors, built once per gradient value
+  with the color math, hints and color-space conversion.
+  It needs enough entries that a lookup is within a channel step of the exact color,
+  which 256 per pair of adjacent stops isn't:
+  red to blue in Oklab misses by 4 steps, and black to white with a hint at 0.1 by 11,
+  where the hint's curve is steepest.
 - **The field** maps each cell of a box to an index into the ramp.
   It depends on the geometry (direction, shape, size, `at`),
   the box's size in cells, and the cell aspect ratio,
@@ -268,8 +282,8 @@ A slot's cells are then a lookup: the ramp's colors made into `Cell`s for that s
 (`Cell.blank(color)` for a background, or the border character or text grapheme in a style
 whose foreground or background is the ramp's color),
 indexed by the field.
-Only the rows inside the clip are built, as text's are,
-so a gradient behind a long scroll container costs only the rows in view.
+Whether a field covers its whole box or only the rows inside the clip
+is an [open question](#does-a-field-cover-the-whole-box-or-only-the-rows-in-view).
 
 Text and canvas rows can't take that lookup whole.
 A grapheme's own style can set the color the gradient would give it,
@@ -280,6 +294,9 @@ which has no gradient to hold,
 so a gradient text's rows are resolved against the field cell by cell
 and kept per node with the field (see [Where the caches go](#where-the-caches-go)),
 rebuilt when the lines, the style or the field change.
+A two-cell-wide cluster takes the field's color at its first cell for both of its cells,
+since the terminal draws both halves in the style it's written with,
+and its continuation cell shares that style today.
 A canvas reaches the same path from its background:
 `canvas_text_style` resolves a painter's unset background to the canvas's `content_color`,
 so a transparent pixel over a gradient `content_color` shows the field's color at that cell,
@@ -295,6 +312,9 @@ which matters to the shared flyweight caches
 (`Cell` holds 2**14, `ResolvedCellStyle` and `sgr_from_cell_style` 2**10):
 a 200x50 box at 30 degrees has 400 distinct colors computed exactly,
 and never more than the ramp's entries through it.
+That bound is per gradient: a cell whose foreground and background are both gradients,
+such as a border with `border_gradient` and `border_bg_gradient`, can take any pair of their colors,
+and a few gradients on screen together already hold more styles than those caches.
 
 ### What a probe measured
 
@@ -323,21 +343,24 @@ An animated one rebuilds its field and rewrites its cells every frame.
 Following the project's cache placement rules:
 
 - **Ramps: shared, at the source.**
-  An `lru_cache` keyed by the gradient's stops and interpolation.
+  An `lru_cache` keyed by the gradient's stops, `repeating`, interpolation and hue method.
   The gradients an app uses are few, and recur across nodes and frames.
 - **Fields and their cells: per node, in `LayoutTree`.**
   They're keyed by one node's geometry, and how many are live grows with the app.
   `LayoutTree.drawings` already keeps each canvas's rows by node
   with the painter and size that drew them, and reuses them while both compare equal
   (see the [Canvas plan](canvas-and-embedding.md#the-element-and-its-painter)).
-  Fields follow it: a `LayoutTree.fields` keeps each node's fields by slot,
-  with the gradient, the box size and the aspect ratio each was built for,
+  Fields follow it: a `LayoutTree.fields` keeps each node's fields
+  by the gradient and the box each maps over, so each distinct chunk gradient in a text gets its own,
+  with the box size and the aspect ratio each was built for,
   and `LayoutTree.painted` hands them to paint beside the node's lines,
   building one only when one of those changed.
   `LayoutTree.apply` drops a node's fields when it drops the node, as it does its drawing.
 
 Both get their hit rates checked (`cache_info()`)
-on a workload with more gradient boxes than any shared `maxsize`.
+on a workload with more gradient boxes than any shared `maxsize`,
+and so do the shared caches a gradient's cells pass through:
+the `Cell` and `ResolvedCellStyle` flyweights, `Cell.blank` and `sgr_from_cell_style`.
 
 ### Output
 
@@ -461,6 +484,152 @@ The canvas API's points and two-circle radials have no counterpart (see [Decisio
   A child's gradient already moves with it, since layout scrolls its box.
 - **Dithering.** Truecolor output has 8 bits per channel and needs none.
 
+## Open questions
+
+Four choices the rest of the plan depends on, each with how the web answers it,
+the options and what each costs, and the one this plan leans toward.
+The third and fourth fit together (see [Together](#together)).
+
+### Where does `ResolvedStyle` keep a slot's gradient?
+
+`ResolvedStyle.border_style` and `text_style` are `ResolvedCellStyle`s,
+which stay `AnyColor`, so nothing resolved can carry a border or text gradient to paint.
+`margin_color`, `padding_color` and `content_color` aren't a problem:
+only paint reads them, so they become `AnyColor | Gradient` in `ResolvedStyle` too.
+
+The web: Compose's public `TextStyle` takes a `color` and a `brush` as separate fields,
+and folds them internally into one value that is either a color or a brush.
+SVG's `fill` takes a color or a paint server.
+
+- **A. Widen `ResolvedCellStyle`.**
+  The smallest diff.
+  It costs output's type: it admits a gradient output can never receive,
+  so `sgr_color` grows an unreachable branch, and a gradient could leak into `Paint` without mypy noticing.
+- **B. Keep `ResolvedCellStyle`, with gradient fields beside it**
+  (`border_foreground_gradient: Gradient | None`, ...).
+  The fast path is untouched.
+  It costs two fields that must agree, since the style's color is a meaningless placeholder while a gradient is set,
+  and chunks: `line_cells` resolves each chunk's `CellStyle` against the text style through `resolve_cell_style`,
+  and a chunk's gradient has no field to land in.
+- **C. A second resolved type that paint reads**, with colors that are `AnyColor | Gradient`.
+  `ResolvedStyle` and `resolve_cell_style` return it,
+  and paint turns it into a `ResolvedCellStyle` for each cell;
+  for a solid style that's one cached step,
+  so `line_cells` and `border_fills` get the same flyweight they do today.
+  It costs a second flyweight type with the same fields,
+  and that step wherever a style reaches output.
+
+Leaning C: chunks put the wide type into `resolve_cell_style` anyway,
+and C is the option that keeps a gradient out of output's type.
+
+### Can stops be lengths in cells?
+
+`At = float | waxy.Length` lets a stop be a number of cells,
+but whether 10 cells comes before or after 40% depends on the gradient line's length in that box,
+so the constructors can't fix up the stops, and a ramp cached by stops alone is wrong at every size but one.
+Visual units add a second problem:
+a length along a line at 30 degrees has no unit but columns,
+so `to bottom` with `Length(10)` would cover 5 rows,
+and measuring side keywords in their axis's cells instead
+makes `to bottom` and `180deg` disagree though they're the same direction.
+
+The web: linear and radial stops are `<length-percentage>`s,
+fixed up when the gradient is drawn, against the gradient line's length for that box.
+Conic stops are angles or percentages, never lengths.
+
+- **A. Fractions only (`At = float`).**
+  The constructors resolve everything, ramps depend only on the gradient,
+  and a stop means the same thing on a canvas,
+  which also answers two review findings:
+  "draws the same on a canvas" for length positions, and conic stops as lengths.
+  It costs stripes of a fixed width:
+  `repeating-linear-gradient(red 0 2px, blue 2px 4px)`, a progress bar's barber pole, hazard stripes.
+  With fractions, a stripe grows and shrinks with its box.
+- **B. Lengths, resolved per box.**
+  `resolve_stops(gradient, line_length)` returns fraction-only stops, and the ramp is keyed by them,
+  so a gradient whose stops are all fractions resolves to the same stops at every size and still shares one ramp.
+  It costs a ramp per line length a length gradient appears at (a resize animation builds one every frame),
+  validation moving partly from the constructor to paint,
+  and the unit question, which it still has to answer.
+
+Leaning A, with lengths deferred as having several plausible designs:
+the unit of a length along an angled line has no answer yet,
+and the deferred entry names stripes as the use.
+
+### Does a field cover the whole box, or only the rows in view?
+
+Building only the rows inside the clip,
+under a cache keyed by the gradient, the box's size and the aspect ratio,
+either leaves out the rows that scroll into view or rebuilds on every scroll.
+
+The web: browsers rasterize in tiles, painting only the tiles in view,
+and Chromium evaluates a gradient per pixel in a shader with no field kept per box.
+Here, `LayoutTree.drawings` keeps a canvas's whole drawing whatever the clip,
+and text builds only the rows inside the clip, through the shared `line_cells` cache.
+
+- **A. The whole box.**
+  The key stays the gradient, the size and the aspect ratio.
+  It costs a box that grows, such as a chat log or a command's output:
+  a `to bottom` gradient changes every color when the height changes,
+  so a 200-column, 5,000-row box rebuilds about a million cells for each new line.
+- **B. The rows in view, keyed by which rows they are.**
+  Always correct, and never more than the viewport.
+  It costs rebuilding the viewport on every scroll step:
+  1.6 ms for a 200x50 linear field in the probe,
+  and more for radial and conic fields, which haven't been measured.
+- **C. The rows in view, kept per node as they're built.**
+  A scroll builds only the rows that came into view, and scrolling back costs nothing.
+  It costs a mutable row store per node, dropped whenever the size or gradient changes,
+  which in the worst case holds as much as A.
+
+Leaning B, moving to C if profiling says to:
+C is B plus keeping rows, so the move is small,
+and the `gradients` benchmark gets a long scroll container to make that call on.
+
+### What color do cells outside the mapping box take?
+
+Text overflows its content box down and to the right,
+and a `box` override can name a box smaller than the region its slot paints,
+such as a margin gradient with `box="content"`.
+A field the size of the mapping box has no entries for those cells,
+and the end colors are wrong for most geometries:
+text overflowing to the right under `to bottom` should keep each row's color,
+and a repeating gradient should keep repeating.
+
+The web: CSS sizes a gradient image to its origin box
+and by default tiles it outside that box (`background-repeat: repeat`);
+with `no-repeat`, the cells outside are transparent.
+SVG's `spreadMethod` defaults to `pad`:
+the gradient's geometry continues everywhere, with the end colors past its ends.
+
+- **A. Continue the geometry, as SVG's `pad` does.**
+  A cell outside the box is evaluated where it is, relative to the mapping box:
+  overflowing text under `to bottom` keeps each row's color,
+  a repeating gradient keeps repeating, and radial and conic gradients continue.
+  It costs a field that covers the cells being painted rather than the mapping box,
+  keyed by where those cells sit relative to it.
+- **B. Tile, as CSS's default does.**
+  Each box-sized copy restarts the gradient,
+  so overflowing text jumps color at the box's edge,
+  which is rarely wanted: CSS authors usually set `no-repeat` on a gradient.
+- **C. Clamp to the nearest cell inside the box.**
+  The field stays the box's size, and a lookup outside it clamps its coordinates.
+  It matches A for horizontal and vertical gradients.
+  It costs the rest: angled, radial and conic gradients smear instead of continuing,
+  and a repeating gradient stops repeating.
+
+Leaning A: it's what the geometry already defines.
+
+### Together
+
+The leanings fit together.
+With the third question's B and the fourth's A,
+a field is the rows being painted at an offset from the mapping box,
+and nothing in it asks whether a cell is inside that box.
+With all four, a field is one pure function of the gradient, the mapping box's size, the aspect ratio,
+and the rows being painted relative to the mapping box,
+and its colors come from a ramp keyed by the gradient alone.
+
 ## Decisions
 
 Each settled choice, with what it costs:
@@ -503,7 +672,8 @@ Each settled choice, with what it costs:
    stop fixup and hints, color-space conversion (sRGB, Oklab, Oklch with hue methods),
    ramps, and fields for each geometry.
    Pure functions, tested directly, with property tests that a ramp lookup matches the exact color
-   to within a channel step, and that magic corners land the end colors on the corners.
+   to within a channel step (which sets the ramp's size, hints and Oklch included),
+   and that magic corners land the end colors on the corners.
 2. Paint: widen the slots, keep each node's fields in `LayoutTree.fields`,
    paint each slot from its field, resolve gradient text and canvas rows against it,
    and pass the cell aspect ratio from `app()` to `LayoutTree.compute`.
