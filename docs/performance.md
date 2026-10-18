@@ -61,6 +61,28 @@ Layout and paint grow with how many elements are on screen and how many of them 
 if they dominate a profile, please
 [open an issue](https://github.com/JoshKarpel/counterweight/issues) with the flamegraph.
 
+## What happens when input arrives faster than frames?
+
+Each frame begins by handling every event waiting for it
+(key presses, mouse reports, and the state changes their handlers make),
+and only then re-runs components and draws the screen, once.
+Input that arrives while a frame is drawing waits for the next frame,
+which handles all of it together.
+
+So a slow frame doesn't fall behind fast typing: frames get fewer, not later.
+If a [`text_area`](headless/use_text_area.md)'s frame takes as long as three key presses,
+it draws about every third key press, and the frame after the last key press shows every edit.
+When frames are faster than the input, each key press gets its own frame, with no added delay,
+so there's nothing to tune. React batches state updates the same way, rendering once for all the updates in an event.
+
+Every event still reaches its handlers, one at a time and in order.
+But the components re-run only after all of them,
+so every handler in a frame sees the state the components last rendered with.
+A handler that sets `set_count(count + 1)` counts two key presses that land in one frame as one.
+Pass the setter a function, which receives the latest value,
+as described in [updating state from its previous value](hooks/use_state.md#updating-state-from-its-previous-value):
+`set_count(lambda count: count + 1)`.
+
 ## Which components run in a frame?
 
 In each frame, every component has one of three outcomes:
