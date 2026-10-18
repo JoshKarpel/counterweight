@@ -1,14 +1,18 @@
 # Plan: Diagram Engine
 
+Artifact: https://claude.ai/code/artifact/489f87f6-2449-4761-a827-335f68301645
+
 This plan covers laying out boxes and arrows in the terminal,
 the way dot lays out graphs for SVG,
 with taffy (through waxy) still doing the box layout.
 It covers how a diagram engine splits into separable features,
 where placement plugs into the render loop,
+what the graph core computes,
 how diagrams nest clusters,
 a working prototype and what it established,
 and the prior art it draws on.
-It does not settle the public API.
+It settles one piece of public API, the `Path` element that draws lines,
+and leaves the rest open.
 The decisions its steps rest on are listed before the steps.
 
 The use cases are an ASCII diagram editor,
@@ -75,7 +79,10 @@ The probe at the end of this plan runs the whole pipeline:
 - Drawing: every cell stores up, down, left, and right bits,
   and the glyph comes from their combination.
 
-A request pipeline at 44 columns:
+The probe centers each diagram in the width it's given;
+the figures here are trimmed to the diagram.
+
+A request pipeline:
 
 ```text
      ╭─────────╮
@@ -116,7 +123,7 @@ A request pipeline at 44 columns:
          ╰──────────╯
 ```
 
-A CI pipeline at 80 columns, with a wide fan-out and fan-in:
+A CI pipeline, with a wide fan-out and fan-in:
 
 ```text
                           ╭──────────╮
@@ -150,7 +157,7 @@ A CI pipeline at 80 columns, with a wide fan-out and fan-in:
                                                       ╰─────────────╯
 ```
 
-A job queue at 44 columns, with cycles.
+A job queue, with cycles.
 `worker` and `queue` point at each other, so they share a line with an arrowhead at each end,
 and `wait` closes a longer loop back to `submit`, whose `▲` has its own port.
 `ok` grows past its label to fit four arrowheads:
@@ -212,8 +219,14 @@ Known weaknesses:
 - Long horizontal runs: `publish` to `deploy docs` runs a long way right,
   because the long edge from `build docs` holds the right-hand column.
   Better ordering heuristics would help.
+- Ordering keeps whatever its last sweep produced.
+  dot keeps the ordering with the fewest crossings across its sweeps,
+  and follows each sweep with transpose, swapping neighbours wherever that removes crossings.
+- Coordinate assignment pulls node centers together, not ports,
+  so an edge that lands off-center (spread among a busy box's arrivals) pulls its source toward the wrong column.
 - Off-center exits: an edge can leave a box off-center (`db`, `render`)
   when that keeps it straight.
+- Top to bottom only, and no edge labels.
 - Cycle breaking follows input order, not a minimum feedback set,
   so some graphs get more upward edges than they need.
   Finding the fewest edges to reverse is NP-hard, so dot and ELK use heuristics too.
@@ -268,21 +281,101 @@ The render loop already has this shape.
 When focus moves, `app.py` re-renders the components whose focus changed and lays the tree out again,
 all before painting, and raises `UnsettledFocus` if the second pass doesn't settle.
 A graph container can follow it: lay out, run the core on the measured sizes,
-re-render the container with its positions, and lay out again, at the cost of a second layout pass.
+re-render the container with its positions, and lay out again.
+
+The second pass is needed only when the sizes the core ran on are stale.
+A node's size doesn't depend on where it's placed,
+as long as it's laid out at max-content width or at a width the engine sets.
+Taffy gives an absolutely positioned child with auto width the containing block's full width,
+whatever its inset, and the container's width comes from the core's extent,
+so an auto-width node would be measured against a width that its own size helps decide.
+A pass that places every node where the last frame put it (or at the origin, for a new node)
+therefore measures each one correctly.
+The container keeps the sizes its positions came from,
+and re-renders only when a measured size differs,
+as focus settling re-renders only the components whose focus changed.
+A frame where nothing in the diagram changed size takes one pass;
+a frame that adds a node or edits a label takes two.
+
 `LayoutTree` keeps one taffy tree across frames so taffy reuses the layouts it cached
 for unchanged nodes.
-Measuring nodes inside that tree at sizes other than the ones the final layout gives them
-may evict those entries, or a scratch tree may be cheaper; that needs measuring with `just profile`.
+The first pass lays each node out at the size the second gives it, so those entries survive.
+Whether moving absolutely positioned children invalidates the container's cached layout,
+and what the second pass costs when it runs, needs measuring with `just profile`.
 
 ### Choice
 
 C, with the graph core written as pure functions
 (graph and node sizes in, positions and routes out),
 and the measuring done inside the frame.
-It costs a second layout pass in every frame that renders a graph container.
+It costs a second layout pass in every frame where a node in a graph container changes size.
+
+Positions compile into absolute insets, as the shadow probe places its nodes,
+rather than the layout probe's flex margins.
+Margins need one flex row per rank, which clusters and left-to-right diagrams don't have;
+insets are just each node's x and y.
+React Flow places its nodes the same way, absolutely within the flow's pane.
+Absolutely positioned children don't contribute to their parent's size,
+so the container sets its own width and height from the core's extent.
+Scroll containers still count them
+(taffy's scroll width and height include absolutely positioned descendants),
+so a diagram in a `scroll_area` scrolls to its full size.
+
 B is where that core moves if counterweight wants custom layouts in general,
 and keeping the core pure keeps that move cheap, but nothing waits on it.
 A is ruled out: it skips coordinate assignment.
+
+## The graph core
+
+The core runs the probe's phases as pure functions, in two groups by what they read:
+
+- Structure: cycle breaking, ranking, and ordering read only the nodes and edges.
+- Geometry: coordinate assignment, ports, and channel tracks read node sizes and direction too.
+
+The split is what caching and clusters (below) build on.
+Each node is given as its outer size plus the part of its border edges may attach to,
+the probe's `interior`.
+The two differ when a node draws something beside its border, such as a drop shadow:
+the core spaces the outer box, and edges attach to the border.
+
+### Ordering
+
+Ordering keeps the sweep with the fewest crossings, as dot does,
+and follows each sweep with transpose,
+swapping neighbours in a rank wherever that removes crossings.
+
+### Ports
+
+Coordinate assignment pulls ports toward each other, not node centers.
+The order of a node's arrivals is known after ordering
+(their sources all sit in the rank above, long edges through their dummies),
+so each edge's offset along its node's border is known before coordinate assignment,
+as ELK layered fixes port order before it places nodes.
+An arrival can still slide within its node's interior afterwards
+to land where its edge already is, as the probe's do.
+
+### Edge labels
+
+An edge label is a dummy node, sized to its text, in a rank of its own between the edge's ends.
+The edge runs into the label and out the other side,
+so the label sits on the line, and coordinate assignment keeps room for it as for any node.
+dagre, which lays out Mermaid's flowcharts, places labels this way,
+but doubles every edge's minimum length and halves the rank gap to make the room.
+Counterweight gives only labelled edges a minimum length of 2,
+since a rank is at least one row and can't be halved,
+so a diagram with one labelled edge isn't twice as tall.
+
+### Direction
+
+The core lays out in two axes, along ranks and across them,
+and every direction (top to bottom, bottom to top, left to right, right to left)
+maps onto those, as dagre lays out `LR` by swapping each node's width and height
+and `BT` by reversing the rank axis.
+Each axis takes its own gap, because a cell is about twice as tall as it is wide:
+neighbours a column apart in a row read as touching, and neighbours a row apart in a column don't.
+Across ranks, arrowheads are two cells apart in either direction,
+so in a left-to-right diagram, a box with more arrivals than its height holds grows taller.
+Arrowheads point the way their edges flow (`▼`, `▲`, `▶`, `◀`).
 
 ## Clusters
 
@@ -304,16 +397,27 @@ The engines that do this disagree on how:
   "If any of a subgraph's nodes are linked to the outside, subgraph direction will be ignored",
   because a linked subgraph is laid out with its parent and inherits its direction.
 
-Counterweight lays clusters out recursively, innermost first:
+Counterweight lays clusters out recursively, in two passes over the cluster tree:
+the structure phases from the outermost cluster in, then the geometry phases from the innermost out.
 
 - Each cluster's run sees its own nodes plus one node per child cluster,
-  sized by that child's run, so every level is the flat core the probe already runs.
+  so every level is the flat core the probe already runs.
+  Structure needs nothing from the children,
+  and a child's geometry gives its node in the parent a size.
   This is also plan C at each level: a laid-out cluster is one more measured node.
 - An edge between nodes in different clusters is split at each cluster border it crosses.
-  Inside a cluster, its half runs to or from a port on the border:
-  an edge into the cluster enters its top, and an edge out leaves its bottom.
-  The inner run places that port as a dummy node above its first rank or below its last,
-  and the parent's run treats it as a fixed port on the cluster's box.
+  Inside a cluster, its half runs to or from a port on the border,
+  on the side facing the edge's other end in the parent's ranking:
+  the top if the parent ranks that end above the cluster, the bottom if below.
+  The inner run places the port as a dummy node above its first rank or below its last,
+  in the order the parent's ordering gives the edges' other ends,
+  and the parent's geometry treats it as a fixed port on the cluster's box.
+- A cycle through a border is why the side comes from the parent's ranking, not from the edge's direction.
+  If `a` inside cluster `C` points at `b` outside it, and `b` points back at `a2` inside `C`,
+  the parent sees a cycle between `C` and `b` and reverses one edge.
+  Then both edges meet `C` on the side facing `b`,
+  and the one pointing into `C` runs up or down to `a2` as a reversed edge, arrowhead and all.
+  Structure going outermost first is what makes the parent's ranking known when the inner run places its ports.
 - An edge may name a cluster as its end, as dot's `lhead` does,
   and then stops at the parent's level.
 - One graph container holds the whole cluster tree,
@@ -341,6 +445,11 @@ That is the piece the editor case needs most.
   as border healing reads the paint.
   It needs a module name other than `routing`:
   `counterweight.routing` routes input events to handlers.
+- How it draws: onto the same line canvas the graph container draws `Path`s on.
+  A connector can be a `Path` its component re-renders once it has its endpoints' rects
+  (one more settling pass, like the graph container's),
+  or a pass at paint time that writes to the canvas directly.
+  Both designs are plausible, and step 7 chooses between them.
 - Clipping and scrolling: `by_key` holds each node's rects on screen, already moved by the scroll containers above it,
   with its `clip` and `visible` region, and has no entry for a hidden node.
   Routing in those screen coordinates lets a connector join elements in different containers at no extra cost.
@@ -362,6 +471,23 @@ That is the piece the editor case needs most.
 
 ## Glyphs and effects
 
+- Draw lines with a `Path` element, as SVG draws them with `<polyline>`.
+  Its points are in its parent's content box,
+  it takes no space in layout (like an absolutely positioned overlay),
+  its style gives the line's weight, color, and z,
+  and arrowheads at either end take the place of SVG's `marker-start` and `marker-end`.
+  The graph container draws its edges as `Path`s, and node borders join the same canvas.
+- Merge by z: lines merge only with lines at the same z,
+  and anything at a higher z covers the cells below it, as stacking does on the web,
+  so a popup over a diagram never joins its border to the edges underneath.
+  Within one z, a junction takes the style of the line painted last,
+  so an edge drawn after the boxes colors the tee where it meets one.
+  Healing today compares only graphemes,
+  with a TODO in `border_healing.py` for styles and z.
+- Dashes: a dashed line (Mermaid's `-.->`, SVG's `stroke-dasharray`)
+  draws its straight runs with `┄`/`┆` (light) or `┅`/`┇` (heavy).
+  Box drawing has no dashed corners, junctions, or double lines,
+  so those cells stay solid.
 - Generalize border healing:
   each cell stores direction bits plus a line weight per direction.
   termaid merges with bits but every junction comes out light,
@@ -454,6 +580,11 @@ What it showed:
 
 - The gap between neighbours grows by one cell for the shadow (2 to 3 in the probe),
   so the router has to count shadow cells as part of the space a node takes up.
+  Widening the gap adds that cell on the left of every node too, where there's no shadow.
+  The core's outer box does it exactly:
+  the shadow wrapper is the node, and it names its bordered child, with an `ElementHandle`,
+  as what edges attach to, as a React Flow custom node places its own `<Handle>`s.
+  An edge crosses the shadow row as the first row of its channel, as in the probe.
 - An edge leaves through the shadow row below its box,
   so edges draw above shadows and cut through them (`░░│░░`).
 - Healing joins only corners, so the probe draws each exit tee itself,
@@ -464,12 +595,19 @@ What it showed:
 Counterweight's text measurement already wraps a label at a given width,
 so the engine can narrow a box by choosing the width it measures that node at,
 before coordinate assignment.
+`MeasurableText` answers that for a `Text` node without a layout pass,
+and keeps each width it was asked about, so trying several widths is cheap.
+A node that is any other element would need a layout pass per width tried,
+so fitting narrows `Text` nodes only, and the rest keep their max-content size.
+Narrowing those is deferred as expensive.
 Boxes must not shrink during layout itself:
 taffy's default `flex_shrink` squeezes them below the size the router drew around,
 which is why the probe's nodes don't shrink.
 On top of narrowing boxes, the engine can shrink gaps
 (mermaid-ascii's `--max-width` and termaid's auto-fit both do)
 and flip direction from down to right by aspect ratio.
+Direction is an argument to the geometry phases only,
+so flipping it reuses the structure phases' result.
 A diagram that still doesn't fit can sit in a scroll container (`scroll_area`),
 as a wide SVG sits in a scrolling `div` on the web, instead of running off the screen's edge.
 
@@ -484,8 +622,10 @@ Stability matters for an editor and for reactive re-renders alike:
   whose order changes between runs with Python's hash seed.
 - Pinning: some nodes keep fixed positions,
   as in ELK's `semiInteractive` mode and TALA's partial positions.
-- Caching: key the layout on graph structure plus node sizes,
-  as text measurement is cached.
+- Caching: key each group of phases on what it reads,
+  the structure phases on the graph alone and the geometry phases on its sizes and direction too.
+  Editing a label then moves boxes along their rank but never reorders them,
+  which tests can hold the core to.
 
 Parsing a subset of Mermaid's flowchart syntax splits the work cleanly for LLM output:
 the model writes the nodes and edges, and the engine lays them out.
@@ -494,41 +634,66 @@ the model writes the nodes and edges, and the engine lays them out.
 
 The use cases rank diagrams above the editor.
 
-1. The line canvas comes first, because both features draw on it.
+1. The graph core comes first.
+   It's pure and depends on nothing, it's the riskiest part,
+   and building it first shows what the graph container needs from the line canvas
+   before the canvas is designed.
+   The line canvas follows, because both features draw on it.
    It's all they share: the graph container draws its edges from the core's ports and channel tracks,
    not with the connectors' A*.
-   The diagram steps follow, then connectors,
+   The rest of the diagram steps follow, then connectors,
    so the least explored part (A*, nudging, and the rules for clipped endpoints) is proven last,
    and the editor waits for it.
 2. Edges cross container boundaries in both features:
    connectors in screen space (see [Routing](#routing)),
    and graph edges into recursively laid-out clusters (see [Clusters](#clusters)).
-3. Placement measures, then places (C).
+3. Placement measures, then places (C), compiling positions into absolute insets.
    A custom display mode in waxy (B) stays open for custom layouts in general,
    and nothing here waits on it.
+4. Lines are drawn with a public `Path` element.
+   They merge only with lines at the same z,
+   and a junction takes the style of the line painted last
+   (see [Glyphs and effects](#glyphs-and-effects)).
+5. An edge label is a dummy node in a rank of its own, as in dagre,
+   and only labelled edges are lengthened to make room for it
+   (see [Edge labels](#edge-labels)).
 
 ## Proposed steps
 
-1. Line canvas: per-cell direction bits with a weight per direction,
-   resolved to glyphs at paint time, with node borders protected and clips respected.
-   Border healing moves onto it, healing along whole edges rather than only corners.
-2. Graph core: pure functions for cycle breaking, ranking, ordering, coordinate assignment,
-   ports, and channel tracks, tested directly on plain data,
-   then clusters laid out innermost first, with crossing edges split at border ports.
-   Each takes its spacing (the gap between neighbours) as an argument.
+1. Graph core: pure functions for the structure phases (cycle breaking, ranking,
+   and ordering that keeps its best sweep and transposes)
+   and the geometry phases (coordinate assignment pulling port to port, ports, and channel tracks),
+   with edge labels as dummy nodes, in all four directions, tested directly on plain data.
+   Then clusters: structure from the outermost cluster in, geometry from the innermost out,
+   with crossing edges split at border ports on the side facing their other end.
+   Each node is an outer size plus the part of its border edges attach to,
+   and each axis takes its own gap as an argument.
    Tests cover cycles, sinks above the last rank, isolated nodes,
-   boxes with more inputs than their label is wide,
-   and edges into, out of, and between clusters, or naming a cluster as their end.
-3. Graph container: measure nodes, run the core,
-   compile positions into the taffy tree, and draw nodes, cluster boxes, and edges onto the line canvas,
-   with a second layout pass in the frame, as focus settling already does.
-4. Fitting: narrow boxes, shrink gaps, then flip direction, when the diagram doesn't fit.
+   boxes with more inputs than their label is wide, labelled edges, each direction,
+   edges into, out of, and between clusters, or naming a cluster as their end,
+   cycles through a cluster's border,
+   and that changing a node's size never changes the ordering.
+2. Line canvas: per-cell direction bits with a weight per direction, and dashes on straight runs,
+   drawn with a public `Path` element and resolved to glyphs at paint time.
+   Lines merge only within one z, a junction takes the style of the line painted last,
+   node borders are protected, and clips are respected.
+   Border healing moves onto it, healing along whole edges rather than only corners.
+3. Graph container: lay nodes out at max-content width, run the core on their sizes,
+   compile positions into absolute insets and the container's size from the core's extent,
+   and draw nodes, cluster boxes, and edges (as `Path`s) onto the line canvas.
+   A frame lays out a second time, as focus settling does,
+   only when a node's size differs from the one its position came from.
+4. Fitting: narrow `Text` nodes, shrink gaps, then flip direction, when the diagram doesn't fit.
 5. Drop shadows: document the wrapper pattern (a cookbook page),
-   and have the graph container leave room for a node's shadow by passing a wider gap to the core.
-6. Mermaid subset: flowchart syntax, subgraphs included, parsed into the graph container,
+   and have the wrapper name its bordered child as what edges attach to,
+   so the core spaces the shadow and edges meet the border.
+6. Mermaid subset: flowchart syntax in every direction (`TD`/`TB`, `BT`, `LR`, `RL`),
+   edge labels (`-->|text|`), dotted and thick edges (`-.->`, `==>`) as dashes and heavy lines,
+   and subgraphs, parsed into the graph container,
    with nodes declared by the edges that name them.
    Self-loops need routing around a box's side before they can be accepted.
 7. Connectors: a post-layout pass between elements named by `ElementHandle`, in any containers,
+   drawn onto the line canvas,
    with A* using bend and soft-obstacle costs, port spreading, and arrowheads,
    then ordering and nudging in shared channels,
    and a rule for endpoints that are scrolled away, clipped, or hidden.
@@ -546,6 +711,11 @@ The use cases rank diagrams above the editor.
 - [D2's ASCII renderer](https://d2lang.com/blog/ascii/):
   scales down an ELK layout computed in pixels, which leaves lopsided boxes.
   Lay out on the character grid directly instead.
+- [dagre](https://github.com/dagrejs/dagre):
+  the layered layout behind Mermaid's flowcharts,
+  and the model for edge labels as dummy nodes and for laying out every direction in one.
+- [React Flow](https://reactflow.dev/):
+  nodes placed absolutely in a pane, with `<Handle>`s inside a custom node for edges to attach to.
 - [ELK layered](https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html)
   and its [retrospective](https://arxiv.org/abs/2311.00533):
   the reference design for phases and ports.
@@ -611,7 +781,17 @@ GRAPHS = {
         ],
     ),
     "ci": (
-        ["checkout", "lint", "typecheck", "unit tests", "build wheel", "build docs", "integration", "publish", "deploy docs"],
+        [
+            "checkout",
+            "lint",
+            "typecheck",
+            "unit tests",
+            "build wheel",
+            "build docs",
+            "integration",
+            "publish",
+            "deploy docs",
+        ],
         [
             ("checkout", "lint"),
             ("checkout", "typecheck"),
@@ -949,9 +1129,21 @@ def layout(ranked, xs, sizes, width, channel_heights):
 
 U, D, L, R = 1, 2, 4, 8
 GLYPH = {
-    U | D: "│", L | R: "─", D | R: "╭", D | L: "╮", U | R: "╰", U | L: "╯",
-    U | D | R: "├", U | D | L: "┤", D | L | R: "┬", U | L | R: "┴", U | D | L | R: "┼",
-    U: "│", D: "│", L: "─", R: "─",
+    U | D: "│",
+    L | R: "─",
+    D | R: "╭",
+    D | L: "╮",
+    U | R: "╰",
+    U | L: "╯",
+    U | D | R: "├",
+    U | D | L: "┤",
+    D | L | R: "┬",
+    U | L | R: "┴",
+    U | D | L | R: "┼",
+    U: "│",
+    D: "│",
+    L: "─",
+    R: "─",
 }
 
 
