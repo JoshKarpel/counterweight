@@ -105,6 +105,7 @@ from counterweight.output import stop_mouse_tracking
 from counterweight.output import stop_output_control
 from counterweight.output import synchronized
 from counterweight.output import title_instructions
+from counterweight.paint import DEFAULT_CELL_ASPECT_RATIO
 from counterweight.paint import Paint
 from counterweight.paint import diff_paint
 from counterweight.paint import paint_layout
@@ -193,6 +194,7 @@ async def app(
     log_levels: Mapping[str, int] = frozendict(),
     title: str | None = None,
     unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
+    cell_aspect_ratio: float = DEFAULT_CELL_ASPECT_RATIO,
 ) -> None:
     """
     Parameters:
@@ -247,6 +249,10 @@ async def app(
             keeps it from taking its default.
             Pass `{}` to give unclaimed keys no defaults, or merge onto the defaults to change some,
             as in `DEFAULT_UNCLAIMED_KEYS | {Key.ControlQ: Quit()}`.
+        cell_aspect_ratio: How many times taller than it is wide a cell of the terminal's font is,
+            which [gradients][counterweight.gradients.Gradient] compute their angles and circles with,
+            so that a 45 degree gradient or a circle looks like one.
+            Most terminal fonts are about 2.
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
@@ -261,6 +267,7 @@ async def app(
                 clock,
                 title,
                 unclaimed_keys,
+                cell_aspect_ratio,
             )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
@@ -286,6 +293,7 @@ async def render_loop(
     clock: Clock,
     title: str | None,
     unclaimed_keys: Mapping[str, AnyControl],
+    cell_aspect_ratio: float,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
@@ -615,9 +623,7 @@ async def render_loop(
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
-                        ((element, layout, lines) for _, element, layout, lines in layouts.in_paint_order),
-                        w,
-                        h,
+                        layouts.in_paint_order, w, h, layout_tree.fields, cell_aspect_ratio
                     )
                     logger.debug("Generated new paint")
 

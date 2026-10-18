@@ -6,14 +6,19 @@ from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
 from functools import lru_cache
+from typing import TYPE_CHECKING
 from typing import Literal
 from typing import NamedTuple
 from typing import Self
+from typing import TypeIs
 from typing import assert_never
 
 import waxy
 
 from counterweight._utils import flyweight
+
+if TYPE_CHECKING:
+    from counterweight.gradients import Gradient
 
 TextJustify = Literal["left", "center", "right"]
 TextWrap = Literal["none", "stable", "pretty", "balance"]
@@ -290,6 +295,15 @@ A color a cell can be drawn in: an RGB `Color`, which looks the same in every te
 or an `IndexedColor` or `TerminalDefault`, which follow the user's theme.
 """
 
+SOLID_COLORS = (Color, IndexedColor, TerminalDefault)
+"""The types of `AnyColor`, which paint can draw a cell in as it is, unlike a gradient."""
+
+
+def is_solid_color(color: AnyColor | Gradient) -> TypeIs[AnyColor]:
+    """Whether `color` is one color, rather than a gradient."""
+    return isinstance(color, SOLID_COLORS)
+
+
 PALETTE_SIZE = 256
 CUBE_LEVELS = (0, 95, 135, 175, 215, 255)
 
@@ -370,6 +384,9 @@ class CellStyle(StyleFragment):
     Unset fields resolve to the defaults in
     [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 
+    `foreground` and `background` can each be a color or a [gradient][counterweight.gradients.Gradient],
+    which colors each cell by where it is in the box the gradient maps over.
+
     `link` makes the cell a hyperlink to that URI, which the terminal opens when it's clicked
     (an [OSC 8](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda) hyperlink);
     `None` makes it not a link, overriding a `link` it would otherwise inherit.
@@ -377,8 +394,8 @@ class CellStyle(StyleFragment):
     or `CellStyle` raises `ValueError`.
     """
 
-    foreground: AnyColor | UNSET = UNSET
-    background: AnyColor | UNSET = UNSET
+    foreground: AnyColor | Gradient | UNSET = UNSET
+    background: AnyColor | Gradient | UNSET = UNSET
     bold: bool | UNSET = UNSET
     dim: bool | UNSET = UNSET
     italic: bool | UNSET = UNSET
@@ -386,10 +403,18 @@ class CellStyle(StyleFragment):
     strikethrough: bool | UNSET = UNSET
     link: str | UNSET | None = UNSET
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+    is_solid: bool = field(init=False, repr=False, compare=False, hash=False, default=True)
+    """Whether neither color is a gradient."""
 
     def __post_init__(self) -> None:
         if isinstance(self.link, str) and not is_osc_8_uri(self.link):
             raise ValueError(f"A link must be a non-empty URI of printable ASCII characters, not {self.link!r}")
+        object.__setattr__(
+            self,
+            "is_solid",
+            (self.foreground is UNSET or is_solid_color(self.foreground))
+            and (self.background is UNSET or is_solid_color(self.background)),
+        )
         object.__setattr__(
             self,
             "_hash",
@@ -416,11 +441,18 @@ _DEFAULT_CELL_STYLE = CellStyle()
 
 @flyweight(maxsize=2**10)
 @dataclass(frozen=True, slots=True, kw_only=True)
-class ResolvedCellStyle:
-    """A [`CellStyle`][counterweight.styles.CellStyle] with every field filled in, as paint and output read it."""
+class ResolvedCellStyle[C: AnyColor | Gradient]:
+    """
+    A [`CellStyle`][counterweight.styles.CellStyle] with every field filled in, as paint and output read it.
 
-    foreground: AnyColor
-    background: AnyColor
+    Its colors are `C`: a `ResolvedCellStyle[AnyColor | Gradient]` is what a style resolves to,
+    and a `ResolvedCellStyle[AnyColor]`, whose colors are each one color, is what a cell is drawn in,
+    which paint makes from the other by coloring each cell from its gradients.
+    A style whose colors are all solid is the same object as either type.
+    """
+
+    foreground: C
+    background: C
     bold: bool
     dim: bool
     italic: bool
@@ -428,8 +460,11 @@ class ResolvedCellStyle:
     strikethrough: bool
     link: str | None
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
+    is_solid: bool = field(init=False, repr=False, compare=False, hash=False, default=True)
+    """Whether neither color is a gradient, which `is_solid_cell_style` narrows on."""
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "is_solid", is_solid_color(self.foreground) and is_solid_color(self.background))
         object.__setattr__(
             self,
             "_hash",
@@ -451,7 +486,7 @@ class ResolvedCellStyle:
         return self._hash
 
 
-CELL_STYLE_DEFAULTS = ResolvedCellStyle(
+CELL_STYLE_DEFAULTS: ResolvedCellStyle[AnyColor] = ResolvedCellStyle(
     foreground=_WHITE,
     background=_BLACK,
     bold=False,
@@ -463,8 +498,38 @@ CELL_STYLE_DEFAULTS = ResolvedCellStyle(
 )
 
 
+def is_solid_cell_style(style: ResolvedCellStyle[AnyColor | Gradient]) -> TypeIs[ResolvedCellStyle[AnyColor]]:
+    """Whether `style`'s colors are each one color, so that a cell can be drawn in it as it is."""
+    return style.is_solid
+
+
+def as_solid(style: ResolvedCellStyle[AnyColor | Gradient]) -> ResolvedCellStyle[AnyColor]:
+    """`style`, which must be solid, as the type a cell is drawn in, raising `TypeError` if it holds a gradient."""
+    if not is_solid_cell_style(style):
+        raise TypeError(f"A cell is drawn in solid colors, but {style!r} holds a gradient")
+    return style
+
+
+def with_colors[C: AnyColor | Gradient](
+    style: ResolvedCellStyle[AnyColor | Gradient], foreground: C, background: C
+) -> ResolvedCellStyle[C]:
+    """`style`'s attributes with `foreground` and `background` for its colors."""
+    return ResolvedCellStyle(
+        foreground=foreground,
+        background=background,
+        bold=style.bold,
+        dim=style.dim,
+        italic=style.italic,
+        underline=style.underline,
+        strikethrough=style.strikethrough,
+        link=style.link,
+    )
+
+
 @lru_cache(maxsize=2**12)
-def resolve_cell_style(style: CellStyle, defaults: ResolvedCellStyle = CELL_STYLE_DEFAULTS) -> ResolvedCellStyle:
+def resolve_cell_style(
+    style: CellStyle, defaults: ResolvedCellStyle[AnyColor | Gradient] = CELL_STYLE_DEFAULTS
+) -> ResolvedCellStyle[AnyColor | Gradient]:
     """
     Fill `style`'s unset fields from `defaults`.
 
@@ -772,11 +837,14 @@ BORDER_WIDTHS = (waxy.Length(0), waxy.Length(1))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class ResolvedStyle:
+class ResolvedStyle[C: AnyColor | Gradient]:
     """
     The fields of a [`Style`][counterweight.styles.Style] other than `layout`, every one filled in,
     as paint and the placement of scrolled boxes read them,
     except `z`, which stays `None` when unset, because an element that sets no `z` forms no stacking context.
+
+    Its colors are `C`, as a `ResolvedCellStyle`'s are,
+    and `is_solid` narrows a style whose colors are all solid to `ResolvedStyle[AnyColor]`.
     """
 
     z: int | None
@@ -784,20 +852,39 @@ class ResolvedStyle:
     overflow_anchor: OverflowAnchor
     stick_to_end_x: bool
     stick_to_end_y: bool
-    margin_color: AnyColor
-    padding_color: AnyColor
-    content_color: AnyColor
+    margin_color: C
+    padding_color: C
+    content_color: C
 
     border_kind: BorderKind | None
-    border_style: ResolvedCellStyle
+    border_style: ResolvedCellStyle[C]
     border_contract: int
 
-    text_style: ResolvedCellStyle
+    text_style: ResolvedCellStyle[C]
     text_justify: TextJustify
     text_wrap: TextWrap
 
+    is_solid: bool = field(init=False, repr=False, compare=False, default=True)
+    """Whether no color slot holds a gradient, which paint reads for every element in every frame."""
 
-STYLE_DEFAULTS = ResolvedStyle(
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "is_solid",
+            is_solid_color(self.margin_color)
+            and is_solid_color(self.padding_color)
+            and is_solid_color(self.content_color)
+            and self.border_style.is_solid
+            and self.text_style.is_solid,
+        )
+
+
+def is_solid(style: ResolvedStyle[AnyColor | Gradient]) -> TypeIs[ResolvedStyle[AnyColor]]:
+    """Whether every color in `style` is one color, so that paint draws its element as it would with no gradients."""
+    return style.is_solid
+
+
+STYLE_DEFAULTS: ResolvedStyle[AnyColor] = ResolvedStyle(
     z=None,
     clip_to="padding",
     overflow_anchor="auto",
@@ -825,6 +912,12 @@ class Style(StyleFragment):
     including when it is set to the default, so `border | border_none` has no border.
     `layout` merges the same way, field by field.
     Unset fields resolve to the defaults in [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS].
+
+    Each color, `margin_color`, `padding_color` and `content_color` and the colors of `border_style` and `text_style`,
+    can be a [gradient][counterweight.gradients.Gradient], which maps over the box its color paints
+    unless the gradient's `box` names another:
+    the margin box for `margin_color`, the padding box for `padding_color`, the border box for `content_color`
+    and `border_style`, and the content box for `text_style` (and the chunks of a `Text`).
 
     A border side is drawn where its width in `layout` (`border_top`, ...) is 1,
     and `border_kind` chooses the characters it's drawn with.
@@ -857,9 +950,9 @@ class Style(StyleFragment):
     overflow_anchor: OverflowAnchor | UNSET = UNSET
     stick_to_end_x: bool | UNSET = UNSET
     stick_to_end_y: bool | UNSET = UNSET
-    margin_color: AnyColor | UNSET = UNSET
-    padding_color: AnyColor | UNSET = UNSET
-    content_color: AnyColor | UNSET = UNSET
+    margin_color: AnyColor | Gradient | UNSET = UNSET
+    padding_color: AnyColor | Gradient | UNSET = UNSET
+    content_color: AnyColor | Gradient | UNSET = UNSET
 
     border_kind: BorderKind | UNSET | None = UNSET
     border_style: CellStyle = _DEFAULT_CELL_STYLE
@@ -870,7 +963,7 @@ class Style(StyleFragment):
     text_wrap: TextWrap | UNSET = UNSET
 
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
-    resolved: ResolvedStyle = field(init=False, repr=False, compare=False, hash=False)
+    resolved: ResolvedStyle[AnyColor | Gradient] = field(init=False, repr=False, compare=False, hash=False)
     """
     This style's drawing fields, with the unset ones filled from `STYLE_DEFAULTS`,
     resolved once when the style is built, since paint reads them for every element on every frame.
@@ -912,7 +1005,7 @@ class Style(StyleFragment):
     def __hash__(self) -> int:
         return self._hash
 
-    def _resolve(self) -> ResolvedStyle:
+    def _resolve(self) -> ResolvedStyle[AnyColor | Gradient]:
         """Fill this style's unset drawing fields from `STYLE_DEFAULTS`."""
         defaults = STYLE_DEFAULTS
         return ResolvedStyle(

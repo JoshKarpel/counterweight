@@ -3,6 +3,8 @@ from collections.abc import Callable
 import pytest
 import waxy
 
+from counterweight.gradients import Gradient
+from counterweight.gradients import linear_gradient
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
 from counterweight.styles import IndexedColor
@@ -372,3 +374,24 @@ def test_indexed_utilities_set_their_place_to_the_palette_entry(
     utility: Callable[[int], Style], expected: Callable[[IndexedColor], Style]
 ) -> None:
     assert utility(9) == expected(IndexedColor(9))
+
+
+GRADIENT = linear_gradient(Color(10, 20, 30), Color(200, 100, 0), angle=30)
+
+
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (text_gradient, Style(text_style=CellStyle(foreground=GRADIENT))),
+        (text_bg_gradient, Style(text_style=CellStyle(background=GRADIENT))),
+        (border_gradient, Style(border_style=CellStyle(foreground=GRADIENT))),
+        (border_bg_gradient, Style(border_style=CellStyle(background=GRADIENT))),
+        (margin_gradient, Style(margin_color=GRADIENT)),
+        (padding_gradient, Style(padding_color=GRADIENT)),
+        (content_gradient, Style(content_color=GRADIENT)),
+    ],
+)
+def test_gradient_utilities_put_the_gradient_in_their_place(
+    utility: Callable[[Gradient], Style], expected: Style
+) -> None:
+    assert utility(GRADIENT) == expected

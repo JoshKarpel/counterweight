@@ -1,7 +1,8 @@
 """
-Pictures made of pixels, and the painter that draws them in cells.
+Pictures made of pixels, and the painters that draw them in cells.
 
 `Pixels` is the picture, which knows nothing about cells, and `HalfBlocks` draws one in a canvas's cells.
+`HalfBlockGradient` draws a gradient that way, at whatever size its canvas is.
 """
 
 from __future__ import annotations
@@ -19,6 +20,10 @@ from typing import assert_never
 from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
+from counterweight.geometry import Region
+from counterweight.gradients import Gradient
+from counterweight.gradients import field_indices
+from counterweight.gradients import ramp
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
 
@@ -72,6 +77,24 @@ class Pixels:
     def from_points(cls, width: int, height: int, points: Mapping[Position, Color], default: Color) -> Pixels:
         """A `width` by `height` picture of `default` pixels, but for the `points` given their own colors."""
         return cls.blank(width, height, default).with_points(points)
+
+    @classmethod
+    def from_gradient(cls, width: int, height: int, gradient: Gradient) -> Pixels:
+        """
+        A `width` by `height` picture of `gradient`, mapped over the whole picture, with its pixels taken as square,
+        as [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] draws them,
+        so its angles and circles are in pixels, as are any lengths it gives in cells.
+        As in an element's box, the gradient spans the centers of the corner pixels, which take its end colors.
+        Its `box` names one of an element's boxes, so it has no effect here.
+        """
+        colors = ramp(gradient).color
+        indices = field_indices(gradient, width, height, 1, Region(left=0, top=0, right=width, bottom=height))
+        opaque: dict[int, bytes] = {}
+        for row in indices:
+            for index in row:
+                if index not in opaque:
+                    opaque[index] = _opaque(colors(index))
+        return cls(width, height, b"".join(opaque[index] for row in indices for index in row))
 
     @classmethod
     def from_image(cls, image: SupportsRGBA) -> Pixels:
@@ -181,6 +204,34 @@ class HalfBlocks:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class HalfBlockGradient:
+    """
+    A [`Canvas`][counterweight.elements.Canvas] painter that fills its canvas with `gradient`,
+    two pixels to a cell, as [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] draws a picture,
+    which shows a gradient at twice the vertical resolution of an element's color slots.
+
+    It draws a new picture at its box's size each time its canvas is drawn,
+    so the gradient is smooth at any size, rather than a fixed picture scaled to it,
+    and the canvas draws it again only when the gradient or the box's size changes.
+    It has no natural size, so size its canvas with its style.
+    """
+
+    gradient: Gradient
+
+    @property
+    def natural_size(self) -> tuple[int, int]:
+        return 0, 0
+
+    @property
+    def keeps_aspect_ratio(self) -> bool:
+        return False
+
+    def draw(self, width: int, height: int) -> Rows:
+        """The cells of a `width` by `height` box, showing the gradient over `width` by `2 * height` pixels."""
+        return HalfBlocks(Pixels.from_gradient(width, 2 * height, self.gradient)).draw(width, height)
+
+
 def _scales(fit: Fit, scale_x: float, scale_y: float) -> tuple[float, float]:
     """How much `fit` scales a picture on each axis, given the scales that would make it fill its box on each."""
     match fit:
@@ -249,4 +300,4 @@ def _color(word: int | None) -> Color | None:
     return Color(red, green, blue) if alpha >= 128 else None
 
 
-__all__ = ["Fit", "HalfBlocks", "Pixels", "SupportsRGBA"]
+__all__ = ["Fit", "HalfBlockGradient", "HalfBlocks", "Pixels", "SupportsRGBA"]

@@ -144,6 +144,7 @@ nav:
   - Styles:
     - styles/index.md
     - styles/text-wrapping.md
+    - styles/gradients.md
     - styles/utilities.md
   - Terminals:
     - terminals/commands.md
