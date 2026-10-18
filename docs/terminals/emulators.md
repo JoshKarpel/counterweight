@@ -80,6 +80,26 @@ that draws a `Screen`, with its cursor when asked,
 and [`Transcript`][counterweight.painters.terminal.Transcript] the one that draws
 everything a program printed.
 
+### Replaying recorded output
+
+An emulator needs no program, only bytes, so output recorded ahead of time replays into one.
+Feeding it in the chunks the program wrote, with a snapshot after each,
+gives the screens the program showed, which a component reading the [clock](../hooks/use_clock.md) shows in turn:
+
+<!-- example: emulator_replay.py:replay -->
+
+Snapshots are values, so the screens are taken once, outside any component,
+and the component only picks the latest one whose time has come.
+This recording replays output in the style of vim's, written by hand rather than recorded from vim,
+as it opens a line, types into it, and saves:
+
+<!-- cast: emulator-replay -->
+
+Notice that the emulator applies the cursor movement, colors and alternate screen in the output,
+so the replay shows the editor's screen rather than the bytes that draw it.
+The [embedded terminals](embedding.md#a-multiplexer) and [one-shot commands](commands.md#running-a-command) pages
+replay output the same way for their recordings, since a real program's output isn't the same on every run.
+
 ### Colors
 
 A program's colors reach the app's terminal as the program chose them, so they follow the user's theme as they would
@@ -98,6 +118,17 @@ so it takes the emulator's `foreground` and `background` instead, which are whit
 changes them (with OSC 10 and 11).
 `set_default_colors` changes them on a running emulator, as the user changing their terminal's theme does,
 though a color the program set stays what it set.
+
+Here the same output, with palette, 256-color and RGB backgrounds, plain text and inverse video,
+is shown on a light theme twice: once from an emulator left at its defaults, and once from one given the theme's colors:
+
+<!-- example: emulator_replay.py:colors -->
+
+![The same colored output twice on a light background; the inverse cell reads as swapped only on the right](../assets/emulator-colors.svg)
+
+The palette, 256-color and RGB rows and the plain text match, since none of them names a default color.
+Only the inverse cell differs: on the left it swaps the emulator's white and black,
+which reads as no swap at all on a light theme, and on the right it swaps the theme's colors.
 
 ## API
 

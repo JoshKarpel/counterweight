@@ -14,7 +14,7 @@ from mkdocs.structure.files import Files
 from mkdocs.structure.pages import Page
 
 SCREENSHOT = re.compile(
-    r"^(?P<indent>[ \t]*)!\[(?P<alt>[^\]]*)\]\((?P<src>[^)\s]*/assets/(?P<name>[\w.-]+)\.svg)\)[ \t]*$",
+    r"^(?P<indent>[ \t]*)!\[(?P<alt>[^\]]*)\]\((?P<src>(?:[^)\s]*/)?assets/(?P<name>[\w.-]+)\.svg)\)[ \t]*$",
     re.MULTILINE,
 )
 

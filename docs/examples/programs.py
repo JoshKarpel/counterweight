@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from counterweight.app import app
@@ -80,7 +81,7 @@ def config_editor(path: Path) -> Div:
 
 
 @component
-def note() -> Div:
+def note(editor: Sequence[str] | None = None) -> Div:
     text, set_text = use_state("# Groceries\n\n- eggs\n- flour\n")
     problem, set_problem = use_state("")
 
@@ -98,7 +99,7 @@ def note() -> Div:
         match event:
             case KeyPressed(key="e"):
                 # Named .md, so the editor highlights it as Markdown.
-                return Suspend.to_edit_text(text, on_edit=on_edit, file_name="note.md")
+                return Suspend.to_edit_text(text, on_edit=on_edit, file_name="note.md", editor=editor)
             case _:
                 return None
 
@@ -138,7 +139,16 @@ def run_tests_on_t(event: InputEvent, _: Receiver) -> InputResponse:
 
 # --8<-- [end:own]
 
-SCREENSHOTS = [ScreenshotSpec(note(), "programs-note", (44, 8))]
+# Editors that a script stands in for, so the screenshots don't wait for a person:
+# one that adds an item to the list and saves, and one that exits with a failing status, as vim's :cq does.
+ADDS_BUTTER = ("sh", "-c", 'printf -- "- butter\\n" >> "$1"', "editor")
+ABANDONS = ("sh", "-c", "exit 1", "editor")
+
+SCREENSHOTS = [
+    ScreenshotSpec(note(), "programs-note", (48, 8)),
+    ScreenshotSpec(note(editor=ADDS_BUTTER), "programs-note-edited", (48, 9), events=[KeyPressed(key="e")]),
+    ScreenshotSpec(note(editor=ABANDONS), "programs-note-abandoned", (48, 8), events=[KeyPressed(key="e")]),
+]
 
 
 if __name__ == "__main__":

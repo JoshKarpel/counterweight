@@ -52,16 +52,29 @@ Pass `editor` to use another one.
 as `git commit` edits a commit message:
 it writes the text to a file in a new temporary directory, edits the file as `to_edit_file` does,
 and calls `on_edit` with the text the editor left there.
-A note that the user edits in their editor on a key press:
+A note that the user edits in their editor on a key press, or in the `editor` it's given:
 
 <!-- example: programs.py:editor -->
-
-![A note in a rounded box, with "Press e to edit the note in your editor" beneath it](../assets/programs-note.svg)
 
 The outcome is an [`Edited`][counterweight.programs.Edited] with the new text,
 or, if the edit failed, the editor's `Exited` or `FailedToStart`.
 An editor that exits with a failing status abandons the edit, as git treats it,
 so `:cq` leaves the text as it was.
+These screenshots press e with a shell script as the `editor`, rather than a person in an editor:
+one that adds butter to the list and exits successfully, and one that exits with status 1, as `:cq` does:
+
+=== "Before"
+
+    ![A note in a rounded box, with "Press e to edit the note in your editor" beneath it](../assets/programs-note.svg)
+
+=== "After an edit"
+
+    ![The note with "- butter" added at the end of the list](../assets/programs-note-edited.svg)
+
+=== "After an abandoned edit"
+
+    ![The note unchanged, with "The editor exited 1, so the note is unchanged" in red beneath it](../assets/programs-note-abandoned.svg)
+
 The file name sets the editor's syntax highlighting, so `note.md` edits as Markdown.
 Many editors end a file they save with a line break, so the edited text ends with one too.
 

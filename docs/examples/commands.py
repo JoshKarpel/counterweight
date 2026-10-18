@@ -2,14 +2,19 @@ import asyncio
 import sys
 from datetime import timedelta
 
+from more_itertools import last
+
 from counterweight.app import app
+from counterweight.commands import Cancelled
 from counterweight.commands import CommandRun
 from counterweight.commands import Exited
 from counterweight.commands import command_output
 from counterweight.commands import use_command
 from counterweight.components import component
+from counterweight.controls import AdvanceClock
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.emulator import Emulator
 from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
@@ -17,13 +22,17 @@ from counterweight.events import Receiver
 from counterweight.handlers import first
 from counterweight.handlers import tab_focus
 from counterweight.hooks import ElementHandle
+from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
+from counterweight.painters.terminal import MAX_LINES
 from counterweight.painters.terminal import Transcript
+from counterweight.pseudoterminal import Running
 from counterweight.styles.utilities import *
 from counterweight.widgets import text_area
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
 
 # --8<-- [start:slide]
@@ -121,9 +130,76 @@ def recorded_failure() -> Div:
     return Div(children=(command_output(run, viewport, style=size(40, 7)),))
 
 
+CANCELLED_TESTS = b"\x1b[1m===== test session starts =====\x1b[0m\r\ntests/test_slow.py \x1b[32m....\x1b[0m"
+
+
+@component
+def recorded_cancel() -> Div:
+    viewport, _ = use_state(ElementHandle)
+    run = CommandRun(argv=("pytest",), output=Transcript.of(CANCELLED_TESTS, columns=36), outcome=Cancelled())
+    return Div(children=(command_output(run, viewport, style=size(40, 5)),))
+
+
+def streamed_build() -> tuple[tuple[timedelta, bytes], ...]:
+    """A build's output in the chunks it printed them, each with how long after the build started."""
+    progress = [
+        (timedelta(milliseconds=600 + 200 * step), f"\r[{'#' * step}{'.' * (10 - step)}] {10 * step}%")
+        for step in range(11)
+    ]
+    chunks = [
+        (timedelta(milliseconds=200), "\x1b[1mBuilding\x1b[0m web v4.2.0\r\n"),
+        *progress,
+        (timedelta(milliseconds=2900), "\r\n\x1b[32m\u2713\x1b[0m compiled 42 modules\r\n"),
+        (timedelta(milliseconds=3200), "\x1b[33m!\x1b[0m 2 warnings in \x1b[4msrc/app.ts\x1b[0m\r\n"),
+        (timedelta(milliseconds=3600), "\x1b[2mBundling...\x1b[0m\r\n"),
+        (timedelta(milliseconds=4400), "\x1b[32m\u2713\x1b[0m wrote \x1b[36mdist/web.js\x1b[0m (184 kB)\r\n"),
+        (timedelta(milliseconds=4700), "\x1b[32m\u2713\x1b[0m wrote \x1b[36mdist/web.css\x1b[0m (12 kB)\r\n"),
+        (timedelta(milliseconds=5000), "Done in 4.8s\r\n"),
+    ]
+    return tuple((at, text.encode()) for at, text in chunks)
+
+
+def transcripts(output: tuple[tuple[timedelta, bytes], ...], columns: int) -> tuple[tuple[timedelta, Transcript], ...]:
+    """The transcript after each chunk of `output`, as a run reports it while its program prints."""
+    transcript = Transcript(columns=columns)
+    shown = []
+    with Emulator(columns, 24, on_reply=lambda reply: None, scrollback=MAX_LINES) as emulator:
+        for at, chunk in output:
+            emulator.feed(chunk)
+            transcript = transcript.followed_by(emulator.scrolled_off(), emulator.snapshot())
+            shown.append((at, transcript))
+    return tuple(shown)
+
+
+BUILD_TRANSCRIPTS = transcripts(streamed_build(), columns=36)
+EXITS_AT = timedelta(milliseconds=5200)
+TICK = timedelta(milliseconds=100)
+
+
+@component
+def streaming_build() -> Div:
+    viewport, _ = use_state(ElementHandle)
+    elapsed = use_clock(TICK).since_mount
+    output = last((transcript for at, transcript in BUILD_TRANSCRIPTS if at <= elapsed), Transcript(columns=36))
+    run = CommandRun(
+        argv=("./build.sh",), output=output, outcome=Exited(status=0) if elapsed >= EXITS_AT else Running()
+    )
+    return Div(children=(command_output(run, viewport, style=size(40, 8)),))
+
+
 SCREENSHOTS = [
     ScreenshotSpec(recorded_build(), "commands-recorded", (40, 8)),
     ScreenshotSpec(recorded_failure(), "commands-failed", (40, 7)),
+    ScreenshotSpec(recorded_cancel(), "commands-cancelled", (40, 5)),
+]
+
+CASTS = [
+    CastSpec(
+        streaming_build(),
+        "commands-streaming",
+        (40, 8),
+        steps=[*[AdvanceClock(by=TICK)] * (EXITS_AT // TICK), AdvanceClock(by=timedelta(seconds=3))],
+    )
 ]
 
 
@@ -133,5 +209,7 @@ if __name__ == "__main__":
         "code_runner": code_runner,
         "recorded_build": recorded_build,
         "recorded_failure": recorded_failure,
+        "recorded_cancel": recorded_cancel,
+        "streaming_build": streaming_build,
     }
     asyncio.run(app(roots[sys.argv[1] if len(sys.argv) > 1 else "slide"]()))

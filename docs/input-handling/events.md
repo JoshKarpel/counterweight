@@ -102,6 +102,30 @@ so an absolutely positioned child bubbles to its parent even where it's drawn ou
 Each element receives the same event, with its own receiver:
 a parent's `rects` are its own, and its `is_target` is `False`.
 
+In this example, every element on an event's path writes down whether it handles the event or passes it on,
+so each line of the log is one event's trip up the tree.
+Field A handles `a`, field B handles `b`, the panel around them handles `p`,
+and the root handles every key except Ctrl+C, and every press:
+
+<!-- example: input_events.py:routing -->
+
+![A log of four key presses and two presses of the mouse, each listing the elements it reached](../assets/input-events-routing.svg)
+
+Field A is focused, so each key press starts there.
+`a` stops at field A, `p` bubbles one step to the panel, and `x` bubbles all the way to the root.
+`b` bubbles to the root too, though field B handles it, because field B is a sibling of the focused field,
+not an ancestor.
+A press on field B starts at field B, where the pointer is, though field A is focused.
+A press on the panel's label starts at the label, which has no handler, so the panel's handler is the first to see it.
+
+<!-- cast: input-events-routing -->
+
+Every handler on an event's path receives the same event object,
+so `trace` tells the next step of one event's trip from the start of another's by identity, with `is`,
+since two presses of one key are equal events.
+It keeps the last event in a [ref](../hooks/use_ref.md),
+because the handlers of one batch of input all see the state of the render before it.
+
 ### Key Presses
 
 The target of a key press is the [focused](../hooks/use_focus.md) element,
@@ -161,6 +185,20 @@ def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
             return None
 ```
 
+A slider is one line of text that the pointer drags along.
+Its handler stops the press's `MouseDown`, so it receives every move of the drag,
+and sets the volume from where the pointer is across the slider, clamped to its ends:
+
+<!-- example: input_events.py:slider -->
+
+![The slider at its highest volume, after a drag that ended below and to the right of it](../assets/input-events-slider.svg)
+
+The drag above ended three rows below the slider and past its right end, outside it,
+and the moves kept reaching the slider all the way, so it's at its highest volume.
+If the press weren't captured, the moves past the slider's edge would go to whatever is under the pointer instead.
+
+<!-- cast: input-events-slider -->
+
 A `MouseMoved` with no button held ends a press whose release the terminal never reported,
 such as when focus moves to another window mid-drag,
 and so does a `MouseDown` for a button the press already holds.
@@ -177,6 +215,21 @@ a press on a button inside a draggable panel clicks the button and doesn't drag 
 
 Each time a key is pressed, Counterweight emits a `KeyPressed` event that holds which key was pressed,
 and [routes](#key-presses) it to the focused element.
+This inspector writes down every event its element receives,
+much as `counterweight check-input` prints them.
+Nothing in it is focusable, so its root element receives every key press and paste:
+
+<!-- example: input_events.py:inspector -->
+
+Its handler returns `None` for everything but a `MouseDown`,
+so the keys with [defaults](#keys-the-terminal-would-act-on) keep them, and Ctrl+C still quits.
+It stops each `MouseDown` so that it [receives the rest of the press](#presses).
+
+![The inspector after a, é, Enter, Ctrl+J, Up, F1 and Ctrl+S](../assets/input-events-keys.svg)
+
+A key that types text, such as `a` or `é`, is that text,
+and any other key is a `Key` from `counterweight.keys`, such as `Key.Enter`, `Key.Up` or `Key.ControlS`.
+A handler matches either kind with a `KeyPressed(key=...)` pattern, such as `KeyPressed(key="a")` or `KeyPressed(key=Key.Up)`.
 Enter and Ctrl+J are different keys, `Key.Enter` and `Key.ControlJ`,
 so a [text area](../headless/use_text_area.md) can insert a line break on Ctrl+J
 while Enter submits a form.
@@ -192,6 +245,11 @@ and Counterweight reads the two as one key press:
 and `"alt+b"` for Alt+B, which is `alt+` and the text the key types, so Alt+Shift+B is `"alt+B"`.
 Arrow, navigation and function keys pressed with Alt are `Key.AltUp`, `Key.AltPageDown`, `Key.AltF1` and so on,
 whether the terminal sends Alt in their escape sequence, as xterm does, or as an `ESC` before it, as rxvt does.
+The [inspector](#handling-keyboard-events) shows them:
+
+![The inspector after Alt+Enter, Alt+B, Alt+Shift+B, Ctrl+Alt+A and Alt+Up](../assets/input-events-alt.svg)
+
+A handler matches a key pressed with Alt as it matches any other key:
 
 ```python
 def on_input(event: InputEvent, _: Receiver) -> InputResponse:
@@ -278,6 +336,11 @@ insert it in one edit.
 Terminals without bracketed paste send pasted text as typed keys,
 with its line breaks as Enter, or as Ctrl+J from a terminal that sends them as line feeds.
 
+In the [inspector](#handling-keyboard-events), typing `h` and `i` makes two key presses,
+while pasting two lines makes one event, with the line break inside its text:
+
+![The inspector after typing h and i, then pasting two lines](../assets/input-events-paste.svg)
+
 ::: counterweight.events.Pasted
 
 ## Handling Mouse Events
@@ -300,20 +363,17 @@ one of `MouseMoved`, `MouseDown`, `MouseUp`,
 
 Each mouse event says which modifier keys were held, as the DOM's `MouseEvent` does,
 in `is_shift_held`, `is_alt_held` and `is_control_held`,
-so a handler can match a modified press or turn of the wheel:
+so a handler can match a modified press or turn of the wheel.
+In this list, a press selects one item, and a press with Control held adds an item to the selection,
+or takes it out:
 
-```python
-def on_input(event: InputEvent, _: Receiver) -> InputResponse:
-    match event:
-        case MouseDown(button=1, is_control_held=True):
-            set_selected(lambda selected: selected ^ {item})
-            return ()
-        case MouseDown(button=1):
-            set_selected({item})
-            return ()
-        case _:
-            return None
-```
+<!-- example: input_events.py:selection -->
+
+The case with `is_control_held=True` comes first,
+since a `MouseDown(button=1)` pattern matches a press whatever modifiers were held.
+After a press on `bread` and a press with Control on `dates`, both are selected:
+
+![A list with bread and dates selected](../assets/input-events-selection.svg)
 
 Terminals keep some combinations for themselves and never report them to the app:
 most select text for Shift with a press, even while the app tracks the mouse,
@@ -332,6 +392,12 @@ For example, consider the following series of mouse actions and corresponding ev
 | Mouse button `1` is released                                                     | `MouseUp(absolute=Position(x=1, y=1), button=1)`       |
 | Mouse button `3` is pressed                                                      | `MouseDown(absolute=Position(x=1, y=1), button=3)`     |
 | Mouse moves to position `(2, 2)` and mouse button `3` is released simultaneously | `MouseUp(absolute=Position(x=2, y=2), button=3)`       |
+
+The [inspector](#handling-keyboard-events) receives that series as the table lists it,
+followed by a turn of the wheel with Control held.
+It receives the presses' moves and releases because it stops each `MouseDown`:
+
+![The inspector after the mouse events in the table, and a turn of the wheel with Control held](../assets/input-events-mouse.svg)
 
 !!! tip "Mouse Button Identifiers"
 

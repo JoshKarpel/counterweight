@@ -202,7 +202,11 @@
   and how to skip the rest with `memo=True` and `use_memo`, with their failure modes,
   in [Performance](performance.md).
 
-- Documented how Counterweight compares with Textual, Ink, Bubble Tea and Ratatui,
+- Showed every hook, element, input handling page, style page and terminal feature
+  with runnable examples, screenshots and recordings,
+  and added a quick start and a showcase of the example apps to the [home page](index.md).
+
+- Documented how Counterweight compares with Textual, Ink, OpenTUI, Bubble Tea, Ratatui and iocraft,
   and what it doesn't do, in [Ecosystem](ecosystem.md).
 
 - Documented how components keep their state across renders,

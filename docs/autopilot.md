@@ -30,6 +30,11 @@ await app(
 )
 ```
 
+`search` is the fruit search from [`use_text_input`](headless/use_text_input.md#using-the-hook).
+The screenshot it writes is the frame after both keys, with the list narrowed to the fruits that contain "an":
+
+![The search box holding "an", above banana, mango and orange](assets/autopilot-typed.svg)
+
 ## Controlling time
 
 An app reads the time from its `clock`, the system's by default.
@@ -51,6 +56,11 @@ await app(
     autopilot=[*intersperse(AdvanceClock(by=timedelta(milliseconds=300)), typed), Quit()],
 )
 ```
+
+Its [recording](#recording) plays a key every 300 milliseconds,
+though the autopilot ran in only as long as the app took to render:
+
+<!-- cast: autopilot-mango -->
 
 ## Waiting for real work
 
@@ -135,6 +145,13 @@ which asciinema-player shows on its progress bar as a chapter to jump to.
 An autopilot can mark each step of a demo, and a handler can return one too,
 such as to mark each view the user opens.
 An app that isn't recording ignores it.
+This demo of the fruit search starts each chapter with a marker, and pauses between its keys:
+
+<!-- example: autopilot_search.py:chapters -->
+
+<!-- cast: autopilot-chapters -->
+
+Notice the chapters on the player's progress bar, one for each marker, which jump to the start of their step.
 
 ## API
 

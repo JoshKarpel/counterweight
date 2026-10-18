@@ -1,0 +1,15 @@
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ root: every key but Ctrl+C, and presses            ┃
+┃ ┌────────────────────────────────────────────────┐ ┃
+┃ │ panel: p                                       │ ┃
+┃ │ ╭──────────────╮  ╭──────────────╮             │ ┃
+┃ │ │ ▸ field A: a │  │   field B: b │             │ ┃
+┃ │ ╰──────────────╯  ╰──────────────╯             │ ┃
+┃ └────────────────────────────────────────────────┘ ┃
+┃ 'a': field A handles                               ┃
+┃ 'p': field A passes, panel handles                 ┃
+┃ 'x': field A passes, panel passes, root handles    ┃
+┃ 'b': field A passes, panel passes, root handles    ┃
+┃ press: field B passes, panel passes, root handles  ┃
+┃ press: panel passes, root handles                  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛

@@ -2,32 +2,20 @@
 
 An input handler acts on the app by returning [controls](../input-handling/controls.md),
 but an effect, or a callback that a program or a timer calls, has no event to return them for.
-`use_controls` gives a component a sender that hands the app a control from anywhere:
+`use_controls` gives a component a sender that hands the app a control from anywhere.
+Here an effect scrolls a test run's first failure into view once the log has rendered,
+as a React effect calls `scrollIntoView` on an element through a ref:
 
-```python
-from asyncio import sleep
+<!-- example: use_controls_first_error.py:example -->
 
-from counterweight.components import component
-from counterweight.controls import Quit
-from counterweight.elements import Text
-from counterweight.hooks import use_controls, use_effect
+![The log scrolled so the failing test is in the middle of the view](../assets/use-controls-first-error.svg)
 
-
-@component
-def farewell() -> Text:
-    send_control = use_controls()
-
-    async def quit_soon() -> None:
-        await sleep(3)
-        send_control(Quit())
-
-    use_effect(quit_soon, deps=())
-
-    return Text(content="Quitting in three seconds...")
-```
+The log opens with its failure in the middle of the view, rather than at its start, where the failure would be out of sight.
+The effect depends on `failure_index`, so it scrolls again only when a different line is the first failure,
+and leaves the log where the reader scrolled it otherwise.
 
 The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
-quits the same way when its last pane's shell exits,
+sends `Quit` when its last pane's shell exits,
 and moves focus with `FocusNext` when the focused pane's shell exits.
 
 The app handles a sent control as it handles one a handler returns, after the events already waiting,

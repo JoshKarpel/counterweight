@@ -1,0 +1,30 @@
+      tab: edit the next section  ·  ctrl+r: reset it  ·  esc: stop editing, so the keys scroll     
+                                                                                                    
+ ╭─ Inline spans ─────────────────────────────────────────────────────────────────────────────────╮ 
+ │ ╭────────────────────────────────────────────╮  Emphasis, strong, both, strikethrough and with │ 
+ │ │ *Emphasis*, **strong**, ***both***,        │  one tilde, inline code, a link, and an image.  │ 
+ │ │ ~~strikethrough~~ and ~with one tilde~,    │  A backslash at the end of a line               │ 
+ │ │ `inline code`, [a                          │  is a hard break.                               │ 
+ │ │ link](https://commonmark.org),             │                                                 │ 
+ │ │ and ![an                                   │                                                 │ 
+ │ │ image](https://example.com/cat.png).       │                                                 │ 
+ │ │ A backslash at the end of a line\          │                                                 │ 
+ │ │ is a hard break.                           │                                                 │ 
+ │ ╰────────────────────────────────────────────╯                                                 │ 
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────╯ 
+                                                                                                    
+ ╭─ Bare URLs ────────────────────────────────────────────────────────────────────────────────────╮ 
+ │ ╭────────────────────────────────────────────╮  Bare URLs like https://commonmark.org and      │ 
+ │ │ Bare URLs like https://commonmark.org      │  www.example.com are links, as are emails like  │ 
+ │ │ and www.example.com are links,             │  someone@example.com and https://commonmark.org │ 
+ │ │ as are emails like someone@example.com     │  in angle brackets.                             │ 
+ │ │ and <https://commonmark.org> in angle      │                                                 │ 
+ │ │ brackets.                                  │                                                 │ 
+ │ ╰────────────────────────────────────────────╯                                                 │ 
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────╯ 
+                                                                                                    
+ ╭─ Headings ─────────────────────────────────────────────────────────────────────────────────────╮ 
+ │ ╭────────────────────────────────────────────╮  Heading 1                                      │ 
+ │ │ # Heading 1                                │                                                 │ 
+ │ │ ## Heading 2                               │  Heading 2                                      │ 
+ │ │ ### Heading 3                              │                                                 │ 

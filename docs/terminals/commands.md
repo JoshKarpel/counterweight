@@ -43,6 +43,15 @@ its output streams, so `latest` shows what the program has printed so far while 
 updating at most once a frame,
 and a program that exits with a failing status is a result like any other, not an error.
 
+This recording shows a build's run as it streams in:
+
+<!-- cast: commands-streaming -->
+
+Notice that the progress bar redraws its line rather than adding one, that the box follows the output once it fills,
+and that the line beneath says `running` until the program exits.
+The recording replays a build's output written ahead of time into a run rather than running a build
+(see [Recorded output](#recorded-output)), so it comes out the same on every run.
+
 A run is a value that outlives its program, so a component can keep finished runs in state,
 show one again, or show it beside the next.
 Calling `run` again starts another run, even with the same `argv`, and hangs up the run in progress.
@@ -98,7 +107,10 @@ The program sees a terminal, so it acts as it would on one:
 ## Cancelling and timing out
 
 `cancel` hangs up the run in progress and makes its outcome
-[`Cancelled`][counterweight.commands.Cancelled], keeping what it printed.
+[`Cancelled`][counterweight.commands.Cancelled], keeping what it printed:
+
+![A test run cut off after four passing tests, with "cancelled" in amber beneath it](../assets/commands-cancelled.svg)
+
 Starting another run and unmounting the component hang it up too.
 Hanging up sends the program's process group `SIGHUP`, as closing a terminal window does,
 and `SIGTERM` and then `SIGKILL` to whatever is still running a second apart,
@@ -124,10 +136,13 @@ so a program that never stops printing can't grow it without bound.
 [`Transcript.of`][counterweight.painters.terminal.Transcript.of] turns output recorded ahead of time,
 such as with `script`, into the same output a run has, with no program run,
 so a slide can show a command's output without running it.
-That's how the screenshots on this page were drawn:
+That's how the screenshots on this page are drawn:
 
 <!-- example: commands.py:recorded -->
 
+The recording of a streaming run feeds its output to an emulator in chunks instead,
+taking the transcript after each with [`followed_by`][counterweight.painters.terminal.Transcript.followed_by],
+as a run does while its program prints.
 A [`Transcript`][counterweight.painters.terminal.Transcript] is a [`Canvas`](../elements/canvas.md) painter,
 so a canvas can show it without `command_output`.
 

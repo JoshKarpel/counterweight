@@ -1,10 +1,23 @@
 # `use_rects`
 
-## API
+`use_rects` tells a component where the element it returns is on the screen,
+as [`Rects`][counterweight.hooks.Rects]: the regions of its content, padding, border and margin boxes,
+and how much of it its ancestors' clips leave visible.
+A component can fit what it shows to the space layout gives it,
+as a CSS [container query](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries) does.
+Here each label shortens a path to fit its own width:
 
-::: counterweight.hooks.use_rects
-::: counterweight.hooks.Rects
-::: counterweight.geometry.Region
+<!-- example: use_rects_path_label.py:example -->
+
+![A wide pane showing the whole path, and a narrow one showing only hooks.py](../assets/use-rects-path-label.svg)
+
+Left and Right move the border between the panes, and each label follows its pane's width:
+
+<!-- cast: use-rects-path-label -->
+
+The label's width comes from its pane, never from its text, so the path it shows can't change the width it reads.
+`full_width` stretches it across its pane, and `min_width(0)` lets it be narrower than its text
+(see [Content sets a minimum size](../layout/how-layout-sizes-things.md#content-sets-a-minimum-size)).
 
 !!! tip "Use `use_hovered` for detecting hover state"
 
@@ -28,5 +41,13 @@ as the first render does.
 `use_rects` reports the previous frame's rectangles,
 and a component that calls it renders again as soon as any of the rectangles it read move,
 whether its own state changed or something else, such as a sibling growing, moved them.
+In the example, a key press moves the border between the panes in one frame,
+and the labels fit their new widths in the next.
 A component whose size depends on the rectangles it reads should settle:
 one that grows whenever it reads its own size renders without end.
+
+## API
+
+::: counterweight.hooks.use_rects
+::: counterweight.hooks.Rects
+::: counterweight.geometry.Region
