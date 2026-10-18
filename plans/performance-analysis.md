@@ -1280,3 +1280,40 @@ whose `memo` message components already skip unchanged messages:
 - **Scrolling still changes every node's placement** inside the container that scrolls, since `Rects` are in screen coordinates.
   Browsers keep layout in the content's coordinates and apply the scroll offset when painting and hit testing;
   doing that here would change every reader of `Rects`.
+
+### Run 28 — input parsing's per-read overhead
+
+**Date:** 2026-10-18
+
+**Change:** three shortcuts in `parse_input` for the reads a terminal sends most:
+
+- **A run of ASCII text skips decoding and segmenting.** With no control bytes in it, an ASCII run has no CRLF,
+  so each character is a grapheme cluster on its own: `parse_text` maps `KeyPressed` over it,
+  without the incremental decoder, the surrogate split or `graphemes`.
+- **An SGR mouse report is matched before the general escape sequence.** `SGR_MOUSE` matches exactly the span
+  `ESCAPE_SEQUENCE` does for a complete report, so trying it first skips the general match, a `bytes` copy,
+  a `SEQUENCE_KEYS` miss and a second, full match.
+- **The loop tests for a control byte by its value** rather than with `CONTROL_BYTE.match`,
+  and sets `paste_searched` only when a held paste stops it, rather than building a `Step` up front.
+
+**Method:** `parse_input` on `benchmarks/parsing.py`'s inputs, HEAD and the branch alternating in one process,
+best of 15 rounds. Separate `benchmarks parse` runs on this machine moved up to 7× with no change to the code,
+from other load (load average 10), so they aren't comparable.
+
+| Input | Bytes | HEAD µs/read | Branch µs/read | Change |
+|---|---|---|---|---|
+| `key` | 1 | 3.79 | 1.62 | −57% |
+| `arrow-key` | 3 | 2.33 | 1.94 | −17% |
+| `mouse-move` | 11 | 3.55 | 2.68 | −24% |
+| `mouse-flood` | 1021 | 216.01 | 177.62 | −18% |
+| `ascii-paste` | 1022 | 213.03 | 125.42 | −41% |
+| `non-ascii-paste` | 1024 | 143.79 | 136.49 | −5% |
+| `bracketed-paste` | 980 | 13.76 | 12.62 | −8% |
+
+- **What's left is building events.** A frozen `KeyPressed` takes about 0.15–0.2 µs, so `ascii-paste`'s 1,022 of them
+  are nearly all of its 125 µs, and a mouse report's `Position` and event are about 1 µs of its 2 µs.
+- **A key press a read was never a cost worth chasing:** under 4 µs against frames of about 2 ms.
+  A read full of mouse motion was about a tenth of such a frame, and is now under that.
+- **`re.Scanner` doesn't fit this parser.** It hands each action only the matched text,
+  and stops at the first byte nothing matches, where `parse_input` must tell a sequence cut off by the end of the read,
+  which it holds, from one cut off by another byte, which it skips.
