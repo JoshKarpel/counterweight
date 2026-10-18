@@ -130,8 +130,8 @@ def use_clock(interval: timedelta) -> Tick:
     """
     Parameters:
         interval: How often the component reads the clock.
-            Ticks start at whole multiples of `interval` past midnight on the wall clock
-            (for an `interval` that divides a day),
+            Ticks start at whole multiples of `interval` past midnight on the wall clock,
+            in the clock's timezone (for an `interval` that divides a day),
             so components reading the clock every second and every minute both re-run as the minute turns.
 
     Returns:

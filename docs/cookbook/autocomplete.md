@@ -129,3 +129,7 @@ with the screen's height, which the root takes from its own `use_rects` and pass
 
 `use_rects` reports the previous frame's rectangles, and empty ones on the first render.
 The list only opens once something has been typed, by which time the field and the root have been laid out.
+
+Choosing a package with Down and Enter, then tabbing to the recipe field, whose list opens upward:
+
+<!-- cast: autocomplete -->

@@ -10,6 +10,7 @@ Linux and macOS only.
 
 from __future__ import annotations
 
+import errno
 import fcntl
 import os
 import signal
@@ -276,14 +277,16 @@ async def run_pty(
     closed = Event()
 
     def read() -> None:
-        if not (data := read_output(master)):
+        if (data := read_output(master)) is None:  # pragma: no cover, only a wakeup the suite can't arrange
+            return
+        if not data:
             loop.remove_reader(master)
             closed.set()
             return
         on_output(data)
 
     def discard() -> None:
-        if not read_output(master):
+        if read_output(master) == b"":
             loop.remove_reader(master)
 
     loop.add_reader(master, read)
@@ -320,16 +323,22 @@ async def run_pty(
             connection.close()
 
 
-def read_output(master: int) -> bytes:
+def read_output(master: int) -> bytes | None:
     """
-    The next read of what the program on the terminal `master` wrote, or `b""` at end of file,
-    which comes once nothing holds the program's side of the terminal open:
-    macOS reads it as nothing, and Linux fails the read with `EIO`, as it does any read it can't make.
+    The next read of what the program on the terminal `master` wrote, `b""` at end of file,
+    which comes once nothing holds the program's side of the terminal open
+    (macOS reads it as nothing, and Linux fails the read with `EIO`),
+    or `None` if there's nothing to read yet, as a reader woken with nothing waiting finds.
+    Raises any other error reading.
     """
     try:
         return os.read(master, READ_SIZE)
-    except OSError:  # pragma: linux only
-        return b""
+    except BlockingIOError:
+        return None
+    except OSError as e:
+        if e.errno == errno.EIO:  # pragma: linux only
+            return b""
+        raise
 
 
 async def end_process_group(process: Process, grace: timedelta) -> None:

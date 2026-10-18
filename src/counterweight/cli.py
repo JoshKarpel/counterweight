@@ -30,6 +30,9 @@ from counterweight.output import stop_mouse_tracking
 
 SIGINT_EXIT = 130
 
+# Kept in step by hand with the drawn logo, which codegen/generate_logo.py lays out on the same cells.
+LOGO = "counter ╱\n       ╱ weight"
+
 
 @command("version")
 async def version(streams: Streams) -> int:
@@ -88,7 +91,7 @@ async def _check_input(mouse: bool, input_stream: TextIO, output_stream: TextIO)
 cli = group(
     PACKAGE_NAME,
     commands=(version, devlog, check_input),
-    summary="CLI tools for Counterweight.",
+    summary=f"{LOGO}\n\nCLI tools for Counterweight.",
     version=__version__,
 )
 

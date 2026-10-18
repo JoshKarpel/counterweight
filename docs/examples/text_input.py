@@ -1,6 +1,7 @@
 import asyncio
 import sys
 from collections.abc import Callable
+from datetime import timedelta
 
 from counterweight.app import app
 from counterweight.components import component
@@ -27,7 +28,9 @@ from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from counterweight.widgets import TextFieldStyles
 from counterweight.widgets import text_input
+from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
+from docs.examples.screenshot_spec import paced
 
 # --8<-- [start:hook]
 
@@ -209,6 +212,25 @@ SCREENSHOTS = [
     ScreenshotSpec(command_line(), "text-input-command", (24, 1), events=COMMAND),
     ScreenshotSpec(command_line(), "text-input-command-home", (24, 1), events=(*COMMAND, KeyPressed(key=Key.Home))),
     ScreenshotSpec(amber_sign_up(), "text-input-styled", (30, 6), events=(*typed("Ada"),)),
+]
+
+CASTS = [
+    CastSpec(
+        search(),
+        "text-input-search",
+        (30, 8),
+        steps=paced(
+            [
+                KeyPressed(key=Key.Down),
+                KeyPressed(key=Key.Down),
+                *typed("an"),
+                KeyPressed(key=Key.Backspace),
+                KeyPressed(key=Key.Backspace),
+                *typed("ch"),
+            ],
+            every=timedelta(milliseconds=300),
+        ),
+    )
 ]
 
 

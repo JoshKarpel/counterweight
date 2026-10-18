@@ -65,6 +65,7 @@ dev = [
     "mutmut>=3.8.0",
     "types-pygments>=2.17",
     "coverage-conditional-plugin>=0.9.0",
+    "fonttools>=4.40",
 ]
 
 [project.scripts]
@@ -205,6 +206,8 @@ ignore = [
     "D212",  # the summary starts on the line after the opening quotes
 ]
 
+allowed-confusables = ["╱"]  # the logo's line, a box-drawing character
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"  # mkdocstrings' default docstring style
 
@@ -212,8 +215,9 @@ convention = "google"  # mkdocstrings' default docstring style
 force-single-line = true
 
 [tool.ruff.lint.flake8-bugbear]
-# Styles are immutable values, so they're safe as defaults.
+# Styles and clocks are immutable values, so they're safe as defaults.
 extend-immutable-calls = [
+    "counterweight.clock.SystemClock",
     "counterweight.styles.Style",
     "counterweight.styles.CellStyle",
     "counterweight.styles.styles.Style",

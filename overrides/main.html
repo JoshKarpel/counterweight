@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{#
+Material links `theme.favicon` (the PNG) itself.
+Browsers that can draw an SVG favicon take the one declared after it, and iOS takes the touch icon for home screens.
+#}
+{% block extrahead %}
+  <link rel="icon" href="{{ 'assets/logo/favicon.svg' | url }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ 'assets/logo/apple-touch-icon.png' | url }}">
+{% endblock %}

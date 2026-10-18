@@ -18,6 +18,10 @@ Then `c` opens a second pane and focuses it, so the next keys go there:
 
 ![Two panes, the second focused with "yo" typed into it](../assets/prefix-keys-new-pane.svg)
 
+Then Ctrl+B and `n` focus the first pane, `!` is typed into it, and Ctrl+B and `x` close it:
+
+<!-- cast: prefix-keys -->
+
 ## Keeping the mode in a ref
 
 Whether the prefix is waiting for its key, `is_armed`, is a [ref](../hooks/use_ref.md), not state,

@@ -397,13 +397,14 @@ async def test_a_terminal_runs_its_program_with_env_over_the_apps_environment_un
 async def test_a_terminal_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:
     signals = tmp_path / "signals"
     terminals: list[EmbeddedTerminal] = []
-    # Ignores SIGHUP, and exits by itself after at least half a second, much longer than its grace.
+    # Ignores SIGHUP, and exits by itself after at least five seconds, much longer than its grace,
+    # which is long enough for a loaded machine to run the TERM trap before SIGKILL.
     argv = sh(
         f"trap '' HUP; trap 'echo term >> {signals}; exit' TERM; echo ready; "
-        f"i=0; while [ $i -lt 50 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}"
+        f"i=0; while [ $i -lt 500 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}"
     )
     async with mounted() as m:
-        await m.render(embed(argv, 20, 4, terminals, hangup_grace=timedelta(milliseconds=50)))
+        await m.render(embed(argv, 20, 4, terminals, hangup_grace=timedelta(seconds=1)))
         await m.wait_until(shows(terminals, "ready"))
         await m.render(Text(content="gone"))
 

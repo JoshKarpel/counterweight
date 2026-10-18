@@ -278,6 +278,10 @@ The web has no property for this:
 a page puts an anchor element after the content, or reverses a column so it starts at its end.
 The [chat composer](../headless/use_text_area.md#using-the-hook) keeps its messages scrolled to the newest this way.
 
+Here it is following, scrolled back, and following again:
+
+<!-- cast: scrolling-tail -->
+
 ## Jumping to the end
 
 Counterweight doesn't draw scrollbars ([#417](https://github.com/JoshKarpel/counterweight/issues/417)), as most terminal apps don't,
@@ -293,6 +297,10 @@ A button over the last line that appears once the log is scrolled back, and jump
 === "After clicking the button"
 
     ![The log at its end again, without the button](../assets/scrolling-jump-clicked.svg)
+
+Scrolling back, then clicking the button:
+
+<!-- cast: scrolling-jump -->
 
 The button is a sibling of the log in a box around it, not a child of the log,
 because a scroll container moves everything inside it by its offset, absolutely positioned elements included,

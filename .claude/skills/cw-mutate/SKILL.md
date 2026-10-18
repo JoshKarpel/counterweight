@@ -39,6 +39,11 @@ and a run that crashed can leave mutants marked "no tests" that never ran.
   `tests/conftest.py` makes `VISUAL` and `EDITOR` `false` for every test that doesn't set them,
   so such a mutant fails at once and counts as killed. A test that runs a program which could wait on input
   needs the same: a stand-in that exits.
+  A mutant that skips hanging up a program in a process group of its own (a mutant of `end_process_group`, say)
+  would leave it running after the whole run, and a test program that ignores `SIGHUP` and loops on `sleep`
+  starts a process a hundred times a second, which slows every mutant after it.
+  `tests/conftest.py`'s `programs_end_with_their_test` kills any such group still running when a test ends,
+  and fails the test, so the mutant counts as killed.
 - **Warm caches hide mutants.** Each mutmut worker forks from a parent that has already run every test,
   so every `lru_cache` is full, and a function that only runs on a cache miss never runs under its mutant:
   `paint.justify_line` sits behind `line_cells`, `CellStyle.__post_init__` behind its flyweight.
@@ -153,15 +158,13 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 ### Input
 
 - **`sequence_keys`' `\x1B` for `\x1b`**: a hex escape's case doesn't change the byte.
-- **`parse_input`'s initial `Step(end=None)` or `Step(end=1)`**: the loop replaces `step` before reading its `end`,
-  and after the loop only its `paste_searched` is read, which is `None` either way.
 - **`parse_input`'s `(paste_searched or 1)` and `else 1`**: `max` clamps any count up to
   `len(PASTE_START) + len(PASTE_END) - 1` to the start of the paste's text, so 0 and 1 search from the same place.
 - **`parse_escaped_sequence`'s `end` when it finds no event** (`start ± 1`, `start + 2`, `None`), and its
   `events=(None,)` for an unknown sequence: its only caller, `parse_alt`, reads that `end` only to compare it with
   `following`, which none of them equal, and `(None,)` matches its `case (KeyPressed(...), *rest)` no more than `()`
   does, so either way `parse_alt` returns Escape and `end=following`.
-- **The codec name `"UTF-8"`** in `parse_paste` and `parse_text`: codec lookup ignores case.
+- **The codec names `"UTF-8"` and `"ASCII"`** in `parse_paste`, `UTF8_DECODER` and `parse_text`: codec lookup ignores case.
 - **`read_keys`' `is_final=None`**: `parse_input` and its helpers read `is_final` only for truthiness.
 - **`put_parsed_keys`' `paste_searched=None` or dropped** in its call to `parse_input`: the count only saves work.
   By `parse_input`'s contract the bytes it skips can't hold the paste's end, so searching them again finds the same.
