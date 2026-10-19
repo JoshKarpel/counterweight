@@ -3,6 +3,7 @@ from typing import Literal
 
 import waxy
 
+from counterweight.gradients import Gradient
 from counterweight.styles import TERMINAL_DEFAULT
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
@@ -1233,3 +1234,48 @@ def padding_indexed(index: int) -> Style:
 def content_indexed(index: int) -> Style:
     """Fill the whole box with entry `index` of the terminal's palette, under any margin, padding and border colors."""
     return Style(content_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def text_gradient(gradient: Gradient) -> Style:
+    """Color the text with a gradient, which maps over the content box unless it names another box."""
+    return Style(text_style=CellStyle(foreground=gradient))
+
+
+@lru_cache(maxsize=256)
+def text_bg_gradient(gradient: Gradient) -> Style:
+    """Color the background behind the text with a gradient, which maps over the content box unless it names another."""
+    return Style(text_style=CellStyle(background=gradient))
+
+
+@lru_cache(maxsize=256)
+def border_gradient(gradient: Gradient) -> Style:
+    """Color the border characters with a gradient, which maps over the border box unless it names another."""
+    return Style(border_style=CellStyle(foreground=gradient))
+
+
+@lru_cache(maxsize=256)
+def border_bg_gradient(gradient: Gradient) -> Style:
+    """Color the background behind the border characters with a gradient, over the border box unless it names another."""
+    return Style(border_style=CellStyle(background=gradient))
+
+
+@lru_cache(maxsize=256)
+def margin_gradient(gradient: Gradient) -> Style:
+    """Fill the margin with a gradient, which maps over the margin box unless it names another."""
+    return Style(margin_color=gradient)
+
+
+@lru_cache(maxsize=256)
+def padding_gradient(gradient: Gradient) -> Style:
+    """Fill the padding with a gradient, which maps over the padding box unless it names another."""
+    return Style(padding_color=gradient)
+
+
+@lru_cache(maxsize=256)
+def content_gradient(gradient: Gradient) -> Style:
+    """
+    Fill the whole box with a gradient, under any margin, padding and border colors,
+    which maps over the border box unless it names another.
+    """
+    return Style(content_color=gradient)

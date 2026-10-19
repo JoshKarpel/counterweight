@@ -19,6 +19,7 @@ from counterweight.paint import Cell
 from counterweight.paint import Paint
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import JoinedBorderKind
+from counterweight.styles.styles import as_solid
 from counterweight.styles.styles import resolve_cell_style
 from counterweight.styles.utilities import align_self_stretch
 from counterweight.styles.utilities import border
@@ -204,7 +205,7 @@ async def test_doc_example_border_healing() -> None:
 
 
 LIGHT = JoinedBorderKind.Light.value
-STYLE = resolve_cell_style(CellStyle())
+STYLE = as_solid(resolve_cell_style(CellStyle()))
 
 
 def paint_of(*rows: str) -> Paint:

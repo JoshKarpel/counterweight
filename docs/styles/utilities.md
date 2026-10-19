@@ -100,6 +100,13 @@ Screenshots draw them in `DEFAULT_PALETTE`, and the defaults as white on black.
 
 <!-- utilities: *_terminal_default *_indexed -->
 
+#### Gradients
+
+These put a [gradient](gradients.md) in each place the color utilities above put a color,
+each mapping it over the box that place paints unless the gradient names its own `box`.
+
+<!-- utilities: *_gradient -->
+
 ### Direction and wrapping
 
 These set the flexbox main axis, and whether children wrap onto more lines when they don't fit.

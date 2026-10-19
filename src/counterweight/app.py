@@ -111,6 +111,7 @@ from counterweight.output import stop_mouse_tracking
 from counterweight.output import stop_output_control
 from counterweight.output import synchronized
 from counterweight.output import title_instructions
+from counterweight.paint import DEFAULT_CELL_ASPECT_RATIO
 from counterweight.paint import Paint
 from counterweight.paint import diff_paint
 from counterweight.paint import paint_layout
@@ -199,6 +200,7 @@ async def app(
     log_levels: Mapping[str, int] = frozendict(),
     title: str | None = None,
     unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
+    cell_aspect_ratio: float = DEFAULT_CELL_ASPECT_RATIO,
     recording: Recording | None = None,
 ) -> None:
     """
@@ -257,6 +259,10 @@ async def app(
             keeps it from taking its default.
             Pass `{}` to give unclaimed keys no defaults, or merge onto the defaults to change some,
             as in `DEFAULT_UNCLAIMED_KEYS | {Key.ControlQ: Quit()}`.
+        cell_aspect_ratio: How many times taller than it is wide a cell of the terminal's font is,
+            which [gradients][counterweight.gradients.Gradient] compute their angles and circles with,
+            so that a 45 degree gradient or a circle looks like one.
+            Most terminal fonts are about 2.
         recording: Where and how to record the application as an asciicast,
             which asciinema-player plays back, whether it's headless or not.
             If `None`, the application isn't recorded.
@@ -274,6 +280,7 @@ async def app(
                 clock,
                 title,
                 unclaimed_keys,
+                cell_aspect_ratio,
                 recording,
             )
         except BaseExceptionGroup as group:
@@ -300,6 +307,7 @@ async def render_loop(
     clock: Clock,
     title: str | None,
     unclaimed_keys: Mapping[str, AnyControl],
+    cell_aspect_ratio: float,
     recording: Recording | None,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
@@ -668,9 +676,7 @@ async def render_loop(
                         event_queue.put_nowait(StateSet(key=key))
 
                     new_paint, border_healing_hints = paint_layout(
-                        ((element, layout, lines) for _, element, layout, lines in layouts.in_paint_order),
-                        w,
-                        h,
+                        layouts.in_paint_order, w, h, layout_tree.fields, cell_aspect_ratio
                     )
                     logger.debug("Generated new paint")
 

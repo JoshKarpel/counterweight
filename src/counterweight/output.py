@@ -136,7 +136,7 @@ def sgr_color(color: AnyColor, base: int) -> str:
 
 
 @lru_cache(maxsize=2**10)
-def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
+def sgr_from_cell_style(style: ResolvedCellStyle[AnyColor]) -> str:
     sgr = f"\x1b[{sgr_color(style.foreground, 30)}m\x1b[{sgr_color(style.background, 40)}m"
 
     if style.bold:
@@ -157,6 +157,26 @@ def sgr_from_cell_style(style: ResolvedCellStyle) -> str:
     return sgr
 
 
+def style_change(previous: ResolvedCellStyle[AnyColor] | None, style: ResolvedCellStyle[AnyColor]) -> str:
+    """
+    The SGR sequences that change the style of the cells written next from `previous` to `style`:
+    only the colors that changed, if that's all that did, as between the cells of a gradient,
+    and otherwise a reset, since an SGR sequence only turns attributes like bold on, and the whole of `style`.
+    """
+    if (
+        previous is None
+        or previous.bold != style.bold
+        or previous.dim != style.dim
+        or previous.italic != style.italic
+        or previous.underline != style.underline
+        or previous.strikethrough != style.strikethrough
+    ):
+        return RESET_STYLE + sgr_from_cell_style(style)
+    foreground = "" if previous.foreground == style.foreground else f"\x1b[{sgr_color(style.foreground, 30)}m"
+    background = "" if previous.background == style.background else f"\x1b[{sgr_color(style.background, 40)}m"
+    return foreground + background
+
+
 def hyperlink(link: str | None) -> str:
     """The OSC 8 sequence that makes the cells written after it a hyperlink to `link`, or no hyperlink for `None`."""
     return HYPERLINK_END if link is None else f"\x1b]8;;{link}\x1b\\"
@@ -165,23 +185,22 @@ def hyperlink(link: str | None) -> str:
 def paint_to_instructions(runs: Iterable[Run]) -> str:
     """
     Terminal instructions that draw `runs`: one cursor move per run,
-    and a style change only where a cell's style differs from the cell drawn before it.
+    and a style change only where a cell's style differs from the cell drawn before it,
+    which is only its colors where nothing else differs (see `style_change`).
 
     Every run must stay within one row of the screen, since each cell advances the cursor one column:
     a two-cell-wide cluster advances it two, and its continuation cell, whose `grapheme` is empty, writes nothing.
     """
     parts = []
-    style = None
+    style: ResolvedCellStyle[AnyColor] | None = None
     link = None
     for x, y, cells in runs:
         parts.append(move_to(Position(x, y)))
         for cell in cells:
-            # The SGR sequence only turns attributes like bold on, so a change of style resets first.
             # Identity is the fast path; equality keeps the output from depending on styles being interned.
             if cell.style is not style and cell.style != style:
+                parts.append(style_change(style, cell.style))
                 style = cell.style
-                parts.append(RESET_STYLE)
-                parts.append(sgr_from_cell_style(style))
                 if style.link != link:
                     link = style.link
                     parts.append(hyperlink(link))

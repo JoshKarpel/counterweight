@@ -29,6 +29,7 @@ from counterweight.styles import Style
 from counterweight.styles.styles import BorderKind
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import as_solid
 from counterweight.styles.styles import resolve_cell_style
 from counterweight.styles.utilities import _COLOR_MAP
 from counterweight.styles.utilities import border
@@ -57,8 +58,8 @@ from counterweight.styles.utilities import position_absolute
 from counterweight.styles.utilities import size
 from counterweight.styles.utilities import z
 
-RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
-BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
+RED = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))
+BLUE = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("blue"))))
 X = Cell("x", RED)
 Y = Cell("y", RED)
 WIDE = Cell("日", BLUE)
@@ -230,13 +231,13 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
 )
 def test_a_rows_cells_pad_it_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
     (line,) = MeasurableText(cells=Text(content="日本").cells, wrap="none").lines_at(None)
-    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), width)
+    cells = line_cells(line, "left", as_solid(resolve_cell_style(CellStyle())), width)
     assert "".join(cell.grapheme or "·" for cell in cells) == expected
 
 
 def test_a_rows_cells_draw_no_cell_for_a_zero_width_cluster() -> None:
     (line,) = MeasurableText(cells=Text(content="a\N{ZERO WIDTH SPACE}b").cells, wrap="none").lines_at(None)
-    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), 3)
+    cells = line_cells(line, "left", as_solid(resolve_cell_style(CellStyle())), 3)
     assert "".join(cell.grapheme for cell in cells) == "ab "
 
 
@@ -520,7 +521,7 @@ def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
     lines = MeasurableText(cells=Text(content="hi").cells, wrap="none").lines_at(None)
 
     assert [
-        "".join(cell.grapheme for cell in line_cells(line, "left", resolve_cell_style(CellStyle()), 0))
+        "".join(cell.grapheme for cell in line_cells(line, "left", as_solid(resolve_cell_style(CellStyle())), 0))
         for line in lines
     ] == ["hi"]
 
@@ -528,7 +529,9 @@ def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
     region = Region(left=2, top=0, right=2, bottom=3)
 
-    assert border_fills(BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, (False, False, True, True)) == (
+    assert border_fills(
+        BorderKind.Light, as_solid(resolve_cell_style(CellStyle())), 0, region, (False, False, True, True)
+    ) == (
         (),
         (),
     )
@@ -537,7 +540,9 @@ def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
 def test_a_border_kind_without_joined_parts_draws_its_edges_but_gives_no_healing_hints() -> None:
     region = Region(left=0, top=0, right=3, bottom=3)
 
-    fills, hints = border_fills(BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, (True, True, True, True))
+    fills, hints = border_fills(
+        BorderKind.Star, as_solid(resolve_cell_style(CellStyle())), 0, region, (True, True, True, True)
+    )
 
     assert (len(fills), hints) == (8, ())
 

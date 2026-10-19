@@ -21,12 +21,13 @@ from counterweight.paint import Cell
 from counterweight.paint import Paint
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import as_solid
 from counterweight.styles.styles import resolve_cell_style
 
 
 @pytest.fixture
 def frame() -> Frame:
-    red = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
+    red = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))
     return Frame(paint=Paint(2, 1, [Cell("h", red), Cell("i", red)]))
 
 
@@ -139,8 +140,8 @@ def test_to_stream_flushes_after_printing(frame: Frame) -> None:
 
 
 def test_text_has_escape_codes_by_default() -> None:
-    bold_red = resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True))
-    plain = resolve_cell_style(CellStyle())
+    bold_red = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True)))
+    plain = as_solid(resolve_cell_style(CellStyle()))
     frame = Frame(paint=Paint(2, 2, [Cell("a", bold_red), Cell("b", plain), Cell("c", plain), Cell("d", bold_red)]))
 
     red_bold = "\x1b[38;2;255;0;0m\x1b[48;2;0;0;0m\x1b[1m"

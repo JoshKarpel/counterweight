@@ -272,8 +272,8 @@ def test_canvas_is_drawn_once_while_its_painter_is_equal_and_its_box_is_the_same
     painter = Counted()
     box = Region(left=1, top=1, right=4, bottom=3)
 
-    first = tree.drawn(KEY, painter, box)
-    again = tree.drawn(KEY, Counted(sizes=painter.sizes), box)
+    first, _ = tree.drawn(KEY, painter, box)
+    again, _ = tree.drawn(KEY, Counted(sizes=painter.sizes), box)
 
     assert (again is first, painter.sizes) == (True, [(3, 2)])
 
@@ -307,4 +307,4 @@ def test_canvas_is_drawn_again_when_its_painter_or_box_changes(
 def test_canvas_with_no_cells_is_not_drawn(box: Region) -> None:
     painter = Counted()
 
-    assert (LayoutTree().drawn(KEY, painter, box), painter.sizes) == ((), [])
+    assert (LayoutTree().drawn(KEY, painter, box), painter.sizes) == (((), True), [])

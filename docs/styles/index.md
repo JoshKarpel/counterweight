@@ -23,6 +23,8 @@ Nested styles merge field by field too:
 is both bold and italic.
 `layout` follows the same rule, field by field.
 
+Any color a style holds can be a [gradient](gradients.md) instead, which colors each cell by where it is in its box.
+
 When an element is drawn, any field still unset takes its default from
 [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS]
 and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].

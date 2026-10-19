@@ -1,6 +1,6 @@
 {"version": 3, "term": {"cols": 40, "rows": 3, "type": "xterm-256color"}, "timestamp": 1773500966}
 [0.0, "o", "\u001b[?1049h\u001b[?25l\u001b[2J\u001b[22;0t"]
-[0.0, "o", "\u001b[?2026h\u001b[2J\u001b[1;1f\u001b[0m\u001b[38;2;16;185;129m\u001b[48;2;0;0;0m✓ Read pyproject.toml                   \u001b[2;1f✓ Ran the tests                         \u001b[3;1f\u001b[0m\u001b[38;2;251;191;36m\u001b[48;2;0;0;0m⠋ Fixing the failing test (0s)          \u001b[0m\u001b[?2026l"]
+[0.0, "o", "\u001b[?2026h\u001b[2J\u001b[1;1f\u001b[0m\u001b[38;2;16;185;129m\u001b[48;2;0;0;0m✓ Read pyproject.toml                   \u001b[2;1f✓ Ran the tests                         \u001b[3;1f\u001b[38;2;251;191;36m⠋ Fixing the failing test (0s)          \u001b[0m\u001b[?2026l"]
 [0.08, "o", "\u001b[?2026h\u001b[3;1f\u001b[0m\u001b[38;2;251;191;36m\u001b[48;2;0;0;0m⠙\u001b[0m\u001b[?2026l"]
 [0.08, "o", "\u001b[?2026h\u001b[3;1f\u001b[0m\u001b[38;2;251;191;36m\u001b[48;2;0;0;0m⠹\u001b[0m\u001b[?2026l"]
 [0.08, "o", "\u001b[?2026h\u001b[3;1f\u001b[0m\u001b[38;2;251;191;36m\u001b[48;2;0;0;0m⠸\u001b[0m\u001b[?2026l"]

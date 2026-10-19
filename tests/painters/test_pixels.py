@@ -4,10 +4,14 @@ from dataclasses import dataclass
 from dataclasses import field
 
 import pytest
+import waxy
 
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
+from counterweight.gradients import linear_gradient
+from counterweight.gradients import radial_gradient
 from counterweight.painters.pixels import Fit
+from counterweight.painters.pixels import HalfBlockGradient
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
 from counterweight.styles import CellStyle
@@ -304,3 +308,52 @@ def test_half_blocks_find_one_pixel_for_a_cell_whose_halves_show_the_same_pixel(
 
 def test_half_blocks_find_no_pixels_where_the_picture_does_not_cover_a_cell() -> None:
     assert HalfBlocks(Pixels.blank(1, 2, RED), fit="contain").pixels_at(Position(0, 0), 3, 1) == ()
+
+
+GRAY = Color(128, 128, 128)
+BLACK_TO_WHITE = linear_gradient(Color(0, 0, 0), Color(255, 255, 255), to="bottom right", interpolation="srgb")
+
+
+@pytest.mark.parametrize(("width", "height"), [(2, 2), (5, 3), (3, 7)])
+def test_a_gradients_corner_pixels_take_its_end_colors(width: int, height: int) -> None:
+    pixels = Pixels.from_gradient(width, height, BLACK_TO_WHITE)
+    assert (pixel(pixels, 0, 0), pixel(pixels, width - 1, height - 1)) == (Color(0, 0, 0), Color(255, 255, 255))
+
+
+def test_a_gradient_picture_takes_its_pixels_as_square() -> None:
+    # A circle of radius 2 pixels reaches 2 pixels in every direction, where a cell's would reach 1 row.
+    gradient = radial_gradient(Color(0, 0, 0), Color(255, 255, 255), size=waxy.Length(2), interpolation="srgb")
+    pixels = Pixels.from_gradient(5, 5, gradient)
+    assert [pixel(pixels, 2, y) for y in range(5)] == [
+        Color(255, 255, 255),
+        GRAY,
+        Color(0, 0, 0),
+        GRAY,
+        Color(255, 255, 255),
+    ]
+
+
+def test_an_empty_gradient_picture_has_no_pixels() -> None:
+    assert Pixels.from_gradient(0, 3, BLACK_TO_WHITE) == Pixels(0, 3, b"")
+
+
+def pixel(pixels: Pixels, x: int, y: int) -> Color:
+    start = (y * pixels.width + x) * 4
+    red, green, blue, alpha = pixels.rgba[start : start + 4]
+    assert alpha == 255
+    return Color(red, green, blue)
+
+
+def test_a_half_block_gradient_draws_two_pixels_of_its_gradient_to_a_cell() -> None:
+    gradient = linear_gradient(Color(0, 0, 0), Color(255, 255, 255), interpolation="srgb")
+    assert HalfBlockGradient(gradient).draw(2, 2) == HalfBlocks(Pixels.from_gradient(2, 4, gradient)).draw(2, 2)
+
+
+def test_a_half_block_gradient_shows_its_end_colors_in_its_corner_halves() -> None:
+    (top, *_), *_, (*_, bottom) = HalfBlockGradient(BLACK_TO_WHITE).draw(3, 2)
+    assert (top.style.foreground, bottom.style.background) == (Color(0, 0, 0), Color(255, 255, 255))
+
+
+def test_a_half_block_gradient_has_no_natural_size_and_no_ratio_to_keep() -> None:
+    painter = HalfBlockGradient(BLACK_TO_WHITE)
+    assert (painter.natural_size, painter.keeps_aspect_ratio) == ((0, 0), False)

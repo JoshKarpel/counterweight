@@ -1,0 +1,5 @@
+┏━━━━━━━━━━━━━━━━━━┓   Gradient text, with                          
+┃ gradient border  ┃   a highlight that                             
+┃                  ┃   continues it                                 
+┃                  ┃                                                
+┗━━━━━━━━━━━━━━━━━━┛                                                
