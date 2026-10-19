@@ -282,7 +282,7 @@ def test_mounting_and_unmounting_leaves_no_orphaned_nodes(elements: list[AnyElem
 
 def without_keys(layouts: Layouts) -> tuple[tuple[AnyElement, Rects], ...]:
     """Each element and its layout in paint order, without the node keys, which differ between two trees."""
-    return tuple((element, layout) for _, element, layout, _ in layouts.in_paint_order)
+    return tuple((element, layout) for _, element, layout, _, _ in layouts.in_paint_order)
 
 
 def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, Rects], ...]:

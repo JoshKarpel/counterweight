@@ -102,6 +102,23 @@ or in an effect that sets state, never in a render.
 
 ![An image with transparent corners, at its natural size and contained in a smaller box](../assets/canvas-image.svg)
 
+## Gradients
+
+[`HalfBlockGradient`][counterweight.painters.pixels.HalfBlockGradient] fills its canvas with a
+[gradient](../styles/gradients.md), two pixels to a cell, drawing a new picture at whatever size the canvas is,
+so it shows a gradient at twice the vertical resolution of the same gradient as an element's `content_color`.
+[`Pixels.from_gradient`][counterweight.painters.pixels.Pixels.from_gradient] makes a picture of one,
+for a picture that draws more on top of it with `with_points`.
+Its pixels are square, so the gradient's angles and circles are in pixels rather than in cells.
+
+<!-- example: gradients.py:canvas -->
+
+![A conic gradient as a content gradient and on a canvas](../assets/gradients-canvas.svg)
+
+A cell a painter leaves without a background shows the canvas's `content_color`,
+and a `content_color` gradient maps over the canvas's border box there too,
+so the cell matches the rest of the box.
+
 ## Mouse Input
 
 A canvas takes an `on_input` handler as any element does,
@@ -145,5 +162,7 @@ two built from the same values are equal, so a component can build its painter i
 ::: counterweight.painters.pixels.Pixels
 
 ::: counterweight.painters.pixels.HalfBlocks
+
+::: counterweight.painters.pixels.HalfBlockGradient
 
 ::: counterweight.painters.pixels.SupportsRGBA

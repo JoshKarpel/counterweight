@@ -226,6 +226,8 @@ PASTE_END = b"\x1b[201~"
 
 SURROGATES = re.compile(r"([\ud800-\udfff]+)")
 
+UTF8_DECODER = getincrementaldecoder("utf-8")
+
 
 @dataclass(frozen=True, slots=True)
 class ParsedInput:
@@ -275,14 +277,14 @@ def parse_input(buffer: bytes | bytearray, *, is_final: bool, paste_searched: in
     skipped: list[bytes] = []
 
     position = 0
-    step = Step(end=0)
+    held_paste_searched = None
     while position < len(buffer):
         byte = buffer[position]
         if byte == ESC and buffer.startswith(PASTE_START, position):
             step = parse_paste(buffer, position, is_final, (paste_searched or 0) if position == 0 else 0)
         elif byte == ESC:
             step = parse_escape(buffer, position, is_final)
-        elif CONTROL_BYTE.match(buffer, position):
+        elif byte < 0x20 or byte == 0x7F:
             step = parse_control(buffer, position)
         else:
             step = parse_text(buffer, position, is_final)
@@ -291,6 +293,7 @@ def parse_input(buffer: bytes | bytearray, *, is_final: bool, paste_searched: in
         skipped.extend(step.skipped)
 
         if step.end == position:
+            held_paste_searched = step.paste_searched
             break
         position = step.end
 
@@ -298,7 +301,7 @@ def parse_input(buffer: bytes | bytearray, *, is_final: bool, paste_searched: in
         events=tuple(events),
         skipped=tuple(skipped),
         end=position,
-        paste_searched=step.paste_searched,
+        paste_searched=held_paste_searched,
     )
 
 
@@ -308,6 +311,10 @@ def parse_escape(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:
     or be Alt with the key that follows it.
     Stops where it started if there isn't enough input yet to tell which.
     """
+    # Mouse reports are most of the escape sequences a terminal sends, many to a read, so they skip the general path.
+    if report := SGR_MOUSE.match(buffer, start):
+        return Step(end=report.end(), events=(sgr_mouse_event(report),))
+
     match = ESCAPE_SEQUENCE.match(buffer, start)
 
     if match is not None:
@@ -427,10 +434,16 @@ def sequence_event(sequence: bytes) -> AnyEvent | None:
     if key := SEQUENCE_KEYS.get(sequence):
         return KeyPressed(key=key)
 
-    if mouse := SGR_MOUSE.fullmatch(sequence):
-        return mouse_event(int(mouse[1]), Position(x=int(mouse[2]) - 1, y=int(mouse[3]) - 1), mouse[4])
+    if report := SGR_MOUSE.fullmatch(sequence):
+        return sgr_mouse_event(report)
 
     return None
+
+
+def sgr_mouse_event(report: re.Match[bytes]) -> AnyEvent:
+    """The event for a match of `SGR_MOUSE`."""
+    button_info, x, y, final = report.groups()
+    return mouse_event(int(button_info), Position(x=int(x) - 1, y=int(y) - 1), final)
 
 
 def mouse_event(button_info: int, position: Position, final: bytes) -> AnyEvent:
@@ -491,10 +504,15 @@ def parse_text(buffer: bytes | bytearray, start: int, is_final: bool) -> Step:
     control = CONTROL_BYTE.search(buffer, start)
     end = control.start() if control else len(buffer)
 
+    run = buffer[start:end]
+    # With no control bytes, an ASCII run has no CRLF, so each of its characters is a grapheme cluster on its own.
+    if run.isascii():
+        return Step(end=end, events=tuple(map(KeyPressed, run.decode("ascii"))))
+
     # surrogateescape turns each byte that isn't UTF-8 into a lone surrogate, rather than raising or replacing it,
     # so it can be skipped without dropping the rest of the run.
-    decoder = getincrementaldecoder("utf-8")("surrogateescape")
-    text = decoder.decode(buffer[start:end], final=is_final or control is not None)
+    decoder = UTF8_DECODER("surrogateescape")
+    text = decoder.decode(run, final=is_final or control is not None)
     held, _ = decoder.getstate()
 
     # Odd pieces are the runs of surrogates, split out before segmenting so a combining mark can't join one.

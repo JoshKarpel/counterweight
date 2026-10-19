@@ -4,6 +4,22 @@
 
 ### Added
 
+- [#430](https://github.com/JoshKarpel/counterweight/pull/430)
+  Added [gradients](styles/gradients.md): linear, radial and conic, with CSS's geometry, stops, hints and repeating,
+  built by `linear_gradient`, `radial_gradient` and `conic_gradient` in `counterweight.gradients`.
+  Any color a style holds can be a gradient: `margin_color`, `padding_color`, `content_color`,
+  and the foreground and background of `border_style`, `text_style` and a chunk's style,
+  each mapping it over the box it paints unless the gradient's `box` names another,
+  and the `*_gradient` utilities put one in each of those places.
+  Colors mix in Oklab by default, or in another of CSS's color spaces, with its hue methods for the polar ones.
+  Angles and circles are in visual units, where a row is `app`'s new `cell_aspect_ratio` columns tall (2 by default),
+  and a gradient spans its box's corner cells' centers, so they take its end colors.
+  Paint keeps each element's gradient cells from frame to frame, so a gradient that doesn't change costs about what a solid color does.
+
+- [#430](https://github.com/JoshKarpel/counterweight/pull/430)
+  Added `HalfBlockGradient`, a canvas painter that fills its canvas with a gradient two pixels to a cell,
+  and `Pixels.from_gradient`, a picture of one.
+
 - [#391](https://github.com/JoshKarpel/counterweight/issues/391)
   Added [headless components](headless/index.md) in `counterweight.headless`,
   starting with [`use_text_input`](headless/use_text_input.md), which edits one line of text and leaves drawing it to its caller.
@@ -427,6 +443,11 @@
   so a recording can show real work at its real pace between steps that `AdvanceClock` paces.
 
 ### Changed
+
+- [#430](https://github.com/JoshKarpel/counterweight/pull/430)
+  Output sends only the colors that changed between two cells whose styles differ only in their colors,
+  rather than resetting and sending the whole style,
+  which makes redrawing a screen of gradients, syntax highlighting or colored meters an eighth to a half smaller.
 
 - A `Suspend` handler receives the terminal the app handed back, as `TerminalStreams`,
   so it can run a program on the terminal the app draws on even when that isn't standard output.

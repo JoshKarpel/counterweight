@@ -531,13 +531,14 @@ async def test_a_slide_runs_its_command_at_the_width_of_the_box_that_shows_it(te
 async def test_cancelling_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:
     signals = tmp_path / "signals"
     commands: list[Command] = []
-    # Ignores SIGHUP, and exits by itself after at least half a second, much longer than its grace.
+    # Ignores SIGHUP, and exits by itself after at least five seconds, much longer than its grace,
+    # which is long enough for a loaded machine to run the TERM trap before SIGKILL.
     script = sh(
         f"trap '' HUP; trap 'echo term >> {signals}; exit' TERM; echo ready; "
-        f"i=0; while [ $i -lt 50 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}"
+        f"i=0; while [ $i -lt 500 ]; do sleep 0.01; i=$((i+1)); done; echo exited >> {signals}"
     )
     async with mounted() as m:
-        await m.render(runner(20, commands, hangup_grace=timedelta(milliseconds=50)))
+        await m.render(runner(20, commands, hangup_grace=timedelta(seconds=1)))
         commands[-1].run(script)
         await wait_for_output(m, commands, "ready")
         commands[-1].cancel()

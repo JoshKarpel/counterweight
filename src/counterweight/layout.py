@@ -36,6 +36,7 @@ from counterweight.geometry import Rects
 from counterweight.geometry import Region
 from counterweight.geometry import Scroll
 from counterweight.graphemes import LINE_BREAKS
+from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import ClipTo
 from counterweight.styles.styles import ResolvedStyle
@@ -44,7 +45,9 @@ from counterweight.styles.styles import TextWrap
 
 if TYPE_CHECKING:
     from counterweight.focus import ElementHandle
+    from counterweight.gradients import Gradient
     from counterweight.hooks.impls import NodeKey
+    from counterweight.paint import NodeFields
     from counterweight.shadow import ShadowNode
     from counterweight.shadow import ShadowTree
 
@@ -254,6 +257,7 @@ def _removals(unmounted: ShadowNode) -> Iterator[Remove]:
 class Layouts:
     """
     One frame's layouts: each visible node's key, element, layout and the rows it paints, in paint order,
+    with whether every color in those rows is solid,
     and its layout by key,
     and the scroll of each visible scroll container by key, with the nodes of those scroll containers,
     which the next layout picks anchors in,
@@ -263,7 +267,7 @@ class Layouts:
     and none for a `Div` or for a leaf outside its clip, which paint skips.
     """
 
-    in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects, Lines], ...]
+    in_paint_order: tuple[tuple[NodeKey, AnyElement, Rects, Lines, bool], ...]
     by_key: Mapping[NodeKey, Rects]
     scrolls: Mapping[NodeKey, Scroll]
     scroll_containers: tuple[ShadowNode, ...] = ()
@@ -372,12 +376,17 @@ class LayoutTree:
     nodes: dict[NodeKey, waxy.NodeId] = field(default_factory=dict)
     texts: dict[NodeKey, MeasurableText] = field(default_factory=dict)
     """The text each `Text` is measured with, which is its node's context, kept here too to read it without a call into taffy."""
-    drawings: dict[NodeKey, tuple[Painter, int, int, Rows]] = field(default_factory=dict)
+    drawings: dict[NodeKey, tuple[Painter, int, int, Rows, bool]] = field(default_factory=dict)
     """
     The rows each `Canvas`'s painter drew last, with the painter and the size they were drawn at,
-    which the next layout reuses while both are unchanged.
+    which the next layout reuses while both are unchanged, and whether every color in them is solid.
     They're kept by node, not in a cache shared by every canvas, so many canvases don't push each other out of it,
     and a painter needs only `==`, not a hash.
+    """
+    fields: dict[NodeKey, NodeFields] = field(default_factory=dict)
+    """
+    The fields and cells paint built for each node's gradients, which the next frame reuses while their inputs are unchanged.
+    Paint keeps them, since it decides which cells are inside the clip; they're here so that they go with their node.
     """
     placed: dict[NodeKey, tuple[Placement, Rects]] = field(default_factory=dict)
     """Each node's placement in the last layout and the `Rects` it resolved to, which the next layout reuses."""
@@ -422,39 +431,43 @@ class LayoutTree:
             handles=shadow.handled,
         )
 
-    def painted(self, node: ShadowNode, rects: Rects) -> tuple[NodeKey, AnyElement, Rects, Lines]:
+    def painted(self, node: ShadowNode, rects: Rects) -> tuple[NodeKey, AnyElement, Rects, Lines, bool]:
         """
         `node`'s key, element and layout at `rects`, with the rows it paints:
-        those its `Text` wraps to or its `Canvas`'s painter draws, or none if it's outside its clip or is a `Div`.
+        those its `Text` wraps to or its `Canvas`'s painter draws, or none if it's outside its clip or is a `Div`,
+        and whether every color in them is solid.
         """
         key = node.key
         element = node.element
         if isinstance(element, Div) or rects.clip is None:
-            return key, element, rects, ()
+            return key, element, rects, (), True
         if isinstance(element, Canvas):
-            return key, element, rects, self.drawn(key, element.painter, rects.content)
+            return key, element, rects, *self.drawn(key, element.painter, rects.content)
+        text = self.texts[key]
         return (
             key,
             element,
             rects,
-            self.texts[key].lines_at(None if element.style.resolved.text_wrap == "none" else rects.content.width),
+            text.lines_at(None if element.style.resolved.text_wrap == "none" else rects.content.width),
+            text.is_solid,
         )
 
-    def drawn(self, key: NodeKey, painter: Painter, content: Region) -> Rows:
+    def drawn(self, key: NodeKey, painter: Painter, content: Region) -> tuple[Rows, bool]:
         """
-        The rows `painter` draws in the `content` box of the canvas at `key`,
+        The rows `painter` draws in the `content` box of the canvas at `key`, and whether every color in them is solid,
         which are the rows it drew last if it's equal to the painter that drew them, at the same size.
         """
         width = content.width
         height = content.height
         if width <= 0 or height <= 0:
-            return ()
+            return (), True
         previous = self.drawings.get(key)
         if previous is not None and previous[1] == width and previous[2] == height and previous[0] == painter:
-            return previous[3]
+            return previous[3], previous[4]
         rows = painter.draw(width, height)
-        self.drawings[key] = (painter, width, height, rows)
-        return rows
+        is_solid = all(styled.style.is_solid for row in rows for styled in row)
+        self.drawings[key] = (painter, width, height, rows, is_solid)
+        return rows, is_solid
 
     def measured(self, key: NodeKey, source: LeafSource) -> MeasurableText | IntrinsicSize:
         """
@@ -494,6 +507,7 @@ class LayoutTree:
                 case Remove(key=key):
                     texts.pop(key, None)
                     drawings.pop(key, None)
+                    self.fields.pop(key, None)
                     tree.remove(nodes.pop(key))
                 case _ as unreachable:
                     assert_never(unreachable)
@@ -734,7 +748,7 @@ def requested_offset(
     boxes: Mapping[NodeKey, tuple[waxy.Point, waxy.Layout]],
     padding_top: int,
     max_offset: Position,
-    style: ResolvedStyle,
+    style: ResolvedStyle[AnyColor | Gradient],
 ) -> Position:
     """
     Where a scroll container with `style` is scrolled after a layout, before clamping,
@@ -881,6 +895,8 @@ class MeasurableText:
     sizes: dict[int | None, tuple[int, int]] = field(default_factory=dict)
     lines: dict[int | None, Lines] = field(default_factory=dict)
     min_content_width: int | UNMEASURED | None = UNMEASURED
+    is_solid: bool = True
+    """Whether every color its cells are styled with is solid, rather than a gradient."""
 
     @classmethod
     def of(cls, source: TextSource, previous: MeasurableText | None = None) -> MeasurableText:
@@ -890,7 +906,7 @@ class MeasurableText:
         # doubles what building it costs. Treating a line split only at the rarer breaks as one piece changes no cells.
         if isinstance(content, str) and "\n" not in content:
             cells = styled_cells(content, text_style)
-            return cls(cells=cells, wrap=wrap, pieces={(content, text_style): cells})
+            return cls(cells=cells, wrap=wrap, pieces={(content, text_style): cells}, is_solid=text_style.is_solid)
         reusable = {} if previous is None else previous.pieces
         in_order = tuple(text_pieces(content, text_style))
         pieces = {piece: reusable.get(piece) or styled_cells(*piece) for piece in set(in_order)}
@@ -898,7 +914,7 @@ class MeasurableText:
         cells = (
             pieces[in_order[0]] if len(in_order) == 1 else tuple(chain.from_iterable(map(pieces.__getitem__, in_order)))
         )
-        return cls(cells=cells, wrap=wrap, pieces=pieces)
+        return cls(cells=cells, wrap=wrap, pieces=pieces, is_solid=all(style.is_solid for _, style in pieces))
 
     def size_at(self, width: int | None) -> tuple[int, int]:
         """The widest line and the line count when wrapped at `width` (unlimited if `None`)."""

@@ -48,6 +48,8 @@ which only adds a background, so it layers over a selected button as well as an 
 
 ![A toolbar with Edit selected and View hovered](../assets/styles-merging-conditional.svg)
 
+Any color a style holds can be a [gradient](gradients.md) instead, which colors each cell by where it is in its box.
+
 When an element is drawn, any field still unset takes its default from
 [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS]
 and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
