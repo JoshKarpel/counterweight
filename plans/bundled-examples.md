@@ -22,7 +22,7 @@ Today the examples live in two trees that ship in no wheel:
 
 | Tree | What's there | How it runs | What checks it |
 | --- | --- | --- | --- |
-| `examples/` | 16 complete apps (chat, wordle, multiplexer, ...) | `uv run python -m examples.<name>` from a clone | mypy |
+| `examples/` | 17 complete apps (chat, wordle, multiplexer, ...) | `uv run python -m examples.<name>` from a clone | mypy |
 | `docs/examples/` | about 65 modules of docs snippets, each declaring `SCREENSHOTS` and maybe `CASTS` | `uv run python -m docs.examples.<name> [root]` from a clone | mypy, and rendering them in pre-commit |
 
 Neither counts toward coverage, the apps are never run by anything,
@@ -99,8 +99,12 @@ About six, each standing for a kind of app people build with counterweight:
 `todo` is the quick start's `todo_list` (`docs/examples/home_quick_start.py`), promoted from a snippet;
 the home page keeps embedding its section.
 
-Three apps change shape:
+Four apps change shape:
 
+- **`chat`** reveals its bot's reply from `use_clock`,
+  as many words as the time since the reply began allows at its word delay,
+  rather than from an effect that sleeps in real time between words.
+  `AdvanceClock` then drives the reply, so its scenes need no real-time `WaitFor`.
 - **`markdown_viewer`** drops its directory argument, and its tree's root is the working directory.
   Its root takes that directory, the working directory by default, and its scenes use sample documents shipped beside it
   (the ones `markdown_gallery` shows today; the wheel already ships non-Python files in the package, such as `py.typed`).
@@ -113,7 +117,7 @@ Three apps change shape:
   its scenes run a plain `sh` with a fixed prompt and environment, so they come out the same for everyone.
   Alt keys need Option set to send Meta in macOS terminals, as zellij's do, and the module docstring says so.
 - **`slides`** runs commands whose output is the same on every machine and on both platforms CI runs (Linux and macOS).
-  On mount it makes a scratch directory of a few fixed files and runs its commands there:
+  On mount it makes a scratch directory of a few fixed files, which it removes on unmount, and runs its commands there:
   `ls -F` lists it (`ls -la` would show owners, times, block counts and directory sizes that differ by machine and filesystem),
   `cat` shows a file, `printf` prints colored text in place of `uname -a`,
   the streaming `seq` loop stays,
@@ -130,28 +134,34 @@ The rest of `examples/` becomes snippets or goes:
 | `markdown_gallery` | Its sample documents become `markdown_viewer`'s; dropped |
 | `suspend` | Covered by the programs snippets; dropped |
 | `canvas` | Covered by the canvas snippet (pictures, painters, drawing with the mouse) and the `use_clock` snippets (animation); dropped |
+| `gradients` | Covered by the gradients snippet, whose loop animates them too; dropped |
 | `chess` | A grid-layout snippet, or dropped |
 | `end_to_end` | Dropped |
+
+`docs/examples/showcase.py`, which screenshots and records the apps for the home page, goes too.
+Each kept app declares its own scenes, which the home page's showcase shows,
+and the showcase's sections for dropped apps go with them.
 
 ### The snippets
 
 The docs modules stay grouped by topic, a module per page or per section of a long page,
 since a page that shows eleven ways to split space reads better from one module than eleven.
 Consolidating them is a review against two rules:
-one idea per snippet, and no two snippets showing the same idea.
+one idea per snippet, and no two examples, apps or snippets, showing the same idea.
 Known overlaps to settle:
 
 - Three counters: `use_state_counter`, `input_overview` and the quick start.
 - `use_clock_lap_timer` and `use_clock_status_bar` against the old stopwatch app.
 - `performance_state_in_root` and `performance_state_moved_down`, which are one idea in two states
   and become two roots of one module.
+- `terminals_multiplexer` against the `multiplexer` app.
 
 Where a page needs another state of an existing snippet, it adds a screenshot of that snippet after more steps,
 rather than a new module.
 
 A snippet imports from the library and its dependencies, never from another example,
 so `copy` can hand it over as one file.
-Three do today, and each pair settles into one module or stops sharing:
+Besides `showcase.py`, which goes, three do today, and each pair settles into one module or stops sharing:
 
 - `performance_state_moved_down` imports from `performance_state_in_root`: one module, as above.
 - `autopilot_search` imports `search` from `text_input`: it keeps its own copy of the small component.
@@ -234,18 +244,24 @@ The catalog is derived from the modules, never kept by hand:
 
 - **What's an example:** every module in `counterweight.examples.apps` and `counterweight.examples.snippets`.
 - **Its title and description:** the first line and the rest of the module docstring.
-- **Its roots:** for a snippet, the root functions defined in the module that its scenes use
-  (each scene's `root` is a `Component`, which names its function),
-  so a root without a scene can't exist and every root the CLI runs is one the tests render;
+- **Its roots:** for a snippet, its `ROOTS` tuple, which its `__main__` block picks from by name;
   for an app, its `root`.
+  A catalog test checks that a snippet's `ROOTS` are exactly the roots its scenes use
+  (each scene's `root` is a `Component`, which names its function),
+  so a root without a scene can't exist and every root the CLI runs is one the tests render.
 - **Its name:** the module's name with hyphens (`layout-splitting`), and a root after a colon (`layout-splitting:fill`).
   A module with one root needs no colon.
+  Names are unique across apps and snippets, which a catalog test checks.
 
-Listing imports every example module, which takes about a second, most of it importing `counterweight.app` itself.
-That's also the start-up time of every counterweight app, so the fix belongs in the library:
-it uses Python 3.15's explicit `lazy import` for the modules an app may never touch
-(profile which before choosing).
-The global lazy-imports mode isn't an option, since it breaks fontTools.
+Listing imports every example module, so an example does no work at import:
+data its scenes need is built when a scene runs, not at module level.
+Two snippets break that today and take most of listing's time:
+the canvas snippet, which builds the logo from font files (replaced, as in [The snippets](#the-snippets)),
+and the `commands` snippet, which feeds an `Emulator` to build `BUILD_TRANSCRIPTS`.
+What's left is importing `counterweight.app`, about a fifth of a second and every counterweight app's start-up time too,
+half of which is `pyghostty`'s cffi bindings, which `counterweight.asciicast` pulls in through `counterweight.emulator`.
+The library imports those with Python 3.15's explicit `lazy import`, so only an app that emulates a terminal pays for them.
+The global lazy-imports mode isn't an option, since it's a process-wide choice that belongs to the app, not a library.
 
 ## The CLI
 
@@ -261,11 +277,14 @@ The global lazy-imports mode isn't an option, since it breaks fontTools.
 | `counterweight examples copy <name> [path]` | Writes a standalone file that runs the example, for a user to start from |
 
 Example modules keep their `if __name__ == "__main__":` blocks,
-so each one runs with `python -m counterweight.examples.snippets.<module>`,
+so each one runs with `python -m counterweight.examples.snippets.<module> [root]`,
 and coverage ignores them through `exclude_also`, as it does `if TYPE_CHECKING:`.
-Each module's scenes come last, after a `# --8<-- [start:scenes]` marker, with the imports only they use.
+Each module's scenes, with the imports only they use, sit between `# --8<-- [start:scenes]` and `# --8<-- [end:scenes]`,
+after its code and before its `__main__` block.
+Imports there break ruff's E402, which a per-file ignore turns off for `src/counterweight/examples/`.
 `show` strips the `# --8<--` markers;
 `copy` strips them and the scenes section, so the copied file is the module as it runs, and runs as it is.
+`copy` takes a module's name, not a root's: it copies the whole module, whose `__main__` block runs the root it's given.
 
 `show` highlights with `counterweight.highlighting`, painted headless into ANSI text (`Frame.text(ansi=True)`),
 so the CLI uses the library's own code view.
@@ -287,13 +306,16 @@ The gallery is a counterweight app, and the largest example of one:
 │ Input                 ││ @component                                       │
 │   ...                 ││ def root() -> Div:                               │
 └───────────────────────┘└──────────────────────────────────────────────────┘
- Enter: use it   s: source   c: copy   Ctrl+]: back to the list
+ Enter: run it   s: source   c: copy   Ctrl+]: back to the list
 ```
 
 - The list groups apps first, then snippets by their docs section.
-- The preview mounts the selected example's root in the gallery's own tree.
-  Enter moves focus into it (`FocusNext` within the preview's `Subtree`), so keys and the mouse reach the example,
-  and Ctrl+] brings focus back to the list.
+- Selecting an example shows its title, description and source.
+  Enter mounts its root in the preview, in the gallery's own tree,
+  and moves focus into it (`FocusNext` within the preview's `Subtree`), so keys and the mouse reach the example.
+  Ctrl+] brings focus back to the list, leaving the example running until the selection moves, which unmounts it.
+  Mounting on selection instead would start shells and programs (`multiplexer`, `slides`, the terminals snippets)
+  just by scrolling past them.
 - `s` toggles the source, and `c` copies the example as `copy` does.
 
 ### Mounting examples in place
@@ -326,7 +348,7 @@ These return `Quit` today:
 | `input_overview` snippet | `q` | Ctrl+C |
 | `input_handlers` snippet | `q` | Ctrl+C |
 | `input_controls` snippet | Ctrl+Q | Ctrl+C |
-| `multiplexer` | Ctrl+Q, and closing its last pane | Closing its last pane |
+| `multiplexer` | Its prefix then `q`, and closing its last pane | Closing its last pane |
 | `terminals` snippet | Ctrl+Q | Ctrl+Q |
 
 `text_wrap` and `scrolling` quit too, and are dropped.
@@ -347,7 +369,8 @@ rather than giving their roots an argument that only the gallery would pass.
   so a change only to colors or styles fails too.
   A rendering change then fails a test instead of only changing an asset in pre-commit,
   and the message says to run `docs/generate_screenshots.py`.
-- **Every demo:** run it to the end, which runs the handlers the stills don't reach.
+- **Every demo:** record it at the docs' frozen time and compare the recording with the committed `docs/assets/<name>.cast`,
+  which also runs the handlers the stills don't reach.
 - **Apps:** tests of their own logic where the scenes leave branches uncovered.
 - **The catalog and the CLI:** names, titles, roots, `list` output, `show` and `copy` output (that a copied file runs),
   `run` exiting cleanly under an autopilot.
@@ -390,11 +413,13 @@ Each step leaves the docs building, the tests passing and coverage at 100%.
    and take the workarounds out of the docs examples.
 1. **Scenes.** Add `Still`, `Demo` and public `paced`, and switch `docs/examples` to them (`STILLS`, `DEMOS`). No moves yet.
 2. **Two kinds.** In place, fold and drop apps as in [The apps](#the-apps),
-   reshape `markdown_viewer`, `multiplexer` and `slides`, move quitting to Ctrl+C as in [Quitting](#quitting),
+   reshape `chat`, `markdown_viewer`, `multiplexer` and `slides`, move quitting to Ctrl+C as in [Quitting](#quitting),
    consolidate snippets as in [The snippets](#the-snippets), replace the canvas snippet's logo,
+   move the showcase's scenes into the apps and drop `showcase.py`,
    and update the pages that show them and the home page's showcase.
 3. **Move.** Move `docs/examples/*.py` to `counterweight/examples/snippets/` and `examples/*.py` to `counterweight/examples/apps/`,
-   move each module's scenes after its scenes marker, and update every reference to the old paths:
+   move each module's scenes into its scenes section, give each snippet its `ROOTS`,
+   add the per-file E402 ignore, and update every reference to the old paths:
    the imports, the tests that import `docs.examples` (`test_prefix_keys_guide.py`, `test_performance_guide.py`),
    the mkdocs examples, casts and screenshot tabs hooks, the screenshot generator, the pre-commit hook's `files`,
    the `justfile`, `CLAUDE.md`,
@@ -402,7 +427,7 @@ Each step leaves the docs building, the tests passing and coverage at 100%.
    Coverage omits `counterweight/examples` for this step only.
 4. **Tests.** Add the still and demo tests and the apps' tests, remove the omission, and set mutmut's `do_not_mutate`.
 5. **CLI.** Add the catalog and `counterweight examples list`, `run`, `show` and `copy`,
-   and make the library's heavy imports lazy.
+   move the `commands` snippet's transcripts out of import, and make the library's import of `pyghostty` lazy.
 6. **Gallery.** Add the gallery, and make it what `counterweight examples` opens.
 7. **Docs.** A page on the examples and the gallery, the home page pointing to `counterweight examples`,
    and a changelog entry.
