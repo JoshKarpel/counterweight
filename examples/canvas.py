@@ -15,6 +15,7 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
+from counterweight.styles import Color
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
@@ -59,17 +60,17 @@ def header() -> Text:
         content=(
             Chunk(
                 content="Canvas",
-                style=CellStyle(foreground=amber_600),
+                style=text_color(amber_600),
             ),
             Chunk.space(),
             Chunk(
                 content="Demo",
-                style=CellStyle(foreground=cyan_600),
+                style=text_color(cyan_600),
             ),
             Chunk.newline(),
             Chunk(
                 content="App",
-                style=CellStyle(foreground=pink_600),
+                style=text_color(pink_600),
             ),
         ),
         style=text_justify_center,

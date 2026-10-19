@@ -10,6 +10,7 @@ from counterweight.elements import Text
 from counterweight.graphemes import graphemes
 from counterweight.graphemes import visible
 from counterweight.styles import CellStyle
+from counterweight.styles import Color
 from counterweight.styles import Style
 
 
@@ -70,6 +71,22 @@ def test_chunk_cells_are_its_clusters_in_its_style() -> None:
         StyledGrapheme(grapheme="h", style=bold),
         StyledGrapheme(grapheme="é", style=bold),
     )
+
+
+def test_chunk_takes_the_text_style_of_a_style() -> None:
+    italic_teal = CellStyle(italic=True, foreground=Color(20, 184, 166))
+
+    assert Chunk(content="hi", style=Style(text_style=italic_teal, border_kind=None)).style == italic_teal
+
+
+def test_chunk_given_a_style_equals_the_chunk_given_its_text_style() -> None:
+    struck = CellStyle(strikethrough=True)
+
+    assert Chunk(content="old", style=Style(text_style=struck)) == Chunk(content="old", style=struck)
+
+
+def test_chunk_without_a_style_has_an_empty_cell_style() -> None:
+    assert Chunk(content="plain").style == CellStyle()
 
 
 def test_text_cells_are_grapheme_clusters() -> None:

@@ -122,10 +122,9 @@ def pane(number: int, screens: tuple[tuple[timedelta, Screen], ...], prefix: Inp
     focus = use_focus(auto_focus=auto_focus)
     elapsed = use_clock(TICK).since_mount
     screen = last((screen for at, screen in screens if at <= elapsed), screens[0][1])
-    color = "emerald" if focus.is_focused else "slate"
 
     return Div(
-        style=fill(1) | border | border_lightrounded | border_color(color, 400 if focus.is_focused else 600),
+        style=fill(1) | border | border_lightrounded | border_color(emerald_400 if focus.is_focused else slate_600),
         on_input=prefix,
         children=(
             Canvas(painter=ScreenView(screen, show_cursor=focus.is_focused), style=fill(1)),
@@ -134,7 +133,7 @@ def pane(number: int, screens: tuple[tuple[timedelta, Screen], ...], prefix: Inp
                 children=(
                     Text(
                         content=f" Pane #{number} · {screen.title} ",
-                        style=text_wrap_none | text_color(color, 400),
+                        style=text_wrap_none | text_color(emerald_400 if focus.is_focused else slate_400),
                     ),
                 ),
             ),
@@ -145,10 +144,14 @@ def pane(number: int, screens: tuple[tuple[timedelta, Screen], ...], prefix: Inp
 def key_hints(is_armed: bool) -> tuple[Chunk, ...]:
     mode = Chunk(
         content=" PREFIX " if is_armed else " Ctrl b ",
-        style=CellStyle(foreground=slate_900, background=emerald_400 if is_armed else slate_400, bold=True),
+        style=text_color(slate_900) | text_bg(emerald_400 if is_armed else slate_400) | text_bold,
     )
-    key = CellStyle(foreground=amber_400 if is_armed else slate_500, background=slate_700, bold=is_armed)
-    label = CellStyle(foreground=slate_100 if is_armed else slate_500, background=slate_700)
+    key = (
+        text_color(amber_400 if is_armed else slate_500)
+        | text_bg(slate_700)
+        | (text_bold if is_armed else text_not_bold)
+    )
+    label = text_color(slate_100 if is_armed else slate_500) | text_bg(slate_700)
     return (mode, Chunk.space(), Chunk(content=" <o> ", style=key), Chunk(content="NEXT PANE ", style=label))
 
 

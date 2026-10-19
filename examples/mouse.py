@@ -23,6 +23,7 @@ from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
+from counterweight.styles import Color
 from counterweight.styles.utilities import *
 
 logger = logging.getLogger(__name__)

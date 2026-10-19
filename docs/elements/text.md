@@ -5,13 +5,12 @@ Layout sizes it by measuring its content, and wraps it only when its style sets 
 see [Text in layout](../layout/text.md) for how a `Text` takes space,
 and [Text wrapping](../styles/text-wrapping.md) for the wrap modes.
 
-## Styled chunks
+## Styling Parts of the Text
 
-A `Text`'s `content` is a string, drawn in its style's `text_style`,
-or a tuple of [`Chunk`][counterweight.elements.Chunk]s, each a string with a `CellStyle` of its own,
-for text whose style changes partway through, as `<span>`s do inside a paragraph.
-A chunk's style is merged over the `Text`'s `text_style`,
-so whatever the chunk leaves unset, such as the foreground of the plain chunks below, comes from the `Text`.
+A `Text`'s `content` is a string, drawn in the `Text`'s `text_style`,
+or a tuple of [`Chunk`][counterweight.elements.Chunk]s, each drawn in its own style merged over the `Text`'s `text_style`,
+for text whose style changes partway through, as a `<span>` inside a `<p>` is.
+Whatever a chunk's style leaves unset, such as the foreground of the plain chunks below, comes from the `Text`.
 A newline in a chunk starts a new line, as it does in a string,
 and a wrap mode wraps the chunks as one run of text, so a word split across two chunks wraps as one word.
 
@@ -21,6 +20,19 @@ and a wrap mode wraps the chunks as one run of text, so a word split across two 
 
 The chunks keep the `Text`'s slate foreground except where they set their own:
 `error` is red and bold, and `config.toml` is underlined in slate.
+
+A chunk's style can be a `CellStyle`, as above, or a `Style`, of which it takes the `text_style`,
+so the [utilities](../styles/utilities.md) that style a whole `Text` style a chunk the same way:
+
+<!-- example: text_chunks.py:example -->
+
+![Styled chunks](../assets/text-chunks.svg)
+
+The second `Text` is bold, so the chunk that shouldn't be merges `text_not_bold` over it.
+
+A chunk ignores the rest of a `Style`, such as padding or a border, as a browser ignores a `<span>`'s width,
+so put those on the `Text` or a `Div` around it.
+`Chunk.style` holds the `CellStyle` either way.
 [Syntax highlighting](../rich-text/syntax-highlighting.md) and [Markdown](../rich-text/markdown.md)
 build their output from chunks too, and a chunk can be a [hyperlink](../rich-text/hyperlinks.md).
 
@@ -71,10 +83,11 @@ where it would run as a command instead of drawing anything.
 
 The tabs, the escape sequences that would have turned the text red, and the bell at the end
 are each drawn as one symbol, while `\n` and `\r\n` break the lines.
-To color text, use [chunks](#styled-chunks) instead of escape sequences.
+To color text, use [chunks](#styling-parts-of-the-text) instead of escape sequences.
 To show a program's colored output, run it in a [terminal emulator](../terminals/emulators.md).
 
 ## API
 
 ::: counterweight.elements.Text
+
 ::: counterweight.elements.Chunk

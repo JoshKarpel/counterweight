@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import subprocess
 from pathlib import Path
 from typing import get_args
@@ -333,6 +334,13 @@ generated_lines.extend(
 )
 generated_lines.append("")
 
+# Each attribute in both places a CellStyle is drawn, with a not_ form that turns it off when merged over one that sets it
+for place in ("text", "border"):
+    for attribute in ("bold", "dim", "italic", "underline", "strikethrough"):
+        generated_lines.append(f"{place}_{attribute} = Style({place}_style=CellStyle({attribute}=True))")
+        generated_lines.append(f"{place}_not_{attribute} = Style({place}_style=CellStyle({attribute}=False))")
+    generated_lines.append("")
+
 # Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
@@ -586,18 +594,57 @@ generated_lines.extend(f'text_wrap_{w} = Style(text_wrap="{w}")' for w in get_ar
 
 generated_lines.append("")
 
+
+def is_all(node: ast.stmt) -> bool:
+    return isinstance(node, ast.Assign) and any(
+        isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+    )
+
+
+def defined_names(node: ast.stmt) -> list[str]:
+    match node:
+        case ast.FunctionDef(name=name) | ast.ClassDef(name=name) | ast.TypeAlias(name=ast.Name(id=name)):
+            return [name]
+        case ast.Assign(targets=targets):
+            return [target.id for target in targets if isinstance(target, ast.Name)]
+        case ast.AnnAssign(target=ast.Name(id=name)):
+            return [name]
+        case _:
+            return []
+
+
+# __all__ lists every public name the module defines, generated or hand-written,
+# so a star import doesn't also bring in what the module imports.
+module_lines = [*utils_text[: start + 1], *generated_lines, *utils_text[stop:]]
+module = ast.parse("\n".join(module_lines))
+old_all_lines = {
+    line for node in module.body if is_all(node) for line in range(node.lineno - 1, node.end_lineno or node.lineno)
+}
+public_names = sorted(
+    {name for node in module.body if not is_all(node) for name in defined_names(node) if not name.startswith("_")}
+)
+
 output = "\n".join(
     [
-        *utils_text[: start + 1],
-        *generated_lines,
-        *utils_text[stop:],
+        *(line for index, line in enumerate(module_lines) if index not in old_all_lines),
+        "",
+        f"__all__ = {public_names!r}",
         "",
     ]
 )
 
+# ruff sorts __all__ naturally (amber_50 before amber_100), so let it, rather than fight its pre-commit hook.
+sorted_all = subprocess.run(
+    ["uv", "run", "ruff", "check", "--select", "RUF022", "--fix", "--quiet", "--stdin-filename", str(utils_path), "-"],
+    input=output,
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
+
 formatted = subprocess.run(
     ["uv", "run", "ruff", "format", "--stdin-filename", str(utils_path), "-"],
-    input=output,
+    input=sorted_all,
     capture_output=True,
     text=True,
     check=True,

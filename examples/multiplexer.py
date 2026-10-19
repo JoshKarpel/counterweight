@@ -83,10 +83,14 @@ def key_hints(is_armed: bool) -> tuple[Chunk, ...]:
     """The prefix, then each key that can follow it, lit while the prefix is armed."""
     mode = Chunk(
         content=" PREFIX " if is_armed else " Ctrl b ",
-        style=CellStyle(foreground=slate_900, background=emerald_400 if is_armed else slate_400, bold=True),
+        style=text_color(slate_900) | text_bg(emerald_400 if is_armed else slate_400) | text_bold,
     )
-    key = CellStyle(foreground=amber_400 if is_armed else slate_500, background=slate_700, bold=is_armed)
-    label = CellStyle(foreground=slate_100 if is_armed else slate_500, background=slate_700)
+    key = (
+        text_color(amber_400 if is_armed else slate_500)
+        | text_bg(slate_700)
+        | (text_bold if is_armed else text_not_bold)
+    )
+    label = text_color(slate_100 if is_armed else slate_500) | text_bg(slate_700)
     hints = (
         chunk
         for command, name in COMMANDS

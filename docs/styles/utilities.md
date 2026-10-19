@@ -11,15 +11,20 @@ We recommend a `*` import for ease of use:
 from counterweight.styles.utilities import *
 ```
 
+That brings in the utilities, the palette's colors, and the `ColorName`, `Shade` and `Side` types the utility functions take,
+but not `Style`, `Color` or anything else the module itself imports, which come from `counterweight.styles`.
+
 Each utility is a `Style` that sets just a small set of properties.
 Some are constants (e.g., `border_heavy`, `justify_children_center`),
 and the rest are functions that return one (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`).
-Color utilities take a color name and shade as arguments.
-For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200:
+Color utilities take a color name and shade, or any color.
+For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200,
+as does `border_color(rose_200)`, with the palette's constant for that color:
 ```python
 from counterweight.styles import Style, CellStyle, Color
 
 border_color("rose", 200) == Style(border_style=CellStyle(foreground=Color.from_hex("#fecdd3")))
+border_color(rose_200) == border_color("rose", 200)
 ```
 
 Since they are normal `Style`s, they can be combined to form more complex styles using the `|` operator.
@@ -72,8 +77,11 @@ The functions' tables give their signatures, since what they set depends on thei
 
 ### Colors
 
-The color utilities draw from [Tailwind's color palette](https://tailwindcss.com/docs/colors):
-a `ColorName` such as `"rose"` and a `Shade` from `50` (lightest) to `950` (darkest).
+The color utilities draw from [Tailwind's color palette](https://tailwindcss.com/docs/colors)
+when given a `ColorName` such as `"rose"` and a `Shade` from `50` (lightest) to `950` (darkest).
+Given one color instead, they use it, as Tailwind's arbitrary values such as `text-[#fbbf24]` do:
+a `Color`, such as a palette constant or `Color.from_hex("#fbbf24")`,
+one of the [terminal colors](#terminal-colors), or a [gradient](#gradients).
 `text_white` and `text_black` are outside the palette.
 
 Each utility colors one part of a box.
@@ -115,10 +123,21 @@ In a terminal, they take whatever colors its theme gives them.
 
 #### Gradients
 
-These put a [gradient](gradients.md) in each place the color utilities above put a color,
-each mapping it over the box that place paints unless the gradient names its own `box`.
+A [gradient](gradients.md) in a color place maps over the box that place paints unless the gradient names its own `box`.
+The color utilities above take one, and these put one in each place too.
 
 <!-- utilities: *_gradient -->
+
+### Attributes
+
+The `text_*` attributes draw the text bold, dim, italic, underlined or struck through,
+and the `border_*` ones draw the border characters that way.
+Each has a `not_` form that turns it off when merged over a style that turns it on,
+such as a style for a selected row that isn't bold, merged over a table's bold one.
+`text_link(uri)` makes the text a hyperlink that the terminal opens when it's clicked,
+and `text_link(None)` makes it not a link, inside text that is one.
+
+<!-- utilities: text_bold text_dim text_italic text_underline text_strikethrough text_not_* border_bold border_dim border_italic border_underline border_strikethrough border_not_* text_link -->
 
 ### Direction and wrapping
 
