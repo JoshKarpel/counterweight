@@ -22,13 +22,13 @@ from counterweight.gradients import linear_gradient
 from counterweight.layout import LayoutTree
 from counterweight.layout import MeasurableText
 from counterweight.layout import Remove
+from counterweight.layout import text_source
 from counterweight.output import Frame
 from counterweight.paint import Cell
 from counterweight.paint import NodeFields
 from counterweight.paint import Paint
 from counterweight.paint import paint_layout
 from counterweight.styles.styles import CELL_STYLE_DEFAULTS
-from counterweight.styles.styles import STYLE_DEFAULTS
 from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
@@ -37,7 +37,6 @@ from counterweight.styles.styles import ResolvedCellStyle
 from counterweight.styles.styles import ResolvedStyle
 from counterweight.styles.styles import Style
 from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import is_solid
 from counterweight.styles.styles import is_solid_cell_style
 from counterweight.styles.styles import is_solid_color
 from counterweight.styles.styles import resolve_cell_style
@@ -276,6 +275,14 @@ def paint(
     return painted
 
 
+def test_gradient_text_whose_clip_reaches_past_the_paint_draws_the_rows_on_it() -> None:
+    text = Text(content="a\nb\nc\nd\ne\nf", style=Style(text_style=CellStyle(foreground=DOWN)))
+    measured = MeasurableText.of(text_source(text))
+    tall = Region(left=0, top=0, right=1, bottom=6)
+    painted = paint(text, {}, element_rects(tall, clip=tall), measured.lines_at(None), measured.is_solid)
+    assert [painted[0, y].style.foreground for y in range(4)] == [gray(0), gray(51), gray(102), gray(153)]
+
+
 def test_a_gradient_that_doesnt_change_reuses_its_cells() -> None:
     fields: dict[str, NodeFields] = {}
     first = paint(FILLED, fields)
@@ -434,24 +441,6 @@ def test_a_cell_style_is_solid_unless_a_color_is_a_gradient(
     assert (style.is_solid, resolve_cell_style(style).is_solid) == (expected, expected)
 
 
-@pytest.mark.parametrize(
-    "style",
-    [
-        Style(margin_color=DOWN),
-        Style(padding_color=DOWN),
-        Style(content_color=DOWN),
-        Style(border_style=CellStyle(foreground=DOWN)),
-        Style(text_style=CellStyle(background=DOWN)),
-    ],
-)
-def test_a_style_with_a_gradient_in_any_slot_isnt_solid(style: Style) -> None:
-    assert is_solid(style.resolved) is False
-
-
-def test_a_style_without_gradients_is_solid() -> None:
-    assert (is_solid(Style(content_color=RED).resolved), is_solid(STYLE_DEFAULTS)) == (True, True)
-
-
 def test_a_resolved_style_keeps_its_gradients() -> None:
     assert Style(content_color=DOWN).resolved.content_color is DOWN
 
@@ -485,9 +474,6 @@ if TYPE_CHECKING:
 
     resolved = Style().resolved
     assert_type(resolved, ResolvedStyle[AnyColor | Gradient])
-    if is_solid(resolved):
-        assert_type(resolved, ResolvedStyle[AnyColor])
-        assert_type(resolved.text_style, ResolvedCellStyle[AnyColor])
 
 
 def test_a_gradient_whose_box_changes_size_rebuilds_its_field_where_it_shows_the_same_cells() -> None:

@@ -85,7 +85,7 @@ The framework follows a React-like architecture:
 - **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input`, `text_area` and `scroll_area`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system; colors are RGB `Color`s, or `IndexedColor` and `TERMINAL_DEFAULT`, which the terminal decides and so follow the user's theme
 - **Gradients** (src/counterweight/gradients.py): Linear, radial and conic gradients any color slot can hold, and the pure functions paint draws them with: a `Ramp` of colors keyed by the stops, and `field_indices`, the ramp entry each cell takes, keyed by the geometry and the box's size
-- **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output; an element with a gradient paints from fields it keeps per node in `LayoutTree.fields`, and every other element takes the solid path
+- **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output; each slot that holds a gradient paints from fields its element keeps per node in `LayoutTree.fields`, and each solid slot fills with one cell
 - **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks, and `markdown_document`, the `memo` component that renders a Markdown document
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.

@@ -45,11 +45,9 @@ from counterweight.styles.styles import Color
 from counterweight.styles.styles import JoinedBorderKind
 from counterweight.styles.styles import JoinedBorderParts
 from counterweight.styles.styles import ResolvedCellStyle
-from counterweight.styles.styles import ResolvedStyle
 from counterweight.styles.styles import Style
 from counterweight.styles.styles import TextJustify
 from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import is_solid
 from counterweight.styles.styles import is_solid_cell_style
 from counterweight.styles.styles import is_solid_color
 from counterweight.styles.styles import resolve_cell_style
@@ -238,21 +236,17 @@ def paint_layout[K: Hashable](
     Paint `elements` in the order given, which is paint order, so later elements are drawn over earlier ones.
     Each element comes with its key, its layout, its rows, and whether those rows' colors are all solid.
 
-    An element with a gradient anywhere in its style or its rows is painted from the fields it keeps in `fields`
-    by its key, which this replaces with the ones it used, so the next frame reuses those whose key hasn't changed.
-    Its gradients compute in visual units, where a row is `cell_aspect_ratio` columns tall.
+    An element that paints a gradient keeps the fields it painted from in `fields` by its key,
+    replacing them with the ones it used, so the next frame reuses those whose key hasn't changed.
+    Gradients compute in visual units, where a row is `cell_aspect_ratio` columns tall.
     """
     paint = Paint.blank(width, height)
+    screen = paint.bounds
     hints: BorderHealingHints = {}
     for key, element, resolved, lines, lines_are_solid in elements:
-        style = element.style.resolved
-        if is_solid(style) and lines_are_solid:
-            hints.update(paint_element(paint, element, style, resolved, lines))
-            continue
-        node = fields.get(key)
-        if node is None:
-            node = fields[key] = NodeFields()
-        hints.update(paint_gradient_element(paint, element, style, resolved, lines, node, cell_aspect_ratio))
+        hints.update(
+            paint_element(paint, screen, element, resolved, lines, lines_are_solid, fields, key, cell_aspect_ratio)
+        )
     return paint, hints
 
 
@@ -308,15 +302,23 @@ def text_rows(element: AnyElement, resolved: Rects, clip: Region, lines: Lines) 
     return range(max(own_clip.top, content.top), min(own_clip.bottom, content.top + len(lines))), own_clip
 
 
-def paint_element(
-    paint: Paint, element: AnyElement, style: ResolvedStyle[AnyColor], resolved: Rects, lines: Lines
+def paint_element[K: Hashable](
+    paint: Paint,
+    screen: Region,
+    element: AnyElement,
+    resolved: Rects,
+    lines: Lines,
+    lines_are_solid: bool,
+    fields: dict[K, NodeFields],
+    key: K,
+    aspect: float,
 ) -> Corners:
     """
-    Paint the part of one element inside its clip onto `paint`,
+    Paint the part of one element inside its clip onto `paint`, whose bounds are `screen`,
     returning the border healing hints for its corners inside the clip.
 
     `lines` are the rows a `Text` wraps to, which layout wrapped it to, or the rows a `Canvas`'s painter drew,
-    and are empty for a `Div`.
+    and are empty for a `Div`; `lines_are_solid` is whether their colors are all solid.
     Only the rows inside the clip are built, so a long text in a scroll container costs only the rows in view,
     and an element paints nothing if its border box, its text and any `margin_color` margin all miss the clip.
     Text overflows its box down and to the right, so the border box alone can't decide that.
@@ -328,6 +330,9 @@ def paint_element(
     sets `margin_color`, so a margin leaves whatever lies beneath it visible, as on the web.
     An element with no border, padding, text, `margin_color` or `content_color` paints nothing,
     not even its background, so an undecorated container laid over other elements leaves them visible.
+
+    Each of those that holds a solid color fills with one cell, and each that holds a gradient paints from its field
+    (see `gradient_slots`), computed with rows `aspect` columns tall.
 
     A hint for a corner outside the clip is dropped, because healing only checks that the cell under a hint
     is a border character, so it would rewrite whatever border was drawn there instead.
@@ -345,38 +350,71 @@ def paint_element(
     ):
         return ()
 
-    border, corners = border_fills(
-        style.border_kind,
-        style.border_style,
-        style.border_contract,
-        resolved.border,
-        border_sides(element.style),
-    )
+    style = element.style.resolved
+    sides = border_sides(element.style)
+    border_style = style.border_style
+    if is_solid_cell_style(border_style):
+        border, corners = border_fills(style.border_kind, border_style, style.border_contract, resolved.border, sides)
+        parts: tuple[BorderPart, ...] = ()
+    else:
+        border = ()
+        parts, corners = border_parts(style.border_kind, style.border_contract, resolved.border, sides)
     hints = visible_corners(corners, resolved, clip)
-    margin = edge_fills(resolved.margin, resolved.border, style.margin_color) if has_margin_color else ()
-    fills = margin + border + edge_fills(resolved.padding, resolved.content, style.padding_color)
+    margin = edge_strips(resolved.margin, resolved.border) if has_margin_color else ()
+    padding = edge_strips(resolved.padding, resolved.content)
 
-    if not fills and not lines and element.style.content_color is UNSET:
+    if not (margin or border or parts or padding) and not lines and element.style.content_color is UNSET:
         return hints
 
-    paint.fill(resolved.border, Cell.blank(color=style.content_color), clip)
-    for region, cell in fills:
-        paint.fill(region, cell, clip)
-    if isinstance(element, Canvas):
-        text_justify: TextJustify = "left"
-        text_style = as_solid(canvas_text_style(element.style))
+    slots: GradientSlots | None = None
+    content_color = style.content_color
+    if is_solid_color(content_color):
+        paint.fill(resolved.border, Cell.blank(content_color), clip)
     else:
-        text_justify = style.text_justify
-        text_style = style.text_style
-    content = resolved.content
-    for y in rows:
-        paint.write_row(
-            content.left,
-            y,
-            line_cells(lines[y - content.top], text_justify, text_style, content.width),
-            text_clip,
-        )
+        slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
+        write_runs(paint, slots.background("content", content_color, "border", (resolved.border,)), clip)
+    if margin:
+        margin_color = style.margin_color
+        if is_solid_color(margin_color):
+            fill_regions(paint, margin, Cell.blank(margin_color), clip)
+        else:
+            slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
+            write_runs(paint, slots.background("margin", margin_color, "margin", margin), clip)
+    for region, cell in border:
+        paint.fill(region, cell, clip)
+    if parts:
+        slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
+        write_runs(paint, slots.border(parts, border_style), clip)
+    if padding:
+        padding_color = style.padding_color
+        if is_solid_color(padding_color):
+            fill_regions(paint, padding, Cell.blank(padding_color), clip)
+        else:
+            slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
+            write_runs(paint, slots.background("padding", padding_color, "padding", padding), clip)
 
+    if rows:
+        if isinstance(element, Canvas):
+            text_justify: TextJustify = "left"
+            text_style = canvas_text_style(element.style)
+        else:
+            text_justify = style.text_justify
+            text_style = style.text_style
+        if lines_are_solid and is_solid_cell_style(text_style):
+            content = resolved.content
+            for y in rows:
+                paint.write_row(
+                    content.left,
+                    y,
+                    line_cells(lines[y - content.top], text_justify, text_style, content.width),
+                    text_clip,
+                )
+        else:
+            slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
+            write_runs(paint, gradient_text(slots, lines, rows, text_clip, text_justify, text_style), text_clip)
+
+    if slots is not None:
+        slots.node.fields = slots.used
     return hints
 
 
@@ -418,9 +456,16 @@ class NodeFields:
     )
 
 
-@dataclass(slots=True)
+NOWHERE = Region(left=0, top=0, right=0, bottom=0)
+"""An empty region, which shares no cells with any other."""
+
+
+@dataclass(frozen=True, slots=True)
 class GradientSlots:
-    """Builds, or reuses from the last frame, the fields and cells of one element's gradients in one frame."""
+    """
+    Builds, or reuses from the last frame, the fields and cells of one element's gradients in one frame,
+    inside `area`, the part of its clip on the screen, which is empty if none of it is.
+    """
 
     resolved: Rects
     aspect: float
@@ -552,87 +597,23 @@ def box_of(resolved: Rects, box: Box) -> Region:
             assert_never(unreachable)
 
 
-def paint_gradient_element(
-    paint: Paint,
-    element: AnyElement,
-    style: ResolvedStyle[AnyColor | Gradient],
-    resolved: Rects,
-    lines: Lines,
-    node: NodeFields,
-    aspect: float,
-) -> Corners:
+def gradient_slots[K: Hashable](
+    fields: dict[K, NodeFields], key: K, resolved: Rects, aspect: float, clip: Region, screen: Region
+) -> GradientSlots:
     """
-    Paint one element as `paint_element` does, for an element with a gradient in its style or its rows:
-    each slot that holds a solid color fills as it does there, and each that holds a gradient paints from its field.
-    The fields and cells it builds are kept in `node`, and the next frame reuses those whose inputs are unchanged.
+    The slots an element paints its gradients from, keeping their fields in `fields` by `key`,
+    built the first time one of its slots holds a gradient, so an element in solid colors keeps nothing there.
     """
-    clip = resolved.clip
-    if clip is None:
-        return ()
-    area = clip.intersection(paint.bounds)
-    if area is None:
-        return ()
-
-    rows, text_clip = text_rows(element, resolved, clip, lines)
-    has_margin_color = element.style.margin_color is not UNSET
-    if (
-        resolved.visible is None
-        and not rows
-        and not (has_margin_color and resolved.margin.intersection(clip) is not None)
-    ):
-        return ()
-
-    parts, corners = border_parts(
-        style.border_kind, style.border_contract, resolved.border, border_sides(element.style)
-    )
-    hints = visible_corners(corners, resolved, clip)
-    margin = edge_strips(resolved.margin, resolved.border) if has_margin_color else ()
-    padding = edge_strips(resolved.padding, resolved.content)
-
-    if not (margin or parts or padding) and not lines and element.style.content_color is UNSET:
-        return hints
-
-    slots = GradientSlots(resolved=resolved, aspect=aspect, area=area, node=node)
-    background_fill(paint, slots, "content", style.content_color, "border", (resolved.border,), clip)
-    background_fill(paint, slots, "margin", style.margin_color, "margin", margin, clip)
-    if is_solid_cell_style(style.border_style):
-        for region, character in parts:
-            paint.fill(region, Cell(character, style.border_style), clip)
-    else:
-        write_runs(paint, slots.border(parts, style.border_style), clip)
-    background_fill(paint, slots, "padding", style.padding_color, "padding", padding, clip)
-
-    if rows:
-        if isinstance(element, Canvas):
-            text_justify: TextJustify = "left"
-            text_style = canvas_text_style(element.style)
-        else:
-            text_justify = style.text_justify
-            text_style = style.text_style
-        write_runs(paint, gradient_text(slots, lines, rows, text_clip, text_justify, text_style), text_clip)
-
-    node.fields = slots.used
-    return hints
+    node = fields.get(key)
+    if node is None:
+        node = fields[key] = NodeFields()
+    return GradientSlots(resolved=resolved, aspect=aspect, area=clip.intersection(screen) or NOWHERE, node=node)
 
 
-def background_fill(
-    paint: Paint,
-    slots: GradientSlots,
-    slot: Slot,
-    color: AnyColor | Gradient,
-    default_box: Box,
-    regions: tuple[Region, ...],
-    clip: Region,
-) -> None:
-    """Fill `regions` inside the clip with blank cells of `color`, which, if it's a gradient, maps over its box."""
-    if not regions:
-        return
-    if is_solid_color(color):
-        cell = Cell.blank(color)
-        for region in regions:
-            paint.fill(region, cell, clip)
-        return
-    write_runs(paint, slots.background(slot, color, default_box, regions), clip)
+def fill_regions(paint: Paint, regions: tuple[Region, ...], cell: Cell, clip: Region) -> None:
+    """Fill each of `regions` inside the clip with `cell`."""
+    for region in regions:
+        paint.fill(region, cell, clip)
 
 
 def write_runs(paint: Paint, runs: Iterable[Run], clip: Region) -> None:
@@ -665,7 +646,7 @@ def gradient_text(
         colors: dict[AnyColor | Gradient, Callable[[int, int, int], AnyColor]] = {}
 
         def color_at(color: AnyColor | Gradient, x: int, y: int) -> AnyColor:
-            if region is None or not (region.left <= x < region.right):
+            if region is None or not (region.left <= x < region.right and region.top <= y < region.bottom):
                 return _UNSEEN
             colors_of = colors.get(color)
             if colors_of is None:
@@ -735,13 +716,6 @@ def edge_strips(outer: Region, inner: Region) -> tuple[Region, ...]:
         Region(left=inner.right, top=inner.top, right=outer.right, bottom=inner.bottom),
     )
     return tuple(strip for strip in strips if not strip.is_empty)
-
-
-@lru_cache(maxsize=2**12)
-def edge_fills(outer: Region, inner: Region, color: AnyColor) -> tuple[Fill, ...]:
-    """The parts of `outer` outside `inner`, as up to four strips filled with blank cells of `color`."""
-    cell = Cell.blank(color=color)
-    return tuple((strip, cell) for strip in edge_strips(outer, inner))
 
 
 def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -> list[StyledGrapheme]:

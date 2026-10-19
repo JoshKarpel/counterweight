@@ -843,8 +843,7 @@ class ResolvedStyle[C: AnyColor | Gradient]:
     as paint and the placement of scrolled boxes read them,
     except `z`, which stays `None` when unset, because an element that sets no `z` forms no stacking context.
 
-    Its colors are `C`, as a `ResolvedCellStyle`'s are,
-    and `is_solid` narrows a style whose colors are all solid to `ResolvedStyle[AnyColor]`.
+    Its colors are `C`, as a `ResolvedCellStyle`'s are.
     """
 
     z: int | None
@@ -863,25 +862,6 @@ class ResolvedStyle[C: AnyColor | Gradient]:
     text_style: ResolvedCellStyle[C]
     text_justify: TextJustify
     text_wrap: TextWrap
-
-    is_solid: bool = field(init=False, repr=False, compare=False, default=True)
-    """Whether no color slot holds a gradient, which paint reads for every element in every frame."""
-
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "is_solid",
-            is_solid_color(self.margin_color)
-            and is_solid_color(self.padding_color)
-            and is_solid_color(self.content_color)
-            and self.border_style.is_solid
-            and self.text_style.is_solid,
-        )
-
-
-def is_solid(style: ResolvedStyle[AnyColor | Gradient]) -> TypeIs[ResolvedStyle[AnyColor]]:
-    """Whether every color in `style` is one color, so that paint draws its element as it would with no gradients."""
-    return style.is_solid
 
 
 STYLE_DEFAULTS: ResolvedStyle[AnyColor] = ResolvedStyle(

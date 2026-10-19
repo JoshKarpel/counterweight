@@ -275,22 +275,18 @@ one type at runtime with two static ones:
 A style whose colors are all solid is the same object under either type,
 so narrowing it to the solid one converts nothing,
 and `line_cells`, `border_fills` and the `Cell` flyweight see the same objects they do today.
-`is_solid(style) -> TypeIs[ResolvedStyle[AnyColor]]` narrows a whole resolved style.
-`Style._resolve` runs once per style value,
-so `ResolvedStyle` records whether any slot holds a gradient then, and `is_solid` reads that field:
-paint pays one attribute read per element per frame, and a solid element then takes exactly today's path.
+Paint narrows each slot as it paints it:
+`is_solid_color` narrows a color, and `is_solid_cell_style` a cell style,
+reading a flag the style sets once when it's built.
+A solid slot fills as it does today, and a gradient slot paints from its field.
 Whether a text's or a drawing's rows hold a gradient chunk is computed once, beside them in `LayoutTree`,
 and `line_cells` narrows each chunk's resolved style only on a cache miss.
 
 ```python
-def is_solid(style: ResolvedStyle[AnyColor | Gradient]) -> TypeIs[ResolvedStyle[AnyColor]]:
-    return style.is_solid  # set once, by Style._resolve
-
-
-if is_solid(style):
-    ...  # today's path: fill, border_fills, line_cells
+if is_solid_color(style.content_color):
+    ...  # today's path: one blank cell fills the border box
 else:
-    ...  # match each slot: a solid color fills, a gradient paints from its field
+    ...  # paint from the content_color's field
 ```
 
 A probe with mypy 2.4 in strict mode confirmed the types hold up with `@flyweight`:
@@ -435,9 +431,13 @@ but it doesn't fit the cells:
 
 A closed union keeps each `match` total under `assert_never`,
 and a `Canvas` painter is already the place to draw anything else cell by cell.
-Narrowing one slot costs about 60 ns, and the `top` workload paints about 556 elements a frame
-in a 14.8 ms median frame, so checking all seven slots of each would cost about 1.5% of it.
-That's why `ResolvedStyle` records `is_solid` once per style (see [The API](#the-api)).
+Narrowing one slot costs about 60 ns, and paint narrows only the slots an element draws:
+an empty margin or padding, or a missing border, isn't checked.
+An element's gradient slots share the fields and runs it keeps,
+which paint looks up the first time one of its slots holds a gradient,
+so an element in solid colors keeps nothing.
+Frame times on the `dashboard`, `agent` and `gradients` workloads match a single check per element
+against a flag on `ResolvedStyle` to within run-to-run noise, so `ResolvedStyle` keeps no such flag.
 
 ### Where the caches go
 
@@ -463,6 +463,13 @@ Both get their hit rates checked (`cache_info()`)
 on a workload with more gradient boxes than any shared `maxsize`,
 and so do the shared caches a gradient's cells pass through:
 the `Cell` and `ResolvedCellStyle` flyweights, `Cell.blank` and `sgr_from_cell_style`.
+On the `gradients` workload, `ResolvedCellStyle` and `Cell.blank` fill their 1,024 entries
+and still hit 99% of lookups, since a solid cell that `line_cells` or `border_fills` keeps
+needs no lookup to keep its identity.
+Raising both to 2**16 cuts `Cell.blank`'s misses by three quarters
+without moving frame times beyond run-to-run noise,
+and a style and its cell take about 700 bytes, so 2**16 of them would hold about 45 MB.
+They keep their sizes.
 
 ### Output
 
@@ -511,6 +518,11 @@ Two ways to shrink it, neither taken (see [Decisions](#decisions)):
 Gradient screenshots in the docs stay small instead,
 filling part of a frame rather than all of it.
 A test pins a gradient frame's SVG, so the per-cell colors are checked in that output too.
+
+A recording of an animated gradient has the same problem every frame,
+since each of its cells sends its own color whenever the gradient moves:
+the docs' three-second loop of three small animations, at 20 frames a second, is 187 KiB,
+about eight times the largest of the other recordings.
 
 ## On a canvas
 
@@ -620,13 +632,13 @@ Each settled choice, with what it costs:
   A gradient looks the same in every terminal, and its ramp is computed in the app.
   It costs following the user's theme: `IndexedColor` and `TerminalDefault` can fill a slot but not stop a gradient.
 - **`ResolvedCellStyle` and `ResolvedStyle` are generic over their colors**,
-  narrowed by an `is_solid` flag each style computes once.
+  and paint narrows each slot as it paints it.
   Output's type can't hold a gradient, a solid style keeps its flyweight identity
   so the `line_cells`, `border_fills` and `Cell` caches work as they do today,
-  and a solid element pays one attribute read a frame.
+  and an element in solid colors paints as fast as it did before gradients.
   It costs a type parameter in paint's signatures,
-  a narrowing check wherever a resolved style becomes a `Cell` (`Cell.blank`, `canvas_text_style`, a `line_cells` miss),
-  and a flag that must agree with the slots, which only `Style._resolve` sets.
+  a narrowing check for each slot an element draws,
+  and one wherever a resolved style becomes a `Cell` (`Cell.blank`, `canvas_text_style`, a `line_cells` miss).
 - **Slots dispatch over a closed union, once per region of cells.**
   Paint stays as fast as today for solid slots, and a cell's two colors are combined in one place.
   It costs users adding their own ways to paint a slot: a `Canvas` painter is the open extension point instead.
@@ -663,8 +675,8 @@ Each settled choice, with what it costs:
    Pure functions, tested directly, with property tests that a ramp lookup matches the exact color
    to within a channel step (which sets the ramp's size, hints and Oklch included),
    and that magic corners land the end colors on the corners.
-2. Paint: widen the slots, make `ResolvedCellStyle` and `ResolvedStyle` generic
-   with `is_solid` recorded by `Style._resolve`,
+2. Paint: widen the slots, make `ResolvedCellStyle` and `ResolvedStyle` generic,
+   narrow each slot as paint paints it,
    keep each node's fields in `LayoutTree.fields` and hand them to `paint_layout`,
    paint each slot from its field, resolve gradient text and canvas rows against it,
    and pass the cell aspect ratio from `app()` to `paint_layout`.
@@ -674,7 +686,8 @@ Each settled choice, with what it costs:
 3. Canvas: `Pixels.from_gradient` and `HalfBlockGradient` in `counterweight.painters.pixels`,
    and a section on them in `docs/elements/canvas.md`.
 4. Output: send only the colors that changed between styles that differ only in color.
-5. Utilities, a `docs/styles/gradients.md` page with screenshots from `docs/examples/`,
+5. Utilities, a `docs/styles/gradients.md` page with screenshots from `docs/examples/`
+   and a recording of gradients animated with `use_clock`,
    and an `examples/gradients.py` that rotates a gradient, as the old branch's did.
 6. Tests to 100% coverage, including a gradient frame's SVG and text output,
    a canvas with transparent pixels over a gradient `content_color`,

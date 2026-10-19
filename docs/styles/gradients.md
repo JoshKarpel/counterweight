@@ -126,6 +126,25 @@ for a picture that draws more on top of it.
 
 ![A conic gradient as a content gradient and on a canvas](../assets/gradients-canvas.svg)
 
+## Animating a gradient
+
+A gradient is a value, so animating one means building a new one each frame from the time,
+which [`use_clock`](../hooks/use_clock.md) reads.
+Each of these turns its gradient's angle, or slides its stops along, once every three seconds:
+
+<!-- example: gradients.py:animated -->
+
+<!-- cast: gradients-animated -->
+
+Browsers don't animate one gradient into another,
+so a page animates a gradient by sliding an oversized background with `background-position`,
+or by registering an angle or a stop position with `@property` so that it can transition.
+Here a gradient's angle, center, stops and colors are arguments like any other,
+so any of them can change from one frame to the next.
+A stop's position can be outside the gradient, as the shimmer's are when its highlight is off either end.
+Each animated component reads the clock itself, so a frame re-runs only them,
+though each frame draws their gradients again (see [Performance](#performance)).
+
 ## Performance
 
 Paint keeps what it builds for each element's gradients from frame to frame,
