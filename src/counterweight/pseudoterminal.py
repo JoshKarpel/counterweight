@@ -389,7 +389,10 @@ async def tear_down_in_background[T](task_group: TaskGroup, run: Coroutine[objec
     try:
         return await shield(task)
     except CancelledError:
-        task.cancel()
+        # An app that stops cancels `run` itself, maybe before the caller, and cancelling it again
+        # would interrupt its teardown, which kills a program it's hanging up and leaves it unreaped.
+        if not task.cancelling():
+            task.cancel()
         raise
 
 
