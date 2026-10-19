@@ -1,6 +1,8 @@
 import io
 import json
 import logging
+from asyncio import Event
+from asyncio import TaskGroup
 from asyncio import get_running_loop
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -131,6 +133,109 @@ async def test_devlog_restores_logger_levels_on_exit(tmp_path: Path) -> None:
         assert (root.level, named.level) == (logging.INFO, logging.DEBUG)
 
     assert (root.level, named.level) == before
+
+
+async def test_a_devlog_opened_inside_another_on_the_same_path_keeps_its_records(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+    logger = logging.getLogger("counterweight.outer")
+
+    async with devlog(path):
+        logger.info("Before")
+        async with devlog(path):
+            logger.info("Inside")
+        logger.info("After")
+
+    assert captured(path) == [
+        ("counterweight.outer", "INFO", "Before"),
+        ("counterweight.outer", "INFO", "Inside"),
+        ("counterweight.outer", "INFO", "After"),
+    ]
+
+
+async def test_a_devlog_opened_inside_another_on_the_same_path_captures_through_the_same_handler(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "devlog.jsonl"
+    root = logging.getLogger()
+
+    async with devlog(path):
+        outer_handlers = list(root.handlers)
+        async with devlog(path):
+            inner_handlers = list(root.handlers)
+
+    assert inner_handlers == outer_handlers
+
+
+async def test_a_devlog_opened_inside_another_keeps_the_first_ones_levels(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+
+    async with devlog(path), devlog(path, levels={"": logging.DEBUG}):
+        logging.getLogger("some_library").debug("Chatty")
+        logging.getLogger("some_library").info("Notable")
+
+    assert captured(path) == [("some_library", "INFO", "Notable")]
+
+
+async def test_a_devlog_on_another_path_opens_its_own(tmp_path: Path) -> None:
+    outer, inner = tmp_path / "outer.jsonl", tmp_path / "inner.jsonl"
+
+    async with devlog(outer):
+        async with devlog(inner):
+            logging.getLogger("counterweight").info("Both")
+        logging.getLogger("counterweight").info("Outer only")
+
+    assert (captured(outer), captured(inner)) == (
+        [("counterweight", "INFO", "Both"), ("counterweight", "INFO", "Outer only")],
+        [("counterweight", "INFO", "Both")],
+    )
+
+
+async def test_a_shared_devlog_captures_until_the_last_block_exits_whichever_entered_first(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+    logger = logging.getLogger("counterweight")
+    first_entered, second_entered, first_exited = Event(), Event(), Event()
+
+    async def first() -> None:
+        async with devlog(path):
+            first_entered.set()
+            await second_entered.wait()
+        first_exited.set()
+
+    async def second() -> None:
+        await first_entered.wait()
+        async with devlog(path):
+            second_entered.set()
+            await first_exited.wait()
+            logger.info("Still open")
+        logger.info("Closed")
+
+    async with TaskGroup() as task_group:
+        task_group.create_task(first())
+        task_group.create_task(second())
+
+    assert captured(path) == [("counterweight", "INFO", "Still open")]
+
+
+async def test_a_devlog_closes_with_its_last_block(tmp_path: Path) -> None:
+    handlers = list(logging.getLogger().handlers)
+
+    async with devlog(tmp_path / "devlog.jsonl"), devlog(tmp_path / "devlog.jsonl"):
+        pass
+
+    assert logging.getLogger().handlers == handlers
+
+
+async def test_a_devlog_that_fails_to_open_is_opened_afresh_next_time(tmp_path: Path) -> None:
+    path = tmp_path / "missing" / "devlog.jsonl"
+    with pytest.raises(FileNotFoundError):
+        async with devlog(path):
+            pass  # pragma: never runs
+    path.parent.mkdir()
+
+    async with devlog(path):
+        logging.getLogger("counterweight").info("Opened")
+
+    assert captured(path) == [("counterweight", "INFO", "Opened")]
 
 
 class StopTailing(Exception):

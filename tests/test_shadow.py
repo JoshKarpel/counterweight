@@ -142,12 +142,13 @@ async def test_use_mouse_listener_removed_when_component_replaced_by_element() -
         return Text(content="mouse")
 
     try:
-        async with TaskGroup() as tg:
-            shadow = await render(Div(children=(tracks_mouse(),)), None, tg)
-            listener_count_while_mounted = len(listeners)
-            shadow = await render(Div(children=(Div(),)), shadow, tg)
-            listener_count_after_replacement = len(listeners)
-            await cancel_tasks(effect_tasks(shadow))
+        with state_sets():
+            async with TaskGroup() as tg:
+                shadow = await render(Div(children=(tracks_mouse(),)), None, tg)
+                listener_count_while_mounted = len(listeners)
+                shadow = await render(Div(children=(Div(),)), shadow, tg)
+                listener_count_after_replacement = len(listeners)
+                await cancel_tasks(effect_tasks(shadow))
     finally:
         current_use_mouse_listeners.reset(token)
 
@@ -368,12 +369,13 @@ async def test_effect_with_setter_in_deps_runs_once_across_renders() -> None:
 
         return Text(content=label)
 
-    async with TaskGroup() as tg:
-        shadow = await render(depends_on_setter("first"), None, tg)
-        shadow = await render(depends_on_setter("second"), shadow, tg)
-        shadow = await render(depends_on_setter("third"), shadow, tg)
-        log_after_renders = log.copy()
-        await cancel_tasks(effect_tasks(shadow))
+    with state_sets():
+        async with TaskGroup() as tg:
+            shadow = await render(depends_on_setter("first"), None, tg)
+            shadow = await render(depends_on_setter("second"), shadow, tg)
+            shadow = await render(depends_on_setter("third"), shadow, tg)
+            log_after_renders = log.copy()
+            await cancel_tasks(effect_tasks(shadow))
 
     assert log_after_renders == ["start"]
 
@@ -438,7 +440,8 @@ async def test_setter_called_after_unmount_enqueues_nothing(
 def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     setters: dict[str, Setter[str]] = {}
     seen: dict[str, str] = {}
-    shadow = update_shadow(Div(children=(remembers("a", setters, seen),)), None, NO_LAYOUTS).tree
+    with state_sets():
+        shadow = update_shadow(Div(children=(remembers("a", setters, seen),)), None, NO_LAYOUTS).tree
     state = ref(shadow.root.children[0].hooks.data[0])
 
     gc.disable()
@@ -483,10 +486,11 @@ def calls_hooks(hook_count: int) -> Text:
     ],
 )
 def test_changing_hook_count_between_renders_raises(first_count: int, second_count: int) -> None:
-    shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS).tree
+    with state_sets():
+        shadow = update_shadow(calls_hooks(first_count), None, NO_LAYOUTS).tree
 
-    with pytest.raises(InconsistentHookExecution):
-        update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS)
+        with pytest.raises(InconsistentHookExecution):
+            update_shadow(calls_hooks(second_count), shadow, NO_LAYOUTS)
 
 
 async def never_runs() -> None:
@@ -521,12 +525,13 @@ def calls_hook(name: str) -> Text:
     ],
 )
 def test_calling_a_different_hook_in_the_same_place_raises_naming_both(first: str, second: str) -> None:
-    shadow = update_shadow(calls_hook(first), None, NO_LAYOUTS).tree
+    with state_sets():
+        shadow = update_shadow(calls_hook(first), None, NO_LAYOUTS).tree
 
-    with pytest.raises(
-        InconsistentHookExecution, match=rf"^Expected a {second} hook, but got a {first} hook instead\.$"
-    ):
-        update_shadow(calls_hook(second), shadow, NO_LAYOUTS)
+        with pytest.raises(
+            InconsistentHookExecution, match=rf"^Expected a {second} hook, but got a {first} hook instead\.$"
+        ):
+            update_shadow(calls_hook(second), shadow, NO_LAYOUTS)
 
 
 def test_a_components_keyword_arguments_reach_its_function() -> None:
@@ -540,8 +545,9 @@ def test_a_components_keyword_arguments_reach_its_function() -> None:
 
 
 def test_calling_the_same_hooks_every_render_does_not_raise() -> None:
-    shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS).tree
-    shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS).tree
+    with state_sets():
+        shadow = update_shadow(calls_hooks(2), None, NO_LAYOUTS).tree
+        shadow = update_shadow(calls_hooks(2), shadow, NO_LAYOUTS).tree
 
     assert len(shadow.root.hooks.data) == 2
 
@@ -560,13 +566,14 @@ def raises_on_render(should_raise: bool) -> Text:
 
 @pytest.mark.parametrize("is_rerender", [False, True], ids=["mount", "rerender"])
 def test_hook_context_is_restored_after_a_component_raises(is_rerender: bool) -> None:
-    previous = update_shadow(raises_on_render(False), None, NO_LAYOUTS).tree if is_rerender else None
+    with state_sets():
+        previous = update_shadow(raises_on_render(False), None, NO_LAYOUTS).tree if is_rerender else None
     outer_hooks = Hooks()
     outer_hook_idx = 5
     state_token = current_hook_state.set(outer_hooks)
     idx_token = current_hook_idx.set(outer_hook_idx)
     try:
-        with pytest.raises(RenderFailed):
+        with state_sets(), pytest.raises(RenderFailed):
             update_shadow(raises_on_render(True), previous, NO_LAYOUTS)
         context_after_raise = (current_hook_state.get() is outer_hooks, current_hook_idx.get())
     finally:

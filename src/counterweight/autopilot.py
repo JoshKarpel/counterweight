@@ -10,9 +10,15 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import assert_never
+from typing import overload
 
+from counterweight.animation import FRAME_INTERVAL
+from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.graphemes import graphemes
+from counterweight.keys import Key
 from counterweight.output import Frame
 
 
@@ -62,6 +68,63 @@ class AutopilotTimedOut(Exception):
 
 AutopilotStep = AnyEvent | AnyControl | Wait | WaitFor
 """What an autopilot feeds an app: events, controls, and the steps that wait."""
+
+TYPED_KEYS = {"\n": Key.Enter, "\t": Key.Tab}
+"""The keys `typed` presses for the characters that aren't printed, as a terminal sends them."""
+
+
+@overload
+def typed(text: str, pause: None = None) -> list[KeyPressed]: ...
+
+
+@overload
+def typed(text: str, pause: AutopilotStep) -> list[AutopilotStep]: ...
+
+
+def typed(text: str, pause: AutopilotStep | None = None) -> list[KeyPressed] | list[AutopilotStep]:
+    """
+    The key presses that type `text`, one per grapheme cluster, as Playwright's `keyboard.type` does,
+    with a newline pressing Enter and a tab pressing Tab.
+
+    Parameters:
+        pause: A step to take after each key, such as a [`Wait`][counterweight.autopilot.Wait],
+            which gives a program on a pseudo-terminal real time to echo each key before the next arrives,
+            or an [`AdvanceClock`][counterweight.controls.AdvanceClock], which paces the typing in a recording
+            made on a [`FrozenClock`][counterweight.clock.FrozenClock].
+            If `None`, the keys arrive one after another.
+    """
+    keys = [KeyPressed(key=TYPED_KEYS.get(cluster, cluster)) for cluster in graphemes(text)]
+    if pause is None:
+        return keys
+    return [*(key, pause) for key in keys]
+
+
+def showing(text: str, timeout: timedelta = timedelta(seconds=30)) -> WaitFor:
+    """
+    Waits until `text` is on screen, such as a program's prompt, as Playwright's `toContainText` does.
+
+    Raises:
+        AutopilotTimedOut: From `app`, if `text` still isn't on screen after `timeout` of real time.
+    """
+    return WaitFor(lambda frame: text in frame.text(ansi=False), timeout=timeout)
+
+
+def advance(by: timedelta, step: timedelta = FRAME_INTERVAL) -> list[AdvanceClock]:
+    """
+    Moves the app's clock on by `by`, `step` at a time, the last step taking whatever is left,
+    so each step renders a frame and an animation plays out in a recording rather than jumping to its end,
+    as Playwright's `clock.runFor` fires the timers due along the way.
+    The default `step` is the interval the animation hooks read the clock at, so each step draws one of their frames.
+
+    Raises:
+        ValueError: If `by` is negative, or `step` isn't positive.
+    """
+    if by < timedelta() or step <= timedelta():
+        raise ValueError(
+            f"advance needs a duration that isn't negative and a positive step, but got {by!r} and {step!r}"
+        )
+    count, left = divmod(by, step)
+    return [AdvanceClock(by=step)] * count + ([AdvanceClock(by=left)] if left else [])
 
 
 @dataclass(slots=True)
@@ -131,4 +194,7 @@ __all__ = [
     "AutopilotTimedOut",
     "Wait",
     "WaitFor",
+    "advance",
+    "showing",
+    "typed",
 ]

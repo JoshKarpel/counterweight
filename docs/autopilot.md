@@ -30,6 +30,10 @@ await app(
 )
 ```
 
+[`typed`][counterweight.autopilot.typed] gives the key presses that type some text,
+one per grapheme cluster, as Playwright's `keyboard.type` does,
+so `typed("an")` is the two key presses above.
+
 ## Controlling time
 
 An app reads the time from its `clock`, the system's by default.
@@ -37,19 +41,28 @@ A [`FrozenClock`][counterweight.clock.FrozenClock] reads the same time until the
 with [`AdvanceClock`][counterweight.controls.AdvanceClock] or by [waiting](#waiting-for-real-work),
 so an autopilot can show a minute of a clock-driven app in milliseconds,
 and show the same thing on every run.
-To pace an autopilot, put an `AdvanceClock` between its steps with
-[`more_itertools.intersperse`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse):
+To pace typing, give `typed` a `pause` to take after each key:
 
 ```python
-typed = [KeyPressed(key=character) for character in "mango"]
-
 await app(
     search(),
     headless=True,
     dimensions=(30, 8),
     clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
-    autopilot=[*intersperse(AdvanceClock(by=timedelta(milliseconds=300)), typed), Quit()],
+    autopilot=[*typed("mango", pause=AdvanceClock(by=timedelta(milliseconds=300))), Quit()],
 )
+```
+
+To pace anything else, put an `AdvanceClock` between its steps with
+[`more_itertools.intersperse`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse).
+
+A single `AdvanceClock` jumps straight to the time it names, so an [animation](hooks/animation.md) jumps to that frame.
+[`advance`][counterweight.autopilot.advance] moves the clock the same distance a step at a time,
+one frame of the animation hooks unless it's given another `step`,
+so a recording shows the animation play out, as Playwright's `clock.runFor` fires each timer due along the way:
+
+```python
+autopilot = [KeyPressed(key=Key.Space), *advance(timedelta(seconds=2)), Quit()]
 ```
 
 ## Waiting for real work
@@ -77,6 +90,17 @@ await app(
         Quit(),
     ],
 )
+```
+
+[`showing`][counterweight.autopilot.showing] is that `WaitFor`, waiting for some text to be on screen,
+so the step above is `showing("passed")`.
+A program on a [pseudo-terminal](terminals/embedding.md) echoes each key it's sent,
+so to type into one, give `typed` a `Wait` as its `pause`,
+which gives the program real time to echo each key before the next arrives,
+then wait for what it prints:
+
+```python
+autopilot = [showing("$ "), *typed("ls\n", pause=Wait(timedelta(milliseconds=90))), showing("README.md"), Quit()]
 ```
 
 Both wait in real time, and a `FrozenClock` runs in real time while they do,
@@ -142,5 +166,8 @@ An app that isn't recording ignores it.
 ::: counterweight.autopilot.Wait
 ::: counterweight.autopilot.WaitFor
 ::: counterweight.autopilot.AutopilotTimedOut
+::: counterweight.autopilot.typed
+::: counterweight.autopilot.showing
+::: counterweight.autopilot.advance
 ::: counterweight.asciicast.Recording
 ::: counterweight.asciicast.Theme

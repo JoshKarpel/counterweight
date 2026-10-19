@@ -13,6 +13,7 @@ from counterweight._context_vars import current_instant
 from counterweight._context_vars import current_layouts
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import forever
+from counterweight.animation import FRAME_INTERVAL
 from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
 from counterweight.events import ControlSent
@@ -126,13 +127,16 @@ def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T:
     return current_hook_state.get().use_memo(compute, deps)
 
 
-def use_clock(interval: timedelta) -> Tick:
+def use_clock(interval: timedelta | None) -> Tick:
     """
     Parameters:
         interval: How often the component reads the clock.
             Ticks start at whole multiples of `interval` past midnight on the wall clock,
             in the clock's timezone (for an `interval` that divides a day),
             so components reading the clock every second and every minute both re-run as the minute turns.
+            `None` stops reading it, as a `null` delay pauses React's `useInterval`:
+            every render returns the last reading, and the clock never re-runs the component,
+            until a render gives it an interval again, which takes a fresh reading.
 
     Returns:
         A reading of the app's clock, taken when the component mounts,
@@ -145,10 +149,83 @@ def use_clock(interval: timedelta) -> Tick:
     Raises:
         ValueError: If `interval` isn't positive.
     """
-    if interval <= timedelta():
+    if interval is not None and interval <= timedelta():
         raise ValueError(f"use_clock needs a positive interval, but got {interval!r}")
 
     return current_hook_state.get().use_clock(interval, current_instant.get())
+
+
+@dataclass(frozen=True, slots=True)
+class AnimationStart:
+    """When an animation hook last started, on the clock's `since_start`, the `deps` it started for, and whether it ended."""
+
+    deps: tuple[object, ...]
+    at: timedelta
+    is_done: bool = False
+
+
+def use_progress(duration: timedelta, deps: tuple[object, ...] = (), *, interval: timedelta = FRAME_INTERVAL) -> float:
+    """
+    How far through an animation `duration` long the calling component is,
+    from 0 when it starts, rising to 1, where it holds, as a CSS animation that plays once and fills forwards does.
+    Shape the motion by passing the result to an [easing function][counterweight.animation.Easing].
+
+    Parameters:
+        duration: How long the animation takes. Zero ends it as soon as it starts, at 1.
+        deps: The values the animation depends on.
+            It starts when the component mounts, and again whenever any of them change (compared with `==`),
+            as `use_effect` runs again, so a component that stays mounted can play it more than once.
+        interval: How often it reads the clock while it moves.
+            Once it reaches 1 it stops reading the clock, so a finished animation never re-runs its component.
+
+    Raises:
+        ValueError: If `duration` is negative.
+    """
+    if duration < timedelta():
+        raise ValueError(f"use_progress needs a duration that isn't negative, but got {duration!r}")
+
+    started: Ref[AnimationStart | None] = use_ref(None)
+    previous = started.current
+    is_restarted = previous is None or previous.deps != deps
+    tick = use_clock(interval if previous is None or is_restarted or not previous.is_done else None)
+    at = tick.since_start if previous is None or is_restarted else previous.at
+    progress = 1.0 if duration == timedelta() else min((tick.since_start - at) / duration, 1.0)
+    started.current = AnimationStart(deps=deps, at=at, is_done=progress == 1.0)
+    return progress
+
+
+def use_loop(
+    period: timedelta,
+    deps: tuple[object, ...] = (),
+    *,
+    is_playing: bool = True,
+    interval: timedelta = FRAME_INTERVAL,
+) -> float:
+    """
+    Where in an animation that repeats every `period` the calling component is, from 0 up to (but not including) 1,
+    as a CSS animation whose iteration count is `infinite` is.
+
+    Parameters:
+        period: How long one time through the animation takes.
+        deps: The values the animation depends on.
+            It starts when the component mounts, and again from 0 whenever any of them change (compared with `==`).
+        is_playing: Whether it moves. While it doesn't, it stops reading the clock, holding where it is:
+            at 0, if it has never played. Unlike a paused CSS animation, it doesn't resume from there:
+            it carries on from wherever the time since it started puts it.
+        interval: How often it reads the clock while it plays.
+
+    Raises:
+        ValueError: If `period` isn't positive.
+    """
+    if period <= timedelta():
+        raise ValueError(f"use_loop needs a positive period, but got {period!r}")
+
+    started: Ref[AnimationStart | None] = use_ref(None)
+    previous = started.current
+    tick = use_clock(interval if is_playing else None)
+    at = tick.since_start if previous is None or previous.deps != deps else previous.at
+    started.current = AnimationStart(deps=deps, at=at)
+    return ((tick.since_start - at) % period) / period
 
 
 @dataclass(frozen=True, slots=True)
@@ -276,10 +353,9 @@ def use_mouse() -> Mouse:
     # without needing to invent a new mechanism dedicated to mouse events,
     # and thus makes them work a lot more like key events.
     mouse, set_mouse = use_state(_INITIAL_MOUSE)
+    use_mouse_listeners = current_use_mouse_listeners.get()
 
     async def setup() -> None:
-        use_mouse_listeners = current_use_mouse_listeners.get()
-
         use_mouse_listeners.add(set_mouse)
 
         try:

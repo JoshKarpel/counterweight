@@ -3,9 +3,9 @@ import sys
 from datetime import timedelta
 
 from counterweight.app import app
+from counterweight.autopilot import advance
 from counterweight.components import Component
 from counterweight.components import component
-from counterweight.controls import AdvanceClock
 from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
@@ -14,7 +14,7 @@ from counterweight.gradients import Hint
 from counterweight.gradients import conic_gradient
 from counterweight.gradients import linear_gradient
 from counterweight.gradients import radial_gradient
-from counterweight.hooks import use_clock
+from counterweight.hooks import use_loop
 from counterweight.painters.pixels import HalfBlockGradient
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import CastSpec
@@ -222,24 +222,18 @@ def on_a_canvas() -> Div:
 
 # --8<-- [start:animated]
 
-FRAME = timedelta(milliseconds=50)
 LOOP = timedelta(seconds=3)
-
-
-def progress_through_loop() -> float:
-    """How far through the loop the clock is, from 0 up to 1, read once a frame."""
-    return use_clock(FRAME).since_mount % LOOP / LOOP
 
 
 @component
 def turning() -> Div:
-    start = 360 * progress_through_loop()
+    start = 360 * use_loop(LOOP)
     return Div(style=SWATCH | content_gradient(conic_gradient(rose_500, amber_300, teal_500, rose_500, start=start)))
 
 
 @component
 def orbiting_border() -> Div:
-    angle = 360 * progress_through_loop()
+    angle = 360 * use_loop(LOOP)
     return Div(
         style=SWATCH | border | border_heavy | border_gradient(linear_gradient(amber_300, violet_600, angle=angle)),
         children=(Text(content="orbiting", style=pad_x(1)),),
@@ -249,7 +243,7 @@ def orbiting_border() -> Div:
 @component
 def shimmer(content: str) -> Text:
     # The highlight starts off the left end and finishes off the right one, so the loop starts over unseen.
-    at = 1.6 * progress_through_loop() - 0.3
+    at = 1.6 * use_loop(LOOP) - 0.3
     return Text(
         content=content,
         style=text_gradient(
@@ -282,7 +276,7 @@ SCREENSHOTS = [
     ScreenshotSpec(on_a_canvas(), "gradients-canvas", (36, 6)),
 ]
 
-CASTS = [CastSpec(animated(), "gradients-animated", (52, 6), steps=[AdvanceClock(by=FRAME)] * (LOOP // FRAME))]
+CASTS = [CastSpec(animated(), "gradients-animated", (52, 6), steps=advance(LOOP))]
 
 if __name__ == "__main__":
     roots = {

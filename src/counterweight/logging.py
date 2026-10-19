@@ -12,7 +12,9 @@ from collections.abc import AsyncIterator
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Mapping
+from contextlib import AsyncExitStack
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
@@ -49,6 +51,19 @@ def app_log_levels(app_module: str, overrides: Mapping[str, int]) -> frozendict[
     return frozendict({**BASE_LOG_LEVELS, app_module.partition(".")[0]: logging.DEBUG, **overrides})
 
 
+@dataclass(slots=True)
+class SharedDevlog:
+    """An open devlog, and how many `devlog` blocks are capturing into it, the last of which closes it."""
+
+    exits: AsyncExitStack
+    users: int = 1
+
+
+# The devlogs open in this process, by path. The devlog is process-wide by nature (a file, and the root logger),
+# so this is where a block finds the one another block has open, rather than opening the file again.
+OPEN_DEVLOGS: dict[Path, SharedDevlog] = {}
+
+
 @asynccontextmanager
 async def devlog(path: Path = DEVLOG_FILE, levels: Mapping[str, int] = BASE_LOG_LEVELS) -> AsyncIterator[None]:
     """
@@ -59,6 +74,37 @@ async def devlog(path: Path = DEVLOG_FILE, levels: Mapping[str, int] = BASE_LOG_
     and the root logger captures from the lowest level in the mapping if it isn't named.
     Raising a logger's level skips its records before they're built, which is where most of a record's cost is,
     so a library that logs at `DEBUG` on a hot path costs the app nothing unless the mapping asks for it.
+
+    Every block in the process capturing into the same `path` shares one devlog:
+    a block entered while another has it open captures into it, at the levels the first block set,
+    and the last one to exit closes it,
+    so an app run inside another one, such as a headless render in a handler, doesn't truncate the other's devlog.
+    """
+    shared = OPEN_DEVLOGS.get(path)
+    if shared is None:
+        # Registered before opening, so a block entered while this one opens it joins it.
+        shared = OPEN_DEVLOGS[path] = SharedDevlog(exits=AsyncExitStack())
+        try:
+            await shared.exits.enter_async_context(capturing(path, levels))
+        except BaseException:
+            del OPEN_DEVLOGS[path]
+            raise
+    else:
+        shared.users += 1
+
+    try:
+        yield
+    finally:
+        shared.users -= 1
+        if shared.users == 0:
+            del OPEN_DEVLOGS[path]
+            await shared.exits.aclose()
+
+
+@asynccontextmanager
+async def capturing(path: Path, levels: Mapping[str, int]) -> AsyncIterator[None]:
+    """
+    Capture log records into a freshly truncated `path` at `levels` for the duration of the block (see `devlog`).
 
     The queue is unbounded because a dropped record is worse than a late one in a debugging aid,
     and it can't grow without bound while the loop runs: with a single sink (no `tee`),
