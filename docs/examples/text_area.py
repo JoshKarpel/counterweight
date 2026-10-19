@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from counterweight.app import app
+from counterweight.autopilot import typed
 from counterweight.components import component
 from counterweight.elements import Chunk
 from counterweight.elements import Div
@@ -111,10 +112,6 @@ def notes() -> Div:
 
 
 # --8<-- [end:widget]
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
 
 
 CTRL_J = KeyPressed(key=Key.ControlJ)

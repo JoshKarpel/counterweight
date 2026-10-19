@@ -67,6 +67,17 @@ Choose an `interval` as fine as the precision the time needs.
 A timer that can be paused and resumed loses up to that much on each pause,
 since it carries the time recorded at the pause into the next run.
 
+## Pausing
+
+An `interval` of `None` stops the component reading the clock,
+as a `null` delay pauses React's `useInterval`:
+every render returns the last reading, and the clock never re-runs the component.
+The render that gives it an interval again takes a fresh reading,
+so a component that stops reading the clock for an hour doesn't show the time from an hour ago when it starts again.
+Pause a clock a component reads only while something is moving, such as an animation that has finished,
+so it costs nothing while nothing moves.
+The [animation hooks](animation.md) pause their clocks that way.
+
 ## Why compute from elapsed time?
 
 Compute whatever changes over time, such as an animation frame or a countdown,

@@ -118,6 +118,7 @@ nav:
     - hooks/use_ref.md
     - hooks/use_memo.md
     - hooks/use_clock.md
+    - hooks/animation.md
     - hooks/use_controls.md
     - hooks/use_mouse.md
     - hooks/use_rects.md
