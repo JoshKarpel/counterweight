@@ -333,6 +333,13 @@ generated_lines.extend(
 )
 generated_lines.append("")
 
+# Each attribute in both places a CellStyle is drawn, with a not_ form that turns it off when merged over one that sets it
+for place in ("text", "border"):
+    for attribute in ("bold", "dim", "italic", "underline", "strikethrough"):
+        generated_lines.append(f"{place}_{attribute} = Style({place}_style=CellStyle({attribute}=True))")
+        generated_lines.append(f"{place}_not_{attribute} = Style({place}_style=CellStyle({attribute}=False))")
+    generated_lines.append("")
+
 # Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():

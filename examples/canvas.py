@@ -59,17 +59,17 @@ def header() -> Text:
         content=(
             Chunk(
                 content="Canvas",
-                style=CellStyle(foreground=amber_600),
+                style=text_color(amber_600),
             ),
             Chunk.space(),
             Chunk(
                 content="Demo",
-                style=CellStyle(foreground=cyan_600),
+                style=text_color(cyan_600),
             ),
             Chunk.newline(),
             Chunk(
                 content="App",
-                style=CellStyle(foreground=pink_600),
+                style=text_color(pink_600),
             ),
         ),
         style=text_justify_center,

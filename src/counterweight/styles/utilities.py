@@ -1,10 +1,13 @@
 from functools import lru_cache
 from typing import Literal
+from typing import cast
+from typing import overload
 
 import waxy
 
 from counterweight.gradients import Gradient
 from counterweight.styles import TERMINAL_DEFAULT
+from counterweight.styles import AnyColor
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
@@ -25,6 +28,28 @@ border_bg_terminal_default = Style(border_style=CellStyle(background=TERMINAL_DE
 margin_terminal_default = Style(margin_color=TERMINAL_DEFAULT)
 padding_terminal_default = Style(padding_color=TERMINAL_DEFAULT)
 content_terminal_default = Style(content_color=TERMINAL_DEFAULT)
+
+text_bold = Style(text_style=CellStyle(bold=True))
+text_not_bold = Style(text_style=CellStyle(bold=False))
+text_dim = Style(text_style=CellStyle(dim=True))
+text_not_dim = Style(text_style=CellStyle(dim=False))
+text_italic = Style(text_style=CellStyle(italic=True))
+text_not_italic = Style(text_style=CellStyle(italic=False))
+text_underline = Style(text_style=CellStyle(underline=True))
+text_not_underline = Style(text_style=CellStyle(underline=False))
+text_strikethrough = Style(text_style=CellStyle(strikethrough=True))
+text_not_strikethrough = Style(text_style=CellStyle(strikethrough=False))
+
+border_bold = Style(border_style=CellStyle(bold=True))
+border_not_bold = Style(border_style=CellStyle(bold=False))
+border_dim = Style(border_style=CellStyle(dim=True))
+border_not_dim = Style(border_style=CellStyle(dim=False))
+border_italic = Style(border_style=CellStyle(italic=True))
+border_not_italic = Style(border_style=CellStyle(italic=False))
+border_underline = Style(border_style=CellStyle(underline=True))
+border_not_underline = Style(border_style=CellStyle(underline=False))
+border_strikethrough = Style(border_style=CellStyle(strikethrough=True))
+border_not_strikethrough = Style(border_style=CellStyle(strikethrough=False))
 
 slate_50 = Color.from_hex("#f8fafc")
 slate_100 = Color.from_hex("#f1f5f9")
@@ -1152,46 +1177,94 @@ def pad_sides(top: int, right: int, bottom: int, left: int) -> Style:
     )
 
 
+def _color(color: ColorName | AnyColor | Gradient, shade: Shade | None) -> AnyColor | Gradient:
+    """`color` itself, or the palette color it names, which the color utilities' overloads only pass with a shade."""
+    return _COLOR_MAP[(color, cast(Shade, shade))] if isinstance(color, str) else color
+
+
+@overload
+def text_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def text_color(color: AnyColor | Gradient) -> Style: ...
 @lru_cache(maxsize=256)
-def text_color(color: ColorName, shade: Shade) -> Style:
-    """Color the text with a palette color."""
-    return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
+def text_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the text with a palette color, by name and shade, or with any color or gradient."""
+    return Style(text_style=CellStyle(foreground=_color(color, shade)))
+
+
+@overload
+def text_bg(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def text_bg(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def text_bg(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the background behind the text with a palette color, by name and shade, or with any color or gradient."""
+    return Style(text_style=CellStyle(background=_color(color, shade)))
+
+
+@overload
+def border_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def border_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def border_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the border characters with a palette color, by name and shade, or with any color or gradient."""
+    return Style(border_style=CellStyle(foreground=_color(color, shade)))
+
+
+@overload
+def border_bg(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def border_bg(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def border_bg(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """
+    Color the background behind the border characters with a palette color, by name and shade,
+    or with any color or gradient.
+    """
+    return Style(border_style=CellStyle(background=_color(color, shade)))
+
+
+@overload
+def margin_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def margin_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def margin_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Fill the margin with a palette color, by name and shade, or with any color or gradient."""
+    return Style(margin_color=_color(color, shade))
+
+
+@overload
+def padding_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def padding_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def padding_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Fill the padding with a palette color, by name and shade, or with any color or gradient."""
+    return Style(padding_color=_color(color, shade))
+
+
+@overload
+def content_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def content_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def content_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """
+    Fill the whole box with a palette color, by name and shade, or with any color or gradient,
+    under any margin, padding and border colors.
+    """
+    return Style(content_color=_color(color, shade))
 
 
 @lru_cache(maxsize=256)
-def text_bg(color: ColorName, shade: Shade) -> Style:
-    """Color the background behind the text with a palette color."""
-    return Style(text_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
-
-
-@lru_cache(maxsize=256)
-def border_color(color: ColorName, shade: Shade) -> Style:
-    """Color the border characters with a palette color."""
-    return Style(border_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
-
-
-@lru_cache(maxsize=256)
-def border_bg(color: ColorName, shade: Shade) -> Style:
-    """Color the background behind the border characters with a palette color."""
-    return Style(border_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
-
-
-@lru_cache(maxsize=256)
-def margin_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the margin with a palette color."""
-    return Style(margin_color=_COLOR_MAP[(color, shade)])
-
-
-@lru_cache(maxsize=256)
-def padding_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the padding with a palette color."""
-    return Style(padding_color=_COLOR_MAP[(color, shade)])
-
-
-@lru_cache(maxsize=256)
-def content_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the whole box with a palette color, under any margin, padding and border colors."""
-    return Style(content_color=_COLOR_MAP[(color, shade)])
+def text_link(uri: str | None) -> Style:
+    """
+    Make the text a hyperlink to `uri`, which the terminal opens when it's clicked,
+    or with `None`, not a link.
+    """
+    return Style(text_style=CellStyle(link=uri))
 
 
 @lru_cache(maxsize=256)

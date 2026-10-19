@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import get_args
+from typing import overload
 
 import pytest
 import waxy
@@ -24,6 +25,15 @@ def indent_by(n: int) -> Style:
     Only the first paragraph is shown.
     """
     return Style(layout=waxy.Style(padding_left=waxy.Length(n)))  # pragma: never runs
+
+
+@overload
+def tint(color: str, shade: int) -> Style: ...
+@overload
+def tint(color: Color) -> Style: ...
+def tint(color: str | Color, shade: int | None = None) -> Style:
+    """Tint by name and shade, or by color."""
+    return Style()  # pragma: never runs
 
 
 def undocumented(n: int) -> Style:
@@ -78,6 +88,15 @@ def test_marker_becomes_constants_table_then_functions_table() -> None:
             "Outro.",
             "",
         ]
+    )
+
+
+def test_overloaded_function_lists_each_overload_signature() -> None:
+    result = render("<!-- utilities: tint -->\n", {"tint": tint})
+
+    assert (
+        "| `tint(color: str, shade: int) -> Style`<br>`tint(color: Color) -> Style` | Tint by name and shade, or by color. |"
+        in result
     )
 
 

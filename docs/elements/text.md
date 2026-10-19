@@ -1,5 +1,23 @@
 # `Text`
 
+## Styling Parts of the Text
+
+A `Text`'s `content` is a string, drawn in the `Text`'s `text_style`,
+or a tuple of `Chunk`s, each drawn in its own style merged over the `Text`'s `text_style`,
+as a `<span>` inside a `<p>` is.
+A chunk's style can be a `Style`, of which it takes the `text_style`,
+so the [utilities](../styles/utilities.md) that style a whole `Text` style a chunk the same way:
+
+<!-- example: text_chunks.py:example -->
+
+![Styled chunks](../assets/text-chunks.svg)
+
+The second `Text` is bold, so the chunk that shouldn't be merges `text_not_bold` over it.
+
+A chunk ignores the rest of a `Style`, such as padding or a border, as a browser ignores a `<span>`'s width,
+so put those on the `Text` or a `Div` around it.
+A chunk's style can also be a `CellStyle`, which is what `Chunk.style` holds either way.
+
 ## Wide Characters
 
 A `Text` measures, wraps and paints its content by grapheme cluster,
@@ -33,3 +51,5 @@ where it would run as a command instead of drawing anything.
 ## API
 
 ::: counterweight.elements.Text
+
+::: counterweight.elements.Chunk

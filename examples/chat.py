@@ -45,8 +45,6 @@ from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.markdown import markdown
-from counterweight.styles import CellStyle
-from counterweight.styles import Style
 from counterweight.styles.utilities import *
 from counterweight.widgets import TextFieldStyles
 from counterweight.widgets import text_area
@@ -265,7 +263,7 @@ def chat_message(message: Message) -> Div:
     return Div(
         style=col | border_light | border_left | border_color(color, 400) | pad_left(1),
         children=(
-            Text(content=message.author, style=text_color(color, 300) | Style(text_style=CellStyle(bold=True))),
+            Text(content=message.author, style=text_color(color, 300) | text_bold),
             markdown(message.text, keeps_line_breaks=message.author != "bot"),
         ),
     )

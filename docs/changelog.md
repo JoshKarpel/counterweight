@@ -4,6 +4,19 @@
 
 ### Added
 
+- Added [attribute utilities](styles/utilities.md#attributes) that draw the text or the border characters
+  bold, dim, italic, underlined or struck through (`text_bold`, `border_italic`, ...),
+  each with a `not_` form (`text_not_bold`) that turns it off when merged over a style that turns it on,
+  and `text_link(uri)`, which makes the text a hyperlink, or with `None`, not one.
+
+- The color utilities (`text_color`, `text_bg`, `border_color`, `border_bg`, `margin_color`, `padding_color`
+  and `content_color`) take any color as well as a palette name and shade:
+  a `Color`, such as `rose_200` or `Color.from_hex("#fbbf24")`, an `IndexedColor`, `TERMINAL_DEFAULT`, or a gradient.
+
+- A `Chunk`'s style can be a `Style`, of which the chunk takes the `text_style`,
+  so the utilities that style a `Text`, such as `text_bold | text_color("sky", 300)`,
+  [style a chunk](elements/text.md#styling-parts-of-the-text) too.
+
 - [#430](https://github.com/JoshKarpel/counterweight/pull/430)
   Added [gradients](styles/gradients.md): linear, radial and conic, with CSS's geometry, stops, hints and repeating,
   built by `linear_gradient`, `radial_gradient` and `conic_gradient` in `counterweight.gradients`.

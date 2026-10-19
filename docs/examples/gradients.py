@@ -16,7 +16,6 @@ from counterweight.gradients import linear_gradient
 from counterweight.gradients import radial_gradient
 from counterweight.hooks import use_clock
 from counterweight.painters.pixels import HalfBlockGradient
-from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import CastSpec
 from docs.examples.screenshot_spec import ScreenshotSpec
@@ -158,7 +157,7 @@ def slots() -> Div:
                     Text(
                         content=(
                             Chunk(content="Gradient text, "),
-                            Chunk(content="with a highlight", style=CellStyle(bold=True)),
+                            Chunk(content="with a highlight", style=text_bold),
                             Chunk(content=" that continues it"),
                         ),
                         style=text_wrap_pretty | text_gradient(SUNRISE),
