@@ -19,7 +19,6 @@ from counterweight.handlers import tab_focus
 from counterweight.headless import ScrollAxis
 from counterweight.headless import use_scroll_area
 from counterweight.keys import Key
-from counterweight.styles import CellStyle
 from counterweight.styles.utilities import *
 
 LEVELS = (("INFO", cyan_400), ("WARN", amber_400), ("ERROR", red_400), ("DEBUG", slate_500))
@@ -65,8 +64,8 @@ def log_lines(count: int) -> tuple[Text, ...]:
         entries.append(
             Text(
                 content=(
-                    Chunk(content=f"{i:03} ", style=CellStyle(foreground=slate_500)),
-                    Chunk(content=f"{level:<5} ", style=CellStyle(foreground=color)),
+                    Chunk(content=f"{i:03} ", style=text_color(slate_500)),
+                    Chunk(content=f"{level:<5} ", style=text_color(color)),
                     Chunk(content=message),
                 ),
                 style=text_wrap_stable,

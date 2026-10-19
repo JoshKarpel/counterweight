@@ -32,10 +32,23 @@ class Div:
     """
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True, init=False)
 class Chunk:
+    """
+    A run of a `Text`'s content in one style, as a `<span>` is in HTML.
+
+    `style` can be a `CellStyle`, or a `Style` whose `text_style` the chunk takes,
+    so the utilities that style a `Text`'s text, such as `text_bold | text_color("sky", 300)`, style a chunk too.
+    A chunk ignores the rest of a `Style`, as a `<span>` ignores a width,
+    and `Chunk.style` is always the `CellStyle`.
+    """
+
     content: str
-    style: CellStyle = _DEFAULT_CELL_STYLE
+    style: CellStyle
+
+    def __init__(self, *, content: str, style: CellStyle | Style = _DEFAULT_CELL_STYLE) -> None:
+        object.__setattr__(self, "content", content)
+        object.__setattr__(self, "style", style.text_style if isinstance(style, Style) else style)
 
     @property
     def cells(self) -> tuple[StyledGrapheme, ...]:

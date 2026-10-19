@@ -13,6 +13,7 @@ from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
+from counterweight.styles import BorderKind
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 

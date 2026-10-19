@@ -1,12 +1,16 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 import waxy
 
 from counterweight.gradients import Gradient
 from counterweight.gradients import linear_gradient
+from counterweight.styles import TERMINAL_DEFAULT
+from counterweight.styles import AnyColor
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
+from counterweight.styles import Color
 from counterweight.styles import IndexedColor
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
@@ -395,3 +399,113 @@ def test_gradient_utilities_put_the_gradient_in_their_place(
     utility: Callable[[Gradient], Style], expected: Style
 ) -> None:
     assert utility(GRADIENT) == expected
+
+
+COLOR_UTILITIES: list[tuple[Callable[..., Style], Callable[[AnyColor | Gradient], Style]]] = [
+    (text_color, lambda c: Style(text_style=CellStyle(foreground=c))),
+    (text_bg, lambda c: Style(text_style=CellStyle(background=c))),
+    (border_color, lambda c: Style(border_style=CellStyle(foreground=c))),
+    (border_bg, lambda c: Style(border_style=CellStyle(background=c))),
+    (margin_color, lambda c: Style(margin_color=c)),
+    (padding_color, lambda c: Style(padding_color=c)),
+    (content_color, lambda c: Style(content_color=c)),
+]
+
+
+@pytest.mark.parametrize(("utility", "expected"), COLOR_UTILITIES)
+def test_color_utilities_take_a_palette_name_and_shade(
+    utility: Callable[..., Style], expected: Callable[[AnyColor | Gradient], Style]
+) -> None:
+    assert utility("teal", 700) == expected(teal_700)
+
+
+@pytest.mark.parametrize(("utility", "expected"), COLOR_UTILITIES)
+@pytest.mark.parametrize(
+    "color",
+    [Color(12, 34, 56), IndexedColor(11), TERMINAL_DEFAULT, GRADIENT],
+    ids=["rgb", "indexed", "terminal-default", "gradient"],
+)
+def test_color_utilities_take_any_color(
+    utility: Callable[..., Style], expected: Callable[[AnyColor | Gradient], Style], color: AnyColor | Gradient
+) -> None:
+    assert utility(color) == expected(color)
+
+
+@pytest.mark.parametrize(
+    ("utility", "expected"),
+    [
+        (text_bold, Style(text_style=CellStyle(bold=True))),
+        (text_not_bold, Style(text_style=CellStyle(bold=False))),
+        (text_dim, Style(text_style=CellStyle(dim=True))),
+        (text_not_dim, Style(text_style=CellStyle(dim=False))),
+        (text_italic, Style(text_style=CellStyle(italic=True))),
+        (text_not_italic, Style(text_style=CellStyle(italic=False))),
+        (text_underline, Style(text_style=CellStyle(underline=True))),
+        (text_not_underline, Style(text_style=CellStyle(underline=False))),
+        (text_strikethrough, Style(text_style=CellStyle(strikethrough=True))),
+        (text_not_strikethrough, Style(text_style=CellStyle(strikethrough=False))),
+        (border_bold, Style(border_style=CellStyle(bold=True))),
+        (border_not_bold, Style(border_style=CellStyle(bold=False))),
+        (border_dim, Style(border_style=CellStyle(dim=True))),
+        (border_not_dim, Style(border_style=CellStyle(dim=False))),
+        (border_italic, Style(border_style=CellStyle(italic=True))),
+        (border_not_italic, Style(border_style=CellStyle(italic=False))),
+        (border_underline, Style(border_style=CellStyle(underline=True))),
+        (border_not_underline, Style(border_style=CellStyle(underline=False))),
+        (border_strikethrough, Style(border_style=CellStyle(strikethrough=True))),
+        (border_not_strikethrough, Style(border_style=CellStyle(strikethrough=False))),
+    ],
+)
+def test_attribute_utilities_set_their_attribute_in_their_place(utility: Style, expected: Style) -> None:
+    assert utility == expected
+
+
+@pytest.mark.parametrize(
+    ("on", "off", "place", "attribute"),
+    [
+        (text_bold, text_not_bold, "text_style", "bold"),
+        (text_dim, text_not_dim, "text_style", "dim"),
+        (text_italic, text_not_italic, "text_style", "italic"),
+        (text_underline, text_not_underline, "text_style", "underline"),
+        (text_strikethrough, text_not_strikethrough, "text_style", "strikethrough"),
+        (border_bold, border_not_bold, "border_style", "bold"),
+        (border_dim, border_not_dim, "border_style", "dim"),
+        (border_italic, border_not_italic, "border_style", "italic"),
+        (border_underline, border_not_underline, "border_style", "underline"),
+        (border_strikethrough, border_not_strikethrough, "border_style", "strikethrough"),
+    ],
+)
+def test_not_attribute_turns_off_the_attribute_merged_under_it(
+    on: Style, off: Style, place: str, attribute: str
+) -> None:
+    assert getattr(getattr((on | off).resolved, place), attribute) is False
+
+
+if TYPE_CHECKING:
+
+    def color_utilities_take_a_name_and_shade_or_one_color(color: Color) -> None:
+        text_color("teal", 700)
+        text_color(color)
+        text_color("teal")  # type: ignore[call-overload]
+        text_color(color, 700)  # type: ignore[call-overload]
+
+
+@pytest.mark.parametrize("uri", ["https://example.com/a", None])
+def test_text_link_sets_the_text_link(uri: str | None) -> None:
+    assert text_link(uri) == Style(text_style=CellStyle(link=uri))
+
+
+def star_import_names() -> set[str]:
+    namespace: dict[str, object] = {}
+    exec("from counterweight.styles.utilities import *", namespace)
+    return set(namespace) - {"__builtins__"}
+
+
+@pytest.mark.parametrize("name", ["text_color", "pad_sides", "text_bold", "rose_200", "ColorName", "Shade", "Side"])
+def test_star_import_brings_in_the_utilities_and_their_types(name: str) -> None:
+    assert name in star_import_names()
+
+
+@pytest.mark.parametrize("name", ["cast", "overload", "lru_cache", "Literal", "waxy", "Style", "AnyColor", "Gradient"])
+def test_star_import_leaves_out_what_the_module_imports(name: str) -> None:
+    assert name not in star_import_names()

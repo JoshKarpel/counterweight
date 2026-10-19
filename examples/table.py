@@ -62,8 +62,6 @@ def _col_width(label: str, display: Callable[[Peak], str]) -> int:
 
 COL_WIDTHS = [_col_width(label, display) for label, display, _ in COLUMNS]
 
-text_bold = Style(text_style=CellStyle(bold=True))
-
 
 @component
 def root() -> Div:
