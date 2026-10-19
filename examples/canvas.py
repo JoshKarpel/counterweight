@@ -15,6 +15,7 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
+from counterweight.styles import Color
 from counterweight.styles.styles import COLORS_BY_NAME
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp

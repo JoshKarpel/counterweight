@@ -125,6 +125,9 @@ the `# Stop generated` marker.
 just codegen
 ```
 
+Codegen also writes the module's `__all__`, at the end of the file, from every public name the module defines,
+so a new hand-written utility joins it on the next `just codegen` (or commit) and nothing edits it by hand.
+
 When a utility family covers a set of variants (such as safe and `_unsafe` alignment),
 generate every member of it (see [Public API Scope](#public-api-scope)).
 

@@ -453,6 +453,11 @@
 
 ### Changed
 
+- `from counterweight.styles.utilities import *` brings in only the utilities, the palette's colors,
+  and the `ColorName`, `Shade` and `Side` types, not the names the module imports,
+  such as `Style`, `Color`, `CellStyle`, `BorderKind` and `waxy`.
+  Import those from `counterweight.styles` (or `waxy`) instead.
+
 - [#430](https://github.com/JoshKarpel/counterweight/pull/430)
   Output sends only the colors that changed between two cells whose styles differ only in their colors,
   rather than resetting and sending the whole style,

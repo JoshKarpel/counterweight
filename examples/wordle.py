@@ -32,6 +32,7 @@ from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 logger = logging.getLogger(__name__)

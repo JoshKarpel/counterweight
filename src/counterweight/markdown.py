@@ -97,8 +97,6 @@ def wrap_gfm_autolink_rules(parser: MarkdownIt) -> None:
 
 wrap_gfm_autolink_rules(PARSER)
 
-BOLD = CellStyle(bold=True)
-
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MarkdownStyles:
@@ -197,7 +195,7 @@ class MarkdownStyles:
     """Merged over `table_cell_text` for the header row's cells."""
 
     emphasis: CellStyle = CellStyle(italic=True)
-    strong: CellStyle = BOLD
+    strong: CellStyle = text_bold.text_style
     strikethrough: CellStyle = CellStyle(strikethrough=True)
     code_inline: CellStyle = text_color("rose", 300).text_style | text_bg("slate", 800).text_style
     math_inline: CellStyle = text_color("violet", 300).text_style

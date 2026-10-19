@@ -42,6 +42,7 @@ from counterweight.hooks import FocusHandle
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.markdown import markdown_document
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 

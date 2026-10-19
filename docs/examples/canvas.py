@@ -20,6 +20,8 @@ from counterweight.hooks import use_state
 from counterweight.painters.pixels import Fit
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
+from counterweight.styles import CellStyle
+from counterweight.styles import Color
 from counterweight.styles.utilities import *
 from docs.examples.screenshot_spec import ScreenshotSpec
 

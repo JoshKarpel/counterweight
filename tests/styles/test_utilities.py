@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 import waxy
@@ -460,19 +461,51 @@ def test_attribute_utilities_set_their_attribute_in_their_place(utility: Style, 
 
 
 @pytest.mark.parametrize(
-    ("on", "off", "attribute"),
+    ("on", "off", "place", "attribute"),
     [
-        (text_bold, text_not_bold, "bold"),
-        (text_dim, text_not_dim, "dim"),
-        (text_italic, text_not_italic, "italic"),
-        (text_underline, text_not_underline, "underline"),
-        (text_strikethrough, text_not_strikethrough, "strikethrough"),
+        (text_bold, text_not_bold, "text_style", "bold"),
+        (text_dim, text_not_dim, "text_style", "dim"),
+        (text_italic, text_not_italic, "text_style", "italic"),
+        (text_underline, text_not_underline, "text_style", "underline"),
+        (text_strikethrough, text_not_strikethrough, "text_style", "strikethrough"),
+        (border_bold, border_not_bold, "border_style", "bold"),
+        (border_dim, border_not_dim, "border_style", "dim"),
+        (border_italic, border_not_italic, "border_style", "italic"),
+        (border_underline, border_not_underline, "border_style", "underline"),
+        (border_strikethrough, border_not_strikethrough, "border_style", "strikethrough"),
     ],
 )
-def test_not_attribute_turns_off_the_attribute_merged_under_it(on: Style, off: Style, attribute: str) -> None:
-    assert getattr((on | off).resolved.text_style, attribute) is False
+def test_not_attribute_turns_off_the_attribute_merged_under_it(
+    on: Style, off: Style, place: str, attribute: str
+) -> None:
+    assert getattr(getattr((on | off).resolved, place), attribute) is False
+
+
+if TYPE_CHECKING:
+
+    def color_utilities_take_a_name_and_shade_or_one_color(color: Color) -> None:
+        text_color("teal", 700)
+        text_color(color)
+        text_color("teal")  # type: ignore[call-overload]
+        text_color(color, 700)  # type: ignore[call-overload]
 
 
 @pytest.mark.parametrize("uri", ["https://example.com/a", None])
 def test_text_link_sets_the_text_link(uri: str | None) -> None:
     assert text_link(uri) == Style(text_style=CellStyle(link=uri))
+
+
+def star_import_names() -> set[str]:
+    namespace: dict[str, object] = {}
+    exec("from counterweight.styles.utilities import *", namespace)
+    return set(namespace) - {"__builtins__"}
+
+
+@pytest.mark.parametrize("name", ["text_color", "pad_sides", "text_bold", "rose_200", "ColorName", "Shade", "Side"])
+def test_star_import_brings_in_the_utilities_and_their_types(name: str) -> None:
+    assert name in star_import_names()
+
+
+@pytest.mark.parametrize("name", ["cast", "overload", "lru_cache", "Literal", "waxy", "Style", "AnyColor", "Gradient"])
+def test_star_import_leaves_out_what_the_module_imports(name: str) -> None:
+    assert name not in star_import_names()

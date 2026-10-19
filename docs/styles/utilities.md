@@ -11,6 +11,9 @@ We recommend a `*` import for ease of use:
 from counterweight.styles.utilities import *
 ```
 
+That brings in the utilities, the palette's colors, and the `ColorName`, `Shade` and `Side` types the utility functions take,
+but not `Style`, `Color` or anything else the module itself imports, which come from `counterweight.styles`.
+
 Each utility is a `Style` that sets just a small set of properties.
 Some are constants (e.g., `border_heavy`, `justify_children_center`),
 and the rest are functions that return one (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`).
