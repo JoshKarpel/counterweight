@@ -4,6 +4,14 @@
 
 ### Added
 
+- Counterweight ships with its [examples](examples.md): a few complete apps, such as a chat, a Markdown viewer,
+  a terminal multiplexer and Wordle, and the snippets the docs show, each of which runs on its own.
+  `counterweight examples list` lists them, `run` runs one, `show` prints its source, highlighted on a terminal,
+  and `copy` writes a file of your own that runs it, to start from.
+  `counterweight examples gallery` browses them all, with each one's description and source,
+  and runs the one selected in place.
+  `counterweight.examples` is importable, but no part of the public API.
+
 - Added [attribute utilities](styles/utilities.md#attributes) that draw the text or the border characters
   bold, dim, italic, underlined or struck through (`text_bold`, `border_italic`, ...),
   each with a `not_` form (`text_not_bold`) that turns it off when merged over a style that turns it on,
@@ -69,7 +77,7 @@
   `counterweight.widgets.text_area` is a bordered box built on it, which wraps at its own width
   and grows to fit its rows up to a `max_height`, past which it scrolls, starting scrolled to its end,
   and keeps its height in a column too short for everything in it.
-  The [chat](https://github.com/JoshKarpel/counterweight/blob/main/examples/chat.py) example
+  The [chat](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py) example
   sends Markdown messages from a `text_area` to a transcript that sticks to its end as replies stream in.
 
 - [#416](https://github.com/JoshKarpel/counterweight/pull/416)
@@ -155,10 +163,8 @@
   Code blocks and tables too wide for the space they're given scroll sideways with the wheel, as GitHub's styles scroll them,
   and a table wraps its cells as narrow as their words allow before it scrolls.
   `keeps_line_breaks=True` keeps each line break inside a paragraph, as GitHub's comments and chat apps do.
-  The [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py) example
-  shows a directory's Markdown files beside a tree of them, and the
-  [Markdown gallery](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_gallery.py) example
-  shows each kind of block and span beside its source, which you can edit to see the result change.
+  The [Markdown viewer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/markdown_viewer.py) example
+  shows a directory's Markdown files beside a tree of them.
 
 - [#330](https://github.com/JoshKarpel/counterweight/issues/330)
   Added [syntax highlighting](rich-text/syntax-highlighting.md) with Pygments:
@@ -178,11 +184,12 @@
 
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
-  It takes `auto_focus`, to take focus on mount when nothing else has it;
+  It takes `auto_focus`, to take focus on mount when nothing else has it,
+  or when what has it is out of Tab order and the component mounts inside it, as `autofocus` takes focus from a page's body;
   `handle`, a `FocusHandle` a parent creates to focus a child it renders;
   `is_focusable=False`, to disable it; and `in_focus_order=False`, to leave it out of Tab order.
   The controls `FocusNext`, `FocusPrevious`, `FocusOn(handle)` and `ClearFocus` move focus,
-  and `FocusNext` and `FocusPrevious` take a `within` subtree to move only inside one element.
+  and `FocusNext` and `FocusPrevious` take a `within` subtree, or an element's handle, to move only inside one element.
   `counterweight.handlers` gains `tab_focus`, `focus_receiver_on_press`, `focus_on_press` and `clear_focus`,
   which return them for Tab and for presses; nothing moves focus unless a handler does.
   A `Receiver` carries the element's `focus_handle`, whether it `is_focused`, and its `subtree`.
@@ -288,6 +295,8 @@
   A cell that has to name the default colors takes the emulator's, which `set_default_colors` changes as it runs.
   A program's palette colors stay palette entries, so they follow the user's theme,
   except an entry the program changed, which is the color it changed it to.
+  Counterweight imports libghostty's bindings only when an app emulates a terminal,
+  so an app that doesn't starts without them.
   See [Emulators and Pseudo-Terminals](terminals/emulators.md).
 
 - Added colors the terminal decides, which follow the user's theme:
@@ -307,9 +316,10 @@
   Its standard input is the terminal, or `/dev/null` for a program that shouldn't wait for keys.
   `use_pty` runs one while its component is mounted, starting it once its size is positive,
   so a terminal sized from `use_rects` starts at its real size rather than 0 by 0,
-  resizing it as its size changes, and starting it again when its `argv` or environment change.
+  resizing it as its size changes, and starting it again when its `argv`, environment or `cwd` change.
   A program gets the app's environment without `COLUMNS` and `LINES`, which describe the app's terminal,
-  then `TERM=xterm-256color` and `COLORTERM=truecolor`, then the caller's `env`, or only the last two with `clear_env`.
+  then `TERM=xterm-256color` and `COLORTERM=truecolor`, then the caller's `env`, or only the last two with `clear_env`,
+  and runs in `cwd`, the app's working directory unless it's given one.
   Cancelled, or once the program exits, its process group is hung up as closing a terminal window does,
   with `SIGHUP`, then `SIGTERM` and `SIGKILL` a `hangup_grace` apart for whatever ignores it,
   or `SIGKILL` at once if that's cancelled too,
@@ -330,7 +340,7 @@
   and as tall as the lines it printed: the rows that scrolled off its screen, then the screen,
   keeping the last `max_lines`, and `Transcript.of` builds one from output recorded ahead of time.
   `command_output` shows a run in a `scroll_area` that follows its end, with its outcome beneath.
-  The [slides](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py) example
+  The [slides](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/slides.py) example
   runs a command on each slide when it's shown.
 
 - Added [embedded terminals](terminals/embedding.md): running an interactive program, such as a shell or an editor,
@@ -342,13 +352,14 @@
   While focused, the handler sends the program every key press and paste, Ctrl+C included,
   and the mouse events it asked for, encoded as xterm sends them for the modes the program set,
   and a program that asked gets focus events as the component gains and loses focus.
-  A handler put before it with `first` takes keys first, as a prefix key does.
+  A handler put before it with `first` takes keys first, as a prefix key does,
+  and `skips` names keys the program isn't sent, which bubble up to the app's handlers instead.
   `counterweight.widgets.terminal` is a bordered box built on it, sized by its `style`,
   whose `intercept` handler sees each event before the program does.
   `counterweight.input_encoding` holds the pure functions that encode key presses, pastes, mouse events and focus changes
   back into a terminal's bytes, built from the input parser's own tables.
-  The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
-  runs shells side by side with a tmux-style prefix, showing the keys that follow it along the bottom, as zellij does,
+  The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py) example
+  runs shells side by side with direct hotkeys, as zellij does, showing them along the bottom,
   and closes a pane when its shell exits.
 
 - Added [running programs on the app's terminal](terminals/programs.md), as `git commit` runs an editor.
@@ -446,7 +457,7 @@
   `Recording(input=True)` records the input the app handles too; it's off by default, since it records everything typed.
   The [`Marker`](input-handling/controls.md) control marks a point in the recording that players show as a chapter.
   The docs play recordings of examples beside their screenshots,
-  which example modules declare in `CASTS` beside `SCREENSHOTS`.
+  which example modules declare as `Demo`s beside their `Still`s.
 
 - Added the autopilot steps [`Wait`](autopilot.md#waiting-for-real-work), which holds the autopilot back
   for a duration of real time, and `WaitFor`, which holds it back until a condition is true of the frame on screen,
@@ -454,6 +465,8 @@
   while the app keeps handling events and rendering, so it can wait on work like a subprocess.
   A `FrozenClock` runs in real time while the autopilot waits,
   so a recording can show real work at its real pace between steps that `AdvanceClock` paces.
+  `paced` puts an `AdvanceClock` before each of a list of steps, as a person pauses between keys,
+  and holds on the last.
 
 ### Changed
 
@@ -738,6 +751,12 @@
   is renamed `StyledGrapheme`, and its `char` is renamed `grapheme`.
 
 ### Fixed
+
+- An autopilot hands the app each step once the renders the last one caused are painted,
+  and the effects they started have run up to where each first waits on something, as a person's next key press would.
+  Previously effects didn't start until the autopilot waited, so `use_mouse` and `use_hovered` missed
+  an autopilot's mouse events until a `Wait`,
+  and a render that `use_rects` or `use_scroll` asked for after a layout moved was handled with the next step.
 
 - [#407](https://github.com/JoshKarpel/counterweight/issues/407)
   Terminal input is parsed incrementally, so typed and pasted text arrives intact:

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import pytest
 
 from counterweight.elements import Rows
@@ -554,3 +557,14 @@ def test_an_emulators_scrollback_can_hold_as_many_rows_as_libghostty_captures_at
 def test_an_emulators_scrollback_must_fit_what_libghostty_captures_at_once(scrollback: int) -> None:
     with pytest.raises(ValueError, match="scrollback"):
         Emulator(10, 2, ignore_replies, scrollback=scrollback)
+
+
+def test_importing_the_app_does_not_load_the_emulators_bindings() -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys, counterweight.app; print('pyghostty._ffi' in sys.modules)"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert result.stdout.strip() == "False"

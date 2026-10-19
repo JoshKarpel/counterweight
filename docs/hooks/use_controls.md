@@ -14,7 +14,7 @@ The log opens with its failure in the middle of the view, rather than at its sta
 The effect depends on `failure_index`, so it scrolls again only when a different line is the first failure,
 and leaves the log where the reader scrolled it otherwise.
 
-The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py) example
+The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py) example
 sends `Quit` when its last pane's shell exits,
 and moves focus with `FocusNext` when the focused pane's shell exits.
 

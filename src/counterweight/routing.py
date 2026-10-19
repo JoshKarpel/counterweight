@@ -210,22 +210,23 @@ class RoutingTable:
         """Whether the node with `key` is visible, and its last run called `use_focus` with `is_focusable=True`."""
         return (focus := self.focus.get(key)) is not None and focus.is_focusable
 
-    def contains(self, subtree: Subtree, key: NodeKey) -> bool:
-        """Whether the node with `key` is `subtree`'s node or one of its descendants."""
-        return subtree.key in self.path(key)
-
-    def moved_focus(self, focused: NodeKey | None, within: Subtree | None, is_forward: bool) -> NodeKey | None:
+    def moved_focus(
+        self, focused: NodeKey | None, within: ElementHandle | Subtree | None, is_forward: bool
+    ) -> NodeKey | None:
         """
         The key that `FocusNext` (if `is_forward`) or `FocusPrevious` focuses, given the `focused` key:
         the next or previous node in the focus order among the focusable nodes in `within`, wrapping at its ends,
         starting from `focused`'s place in tree order if it's one of them, whether or not it's in the focus order,
         or from before the first or after the last if it isn't.
-        It's `focused` if `within` holds no node in the focus order.
+        It's `focused` if `within` holds no node in the focus order, or is a handle that names no mounted element.
         """
+        scope = None if within is None else self.key_of(within)
+        if within is not None and scope is None:
+            return focused
         candidates = [
             key
             for key, focus in self.focus.items()
-            if focus.is_focusable and (within is None or self.contains(within, key))
+            if focus.is_focusable and (scope is None or scope in self.path(key))
         ]
         if not is_forward:
             candidates.reverse()
@@ -245,15 +246,27 @@ class RoutingTable:
         if it's focusable now.
         Otherwise it's `focused`, unless it can no longer be focused because it unmounted, is hidden, or is unfocusable,
         in which case it's cleared.
-        Then, if nothing is focused, it's the first focusable node in tree order that mounted with `auto_focus`.
+        Then, if nothing is focused, it's the first focusable node in tree order that mounted with `auto_focus`,
+        and if a node out of the focus order is, the first inside it, as an element with `autofocus` takes focus
+        from a document's body, which no Tab reaches either.
         """
         if requested is not None and (key := self.focus_keys.get(requested)) is not None:
-            return key
-        if focused is not None and self.can_focus(focused):
+            focused = key
+        elif focused is not None and not self.can_focus(focused):
+            focused = None
+        if focused is not None and self.focus[focused].in_focus_order:
             return focused
         return next(
-            (key for key, focus in self.focus.items() if focus.auto_focus and focus.is_focusable and key in mounted),
-            None,
+            (
+                key
+                for key, focus in self.focus.items()
+                if focus.auto_focus
+                and focus.is_focusable
+                and key in mounted
+                and key != focused
+                and (focused is None or focused in self.path(key))
+            ),
+            focused,
         )
 
 

@@ -87,6 +87,7 @@ The framework follows a React-like architecture:
 - **Gradients** (src/counterweight/gradients.py): Linear, radial and conic gradients any color slot can hold, and the pure functions paint draws them with: a `Ramp` of colors keyed by the stops, and `field_indices`, the ramp entry each cell takes, keyed by the geometry and the box's size
 - **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output; each slot that holds a gradient paints from fields its element keeps per node in `LayoutTree.fields`, and each solid slot fills with one cell
 - **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks, and `markdown_document`, the `memo` component that renders a Markdown document
+- **Examples** (src/counterweight/examples/): The apps and docs snippets that ship with the library, the scenes (`Still`, `Demo`) their screenshots and recordings are rendered from, the catalog that finds them, and the gallery that `counterweight examples gallery` opens; none of it is public API
 
 The entry point is typically through `counterweight.app.app()` which starts the main application loop.
 
@@ -145,23 +146,35 @@ The favicon's PNGs aren't committed, because Pillow encodes the same pixels to d
 `mkdocs_hooks/logo_icons.py` draws them into the site on every docs build.
 The text logo in `counterweight --help` is `LOGO` in `src/counterweight/cli.py`.
 
-## Docs Screenshots
+## Examples and Docs Screenshots
 
-Each module in `docs/examples/` declares the screenshots it produces in a `SCREENSHOTS` list.
+Every example ships in the library, in `src/counterweight/examples/`:
+`apps/` holds a few complete apps, each with a `root`, and `snippets/` the docs' examples, one idea each,
+each with a `ROOTS` tuple of its roots.
+An example imports from the library and its dependencies, never from another example,
+so `counterweight examples copy` can hand it over as one file, and does no work at import.
+Its docstring's first line is its title, after its docs section and a colon for a snippet (`Layout: Splitting space`),
+and the rest its description, which `counterweight examples list` and the gallery show.
+It quits on Ctrl+C, the app's default, rather than a key of its own, and never claims Ctrl+],
+which brings focus back to the gallery's list (an embedded terminal `skips` it), as `tests/examples/test_gallery.py` checks.
+Each module declares the screenshots it produces in a `STILLS` list of `Still`s,
+from `counterweight.examples.scenes`, each named for the asset it's saved as.
+They sit, with the imports only they use, between `# --8<-- [start:scenes]` and `# --8<-- [end:scenes]`,
+after the module's code and before its `__main__` block, so a copy can leave them out.
 A page shows a section of one with a `<!-- example: <module>.py:<section> -->` line outside any code block,
 which `mkdocs_hooks/examples.py` replaces with the code between the module's `# --8<-- [start:<section>]`
-and `# --8<-- [end:<section>]` comments,
+and `# --8<-- [end:<section>]` comments, or the whole module as it's copied for `<!-- example: <module>.py -->`,
 so every Python code block in a page is real Python that ruff can format.
-Run one in the terminal with `uv run python -m docs.examples.<module> [root]`, naming a root function to pick
-among several; running it by path fails, since the examples import from the `docs` package.
-Regenerate them with `uv run python -m docs.examples.generate_screenshots [module ...]`
+Run one in the terminal with `uv run python -m counterweight.examples.snippets.<module> [root]`,
+naming a root function to pick among several, or `uv run python -m counterweight.examples.apps.<app>`.
+Regenerate them with `uv run python -m docs.generate_screenshots [example ...]`
 (the pre-commit hook runs it too).
 Every `docs/assets/<name>.svg` has a plain-text twin, `<name>.txt`:
 read that to check a layout instead of the SVG.
 `mkdocs_hooks/screenshot_tabs.py` shows both in the built docs.
 
-A module may also declare recordings in a `CASTS` list of `CastSpec`s, which the same command records,
-with a frozen clock, to `docs/assets/<name>.cast`; `paced` puts a pause before each step and holds on the last.
+A module may also declare recordings in a `DEMOS` list of `Demo`s, which the same command records,
+with a frozen clock, to `docs/assets/<name>.cast`; `counterweight.autopilot.paced` puts a pause before each step and holds on the last.
 A page plays one with a `<!-- cast: <name> -->` line, which `mkdocs_hooks/casts.py` replaces
 with the element `docs/assets/casts.js` starts the vendored asciinema-player in.
 Files in `docs/assets/vendor/` are third-party releases, kept byte for byte as published with their licenses,
@@ -172,7 +185,7 @@ which pre-commit leaves alone.
 - **src/counterweight/**: Main framework code
   - **hooks/**: React-like hooks for state and side effects
   - **styles/**: Styling system with utilities
-- **examples/**: Complete example applications (wordle.py, chess.py, etc.)
+  - **examples/**: The apps and the docs' snippets, which ship in the wheel
 - **tests/**: Test suites organized by module
 - **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing and emulator snapshot timings (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference

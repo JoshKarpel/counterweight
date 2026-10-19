@@ -2,5 +2,5 @@
 │ Build logs                                               │  
 ╰──────────────────────────────────────────────────────────╯  
 Window title: Build logs                                      
-Enter: set · Escape: restore · Ctrl+O: edit · Ctrl+Q: quit    
+Enter: set · Escape: restore · Ctrl+O: edit                   
                                                               

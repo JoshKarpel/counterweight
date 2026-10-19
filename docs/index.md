@@ -32,10 +32,10 @@ pip install counterweight
 ## Quick start
 
 This to-do list is a complete app.
-Save it as `todo.py` and run it with `python todo.py`;
+Save it as `todo.py`, or have `counterweight examples copy todo` write it there, and run it with `python todo.py`;
 Ctrl+C quits.
 
-<!-- example: home_quick_start.py:example -->
+<!-- example: todo.py -->
 
 After adding "Read the docs", with "Ship it" typed but not yet added:
 
@@ -47,7 +47,7 @@ Adding tasks, then moving to them with Tab and marking them done with Space:
 
 What's in it:
 
-- `todo_list` and `task_row` are [components](components/index.md):
+- `root` and `task_row` are [components](components/index.md):
   functions decorated with `@component` that return [elements](elements/index.md),
   a `Div` that lays out its children and a `Text` that shows a string.
   Counterweight calls them again whenever their state changes.
@@ -66,94 +66,46 @@ What's in it:
 
 ## Showcase
 
-The [`examples`](https://github.com/JoshKarpel/counterweight/tree/main/examples) directory holds complete apps.
-Run one from a clone of the repository with `uv run python -m examples.<name>`,
-such as `uv run python -m examples.wordle`.
-
-### Wordle
-
-[`wordle.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/wordle.py)
-is the word game, with a daily word or a random one,
-played on the keyboard or by clicking the keys on screen.
-
-![Wordle, two guesses in, with a third being typed](assets/showcase-wordle.svg)
+Counterweight ships with [complete apps](https://github.com/JoshKarpel/counterweight/tree/main/src/counterweight/examples/apps),
+each standing for a kind of app people build with it, beside the snippets these docs show.
+Run one with `counterweight examples run <name>`, such as `counterweight examples run wordle`,
+or browse them all, and run each in place, with `counterweight examples gallery`
+(see [Examples](examples.md)).
 
 ### Chat
 
-[`chat.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/chat.py)
+[`chat.py`](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py)
 is a chat with a canned bot whose Markdown replies stream in a word at a time,
 in a transcript that stays scrolled to the newest message.
 
-![The chat, with the bot's reply rendering a Markdown table](assets/showcase-chat.svg)
+<!-- cast: chat -->
 
-### Stopwatch
+### Markdown viewer
 
-[`stopwatch.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/stopwatch.py)
-is three stopwatches, each a component with its own state, timed by [`use_clock`](hooks/use_clock.md).
-Tab moves between them, and Space starts and stops the focused one.
+[`markdown_viewer.py`](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/markdown_viewer.py)
+browses the working directory's Markdown files, in a tree beside the one it's showing.
 
-<!-- cast: showcase-stopwatch -->
+![The viewer's tree of sample documents, beside the one about code blocks](assets/markdown-viewer.svg)
 
-### Table
+### Multiplexer
 
-[`table.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/table.py)
-is a table of the mountains over 8000 meters, with collapsed borders between its cells.
-The number keys sort it by a column, and the arrow keys select a row.
+[`multiplexer.py`](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py)
+[embeds terminals](terminals/embedding.md) running shells in panes side by side, with hotkeys as zellij has.
 
-![The table, sorted by year of first ascent](assets/showcase-table.svg)
+![Two shells side by side, each having run a command, above a bar of the multiplexer's keys](assets/multiplexer.svg)
 
-### Mouse
+### Wordle
 
-[`mouse.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/mouse.py)
-draws on [`Canvas`](elements/canvas.md)es with half blocks:
-a pixel that follows the pointer, the last cell clicked, and the rectangle dragged out,
-and below them, text you can drag around.
+[`wordle.py`](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/wordle.py)
+is the word game, with a daily word or a random one,
+played on the keyboard or by clicking the keys on screen.
 
-<!-- cast: showcase-mouse -->
+![Wordle, two guesses in, with a third being typed](assets/wordle.svg)
 
-### Scrolling
+### Slides
 
-[`scrolling.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/scrolling.py)
-has two [scroll areas](headless/use_scroll_area.md):
-a log of lines that wrap to different heights, which stays scrolled to its end,
-and a table wider than its pane, which scrolls both ways.
+[`slides.py`](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/slides.py)
+is a presentation whose slides each [run a command](terminals/commands.md) and show what it printed
+beneath their Markdown notes, which [open in your editor](terminals/programs.md) to change.
 
-![A log scrolled to its end beside a table of hosts](assets/showcase-scrolling.svg)
-
-### Markdown gallery
-
-[`markdown_gallery.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_gallery.py)
-shows each feature that [Markdown rendering](rich-text/markdown.md) supports,
-with its source beside it to edit.
-
-![The Markdown gallery's first sections](assets/showcase-markdown-gallery.svg)
-
-### Text wrapping
-
-[`text_wrap.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/text_wrap.py)
-renders Markdown with each of the [text wrapping](styles/text-wrapping.md) modes,
-switched with Tab, beside its source to edit.
-
-![Markdown wrapped in the pretty mode beside its source](assets/showcase-text-wrap.svg)
-
-### Chess
-
-[`chess.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/chess.py)
-draws a chessboard from rows of styled `Text` elements.
-
-![A chessboard in its starting position](assets/showcase-chess.svg)
-
-### More examples
-
-These run programs or read files, so they're best seen running:
-
-- [`slides.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/slides.py)
-  is a presentation whose slides each [run a command](terminals/commands.md) and show what it printed.
-- [`multiplexer.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py)
-  [embeds terminals](terminals/embedding.md) running shells in panes, as tmux does.
-- [`markdown_viewer.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/markdown_viewer.py)
-  browses a directory's Markdown files.
-- [`suspend.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/suspend.py)
-  picks a file and [opens it in your editor](terminals/programs.md), suspending the app until the editor exits.
-- [`canvas.py`](https://github.com/JoshKarpel/counterweight/blob/main/examples/canvas.py)
-  animates random walkers on canvases.
+![A slide that ran a command whose output is in color](assets/slides-colors.svg)

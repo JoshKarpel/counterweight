@@ -347,7 +347,9 @@ def use_focus(
     A component can call it only once.
 
     Parameters:
-        auto_focus: Whether the component takes focus when it mounts visible and focusable while nothing is focused.
+        auto_focus: Whether the component takes focus when it mounts visible and focusable while nothing is focused,
+            or inside the focused component while that one is out of the focus order,
+            as an element with `autofocus` takes focus from a document's body, which no Tab reaches either.
             When several mount in the same render, the first in tree order takes focus.
             A component that mounts hidden or unfocusable doesn't take focus when it's shown or made focusable later.
 
@@ -368,7 +370,7 @@ def use_focus(
             like a browser's `tabindex="-1"` when `False`.
             A component out of the focus order can still be focused with
             [`FocusOn`][counterweight.controls.FocusOn], `auto_focus`, or a press,
-            and keeps focus once it has it.
+            and keeps focus once it has it, until an `auto_focus` component mounts inside it.
 
     Returns:
         Whether the component is focused, and its handle, which is the same object on every render.

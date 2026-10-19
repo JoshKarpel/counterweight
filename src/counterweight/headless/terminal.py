@@ -8,10 +8,12 @@ from __future__ import annotations
 from asyncio import TimerHandle
 from asyncio import get_running_loop
 from collections.abc import Callable
+from collections.abc import Collection
 from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 
 from counterweight._utils import forever
 from counterweight.controls import FocusOn
@@ -84,7 +86,8 @@ class EmbeddedTerminal:
     only focuses it. It returns `None` for anything else, such as the wheel over a program that didn't ask for it.
 
     Put a handler before it with [`first`][counterweight.handlers.first] to take keys before the program sees them,
-    as a multiplexer's prefix key does: the app needs some key the terminal doesn't claim to leave it.
+    as a multiplexer's prefix key does, or name keys in `skips` to let them bubble past it:
+    the app needs some key the terminal doesn't claim to leave it.
     """
 
     write: Callable[[bytes], None]
@@ -108,6 +111,7 @@ def use_terminal(
     rows: int,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     hangup_grace: timedelta = HANGUP_GRACE,
     foreground: Color = BLANK_SCREEN.foreground,
     background: Color = BLANK_SCREEN.background,
@@ -115,6 +119,7 @@ def use_terminal(
     handle: FocusHandle | None = None,
     is_focusable: bool = True,
     in_focus_order: bool = True,
+    skips: Collection[str] = frozenset(),
 ) -> EmbeddedTerminal:
     """
     Runs an interactive program, such as a shell or an editor, while the calling component is mounted,
@@ -134,9 +139,9 @@ def use_terminal(
 
     Parameters:
         argv: The program and its arguments. A change hangs the program up and starts the new one,
-            as a change to `env` or `clear_env` does.
+            as a change to `env`, `clear_env` or `cwd` does.
 
-        env: Passed to `use_pty`, as are `clear_env` and `hangup_grace`.
+        env: Passed to `use_pty`, as are `clear_env`, `cwd` and `hangup_grace`.
 
         foreground: What the program's default colors stand for wherever a cell has to name them,
             as for [`Emulator`][counterweight.emulator.Emulator], as `background` is.
@@ -144,6 +149,11 @@ def use_terminal(
 
         auto_focus: Passed to [`use_focus`][counterweight.hooks.use_focus], as are `handle`, `is_focusable`
             and `in_focus_order`.
+
+        skips: Keys the program isn't sent, which `on_input` returns `None` for, so they bubble up to the app's
+            handlers, as VS Code's terminal skips the keys bound to its own commands.
+            An app that embeds a terminal and binds keys on an element around it, rather than before it,
+            such as an app that embeds the whole app this terminal is in, skips those keys.
     """
     focus = use_focus(auto_focus=auto_focus, handle=handle, is_focusable=is_focusable, in_focus_order=in_focus_order)
     screen, set_screen = use_state(BLANK_SCREEN)
@@ -155,7 +165,7 @@ def use_terminal(
         current.emulator.feed(data)
         current.schedule_snapshot()
 
-    pty = use_pty(argv, columns, rows, on_output, env=env, clear_env=clear_env, hangup_grace=hangup_grace)
+    pty = use_pty(argv, columns, rows, on_output, env=env, clear_env=clear_env, cwd=cwd, hangup_grace=hangup_grace)
 
     async def run_emulator() -> None:
         loop = get_running_loop()
@@ -191,7 +201,7 @@ def use_terminal(
             emulator.close()
 
     # A program started again gets a fresh terminal, as use_pty starts it again, so these deps must stay use_pty's.
-    use_effect(run_emulator, deps=(tuple(argv), env, clear_env))
+    use_effect(run_emulator, deps=(tuple(argv), env, clear_env, cwd))
 
     async def recolor() -> None:
         if (current := live.current) is None:  # pragma: no cover, a recolor racing the emulator's teardown
@@ -222,7 +232,7 @@ def use_terminal(
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=key):
-                if not (receiver.is_focused and is_running):
+                if not (receiver.is_focused and is_running) or key in skips:
                     return None
                 pty.write(encode_key(key, modes))
                 return ()

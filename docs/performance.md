@@ -102,15 +102,15 @@ The first frame, and the frames after a resize or a resume from a suspend, re-ru
 
 Here's a dashboard whose root holds a note you type into:
 
-<!-- example: performance_state_in_root.py:example -->
+<!-- example: performance_state.py:in-root -->
 
-Each key press changes `dashboard`'s state, so it re-runs,
+Each key press changes `busy_dashboard`'s state, so it re-runs,
 builds a new `metric_card` for each metric, and every card re-runs too,
 though none of them shows anything that changed:
 
 ```mermaid
 flowchart TB
-    dashboard["dashboard"]:::rerun --> column["Div"]:::rerun
+    dashboard["busy_dashboard"]:::rerun --> column["Div"]:::rerun
     column --> note_row["Div: Note: d"]:::rerun
     column --> cards_row["Div"]:::rerun
     cards_row --> cards["metric_card ×4"]:::rerun
@@ -120,7 +120,7 @@ flowchart TB
 
 Move the state down into the component that shows it:
 
-<!-- example: performance_state_moved_down.py:example -->
+<!-- example: performance_state.py:moved-down -->
 
 ![Dashboard](assets/performance-dashboard.svg)
 

@@ -1,7 +1,7 @@
 """
 Show each docs screenshot as two tabs: the SVG image, and its plain-text twin to copy from.
 
-`docs.examples.generate_screenshots` writes `docs/assets/<name>.txt` beside every `<name>.svg`,
+`docs.generate_screenshots` writes `docs/assets/<name>.txt` beside every `<name>.svg`,
 so pages link only the SVG, and this hook adds the text when the site is built.
 """
 

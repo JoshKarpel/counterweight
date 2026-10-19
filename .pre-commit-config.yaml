@@ -119,9 +119,9 @@ repos:
         pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
-        entry: uv run --frozen python -m docs.examples.generate_screenshots
+        entry: uv run --frozen python -m docs.generate_screenshots
         language: unsupported
-        files: ^(src/|docs/examples/|docs/assets/.*\.(svg|cast)$|uv\.lock$)
+        files: ^(src/|docs/generate_screenshots\.py$|docs/assets/.*\.(svg|cast)$|uv\.lock$)
         pass_filenames: false
 
   - repo: local

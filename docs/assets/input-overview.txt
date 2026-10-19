@@ -1,7 +1,6 @@
-                                            
-                  Count: 2                  
-                 ╭───╮ ╭───╮                
-                 │ - │ │ + │                
-                 ╰───╯ ╰───╯                
-  Press + or -, or click a button. q quits. 
-                                            
+                                                            
+            ╭───────────╮ ╭────────╮ ╭─────────╮            
+            │ ● Kitchen │ │ ● Hall │ │ ● Porch │            
+            ╰───────────╯ ╰────────╯ ╰─────────╯            
+  Press 1, 2 or 3, or click a switch. 0 turns them all off. 
+                                                            

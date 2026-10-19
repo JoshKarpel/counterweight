@@ -14,20 +14,28 @@ from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import AutopilotTimedOut
 from counterweight.autopilot import Wait
 from counterweight.autopilot import WaitFor
+from counterweight.autopilot import paced
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
+from counterweight.controls import AdvanceClock
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
+from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
+from counterweight.events import MouseMoved
 from counterweight.events import Receiver
+from counterweight.geometry import Position
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
+from counterweight.hooks import use_mouse
+from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.output import Frame
 from counterweight.paint import Paint
+from counterweight.styles.utilities import size
 
 BLANK = Frame(paint=Paint.blank(1, 1))
 
@@ -189,11 +197,54 @@ async def test_an_app_keeps_handling_events_while_its_autopilot_waits() -> None:
     assert await screen_after([Wait(timedelta(milliseconds=20))], finished) == "done"
 
 
-async def test_without_a_wait_the_autopilot_runs_ahead_of_work_the_app_is_doing() -> None:
+async def test_the_effects_a_render_starts_run_before_the_autopilot_takes_its_next_step() -> None:
     finished = Event()
     finished.set()
 
-    assert await screen_after([], finished) == "busy"
+    assert await screen_after([], finished) == "done"
+
+
+async def test_without_a_wait_the_autopilot_runs_ahead_of_work_the_app_is_doing() -> None:
+    assert await screen_after([], Event()) == "busy"
+
+
+@component
+def follows_the_mouse() -> Text:
+    mouse = use_mouse()
+    return Text(content=f"{mouse.absolute.x}")
+
+
+async def test_a_mouse_event_from_the_autopilot_reaches_a_component_that_subscribed_on_mount() -> None:
+    frames: list[Frame] = []
+    await drive(
+        follows_the_mouse(),
+        (2, 1),
+        [MouseMoved(absolute=Position(x=7, y=0), button=None), Screenshot(frames.append), Quit()],
+    )
+
+    assert frames[0].text(ansi=False) == "7 "
+
+
+@component
+def own_width() -> Div:
+    width, set_width = use_state(3)
+    rects = use_rects()
+
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        set_width(5)
+
+    return Div(
+        style=size(width, 1),
+        children=(Text(content=f"{rects.border.width}"),),
+        on_input=on_input,
+    )
+
+
+async def test_the_renders_a_step_causes_happen_before_the_autopilot_takes_its_next_step() -> None:
+    frames: list[Frame] = []
+    await drive(own_width(), (6, 1), [KeyPressed(key="x"), Screenshot(frames.append), Quit()])
+
+    assert frames[0].text(ansi=False).strip() == "5"
 
 
 async def test_an_autopilot_waiting_for_a_condition_resumes_once_a_frame_shows_it() -> None:
@@ -293,3 +344,19 @@ async def test_a_wait_moves_a_frozen_clock_on_by_exactly_its_duration() -> None:
     )
 
     assert frames[0].text(ansi=False).strip() == "5"
+
+
+def test_paced_steps_have_a_pause_before_each_and_a_hold_after_the_last() -> None:
+    every, hold = timedelta(milliseconds=300), timedelta(seconds=5)
+
+    assert paced([KeyPressed(key="a"), KeyPressed(key="b")], every=every, hold=hold) == [
+        AdvanceClock(by=every),
+        KeyPressed(key="a"),
+        AdvanceClock(by=every),
+        KeyPressed(key="b"),
+        AdvanceClock(by=hold),
+    ]
+
+
+def test_paced_steps_hold_for_two_seconds_by_default() -> None:
+    assert paced([], every=timedelta(milliseconds=300))[-1] == AdvanceClock(by=timedelta(seconds=2))

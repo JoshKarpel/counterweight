@@ -1,5 +1,6 @@
 """
-The example markers in the docs (`<!-- example: module.py:section -->`) become the code they name.
+The example markers in the docs (`<!-- example: module.py:section -->`, or `<!-- example: module.py -->`)
+become the code they name.
 A line that only resembles a marker is an HTML comment that renders as nothing, so a test catches it instead.
 """
 
@@ -12,6 +13,7 @@ import pytest
 
 from mkdocs_hooks.examples import EXAMPLE
 from mkdocs_hooks.examples import include_examples
+from mkdocs_hooks.examples import read_example
 from mkdocs_hooks.examples import section
 
 DOCS = Path(__file__).parent.parent / "docs"
@@ -50,6 +52,25 @@ def test_marker_becomes_a_python_code_block_of_its_section() -> None:
             "Outro.",
             "",
         ]
+    )
+
+
+def test_marker_without_a_section_becomes_the_module_as_copied() -> None:
+    source = "\n".join(
+        [
+            "import x",
+            "# --8<-- [start:panes]",
+            "panes = 1",
+            "# --8<-- [end:panes]",
+            "# --8<-- [start:scenes]",
+            "STILLS = []",
+            "# --8<-- [end:scenes]",
+            "",
+        ]
+    )
+
+    assert include_examples("<!-- example: app.py -->\n", {"app.py": source}.__getitem__) == "\n".join(
+        ["```python", "import x", "panes = 1", "```", ""]
     )
 
 
@@ -122,4 +143,4 @@ def test_every_example_marker_has_the_syntax_the_hook_reads(page: Path) -> None:
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda page: str(page.relative_to(DOCS)))
 def test_every_example_marker_names_a_section_that_exists(page: Path) -> None:
-    include_examples(page.read_text(), lambda module: (DOCS / "examples" / module).read_text())
+    include_examples(page.read_text(), read_example)

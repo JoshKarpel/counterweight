@@ -16,15 +16,16 @@ The pages below it cover each part in detail:
 
 ## An example
 
-This counter counts up and down with the `+` and `-` keys, or with a click on its buttons:
+These light switches turn on and off with the `1`, `2` and `3` keys, or with a click:
 
 <!-- example: input_overview.py:example -->
 
-![The counter at 2, after three presses of + and a click on the - button](../assets/input-overview.svg)
+![All three lights on, after pressing 1 and 2 and clicking the porch's switch](../assets/input-overview.svg)
 
 The root component's element handles the keys,
-and each button handles its own clicks with [`on_click`](handlers.md#clicks).
-Here it counts up with `+` three times, clicks `-` once and `+` twice, then counts down with `-`:
+and each switch handles its own clicks with [`on_click`](handlers.md#clicks).
+Here it turns on the kitchen and the hall with `1` and `2`, clicks the porch on and the kitchen off,
+turns the hall off with `2`, and everything off with `0`:
 
 <!-- cast: input-overview -->
 
@@ -33,8 +34,8 @@ Here it counts up with `+` three times, clicks `-` once and `+` twice, then coun
 Each event has one **target** element, which depends on the kind of event:
 
 - A key press or a paste goes to the [focused](../hooks/use_focus.md) element,
-  or to the root component's element when nothing is focused, as it is in the counter.
-- A mouse event goes to the element drawn on top under the pointer, such as one of the counter's buttons.
+  or to the root component's element when nothing is focused, as it is in the switches.
+- A mouse event goes to the element drawn on top under the pointer, such as one of the switches.
 
 Counterweight calls the target's handler first, then its parent's, and so on up to the root component's element,
 until one returns something other than `None`.
@@ -48,7 +49,7 @@ including how a press and drag stay with the element they began on.
 
 A handler returns `None` for an event it doesn't handle, so the event bubbles on.
 Anything else stops the event:
-a [control](controls.md) for Counterweight to apply, such as `Quit()` for the counter's `q`,
+a [control](controls.md) for Counterweight to apply, such as the `FocusNext()` that [`tab_focus`](handlers.md#focus) returns for Tab,
 a tuple of controls, or `()` when there's nothing more to do than what the handler already did,
 such as setting state.
 

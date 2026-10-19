@@ -97,6 +97,8 @@ faulthandler_exit_on_timeout = true
 [tool.coverage.run]
 branch = true
 source = ["src/counterweight/", "tests/"]
+# Measures the Python programs tests run, such as `counterweight examples run` on a pseudo-terminal.
+patch = ["subprocess"]
 plugins = ["coverage_conditional_plugin"]
 
 # Each marker is ignored wherever its condition holds, so a line only one platform runs stays measured there.
@@ -115,6 +117,8 @@ sort = "-cover"
 fail_under = 100
 exclude_also = [
     "if TYPE_CHECKING:",
+    # An example's entry point, which the suite runs through the examples' CLI instead.
+    "if __name__ == .__main__.:",
     "@overload",
     "assert_never\\(",
     "case _ as unreachable:",
@@ -208,6 +212,12 @@ ignore = [
 
 allowed-confusables = ["╱"]  # the logo's line, a box-drawing character
 
+[tool.ruff.lint.per-file-ignores]
+"src/counterweight/examples/**" = [
+    "E402",  # each example's scenes, with the imports only they use, come after its code, so a copy can leave them out
+    "D415",  # the first line of an example's docstring is its title, which the catalog shows without a period
+]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"  # mkdocstrings' default docstring style
 
@@ -244,3 +254,5 @@ pytest_add_cli_args_test_selection = ["tests/"]
 pytest_add_cli_args = ["--ignore=tests/test_mkdocs_utility_tables.py"]
 # The type checker proves these lines unreachable, so every mutant of them survives.
 do_not_mutate_patterns = ["assert_never\\("]
+# A mutant in an example tests nothing about the library.
+do_not_mutate = ["src/counterweight/examples/*"]

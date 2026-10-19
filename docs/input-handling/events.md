@@ -105,7 +105,7 @@ a parent's `rects` are its own, and its `is_target` is `False`.
 In this example, every element on an event's path writes down whether it handles the event or passes it on,
 so each line of the log is one event's trip up the tree.
 Field A handles `a`, field B handles `b`, the panel around them handles `p`,
-and the root handles every key except Ctrl+C, and every press:
+and the root handles every typed character, and every press:
 
 <!-- example: input_events.py:routing -->
 

@@ -7,6 +7,7 @@ from asyncio import Queue
 from asyncio import QueueEmpty
 from asyncio import TaskGroup
 from asyncio import get_running_loop
+from asyncio import sleep
 from asyncio import timeout
 from collections import deque
 from collections.abc import Callable
@@ -217,6 +218,9 @@ async def app(
             and of [`Wait`][counterweight.autopilot.Wait] and [`WaitFor`][counterweight.autopilot.WaitFor],
             which hold the rest back until real time has passed or the screen shows something.
             This is primarily useful for testing or generating screenshots and recordings programmatically.
+            Each step is handled once the renders the last one caused are painted,
+            and the effects they started have run up to where each first waits on something,
+            as a person's next key press would be.
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
         check_purity: If `True`, check that components are pure: that their output depends only on their arguments
@@ -718,7 +722,13 @@ async def render_loop(
                     pending_scrolls.clear()
                     requested_focus = None
 
-                ap = pilot.next(loop.time(), frame=frame_on_screen)
+                # Neither putting to nor getting from a queue that has room or items suspends,
+                # so without this the effects the render started wouldn't run until the autopilot waited.
+                await sleep(0)
+
+                # The next step waits for the renders the last one caused, as a person's next key press would:
+                # the ones that what the render measured or the effects it started queued.
+                ap = pilot.next(loop.time(), frame=frame_on_screen) if event_queue.empty() else None
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)

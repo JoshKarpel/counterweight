@@ -236,6 +236,17 @@ async def test_a_focused_terminal_sends_its_program_key_presses_and_claims_them(
     assert (responses, sent) == ([(), (), ()], b"a\x1b[A\x03")
 
 
+async def test_a_terminal_lets_the_keys_it_skips_bubble_rather_than_sending_them() -> None:
+    terminals: list[EmbeddedTerminal] = []
+    async with mounted() as m:
+        await m.render(embed(reads(1), 60, 8, terminals, skips={Key.ControlRightBracket}))
+        await m.wait_until(shows(terminals, "ready"))
+        responses = [terminals[-1].on_input(KeyPressed(key=key), RECEIVER) for key in (Key.ControlRightBracket, "b")]
+        sent = await bytes_received(m, terminals, 1)
+
+    assert (responses, sent) == ([None, ()], b"b")
+
+
 async def test_a_terminal_sends_cursor_keys_as_its_program_asked() -> None:
     terminals: list[EmbeddedTerminal] = []
     async with mounted() as m:
@@ -392,6 +403,15 @@ async def test_a_terminal_runs_its_program_with_env_over_the_apps_environment_un
         await m.wait_until(shows(terminals, "given"))
 
     assert text(terminals[-1].screen)[0] == expected
+
+
+async def test_a_terminal_runs_its_program_in_cwd(directory: Path) -> None:
+    terminals: list[EmbeddedTerminal] = []
+    async with mounted() as m:
+        await m.render(embed(sh("pwd -P; echo done"), 200, 3, terminals, cwd=directory))
+        await m.wait_until(shows(terminals, "done"))
+
+    assert text(terminals[-1].screen)[0] == str(directory)
 
 
 async def test_a_terminal_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:

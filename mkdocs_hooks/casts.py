@@ -2,7 +2,7 @@
 Play a docs recording in a page, from a marker line.
 
 A page writes `<!-- cast: spinner -->` on its own line where the player goes,
-and `docs.examples.generate_screenshots` writes `docs/assets/spinner.cast` from a module's `CASTS`.
+and `docs.generate_screenshots` writes `docs/assets/spinner.cast` from a module's `DEMOS`.
 The marker becomes an element `docs/assets/casts.js` starts asciinema-player in,
 since the player is a script and Markdown can only hold the element it starts in.
 """

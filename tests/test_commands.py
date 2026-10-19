@@ -67,6 +67,7 @@ def runner(
     rows: int = 24,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     timeout: timedelta | None = None,
     max_lines: int = MAX_LINES,
     hangup_grace: timedelta = timedelta(seconds=TIMEOUT),
@@ -77,6 +78,7 @@ def runner(
             rows,
             env=env,
             clear_env=clear_env,
+            cwd=cwd,
             timeout=timeout,
             max_lines=max_lines,
             hangup_grace=hangup_grace,
@@ -213,6 +215,12 @@ async def test_a_programs_pager_prints_rather_than_waiting_for_keys(
     run = await run_to_end(sh('echo "$PAGER $GIT_PAGER"'), env=env)
 
     assert output_text(run.output) == expected
+
+
+async def test_a_run_runs_in_cwd(directory: Path) -> None:
+    run = await run_to_end(("pwd", "-P"), columns=200, cwd=directory)
+
+    assert output_text(run.output) == [str(directory)]
 
 
 async def test_a_run_with_clear_env_leaves_out_the_apps_environment(monkeypatch: pytest.MonkeyPatch) -> None:

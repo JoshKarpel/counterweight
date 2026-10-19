@@ -88,7 +88,7 @@ gives the screens the program showed, which a component reading the [clock](../h
 
 <!-- example: emulator_replay.py:replay -->
 
-Snapshots are values, so the screens are taken once, outside any component,
+Snapshots are values, so the screens are taken once, the first time they're needed, rather than in every render,
 and the component only picks the latest one whose time has come.
 This recording replays output in the style of vim's, written by hand rather than recorded from vim,
 as it opens a line, types into it, and saves:
@@ -97,8 +97,8 @@ as it opens a line, types into it, and saves:
 
 Notice that the emulator applies the cursor movement, colors and alternate screen in the output,
 so the replay shows the editor's screen rather than the bytes that draw it.
-The [embedded terminals](embedding.md#a-multiplexer) and [one-shot commands](commands.md#running-a-command) pages
-replay output the same way for their recordings, since a real program's output isn't the same on every run.
+The [embedded terminals](embedding.md#a-terminal-widget) and [one-shot commands](commands.md#running-a-command) pages
+replay output the same way for their screenshots and recordings, since a real program's output isn't the same on every run.
 
 ### Colors
 

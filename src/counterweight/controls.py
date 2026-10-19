@@ -303,10 +303,11 @@ class FocusNext(_Control):
     It does nothing if `within` has unmounted or holds no visible component in the focus order.
     """
 
-    within: Subtree | None = None
+    within: ElementHandle | Subtree | None = None
     """
     The element whose focusable descendants, and itself if it's focusable, focus moves among,
     usually the [`subtree`][counterweight.events.Receiver.subtree] of the handler's receiver,
+    or an element's handle, from code with no receiver, such as an effect,
     or `None` for the whole tree.
     """
 
@@ -319,10 +320,10 @@ class FocusPrevious(_Control):
     Otherwise it behaves like [`FocusNext`][counterweight.controls.FocusNext].
     """
 
-    within: Subtree | None = None
+    within: ElementHandle | Subtree | None = None
     """
     The element whose focusable descendants, and itself if it's focusable, focus moves among,
-    or `None` for the whole tree.
+    by its subtree or its handle, or `None` for the whole tree.
     """
 
 

@@ -6,11 +6,15 @@ and the steps that hold it back until real time has passed or the screen shows s
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Iterable
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import assert_never
 
+from more_itertools import intersperse
+
+from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
 from counterweight.output import Frame
@@ -126,9 +130,24 @@ class Autopilot:
                 assert_never(unreachable)
 
 
+def paced(
+    steps: Iterable[AutopilotStep], every: timedelta, hold: timedelta = timedelta(seconds=2)
+) -> list[AutopilotStep]:
+    """
+    `steps` with `every` passing before each one, as a person pauses between keys,
+    and `hold` after the last, so a recording that loops lingers on where it ends.
+    The pauses are [`AdvanceClock`][counterweight.controls.AdvanceClock]s,
+    so under a [`FrozenClock`][counterweight.clock.FrozenClock] they take no real time,
+    and a recording of them comes out the same on every run.
+    """
+    gap = AdvanceClock(by=every)
+    return [gap, *intersperse(gap, steps), AdvanceClock(by=hold)]
+
+
 __all__ = [
     "AutopilotStep",
     "AutopilotTimedOut",
     "Wait",
     "WaitFor",
+    "paced",
 ]

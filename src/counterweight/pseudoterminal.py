@@ -18,11 +18,14 @@ import struct
 import termios
 from asyncio import CancelledError
 from asyncio import Event
+from asyncio import Task
 from asyncio import create_subprocess_exec
+from asyncio import create_task
 from asyncio import get_running_loop
 from asyncio import shield
 from asyncio import sleep
 from asyncio import timeout as time_limit
+from asyncio import wait
 from asyncio import wait_for
 from asyncio.subprocess import DEVNULL
 from asyncio.subprocess import Process
@@ -34,6 +37,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import timedelta
+from pathlib import Path
 from typing import Literal
 from typing import overload
 
@@ -185,6 +189,7 @@ async def run_pty(
     on_start: Callable[[PtyConnection], None] = ...,
     env: Mapping[str, str] = ...,
     clear_env: bool = ...,
+    cwd: Path | None = ...,
     stdin: StandardInput = ...,
     hangup_grace: timedelta = ...,
     timeout: None = None,  # noqa: ASYNC109 (see the implementation)
@@ -200,6 +205,7 @@ async def run_pty(
     on_start: Callable[[PtyConnection], None] = ...,
     env: Mapping[str, str] = ...,
     clear_env: bool = ...,
+    cwd: Path | None = ...,
     stdin: StandardInput = ...,
     hangup_grace: timedelta = ...,
     timeout: timedelta | None = ...,  # noqa: ASYNC109 (see the implementation)
@@ -214,6 +220,7 @@ async def run_pty(
     on_start: Callable[[PtyConnection], None] = lambda connection: None,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     stdin: StandardInput = "pty",
     hangup_grace: timedelta = HANGUP_GRACE,
     # An `asyncio.timeout` around the call would also cut short reading the program's last output and hanging it up.
@@ -231,6 +238,7 @@ async def run_pty(
             The program gets the app's environment (unless `clear_env`), without `COLUMNS` and `LINES`,
             then `TERM=xterm-256color` and `COLORTERM=truecolor` over it, then `env` over those.
         clear_env: Leave out the app's environment, so the program gets only the terminal's variables and `env`.
+        cwd: The directory to run the program in, or `None` for the app's working directory.
         stdin: Where the program reads its standard input from.
         hangup_grace: How long the program has to exit after each signal that ends it (see below).
         timeout: How long the program may run before it's hung up and `TimedOut` is returned, or `None` for no limit.
@@ -251,23 +259,29 @@ async def run_pty(
     if not argv:
         return NO_PROGRAM
     master, slave = os.openpty()
-    try:
-        os.set_blocking(master, False)
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, window_size(columns, rows))
-        process = await create_subprocess_exec(
+    os.set_blocking(master, False)
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, window_size(columns, rows))
+    spawning = create_task(
+        create_subprocess_exec(
             *argv,
             stdin={"pty": slave, "devnull": DEVNULL}[stdin],
             stdout=slave,
             stderr=slave,
             env=program_environment({} if clear_env else os.environ, env),
+            cwd=cwd,
             start_new_session=True,
             preexec_fn=make_controlling_terminal,
         )
+    )
+    try:
+        # Shielded, since asyncio kills a program whose spawn is cancelled but leaves it unreaped if cancelled again.
+        process = await shield(spawning)
     except OSError as e:
         os.close(master)
         return FailedToStart(reason=e.strerror or repr(e))
     except BaseException:  # cancelled while spawning
         os.close(master)
+        await kill_once_spawned(spawning)
         raise
     finally:
         os.close(slave)
@@ -358,8 +372,34 @@ async def end_process_group(process: Process, grace: timedelta) -> None:
     except CancelledError:
         with suppress(*NOTHING_TO_SIGNAL):
             os.killpg(process.pid, signal.SIGKILL)
+        await finish(create_task(process.wait()))
         raise
     await process.wait()
+
+
+async def kill_once_spawned(spawning: Task[Process]) -> None:
+    """
+    Waits for the spawn of a program whose caller was cancelled to end, then kills and reaps the program
+    if it started, so a program started just as its caller was cancelled doesn't outlive the call.
+    """
+    with suppress(OSError):  # it failed to start, so there's nothing to kill
+        process = await finish(spawning)
+        with suppress(*NOTHING_TO_SIGNAL):
+            os.killpg(process.pid, signal.SIGKILL)
+        await finish(create_task(process.wait()))
+
+
+async def finish[T](task: Task[T]) -> T:
+    """
+    The result of `task`, waited for however many times the caller is cancelled meanwhile,
+    for work that must end before a cancelled caller does, such as reaping a program it killed.
+    The caller is cancelled still, so it raises its `CancelledError` once this returns.
+    """
+    while not task.done():
+        # `wait` raises none of the task's own errors, so a `CancelledError` out of it is aimed at the caller.
+        with suppress(CancelledError):
+            await wait([task])
+    return task.result()
 
 
 async def group_ended(group: int) -> None:
@@ -412,18 +452,19 @@ def use_pty(
     on_output: Callable[[bytes], None],
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     hangup_grace: timedelta = HANGUP_GRACE,
 ) -> Pty:
     """
     Runs `argv` on a pseudo-terminal while the calling component is mounted, as a terminal window does,
     with its terminal `columns` by `rows`, reading its standard input from the terminal.
-    See [`run_pty`][counterweight.pseudoterminal.run_pty] for `env`, `clear_env` and `hangup_grace`,
+    See [`run_pty`][counterweight.pseudoterminal.run_pty] for `env`, `clear_env`, `cwd` and `hangup_grace`,
     and for how the program is hung up when the component unmounts.
 
     The program starts once `columns` and `rows` are both positive, so a component that sizes the terminal
     from its own box with `use_rects`, which is zero on its first render, starts the program at its real size.
     Later changes to them resize the terminal, which sends the program `SIGWINCH`, except to a size that isn't positive.
-    A change to `argv`, `env` or `clear_env` hangs the program up and starts it again.
+    A change to `argv`, `env`, `clear_env` or `cwd` hangs the program up and starts it again.
     Hanging up goes on in the background, so a program slow to exit doesn't hold up the app's rendering,
     and an app that stops waits for it.
 
@@ -476,6 +517,7 @@ def use_pty(
                     on_start=start,
                     env=env,
                     clear_env=clear_env,
+                    cwd=cwd,
                     hangup_grace=hangup_grace,
                 )
             )
@@ -483,7 +525,7 @@ def use_pty(
             connection.current = None
         set_status(outcome)
 
-    use_effect(run, deps=(tuple(argv), env, clear_env))
+    use_effect(run, deps=(tuple(argv), env, clear_env, cwd))
 
     def write(data: bytes) -> None:
         if (c := connection.current) is not None:

@@ -10,8 +10,9 @@ This page covers both, and how they combine to record a demo that comes out the 
 
 ## Driving an app
 
-`app`'s `autopilot` is an iterable of events and controls, which the app handles in order, one per render,
-starting after its first frame.
+`app`'s `autopilot` is an iterable of events and controls, which the app handles in order, starting after its first frame.
+Each step waits for what the last one set off, as a person's next key press would:
+the renders it caused, and the effects those renders started, up to where each first waits on something.
 It doesn't quit the app when it runs out, so end it with `Quit()`.
 With `headless=True` the app neither reads the terminal nor draws on it,
 and `dimensions` gives it a screen size:
@@ -42,8 +43,9 @@ A [`FrozenClock`][counterweight.clock.FrozenClock] reads the same time until the
 with [`AdvanceClock`][counterweight.controls.AdvanceClock] or by [waiting](#waiting-for-real-work),
 so an autopilot can show a minute of a clock-driven app in milliseconds,
 and show the same thing on every run.
-To pace an autopilot, put an `AdvanceClock` between its steps with
-[`more_itertools.intersperse`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse):
+To pace an autopilot, put an `AdvanceClock` between its steps,
+as [`paced`][counterweight.autopilot.paced] does,
+which also holds on the last step, so a recording that loops lingers where it ends:
 
 ```python
 typed = [KeyPressed(key=character) for character in "mango"]
@@ -53,7 +55,7 @@ await app(
     headless=True,
     dimensions=(30, 8),
     clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
-    autopilot=[*intersperse(AdvanceClock(by=timedelta(milliseconds=300)), typed), Quit()],
+    autopilot=[*paced(typed, every=timedelta(milliseconds=300)), Quit()],
 )
 ```
 
@@ -66,7 +68,8 @@ though the autopilot ran in only as long as the app took to render:
 
 An autopilot runs ahead of anything the app does in the background,
 such as an effect waiting on a subprocess or a [command](terminals/commands.md),
-since it hands the app its next step as soon as the last one has rendered.
+since it hands the app its next step once the renders the last one caused are painted,
+not once the work they started is done.
 Two steps hold it back while the app keeps handling events and rendering:
 
 - [`WaitFor`][counterweight.autopilot.WaitFor] waits until a condition is true of the frame on screen,
@@ -159,5 +162,6 @@ Notice the chapters on the player's progress bar, one for each marker, which jum
 ::: counterweight.autopilot.Wait
 ::: counterweight.autopilot.WaitFor
 ::: counterweight.autopilot.AutopilotTimedOut
+::: counterweight.autopilot.paced
 ::: counterweight.asciicast.Recording
 ::: counterweight.asciicast.Theme

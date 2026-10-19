@@ -43,7 +43,7 @@ Where boxes overlap, the one with the higher `z` is drawn on top.
 Boxes with equal `z` are drawn in the order they appear in the tree, each parent before its children,
 and a box that sets no `z` counts as 0.
 
-<!-- example: z.py:example -->
+<!-- example: layout_z_order.py:example -->
 
 ![Z layers](../assets/z.svg)
 

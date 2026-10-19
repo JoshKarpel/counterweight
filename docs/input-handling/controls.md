@@ -24,7 +24,6 @@ Each key it binds returns a different control:
 - Escape returns `RestoreTitle()`, which puts back the title the window had before the app started.
 - Ctrl+O returns a [`Suspend`](../terminals/programs.md#editing-text-in-the-users-editor)
   that hands the terminal to the user's editor to edit the title in, and calls `edited` when the editor exits.
-- Ctrl+Q returns `Quit()`.
 
 The text field handles typing,
 and passes Enter, Escape and the Ctrl keys it doesn't edit with on to the `Div` around it.

@@ -547,9 +547,15 @@ async def test_an_interrupt_quits_the_app_after_a_suspension(
     assert replaced_interrupts == []
 
 
-def typing_root(keyboard: int, typed: bytes, pressed: list[KeyPressed], claims: bool) -> Component:
+def typing_root(
+    keyboard: int,
+    typed: bytes,
+    pressed: list[KeyPressed],
+    claims: bool,
+    is_ready: Callable[[], bool] = lambda: True,
+) -> Component:
     """
-    A root that types `typed` on `keyboard` after each frame, rather than before the app starts,
+    A root that types `typed` on `keyboard` after each frame once `is_ready`, rather than before the app starts,
     since the terminal acts on each key as it arrives, in the mode it's in then,
     and records each key pressed, claiming each one if `claims`, and quitting on Ctrl+C if it claims it.
     """
@@ -557,7 +563,8 @@ def typing_root(keyboard: int, typed: bytes, pressed: list[KeyPressed], claims: 
     @component
     def root() -> Text:
         async def type_keys() -> None:
-            os.write(keyboard, typed)
+            if is_ready():
+                os.write(keyboard, typed)
 
         use_effect(type_keys)
 
@@ -608,8 +615,7 @@ async def test_the_app_reads_raw_again_after_a_suspension(terminal: Terminal) ->
     def record_settings(streams: TerminalStreams) -> None:
         during.append(terminal.settings())
 
-    # The suspension cancels the first frame's effect before it starts, so the app types only once it has resumed.
-    root = typing_root(terminal.keyboard, b"\x03", pressed, claims=True)
+    root = typing_root(terminal.keyboard, b"\x03", pressed, claims=True, is_ready=lambda: bool(during))
 
     before = terminal.settings()
     await wait_for(

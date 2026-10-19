@@ -2,5 +2,5 @@
  │ Apples │ │ Pears │ │ Plums │ │ Empty │                   
  ╰────────╯ ╰───────╯ ╰───────╯ ╰───────╯                   
  Apples: 0 · Pears: 2 · Plums: 0                            
- Tab moves focus, Enter adds the focused fruit, q quits     
+ Tab moves focus, Enter adds the focused fruit, Backspace em
                                                             

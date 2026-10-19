@@ -84,7 +84,7 @@ Beyond Python and React's model, these set Counterweight apart from most of the 
 - **Other programs, inside and outside the app.**
   [Embedded terminals](terminals/embedding.md) run a shell, an editor or `htop` in a box,
   with a pseudo-terminal, a real terminal emulator (libghostty) and input encoding built in:
-  enough to build a [terminal multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py).
+  enough to build a [terminal multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py).
   [One-shot commands](terminals/commands.md) show a command's output as it runs,
   and an app can [hand its terminal to a program](terminals/programs.md), such as the user's editor, and take it back.
 - **Apps that run the same way every time.**
@@ -285,8 +285,7 @@ and its [rich text](rich-text/markdown.md) renders Markdown and highlighted code
 Tables, trees, menus, tabs, checkboxes, progress bars and dialogs you build from elements, layout, styles and hooks,
 as these do:
 
-- A table that sorts by the column you click:
-  the [table](https://github.com/JoshKarpel/counterweight/blob/main/examples/table.py) example.
+- A table that sorts by the column you click: [Sortable tables](cookbook/sortable-tables.md).
 - A menu that opens over the content below a text input: [Autocomplete](cookbook/autocomplete.md).
 - A dialog that keeps focus within itself while it's open:
   [`use_focus`](hooks/use_focus.md#moving-focus-within-part-of-the-tree).

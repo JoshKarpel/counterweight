@@ -27,6 +27,12 @@ from counterweight.events import InputEvent
 from counterweight.events import InputHandler
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.examples.snippets import performance_process_table
+from counterweight.examples.snippets import performance_state
+from counterweight.examples.snippets.performance_process_table import PROCESSES
+from counterweight.examples.snippets.performance_process_table import Process
+from counterweight.examples.snippets.performance_process_table import process_row
+from counterweight.examples.snippets.performance_process_table import process_table
 from counterweight.focus import Subtree
 from counterweight.hooks import Setter
 from counterweight.hooks import use_memo
@@ -43,13 +49,6 @@ from counterweight.shadow import ShadowNode
 from counterweight.shadow import ShadowTree
 from counterweight.shadow import ShadowUpdate
 from counterweight.shadow import update_shadow
-from docs.examples import performance_process_table
-from docs.examples import performance_state_in_root
-from docs.examples import performance_state_moved_down
-from docs.examples.performance_process_table import PROCESSES
-from docs.examples.performance_process_table import Process
-from docs.examples.performance_process_table import process_row
-from docs.examples.performance_process_table import process_table
 from tests.devlog import devlog_lines
 from tests.rendering import state_set_keys
 from tests.rendering import state_sets
@@ -129,14 +128,14 @@ def press(node: ShadowNode, key: str) -> None:
     ("root", "holder", "expected"),
     [
         pytest.param(
-            performance_state_in_root.dashboard(),
-            performance_state_in_root.dashboard,
-            ["dashboard", *["metric_card"] * 4],
+            performance_state.busy_dashboard(),
+            performance_state.busy_dashboard,
+            ["busy_dashboard", *["metric_card"] * 4],
             id="state-in-root",
         ),
         pytest.param(
-            performance_state_moved_down.dashboard(),
-            performance_state_moved_down.note,
+            performance_state.dashboard(),
+            performance_state.note,
             ["note"],
             id="state-moved-down",
         ),
