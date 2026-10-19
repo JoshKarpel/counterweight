@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import assert_never
@@ -18,6 +19,7 @@ from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.graphemes import graphemes
+from counterweight.input_parsing import CONTROL_KEYS
 from counterweight.keys import Key
 from counterweight.output import Frame
 
@@ -69,8 +71,17 @@ class AutopilotTimedOut(Exception):
 AutopilotStep = AnyEvent | AnyControl | Wait | WaitFor
 """What an autopilot feeds an app: events, controls, and the steps that wait."""
 
-TYPED_KEYS = {"\n": Key.Enter, "\t": Key.Tab}
-"""The keys `typed` presses for the characters that aren't printed, as a terminal sends them."""
+TYPED_KEYS: Mapping[str, Key] = {
+    **{chr(byte): key for byte, key in CONTROL_KEYS.items()},
+    "\x1b": Key.Escape,
+    "\n": Key.Enter,
+    "\r\n": Key.Enter,
+}
+"""
+The keys `typed` presses for the characters that aren't printed, as a terminal sends them:
+each control character's key, Escape for an escape character,
+and Enter for a newline, alone or after a carriage return (one grapheme cluster).
+"""
 
 
 @overload
@@ -82,9 +93,10 @@ def typed(text: str, pause: AutopilotStep) -> list[AutopilotStep]: ...
 
 
 def typed(text: str, pause: AutopilotStep | None = None) -> list[KeyPressed] | list[AutopilotStep]:
-    """
+    r"""
     The key presses that type `text`, one per grapheme cluster, as Playwright's `keyboard.type` does,
-    with a newline pressing Enter and a tab pressing Tab.
+    with a newline (`"\n"` or `"\r\n"`) pressing Enter,
+    and any other control character pressing the key a terminal sends it as, such as Tab for a tab.
 
     Parameters:
         pause: A step to take after each key, such as a [`Wait`][counterweight.autopilot.Wait],

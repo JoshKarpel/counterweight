@@ -29,7 +29,8 @@ Giving the component a new key, which remounts it, starts it again too.
 <!-- cast: animation-progress -->
 
 Once it reaches 1, it stops reading the clock,
-so a finished animation costs nothing, and never re-runs its component.
+so a finished animation re-runs its component only once more, at the next frame,
+and costs nothing after that.
 A `duration` of zero is at 1 at once, so a component can skip its animation,
 as a thumbnail that shows only the last frame would.
 
@@ -77,12 +78,14 @@ fold the loop's progress in half:
 
 ![A dot partway along its track](../assets/animation-loop.svg)
 
-With `is_playing=False`, the loop stops reading the clock and holds where it is,
-at 0 if it has never played.
+With `is_playing=False`, the loop stops reading the clock and holds where it is.
 Unlike a paused CSS animation, it doesn't resume from where it stopped:
 it carries on from wherever the time since it started puts it,
 so the dot here jumps ahead when it plays again.
 Like `use_progress`, it starts again from 0 whenever one of its `deps` changes.
+A loop that starts while it isn't playing, as it mounts or as its `deps` change,
+holds at 0 and starts when it plays,
+as a CSS animation that starts paused does.
 
 <!-- cast: animation-loop -->
 

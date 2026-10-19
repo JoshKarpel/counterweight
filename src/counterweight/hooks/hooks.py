@@ -176,7 +176,8 @@ def use_progress(duration: timedelta, deps: tuple[object, ...] = (), *, interval
             It starts when the component mounts, and again whenever any of them change (compared with `==`),
             as `use_effect` runs again, so a component that stays mounted can play it more than once.
         interval: How often it reads the clock while it moves.
-            Once it reaches 1 it stops reading the clock, so a finished animation never re-runs its component.
+            Once it reaches 1 it stops reading the clock, so a finished animation re-runs its component
+            only once more, at the next `interval`, and never after that.
 
     Raises:
         ValueError: If `duration` is negative.
@@ -209,8 +210,10 @@ def use_loop(
         period: How long one time through the animation takes.
         deps: The values the animation depends on.
             It starts when the component mounts, and again from 0 whenever any of them change (compared with `==`).
-        is_playing: Whether it moves. While it doesn't, it stops reading the clock, holding where it is:
-            at 0, if it has never played. Unlike a paused CSS animation, it doesn't resume from there:
+        is_playing: Whether it moves. While it doesn't, it stops reading the clock, holding where it is.
+            One that starts while it isn't playing, as it mounts or as its `deps` change, holds at 0
+            and starts when it plays.
+            Unlike a paused CSS animation, one paused partway doesn't resume from there:
             it carries on from wherever the time since it started puts it.
         interval: How often it reads the clock while it plays.
 
@@ -223,7 +226,14 @@ def use_loop(
     started: Ref[AnimationStart | None] = use_ref(None)
     previous = started.current
     tick = use_clock(interval if is_playing else None)
-    at = tick.since_start if previous is None or previous.deps != deps else previous.at
+    if previous is not None and previous.deps == deps:
+        at = previous.at
+    elif is_playing:
+        at = tick.since_start
+    else:
+        # A paused clock's reading is stale, so a start waits for the fresh one the clock takes when it plays.
+        started.current = None
+        return 0.0
     started.current = AnimationStart(deps=deps, at=at)
     return ((tick.since_start - at) % period) / period
 

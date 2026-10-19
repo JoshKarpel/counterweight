@@ -69,6 +69,10 @@ class Choice:
     def titles(self) -> frozenset[str]:
         return frozenset(section.title for section in self.sections if section.title is not None)
 
+    def option_for(self, name: str) -> str:
+        """The option choosing `name` picks: for a bar, the newest of its section, which it lists last."""
+        return next((section.options[-1] for section in self.sections if section.title == name), name)
+
 
 # Choosing a bar chooses the newest of its section, as `uv python install pypy` does.
 PYTHON = Choice(
@@ -204,6 +208,9 @@ def settings() -> Div:
     picking, set_picking = use_state(nothing_picked)
     chosen = {PYTHON: (python, set_python), INDEX: (index, set_index)}
 
+    def choose(choice: Choice, name: str) -> None:
+        chosen[choice][1](choice.option_for(name))
+
     def open_picker(choice: Choice) -> tuple[AnyControl, ...]:
         opening = Picking(choice)
         set_picking(opening)
@@ -230,7 +237,10 @@ def settings() -> Div:
                 if picking is None
                 else (
                     picker(
-                        picking, chosen[picking.choice][0], chosen[picking.choice][1], partial(set_picking, None)
+                        picking,
+                        chosen[picking.choice][0],
+                        partial(choose, picking.choice),
+                        partial(set_picking, None),
                     ).with_key(picking.choice.label),
                 )
             ),

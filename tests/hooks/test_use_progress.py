@@ -84,7 +84,15 @@ def test_progress_holds_at_one_once_its_duration_has_passed() -> None:
     assert renders.at(progress(), 3) == "1"
 
 
-def test_finished_progress_stops_reading_the_clock() -> None:
+def test_progress_reads_the_clock_once_more_in_the_render_it_finishes() -> None:
+    renders = Renders()
+    renders.at(progress(), 0)
+    renders.at(progress(), 3)
+
+    assert renders.until_due(3.01) == timedelta(milliseconds=40)
+
+
+def test_finished_progress_stops_reading_the_clock_after_its_last_reading() -> None:
     renders = Renders()
     root = progress()
     for seconds in (0, 3, 3.05):
@@ -152,6 +160,35 @@ def test_a_loop_starts_again_when_its_deps_change() -> None:
     renders.at(loop(deps=(1,)), 2.1)
 
     assert (renders.at(loop(deps=(2,)), 2.25), renders.at(loop(deps=(2,)), 2.5)) == ("0", "0.25")
+
+
+def test_a_loop_mounted_paused_starts_from_zero_when_it_plays() -> None:
+    renders = Renders()
+    renders.at(loop(is_playing=False), 0)
+
+    assert (renders.at(loop(), 2.5), renders.at(loop(), 2.75)) == ("0", "0.25")
+
+
+def test_a_loop_restarted_while_paused_holds_at_zero_and_starts_when_it_plays() -> None:
+    renders = Renders()
+    renders.at(loop(deps=(1,)), 0)
+    renders.at(loop(deps=(1,), is_playing=False), 0.25)
+
+    assert (
+        renders.at(loop(deps=(2,), is_playing=False), 1.5),
+        renders.at(loop(deps=(2,)), 3.5),
+        renders.at(loop(deps=(2,)), 3.75),
+    ) == ("0", "0", "0.25")
+
+
+def test_a_loop_whose_deps_change_and_change_back_while_paused_starts_again() -> None:
+    renders = Renders()
+    renders.at(loop(deps=(1,)), 0)
+    renders.at(loop(deps=(1,), is_playing=False), 0.25)
+    renders.at(loop(deps=(2,), is_playing=False), 0.5)
+    renders.at(loop(deps=(1,), is_playing=False), 0.75)
+
+    assert renders.at(loop(deps=(1,)), 1.5) == "0"
 
 
 @pytest.mark.parametrize("period", [timedelta(), timedelta(seconds=-1)], ids=["zero", "negative"])

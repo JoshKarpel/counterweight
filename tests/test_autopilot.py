@@ -312,6 +312,15 @@ def test_typed_presses_enter_for_a_newline_and_tab_for_a_tab() -> None:
     assert typed("a\n\t") == [KeyPressed(key="a"), KeyPressed(key=Key.Enter), KeyPressed(key=Key.Tab)]
 
 
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [("\r\n", Key.Enter), ("\r", Key.Enter), ("\x7f", Key.Backspace), ("\x03", Key.ControlC), ("\x1b", Key.Escape)],
+    ids=["crlf", "carriage-return", "delete", "ctrl-c", "escape"],
+)
+def test_typed_presses_the_key_a_terminal_sends_a_control_character_as(text: str, key: Key) -> None:
+    assert typed(f"a{text}") == [KeyPressed(key="a"), KeyPressed(key=key)]
+
+
 def test_typed_takes_its_pause_after_each_key() -> None:
     pause = Wait(timedelta(milliseconds=90))
 

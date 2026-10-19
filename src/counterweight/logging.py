@@ -7,6 +7,9 @@ at read time, so the render loop pays for one encoding per record rather than on
 
 import json
 import logging
+from asyncio import Future
+from asyncio import get_running_loop
+from asyncio import shield
 from asyncio import sleep
 from collections.abc import AsyncIterator
 from collections.abc import Awaitable
@@ -53,13 +56,17 @@ def app_log_levels(app_module: str, overrides: Mapping[str, int]) -> frozendict[
 
 @dataclass(slots=True)
 class SharedDevlog:
-    """An open devlog, and how many `devlog` blocks are capturing into it, the last of which closes it."""
+    """
+    An open devlog, and how many `devlog` blocks are capturing into it, the last of which closes it.
+    `opened` resolves once the block that opens it has, to whether it could.
+    """
 
     exits: AsyncExitStack
+    opened: Future[bool]
     users: int = 1
 
 
-# The devlogs open in this process, by path. The devlog is process-wide by nature (a file, and the root logger),
+# The devlogs open in this process, by resolved path. The devlog is process-wide by nature (a file, and the root logger),
 # so this is where a block finds the one another block has open, rather than opening the file again.
 OPEN_DEVLOGS: dict[Path, SharedDevlog] = {}
 
@@ -80,25 +87,50 @@ async def devlog(path: Path = DEVLOG_FILE, levels: Mapping[str, int] = BASE_LOG_
     and the last one to exit closes it,
     so an app run inside another one, such as a headless render in a handler, doesn't truncate the other's devlog.
     """
-    shared = OPEN_DEVLOGS.get(path)
-    if shared is None:
-        # Registered before opening, so a block entered while this one opens it joins it.
-        shared = OPEN_DEVLOGS[path] = SharedDevlog(exits=AsyncExitStack())
-        try:
-            await shared.exits.enter_async_context(capturing(path, levels))
-        except BaseException:
-            del OPEN_DEVLOGS[path]
-            raise
-    else:
-        shared.users += 1
-
+    # Resolved, so a relative and an absolute spelling of one file share it rather than both truncating it.
+    file = path.resolve()  # noqa: ASYNC240 (once, before the file it names is opened with blocking calls anyway)
+    shared = await joined(file, levels)
     try:
         yield
     finally:
-        shared.users -= 1
-        if shared.users == 0:
-            del OPEN_DEVLOGS[path]
-            await shared.exits.aclose()
+        await left(file, shared)
+
+
+async def joined(file: Path, levels: Mapping[str, int]) -> SharedDevlog:
+    """
+    The devlog open on `file`, counting the caller as one of its users, opened at `levels` if none is.
+    A caller that finds another still opening it waits until it has, and opens it itself if that failed,
+    so it starts capturing, or raises its own error, as it would have opening the devlog alone.
+    """
+    while (shared := OPEN_DEVLOGS.get(file)) is not None:
+        # Counted before waiting, so the block opening it can't close it before this one resumes.
+        shared.users += 1
+        try:
+            # Shielded, so cancelling this caller doesn't cancel the future the opening block resolves.
+            if await shield(shared.opened):
+                return shared
+        except BaseException:
+            await left(file, shared)
+            raise
+
+    # Registered before opening, so a block entered while this one opens it waits for it.
+    shared = OPEN_DEVLOGS[file] = SharedDevlog(exits=AsyncExitStack(), opened=get_running_loop().create_future())
+    try:
+        await shared.exits.enter_async_context(capturing(file, levels))
+    except BaseException:
+        del OPEN_DEVLOGS[file]
+        shared.opened.set_result(False)
+        raise
+    shared.opened.set_result(True)
+    return shared
+
+
+async def left(file: Path, shared: SharedDevlog) -> None:
+    """Stop counting a caller as one of `shared`'s users, closing it if that was the last."""
+    shared.users -= 1
+    if shared.users == 0:
+        del OPEN_DEVLOGS[file]
+        await shared.exits.aclose()
 
 
 @asynccontextmanager

@@ -218,7 +218,8 @@
   and `use_loop(period, deps)`, which repeats every `period` and pauses with `is_playing=False`,
   as one whose iteration count is `infinite`.
   Both read the clock every `FRAME_INTERVAL` (20 frames a second) while they move, unless given an `interval`,
-  and stop reading it while they don't, so a finished or paused animation never re-runs its component.
+  and stop reading it while they don't, so a paused animation never re-runs its component,
+  and a finished one only once more.
   `counterweight.animation` holds CSS's easing functions, to shape how an animation moves:
   `linear` and `piecewise_linear` (CSS's `linear()`), `cubic_bezier` and the curves CSS names
   (`ease`, `ease_in`, `ease_out`, `ease_in_out`), and `steps`, `step_start` and `step_end`,
