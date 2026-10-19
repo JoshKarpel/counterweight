@@ -20,6 +20,7 @@ Code outside a handler, such as an effect, sends controls with [`use_controls`](
 ::: counterweight.controls.Bell
 ::: counterweight.controls.SetTitle
 ::: counterweight.controls.RestoreTitle
+::: counterweight.controls.CopyToClipboard
 ::: counterweight.controls.Screenshot
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend

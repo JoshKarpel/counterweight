@@ -10,6 +10,7 @@ from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import Bell
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import Quit
 from counterweight.controls import RestoreTitle
 from counterweight.controls import Screenshot
@@ -183,8 +184,8 @@ async def test_app_raises_simultaneous_errors_in_an_exception_group() -> None:
 
 @pytest.mark.parametrize(
     "controls",
-    [[Bell()], [SetTitle(title="hi")], [SetTitle(title="hi"), RestoreTitle()]],
-    ids=["bell", "title", "restored-title"],
+    [[Bell()], [SetTitle(title="hi")], [SetTitle(title="hi"), RestoreTitle()], [CopyToClipboard(text="hi")]],
+    ids=["bell", "title", "restored-title", "copy"],
 )
 async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_the_terminal(
     controls: list[AnyControl],
