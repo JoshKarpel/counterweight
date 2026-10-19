@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import timedelta
 
 from counterweight.app import app
+from counterweight.autopilot import typed
 from counterweight.components import component
 from counterweight.controls import ScrollBy
 from counterweight.elements import Chunk
@@ -172,10 +173,6 @@ def amber_sign_up() -> Div:
 
 
 # --8<-- [end:styles]
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
 
 
 TAB = KeyPressed(key=Key.Tab)

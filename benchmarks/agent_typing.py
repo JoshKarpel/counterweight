@@ -19,6 +19,7 @@ from benchmarks.agent import header
 from benchmarks.agent import message_view
 from benchmarks.agent import spinner
 from benchmarks.agent import transcript
+from counterweight.autopilot import typed
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.events import InputEvent
@@ -74,10 +75,6 @@ def prompt() -> Div:
             ),
         ),
     )
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
 
 
 BACKSPACE = KeyPressed(key=Key.Backspace)

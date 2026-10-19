@@ -23,6 +23,7 @@ from counterweight._utils import flyweight
 from counterweight._utils import halve_integer
 from counterweight.elements import AnyElement
 from counterweight.elements import Canvas
+from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
@@ -37,10 +38,12 @@ from counterweight.layout import Lines
 from counterweight.layout import cells_width
 from counterweight.layout import child_clip
 from counterweight.layout import clipped_axes
+from counterweight.painters.frames import PaintView
 from counterweight.styles.styles import CELL_STYLE_DEFAULTS
 from counterweight.styles.styles import UNSET
 from counterweight.styles.styles import AnyColor
 from counterweight.styles.styles import BorderKind
+from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
 from counterweight.styles.styles import JoinedBorderKind
 from counterweight.styles.styles import JoinedBorderParts
@@ -211,6 +214,76 @@ class Paint:
     def copy(self) -> Paint:
         """A paint with the same cells, which changing this one doesn't affect."""
         return Paint(self.width, self.height, list(self.cells))
+
+    def cells_in(self, region: Region | None = None) -> tuple[tuple[Cell, ...], ...]:
+        """
+        The cells inside `region`, or the whole paint's if it's `None`, row by row,
+        as a value that changing the paint doesn't change.
+        Any part of `region` off the paint, as after the screen shrinks, is [`BLANK`][counterweight.paint.BLANK].
+        A two-cell-wide cluster that straddles the region's edge keeps only its half inside,
+        which [`rows_of`][counterweight.paint.rows_of] draws as a space.
+        """
+        region = self.bounds if region is None else region
+        return tuple(
+            tuple(
+                BLANK if (cell := self.get(Position(x, y))) is None else cell for x in range(region.left, region.right)
+            )
+            for y in range(region.top, region.bottom)
+        )
+
+    def as_painter(self, region: Region | None = None) -> PaintView:
+        """
+        A [`Canvas`][counterweight.elements.Canvas] painter that draws the cells inside `region`,
+        or the whole paint if it's `None`, as they are now: a picture of part of a screenshot's frame, say.
+        Build it once, rather than in every render, since a canvas compares it with the last one it drew.
+        """
+        region = self.bounds if region is None else region
+        return PaintView(rows=rows_of(self.cells_in(region)), width=region.width)
+
+
+@lru_cache(maxsize=2**14)
+def styled_grapheme(cell: Cell) -> StyledGrapheme:
+    """`cell` as a canvas draws it: its grapheme, in its style with every field set."""
+    style = cell.style
+    return StyledGrapheme(
+        grapheme=cell.grapheme,
+        style=CellStyle(
+            foreground=style.foreground,
+            background=style.background,
+            bold=style.bold,
+            dim=style.dim,
+            italic=style.italic,
+            underline=style.underline,
+            strikethrough=style.strikethrough,
+            link=style.link,
+        ),
+    )
+
+
+def rows_of(cells: Iterable[Sequence[Cell]]) -> Rows:
+    """
+    `cells`, row by row, as a [`Canvas`][counterweight.elements.Canvas] painter's rows,
+    such as cells taken from a paint with [`cells_in`][counterweight.paint.Paint.cells_in],
+    or put together from several.
+    A two-cell-wide cluster followed by its continuation cell is drawn as one,
+    and either half of one whose other half isn't beside it is a space in its style, as a terminal leaves it.
+    """
+    return tuple(styled_row(row) for row in cells)
+
+
+def styled_row(row: Sequence[Cell]) -> tuple[StyledGrapheme, ...]:
+    """One row of `rows_of`."""
+    drawn: list[StyledGrapheme] = []
+    for x, cell in enumerate(row):
+        if cell.is_continuation:
+            if x == 0 or styled_grapheme(row[x - 1]).width != 2:
+                drawn.append(styled_grapheme(cell.erased()))
+            continue
+        styled = styled_grapheme(cell)
+        if styled.width == 2 and not (x + 1 < len(row) and row[x + 1].is_continuation):
+            styled = styled_grapheme(cell.erased())
+        drawn.append(styled)
+    return tuple(drawn)
 
 
 CellMap = dict[Position, Cell]

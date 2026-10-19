@@ -29,7 +29,9 @@ each escaped with `glob.escape`, so a typed `[` or `?` matches itself rather tha
 It lowercases both sides and compares them with `fnmatchcase`,
 since `fnmatch` folds case only where `os.path.normcase` does, which is on Windows alone.
 
-The list shows every match, in the order of the candidates.
+The list shows every match, in the order of the candidates,
+except that the one the text names exactly comes first,
+so typing a whole name and pressing Enter chooses it, even when it's also part of a longer name above it.
 
 ## The list
 
@@ -133,3 +135,62 @@ The list only opens once something has been typed, by which time the field and t
 Choosing a package with Down and Enter, then tabbing to the recipe field, whose list opens upward:
 
 <!-- cast: autocomplete -->
+
+## Opening a picker with a key
+
+A picker is the same field and list, opened by a key over the corner of the screen,
+as a command palette or VS Code's quick pick is,
+to choose one of a few settings and close again.
+Here F2 picks the Python and F3 the package index:
+
+<!-- example: picker.py:settings -->
+
+![The Python picker open over the corner, with the current version marked and highlighted](../assets/picker-open.svg)
+
+The picker draws the same field as above, with `use_text_input`,
+and narrows its list with the same `matches`, which lists everything while nothing is typed.
+It opens with the current choice marked and highlighted, and choosing one, or Escape, closes it.
+
+<!-- example: picker.py:picker -->
+
+### Sections
+
+The options can come in sections, each under a bar naming it.
+A bar is listed and chosen as an option is, by its title, so typing narrows to it as well,
+and whatever handles the choice decides what choosing it means:
+here a bar chooses its section's newest version, as `uv python install pypy` does.
+
+<!-- example: picker.py:sections -->
+
+![Typing pypy narrows the list to the PyPy bar and its versions](../assets/picker-typed.svg)
+
+### Focus
+
+Nothing has focus before the picker opens, so `use_text_input`'s `auto_focus` would take it,
+but a picker opened while another is open has to take focus from that one, and `auto_focus` takes it from nothing.
+So the key that opens a picker returns [`FocusOn`][counterweight.controls.FocusOn] for its field's
+[`FocusHandle`][counterweight.focus.FocusHandle],
+with a [`ScrollIntoView`](../layout/scrolling.md#scrolling-an-element-into-view) for the highlighted option,
+which can start past the rows the list shows.
+Returned with the state change that opens the picker, both apply to the frame it opens in.
+Choosing, or Escape, returns [`ClearFocus`][counterweight.controls.ClearFocus],
+so the keys go back to the screen behind it.
+
+### A handle for each opening
+
+The handles belong to one opening of a picker, a `Picking`, not to the screen,
+and each `Picking` makes its own:
+
+<!-- example: picker.py:picking -->
+
+Pressing F3 while the Python picker is open opens the index picker in the frame the Python picker closes in.
+A `FocusOn` names its target by handle, and resolves as soon as it's handled, against the frame on screen.
+With one handle shared by every opening, that's still the Python picker's field,
+so focus would go there, then leave with the field as it unmounts, and the index picker would open without focus.
+With a handle of its own, the index picker's field isn't on screen yet, so the `FocusOn` waits for the render that mounts it:
+
+![The index picker, opened from the Python picker, narrowed by what was typed into it](../assets/picker-switched.svg)
+
+Choosing a Python version, a bar, then switching pickers with F3:
+
+<!-- cast: picker -->

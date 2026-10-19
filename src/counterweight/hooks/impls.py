@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from asyncio import Queue
 from asyncio import Task
 from collections.abc import Iterator
 from copy import copy
@@ -20,6 +21,7 @@ from counterweight.clock import Instant
 from counterweight.clock import tick_index
 from counterweight.clock import until_next_tick
 from counterweight.equivalence import equivalent
+from counterweight.events import AnyEvent
 from counterweight.events import StateSet
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
@@ -61,6 +63,8 @@ class UseState:
     value: object
     mount_status: MountStatus
     node_key: NodeKey
+    # The queue of the app the state was made in, so its setter reaches that app wherever it's called from.
+    queue: Queue[AnyEvent]
     setter: Setter[object] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -83,7 +87,7 @@ class UseState:
 
         if self.value != value:  # avoid unnecessary updates
             self.value = value
-            current_event_queue.get().put_nowait(StateSet(key=self.node_key))
+            self.queue.put_nowait(StateSet(key=self.node_key))
 
 
 @dataclass(slots=True)
@@ -129,16 +133,23 @@ class UseClock:
     so re-running it again within a tick, as `check_purity` does, returns the same `Tick`.
     """
 
-    interval: timedelta
+    interval: timedelta | None
     mounted: Instant
     current: Instant
 
     def is_due(self, instant: Instant) -> bool:
-        """Whether `instant` falls in a different tick from the current reading, so the node takes a new one."""
+        """
+        Whether `instant` falls in a different tick from the current reading, so the node takes a new one,
+        which it never is while its interval is `None`.
+        """
+        if self.interval is None:
+            return False
         return tick_index(instant.wall, self.interval) != tick_index(self.current.wall, self.interval)
 
-    def until_due(self, instant: Instant) -> timedelta:
-        """How long after `instant` the node is due a new reading."""
+    def until_due(self, instant: Instant) -> timedelta | None:
+        """How long after `instant` the node is due a new reading, or `None` while its interval is."""
+        if self.interval is None:
+            return None
         return timedelta() if self.is_due(instant) else until_next_tick(instant.wall, self.interval)
 
     @property
@@ -246,6 +257,7 @@ class Hooks:
                 value=initial_value() if callable(initial_value) else initial_value,
                 mount_status=self.mount_status,
                 node_key=self.key,
+                queue=current_event_queue.get(),
             )
             self.data.append(hook)
 
@@ -356,7 +368,7 @@ class Hooks:
 
         return hook.value  # type: ignore[return-value]
 
-    def use_clock(self, interval: timedelta, instant: Instant) -> Tick:
+    def use_clock(self, interval: timedelta | None, instant: Instant) -> Tick:
         try:
             hook = self.data[current_hook_idx.get()]
             if not isinstance(hook, UseClock):
@@ -368,8 +380,9 @@ class Hooks:
             self.data.append(hook)
             self.clocks.append(hook)
         else:
+            is_resuming = hook.interval is None and interval is not None
             hook.interval = interval
-            if hook.is_due(instant):
+            if is_resuming or hook.is_due(instant):
                 hook.current = instant
 
         current_hook_idx.set(current_hook_idx.get() + 1)

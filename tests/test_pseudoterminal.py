@@ -5,8 +5,12 @@ import signal
 import sys
 from asyncio import CancelledError
 from asyncio import Event
+from asyncio import Future
+from asyncio import Task
+from asyncio import TaskGroup
 from asyncio import create_subprocess_exec
 from asyncio import create_task
+from asyncio import current_task
 from asyncio import get_running_loop
 from asyncio import sleep
 from asyncio import wait_for
@@ -40,6 +44,7 @@ from counterweight.pseudoterminal import has_members
 from counterweight.pseudoterminal import program_environment
 from counterweight.pseudoterminal import read_output
 from counterweight.pseudoterminal import run_pty
+from counterweight.pseudoterminal import tear_down_in_background
 from counterweight.pseudoterminal import use_pty
 from tests.rendering import TIMEOUT
 from tests.rendering import mounted
@@ -790,3 +795,29 @@ async def test_cancelling_the_end_of_a_process_group_partway_kills_it_at_once() 
         await task
     await wait_for(process.communicate(), TIMEOUT)
     assert process.returncode == -signal.SIGKILL
+
+
+async def test_tear_down_in_background_lets_a_run_its_task_group_cancelled_first_finish_tearing_down() -> None:
+    started: Future[Task[None]] = get_running_loop().create_future()
+    is_torn_down = False
+
+    async def run() -> None:
+        nonlocal is_torn_down
+        task = current_task()
+        assert task is not None
+        started.set_result(task)
+        try:
+            await Event().wait()
+        finally:
+            await sleep(0)
+            is_torn_down = True
+
+    async with TaskGroup() as group:
+        caller = group.create_task(tear_down_in_background(group, run()))
+        run_task = await wait_for(started, TIMEOUT)
+
+        # The order a stopping app's task group can cancel them in.
+        run_task.cancel()
+        caller.cancel()
+
+    assert is_torn_down

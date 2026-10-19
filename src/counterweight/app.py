@@ -14,6 +14,7 @@ from collections.abc import Collection
 from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
+from contextlib import AbstractContextManager
 from datetime import timedelta
 from itertools import chain
 from signal import SIG_DFL
@@ -28,9 +29,7 @@ from weakref import WeakSet
 
 import waxy
 
-from counterweight._context_vars import current_event_queue
-from counterweight._context_vars import current_task_group
-from counterweight._context_vars import current_use_mouse_listeners
+from counterweight._context_vars import app_scope
 from counterweight._utils import cancel_tasks
 from counterweight._utils import drain_queue
 from counterweight._utils import maybe_await
@@ -246,6 +245,8 @@ async def app(
             of the module that defines `root`'s function (`__main__` for an app run as a script).
             Pass `{"some_library": logging.DEBUG}` to see a library's debug records too,
             or `{"my_app": logging.INFO}` to hide the app's own.
+            An app that runs while another has the devlog open, such as one run headless in another's handler,
+            writes its records into that devlog, at the levels the other app set.
         title: The title to give the terminal window when the application starts,
             as [`SetTitle`][counterweight.controls.SetTitle] would, before the first frame is drawn.
             If `None`, the terminal keeps the title it has.
@@ -344,10 +345,13 @@ async def render_loop(
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
-    current_event_queue.set(event_queue)
-
     use_mouse_listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
-    current_use_mouse_listeners.set(use_mouse_listeners)
+    # Made before the warmup render, so the hooks can capture it, and entered before any effect starts in it.
+    task_group = TaskGroup()
+
+    def rendering() -> AbstractContextManager[None]:
+        """What this app's components run in, so its hooks capture this app's queue, task group and listeners."""
+        return app_scope(event_queue, task_group, use_mouse_listeners)
 
     loop = get_running_loop()
 
@@ -429,7 +433,8 @@ async def render_loop(
         # Warmup: render and lay out once without painting so that use_rects()
         # returns real dimensions on the first visible render.
         layout_tree = LayoutTree()
-        warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
+        with rendering():
+            warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
         shadow = warmup.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, h, {})
         routing = RoutingTable.of(shadow, layouts)
@@ -538,8 +543,7 @@ async def render_loop(
             """A copy of the frame on screen, so a condition that changes its frame can't change `current_paint`."""
             return Frame(paint=current_paint.copy())
 
-        async with TaskGroup() as tg:
-            current_task_group.set(tg)
+        async with task_group:
             while True:
                 if should_quit:
                     logger.info("Quitting application...")
@@ -624,15 +628,16 @@ async def render_loop(
                     previous_layouts = layouts
                     # Picked from the frame on screen, before the update below changes what's in it.
                     priors = prior_scrolls(layouts)
-                    update = update_shadow(
-                        root_component,
-                        shadow,
-                        layouts,
-                        frozenset(dirty),
-                        check_purity,
-                        focused=focused,
-                        instant=instant,
-                    )
+                    with rendering():
+                        update = update_shadow(
+                            root_component,
+                            shadow,
+                            layouts,
+                            frozenset(dirty),
+                            check_purity,
+                            focused=focused,
+                            instant=instant,
+                        )
                     dirty.clear()
                     previous_shadow, shadow = shadow, update.tree
                     logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
@@ -654,15 +659,16 @@ async def render_loop(
                     # Re-render the components whose focus changed before painting,
                     # so no frame shows focus where it was before the render moved it.
                     if settled != focused:
-                        refocused = update_shadow(
-                            root_component,
-                            shadow,
-                            previous_layouts,
-                            frozenset(key for key in (focused, settled) if key is not None),
-                            check_purity,
-                            focused=settled,
-                            instant=instant,
-                        )
+                        with rendering():
+                            refocused = update_shadow(
+                                root_component,
+                                shadow,
+                                previous_layouts,
+                                frozenset(key for key in (focused, settled) if key is not None),
+                                check_purity,
+                                focused=settled,
+                                instant=instant,
+                            )
                         previous_shadow, shadow = shadow, refocused.tree
                         if settled is not None:
                             pending_scrolls.append(focus_into_view(settled))
@@ -720,7 +726,7 @@ async def render_loop(
                             "Wrote and flushed instructions to output stream", extra={"bytes": f"{len(instructions):_}"}
                         )
 
-                    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=tg)
+                    await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
                     logger.debug("Reconciled effects")
 
                     should_render = False

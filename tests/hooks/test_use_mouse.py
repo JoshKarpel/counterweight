@@ -46,8 +46,13 @@ def records_mouse(label: str, recorded: list[Mouse]) -> Text:
 
 def test_use_mouse_reads_off_screen_and_still_before_the_mouse_moves() -> None:
     recorded: list[Mouse] = []
+    token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], None]]())
 
-    update_shadow(records_mouse("first", recorded), None, NO_LAYOUTS)
+    try:
+        with state_sets():
+            update_shadow(records_mouse("first", recorded), None, NO_LAYOUTS)
+    finally:
+        current_use_mouse_listeners.reset(token)
 
     assert recorded == [Mouse(absolute=Position(-1, -1), motion=Position(0, 0), button=None)]
 
@@ -57,12 +62,13 @@ async def test_use_mouse_keeps_its_subscription_when_the_component_reruns() -> N
     token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], None]]())
 
     try:
-        async with TaskGroup() as tg:
-            shadow = await render(records_mouse("first", recorded), None, tg)
-            tasks_after_mount = effect_tasks(shadow)
-            shadow = await render(records_mouse("second", recorded), shadow, tg)
-            tasks_after_rerun = effect_tasks(shadow)
-            await cancel_tasks(tasks_after_rerun)
+        with state_sets():
+            async with TaskGroup() as tg:
+                shadow = await render(records_mouse("first", recorded), None, tg)
+                tasks_after_mount = effect_tasks(shadow)
+                shadow = await render(records_mouse("second", recorded), shadow, tg)
+                tasks_after_rerun = effect_tasks(shadow)
+                await cancel_tasks(tasks_after_rerun)
     finally:
         current_use_mouse_listeners.reset(token)
 

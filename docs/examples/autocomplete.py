@@ -12,6 +12,7 @@ from functools import partial
 import waxy
 
 from counterweight.app import app
+from counterweight.autopilot import typed
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import ScrollIntoView
@@ -75,7 +76,9 @@ above = Style(layout=waxy.Style(inset_bottom=waxy.Percent(1.0)))
 
 def matches(text: str, candidates: tuple[str, ...]) -> list[str]:
     pattern = f"*{'*'.join(glob.escape(c) for c in text.lower())}*"
-    return [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
+    found = [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
+    # The one the text names exactly first, so typing a whole name and pressing Enter chooses it.
+    return sorted(found, key=lambda candidate: candidate.lower() != text.lower())
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,10 +220,6 @@ def root(list_clip: Style = clip_to_screen) -> Div:
 
 
 # --8<-- [end:example]
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
 
 
 def press(x: int, y: int) -> tuple[MouseDown, MouseUp]:

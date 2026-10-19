@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 from codegen.generate_logo import icons
 from counterweight.app import app
+from counterweight.autopilot import typed
 from counterweight.components import component
+from counterweight.controls import Screenshot
 from counterweight.elements import Canvas
 from counterweight.elements import Div
 from counterweight.elements import Rows
@@ -12,11 +14,16 @@ from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
+from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
+from counterweight.output import Frame
+from counterweight.painters.frames import PaintView
 from counterweight.painters.pixels import Fit
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
@@ -181,6 +188,47 @@ def paint() -> Div:
 
 # --8<-- [end:paint]
 
+# --8<-- [start:screenshot]
+
+
+@component
+def snapshot() -> Div:
+    count, set_count = use_state(0)
+    panel = use_state(ElementHandle)[0]
+    where = use_rects(panel).border
+    no_picture: PaintView | None = None
+    taken, set_taken = use_state(no_picture)
+
+    def keep(frame: Frame) -> None:
+        # Built once, from the frame as it was, rather than in every render.
+        set_taken(frame.paint.as_painter(where))
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key="+"):
+                set_count(lambda count: count + 1)
+                return ()
+            case KeyPressed(key="s"):
+                return (Screenshot(handler=keep),)
+            case _:
+                return None
+
+    return Div(
+        style=row | gap(2),
+        on_input=on_input,
+        children=(
+            Div(
+                handle=panel,
+                style=border | border_lightrounded | border_color("teal", 400) | pad_x(1),
+                children=(Text(content=f"Count: {count}"),),
+            ),
+            Text(content="Press s", style=text_color("slate", 400)) if taken is None else Canvas(painter=taken),
+        ),
+    )
+
+
+# --8<-- [end:screenshot]
+
 
 def stroke() -> tuple[MouseDown | MouseMoved, ...]:
     """A drag down and to the right across the canvas, which starts one cell inside its border."""
@@ -195,9 +243,15 @@ SCREENSHOTS = [
     ScreenshotSpec(image(), "canvas-image", (62, 18)),
     ScreenshotSpec(ruler(), "canvas-painter", (64, 4)),
     ScreenshotSpec(paint(), "canvas-paint", (28, 10), events=stroke()),
+    ScreenshotSpec(
+        snapshot(),
+        "canvas-screenshot",
+        (36, 3),
+        events=[*typed("++s"), *typed("++")],
+    ),
 ]
 
 
 if __name__ == "__main__":
-    roots = {root.__name__: root for root in (picture, sizing, fits, image, ruler, paint)}
+    roots = {root.__name__: root for root in (picture, sizing, fits, image, ruler, paint, snapshot)}
     asyncio.run(app(roots[sys.argv[1]]() if len(sys.argv) > 1 else picture()))
