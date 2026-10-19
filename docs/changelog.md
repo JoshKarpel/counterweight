@@ -176,6 +176,10 @@
   on terminals that support xterm's title stack,
   and the `RestoreTitle` control brings it back while the app runs.
 
+- Added the `CopyToClipboard` control, which copies text to the system clipboard,
+  as a browser's `navigator.clipboard.writeText` does, by asking the terminal to with OSC 52.
+  It works only where the terminal supports OSC 52, and in tmux only with `set -g set-clipboard on`.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
   It takes `auto_focus`, to take focus on mount when nothing else has it;

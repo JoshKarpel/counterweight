@@ -10,6 +10,12 @@ driving a selection the render loop holds through new controls.
 It doesn't cover selecting text inside `use_text_input` or `use_text_area` (an editing selection the hooks own),
 keyboard selection, or selections anchored to text rather than cells (see [Deferred](#deferred)).
 
+It ships in two parts.
+The first, `CopyToClipboard`, copies any text an app gives it,
+and stands on its own for an app's "copy" buttons and key bindings:
+it's [step 1](#steps), and it's done.
+The rest, selecting text and copying the selection, is deferred to a later change (steps 2 to 5).
+
 ## The question
 
 How does an app let a user drag across its text and copy it,
@@ -93,6 +99,7 @@ All in `counterweight.controls`, added to `AnyControl`:
   as `Bell` rings, and does nothing if the selection is empty.
 - `CopyToClipboard(text: str)`: copies `text`, as `navigator.clipboard.writeText` does,
   for an app's own "copy" buttons. It's what `CopySelection` does with the selected text.
+  Copying `""` empties the clipboard, as `writeText("")` does.
 
 `SELECTION_STYLE`, the default highlight, is `(text_color("slate", 50) | text_bg("blue", 700)).text_style`,
 explicit on both colors so it reads on any theme.
@@ -162,20 +169,27 @@ so a popup painted over the selection isn't copied:
 
 `clipboard_instructions(text)` in `counterweight.output` is OSC 52 with the `c` (clipboard) target:
 `ESC ] 52 ; c ; <base64 of the UTF-8 text> ESC \`.
+Base64 can't hold a control character, so no text can end the sequence early.
 The loop writes it at the start of the next render cycle, like `Bell`, and the last copy in a cycle wins.
 A headless app writes nothing, and a recording doesn't record it:
-it isn't screen output, and a player can't set the viewer's clipboard.
+it isn't screen output, and replaying it in a terminal would set the viewer's clipboard.
 
-The docs say where OSC 52 works:
+`CopyToClipboard`'s docstring says where OSC 52 works:
 tmux passes it on only with `set -g set-clipboard on`
 (its default, `external`, ignores applications' attempts),
 and a terminal may turn it off or ask before letting a program set the clipboard.
 
 ## Steps
 
-1. **Copying.** `clipboard_instructions`, `CopyToClipboard`, and the loop writing it at the start of a cycle.
-   Tests: the encoding (non-ASCII text, empty text), a terminal test that the app writes it once,
-   and one that a headless app writes nothing.
+1. **Copying (done).** `clipboard_instructions`, `CopyToClipboard`, and the loop writing it at the start of a cycle,
+   with the OSC 52 and tmux notes in its docstring, in `controls.md`, and a changelog entry.
+   Tests: the encoding (non-ASCII text, control characters, empty text),
+   a terminal test that the last copy in a cycle is written once per cycle,
+   one that a headless app writes nothing, and one that a recording leaves the copy out.
+   Exercised end to end in tmux with `set-clipboard on`: `tmux show-buffer` held the copied text.
+
+Steps 2 to 5 are deferred to a later change.
+
 2. **The selection core.** `counterweight.selection`: `Selection`, `SelectedCells` and `selected_text`, all pure.
    Tests: ordering anchor and focus both ways, clamping a focus outside the region on each side,
    a collapsed selection, the rows of a range, wide clusters at either end,
@@ -191,7 +205,7 @@ and a terminal may turn it off or ask before letting a program set the clipboard
    and copy on release (a terminal test that reads the OSC 52 sequence).
 5. **Docs.** A "Selecting text" section in `docs/input-handling/handlers.md`, a "Selection" section in `controls.md`,
    a `docs/examples/selecting_text.py` example with a screenshot of a selection across bordered messages
-   and a cast of the drag, the OSC 52 and tmux notes, and a changelog entry.
+   and a cast of the drag, a pointer to `CopyToClipboard`'s OSC 52 and tmux notes, and a changelog entry.
    Exercise it end to end in tmux with `set-clipboard on`, checking `tmux show-buffer` after a drag.
 
 ## Deferred

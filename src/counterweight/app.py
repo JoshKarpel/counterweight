@@ -49,6 +49,7 @@ from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
 from counterweight.controls import Bell
 from counterweight.controls import ClearFocus
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import FocusNext
 from counterweight.controls import FocusOn
 from counterweight.controls import FocusPrevious
@@ -102,6 +103,7 @@ from counterweight.logging import devlog
 from counterweight.output import CLEAR_SCREEN
 from counterweight.output import OUTPUT_CONTROL_START
 from counterweight.output import Frame
+from counterweight.output import clipboard_instructions
 from counterweight.output import paint_to_instructions
 from counterweight.output import start_bracketed_paste
 from counterweight.output import start_mouse_tracking
@@ -389,6 +391,7 @@ async def render_loop(
 
         should_quit = False
         should_bell = False
+        pending_copy: str | None = None
         pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
@@ -472,6 +475,7 @@ async def render_loop(
 
             nonlocal should_quit
             nonlocal should_bell
+            nonlocal pending_copy
             nonlocal should_suspend
             nonlocal title
 
@@ -489,6 +493,8 @@ async def render_loop(
                     title = control.title
                 case RestoreTitle():
                     title = None
+                case CopyToClipboard():
+                    pending_copy = control.text
                 case Screenshot():
                     pending_screenshots.append(control)
                 case Suspend():
@@ -542,6 +548,13 @@ async def render_loop(
                 if should_bell:
                     write("\a")
                     should_bell = False
+
+                if pending_copy is not None:
+                    # Not through `write`, which records: a player replaying it would set the viewer's clipboard.
+                    if not headless:
+                        output_stream.write(clipboard_instructions(pending_copy))
+                        output_stream.flush()
+                    pending_copy = None
 
                 if pending_screenshots:
                     # A copy, so a screenshot handler that changes its frame can't change current_paint.

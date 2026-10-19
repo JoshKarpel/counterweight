@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from base64 import b64encode
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
@@ -236,6 +237,15 @@ def title_instructions(title: str | None) -> str:
 
     shown = "".join(" " if grapheme in LINE_BREAKS else visible(grapheme) for grapheme in graphemes(title))
     return f"\x1b]2;{shown}\x1b\\"
+
+
+def clipboard_instructions(text: str) -> str:
+    """
+    Terminal instructions that set the system clipboard to `text`:
+    OSC 52 with the `c` (clipboard) target and the text's UTF-8 in base64,
+    which can't hold a control character that would end the sequence early.
+    """
+    return f"\x1b]52;c;{b64encode(text.encode()).decode()}\x1b\\"
 
 
 def paint_to_str(paint: Paint, *, ansi: bool = True) -> str:
