@@ -5,6 +5,7 @@ import signal
 import struct
 import subprocess
 import sys
+import time
 from asyncio import CancelledError
 from asyncio import Event
 from asyncio import Future
@@ -108,17 +109,24 @@ async def test_run_pty_reports_a_program_ended_by_a_signal_as_its_negated_number
     assert await run_pty(["sh", "-c", "kill -TERM $$"], 20, 4, on_output=Output()) == Exited(status=-15)
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_run_pty_starts_the_program_at_the_given_size() -> None:
     output = Output()
 
     outcome = await run_pty(["stty", "size"], 37, 11, on_output=output)
 
     assert (outcome, output.data.split()) == (Exited(status=0), [b"11", b"37"])
+
+
+async def test_run_pty_reads_what_a_program_wrote_before_exiting_while_the_event_loop_was_busy() -> None:
+    output = Output()
+
+    # Longer than the 600 ms macOS waits at the terminal's last close before discarding output nobody read.
+    def block_the_event_loop(connection: PtyConnection) -> None:
+        time.sleep(1)
+
+    outcome = await run_pty(["printf", "written"], 20, 4, on_output=output, on_start=block_the_event_loop)
+
+    assert (outcome, output.data) == (Exited(status=0), b"written")
 
 
 def test_read_output_is_none_while_nothing_has_been_written() -> None:
@@ -558,11 +566,6 @@ def statuses(ptys: list[Pty]) -> list[PtyStatus]:
     return list(unique_justseen(pty.status for pty in ptys))
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_use_pty_starts_the_program_once_it_has_a_positive_size_and_at_that_size() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -746,11 +749,6 @@ async def test_use_pty_unmounts_without_waiting_for_its_program_to_be_hung_up() 
     assert_group_ended(group)
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_use_pty_starts_a_terminal_one_cell_across() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -795,11 +793,6 @@ async def test_use_pty_with_clear_env_leaves_out_the_apps_environment(monkeypatc
     assert output.data.strip() == b"unset"
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_use_pty_runs_the_program_in_cwd(directory: Path) -> None:
     ptys: list[Pty] = []
     output = Output()

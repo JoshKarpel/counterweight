@@ -177,8 +177,15 @@ def make_controlling_terminal() -> None:  # pragma: no cover, runs in the child 
     """
     Run in the child, after `setsid`: makes the pseudo-terminal its controlling terminal.
     Standard output is always the pseudo-terminal, while standard input may be `/dev/null`, where this would fail.
+
+    Opening `/dev/tty` gives the session a reference to the terminal that lasts until the session leader has exited.
+    Without it, on macOS, the program's own close at exit is the terminal's last, which waits only 600 ms for its
+    output to be read and then discards it, so a busy event loop loses what a short-lived program wrote.
+    With it, the exit waits until the output has been read, which `run_pty` does while it waits for the program.
     """
     fcntl.ioctl(1, termios.TIOCSCTTY, 0)
+    with Path("/dev/tty").open("rb", buffering=0):
+        pass
 
 
 @overload

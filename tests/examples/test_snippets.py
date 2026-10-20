@@ -5,7 +5,6 @@ and the components their pages show without a scene of their own.
 
 from __future__ import annotations
 
-import sys
 from asyncio import wait_for
 from collections.abc import Sequence
 from datetime import timedelta
@@ -192,11 +191,6 @@ async def test_a_pane_shows_its_program() -> None:
     assert "hello from the pane" in shown
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_a_slide_runs_its_command_when_shown() -> None:
     shown = await screen(commands.slide("Greetings", ("echo", "hello")), [shows("exited 0")], (40, 8))
 
