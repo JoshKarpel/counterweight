@@ -6,10 +6,12 @@ so an app that wants another look starts from the hook rather than from these.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Collection
 from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 
 from counterweight.components import Component
 from counterweight.components import component
@@ -339,16 +341,19 @@ def terminal(
     intercept: InputHandler | None = None,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     hangup_grace: timedelta = HANGUP_GRACE,
     auto_focus: bool = False,
     handle: FocusHandle | None = None,
     is_focusable: bool = True,
     in_focus_order: bool = True,
+    skips: Collection[str] = frozenset(),
 ) -> Canvas:
     """
     A bordered box that runs an interactive program, such as a shell or an editor, in a terminal the size of its content,
     built on [`use_terminal`][counterweight.headless.use_terminal],
-    which takes `argv`, `env`, `clear_env`, `hangup_grace` and the focus parameters, `handle` being a focus handle.
+    which takes `argv`, `env`, `clear_env`, `cwd`, `hangup_grace`, `skips` and the focus parameters,
+    `handle` being a focus handle.
     While it's focused, the program gets every key, the cursor shows, and its border shows it's focused;
     a press on it focuses it.
 
@@ -363,7 +368,7 @@ def terminal(
         intercept: A handler that sees each event before the terminal does, and keeps an event from the program
             by claiming it, as a multiplexer's prefix key does.
             The terminal claims every key while it's focused, Ctrl+C included,
-            so an app needs some key here, or some other way, to move focus out of it.
+            so an app needs some key here, or in `skips`, or some other way, to move focus out of it.
     """
     content = use_rects().content
     embedded = use_terminal(
@@ -372,11 +377,13 @@ def terminal(
         content.height,
         env=env,
         clear_env=clear_env,
+        cwd=cwd,
         hangup_grace=hangup_grace,
         auto_focus=auto_focus,
         handle=handle,
         is_focusable=is_focusable,
         in_focus_order=in_focus_order,
+        skips=skips,
     )
     return Canvas(
         painter=embedded.view,

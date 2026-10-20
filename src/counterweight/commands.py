@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import replace
 from datetime import timedelta
+from pathlib import Path
 from typing import assert_never
 
 from counterweight._context_vars import current_task_group
@@ -135,6 +136,7 @@ def use_command(
     rows: int = 24,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     timeout: timedelta | None = None,
     max_lines: int = MAX_LINES,
     hangup_grace: timedelta = HANGUP_GRACE,
@@ -163,6 +165,9 @@ def use_command(
             over the environment `run_pty` gives it, and `env` over those.
 
         clear_env: Leave out the app's environment (see [`run_pty`][counterweight.pseudoterminal.run_pty]).
+
+        cwd: The directory to run the program in, or `None` for the app's working directory.
+            It's read when a run starts, as `columns` is.
 
         timeout: How long the program may run before it's hung up and its outcome is `TimedOut`, or `None` for no limit
             (see [`run_pty`][counterweight.pseudoterminal.run_pty]).
@@ -235,6 +240,7 @@ def use_command(
                     on_start=start,
                     env={**COMMAND_ENVIRONMENT, **env},
                     clear_env=clear_env,
+                    cwd=cwd,
                     stdin="devnull",
                     hangup_grace=hangup_grace,
                     timeout=timeout,

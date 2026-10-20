@@ -102,6 +102,7 @@ extra:
 
 nav:
   - Home: index.md
+  - examples.md
   - ecosystem.md
   - changelog.md
   - Components:
@@ -169,6 +170,7 @@ nav:
     - cookbook/border-healing.md
     - cookbook/draggable-components.md
     - cookbook/prefix-keys.md
+    - cookbook/sortable-tables.md
     - cookbook/spinners.md
   - performance.md
   - autopilot.md

@@ -16,6 +16,7 @@ from counterweight.autopilot import AutopilotTimedOut
 from counterweight.autopilot import Wait
 from counterweight.autopilot import WaitFor
 from counterweight.autopilot import advance
+from counterweight.autopilot import paced
 from counterweight.autopilot import showing
 from counterweight.autopilot import typed
 from counterweight.clock import FrozenClock
@@ -24,19 +25,25 @@ from counterweight.components import component
 from counterweight.controls import AdvanceClock
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
+from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
+from counterweight.events import MouseMoved
 from counterweight.events import Receiver
+from counterweight.geometry import Position
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
+from counterweight.hooks import use_mouse
 from counterweight.hooks import use_progress
+from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.output import Frame
 from counterweight.paint import Cell
 from counterweight.paint import Paint
 from counterweight.styles.styles import CELL_STYLE_DEFAULTS
+from counterweight.styles.utilities import size
 
 BLANK = Frame(paint=Paint.blank(1, 1))
 
@@ -198,11 +205,54 @@ async def test_an_app_keeps_handling_events_while_its_autopilot_waits() -> None:
     assert await screen_after([Wait(timedelta(milliseconds=20))], finished) == "done"
 
 
-async def test_without_a_wait_the_autopilot_runs_ahead_of_work_the_app_is_doing() -> None:
+async def test_the_effects_a_render_starts_run_before_the_autopilot_takes_its_next_step() -> None:
     finished = Event()
     finished.set()
 
-    assert await screen_after([], finished) == "busy"
+    assert await screen_after([], finished) == "done"
+
+
+async def test_without_a_wait_the_autopilot_runs_ahead_of_work_the_app_is_doing() -> None:
+    assert await screen_after([], Event()) == "busy"
+
+
+@component
+def follows_the_mouse() -> Text:
+    mouse = use_mouse()
+    return Text(content=f"{mouse.absolute.x}")
+
+
+async def test_a_mouse_event_from_the_autopilot_reaches_a_component_that_subscribed_on_mount() -> None:
+    frames: list[Frame] = []
+    await drive(
+        follows_the_mouse(),
+        (2, 1),
+        [MouseMoved(absolute=Position(x=7, y=0), button=None), Screenshot(frames.append), Quit()],
+    )
+
+    assert frames[0].text(ansi=False) == "7 "
+
+
+@component
+def own_width() -> Div:
+    width, set_width = use_state(3)
+    rects = use_rects()
+
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        set_width(5)
+
+    return Div(
+        style=size(width, 1),
+        children=(Text(content=f"{rects.border.width}"),),
+        on_input=on_input,
+    )
+
+
+async def test_the_renders_a_step_causes_happen_before_the_autopilot_takes_its_next_step() -> None:
+    frames: list[Frame] = []
+    await drive(own_width(), (6, 1), [KeyPressed(key="x"), Screenshot(frames.append), Quit()])
+
+    assert frames[0].text(ansi=False).strip() == "5"
 
 
 async def test_an_autopilot_waiting_for_a_condition_resumes_once_a_frame_shows_it() -> None:
@@ -312,6 +362,16 @@ def test_typed_presses_enter_for_a_newline_and_tab_for_a_tab() -> None:
     assert typed("a\n\t") == [KeyPressed(key="a"), KeyPressed(key=Key.Enter), KeyPressed(key=Key.Tab)]
 
 
+def test_paced_steps_have_the_pause_before_each() -> None:
+    pause = Wait(timedelta(milliseconds=90))
+
+    assert paced([KeyPressed(key="a"), Quit()], pause=pause) == [pause, KeyPressed(key="a"), pause, Quit()]
+
+
+def test_paced_steps_without_steps_have_no_pause() -> None:
+    assert paced([], pause=AdvanceClock(by=timedelta(milliseconds=300))) == []
+
+
 @pytest.mark.parametrize(
     ("text", "key"),
     [("\r\n", Key.Enter), ("\r", Key.Enter), ("\x7f", Key.Backspace), ("\x03", Key.ControlC), ("\x1b", Key.Escape)],
@@ -319,12 +379,6 @@ def test_typed_presses_enter_for_a_newline_and_tab_for_a_tab() -> None:
 )
 def test_typed_presses_the_key_a_terminal_sends_a_control_character_as(text: str, key: Key) -> None:
     assert typed(f"a{text}") == [KeyPressed(key="a"), KeyPressed(key=key)]
-
-
-def test_typed_takes_its_pause_after_each_key() -> None:
-    pause = Wait(timedelta(milliseconds=90))
-
-    assert typed("ab", pause=pause) == [KeyPressed(key="a"), pause, KeyPressed(key="b"), pause]
 
 
 def frame_showing(text: str) -> Frame:

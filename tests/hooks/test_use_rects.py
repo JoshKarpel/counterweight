@@ -41,14 +41,9 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
     @component
     def root() -> Div:
         is_hidden, set_is_hidden = use_state(False)
-        renders, set_renders = use_state(0)
 
         def on_input(event: InputEvent, _: Receiver) -> None:
-            match event:
-                case KeyPressed(key="h"):
-                    set_is_hidden(True)
-                case _:
-                    set_renders(renders + 1)
+            set_is_hidden(True)
 
         return Div(children=(measured(is_hidden, recorded),), on_input=on_input)
 
@@ -56,10 +51,11 @@ async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_on
         root(),
         headless=True,
         dimensions=(20, 10),
-        autopilot=(KeyPressed(key="h"), KeyPressed(key="x"), Quit()),
+        autopilot=(KeyPressed(key="h"), Quit()),
     )
 
-    # The warmup render, the first painted frame, the frame that hides it, and the frame after.
+    # The warmup render, the first painted frame, the frame that hides it,
+    # and the one its changed layout queues, before the autopilot quits.
     assert [rects.border for rects in recorded] == [EMPTY, VISIBLE, VISIBLE, EMPTY]
 
 

@@ -1,5 +1,9 @@
 # Styles
 
+Every element takes a `style`, a [`Style`][counterweight.styles.Style] that says how it's laid out and drawn.
+Rather than build one field by field, most code merges [utilities](utilities.md),
+small styles that each set a few fields, as Tailwind's classes do.
+
 ## Merging
 
 Styles are merged using the `|` operator: `left | right`.
@@ -22,6 +26,27 @@ Nested styles merge field by field too:
 `Style(text_style=CellStyle(bold=True)) | Style(text_style=CellStyle(italic=True))`
 is both bold and italic.
 `layout` follows the same rule, field by field.
+
+Each `Text` below is styled by the expression it shows:
+
+<!-- example: styles_merging.py:layering -->
+
+![Merged styles, each labeled with its expression](../assets/styles-merging-layering.svg)
+
+- The first line is red on slate, since each utility sets a different field.
+- The second is sky, since both set the text's foreground and the right one wins.
+- The third is bold and italic, since the two `text_style`s merge field by field.
+- `border_double` replaces `border_heavy`'s characters, and `border_none` takes the border away entirely.
+
+A component usually builds its style from a base and a few variants that apply only sometimes.
+Below, every button starts from `BUTTON`;
+the selected one merges in `SELECTED`, which overrides its border kind and color and sets a text color,
+and the one under the mouse ([`use_hovered`](../hooks/use_hovered.md)) merges in `HOVERED`,
+which only adds a background, so it layers over a selected button as well as an unselected one.
+
+<!-- example: styles_merging.py:conditional -->
+
+![A toolbar with Edit selected and View hovered](../assets/styles-merging-conditional.svg)
 
 Any color a style holds can be a [gradient](gradients.md) instead, which colors each cell by where it is in its box.
 

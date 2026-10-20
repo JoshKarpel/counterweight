@@ -27,6 +27,7 @@ from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
@@ -390,6 +391,56 @@ async def test_auto_focus_takes_focus_only_when_nothing_is_focused_and_the_first
     assert probed(deliveries) == ["first", "first"]
 
 
+BODY = FocusHandle()
+
+
+def body(deliveries: list[Delivery], in_focus_order: bool, is_late_shown: bool) -> Component:
+    """A focusable component holding, once `is_late_shown`, one that mounts with `auto_focus`."""
+    late = (focusable("late", deliveries, auto_focus=True),) if is_late_shown else ()
+    return focusable("body", deliveries, handle=BODY, in_focus_order=in_focus_order, children=late)
+
+
+@pytest.mark.parametrize(("in_focus_order", "expected"), [(False, ["body", "late"]), (True, ["body", "body"])])
+async def test_auto_focus_takes_focus_from_a_focused_component_it_mounts_inside_only_if_tab_never_stops_there(
+    in_focus_order: bool, expected: list[str]
+) -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        rooted(deliveries, lambda shown: [body(deliveries, in_focus_order, shown)]),
+        [FocusOn(BODY), PROBE, TOGGLE, PROBE],
+    )
+
+    assert probed(deliveries) == expected
+
+
+async def test_auto_focus_leaves_focus_on_a_component_out_of_the_focus_order_that_it_mounts_beside() -> None:
+    deliveries: list[Delivery] = []
+
+    def children(is_late_shown: bool) -> Sequence[Component]:
+        late = [focusable("late", deliveries, auto_focus=True)] if is_late_shown else []
+        return [body(deliveries, in_focus_order=False, is_late_shown=False), *late]
+
+    await run(rooted(deliveries, children), [FocusOn(BODY), PROBE, TOGGLE, PROBE])
+
+    assert probed(deliveries) == ["body", "body"]
+
+
+async def test_focusing_a_component_out_of_the_focus_order_as_it_mounts_focuses_an_auto_focus_one_inside_it() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(
+        rooted(
+            deliveries,
+            lambda shown: [body(deliveries, in_focus_order=False, is_late_shown=True)] if shown else [],
+            toggled=FocusOn(BODY),
+        ),
+        [TOGGLE, PROBE],
+    )
+
+    assert probed(deliveries) == ["late"]
+
+
 async def test_use_focus_with_no_arguments_does_not_take_focus() -> None:
     deliveries: list[Delivery] = []
 
@@ -725,6 +776,45 @@ async def test_scoped_movement_does_nothing_for_a_subtree_that_has_unmounted() -
         rooted(deliveries, children, on_input=move_into_remembered),
         [MouseScrolledDown(absolute=Position(1, 3)), TOGGLE, KeyPressed(key="n"), PROBE],
     )
+
+    assert probed(deliveries) == ["before"]
+
+
+GROUP = ElementHandle()
+
+
+@component
+def handled_group(children: tuple[Component | AnyElement, ...]) -> Div:
+    return Div(style=box(0, 2, 20, 3), handle=GROUP, children=children)
+
+
+def before_handled_group(deliveries: list[Delivery]) -> Component:
+    """`before`, which takes focus, then a group with the handle `GROUP` holding `x`, `y` and `z`."""
+    return rooted(
+        deliveries,
+        lambda _: [focusable("before", deliveries, auto_focus=True), handled_group(xyz(deliveries))],
+    )
+
+
+@pytest.mark.parametrize(
+    ("control", "expected"),
+    [(FocusNext(within=GROUP), ["x", "y"]), (FocusPrevious(within=GROUP), ["z", "y"])],
+    ids=["next", "previous"],
+)
+async def test_scoped_movement_moves_among_an_elements_focusables_named_by_its_handle(
+    control: FocusNext | FocusPrevious, expected: list[str]
+) -> None:
+    deliveries: list[Delivery] = []
+
+    await run(before_handled_group(deliveries), [control, PROBE, control, PROBE])
+
+    assert probed(deliveries) == expected
+
+
+async def test_scoped_movement_does_nothing_for_a_handle_that_names_no_mounted_element() -> None:
+    deliveries: list[Delivery] = []
+
+    await run(before_handled_group(deliveries), [FocusNext(within=ElementHandle()), PROBE])
 
     assert probed(deliveries) == ["before"]
 

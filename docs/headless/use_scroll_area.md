@@ -128,7 +128,7 @@ The area scrolls the element with the `viewport` handle,
 so a parent that creates the handle with `use_state(ElementHandle)` and passes it to the hook
 can scroll the area with [`ScrollTo`](../layout/scrolling.md#scrolling-from-a-handler) and `ScrollBy`,
 and read its scroll with `use_scroll(handle)`.
-The [chat](https://github.com/JoshKarpel/counterweight/blob/main/examples/chat.py) example
+The [chat](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py) example
 passes its transcript's handle to the transcript's scroll area,
 so the root jumps the transcript to its end when a message is sent,
 and Shift+PageUp and Shift+PageDown page it while the prompt has focus,

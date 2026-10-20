@@ -72,12 +72,6 @@ async def test_suspending_to_a_program_passes_on_exit_how_it_exited(streams: Ter
     assert outcomes == [Exited(status=4)]
 
 
-@pytest.fixture
-def directory(tmp_path: Path) -> Path:
-    """The test's temporary directory, as a program run in it reports it, with symbolic links resolved."""
-    return tmp_path.resolve()
-
-
 async def test_suspending_to_a_program_runs_it_with_its_environment_and_directory(
     streams: TerminalStreams, tmp_path: Path, directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

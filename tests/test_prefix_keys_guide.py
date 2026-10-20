@@ -14,11 +14,11 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.examples.snippets import prefix_keys
 from counterweight.hooks import use_effect
 from counterweight.keys import Key
 from counterweight.output import Frame
 from counterweight.styles.utilities import full
-from docs.examples import prefix_keys
 from tests.terminal import Terminal
 
 TIMEOUT = 5

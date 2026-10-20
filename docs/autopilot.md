@@ -10,8 +10,9 @@ This page covers both, and how they combine to record a demo that comes out the 
 
 ## Driving an app
 
-`app`'s `autopilot` is an iterable of events and controls, which the app handles in order, one per render,
-starting after its first frame.
+`app`'s `autopilot` is an iterable of events and controls, which the app handles in order, starting after its first frame.
+Each step waits for what the last one set off, as a person's next key press would:
+the renders it caused, and the effects those renders started, up to where each first waits on something.
 It doesn't quit the app when it runs out, so end it with `Quit()`.
 With `headless=True` the app neither reads the terminal nor draws on it,
 and `dimensions` gives it a screen size:
@@ -30,9 +31,25 @@ await app(
 )
 ```
 
+`search` is the fruit search from [`use_text_input`](headless/use_text_input.md#using-the-hook).
+The screenshot it writes is the frame after both keys, with the list narrowed to the fruits that contain "an":
+
+![The search box holding "an", above banana, mango and orange](assets/autopilot-typed.svg)
+
 [`typed`][counterweight.autopilot.typed] gives the key presses that type some text,
 one per grapheme cluster, as Playwright's `keyboard.type` does,
 so `typed("an")` is the two key presses above.
+
+### Composing steps
+
+An autopilot's steps are plain values, so build one with plain Python:
+list literals, `*` unpacking, and the iterable combinators of
+[`itertools`](https://docs.python.org/3/library/itertools.html) and
+[`more-itertools`](https://more-itertools.readthedocs.io/en/stable/api.html),
+which counterweight depends on, so it's already installed.
+Counterweight's helpers, such as `typed`, give lists of steps to compose that way,
+rather than taking options for pacing or repeating them,
+and its one combinator, [`paced`](#controlling-time), only adds the type that `interleave` can't infer.
 
 ## Controlling time
 
@@ -41,20 +58,36 @@ A [`FrozenClock`][counterweight.clock.FrozenClock] reads the same time until the
 with [`AdvanceClock`][counterweight.controls.AdvanceClock] or by [waiting](#waiting-for-real-work),
 so an autopilot can show a minute of a clock-driven app in milliseconds,
 and show the same thing on every run.
-To pace typing, give `typed` a `pause` to take after each key:
+To pace an autopilot, put an `AdvanceClock` before each of its steps with [`paced`][counterweight.autopilot.paced],
+and one more after the last, so a recording that loops lingers where it ends:
 
 ```python
+pause = AdvanceClock(by=timedelta(milliseconds=300))
+
 await app(
     search(),
     headless=True,
     dimensions=(30, 8),
     clock=FrozenClock(datetime(2026, 3, 14, tzinfo=UTC)),
-    autopilot=[*typed("mango", pause=AdvanceClock(by=timedelta(milliseconds=300))), Quit()],
+    autopilot=[*paced(typed("mango"), pause=pause), AdvanceClock(by=timedelta(seconds=2)), Quit()],
 )
 ```
 
-To pace anything else, put an `AdvanceClock` between its steps with
-[`more_itertools.intersperse`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse).
+Its [recording](#recording) plays a key every 300 milliseconds,
+though the autopilot ran in only as long as the app took to render:
+
+<!-- cast: autopilot-mango -->
+
+`paced(steps, pause)` is
+[`more_itertools.interleave`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave)`(`[`itertools.repeat`](https://docs.python.org/3/library/itertools.html#itertools.repeat)`(pause), steps)`,
+typed as steps.
+Passed straight to `interleave`, a list of steps of different kinds, such as clicks and key presses,
+has nothing to say what type it is, so mypy settles on a base class they share, which isn't a step,
+and rejects the autopilot.
+For other shapes, reach for more-itertools:
+[`intersperse(pause, steps)`](https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse)
+pauses only between steps, and `intersperse(pause, steps, n=3)` after every third.
+Give a list of mixed kinds that goes to one of them the type `list[AutopilotStep]`.
 
 A single `AdvanceClock` jumps straight to the time it names, so an [animation](hooks/animation.md) jumps to that frame.
 [`advance`][counterweight.autopilot.advance] moves the clock the same distance a step at a time,
@@ -69,7 +102,8 @@ autopilot = [KeyPressed(key=Key.Space), *advance(timedelta(seconds=2)), Quit()]
 
 An autopilot runs ahead of anything the app does in the background,
 such as an effect waiting on a subprocess or a [command](terminals/commands.md),
-since it hands the app its next step as soon as the last one has rendered.
+since it hands the app its next step once the renders the last one caused are painted,
+not once the work they started is done.
 Two steps hold it back while the app keeps handling events and rendering:
 
 - [`WaitFor`][counterweight.autopilot.WaitFor] waits until a condition is true of the frame on screen,
@@ -95,12 +129,12 @@ await app(
 [`showing`][counterweight.autopilot.showing] is that `WaitFor`, waiting for some text to be on screen,
 so the step above is `showing("passed")`.
 A program on a [pseudo-terminal](terminals/embedding.md) echoes each key it's sent,
-so to type into one, give `typed` a `Wait` as its `pause`,
+so to type into one, pace the keys `typed` gives with a `Wait`, as when [pacing](#controlling-time) a recording,
 which gives the program real time to echo each key before the next arrives,
 then wait for what it prints:
 
 ```python
-autopilot = [showing("$ "), *typed("ls\n", pause=Wait(timedelta(milliseconds=90))), showing("README.md"), Quit()]
+autopilot = [showing("$ "), *paced(typed("ls\n"), pause=Wait(timedelta(milliseconds=90))), showing("README.md"), Quit()]
 ```
 
 Both wait in real time, and a `FrozenClock` runs in real time while they do,
@@ -159,6 +193,13 @@ which asciinema-player shows on its progress bar as a chapter to jump to.
 An autopilot can mark each step of a demo, and a handler can return one too,
 such as to mark each view the user opens.
 An app that isn't recording ignores it.
+This demo of the fruit search starts each chapter with a marker, and pauses between its keys:
+
+<!-- example: autopilot_search.py:chapters -->
+
+<!-- cast: autopilot-chapters -->
+
+Notice the chapters on the player's progress bar, one for each marker, which jump to the start of their step.
 
 ## API
 
@@ -169,5 +210,6 @@ An app that isn't recording ignores it.
 ::: counterweight.autopilot.typed
 ::: counterweight.autopilot.showing
 ::: counterweight.autopilot.advance
+::: counterweight.autopilot.paced
 ::: counterweight.asciicast.Recording
 ::: counterweight.asciicast.Theme

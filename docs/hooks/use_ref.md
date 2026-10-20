@@ -9,38 +9,18 @@ it holds what the component needs to remember but doesn't show.
 
 Read and write `current` in handlers and effects, which run after a render, not while rendering.
 
-```python
-from counterweight.components import component
-from counterweight.elements import Text
-from counterweight.events import InputEvent, InputResponse, KeyPressed, Receiver
-from counterweight.hooks import use_focus, use_ref, use_state
-from counterweight.keys import Key
+<!-- example: use_ref_line_entry.py:example -->
 
-
-@component
-def line_entry() -> Text:
-    use_focus(auto_focus=True)
-    typed = use_ref(list[str]())
-    line, set_line = use_state("")
-
-    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
-        match event:
-            case KeyPressed(key=Key.Enter):
-                set_line("".join(typed.current))
-                typed.current.clear()
-                return ()
-            case KeyPressed(key=key):
-                typed.current.append(key)
-                return ()
-            case _:
-                return None
-
-    return Text(content=line, on_input=on_input)
-```
+![The last line is hello, while wor has been typed since](../assets/use-ref-line-entry.svg)
 
 `line_entry` collects keys without rendering, and renders only when Enter sets `line`.
-Rendering reads `line`, never `typed`.
-It shows a ref, not how to take text:
+Rendering reads `line`, never `typed`,
+so the screen above still shows `hello` with `wor` typed since.
+Typing changes nothing on screen until Enter:
+
+<!-- cast: use-ref-line-entry -->
+
+`line_entry` shows a ref, not how to take text:
 it has no cursor or Backspace, and drops [pastes](../input-handling/events.md#handling-pastes).
 For a field, use [`use_text_input`](../headless/use_text_input.md).
 

@@ -6,12 +6,15 @@ and the steps that hold it back until real time has passed or the screen shows s
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
+from itertools import repeat
 from typing import assert_never
-from typing import overload
+
+from more_itertools import interleave
 
 from counterweight.animation import FRAME_INTERVAL
 from counterweight.controls import AdvanceClock
@@ -84,31 +87,17 @@ and Enter for a newline, alone or after a carriage return (one grapheme cluster)
 """
 
 
-@overload
-def typed(text: str, pause: None = None) -> list[KeyPressed]: ...
-
-
-@overload
-def typed(text: str, pause: AutopilotStep) -> list[AutopilotStep]: ...
-
-
-def typed(text: str, pause: AutopilotStep | None = None) -> list[KeyPressed] | list[AutopilotStep]:
+def typed(text: str) -> list[KeyPressed]:
     r"""
     The key presses that type `text`, one per grapheme cluster, as Playwright's `keyboard.type` does,
     with a newline (`"\n"` or `"\r\n"`) pressing Enter,
     and any other control character pressing the key a terminal sends it as, such as Tab for a tab.
 
-    Parameters:
-        pause: A step to take after each key, such as a [`Wait`][counterweight.autopilot.Wait],
-            which gives a program on a pseudo-terminal real time to echo each key before the next arrives,
-            or an [`AdvanceClock`][counterweight.controls.AdvanceClock], which paces the typing in a recording
-            made on a [`FrozenClock`][counterweight.clock.FrozenClock].
-            If `None`, the keys arrive one after another.
+    The keys arrive one after another. They're plain steps, so pace them, or combine them with others,
+    with [`paced`][counterweight.autopilot.paced] or iterable combinators such as
+    [`more_itertools`](https://more-itertools.readthedocs.io/en/stable/api.html)'s.
     """
-    keys = [KeyPressed(key=TYPED_KEYS.get(cluster, cluster)) for cluster in graphemes(text)]
-    if pause is None:
-        return keys
-    return [*(key, pause) for key in keys]
+    return [KeyPressed(key=TYPED_KEYS.get(cluster, cluster)) for cluster in graphemes(text)]
 
 
 def showing(text: str, timeout: timedelta = timedelta(seconds=30)) -> WaitFor:
@@ -137,6 +126,19 @@ def advance(by: timedelta, step: timedelta = FRAME_INTERVAL) -> list[AdvanceCloc
         )
     count, left = divmod(by, step)
     return [AdvanceClock(by=step)] * count + ([AdvanceClock(by=left)] if left else [])
+
+
+def paced(steps: Iterable[AutopilotStep], pause: AutopilotStep) -> list[AutopilotStep]:
+    """
+    `steps` with `pause` before each one: `interleave(repeat(pause), steps)`, with the type of its steps.
+
+    Written with the combinators directly, a list of steps of different kinds, such as clicks and key presses,
+    has nothing to say what type it is, so mypy settles on a base class its steps share, which isn't a step;
+    passed to `paced`, it's checked as steps.
+    The `pause` is usually an [`AdvanceClock`][counterweight.controls.AdvanceClock], to pace a recording,
+    or a [`Wait`][counterweight.autopilot.Wait], to give a program on a pseudo-terminal real time to echo each key.
+    """
+    return list(interleave(repeat(pause), steps))
 
 
 @dataclass(slots=True)
@@ -207,6 +209,7 @@ __all__ = [
     "Wait",
     "WaitFor",
     "advance",
+    "paced",
     "showing",
     "typed",
 ]

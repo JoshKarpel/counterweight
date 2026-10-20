@@ -14,16 +14,19 @@ import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import cache
 from functools import lru_cache
 from types import TracebackType
 from typing import Literal
 from typing import Self
 
-from pyghostty import Terminal
-from pyghostty._ffi import check
-from pyghostty._ffi import ffi
-from pyghostty._ffi import lib
-from pyghostty.core import init_sized
+# Lazy, since loading libghostty's bindings takes as long as importing the rest of counterweight,
+# and only an app that emulates a terminal needs them. A module-level use of one loads them all.
+lazy from pyghostty import Terminal
+lazy from pyghostty._ffi import check
+lazy from pyghostty._ffi import ffi
+lazy from pyghostty._ffi import lib
+lazy from pyghostty.core import init_sized
 
 from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
@@ -429,7 +432,7 @@ class Emulator:
         """
         view = self.cells_view
         check(lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_CELLS_RAW, view), "cells_raw")
-        values = memoryview(ffi.buffer(view.ptr, view.len * CELL_SIZE)).cast("Q").tolist()
+        values = memoryview(ffi.buffer(view.ptr, view.len * cell_size())).cast("Q").tolist()
         # Read the cells one at a time only for those whose values haven't been met, for their styles and graphemes.
         check(lib.ghostty_render_state_row_get(rows, lib.GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, self.cells), "cells")
         cells = self.cells[0]
@@ -627,8 +630,14 @@ def rows_per_page(columns: int) -> int:
 SPACE = ord(" ")
 DEFAULT_PALETTE_BYTES = bytes(channel for color in DEFAULT_PALETTE for channel in color)
 INDEXED_COLORS = tuple(IndexedColor(index) for index in range(len(DEFAULT_PALETTE)))
-CELL_SIZE = ffi.sizeof("GhosttyCell")
 UNSTYLED = CellStyle()
+
+
+@cache
+def cell_size() -> int:
+    """How many bytes libghostty's `GhosttyCell` takes."""
+    size: int = ffi.sizeof("GhosttyCell")
+    return size
 
 
 def free_render_state(state: object, row_iterator: object, cells: object) -> None:

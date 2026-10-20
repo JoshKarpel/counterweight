@@ -95,12 +95,12 @@ so a canvas with only a `content_color` shows it everywhere the picture doesn't.
 
 `Pixels.from_image` takes a [Pillow](https://pillow.readthedocs.io/) `Image`,
 or anything else with Pillow's `size`, `convert` and `tobytes`.
-Decoding costs as much as the image has pixels, so do it once, before the app starts,
-or in an effect that sets state, never in a render.
+Converting costs as much as the image has pixels, so do it once:
+before the app starts, in an effect that sets state, or in a cached function, as here, rather than in every render.
 
 <!-- example: canvas.py:image -->
 
-![An image with transparent corners, at its natural size and contained in a smaller box](../assets/canvas-image.svg)
+![Pillow's Mandelbrot set, at its natural size and contained in a smaller box](../assets/canvas-image.svg)
 
 ## Gradients
 

@@ -3,10 +3,11 @@
 An embedded terminal runs an interactive program, such as a shell, an editor or `htop`, in a box,
 shows its screen as the program draws it, and sends it the keys, pastes and mouse events the box receives,
 as a terminal window or a multiplexer's pane does.
-It's enough to build a terminal multiplexer: the [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/examples/multiplexer.py)
-example runs shells side by side, with a tmux-style prefix key.
+It's enough to build a terminal multiplexer: the [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py)
+example runs shells side by side, with direct hotkeys as zellij has.
 
-This page covers the widget, the hook it's built on, how input reaches the program, and how the terminal is sized.
+This page covers the widget, the hook it's built on, a multiplexer built from it, how input reaches the program,
+and how the terminal is sized.
 For a program that's expected to exit, whose output is read rather than used, see [One-Shot Commands](commands.md).
 Pseudo-terminals need Linux or macOS.
 
@@ -17,6 +18,9 @@ Pseudo-terminals need Linux or macOS.
 <!-- example: terminals.py:widget -->
 
 ![A shell's prompt, a colored listing, and git's short status in a bordered box](../assets/terminals-shell.svg)
+
+The screenshot feeds shell output written ahead of time to an emulator rather than running a shell,
+so it comes out the same on every run.
 
 The box takes no size from the program, since the program draws whatever fits the terminal it's given,
 so size the box with `style`, as `fill(1)` does here.
@@ -32,7 +36,7 @@ and keeps it from the program by claiming it, as `quit_on_ctrl_q` does for Ctrl+
 [`use_terminal`][counterweight.headless.use_terminal] runs the program, emulates its terminal,
 and makes the calling component focusable, leaving how it's drawn to the component,
 which returns a [`Canvas`](../elements/canvas.md) with the hook's `view` and `on_input`.
-This pane puts a prefix handler before the terminal's, as the multiplexer does:
+This pane puts a prefix handler before the terminal's, as a tmux-style multiplexer would:
 
 <!-- example: terminals.py:pane -->
 
@@ -41,6 +45,17 @@ with its title and the modes it set, and its `status`: starting, running, exited
 or the reason it failed to start.
 The component's `view` is a [`ScreenView`][counterweight.painters.terminal.ScreenView]
 that draws the cursor while the component is focused.
+
+## A multiplexer
+
+Panes like that one, side by side, with keys that open, close and move focus between them, make a multiplexer.
+The [multiplexer](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py) example
+puts its keys before each pane's terminal, so Alt+N, Alt+X and Alt+Left and Right reach it rather than the shell:
+
+![Two shells side by side, each having run a command, above a bar of the multiplexer's keys](../assets/multiplexer.svg)
+
+Each pane's title is the title its program set, from its `Screen`, after the pane's number,
+and a pane closes when its program exits, since its `status` is then `Exited`.
 
 ## Input
 
@@ -73,6 +88,11 @@ The DOM would intercept with a capture-phase listener on an ancestor,
 but composing handlers on the terminal's own element does the same.
 A prefix and its key often arrive in one read, so keep whether the prefix is waiting in a ref,
 as the [Prefix Keys](../cookbook/prefix-keys.md) cookbook page does.
+
+To let a key past the program to a handler around the terminal instead, name it in `skips`:
+the terminal doesn't send its program a key in `skips`, and its handler returns `None` for one, so it bubbles,
+as VS Code's terminal skips the keys bound to its own commands.
+The multiplexer skips Ctrl+], so it still reaches the [examples' gallery](../examples.md#the-gallery) around it.
 
 ### Queries
 

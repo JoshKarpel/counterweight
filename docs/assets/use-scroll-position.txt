@@ -1,0 +1,9 @@
+╭─ Lines 7-13 of 30 (26%) ───╮
+│  7 GET /items/259 404      │
+│  8 GET /items/296 200      │
+│  9 GET /items/333 200      │
+│ 10 GET /items/370 200      │
+│ 11 GET /items/407 200      │
+│ 12 GET /items/444 200      │
+│ 13 GET /items/481 200      │
+╰──────────────── ↓ 17 more ─╯

@@ -41,56 +41,37 @@ and it is why an ordinary unkeyed component keeps its state across renders.
 Position stops being identity when the children come from data that changes shape.
 Here each row of a to-do list holds its own checkmark:
 
-```python
-from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.handlers import on_click
-from counterweight.hooks import use_state
+<!-- example: components_keys.py:row -->
 
+<!-- example: components_keys.py:unkeyed -->
 
-@component
-def todo_row(title: str) -> Text:
-    done, set_done = use_state(False)
+A second version of the list keys each row by the item it shows:
 
-    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_click(lambda: set_done(not done)))
+<!-- example: components_keys.py:keyed -->
 
+Below, the left list is `todo_list` and the right one is `keyed_todo_list`, both showing the same `titles`.
+Check off `a` in both:
 
-@component
-def todo_list(titles: list[str]) -> Div:
-    return Div(children=tuple(todo_row(title) for title in titles))
-```
+![Both lists with a checked](../assets/components-keys-checked.svg)
 
-Check off `a`, then remove it from `titles`:
+Then remove `a` from `titles`:
 
-```text
-before: [x] a    after: [x] b
-        [ ] b           [ ] c
-        [ ] c
-```
+![The unkeyed list with b checked, and the keyed list with nothing checked](../assets/components-keys-removed.svg)
 
-Row `b` is now checked.
+In the list without keys, row `b` is now checked.
 The component at index 0 continued the old index-0 row, `a`'s state included,
 and was only told its title is now `b`.
-The old index-2 row is the one that unmounted.
+The old index-3 row is the one that unmounted.
 State stays with the position, while the data moved.
 
-Key each row by the item it shows, and the state follows the item instead:
-
-```python
-@component
-def todo_list(titles: list[str]) -> Div:
-    return Div(children=tuple(todo_row(title).with_key(title) for title in titles))
-```
-
-```text
-before: [x] a    after: [ ] b
-        [ ] b           [ ] c
-        [ ] c
-```
-
-Now `a`'s row is the one that unmounts, and `b` and `c` keep their own state.
+In the list with keys, the state follows the item instead:
+`a`'s row is the one that unmounts, and `b`, `c` and `d` keep their own state.
 The same holds when keyed rows are reordered or a row is inserted at the front:
 each existing row keeps its state and effects, and only a new key mounts.
+Here `a` and `b` are checked in both lists, then the last item moves to the front three times:
+the checkmarks on the left stay in the first two rows, while those on the right stay with `a` and `b`.
+
+<!-- cast: components-keys -->
 
 The same shift happens without any list,
 when a child conditionally appears in front of a component:

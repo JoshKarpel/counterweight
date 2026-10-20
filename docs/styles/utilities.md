@@ -84,6 +84,13 @@ a `Color`, such as a palette constant or `Color.from_hex("#fbbf24")`,
 one of the [terminal colors](#terminal-colors), or a [gradient](#gradients).
 `text_white` and `text_black` are outside the palette.
 
+Each utility colors one part of a box.
+In the box below, every part has its own color, matched by the swatch beside the utility that paints it:
+
+<!-- example: styles_colors.py:places -->
+
+![Each color utility painting its part of a box](../assets/styles-color-places.svg)
+
 <!-- utilities: text_white text_black text_color text_bg border_color border_bg margin_color padding_color content_color -->
 
 #### Palette
@@ -104,7 +111,13 @@ and `TERMINAL_DEFAULT` is the terminal's default foreground where it colors text
 and its default background where it fills one.
 These utilities set them in each place the color utilities above do,
 the `*_indexed` ones taking a palette index from 0 to 255.
-Screenshots draw them in `DEFAULT_PALETTE`, and the defaults as white on black.
+Screenshots draw them in `DEFAULT_PALETTE`, and the defaults as white on black,
+as the first 16 indexed colors and the defaults are drawn below.
+In a terminal, they take whatever colors its theme gives them.
+
+<!-- example: styles_colors.py:terminal -->
+
+![The first 16 indexed colors and the terminal defaults, as screenshots draw them](../assets/styles-terminal-colors.svg)
 
 <!-- utilities: *_terminal_default *_indexed -->
 
@@ -175,6 +188,15 @@ See [Borders on some sides](../layout/spacing-and-borders.md#borders-on-some-sid
 
 The border kind only chooses the characters, and draws nothing without a border width.
 `border_none` removes the border along with its space.
+Every other kind is drawn below, each around its own name:
+
+<!-- example: styles_borders.py:example -->
+
+![Every border kind](../assets/styles-border-kinds.svg)
+
+The light, rounded, heavy and double kinds use box-drawing characters,
+which [border healing](../cookbook/border-healing.md) joins where borders meet.
+The rest don't join, and draw their edges with block elements, shades, slashes or asterisks.
 
 <!-- utilities: border_none border_light border_heavy border_double border_thick border_lightrounded border_lightangled border_lightshade border_mediumshade border_heavyshade border_star border_mcgugan -->
 

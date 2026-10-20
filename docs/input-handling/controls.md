@@ -12,6 +12,38 @@ Returning `()`, a tuple of no controls, says the handler handled the event with 
 and returning any control or tuple stops the event, as `()` does (see [Events](events.md#handling-input)).
 Code outside a handler, such as an effect, sends controls with [`use_controls`](../hooks/use_controls.md).
 
+## Returning controls
+
+This app sets the terminal window's title to what's typed in its field when Enter is pressed:
+
+<!-- example: input_controls.py:example -->
+
+Each key it binds returns a different control:
+
+- Enter returns `SetTitle` with the field's text, or `Bell()` to complain when the field is empty.
+- Escape returns `RestoreTitle()`, which puts back the title the window had before the app started.
+- Ctrl+O returns a [`Suspend`](../terminals/programs.md#editing-text-in-the-users-editor)
+  that hands the terminal to the user's editor to edit the title in, and calls `edited` when the editor exits.
+
+The text field handles typing,
+and passes Enter, Escape and the Ctrl keys it doesn't edit with on to the `Div` around it.
+A screenshot can't show the window's title, so the app shows the title it set below the field:
+
+![The field holding "Build logs", and the window title set to it](../assets/input-controls-title.svg)
+
+<!-- cast: input-controls-title -->
+
+Other pages show the rest of the controls at work:
+
+- The focus controls move focus through the [order form](../hooks/use_focus.md#an-example)
+  and the [prefix keys recipe](../cookbook/prefix-keys.md).
+- The scroll controls scroll a log to its end and a document to a section,
+  in [Scrolling from a handler](../layout/scrolling.md#scrolling-from-a-handler)
+  and [Scrolling an element into view](../layout/scrolling.md#scrolling-an-element-into-view).
+- `Suspend` runs a pager and the user's editor in [Running Programs on the App's Terminal](../terminals/programs.md).
+- `ToggleBorderHealing` turns [border healing](../cookbook/border-healing.md) off and on.
+- `Screenshot`, `AdvanceClock` and `Marker` drive and record an app from an [autopilot](../autopilot.md).
+
 ## API
 
 ::: counterweight.controls.AnyControl

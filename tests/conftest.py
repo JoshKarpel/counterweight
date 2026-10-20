@@ -211,6 +211,12 @@ def read_until_closed(keyboard: int) -> None:
 
 
 @pytest.fixture
+def directory(tmp_path: Path) -> Path:
+    """The test's temporary directory, as a program run in it reports it, with symbolic links resolved."""
+    return tmp_path.resolve()
+
+
+@pytest.fixture
 def terminal() -> Iterator[Terminal]:
     keyboard, program = pty.openpty()
     screen = Thread(target=read_until_closed, args=(keyboard,))

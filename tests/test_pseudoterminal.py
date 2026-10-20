@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 import signal
+import struct
+import subprocess
 import sys
+import time
 from asyncio import CancelledError
 from asyncio import Event
 from asyncio import Future
@@ -106,17 +109,24 @@ async def test_run_pty_reports_a_program_ended_by_a_signal_as_its_negated_number
     assert await run_pty(["sh", "-c", "kill -TERM $$"], 20, 4, on_output=Output()) == Exited(status=-15)
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_run_pty_starts_the_program_at_the_given_size() -> None:
     output = Output()
 
     outcome = await run_pty(["stty", "size"], 37, 11, on_output=output)
 
     assert (outcome, output.data.split()) == (Exited(status=0), [b"11", b"37"])
+
+
+async def test_run_pty_reads_what_a_program_wrote_before_exiting_while_the_event_loop_was_busy() -> None:
+    output = Output()
+
+    # Longer than the 600 ms macOS waits at the terminal's last close before discarding output nobody read.
+    def block_the_event_loop(connection: PtyConnection) -> None:
+        time.sleep(1)
+
+    outcome = await run_pty(["printf", "written"], 20, 4, on_output=output, on_start=block_the_event_loop)
+
+    assert (outcome, output.data) == (Exited(status=0), b"written")
 
 
 def test_read_output_is_none_while_nothing_has_been_written() -> None:
@@ -277,6 +287,15 @@ async def test_run_pty_reports_an_empty_argv_as_failing_to_start_and_opens_no_te
     assert open_fds() == before
 
 
+async def test_run_pty_closes_its_terminal_when_it_cannot_size_it() -> None:
+    before = open_fds()
+
+    with pytest.raises(struct.error):
+        await run_pty(["true"], -1, 4, on_output=Output())
+
+    assert open_fds() == before
+
+
 async def test_run_pty_closes_its_terminal_when_cancelled_while_spawning() -> None:
     before = open_fds()
     task = create_task(run_pty(["sleep", "30"], 20, 4, on_output=Output()))
@@ -287,6 +306,31 @@ async def test_run_pty_closes_its_terminal_when_cancelled_while_spawning() -> No
     with pytest.raises(CancelledError):
         await task
     assert open_fds() == before
+
+
+def children_running(program: str) -> list[str]:
+    """This process's children running `program`, alive or not yet reaped, as `ps` lists them."""
+    listing = subprocess.run(["ps", "-A", "-o", "ppid=,stat=,comm="], capture_output=True, text=True, check=True)
+    return [
+        line
+        for line in listing.stdout.splitlines()
+        if line.split()[0] == str(os.getpid()) and line.split()[-1].endswith(program)
+    ]
+
+
+async def test_run_pty_cancelled_again_while_spawning_reaps_the_program_it_started() -> None:
+    task = create_task(run_pty(["sleep", "37"], 20, 4, on_output=Output()))
+    await sleep(0)
+
+    # The first cancellation arrives while the program is spawning, and the second while it's being killed for it,
+    # as an app that quits right after mounting a terminal cancels it, once from its effect and once from its task group.
+    task.cancel()
+    await sleep(0)
+    task.cancel()
+    with pytest.raises(CancelledError):
+        await task
+
+    assert children_running("sleep") == []
 
 
 async def test_run_pty_resizing_the_terminal_changes_the_size_the_program_sees() -> None:
@@ -468,6 +512,20 @@ async def test_run_pty_with_clear_env_leaves_out_the_inherited_environment(monke
     assert output.data.strip() == b"unset|unset|xterm-256color"
 
 
+async def test_run_pty_runs_the_program_in_cwd(directory: Path) -> None:
+    output = Output()
+
+    await run_pty(["pwd", "-P"], 80, 4, on_output=output, cwd=directory)
+
+    assert output.data.strip() == bytes(directory)
+
+
+async def test_run_pty_fails_to_start_a_program_in_a_directory_that_does_not_exist(tmp_path: Path) -> None:
+    outcome = await run_pty(["pwd"], 20, 4, on_output=Output(), cwd=tmp_path / "missing")
+
+    assert outcome == FailedToStart(reason="No such file or directory")
+
+
 @pytest.mark.parametrize(
     ("inherited", "env", "expected"),
     [
@@ -493,10 +551,13 @@ def terminal(
     ptys: list[Pty],
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
+    cwd: Path | None = None,
     hangup_grace: timedelta = timedelta(seconds=TIMEOUT),
 ) -> Text:
     ptys.append(
-        use_pty(argv, columns, rows, on_output=on_output, env=env, clear_env=clear_env, hangup_grace=hangup_grace)
+        use_pty(
+            argv, columns, rows, on_output=on_output, env=env, clear_env=clear_env, cwd=cwd, hangup_grace=hangup_grace
+        )
     )
     return Text(content="")
 
@@ -505,11 +566,6 @@ def statuses(ptys: list[Pty]) -> list[PtyStatus]:
     return list(unique_justseen(pty.status for pty in ptys))
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_use_pty_starts_the_program_once_it_has_a_positive_size_and_at_that_size() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -693,11 +749,6 @@ async def test_use_pty_unmounts_without_waiting_for_its_program_to_be_hung_up() 
     assert_group_ended(group)
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin",
-    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
-    strict=False,
-)
 async def test_use_pty_starts_a_terminal_one_cell_across() -> None:
     ptys: list[Pty] = []
     output = Output()
@@ -740,6 +791,34 @@ async def test_use_pty_with_clear_env_leaves_out_the_apps_environment(monkeypatc
         await m.wait_until(lambda: isinstance(ptys[-1].status, Exited))
 
     assert output.data.strip() == b"unset"
+
+
+async def test_use_pty_runs_the_program_in_cwd(directory: Path) -> None:
+    ptys: list[Pty] = []
+    output = Output()
+
+    async with mounted() as m:
+        await m.render(terminal(("pwd", "-P"), 80, 4, output, ptys, cwd=directory))
+        await m.wait_until(lambda: isinstance(ptys[-1].status, Exited))
+
+    assert output.data.strip() == bytes(directory)
+
+
+async def test_use_pty_starts_the_program_again_in_a_new_cwd(directory: Path) -> None:
+    first, second = directory / "first", directory / "second"
+    first.mkdir()
+    second.mkdir()
+    ptys: list[Pty] = []
+    output = Output()
+    argv = ("sh", "-c", "pwd -P; while :; do sleep 0.01; done")
+
+    async with mounted() as m:
+        await m.render(terminal(argv, 80, 4, output, ptys, cwd=first))
+        await output.wait_for(b"first")
+        await m.render(terminal(argv, 80, 4, output, ptys, cwd=second))
+        await output.wait_for(b"second")
+
+    assert output.data.split() == [bytes(first), bytes(second)]
 
 
 async def test_use_pty_terminates_a_program_that_ignores_hanging_up_after_its_hangup_grace(tmp_path: Path) -> None:
