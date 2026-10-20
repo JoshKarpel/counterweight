@@ -81,6 +81,7 @@ from counterweight.events import StateSet
 from counterweight.events import TerminalResized
 from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
+from counterweight.focus import UnsettledFocus
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
 from counterweight.hooks.hooks import rects_in
@@ -121,7 +122,6 @@ from counterweight.paint import runs_of
 from counterweight.programs import TerminalStreams
 from counterweight.routing import Press
 from counterweight.routing import RoutingTable
-from counterweight.routing import UnsettledFocus
 from counterweight.routing import named_key
 from counterweight.routing import route_key
 from counterweight.routing import route_mouse

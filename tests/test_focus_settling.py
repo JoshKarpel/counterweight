@@ -14,6 +14,7 @@ import pytest
 from counterweight.app import app
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
+from counterweight.components import ImpureComponent
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -28,7 +29,6 @@ from counterweight.hooks import use_focus
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.output import Frame
-from counterweight.shadow import ImpureComponent
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import size
 

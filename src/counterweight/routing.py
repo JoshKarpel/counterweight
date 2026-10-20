@@ -74,14 +74,6 @@ class Focusable:
     in_focus_order: bool
 
 
-class UnsettledFocus(Exception):
-    """
-    Raised when re-rendering the components whose focus a render changed changes focus again,
-    which only a component that hides itself because it gained focus can cause:
-    one that lost focus already rendered unfocused if it became unfocusable, and draws nothing if it's hidden.
-    """
-
-
 @dataclass(frozen=True, slots=True)
 class RoutingTable:
     """What routing reads from one render, built once per render rather than once per event."""

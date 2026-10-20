@@ -324,4 +324,4 @@ as for any box that's [clipped](clipping.md#clipping-and-the-mouse).
 ## API
 
 ::: counterweight.focus.ElementHandle
-::: counterweight.shadow.DuplicateElementHandle
+::: counterweight.focus.DuplicateElementHandle

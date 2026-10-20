@@ -15,11 +15,15 @@ from counterweight._context_vars import current_hook_state
 from counterweight._context_vars import current_use_mouse_listeners
 from counterweight._utils import cancel_tasks
 from counterweight._utils import forever
+from counterweight.components import DuplicateKey
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.focus import DuplicateElementHandle
+from counterweight.focus import DuplicateFocusHandle
 from counterweight.hooks import ElementHandle
 from counterweight.hooks import FocusHandle
+from counterweight.hooks import InconsistentHookExecution
 from counterweight.hooks import Mouse
 from counterweight.hooks import Setter
 from counterweight.hooks import use_clock
@@ -30,11 +34,7 @@ from counterweight.hooks import use_mouse
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.hooks.impls import Hooks
-from counterweight.hooks.impls import InconsistentHookExecution
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import DuplicateElementHandle
-from counterweight.shadow import DuplicateFocusHandle
-from counterweight.shadow import DuplicateKey
 from counterweight.shadow import ShadowNode
 from counterweight.shadow import ShadowTree
 from counterweight.shadow import ShadowUpdate

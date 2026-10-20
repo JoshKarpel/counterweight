@@ -178,7 +178,10 @@ def detached_hook(hook: AnyHook) -> AnyHook:
 
 
 class InconsistentHookExecution(Exception):
-    pass
+    """
+    Raised when a component calls a different number of hooks, or different hooks, from its previous run,
+    since each hook's state is matched to it by the order it's called in.
+    """
 
 
 class DuplicateUseFocus(Exception):

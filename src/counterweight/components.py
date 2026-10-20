@@ -76,3 +76,15 @@ class Component:
         Sibling components MUST NOT share a key other than `None`; reconciling them raises `DuplicateKey`.
         """
         return replace(self, key=key)
+
+
+class DuplicateKey(Exception):
+    """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
+
+
+class ImpureComponent(Exception):
+    """
+    Raised when `check_purity` is on and re-running every component builds a different tree from the one a render built,
+    so some component's output depends on something besides its arguments and hooks:
+    the output a render kept for it is stale, or calling it twice doesn't give the same result.
+    """

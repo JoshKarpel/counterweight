@@ -22,6 +22,7 @@ from counterweight._utils import forever
 from counterweight.app import app
 from counterweight.clock import BEGINNING
 from counterweight.components import Component
+from counterweight.components import ImpureComponent
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import Quit
@@ -35,6 +36,7 @@ from counterweight.events import Receiver
 from counterweight.events import TerminalResized
 from counterweight.focus import ElementHandle
 from counterweight.geometry import Region
+from counterweight.hooks import InconsistentHookExecution
 from counterweight.hooks import Rects
 from counterweight.hooks import Setter
 from counterweight.hooks import use_effect
@@ -43,13 +45,11 @@ from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.hooks.hooks import rects_in
 from counterweight.hooks.impls import Hooks
-from counterweight.hooks.impls import InconsistentHookExecution
 from counterweight.hooks.impls import NodeKey
 from counterweight.hooks.impls import UseClock
 from counterweight.hooks.impls import UseRef
 from counterweight.layout import NO_LAYOUTS
 from counterweight.layout import Layouts
-from counterweight.shadow import ImpureComponent
 from counterweight.shadow import ShadowNode
 from counterweight.shadow import ShadowTree
 from counterweight.shadow import dirty_paths

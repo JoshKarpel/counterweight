@@ -17,6 +17,7 @@ import pytest
 
 from counterweight.app import app
 from counterweight.components import Component
+from counterweight.components import ImpureComponent
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement
@@ -34,17 +35,16 @@ from counterweight.examples.snippets.performance_process_table import Process
 from counterweight.examples.snippets.performance_process_table import process_row
 from counterweight.examples.snippets.performance_process_table import process_table
 from counterweight.focus import Subtree
+from counterweight.hooks import InconsistentHookExecution
 from counterweight.hooks import Setter
+from counterweight.hooks import StaleMemo
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import InconsistentHookExecution
-from counterweight.hooks.impls import StaleMemo
 from counterweight.hooks.impls import UseState
 from counterweight.keys import Key
 from counterweight.layout import INITIAL_RECTS
 from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ImpureComponent
 from counterweight.shadow import ShadowNode
 from counterweight.shadow import ShadowTree
 from counterweight.shadow import ShadowUpdate

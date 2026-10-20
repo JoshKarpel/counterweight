@@ -25,6 +25,7 @@ from counterweight.events import MouseDown
 from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseScrolledRight
 from counterweight.events import Receiver
+from counterweight.focus import DuplicateElementHandle
 from counterweight.focus import ElementHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import ORIGIN
@@ -45,7 +46,6 @@ from counterweight.layout import layout_changes
 from counterweight.output import Frame
 from counterweight.routing import RoutingTable
 from counterweight.routing import route_key
-from counterweight.shadow import DuplicateElementHandle
 from counterweight.shadow import update_shadow
 from counterweight.styles import Style
 from counterweight.styles.styles import Color

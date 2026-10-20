@@ -11,9 +11,9 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import Receiver
 from counterweight.hooks import Setter
+from counterweight.hooks import StaleMemo
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import StaleMemo
 from counterweight.hooks.impls import UseMemo
 from counterweight.layout import NO_LAYOUTS
 from counterweight.shadow import ShadowTree

@@ -253,3 +253,7 @@ like any focused component that hides, and is drawn unfocused.
 ::: counterweight.hooks.Focus
 ::: counterweight.focus.FocusHandle
 ::: counterweight.focus.Subtree
+::: counterweight.hooks.DuplicateUseFocus
+::: counterweight.hooks.ChangedFocusHandle
+::: counterweight.focus.DuplicateFocusHandle
+::: counterweight.focus.UnsettledFocus

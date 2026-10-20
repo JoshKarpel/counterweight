@@ -42,6 +42,7 @@ from counterweight.handlers import on_click
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
 from counterweight.highlighting import code_block
+from counterweight.hooks import DuplicateUseFocus
 from counterweight.hooks import ElementHandle
 from counterweight.hooks import FocusHandle
 from counterweight.hooks import toggle
@@ -50,7 +51,6 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 

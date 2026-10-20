@@ -18,8 +18,12 @@ from counterweight._context_vars import current_purity_checked
 from counterweight.clock import BEGINNING
 from counterweight.clock import Instant
 from counterweight.components import Component
+from counterweight.components import DuplicateKey
+from counterweight.components import ImpureComponent
 from counterweight.elements import AnyElement
 from counterweight.equivalence import equivalent
+from counterweight.focus import DuplicateElementHandle
+from counterweight.focus import DuplicateFocusHandle
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.hooks.hooks import rects_in
@@ -165,26 +169,6 @@ class ShadowUpdate:
             unmounted=self.unmounted + later.unmounted,
             mounted=(self.mounted | later.mounted) - unmounted_later,
         )
-
-
-class DuplicateElementHandle(Exception):
-    """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
-
-
-class DuplicateFocusHandle(Exception):
-    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
-
-
-class DuplicateKey(Exception):
-    """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
-
-
-class ImpureComponent(Exception):
-    """
-    Raised when `check_purity` is on and re-running every component builds a different tree from the one a render built,
-    so some component's output depends on something besides its arguments and hooks:
-    the output a render kept for it is stale, or calling it twice doesn't give the same result.
-    """
 
 
 def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts, instant: Instant) -> bool:
