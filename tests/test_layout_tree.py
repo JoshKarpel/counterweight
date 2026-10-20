@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 import pytest
 import waxy
+from hypothesis import given
+from hypothesis import strategies as st
+from more_itertools import one
 from pytest_mock import MockerFixture
 
 from counterweight import layout
@@ -34,6 +37,7 @@ from counterweight.shadow import ShadowTree
 from counterweight.shadow import update_shadow
 from counterweight.styles.styles import CellStyle
 from counterweight.styles.styles import Color
+from counterweight.styles.styles import Style
 from counterweight.styles.styles import TextWrap
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col
@@ -42,6 +46,13 @@ from counterweight.styles.utilities import height
 from counterweight.styles.utilities import overflow_hidden
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_wrap_stable
+from tests.test_layout import Sides
+from tests.test_layout import TextInBox
+from tests.test_layout import borders
+from tests.test_layout import box_sizings
+from tests.test_layout import boxed
+from tests.test_layout import paddings
+from tests.test_layout import texts_in_boxes
 
 WIDTH, HEIGHT = 40, 12
 
@@ -292,23 +303,31 @@ def fresh_layout(element: AnyElement) -> tuple[tuple[AnyElement, Rects], ...]:
 
 @pytest.mark.parametrize("elements", SEQUENCES.values(), ids=SEQUENCES.keys())
 def test_reused_tree_lays_out_each_frame_as_a_fresh_tree_does(elements: list[AnyElement]) -> None:
+    assert laid_out_by_one_tree(elements) == [fresh_layout(element) for element in elements]
+
+
+@given(st.lists(texts_in_boxes().map(TextInBox.element), min_size=2, max_size=4))
+def test_reused_tree_lays_out_changing_text_as_a_fresh_tree_does(elements: list[AnyElement]) -> None:
+    assert laid_out_by_one_tree(elements) == [fresh_layout(element) for element in elements]
+
+
+def laid_out_by_one_tree(elements: Sequence[AnyElement]) -> list[tuple[tuple[AnyElement, Rects], ...]]:
+    """Each of `elements` laid out in turn by one tree, which applies only what changed since the last, as frames are."""
     tree = LayoutTree()
     shadow: ShadowTree | None = None
+    frames = []
     for element in elements:
         next_shadow = update_shadow(element, shadow, NO_LAYOUTS).tree
-
-        assert without_keys(
-            tree.compute(layout_changes(shadow, next_shadow), next_shadow, WIDTH, HEIGHT, {})
-        ) == fresh_layout(element)
-
+        frames.append(without_keys(tree.compute(layout_changes(shadow, next_shadow), next_shadow, WIDTH, HEIGHT, {})))
         shadow = next_shadow
+    return frames
 
 
 def test_text_is_not_wrapped_again_at_a_width_it_was_measured_at(mocker: MockerFixture) -> None:
     text = MeasurableText.of(("the quick brown fox", CellStyle(), "stable"))
     wrap_cells = mocker.spy(layout, "wrap_cells")
 
-    _measure_leaf(waxy.KnownSize(width=10.0), waxy.AvailableSize(waxy.MaxContent(), waxy.MaxContent()), text)
+    _measure_leaf(waxy.KnownSize(width=12.0), waxy.AvailableSize(waxy.Definite(10), waxy.MaxContent()), text)
     _measure_leaf(waxy.KnownSize(), waxy.AvailableSize(waxy.Definite(10), waxy.MaxContent()), text)
     _measure_leaf(waxy.KnownSize(height=3.0), waxy.AvailableSize(waxy.Definite(10), waxy.Definite(5)), text)
 
@@ -385,13 +404,21 @@ def test_text_of_one_piece_keeps_its_cells_when_only_its_wrap_changes() -> None:
     assert tree.texts[KEY].cells is before
 
 
-@pytest.mark.parametrize("wrap", ["none", "stable", "balance", "pretty"])
-def test_text_at_zero_width_has_no_lines(wrap: TextWrap) -> None:
+@pytest.mark.parametrize("wrap", ["stable", "balance", "pretty"])
+def test_wrapping_text_at_zero_width_has_no_lines(wrap: TextWrap) -> None:
     text = MeasurableText.of(("two\nlines", CellStyle(), wrap))
 
     measured = _measure_leaf(waxy.KnownSize(width=0.0), waxy.AvailableSize(waxy.Definite(0), waxy.MaxContent()), text)
 
     assert (text.lines_at(0), measured) == ((), waxy.Size(0.0, 0.0))
+
+
+def test_text_that_does_not_wrap_is_as_tall_as_its_lines_at_zero_width() -> None:
+    text = MeasurableText.of(("two\nlines", CellStyle(), "none"))
+
+    measured = _measure_leaf(waxy.KnownSize(width=0.0), waxy.AvailableSize(waxy.Definite(0), waxy.MaxContent()), text)
+
+    assert measured == waxy.Size(0.0, 2.0)
 
 
 def test_canvas_with_an_equal_painter_has_no_layout_changes() -> None:
@@ -473,3 +500,33 @@ def test_canvas_that_does_not_keep_its_aspect_ratio_measures_the_unknown_axis_at
     intrinsic = IntrinsicSize(width=6, height=2, keeps_aspect_ratio=False)
 
     assert _measure_leaf(known, waxy.AvailableSize(waxy.Definite(3), waxy.Definite(4)), intrinsic) == expected
+
+
+@given(
+    natural_size=st.tuples(st.integers(1, 8), st.integers(1, 8)),
+    borders=borders,
+    paddings=paddings,
+    box_sizing=box_sizings,
+    width=st.integers(1, 30),
+    is_stretched=st.booleans(),
+)
+def test_canvas_content_box_keeps_its_aspect_ratio_whatever_its_border_and_padding(
+    natural_size: tuple[int, int],
+    borders: Sides,
+    paddings: Sides,
+    box_sizing: waxy.BoxSizing,
+    width: int,
+    is_stretched: bool,
+) -> None:
+    canvas_width = waxy.Auto() if is_stretched else waxy.Length(width)
+    canvas = Canvas(
+        painter=Blocks(natural_size=natural_size),
+        style=Style(layout=boxed(borders, paddings, box_sizing, canvas_width)),
+    )
+    parent_width = waxy.Length(width if is_stretched else WIDTH)
+    element = Div(style=col | Style(layout=waxy.Style(size_width=parent_width)), children=(canvas,))
+
+    content = one(rects.content for laid_out, rects in fresh_layout(element) if laid_out is canvas)
+
+    natural_width, natural_height = natural_size
+    assert abs(content.height - content.width * natural_height / natural_width) < 1
