@@ -85,7 +85,8 @@ def root(only: tuple[str, ...] = ()) -> Div:
     """The gallery of the examples named in `only`, or of every one."""
     lines = use_memo(lambda: entries([example for example in examples() if not only or example.name in only]), (only,))
     selected, set_selected = use_state(0)
-    is_running, set_running = use_state(False)
+    # How many times Enter has run the selected example, so each one focuses it again; 0 while it isn't running.
+    enters, set_enters = use_state(0)
     shows_source, set_shows_source = use_state(True)
     notice, set_notice = use_state("")
     list_focus, _ = use_state(FocusHandle)
@@ -95,7 +96,7 @@ def root(only: tuple[str, ...] = ()) -> Div:
 
     def select(index: int) -> ScrollIntoView:
         set_selected(min(max(index, 0), len(lines) - 1))
-        set_running(False)
+        set_enters(0)
         set_notice("")
         return ScrollIntoView(selected_line, block="nearest")
 
@@ -120,7 +121,7 @@ def root(only: tuple[str, ...] = ()) -> Div:
             case KeyPressed(key=Key.End):
                 return select(len(lines) - 1)
             case KeyPressed(key=Key.Enter):
-                set_running(True)
+                set_enters(lambda n: n + 1)
                 # The frame mounts in the render this causes, which focuses it then.
                 return FocusOn(frame)
             case KeyPressed(key="s"):
@@ -154,7 +155,7 @@ def root(only: tuple[str, ...] = ()) -> Div:
                         style=col | fill(1),
                         children=(
                             about(entry.example),
-                            preview(entry, frame, is_running),
+                            preview(entry, frame, enters),
                             *((source(entry.example).with_key(entry.example.name),) if shows_source else ()),
                         ),
                     ),
@@ -221,7 +222,7 @@ def about(example: Example) -> Div:
 
 
 @component
-def preview(entry: Entry, frame: FocusHandle, is_running: bool) -> Div:
+def preview(entry: Entry, frame: FocusHandle, enters: int) -> Div:
     """Where the example runs once Enter starts it, keyed by its name, so selecting another unmounts it."""
     area, _ = use_state(ElementHandle)
     return Div(
@@ -229,8 +230,8 @@ def preview(entry: Entry, frame: FocusHandle, is_running: bool) -> Div:
         handle=area,
         children=(
             Text(content=f" {entry.name} ", style=title),
-            example_frame(entry.root, frame, area).with_key(entry.name)
-            if is_running
+            example_frame(entry.root, frame, area, enters).with_key(entry.name)
+            if enters
             else Text(
                 # The rest of the description, which for an app says how to use it.
                 content="\n\n".join([*paragraphs(entry.example.description)[1:], "Press Enter to run it."]),
@@ -241,13 +242,14 @@ def preview(entry: Entry, frame: FocusHandle, is_running: bool) -> Div:
 
 
 @component
-def example_frame(root: Root, handle: FocusHandle, area: ElementHandle) -> AnyElement:
+def example_frame(root: Root, handle: FocusHandle, area: ElementHandle, enters: int) -> AnyElement:
     """
     An example's root, run as part of this component rather than as its child, so the element it returns is this one's.
     This component is focusable but out of the focus order, as a document's body is,
     so focused, it gets the keys an example's root takes while nothing is focused in an app of its own,
     and an `auto_focus` component that mounts inside it takes focus from it, as it would from nothing.
-    A root that makes itself focusable, as one built on a text input does, is focused instead, once it mounts.
+    A root that makes itself focusable, as one built on a text input does, is focused instead,
+    once it mounts and again each time `enters` counts another Enter, since the `FocusOn` Enter sends names this frame.
     """
     example = root()
     element = example.func(*example.args, **example.kwargs)
@@ -263,13 +265,16 @@ def example_frame(root: Root, handle: FocusHandle, area: ElementHandle) -> AnyEl
             # The root is the first focusable component in the area, being the area's outermost.
             send_control(FocusNext(within=area))
 
-    use_effect(focus_the_root, deps=())
+    use_effect(focus_the_root, deps=(enters,))
     return element
 
 
-@component
+@component(memo=True)
 def source(example: Example) -> Div:
-    """The example's source, highlighted, which scrolls with the wheel, and with the keys while it's focused."""
+    """
+    The example's source, highlighted, which scrolls with the wheel, and with the keys while it's focused.
+    It's `memo`, so moving through the list doesn't read and highlight the file again on every key.
+    """
     area = use_scroll_area()
     return Div(
         style=fill(1) | col | border | border_lightrounded | border_color("slate", 600),

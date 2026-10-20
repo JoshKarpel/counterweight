@@ -24,7 +24,6 @@ from counterweight.hooks import Ref
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.keys import Key
 from counterweight.styles.utilities import *
 from counterweight.utils import clamp
 
@@ -209,6 +208,7 @@ from counterweight.events import Pasted
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 from counterweight.geometry import Position
+from counterweight.keys import Key
 
 
 def keys(*names: str) -> tuple[KeyPressed, ...]:

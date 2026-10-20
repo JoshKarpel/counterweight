@@ -104,8 +104,10 @@ async def render_all(all_stills: list[Still], all_demos: list[Demo]) -> None:
 
 
 def main(names: list[str]) -> None:
-    chosen_examples = chosen([name for name in names if name != "gallery"])
     # The gallery isn't an example, so the catalog doesn't list it.
+    named = [name for name in names if name != "gallery"]
+    # Naming only the gallery renders only it, where naming nothing renders everything.
+    chosen_examples = [] if names and not named else chosen(named)
     with_gallery = not names or "gallery" in names
     all_stills = [
         *(still for example in chosen_examples for still in example.stills),

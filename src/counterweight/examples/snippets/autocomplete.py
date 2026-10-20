@@ -27,7 +27,6 @@ from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.events import response_controls
-from counterweight.geometry import Position
 from counterweight.handlers import clear_focus
 from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
@@ -228,6 +227,7 @@ from counterweight.autopilot import paced
 from counterweight.events import MouseScrolledDown
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
+from counterweight.geometry import Position
 
 
 def typed(text: str) -> tuple[KeyPressed, ...]:

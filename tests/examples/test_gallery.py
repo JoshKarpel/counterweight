@@ -50,6 +50,22 @@ async def test_ctrl_right_bracket_brings_focus_back_to_the_list_from_any_example
     assert "Press Enter to run it." in shown
 
 
+@pytest.mark.parametrize(
+    "entry",
+    # A root that makes itself focusable, and one that doesn't.
+    [entry for entry in ENTRIES if entry.name in ("text-input:command-line", "box-model")],
+    ids=lambda entry: entry.name,
+)
+async def test_enter_moves_focus_back_into_an_example_that_is_still_running(entry: gallery.Entry) -> None:
+    root, select = gallery_of(entry)
+    back_and_in = [*select, *(KeyPressed(key=key) for key in (Key.Enter, Key.ControlRightBracket, Key.Enter))]
+
+    # Down moves the selection off the example, which stops it, only if the list has focus.
+    shown = await screen(root, [*back_and_in, KeyPressed(key=Key.Down)])
+
+    assert "Press Enter to run it." not in shown
+
+
 SOME = gallery.root(only=("todo", "box-model", "layout-splitting"))
 
 
