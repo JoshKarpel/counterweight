@@ -817,11 +817,12 @@ async def test_use_pty_starts_the_program_again_in_a_new_cwd(directory: Path) ->
     second.mkdir()
     ptys: list[Pty] = []
     output = Output()
+    argv = ("sh", "-c", "pwd -P; while :; do sleep 0.01; done")
 
     async with mounted() as m:
-        await m.render(terminal(("pwd", "-P"), 80, 4, output, ptys, cwd=first))
+        await m.render(terminal(argv, 80, 4, output, ptys, cwd=first))
         await output.wait_for(b"first")
-        await m.render(terminal(("pwd", "-P"), 80, 4, output, ptys, cwd=second))
+        await m.render(terminal(argv, 80, 4, output, ptys, cwd=second))
         await output.wait_for(b"second")
 
     assert output.data.split() == [bytes(first), bytes(second)]

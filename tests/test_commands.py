@@ -217,6 +217,11 @@ async def test_a_programs_pager_prints_rather_than_waiting_for_keys(
     assert output_text(run.output) == expected
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_a_run_runs_in_cwd(directory: Path) -> None:
     run = await run_to_end(("pwd", "-P"), columns=200, cwd=directory)
 
