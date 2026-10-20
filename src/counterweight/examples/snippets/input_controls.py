@@ -79,6 +79,7 @@ ROOTS = (title_editor,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -100,7 +101,10 @@ DEMOS = [
         "input-controls-title",
         title_editor(),
         DIMENSIONS,
-        steps=paced([ENTER, *SET, KeyPressed(key=Key.Escape)], every=timedelta(milliseconds=300)),
+        steps=[
+            *paced([ENTER, *SET, KeyPressed(key=Key.Escape)], pause=AdvanceClock(by=timedelta(milliseconds=300))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

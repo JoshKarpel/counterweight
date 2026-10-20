@@ -35,6 +35,7 @@ from counterweight.examples.snippets import draggable
 from counterweight.examples.snippets import focus_form
 from counterweight.examples.snippets import input_controls
 from counterweight.examples.snippets import input_handlers
+from counterweight.examples.snippets import picker
 from counterweight.examples.snippets import prefix_keys
 from counterweight.examples.snippets import programs
 from counterweight.examples.snippets import scrolling
@@ -92,6 +93,14 @@ async def test_the_autocomplete_highlights_upward_and_closes_on_escape() -> None
     closed = await screen(autocomplete.root(), (*typed, KeyPressed(key=Key.Escape)), (40, 14))
 
     assert ("pydantic" in opened, upward != opened, "pydantic" in closed) == (True, True, False)
+
+
+async def test_the_picker_chooses_upward_and_closes_on_escape() -> None:
+    opened = await screen(picker.settings(), keys(Key.F2), (40, 10))
+    upward = await screen(picker.settings(), keys(Key.F2, Key.Up, Key.Enter), (40, 10))
+    closed = await screen(picker.settings(), keys(Key.F2, Key.Escape), (40, 10))
+
+    assert ("CPython" in opened, "Python 3.14" in upward, "CPython" in closed) == (True, True, False)
 
 
 async def test_a_draggable_ignores_a_press_of_another_button() -> None:

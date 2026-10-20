@@ -121,14 +121,11 @@ ROOTS = (chat, notes)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.autopilot import typed
+from counterweight.controls import AdvanceClock
 from counterweight.events import Pasted
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
-
 
 CTRL_J = KeyPressed(key=Key.ControlJ)
 ENTER = KeyPressed(key=Key.Enter)
@@ -157,7 +154,17 @@ STILLS = [
 ]
 
 
-DEMOS = [Demo("text-area-chat", chat(), (34, 9), steps=paced(CHATTED, every=timedelta(milliseconds=80)))]
+DEMOS = [
+    Demo(
+        "text-area-chat",
+        chat(),
+        (34, 9),
+        steps=[
+            *paced(CHATTED, pause=AdvanceClock(by=timedelta(milliseconds=80))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
+    )
+]
 
 # --8<-- [end:scenes]
 

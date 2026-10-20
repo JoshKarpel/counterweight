@@ -75,6 +75,7 @@ ROOTS = (root,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseUp
 from counterweight.examples.scenes import Demo
@@ -102,10 +103,13 @@ DEMOS = [
         "input-overview",
         root(),
         DIMENSIONS,
-        steps=paced(
-            [*KEYS, *click(*PORCH), *click(*KITCHEN), KeyPressed(key="2"), KeyPressed(key="0")],
-            every=timedelta(milliseconds=600),
-        ),
+        steps=[
+            *paced(
+                [*KEYS, *click(*PORCH), *click(*KITCHEN), KeyPressed(key="2"), KeyPressed(key="0")],
+                pause=AdvanceClock(by=timedelta(milliseconds=600)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

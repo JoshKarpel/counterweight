@@ -128,6 +128,7 @@ ROOTS = (root,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -147,17 +148,20 @@ DEMOS = [
         "prefix-keys",
         root(),
         (60, 5),
-        steps=paced(
-            [
-                *NEW_PANE,
-                KeyPressed(key=Key.ControlB),
-                KeyPressed(key="n"),
-                KeyPressed(key="!"),
-                KeyPressed(key=Key.ControlB),
-                KeyPressed(key="x"),
-            ],
-            every=timedelta(milliseconds=500),
-        ),
+        steps=[
+            *paced(
+                [
+                    *NEW_PANE,
+                    KeyPressed(key=Key.ControlB),
+                    KeyPressed(key="n"),
+                    KeyPressed(key="!"),
+                    KeyPressed(key=Key.ControlB),
+                    KeyPressed(key="x"),
+                ],
+                pause=AdvanceClock(by=timedelta(milliseconds=500)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

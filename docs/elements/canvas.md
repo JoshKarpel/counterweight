@@ -119,6 +119,33 @@ A cell a painter leaves without a background shows the canvas's `content_color`,
 and a `content_color` gradient maps over the canvas's border box there too,
 so the cell matches the rest of the box.
 
+## Drawing a Screenshot
+
+A canvas can draw what the app drew,
+as a browser's `<canvas>` draws another canvas or an image with `drawImage`.
+A [`Screenshot`][counterweight.controls.Screenshot]'s handler receives the frame on screen,
+whose [`paint`][counterweight.paint.Paint] holds its cells,
+and [`as_painter`][counterweight.paint.Paint.as_painter] makes a painter of a region of it,
+here the panel's box, which [`use_rects`](../hooks/use_rects.md) reports:
+
+<!-- example: canvas.py:screenshot -->
+
+![The panel as it is, and the picture taken of it two presses earlier](../assets/canvas-screenshot.svg)
+
+The painter, a [`PaintView`][counterweight.painters.frames.PaintView],
+holds the cells as they were when it was made, so the picture stays as it was while the app changes.
+Its natural size is the region's, and since cells can't scale, it cuts off whatever doesn't fit the canvas's box.
+A canvas compares its painter with the last one it drew,
+so make the painter once, as the handler does here, rather than in every render.
+
+To change a picture cell by cell, as a transition between two screens does,
+take the cells with [`cells_in`][counterweight.paint.Paint.cells_in],
+which gives a region's cells row by row with the two halves of a wide character in cells of their own,
+so a cell's position in its row is its column.
+Rearrange them, mix in another picture's, and turn the result back into a painter's rows with
+[`rows_of`][counterweight.paint.rows_of],
+which draws a wide character's halves that end up apart as spaces, as a terminal does.
+
 ## Mouse Input
 
 A canvas takes an `on_input` handler as any element does,
@@ -166,3 +193,13 @@ two built from the same values are equal, so a component can build its painter i
 ::: counterweight.painters.pixels.HalfBlockGradient
 
 ::: counterweight.painters.pixels.SupportsRGBA
+
+::: counterweight.painters.frames.PaintView
+
+::: counterweight.paint.Paint
+
+::: counterweight.paint.Cell
+
+::: counterweight.paint.BLANK
+
+::: counterweight.paint.rows_of

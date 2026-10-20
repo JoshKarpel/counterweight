@@ -258,6 +258,7 @@ ROOTS = (order_form,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseUp
 from counterweight.examples.scenes import Demo
@@ -297,20 +298,23 @@ DEMOS = [
         "focus-form",
         order_form(),
         (40, 14),
-        steps=paced(
-            [
-                ENTER,
-                *press(*GIFT_WRAP_LABEL),
-                ENTER,
-                ENTER,
-                TAB,
-                TAB,
-                ENTER,
-                *press(*HELP_PANEL),
-                KeyPressed(key=Key.Right),
-            ],
-            every=timedelta(milliseconds=800),
-        ),
+        steps=[
+            *paced(
+                [
+                    ENTER,
+                    *press(*GIFT_WRAP_LABEL),
+                    ENTER,
+                    ENTER,
+                    TAB,
+                    TAB,
+                    ENTER,
+                    *press(*HELP_PANEL),
+                    KeyPressed(key=Key.Right),
+                ],
+                pause=AdvanceClock(by=timedelta(milliseconds=800)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

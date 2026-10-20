@@ -90,6 +90,7 @@ ROOTS = (counter, plus_two)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -106,9 +107,13 @@ DEMOS = [
         "use-state-counter",
         counter(),
         (30, 4),
-        steps=paced(
-            [PLUS, PLUS, PLUS, PLUS, MINUS, PLUS, KeyPressed(key="0"), PLUS], every=timedelta(milliseconds=500)
-        ),
+        steps=[
+            *paced(
+                [PLUS, PLUS, PLUS, PLUS, MINUS, PLUS, KeyPressed(key="0"), PLUS],
+                pause=AdvanceClock(by=timedelta(milliseconds=500)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

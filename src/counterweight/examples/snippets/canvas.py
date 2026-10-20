@@ -14,6 +14,7 @@ from PIL import ImageOps
 
 from counterweight.app import app
 from counterweight.components import component
+from counterweight.controls import Screenshot
 from counterweight.elements import Canvas
 from counterweight.elements import Div
 from counterweight.elements import Rows
@@ -21,10 +22,15 @@ from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import InputResponse
+from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
+from counterweight.output import Frame
+from counterweight.painters.frames import PaintView
 from counterweight.painters.pixels import Fit
 from counterweight.painters.pixels import HalfBlocks
 from counterweight.painters.pixels import Pixels
@@ -193,11 +199,53 @@ def paint() -> Div:
 
 # --8<-- [end:paint]
 
+# --8<-- [start:screenshot]
 
-ROOTS = (picture, sizing, fits, image, ruler, paint)
+
+@component
+def snapshot() -> Div:
+    count, set_count = use_state(0)
+    panel = use_state(ElementHandle)[0]
+    where = use_rects(panel).border
+    no_picture: PaintView | None = None
+    taken, set_taken = use_state(no_picture)
+
+    def keep(frame: Frame) -> None:
+        # Built once, from the frame as it was, rather than in every render.
+        set_taken(frame.paint.as_painter(where))
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key="+"):
+                set_count(lambda count: count + 1)
+                return ()
+            case KeyPressed(key="s"):
+                return (Screenshot(handler=keep),)
+            case _:
+                return None
+
+    return Div(
+        style=row | gap(2),
+        on_input=on_input,
+        children=(
+            Div(
+                handle=panel,
+                style=border | border_lightrounded | border_color("teal", 400) | pad_x(1),
+                children=(Text(content=f"Count: {count}"),),
+            ),
+            Text(content="Press s", style=text_color("slate", 400)) if taken is None else Canvas(painter=taken),
+        ),
+    )
+
+
+# --8<-- [end:screenshot]
+
+
+ROOTS = (picture, sizing, fits, image, ruler, paint, snapshot)
 
 # --8<-- [start:scenes]
 
+from counterweight.autopilot import typed
 from counterweight.examples.scenes import Still
 from counterweight.geometry import Position
 
@@ -215,6 +263,7 @@ STILLS = [
     Still("canvas-image", image(), (70, 18)),
     Still("canvas-painter", ruler(), (64, 4)),
     Still("canvas-paint", paint(), (28, 10), steps=stroke()),
+    Still("canvas-screenshot", snapshot(), (36, 3), steps=[*typed("++s"), *typed("++")]),
 ]
 
 # --8<-- [end:scenes]

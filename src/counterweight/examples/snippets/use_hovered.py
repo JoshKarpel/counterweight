@@ -80,6 +80,7 @@ ROOTS = (menu, boxes)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseMoved
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
@@ -95,24 +96,31 @@ STILLS = [
     Still("use-hovered-boxes", boxes(), (24, 10), steps=[*moves((2, 3))]),
 ]
 
+
 DEMOS = [
     Demo(
         "use-hovered-menu",
         menu(),
         (24, 7),
-        steps=paced(
-            moves((20, 0), (14, 1), (8, 2), (7, 3), (6, 4), (6, 5), (12, 6), (20, 6)),
-            every=timedelta(milliseconds=300),
-        ),
+        steps=[
+            *paced(
+                moves((20, 0), (14, 1), (8, 2), (7, 3), (6, 4), (6, 5), (12, 6), (20, 6)),
+                pause=AdvanceClock(by=timedelta(milliseconds=300)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
     Demo(
         "use-hovered-boxes",
         boxes(),
         (24, 10),
-        steps=paced(
-            moves((20, 4), (16, 4), (15, 4), (14, 4), (10, 4), (10, 7), (10, 8), (10, 9), (20, 9)),
-            every=timedelta(milliseconds=400),
-        ),
+        steps=[
+            *paced(
+                moves((20, 4), (16, 4), (15, 4), (14, 4), (10, 4), (10, 7), (10, 8), (10, 9), (20, 9)),
+                pause=AdvanceClock(by=timedelta(milliseconds=400)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

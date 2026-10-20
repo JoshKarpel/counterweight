@@ -448,7 +448,7 @@ class LayoutTree:
             key,
             element,
             rects,
-            text.lines_at(None if element.style.resolved.text_wrap == "none" else rects.content.width),
+            text.lines_at(rects.content.width),
             text.is_solid,
         )
 
@@ -917,18 +917,26 @@ class MeasurableText:
         return cls(cells=cells, wrap=wrap, pieces=pieces, is_solid=all(style.is_solid for _, style in pieces))
 
     def size_at(self, width: int | None) -> tuple[int, int]:
-        """The widest line and the line count when wrapped at `width` (unlimited if `None`)."""
+        """
+        The width and line count of this text wrapped at `width` (unlimited if `None`):
+        its widest line, but no wider than `width` if it wraps.
+        """
         try:
             return self.sizes[width]
         except KeyError:
             lines = self.lines_at(width)
-            size = self.sizes[width] = (max((cells_width(line) for line in lines), default=0), len(lines))
+            widest = max((cells_width(line) for line in lines), default=0)
+            # A cluster wider than `width` sticks out of the box rather than widening it,
+            # since paint wraps at the box's width, and a wider box would fit more on each line.
+            if width is not None and self.wrap != "none":
+                widest = min(widest, width)
+            size = self.sizes[width] = (widest, len(lines))
             return size
 
     def lines_at(self, width: int | None) -> Lines:
         """The rows this text wraps to at `width` (unlimited if `None`)."""
-        # Text that doesn't wrap breaks only at its line breaks, so every width with room for a cluster shares its rows.
-        if self.wrap == "none" and width is not None and width > 0:
+        # Text that doesn't wrap breaks only at its line breaks, so every width shares its rows.
+        if self.wrap == "none":
             width = None
         try:
             return self.lines[width]
@@ -962,19 +970,18 @@ def _measure_leaf(
     if isinstance(context, IntrinsicSize):
         return _measure_intrinsic(known_width, known_height, available, context)
 
+    # Taffy gives a known width as the border box but the available width as the content box,
+    # and makes the available width definite wherever it knows the width, so text wraps at the available width.
     width: int | None
-    if known_width is not None:
-        width = int(known_width)
-    else:
-        match available.width:
-            case waxy.Definite(value=value):
-                width = int(value)
-            case waxy.MinContent():
-                width = context.narrowest_width()
-            case waxy.MaxContent():
-                width = None
-            case _ as unreachable:
-                assert_never(unreachable)
+    match available.width:
+        case waxy.Definite(value=value):
+            width = int(value)
+        case waxy.MinContent():
+            width = context.narrowest_width()
+        case waxy.MaxContent():
+            width = None
+        case _ as unreachable:
+            assert_never(unreachable)
 
     widest, line_count = context.size_at(width)
 
@@ -1357,16 +1364,14 @@ def wrap_cells(
     wrap: TextWrap,
     width: int | None,
 ) -> list[list[StyledGrapheme]]:
-    if width is not None and width <= 0:
+    if wrap == "none" or width is None:
+        return _split_paragraphs(cells)
+
+    if width <= 0:
         return []
 
-    paragraphs = _split_paragraphs(cells)
-
-    if wrap == "none" or width is None:
-        return paragraphs
-
     result: list[list[StyledGrapheme]] = []
-    for paragraph in paragraphs:
+    for paragraph in _split_paragraphs(cells):
         if wrap == "stable":
             result.extend(_wrap_greedy(paragraph, width))
         elif wrap == "balance":

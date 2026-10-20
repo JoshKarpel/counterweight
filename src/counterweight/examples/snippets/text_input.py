@@ -182,14 +182,11 @@ ROOTS = (search, sign_up, command_line, amber_sign_up)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.autopilot import typed
+from counterweight.controls import AdvanceClock
 from counterweight.events import Pasted
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
-
 
 TAB = KeyPressed(key=Key.Tab)
 COMMAND = typed('git commit -m "Scroll long values"')
@@ -225,17 +222,20 @@ DEMOS = [
         "text-input-search",
         search(),
         (30, 8),
-        steps=paced(
-            [
-                KeyPressed(key=Key.Down),
-                KeyPressed(key=Key.Down),
-                *typed("an"),
-                KeyPressed(key=Key.Backspace),
-                KeyPressed(key=Key.Backspace),
-                *typed("ch"),
-            ],
-            every=timedelta(milliseconds=300),
-        ),
+        steps=[
+            *paced(
+                [
+                    KeyPressed(key=Key.Down),
+                    KeyPressed(key=Key.Down),
+                    *typed("an"),
+                    KeyPressed(key=Key.Backspace),
+                    KeyPressed(key=Key.Backspace),
+                    *typed("ch"),
+                ],
+                pause=AdvanceClock(by=timedelta(milliseconds=300)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

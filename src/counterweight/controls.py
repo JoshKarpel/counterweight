@@ -91,6 +91,31 @@ class RestoreTitle(_Control):
     """
 
 
+@dataclass(frozen=True, slots=True)
+class CopyToClipboard(_Control):
+    """
+    Copy `text` to the system clipboard, as a browser's
+    [`navigator.clipboard.writeText`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) does,
+    for an app's own "copy" buttons and key bindings.
+
+    The text is copied at the beginning of the next render cycle,
+    so all other events that are due to be processed in the current cycle
+    will be processed before it's copied, and the last copy in a cycle wins.
+    Copying `""` empties the clipboard.
+
+    The app asks the terminal to set the clipboard with
+    [OSC 52](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands),
+    so it works only where the terminal supports it, and the app can't tell whether it did.
+    A terminal may turn it off, or ask before letting a program set the clipboard,
+    and tmux passes it on only with `set -g set-clipboard on`
+    (its default, `external`, ignores applications' requests).
+    A headless app copies nothing, and a recording doesn't record the copy,
+    since replaying it in a terminal would set the viewer's clipboard.
+    """
+
+    text: str
+
+
 # How Screenshot.to_file encodes a frame, by the suffix of the path it writes to.
 SCREENSHOT_ENCODINGS: dict[str, Callable[[Frame], str]] = {
     ".svg": lambda frame: frame.svg(),
@@ -464,6 +489,7 @@ AnyControl = (
     | Bell
     | SetTitle
     | RestoreTitle
+    | CopyToClipboard
     | Screenshot
     | Suspend
     | ToggleBorderHealing

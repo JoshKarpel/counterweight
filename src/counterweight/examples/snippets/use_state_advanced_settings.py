@@ -70,6 +70,7 @@ ROOTS = (settings,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.controls import Marker
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
@@ -86,10 +87,13 @@ DEMOS = [
         "use-state-advanced-settings",
         settings(),
         (32, 4),
-        steps=paced(
-            [A, PLUS, PLUS, A, Marker("Hidden"), A, Marker("Shown again")],
-            every=timedelta(milliseconds=800),
-        ),
+        steps=[
+            *paced(
+                [A, PLUS, PLUS, A, Marker("Hidden"), A, Marker("Shown again")],
+                pause=AdvanceClock(by=timedelta(milliseconds=800)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

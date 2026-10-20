@@ -108,6 +108,7 @@ ROOTS = (peak_table,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseUp
 from counterweight.examples.scenes import Demo
@@ -130,9 +131,13 @@ DEMOS = [
         "sortable-table",
         peak_table(),
         DIMENSIONS,
-        steps=paced(
-            [*click(FIRST_ASCENT), *click(PEAK), *click(PEAK), *click(HEIGHT)], every=timedelta(milliseconds=800)
-        ),
+        steps=[
+            *paced(
+                [*click(FIRST_ASCENT), *click(PEAK), *click(PEAK), *click(HEIGHT)],
+                pause=AdvanceClock(by=timedelta(milliseconds=800)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

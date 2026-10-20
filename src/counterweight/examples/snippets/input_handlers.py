@@ -105,6 +105,7 @@ ROOTS = (basket,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import MouseUp
@@ -149,7 +150,10 @@ DEMOS = [
         "input-handlers",
         basket(),
         DIMENSIONS,
-        steps=paced([*BLURRED, *press(*PLUMS), *press(*EMPTY)], every=timedelta(milliseconds=700)),
+        steps=[
+            *paced([*BLURRED, *press(*PLUMS), *press(*EMPTY)], pause=AdvanceClock(by=timedelta(milliseconds=700))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

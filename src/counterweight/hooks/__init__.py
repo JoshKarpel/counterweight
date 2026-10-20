@@ -12,8 +12,10 @@ from counterweight.hooks.hooks import use_controls
 from counterweight.hooks.hooks import use_effect
 from counterweight.hooks.hooks import use_focus
 from counterweight.hooks.hooks import use_hovered
+from counterweight.hooks.hooks import use_loop
 from counterweight.hooks.hooks import use_memo
 from counterweight.hooks.hooks import use_mouse
+from counterweight.hooks.hooks import use_progress
 from counterweight.hooks.hooks import use_rects
 from counterweight.hooks.hooks import use_ref
 from counterweight.hooks.hooks import use_scroll
@@ -46,8 +48,10 @@ __all__ = [
     "use_effect",
     "use_focus",
     "use_hovered",
+    "use_loop",
     "use_memo",
     "use_mouse",
+    "use_progress",
     "use_rects",
     "use_ref",
     "use_scroll",

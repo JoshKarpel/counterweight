@@ -295,6 +295,7 @@ def source(example: Example) -> Div:
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -320,15 +321,18 @@ DEMOS = [
         "gallery",
         root(only=SOME),
         DIMENSIONS,
-        steps=paced(
-            [
-                *keys(Key.Down, Key.Enter),
-                *keys(*"Try it"),
-                *keys(Key.Enter, Key.ControlRightBracket, Key.Down, Key.Down, Key.Enter, Key.ControlRightBracket),
-                *keys(Key.Down, Key.Down, "s", Key.Enter),
-            ],
-            every=timedelta(milliseconds=400),
-        ),
+        steps=[
+            *paced(
+                [
+                    *keys(Key.Down, Key.Enter),
+                    *keys(*"Try it"),
+                    *keys(Key.Enter, Key.ControlRightBracket, Key.Down, Key.Down, Key.Enter, Key.ControlRightBracket),
+                    *keys(Key.Down, Key.Down, "s", Key.Enter),
+                ],
+                pause=AdvanceClock(by=timedelta(milliseconds=400)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

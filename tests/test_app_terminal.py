@@ -23,6 +23,7 @@ from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import Bell
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import FocusOn
 from counterweight.controls import Quit
 from counterweight.controls import RestoreTitle
@@ -58,6 +59,7 @@ from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import SYNCHRONIZED_OUTPUT_OFF
 from counterweight.output import SYNCHRONIZED_OUTPUT_ON
 from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight.output import clipboard_instructions
 from counterweight.output import title_instructions
 from counterweight.programs import TerminalStreams
 from counterweight.styles.utilities import text_black
@@ -206,6 +208,30 @@ async def test_set_title_sets_the_title_once_for_each_change(terminal: Terminal)
     )
 
     assert output.getvalue() == TAKE_OVER + HI + title_instructions("one") + title_instructions("two") + HAND_BACK
+
+
+async def test_copy_to_clipboard_copies_the_last_text_copied_in_each_cycle(terminal: Terminal) -> None:
+    output = Output()
+
+    @component
+    def root() -> Text:
+        return Text(
+            content="hi",
+            style=text_black,
+            on_input=lambda event, _: (CopyToClipboard(text="one"), CopyToClipboard(text="two")),
+        )
+
+    await app(
+        root(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[KeyPressed(key="c"), CopyToClipboard(text="two"), Quit()],
+    )
+
+    copy = clipboard_instructions("two")
+    assert output.getvalue() == TAKE_OVER + HI + copy + copy + HAND_BACK
+    assert TAKE_OVER + HI + copy in output.flushed
 
 
 async def test_the_title_app_is_given_is_set_before_the_first_frame(terminal: Terminal) -> None:

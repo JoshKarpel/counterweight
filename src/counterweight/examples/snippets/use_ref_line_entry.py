@@ -61,6 +61,7 @@ ROOTS = (line_entry,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -75,7 +76,12 @@ DEMOS = [
         "use-ref-line-entry",
         line_entry(),
         (30, 3),
-        steps=paced([*typed("hello"), ENTER, *typed("world"), ENTER], every=timedelta(milliseconds=250)),
+        steps=[
+            *paced(
+                [*typed("hello"), ENTER, *typed("world"), ENTER], pause=AdvanceClock(by=timedelta(milliseconds=250))
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

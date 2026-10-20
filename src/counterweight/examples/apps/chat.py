@@ -294,11 +294,14 @@ def message_box(message: Message) -> Div:
 
 # --8<-- [start:scenes]
 
+
 from counterweight.autopilot import paced
 from counterweight.controls import AdvanceClock
 from counterweight.events import Pasted
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
+
+PAUSE = AdvanceClock(by=timedelta(milliseconds=60))
 
 ENTER = KeyPressed(key=Key.Enter)
 
@@ -334,12 +337,12 @@ DEMOS = [
         root(),
         (80, 24),
         steps=[
-            *paced(
-                typed("How do I reverse a list?"), every=timedelta(milliseconds=60), hold=timedelta(milliseconds=300)
-            ),
+            *paced(typed("How do I reverse a list?"), pause=PAUSE),
+            AdvanceClock(by=timedelta(milliseconds=300)),
             ENTER,
             *ticks(timedelta(seconds=3)),
-            *paced(typed("And find big files?"), every=timedelta(milliseconds=60), hold=timedelta(milliseconds=300)),
+            *paced(typed("And find big files?"), pause=PAUSE),
+            AdvanceClock(by=timedelta(milliseconds=300)),
             ENTER,
             *ticks(timedelta(seconds=1)),
             KeyPressed(key=Key.Escape),

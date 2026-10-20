@@ -73,7 +73,9 @@ above = Style(layout=waxy.Style(inset_bottom=waxy.Percent(1.0)))
 
 def matches(text: str, candidates: tuple[str, ...]) -> list[str]:
     pattern = f"*{'*'.join(glob.escape(c) for c in text.lower())}*"
-    return [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
+    found = [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
+    # The one the text names exactly first, so typing a whole name and pressing Enter chooses it.
+    return sorted(found, key=lambda candidate: candidate.lower() != text.lower())
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,15 +226,12 @@ ROOTS = (root,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.autopilot import typed
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseScrolledDown
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 from counterweight.geometry import Position
-
-
-def typed(text: str) -> tuple[KeyPressed, ...]:
-    return tuple(KeyPressed(key=character) for character in text)
-
 
 DOWN = KeyPressed(key=Key.Down)
 TAB = KeyPressed(key=Key.Tab)
@@ -259,10 +258,13 @@ DEMOS = [
         "autocomplete",
         root(),
         DIMENSIONS,
-        steps=paced(
-            [*typed("py"), DOWN, DOWN, KeyPressed(key=Key.Enter), TAB, TAB, TAB, TAB, *typed("dc"), DOWN],
-            every=timedelta(milliseconds=400),
-        ),
+        steps=[
+            *paced(
+                [*typed("py"), DOWN, DOWN, KeyPressed(key=Key.Enter), TAB, TAB, TAB, TAB, *typed("dc"), DOWN],
+                pause=AdvanceClock(by=timedelta(milliseconds=400)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

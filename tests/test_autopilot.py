@@ -8,13 +8,17 @@ from datetime import timedelta
 
 import pytest
 
+from counterweight.animation import FRAME_INTERVAL
 from counterweight.app import app
 from counterweight.autopilot import Autopilot
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import AutopilotTimedOut
 from counterweight.autopilot import Wait
 from counterweight.autopilot import WaitFor
+from counterweight.autopilot import advance
 from counterweight.autopilot import paced
+from counterweight.autopilot import showing
+from counterweight.autopilot import typed
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
@@ -31,10 +35,14 @@ from counterweight.geometry import Position
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_mouse
+from counterweight.hooks import use_progress
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
+from counterweight.keys import Key
 from counterweight.output import Frame
+from counterweight.paint import Cell
 from counterweight.paint import Paint
+from counterweight.styles.styles import CELL_STYLE_DEFAULTS
 from counterweight.styles.utilities import size
 
 BLANK = Frame(paint=Paint.blank(1, 1))
@@ -346,17 +354,98 @@ async def test_a_wait_moves_a_frozen_clock_on_by_exactly_its_duration() -> None:
     assert frames[0].text(ansi=False).strip() == "5"
 
 
-def test_paced_steps_have_a_pause_before_each_and_a_hold_after_the_last() -> None:
-    every, hold = timedelta(milliseconds=300), timedelta(seconds=5)
-
-    assert paced([KeyPressed(key="a"), KeyPressed(key="b")], every=every, hold=hold) == [
-        AdvanceClock(by=every),
-        KeyPressed(key="a"),
-        AdvanceClock(by=every),
-        KeyPressed(key="b"),
-        AdvanceClock(by=hold),
-    ]
+def test_typed_presses_a_key_for_each_grapheme_cluster() -> None:
+    assert typed("ab日👩‍💻") == [KeyPressed(key=key) for key in ("a", "b", "日", "👩‍💻")]
 
 
-def test_paced_steps_hold_for_two_seconds_by_default() -> None:
-    assert paced([], every=timedelta(milliseconds=300))[-1] == AdvanceClock(by=timedelta(seconds=2))
+def test_typed_presses_enter_for_a_newline_and_tab_for_a_tab() -> None:
+    assert typed("a\n\t") == [KeyPressed(key="a"), KeyPressed(key=Key.Enter), KeyPressed(key=Key.Tab)]
+
+
+def test_paced_steps_have_the_pause_before_each() -> None:
+    pause = Wait(timedelta(milliseconds=90))
+
+    assert paced([KeyPressed(key="a"), Quit()], pause=pause) == [pause, KeyPressed(key="a"), pause, Quit()]
+
+
+def test_paced_steps_without_steps_have_no_pause() -> None:
+    assert paced([], pause=AdvanceClock(by=timedelta(milliseconds=300))) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [("\r\n", Key.Enter), ("\r", Key.Enter), ("\x7f", Key.Backspace), ("\x03", Key.ControlC), ("\x1b", Key.Escape)],
+    ids=["crlf", "carriage-return", "delete", "ctrl-c", "escape"],
+)
+def test_typed_presses_the_key_a_terminal_sends_a_control_character_as(text: str, key: Key) -> None:
+    assert typed(f"a{text}") == [KeyPressed(key="a"), KeyPressed(key=key)]
+
+
+def frame_showing(text: str) -> Frame:
+    paint = Paint.blank(8, 1)
+    for x, character in enumerate(text):
+        paint[x, 0] = Cell(character, CELL_STYLE_DEFAULTS)
+    return Frame(paint=paint)
+
+
+@pytest.mark.parametrize(("shown", "expected"), [("a prompt", True), ("nothing", False)])
+def test_showing_waits_for_its_text_to_be_on_screen(shown: str, expected: bool) -> None:
+    assert showing("prompt").condition(frame_showing(shown)) is expected
+
+
+def test_showing_gives_up_after_its_timeout() -> None:
+    assert showing("prompt", timeout=timedelta(seconds=3)).timeout == timedelta(seconds=3)
+
+
+@pytest.mark.parametrize(
+    ("by", "expected"),
+    [
+        pytest.param(timedelta(milliseconds=150), [timedelta(milliseconds=50)] * 3, id="whole-steps"),
+        pytest.param(
+            timedelta(milliseconds=120),
+            [timedelta(milliseconds=50), timedelta(milliseconds=50), timedelta(milliseconds=20)],
+            id="with-a-shorter-last-step",
+        ),
+        pytest.param(timedelta(), [], id="nothing"),
+    ],
+)
+def test_advance_moves_the_clock_a_step_at_a_time(by: timedelta, expected: list[timedelta]) -> None:
+    assert advance(by, step=timedelta(milliseconds=50)) == [AdvanceClock(by=step) for step in expected]
+
+
+def test_advance_steps_a_frame_of_the_animation_hooks_at_a_time_by_default() -> None:
+    assert advance(FRAME_INTERVAL * 2) == [AdvanceClock(by=FRAME_INTERVAL)] * 2
+
+
+@pytest.mark.parametrize(
+    ("by", "step"),
+    [
+        pytest.param(timedelta(seconds=-1), timedelta(seconds=1), id="backwards"),
+        pytest.param(timedelta(seconds=1), timedelta(), id="no-step"),
+    ],
+)
+def test_advance_without_a_way_forward_raises(by: timedelta, step: timedelta) -> None:
+    with pytest.raises(ValueError, match="isn't negative and a positive step"):
+        advance(by, step)
+
+
+async def test_advancing_plays_an_animation_a_frame_at_a_time() -> None:
+    texts: list[str] = []
+
+    @component
+    def animated() -> Text:
+        return Text(content=f"{use_progress(timedelta(milliseconds=100)):g}")
+
+    await app(
+        animated(),
+        headless=True,
+        dimensions=(4, 1),
+        clock=FrozenClock(datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC)),
+        autopilot=[
+            *(advanced, Screenshot(handler=lambda frame: texts.append(frame.text(ansi=False).strip())))
+            for advanced in advance(timedelta(milliseconds=100))
+        ]
+        + [Quit()],
+    )
+
+    assert texts == ["0.5", "1"]

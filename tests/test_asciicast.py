@@ -29,6 +29,7 @@ from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
 from counterweight.controls import Bell
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import Marker
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -55,6 +56,7 @@ from counterweight.output import OUTPUT_CONTROL_START
 from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight.output import Frame
+from counterweight.output import clipboard_instructions
 from counterweight.output import stop_output_control
 from counterweight.styles.styles import Color
 from counterweight.styles.utilities import text_black
@@ -402,3 +404,21 @@ async def test_a_headful_recording_holds_what_the_app_draws_on_its_terminal(tmp_
         .removesuffix(BRACKETED_PASTE_OFF + UNSET_ANY_EVENT_MOUSE_SGR_FORMAT + hand_back.getvalue())
     )
     assert "".join(str(data) for _, code, data in read(path)[1] if code == "o") == drawn
+
+
+async def test_a_recording_leaves_out_a_copy_the_app_writes_to_its_terminal(tmp_path: Path, terminal: Terminal) -> None:
+    output = io.StringIO()
+    path = tmp_path / "x.cast"
+
+    await app(
+        typing(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(10, 2),
+        autopilot=[CopyToClipboard(text="hi"), Quit()],
+        recording=Recording(path),
+    )
+
+    copy = clipboard_instructions("hi")
+    assert copy in output.getvalue()
+    assert not any(copy in str(data) for _, code, data in read(path)[1] if code == "o")

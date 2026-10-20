@@ -17,6 +17,7 @@ from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import paced
 from counterweight.clock import FrozenClock
 from counterweight.components import component
+from counterweight.controls import AdvanceClock
 from counterweight.controls import Marker
 from counterweight.controls import Quit
 from counterweight.controls import ScrollBy
@@ -92,11 +93,11 @@ def search() -> Div:
 
 # --8<-- [start:chapters]
 
-PAUSE = timedelta(milliseconds=400)
+PAUSE = AdvanceClock(by=timedelta(milliseconds=400))
 
 
 def chapter(label: str, steps: Iterable[AutopilotStep]) -> list[AutopilotStep]:
-    return [Marker(label), *paced(steps, every=PAUSE, hold=PAUSE)]
+    return [Marker(label), *paced(steps, pause=PAUSE), PAUSE]
 
 
 DEMO = [
@@ -124,7 +125,6 @@ ROOTS = (search,)
 
 # --8<-- [start:scenes]
 
-from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -133,12 +133,16 @@ MANGO = [KeyPressed(key=character) for character in "mango"]
 
 STILLS = [Still("autopilot-typed", search(), (30, 8), steps=TYPED)]
 
+
 DEMOS = [
     Demo(
         "autopilot-mango",
         search(),
         (30, 8),
-        steps=paced(MANGO, every=timedelta(milliseconds=300)),
+        steps=[
+            *paced(MANGO, pause=AdvanceClock(by=timedelta(milliseconds=300))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
     Demo("autopilot-chapters", search(), (30, 8), steps=[*DEMO, AdvanceClock(by=timedelta(seconds=2))]),
 ]

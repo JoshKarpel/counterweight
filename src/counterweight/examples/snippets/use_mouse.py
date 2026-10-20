@@ -59,6 +59,7 @@ ROOTS = (pointer,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import MouseUp
@@ -114,8 +115,9 @@ DEMOS = [
                     MouseUp(absolute=Position(30, 6), button=1),
                     *path(Position(30, 6), Position(36, 3), moves=6, button=None),
                 ],
-                every=timedelta(milliseconds=60),
+                pause=AdvanceClock(by=timedelta(milliseconds=60)),
             ),
+            AdvanceClock(by=timedelta(seconds=2)),
         ],
     )
 ]

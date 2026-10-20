@@ -23,6 +23,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import assert_never
 
+from counterweight._context_vars import current_task_group
 from counterweight.components import component
 from counterweight.elements import Canvas
 from counterweight.elements import Div
@@ -179,6 +180,7 @@ def use_command(
     width: Ref[int] = use_ref(0)
     is_sized: Ref[Event] = use_ref(Event)
     runs, set_runs = use_state(Runs())
+    task_group = current_task_group.get()
 
     async def apply_width() -> None:
         if columns <= 0:
@@ -196,7 +198,7 @@ def use_command(
             return
 
         await is_sized.current.wait()
-        await tear_down_in_background(run_to_end(request, width.current))
+        await tear_down_in_background(task_group, run_to_end(request, width.current))
 
     async def run_to_end(request: Request, run_columns: int) -> None:
         transcript = Transcript(columns=run_columns, max_lines=max_lines)

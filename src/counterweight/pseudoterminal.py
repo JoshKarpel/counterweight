@@ -19,6 +19,7 @@ import termios
 from asyncio import CancelledError
 from asyncio import Event
 from asyncio import Task
+from asyncio import TaskGroup
 from asyncio import create_subprocess_exec
 from asyncio import create_task
 from asyncio import get_running_loop
@@ -417,18 +418,21 @@ def has_members(group: int) -> bool:
     return True
 
 
-async def tear_down_in_background[T](run: Coroutine[object, object, T]) -> T:
+async def tear_down_in_background[T](task_group: TaskGroup, run: Coroutine[object, object, T]) -> T:
     """
-    Awaits `run` in a task of the app's task group, so that cancelling the caller, such as an effect,
+    Awaits `run` in a task of `task_group`, the app's, so that cancelling the caller, such as an effect,
     cancels `run` and returns at once, leaving `run` to tear down, such as hanging up its program, in the background,
     where it doesn't hold up the render loop, which waits for a cancelled effect to finish before it renders again.
     The task group waits for `run` when the app stops.
     """
-    task = current_task_group.get().create_task(run)
+    task = task_group.create_task(run)
     try:
         return await shield(task)
     except CancelledError:
-        task.cancel()
+        # An app that stops cancels `run` itself, maybe before the caller, and cancelling it again
+        # would interrupt its teardown, which kills a program it's hanging up and leaves it unreaped.
+        if not task.cancelling():
+            task.cancel()
         raise
 
 
@@ -480,6 +484,7 @@ def use_pty(
     is_sized: Ref[Event] = use_ref(Event)
     initial_status: PtyStatus = Starting()
     status, set_status = use_state(initial_status)
+    task_group = current_task_group.get()
 
     async def apply_size() -> None:
         if columns <= 0 or rows <= 0:
@@ -510,6 +515,7 @@ def use_pty(
 
         try:
             outcome = await tear_down_in_background(
+                task_group,
                 run_pty(
                     argv,
                     *spawned_size,
@@ -519,7 +525,7 @@ def use_pty(
                     clear_env=clear_env,
                     cwd=cwd,
                     hangup_grace=hangup_grace,
-                )
+                ),
             )
         finally:
             connection.current = None

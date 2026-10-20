@@ -202,6 +202,7 @@ ROOTS = (inspector, routing, slider, shopping_list)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseUp
 from counterweight.events import Pasted
@@ -272,16 +273,28 @@ STILLS = [
     Still("input-events-selection", shopping_list(), SELECTION, steps=SELECTED),
 ]
 
+
 DEMOS = [
-    Demo("input-events-routing", routing(), ROUTING, steps=paced(ROUTED, every=timedelta(milliseconds=900))),
+    Demo(
+        "input-events-routing",
+        routing(),
+        ROUTING,
+        steps=[
+            *paced(ROUTED, pause=AdvanceClock(by=timedelta(milliseconds=900))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
+    ),
     Demo(
         "input-events-slider",
         slider(),
         SLIDER,
-        steps=paced(
-            [*drag(Position(8, 1), Position(16, 1), moves=4), *drag(Position(16, 1), Position(38, 5), moves=10)],
-            every=timedelta(milliseconds=80),
-        ),
+        steps=[
+            *paced(
+                [*drag(Position(8, 1), Position(16, 1), moves=4), *drag(Position(16, 1), Position(38, 5), moves=10)],
+                pause=AdvanceClock(by=timedelta(milliseconds=80)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

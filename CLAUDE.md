@@ -64,15 +64,16 @@ The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div`, `Text` and `Canvas`, with style and event handling capabilities
-- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`) and `terminal` (`ScreenView` and `Transcript`)
+- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`), `terminal` (`ScreenView` and `Transcript`), and `frames` (`PaintView`, what `Paint.as_painter` makes of a region of a frame)
 - **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
 - **One-shot commands** (src/counterweight/commands.py): `use_command`, which runs a program on a pseudo-terminal when asked, feeds an emulator, and snapshots it at most once a frame into `CommandRun` values whose output is a `Transcript` painter, and `command_output`, the widget that shows a run
 - **Embedded terminals** (src/counterweight/headless/terminal.py, src/counterweight/input_encoding.py): `use_terminal`, which runs an interactive program on a pseudo-terminal while its component is mounted, feeds an emulator, snapshots it at most once a frame into `Screen` values, and sends the program the input its focused `Canvas` receives, re-encoded by `input_encoding`'s pure functions (the inverse of `input_parsing`); the `terminal` widget is built on it
 - **Programs on the app's terminal** (src/counterweight/programs.py): `run_program`, which runs a program on the terminal a suspended app hands back, swallowing the Ctrl+C meant for it, and `edit_file` and `edit_text`, which edit a file or a string in the user's editor; `Suspend.to_program`, `Suspend.to_edit_file` and `Suspend.to_edit_text` run them; also `Exited`, `FailedToStart` and `TimedOut`, how any program ends
 - **Pseudo-terminals** (src/counterweight/pseudoterminal.py): Runs a program on a pseudo-terminal and hands back the bytes it writes: `run_pty` until it exits, and `use_pty` while a component is mounted; hangs the program's process group up when it ends, which the hooks leave to the app's task group so it doesn't hold up rendering
-- **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`, `use_controls`) and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
-- **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing
-- **Autopilot** (src/counterweight/autopilot.py): What an autopilot drives an app with beyond events and controls, `Wait` and `WaitFor`, which hold it back until real time passes or the screen shows something, and the `Autopilot` that hands the render loop its next step
+- **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`, `use_controls`), animation built on `use_clock` (`use_progress`, `use_loop`), and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
+- **Animation** (src/counterweight/animation.py): The pure half of animation: CSS's easing functions (`linear`, `piecewise_linear`, `cubic_bezier` and its named curves, `steps`) and `between`, which picks a phase out of an animation's progress
+- **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing; it makes its own event queue, task group and mouse listeners current only while it renders (`app_scope` in `_context_vars.py`), so a hook that needs one later captures it while rendering, and an app can run inside another
+- **Autopilot** (src/counterweight/autopilot.py): What an autopilot drives an app with beyond events and controls, `Wait` and `WaitFor`, which hold it back until real time passes or the screen shows something, the steps built from them and from events (`typed`, `showing`, `advance`), and the `Autopilot` that hands the render loop its next step
 - **Recording** (src/counterweight/asciicast.py): `Recording`, which records an app as an asciicast v3 file, the pure encoding of its lines, and the `Recorder` the render loop records each frame's diff, input, resizes, markers and its exit into, timed by the app's clock with suspensions cut out
 - **Shadow tree** (src/counterweight/shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
 - **Layout** (src/counterweight/layout.py): Lays the shadow tree out with [waxy](https://github.com/JoshKarpel/waxy) (taffy's flexbox and grid), wraps text, settles scroll offsets (anchoring, sticking to the end, the scroll controls), and clips
@@ -174,7 +175,7 @@ read that to check a layout instead of the SVG.
 `mkdocs_hooks/screenshot_tabs.py` shows both in the built docs.
 
 A module may also declare recordings in a `DEMOS` list of `Demo`s, which the same command records,
-with a frozen clock, to `docs/assets/<name>.cast`; `counterweight.autopilot.paced` puts a pause before each step and holds on the last.
+with a frozen clock, to `docs/assets/<name>.cast`; `counterweight.autopilot.paced` puts a pause before each step.
 A page plays one with a `<!-- cast: <name> -->` line, which `mkdocs_hooks/casts.py` replaces
 with the element `docs/assets/casts.js` starts the vendored asciinema-player in.
 Files in `docs/assets/vendor/` are third-party releases, kept byte for byte as published with their licenses,

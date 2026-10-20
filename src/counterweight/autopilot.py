@@ -8,15 +8,22 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
+from itertools import repeat
 from typing import assert_never
 
-from more_itertools import intersperse
+from more_itertools import interleave
 
+from counterweight.animation import FRAME_INTERVAL
 from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
+from counterweight.events import KeyPressed
+from counterweight.graphemes import graphemes
+from counterweight.input_parsing import CONTROL_KEYS
+from counterweight.keys import Key
 from counterweight.output import Frame
 
 
@@ -66,6 +73,72 @@ class AutopilotTimedOut(Exception):
 
 AutopilotStep = AnyEvent | AnyControl | Wait | WaitFor
 """What an autopilot feeds an app: events, controls, and the steps that wait."""
+
+TYPED_KEYS: Mapping[str, Key] = {
+    **{chr(byte): key for byte, key in CONTROL_KEYS.items()},
+    "\x1b": Key.Escape,
+    "\n": Key.Enter,
+    "\r\n": Key.Enter,
+}
+"""
+The keys `typed` presses for the characters that aren't printed, as a terminal sends them:
+each control character's key, Escape for an escape character,
+and Enter for a newline, alone or after a carriage return (one grapheme cluster).
+"""
+
+
+def typed(text: str) -> list[KeyPressed]:
+    r"""
+    The key presses that type `text`, one per grapheme cluster, as Playwright's `keyboard.type` does,
+    with a newline (`"\n"` or `"\r\n"`) pressing Enter,
+    and any other control character pressing the key a terminal sends it as, such as Tab for a tab.
+
+    The keys arrive one after another. They're plain steps, so pace them, or combine them with others,
+    with [`paced`][counterweight.autopilot.paced] or iterable combinators such as
+    [`more_itertools`](https://more-itertools.readthedocs.io/en/stable/api.html)'s.
+    """
+    return [KeyPressed(key=TYPED_KEYS.get(cluster, cluster)) for cluster in graphemes(text)]
+
+
+def showing(text: str, timeout: timedelta = timedelta(seconds=30)) -> WaitFor:
+    """
+    Waits until `text` is on screen, such as a program's prompt, as Playwright's `toContainText` does.
+
+    Raises:
+        AutopilotTimedOut: From `app`, if `text` still isn't on screen after `timeout` of real time.
+    """
+    return WaitFor(lambda frame: text in frame.text(ansi=False), timeout=timeout)
+
+
+def advance(by: timedelta, step: timedelta = FRAME_INTERVAL) -> list[AdvanceClock]:
+    """
+    Moves the app's clock on by `by`, `step` at a time, the last step taking whatever is left,
+    so each step renders a frame and an animation plays out in a recording rather than jumping to its end,
+    as Playwright's `clock.runFor` fires the timers due along the way.
+    The default `step` is the interval the animation hooks read the clock at, so each step draws one of their frames.
+
+    Raises:
+        ValueError: If `by` is negative, or `step` isn't positive.
+    """
+    if by < timedelta() or step <= timedelta():
+        raise ValueError(
+            f"advance needs a duration that isn't negative and a positive step, but got {by!r} and {step!r}"
+        )
+    count, left = divmod(by, step)
+    return [AdvanceClock(by=step)] * count + ([AdvanceClock(by=left)] if left else [])
+
+
+def paced(steps: Iterable[AutopilotStep], pause: AutopilotStep) -> list[AutopilotStep]:
+    """
+    `steps` with `pause` before each one: `interleave(repeat(pause), steps)`, with the type of its steps.
+
+    Written with the combinators directly, a list of steps of different kinds, such as clicks and key presses,
+    has nothing to say what type it is, so mypy settles on a base class its steps share, which isn't a step;
+    passed to `paced`, it's checked as steps.
+    The `pause` is usually an [`AdvanceClock`][counterweight.controls.AdvanceClock], to pace a recording,
+    or a [`Wait`][counterweight.autopilot.Wait], to give a program on a pseudo-terminal real time to echo each key.
+    """
+    return list(interleave(repeat(pause), steps))
 
 
 @dataclass(slots=True)
@@ -130,24 +203,13 @@ class Autopilot:
                 assert_never(unreachable)
 
 
-def paced(
-    steps: Iterable[AutopilotStep], every: timedelta, hold: timedelta = timedelta(seconds=2)
-) -> list[AutopilotStep]:
-    """
-    `steps` with `every` passing before each one, as a person pauses between keys,
-    and `hold` after the last, so a recording that loops lingers on where it ends.
-    The pauses are [`AdvanceClock`][counterweight.controls.AdvanceClock]s,
-    so under a [`FrozenClock`][counterweight.clock.FrozenClock] they take no real time,
-    and a recording of them comes out the same on every run.
-    """
-    gap = AdvanceClock(by=every)
-    return [gap, *intersperse(gap, steps), AdvanceClock(by=hold)]
-
-
 __all__ = [
     "AutopilotStep",
     "AutopilotTimedOut",
     "Wait",
     "WaitFor",
+    "advance",
     "paced",
+    "showing",
+    "typed",
 ]

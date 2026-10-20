@@ -91,6 +91,7 @@ ROOTS = (root,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -133,10 +134,13 @@ DEMOS = [
         "draggable",
         root(),
         (40, 10),
-        steps=paced(
-            [*drag(Position(5, 3), Position(9, 7), moves=8), *drag(Position(24, 6), Position(44, 14), moves=12)],
-            every=timedelta(milliseconds=60),
-        ),
+        steps=[
+            *paced(
+                [*drag(Position(5, 3), Position(9, 7), moves=8), *drag(Position(24, 6), Position(44, 14), moves=12)],
+                pause=AdvanceClock(by=timedelta(milliseconds=60)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 

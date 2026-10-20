@@ -182,6 +182,10 @@
   on terminals that support xterm's title stack,
   and the `RestoreTitle` control brings it back while the app runs.
 
+- Added the `CopyToClipboard` control, which copies text to the system clipboard,
+  as a browser's `navigator.clipboard.writeText` does, by asking the terminal to with OSC 52.
+  It works only where the terminal supports OSC 52, and in tmux only with `set -g set-clipboard on`.
+
 - [#402](https://github.com/JoshKarpel/counterweight/pull/402)
   Added [`use_focus`](hooks/use_focus.md), which makes a component focusable, so that key presses go to it while it's focused.
   It takes `auto_focus`, to take focus on mount when nothing else has it,
@@ -215,7 +219,22 @@
   `app` takes a `clock` to read the time from: a `SystemClock`, in UTC unless it's given a timezone,
   or a `FrozenClock` for tests and screenshots, which only an autopilot moves,
   and the `AdvanceClock` control moves either forward.
+  An `interval` of `None` [pauses](hooks/use_clock.md#pausing) it, as a `null` delay pauses React's `useInterval`:
+  the component keeps its last reading and the clock never re-runs it,
+  and the render that gives it an interval again takes a fresh reading.
   The cookbook shows how to [animate a spinner](cookbook/spinners.md) with it.
+
+- Added [animation](hooks/animation.md): `use_progress(duration, deps)`, which rises from 0 to 1 over `duration`
+  and holds there, starting again whenever its `deps` change, as a CSS animation that plays once,
+  and `use_loop(period, deps)`, which repeats every `period` and pauses with `is_playing=False`,
+  as one whose iteration count is `infinite`.
+  Both read the clock every `FRAME_INTERVAL` (20 frames a second) while they move, unless given an `interval`,
+  and stop reading it while they don't, so a paused animation never re-runs its component,
+  and a finished one only once more.
+  `counterweight.animation` holds CSS's easing functions, to shape how an animation moves:
+  `linear` and `piecewise_linear` (CSS's `linear()`), `cubic_bezier` and the curves CSS names
+  (`ease`, `ease_in`, `ease_out`, `ease_in_out`), and `steps`, `step_start` and `step_end`,
+  and `between`, which picks one phase out of an animation's progress, as a keyframe does.
 
 - Added [`use_controls`](hooks/use_controls.md), which gives a component a sender that hands the app a control
   from outside an input handler, such as an effect that quits when a program exits.
@@ -459,14 +478,23 @@
   The docs play recordings of examples beside their screenshots,
   which example modules declare as `Demo`s beside their `Still`s.
 
+- Added [`Paint.as_painter`](elements/canvas.md#drawing-a-screenshot), a `Canvas` painter, a `PaintView`,
+  that draws a region of a paint, such as a screenshot's frame, as it was when it was made.
+  `Paint.cells_in` takes a region's cells row by row, as a value, to rearrange or mix with another picture's,
+  and `rows_of` turns cells back into a painter's rows,
+  drawing either half of a wide character whose other half isn't beside it as a space, as a terminal does.
+
 - Added the autopilot steps [`Wait`](autopilot.md#waiting-for-real-work), which holds the autopilot back
   for a duration of real time, and `WaitFor`, which holds it back until a condition is true of the frame on screen,
   raising `AutopilotTimedOut` after its timeout,
   while the app keeps handling events and rendering, so it can wait on work like a subprocess.
   A `FrozenClock` runs in real time while the autopilot waits,
   so a recording can show real work at its real pace between steps that `AdvanceClock` paces.
-  `paced` puts an `AdvanceClock` before each of a list of steps, as a person pauses between keys,
-  and holds on the last.
+  `typed(text)` gives the key presses that type some text, one per grapheme cluster,
+  `showing(text)` waits until some text is on screen,
+  `advance(by)` moves the clock on a frame of the animation hooks at a time, so an animation plays out,
+  and `paced(steps, pause)` puts a step before each of some steps, such as an `AdvanceClock` to pace a recording.
+  They give plain lists of steps, to combine with each other and with `itertools` and `more-itertools`.
 
 ### Changed
 
@@ -719,7 +747,10 @@
   so a library that logs at `DEBUG` on a hot path costs nothing unless an app asks for its records.
   `app`'s `log_levels` sets levels by logger name, as `logging.config` does, over those defaults.
   The devlog is a single JSON-lines file, which `counterweight devlog` renders for reading
-  (`--json` prints the raw lines). Its messages no longer carry `elapsed_ns` timings:
+  (`--json` prints the raw lines).
+  An app that runs while another has the devlog open, such as one run headless in another's handler,
+  writes into that devlog, at the levels the other app set, rather than truncating it.
+  Its messages no longer carry `elapsed_ns` timings:
   to see where a frame's time goes, profile the app with Python's sampling profiler
   (`python -m profiling.sampling run app.py`).
 
@@ -757,6 +788,12 @@
   Previously effects didn't start until the autopilot waited, so `use_mouse` and `use_hovered` missed
   an autopilot's mouse events until a `Wait`,
   and a render that `use_rects` or `use_scroll` asked for after a layout moved was handled with the next step.
+- An app run inside another, such as one rendered headless in another's `Screenshot` handler,
+  no longer leaves the other's state setters sending their updates to it,
+  where they were lost, so the other app never re-rendered for them.
+  `app` makes its event queue, task group and mouse listeners current only while it renders,
+  and each hook that needs one later, such as a `use_state` setter, keeps the one of the app that rendered it,
+  so a setter called while another app runs updates its own app.
 
 - [#407](https://github.com/JoshKarpel/counterweight/issues/407)
   Terminal input is parsed incrementally, so typed and pasted text arrives intact:

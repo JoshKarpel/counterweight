@@ -52,6 +52,7 @@ Other pages show the rest of the controls at work:
 ::: counterweight.controls.Bell
 ::: counterweight.controls.SetTitle
 ::: counterweight.controls.RestoreTitle
+::: counterweight.controls.CopyToClipboard
 ::: counterweight.controls.Screenshot
 ::: counterweight.output.Frame
 ::: counterweight.controls.Suspend

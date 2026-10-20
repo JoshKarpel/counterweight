@@ -104,6 +104,7 @@ def task_row(task: Task, toggle_done: Callable[[], None]) -> Text:
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -118,8 +119,7 @@ SPACE = KeyPressed(key=Key.Space)
 
 STILLS = [Still("home-quick-start", root(), (44, 12), steps=[*typed("Read the docs"), ENTER, *typed("Ship it")])]
 
-TYPING = timedelta(milliseconds=90)
-MOVING = timedelta(milliseconds=500)
+MOVING = AdvanceClock(by=timedelta(milliseconds=500))
 
 DEMOS = [
     Demo(
@@ -127,8 +127,13 @@ DEMOS = [
         root(),
         (44, 13),
         steps=[
-            *paced([*typed("Read the docs"), ENTER, *typed("Ship it"), ENTER], every=TYPING, hold=MOVING),
-            *paced([TAB, TAB, SPACE, TAB, SPACE], every=MOVING),
+            *paced(
+                [*typed("Read the docs"), ENTER, *typed("Ship it"), ENTER],
+                pause=AdvanceClock(by=timedelta(milliseconds=90)),
+            ),
+            MOVING,
+            *paced([TAB, TAB, SPACE, TAB, SPACE], pause=MOVING),
+            AdvanceClock(by=timedelta(seconds=2)),
         ],
     )
 ]

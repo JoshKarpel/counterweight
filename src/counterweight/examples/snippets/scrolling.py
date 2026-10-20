@@ -284,6 +284,7 @@ ROOTS = (pane, controlled, windowed, tail, jump_to_end, pager, contents)
 
 # --8<-- [start:scenes]
 
+
 from counterweight.autopilot import paced
 from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
@@ -361,7 +362,13 @@ DEMOS = [
         "scrolling-jump",
         jump_to_end(),
         (30, 6),
-        steps=paced([WHEEL_UP, WHEEL_UP, WHEEL_UP, SETTLE, *click(15, 4), SETTLE], every=timedelta(milliseconds=600)),
+        steps=[
+            *paced(
+                [WHEEL_UP, WHEEL_UP, WHEEL_UP, SETTLE, *click(15, 4), SETTLE],
+                pause=AdvanceClock(by=timedelta(milliseconds=600)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

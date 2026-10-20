@@ -229,9 +229,12 @@ def dirty_paths(
 def until_due(tree: ShadowTree, instant: Instant) -> timedelta | None:
     """
     How long after `instant` some node's `use_clock` is due a new reading,
-    or `None` if no node calls `use_clock`, so nothing in the tree changes with time alone.
+    or `None` if no node reads the clock, so nothing in the tree changes with time alone.
     """
-    return min((clock.until_due(instant) for node in tree.clocked for clock in node.hooks.clocks), default=None)
+    return min(
+        (due for node in tree.clocked for clock in node.hooks.clocks if (due := clock.until_due(instant)) is not None),
+        default=None,
+    )
 
 
 @dataclass(frozen=True, slots=True)

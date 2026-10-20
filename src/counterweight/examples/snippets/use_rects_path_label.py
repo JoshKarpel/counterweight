@@ -79,6 +79,7 @@ ROOTS = (split,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 
@@ -95,9 +96,13 @@ DEMOS = [
         "use-rects-path-label",
         split(),
         (48, 3),
-        steps=paced(
-            [RIGHT, RIGHT, RIGHT, RIGHT, LEFT, LEFT, LEFT, LEFT, LEFT, LEFT, LEFT], every=timedelta(milliseconds=500)
-        ),
+        steps=[
+            *paced(
+                [RIGHT, RIGHT, RIGHT, RIGHT, LEFT, LEFT, LEFT, LEFT, LEFT, LEFT, LEFT],
+                pause=AdvanceClock(by=timedelta(milliseconds=500)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

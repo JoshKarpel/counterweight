@@ -61,6 +61,7 @@ ROOTS = (document,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseScrolledUp
 from counterweight.examples.scenes import Demo
@@ -80,7 +81,10 @@ DEMOS = [
         "use-scroll-position",
         document(LINES),
         (30, 9),
-        steps=paced([*[DOWN] * 9, *[UP] * 9], every=timedelta(milliseconds=400)),
+        steps=[
+            *paced([*[DOWN] * 9, *[UP] * 9], pause=AdvanceClock(by=timedelta(milliseconds=400))),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     ),
 ]
 

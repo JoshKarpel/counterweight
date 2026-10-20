@@ -56,6 +56,7 @@ ROOTS = (root,)
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.controls import AdvanceClock
 from counterweight.events import MouseDown
 from counterweight.events import MouseUp
 from counterweight.examples.scenes import Demo
@@ -72,7 +73,13 @@ DEMOS = [
         "elements-div",
         root(),
         (76, 5),
-        steps=paced([*CLICK_DRAFTS_BODY, *CLICK_ARCHIVE_BORDER, *CLICK_DRAFTS_BODY], every=timedelta(milliseconds=500)),
+        steps=[
+            *paced(
+                [*CLICK_DRAFTS_BODY, *CLICK_ARCHIVE_BORDER, *CLICK_DRAFTS_BODY],
+                pause=AdvanceClock(by=timedelta(milliseconds=500)),
+            ),
+            AdvanceClock(by=timedelta(seconds=2)),
+        ],
     )
 ]
 
