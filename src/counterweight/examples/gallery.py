@@ -95,9 +95,11 @@ def root(only: tuple[str, ...] = ()) -> Div:
     entry = lines[selected]
 
     def select(index: int) -> ScrollIntoView:
-        set_selected(min(max(index, 0), len(lines) - 1))
-        set_enters(0)
-        set_notice("")
+        # Only a selection that moves stops the example running, so Up at the top of the list leaves it running.
+        if (moved := min(max(index, 0), len(lines) - 1)) != selected:
+            set_selected(moved)
+            set_enters(0)
+            set_notice("")
         return ScrollIntoView(selected_line, block="nearest")
 
     def copy() -> None:
@@ -105,6 +107,8 @@ def root(only: tuple[str, ...] = ()) -> Div:
             set_notice(f"Copied {entry.example.name} to {write_copy(entry.example, Path.cwd())}")
         except FileExistsError as e:
             set_notice(f"{e.filename} already exists, so it's left as it is")
+        except OSError as e:
+            set_notice(f"Couldn't copy {entry.example.name}: {e.strerror}")
 
     def on_list_key(event: InputEvent, _: Receiver) -> InputResponse:
         match event:

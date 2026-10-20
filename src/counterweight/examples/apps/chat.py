@@ -295,7 +295,9 @@ def message_box(message: Message) -> Div:
 # --8<-- [start:scenes]
 
 
+from counterweight.autopilot import advance
 from counterweight.autopilot import paced
+from counterweight.autopilot import typed
 from counterweight.controls import AdvanceClock
 from counterweight.events import Pasted
 from counterweight.examples.scenes import Demo
@@ -304,15 +306,6 @@ from counterweight.examples.scenes import Still
 PAUSE = AdvanceClock(by=timedelta(milliseconds=60))
 
 ENTER = KeyPressed(key=Key.Enter)
-
-
-def typed(text: str) -> list[KeyPressed]:
-    return [KeyPressed(key=character) for character in text]
-
-
-def ticks(duration: timedelta) -> list[AdvanceClock]:
-    """`duration` passing a word's time at a time, as the bot types."""
-    return [AdvanceClock(by=WORD_DELAY)] * (duration // WORD_DELAY)
 
 
 STILLS = [
@@ -340,11 +333,11 @@ DEMOS = [
             *paced(typed("How do I reverse a list?"), pause=PAUSE),
             AdvanceClock(by=timedelta(milliseconds=300)),
             ENTER,
-            *ticks(timedelta(seconds=3)),
-            *paced(typed("And find big files?"), pause=PAUSE),
+            *advance(timedelta(seconds=3), step=WORD_DELAY),
+            *paced(typed("Which sort should I use?"), pause=PAUSE),
             AdvanceClock(by=timedelta(milliseconds=300)),
             ENTER,
-            *ticks(timedelta(seconds=1)),
+            *advance(timedelta(seconds=1), step=WORD_DELAY),
             KeyPressed(key=Key.Escape),
             AdvanceClock(by=timedelta(seconds=3)),
         ],

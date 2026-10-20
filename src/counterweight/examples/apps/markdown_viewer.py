@@ -74,7 +74,11 @@ class Line:
 def scan(path: Path) -> Directory:
     """`path`'s Markdown files and the directories that hold any, leaving out hidden ones, such as `.git` and `.venv`."""
     directories = [scan(child) for child in sorted(path.iterdir()) if child.is_dir() and not child.name.startswith(".")]
-    files = [File(path=child, source=child.read_text()) for child in sorted(path.iterdir()) if child.suffix == ".md"]
+    files = [
+        File(path=child, source=child.read_text())
+        for child in sorted(path.iterdir())
+        if child.suffix == ".md" and child.is_file()
+    ]
     return Directory(path=path, entries=(*[d for d in directories if d.entries], *files))
 
 
@@ -98,7 +102,8 @@ def root(directory: Path | None = None) -> Div:
     tree, set_tree = use_state(unread)
 
     async def read_tree() -> None:
-        set_tree(scan(directory or Path.cwd()))
+        # Off the event loop, since a large directory takes long enough to read that the app would stop responding.
+        set_tree(await asyncio.to_thread(scan, directory or Path.cwd()))
 
     use_effect(read_tree, deps=(directory,))
 
@@ -261,16 +266,20 @@ def tree_line(
 
 # --8<-- [start:scenes]
 
+from counterweight.autopilot import showing
 from counterweight.examples.scenes import Still
 
 SAMPLES = Path(__file__).parent / "markdown_samples"
+
+READ_SAMPLES = showing(f"{SAMPLES.name}/")
+"""Waits for the viewer to have read the samples, which it does off the event loop."""
 
 STILLS = [
     Still(
         "markdown-viewer",
         root(SAMPLES),
         (100, 30),
-        steps=[KeyPressed(key=Key.Enter), *[KeyPressed(key=Key.Down)] * 4, KeyPressed(key=Key.Enter)],
+        steps=[READ_SAMPLES, KeyPressed(key=Key.Enter), *[KeyPressed(key=Key.Down)] * 4, KeyPressed(key=Key.Enter)],
     ),
 ]
 

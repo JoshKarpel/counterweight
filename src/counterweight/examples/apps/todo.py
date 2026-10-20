@@ -104,14 +104,10 @@ def task_row(task: Task, toggle_done: Callable[[], None]) -> Text:
 from datetime import timedelta
 
 from counterweight.autopilot import paced
+from counterweight.autopilot import typed
 from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
-
-
-def typed(text: str) -> list[KeyPressed]:
-    return [KeyPressed(key=character) for character in text]
-
 
 ENTER = KeyPressed(key=Key.Enter)
 TAB = KeyPressed(key=Key.Tab)

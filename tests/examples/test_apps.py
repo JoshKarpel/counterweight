@@ -108,20 +108,48 @@ async def test_ctrl_up_scrolls_the_transcript_from_the_prompt_and_ctrl_down_scro
 # The Markdown viewer
 
 
+READ = WaitFor(lambda frame: "Reading..." not in frame.text(ansi=False), timeout=timedelta(seconds=TIMEOUT))
+
+
 async def test_the_viewer_says_so_when_a_directory_has_no_markdown(tmp_path: Path) -> None:
-    assert "No Markdown files here." in await screen(markdown_viewer.root(directory=tmp_path), keys(Key.Down))
+    steps: list[AutopilotStep] = [READ, *keys(Key.Down)]
+
+    assert "No Markdown files here." in await screen(markdown_viewer.root(directory=tmp_path), steps)
+
+
+async def test_the_viewer_leaves_out_a_directory_whose_name_ends_in_md(tmp_path: Path) -> None:
+    (tmp_path / "notes.md").mkdir()
+    (tmp_path / "notes.md" / "inside.md").write_text("# Inside\n")
+
+    shown = await screen(markdown_viewer.root(directory=tmp_path), [READ])
+
+    assert "▸ notes.md/" in shown
 
 
 async def test_the_viewers_tree_moves_its_cursor_with_up_home_and_end_and_opens_with_right() -> None:
-    steps = keys(Key.End, Key.Up, Key.Home, Key.Right, Key.Down, Key.Right)
+    steps: list[AutopilotStep] = [
+        markdown_viewer.READ_SAMPLES,
+        *keys(Key.End, Key.Up, Key.Home, Key.Right, Key.Down, Key.Right),
+    ]
 
     shown = await screen(markdown_viewer.root(directory=markdown_viewer.SAMPLES), steps, (100, 20))
 
     assert ("▾ blocks/" in shown, "blocks/alerts.md" in shown) == (True, True)
 
 
+async def test_tab_moves_focus_from_the_tree_so_its_keys_no_longer_move_the_cursor() -> None:
+    steps: list[AutopilotStep] = [markdown_viewer.READ_SAMPLES, *keys(Key.Tab, Key.Down, Key.Enter)]
+
+    shown = await screen(markdown_viewer.root(directory=markdown_viewer.SAMPLES), steps, (100, 20))
+
+    assert "▸ extensions/" in shown
+
+
 async def test_left_closes_a_directory_and_moves_from_a_file_to_its_directory() -> None:
-    steps = keys(Key.Right, Key.Down, Key.Left, Key.Left, Key.Down)
+    steps: list[AutopilotStep] = [
+        markdown_viewer.READ_SAMPLES,
+        *keys(Key.Right, Key.Down, Key.Left, Key.Left, Key.Down),
+    ]
 
     shown = await screen(markdown_viewer.root(directory=markdown_viewer.SAMPLES), steps, (100, 20))
 
@@ -130,10 +158,11 @@ async def test_left_closes_a_directory_and_moves_from_a_file_to_its_directory() 
 
 async def test_a_click_on_a_directory_opens_it_and_a_click_on_a_file_shows_it() -> None:
     root = markdown_viewer.root(directory=markdown_viewer.SAMPLES)
-    before = await screen(root, (), (100, 20))
-    opened = await screen(root, click_on("blocks/", before), (100, 20))
+    read = markdown_viewer.READ_SAMPLES
+    before = await screen(root, [read], (100, 20))
+    opened = await screen(root, [read, *click_on("blocks/", before)], (100, 20))
 
-    shown = await screen(root, [*click_on("blocks/", before), *click_on("tables.md", opened)], (100, 20))
+    shown = await screen(root, [read, *click_on("blocks/", before), *click_on("tables.md", opened)], (100, 20))
 
     assert "blocks/tables.md" in shown.splitlines()[0]
 

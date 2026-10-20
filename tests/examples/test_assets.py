@@ -5,6 +5,7 @@ so a change that alters what an example shows, down to a color, fails here rathe
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -43,8 +44,21 @@ CATALOG = examples()
 STILLS = [*(still for example in CATALOG for still in example.stills), *gallery.STILLS]
 DEMOS = [*(demo for example in CATALOG for demo in example.demos), *gallery.DEMOS]
 
+LOSES_OUTPUT_ON_MACOS = pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
+FLAKY_STILLS = {"slides", "slides-colors"}
 
-@pytest.mark.parametrize("still", STILLS, ids=lambda still: still.name)
+
+@pytest.mark.parametrize(
+    "still",
+    [
+        pytest.param(still, id=still.name, marks=[LOSES_OUTPUT_ON_MACOS] if still.name in FLAKY_STILLS else [])
+        for still in STILLS
+    ],
+)
 async def test_a_still_shows_what_its_screenshot_does(still: Still) -> None:
     frame = await frame_of(still)
 

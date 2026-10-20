@@ -199,6 +199,7 @@ ROOTS = (recorded_build, recorded_failure, recorded_cancel, streaming_build)
 
 # --8<-- [start:scenes]
 
+from counterweight.autopilot import advance
 from counterweight.controls import AdvanceClock
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
@@ -214,7 +215,7 @@ DEMOS = [
         "commands-streaming",
         streaming_build(),
         (40, 8),
-        steps=[*[AdvanceClock(by=TICK)] * (EXITS_AT // TICK), AdvanceClock(by=timedelta(seconds=3))],
+        steps=[*advance(EXITS_AT, step=TICK), AdvanceClock(by=timedelta(seconds=3))],
     )
 ]
 

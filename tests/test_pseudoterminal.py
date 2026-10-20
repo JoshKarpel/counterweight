@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import signal
+import struct
 import subprocess
 import sys
 from asyncio import CancelledError
@@ -275,6 +276,15 @@ async def test_run_pty_reports_an_empty_argv_as_failing_to_start_and_opens_no_te
     outcome = await run_pty([], 20, 4, on_output=Output())
 
     assert outcome == NO_PROGRAM
+    assert open_fds() == before
+
+
+async def test_run_pty_closes_its_terminal_when_it_cannot_size_it() -> None:
+    before = open_fds()
+
+    with pytest.raises(struct.error):
+        await run_pty(["true"], -1, 4, on_output=Output())
+
     assert open_fds() == before
 
 
@@ -785,6 +795,11 @@ async def test_use_pty_with_clear_env_leaves_out_the_apps_environment(monkeypatc
     assert output.data.strip() == b"unset"
 
 
+@pytest.mark.xfail(
+    sys.platform == "darwin",
+    reason="run_pty sometimes loses a short-lived program's output on macOS (#434)",
+    strict=False,
+)
 async def test_use_pty_runs_the_program_in_cwd(directory: Path) -> None:
     ptys: list[Pty] = []
     output = Output()

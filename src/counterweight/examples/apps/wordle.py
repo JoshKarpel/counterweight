@@ -417,12 +417,8 @@ def letter_box(letter: str, style: Style, on_letter: Callable[[str], InputRespon
 
 # --8<-- [start:scenes]
 
+from counterweight.autopilot import typed
 from counterweight.examples.scenes import Still
-
-
-def typed(text: str) -> list[KeyPressed]:
-    return [KeyPressed(key=character) for character in text]
-
 
 ENTER = KeyPressed(key=Key.Enter)
 

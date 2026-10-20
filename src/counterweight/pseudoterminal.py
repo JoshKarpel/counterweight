@@ -260,8 +260,13 @@ async def run_pty(
     if not argv:
         return NO_PROGRAM
     master, slave = os.openpty()
-    os.set_blocking(master, False)
-    fcntl.ioctl(slave, termios.TIOCSWINSZ, window_size(columns, rows))
+    try:
+        os.set_blocking(master, False)
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, window_size(columns, rows))
+    except BaseException:
+        os.close(master)
+        os.close(slave)
+        raise
     spawning = create_task(
         create_subprocess_exec(
             *argv,

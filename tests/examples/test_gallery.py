@@ -90,6 +90,14 @@ async def test_the_list_moves_its_selection_with_the_keys_and_stops_at_its_ends(
     assert selected(await screen(SOME, [KeyPressed(key=key) for key in moves])) == expected
 
 
+async def test_a_move_that_leaves_the_selection_where_it_is_leaves_the_example_running() -> None:
+    running = [KeyPressed(key=key) for key in (Key.Enter, Key.ControlRightBracket)]
+
+    shown = await screen(SOME, [*running, KeyPressed(key=Key.Up), KeyPressed(key=Key.Home)])
+
+    assert "Press Enter to run it." not in shown
+
+
 async def test_a_click_on_an_example_selects_it_and_focuses_the_list() -> None:
     before = await screen(SOME, [])
     row = next(row for row, line in enumerate(before.splitlines()) if "box-model" in line)
@@ -114,7 +122,19 @@ async def test_c_copies_the_example_into_the_working_directory_once(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    copied = await screen(SOME, [KeyPressed(key="c")])
-    again = await screen(SOME, [KeyPressed(key="c")])
+    # The notice doesn't wrap, and macOS's temporary directories are too deep for it to fit the default width.
+    dimensions = (len(f"{tmp_path / 'todo.py'} already exists, so it's left as it is"), 40)
+    copied = await screen(SOME, [KeyPressed(key="c")], dimensions)
+    again = await screen(SOME, [KeyPressed(key="c")], dimensions)
 
     assert (f"Copied todo to {tmp_path / 'todo.py'}" in copied, "already exists" in again) == (True, True)
+
+
+async def test_c_says_why_it_could_not_copy_the_example(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    read_only = tmp_path / "read-only"
+    read_only.mkdir(mode=0o500)
+    monkeypatch.chdir(read_only)
+
+    shown = await screen(SOME, [KeyPressed(key="c")])
+
+    assert "Couldn't copy todo: Permission denied" in shown
