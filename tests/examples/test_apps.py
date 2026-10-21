@@ -180,8 +180,25 @@ async def test_the_multiplexer_closes_a_pane_whose_program_exits_and_quits_with_
     await runs_until_it_quits(multiplexer.root(command=("sh", "-c", "exit 0")), [])
 
 
-async def test_a_pane_whose_program_exits_while_another_is_focused_closes_without_moving_focus() -> None:
-    await runs_until_it_quits(multiplexer.root(command=("sleep", "0.5")), [KeyPressed(key="alt+n")])
+async def test_a_pane_whose_program_exits_while_another_is_focused_closes_without_moving_focus(tmp_path: Path) -> None:
+    # The first pane's program exits once the second's has started, and the second runs until Alt+X closes its pane,
+    # so the first pane closes while the second is focused however slowly either program starts.
+    script = """
+        if mkdir "$1/first"; then
+            until [ -d "$1/second" ]; do sleep 0.01; done
+        else
+            mkdir "$1/second"
+            exec sleep 60
+        fi
+    """
+    await runs_until_it_quits(
+        multiplexer.root(command=("sh", "-c", script, "pane", str(tmp_path))),
+        [
+            KeyPressed(key="alt+n"),
+            WaitFor(lambda frame: "Pane #1" not in frame.text(ansi=False), timeout=timedelta(seconds=TIMEOUT)),
+            KeyPressed(key="alt+x"),
+        ],
+    )
 
 
 async def test_alt_keys_move_focus_between_panes_and_close_the_focused_one_until_none_are_left() -> None:
