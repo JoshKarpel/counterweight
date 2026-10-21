@@ -1,5 +1,4 @@
 [build-system]
-# The `sync-uv-build` pre-commit hook keeps this at the uv that `mise.lock` pins.
 requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
