@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from counterweight._input_parsing import parse_input
 from counterweight.emulator import Modes
 from counterweight.emulator import MouseTracking
 from counterweight.events import KeyPressed
@@ -19,7 +20,6 @@ from counterweight.input_encoding import encode_key
 from counterweight.input_encoding import encode_mouse
 from counterweight.input_encoding import encode_paste
 from counterweight.input_encoding import key_sequences
-from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 
 SAME_BYTES_AS_ANOTHER_KEY = {

@@ -191,6 +191,8 @@ and sets the volume from where the pointer is across the slider, clamped to its 
 
 <!-- example: input_events.py:slider -->
 
+::: counterweight.geometry.clamp
+
 ![The slider at its highest volume, after a drag that ended below and to the right of it](../assets/input-events-slider.svg)
 
 The drag above ended three rows below the slider and past its right end, outside it,
@@ -299,7 +301,7 @@ or an app can pass Ctrl+C on to a program it runs.
 
 A key press that no handler on its path claims then takes its default from `app`'s `unclaimed_keys`,
 as a browser takes a key's default action unless a listener prevents it.
-[`DEFAULT_UNCLAIMED_KEYS`][counterweight.app.DEFAULT_UNCLAIMED_KEYS] gives Ctrl+C and Ctrl+Z
+[`DEFAULT_UNCLAIMED_KEYS`][counterweight.DEFAULT_UNCLAIMED_KEYS] gives Ctrl+C and Ctrl+Z
 what they'd do in a terminal:
 Ctrl+C quits, and Ctrl+Z suspends the app as a shell job, with
 [`Suspend.to_shell()`][counterweight.controls.Suspend.to_shell], until the shell resumes it with `fg`.
@@ -321,7 +323,7 @@ and a second one goes to whatever handled interrupts before the app started.
 A focused component that claims every key, such as one that passes keys on to a program,
 takes Ctrl+C and Ctrl+Z too, so an app that has one needs another way to quit, such as a key that it doesn't claim.
 
-::: counterweight.app.DEFAULT_UNCLAIMED_KEYS
+::: counterweight.DEFAULT_UNCLAIMED_KEYS
 
 ## Handling Pastes
 
@@ -423,3 +425,10 @@ It receives the presses' moves and releases because it stops each `MouseDown`:
     while `on_input` is more convenient when a component needs to respond to *changes* in the mouse state,
     (e.g., a button release [`MouseUp`][counterweight.events.MouseUp]).
     `use_mouse` sees every change, while a handler sees only the events [routed](#routing-input-events) to its element.
+
+## Keys
+
+`Key` names every key that doesn't type text,
+alone and with the modifiers a terminal reports for it.
+
+::: counterweight.keys.Key

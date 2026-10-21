@@ -8,7 +8,7 @@ import asyncio
 import sys
 from datetime import timedelta
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.elements import Canvas
@@ -20,7 +20,7 @@ from counterweight.gradients import conic_gradient
 from counterweight.gradients import linear_gradient
 from counterweight.gradients import radial_gradient
 from counterweight.hooks import use_loop
-from counterweight.painters.pixels import HalfBlockGradient
+from counterweight.painters import HalfBlockGradient
 from counterweight.styles.utilities import *
 
 

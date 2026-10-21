@@ -2,8 +2,8 @@ import termios
 from dataclasses import dataclass
 from typing import TextIO
 
-from counterweight.input import LFLAG
-from counterweight.input import TCGetAttr
+from counterweight._input import LFLAG
+from counterweight._input import TCGetAttr
 
 
 @dataclass(frozen=True, slots=True)

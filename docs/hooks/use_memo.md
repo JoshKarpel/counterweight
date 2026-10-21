@@ -109,3 +109,4 @@ every render defines a new function with an empty cache, so it never hits.
 ## API
 
 ::: counterweight.hooks.use_memo
+::: counterweight.hooks.StaleMemo

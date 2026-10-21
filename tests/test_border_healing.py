@@ -4,8 +4,11 @@ import io
 
 import pytest
 
-from counterweight.app import app
-from counterweight.border_healing import heal_borders
+from counterweight import app
+from counterweight._border_healing import heal_borders
+from counterweight._paint import BLANK
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import Quit
@@ -14,13 +17,10 @@ from counterweight.controls import ToggleBorderHealing
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.geometry import Position
-from counterweight.paint import BLANK
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import JoinedBorderKind
-from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import JoinedBorderKind
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import align_self_stretch
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_collapse

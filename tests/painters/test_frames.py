@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
+from counterweight._paint import BLANK
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import rows_of
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -12,16 +17,11 @@ from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
 from counterweight.geometry import Region
-from counterweight.output import Frame
-from counterweight.paint import BLANK
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import rows_of
-from counterweight.painters.frames import PaintView
+from counterweight.painters._frames import PaintView
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import with_colors
+from counterweight.styles._styles import CELL_STYLE_DEFAULTS
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import with_colors
 
 TEAL = with_colors(replace(CELL_STYLE_DEFAULTS, bold=True), Color.from_hex("#2dd4bf"), Color.from_hex("#134e4a"))
 WIDE = Cell("日", TEAL)

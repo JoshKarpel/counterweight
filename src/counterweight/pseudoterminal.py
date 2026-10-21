@@ -103,6 +103,7 @@ class Running:
 
 
 type PtyStatus = Starting | Running | Exited | FailedToStart
+"""Where a program `use_pty` runs is in its life: starting, running, or over, and how it ended."""
 
 
 def program_environment(inherited: Mapping[str, str], env: Mapping[str, str]) -> dict[str, str]:
@@ -550,3 +551,15 @@ def use_pty(
             c.write(data)
 
     return Pty(write=use_memo(lambda: write, ()), status=status)
+
+
+__all__ = [
+    "Pty",
+    "PtyConnection",
+    "PtyStatus",
+    "Running",
+    "StandardInput",
+    "Starting",
+    "run_pty",
+    "use_pty",
+]

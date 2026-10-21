@@ -36,6 +36,36 @@ Fixed panes on both sides, and a middle column split 2:1 between two panes.
 
 ![Three panes](../assets/layout-shell-three-panes.svg)
 
+## Hiding a pane
+
+A pane that comes and goes, such as a sidebar the user can collapse, can be hidden two ways,
+and they differ in what happens to its components.
+`display_none` takes an element out of the layout, as CSS's `display: none` does:
+it takes no space and draws nothing, and its siblings fill in where it was.
+Its components stay mounted, so they keep their state and their effects keep running.
+Leaving the pane out of its parent's children instead, as React's conditional rendering does,
+unmounts its components, which start afresh, with new state, when it comes back.
+
+Here each side pane shows how long it has been mounted.
+`h` hides the left one with `display_none`, and `l` leaves the right one out:
+
+<!-- example: layout_shells.py:hiding -->
+
+With both gone, the main pane fills the row:
+
+![The main pane alone, filling the row](../assets/layout-shell-hiding.svg)
+
+Brought back after a while, the hidden pane has been mounted all along,
+while the pane that was left out has only just mounted again:
+
+![Both side panes back, the left mounted for 10 seconds and the right for 2](../assets/layout-shell-hiding-back.svg)
+
+<!-- cast: layout-shell-hiding -->
+
+Hide a pane with `display_none` when what's in it should survive being hidden,
+such as a half-typed draft or a scroll position,
+and leave it out when it should start over, or when it's expensive to keep running.
+
 ## A dialog over the app
 
 See [A dialog centered over the app](layering.md#a-dialog-centered-over-the-app).

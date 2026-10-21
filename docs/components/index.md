@@ -179,3 +179,6 @@ It costs as much as re-running everything, so leave `check_purity` off outside t
 
 ::: counterweight.components.component
 ::: counterweight.components.Component
+::: counterweight.components.DuplicateKey
+::: counterweight.components.ImpureComponent
+::: counterweight.hooks.InconsistentHookExecution

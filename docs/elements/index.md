@@ -22,3 +22,7 @@ the first built from two chunks in different colors, and the second wrapping to 
 <!-- example: elements_overview.py:example -->
 
 ![A Div holding a Canvas and two Texts](../assets/elements-overview.svg)
+
+## API
+
+::: counterweight.elements.AnyElement

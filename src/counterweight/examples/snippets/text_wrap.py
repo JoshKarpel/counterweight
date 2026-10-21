@@ -6,14 +6,14 @@ The same text wrapped in each of the modes.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.markdown import MarkdownStyles
 from counterweight.markdown import markdown_document
-from counterweight.styles.styles import Style
-from counterweight.styles.styles import TextWrap
+from counterweight.styles import Style
+from counterweight.styles import TextWrap
 from counterweight.styles.utilities import *
 
 # --8<-- [start:example]

@@ -12,7 +12,13 @@ from datetime import timezone
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import INITIAL_RECTS
+from counterweight._layout import NO_LAYOUTS
+from counterweight._output import Frame
+from counterweight._shadow import ShadowUpdate
+from counterweight._shadow import until_due
+from counterweight._shadow import update_shadow
 from counterweight.clock import FrozenClock
 from counterweight.clock import Instant
 from counterweight.clock import SystemClock
@@ -30,12 +36,6 @@ from counterweight.events import Receiver
 from counterweight.focus import Subtree
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_state
-from counterweight.layout import INITIAL_RECTS
-from counterweight.layout import NO_LAYOUTS
-from counterweight.output import Frame
-from counterweight.shadow import ShadowUpdate
-from counterweight.shadow import until_due
-from counterweight.shadow import update_shadow
 from tests.rendering import state_set_keys
 from tests.rendering import state_sets
 

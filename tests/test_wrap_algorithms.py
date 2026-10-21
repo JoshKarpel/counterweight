@@ -14,16 +14,16 @@ from hypothesis import given
 from hypothesis import settings
 from hypothesis import strategies as st
 
+from counterweight._layout import _extract_words_and_spaces
+from counterweight._layout import _flatten_long_words
+from counterweight._layout import _greedy_line_count
+from counterweight._layout import _wrap_at_target
+from counterweight._layout import _wrap_balance
+from counterweight._layout import _wrap_pretty
+from counterweight._layout import cells_width
 from counterweight.elements import StyledGrapheme
 from counterweight.elements import text_cells
-from counterweight.layout import _extract_words_and_spaces
-from counterweight.layout import _flatten_long_words
-from counterweight.layout import _greedy_line_count
-from counterweight.layout import _wrap_at_target
-from counterweight.layout import _wrap_balance
-from counterweight.layout import _wrap_pretty
-from counterweight.layout import cells_width
-from counterweight.styles.styles import CellStyle
+from counterweight.styles._styles import CellStyle
 
 type Line = list[StyledGrapheme]
 

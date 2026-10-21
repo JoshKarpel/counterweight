@@ -5,11 +5,12 @@ from collections.abc import Callable
 from datetime import timedelta
 from weakref import WeakSet
 
+from counterweight import app
 from counterweight._context_vars import app_scope
 from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_task_group
 from counterweight._context_vars import current_use_mouse_listeners
-from counterweight.app import app
+from counterweight._output import Frame
 from counterweight.autopilot import WaitFor
 from counterweight.components import component
 from counterweight.controls import Quit
@@ -19,7 +20,6 @@ from counterweight.events import AnyEvent
 from counterweight.hooks import Mouse
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
-from counterweight.output import Frame
 
 TIMEOUT = timedelta(seconds=10)
 

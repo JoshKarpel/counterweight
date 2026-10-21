@@ -9,7 +9,7 @@ from markdown_it.parser_inline import RuleFuncInlineType
 from markdown_it.rules_inline import StateInline
 from mdit_py_plugins.gfm import gfm_plugin
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot

@@ -24,7 +24,7 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import sky_400
 from counterweight.styles.utilities import sky_600
 from counterweight.styles.utilities import slate_100

@@ -7,7 +7,7 @@ A dashboard with a note, which re-runs everything while its root holds the note 
 import asyncio
 import sys
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

@@ -50,6 +50,21 @@ These are CSS's:
 
 An easing is any function from a float to a float, so a curve CSS doesn't name, such as `lambda t: t**3`, is one too.
 
+Here one progress moves a dot along each track, through a different easing on each row:
+
+<!-- example: animation.py:easing -->
+
+![Ten dots halfway through the same animation, each where its easing puts it](../assets/animation-easing.svg)
+
+Halfway through, `linear` and `ease_in_out` are halfway along,
+`ease` and `ease_out` are ahead and `ease_in` behind,
+the overshooting `cubic_bezier` is already past the end of its track,
+and the step easings are wherever their last jump left them.
+An easing's output isn't clamped, so the component decides what a value past 0 or 1 draws as:
+this one keeps room past the end of each track for the overshoot.
+
+<!-- cast: animation-easing -->
+
 Something moving whole, such as a box sliding into place, usually looks best eased in and out.
 Something that happens at a steady rate, such as typing or a sweep, usually looks best not eased at all,
 since its pace is part of what it shows.

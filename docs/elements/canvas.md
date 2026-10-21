@@ -11,13 +11,13 @@ loading an image, mouse input, and writing a painter of your own.
 
 ## Drawing Pixels
 
-`counterweight.painters.pixels` splits a picture from how it's drawn:
+`counterweight.painters` splits a picture from how it's drawn:
 
-- [`Pixels`][counterweight.painters.pixels.Pixels] is the picture:
+- [`Pixels`][counterweight.painters.Pixels] is the picture:
   a width, a height, and RGBA bytes, with nothing about cells or terminals.
   `Pixels.blank`, `Pixels.from_points` and `with_points` build one from colors,
   and the constructor takes raw RGBA bytes from any decoder.
-- [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] is a painter that draws a `Pixels` in cells,
+- [`HalfBlocks`][counterweight.painters.HalfBlocks] is a painter that draws a `Pixels` in cells,
   two pixels to a cell, one above the other, as `▀` with the top pixel as its foreground
   and the bottom one as its background.
   A cell is about twice as tall as it is wide, so the pixels come out about square.
@@ -104,10 +104,10 @@ before the app starts, in an effect that sets state, or in a cached function, as
 
 ## Gradients
 
-[`HalfBlockGradient`][counterweight.painters.pixels.HalfBlockGradient] fills its canvas with a
+[`HalfBlockGradient`][counterweight.painters.HalfBlockGradient] fills its canvas with a
 [gradient](../styles/gradients.md), two pixels to a cell, drawing a new picture at whatever size the canvas is,
 so it shows a gradient at twice the vertical resolution of the same gradient as an element's `content_color`.
-[`Pixels.from_gradient`][counterweight.painters.pixels.Pixels.from_gradient] makes a picture of one,
+[`Pixels.from_gradient`][counterweight.painters.Pixels.from_gradient] makes a picture of one,
 for a picture that draws more on top of it with `with_points`.
 Its pixels are square, so the gradient's angles and circles are in pixels rather than in cells.
 
@@ -132,7 +132,7 @@ here the panel's box, which [`use_rects`](../hooks/use_rects.md) reports:
 
 ![The panel as it is, and the picture taken of it two presses earlier](../assets/canvas-screenshot.svg)
 
-The painter, a [`PaintView`][counterweight.painters.frames.PaintView],
+The painter, a [`PaintView`][counterweight.painters.PaintView],
 holds the cells as they were when it was made, so the picture stays as it was while the app changes.
 Its natural size is the region's, and since cells can't scale, it cuts off whatever doesn't fit the canvas's box.
 A canvas compares its painter with the last one it drew,
@@ -145,6 +145,20 @@ so a cell's position in its row is its column.
 Rearrange them, mix in another picture's, and turn the result back into a painter's rows with
 [`rows_of`][counterweight.paint.rows_of],
 which draws a wide character's halves that end up apart as spaces, as a terminal does.
+
+This wipe takes a picture of each card when `s` is pressed,
+then, on each frame of a [`use_progress`](../hooks/animation.md#playing-once),
+draws the second card's cells left of a cut that sweeps across and the first card's to its right:
+
+<!-- example: canvas.py:transition -->
+
+![Halfway through the wipe, the third box shows the left half of After and the right half of Before](../assets/canvas-transition.svg)
+
+The pictures are values, taken once, so each frame only rearranges cells it already has,
+and the painter it builds is equal to the last one whenever the cut hasn't moved.
+Space plays the wipe again:
+
+<!-- cast: canvas-transition -->
 
 ## Mouse Input
 
@@ -186,15 +200,21 @@ two built from the same values are equal, so a component can build its painter i
 
 ::: counterweight.elements.Painter
 
-::: counterweight.painters.pixels.Pixels
+::: counterweight.elements.Rows
 
-::: counterweight.painters.pixels.HalfBlocks
+::: counterweight.elements.StyledGrapheme
 
-::: counterweight.painters.pixels.HalfBlockGradient
+::: counterweight.painters.Pixels
 
-::: counterweight.painters.pixels.SupportsRGBA
+::: counterweight.painters.HalfBlocks
 
-::: counterweight.painters.frames.PaintView
+::: counterweight.painters.Fit
+
+::: counterweight.painters.HalfBlockGradient
+
+::: counterweight.painters.SupportsRGBA
+
+::: counterweight.painters.PaintView
 
 ::: counterweight.paint.Paint
 

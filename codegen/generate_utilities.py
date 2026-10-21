@@ -4,11 +4,11 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import ClipTo
-from counterweight.styles.styles import OverflowAnchor
-from counterweight.styles.styles import TextJustify
-from counterweight.styles.styles import TextWrap
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import ClipTo
+from counterweight.styles._styles import OverflowAnchor
+from counterweight.styles._styles import TextJustify
+from counterweight.styles._styles import TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -351,7 +351,14 @@ for color, shades in COLORS.items():
 color_names = ", ".join(f'"{c}"' for c in COLORS)
 shade_values = ", ".join(str(s) for s in next(iter(COLORS.values())))
 generated_lines.append(f"ColorName = Literal[{color_names}]")
+generated_lines.append(
+    '"""The name of one of the palette\'s colors, as the color utilities take it, such as `"sky"`."""'
+)
+generated_lines.append("")
 generated_lines.append(f"Shade = Literal[{shade_values}]")
+generated_lines.append(
+    '"""One of the palette\'s shades, from lightest (`50`) to darkest (`950`), as in Tailwind\'s palette."""'
+)
 generated_lines.append("")
 
 # Color lookup map

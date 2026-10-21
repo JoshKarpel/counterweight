@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from more_itertools import first
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -14,13 +15,12 @@ from counterweight.emulator import Emulator
 from counterweight.emulator import Modes
 from counterweight.emulator import Screen
 from counterweight.geometry import Position
-from counterweight.output import Frame
-from counterweight.painters.terminal import ScreenView
-from counterweight.painters.terminal import Transcript
-from counterweight.painters.terminal import column_index
+from counterweight.painters._terminal import ScreenView
+from counterweight.painters._terminal import Transcript
+from counterweight.painters._terminal import column_index
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import size
 

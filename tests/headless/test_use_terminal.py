@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import FocusNext
@@ -34,13 +34,13 @@ from counterweight.geometry import Rects
 from counterweight.geometry import Region
 from counterweight.headless import EmbeddedTerminal
 from counterweight.headless import use_terminal
-from counterweight.headless.terminal import on_screen
-from counterweight.hooks.impls import NodeKey
+from counterweight.headless._terminal import on_screen
+from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
 from counterweight.pseudoterminal import Exited
 from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import Starting
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from tests.rendering import Mounted
 from tests.rendering import mounted
 

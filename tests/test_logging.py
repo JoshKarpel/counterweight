@@ -17,26 +17,26 @@ from traceback import TracebackException
 import pytest
 from without_logging import exception_to_dict
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._logging import BASE_LOG_LEVELS
+from counterweight._logging import TAIL_POLL
+from counterweight._logging import app_log_levels
+from counterweight._logging import capturing
+from counterweight._logging import devlog
+from counterweight._logging import format_line
+from counterweight._logging import last_devlog
+from counterweight._logging import render_exception
+from counterweight._logging import render_line
+from counterweight._logging import tail_devlog
+from counterweight._logging import wait_for_more
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Text
-from counterweight.logging import BASE_LOG_LEVELS
-from counterweight.logging import TAIL_POLL
-from counterweight.logging import app_log_levels
-from counterweight.logging import capturing
-from counterweight.logging import devlog
-from counterweight.logging import format_line
-from counterweight.logging import last_devlog
-from counterweight.logging import render_exception
-from counterweight.logging import render_line
-from counterweight.logging import tail_devlog
-from counterweight.logging import wait_for_more
 
 RECORD = {
     "timestamp": "2026-10-11T03:16:34.779176+00:00",
     "level": "DEBUG",
-    "logger": "counterweight.app",
+    "logger": "counterweight._app",
     "message": "Diffed new paint from current paint",
     "diff_cells": 7,
     "handler": "on_key",
@@ -47,7 +47,7 @@ def test_render_line_shows_local_time_level_logger_message_and_fields() -> None:
     local_time = datetime.fromisoformat(str(RECORD["timestamp"])).astimezone().strftime("%H:%M:%S.%f")
 
     assert render_line(RECORD) == (
-        f"{local_time} DEBUG    counterweight.app Diffed new paint from current paint diff_cells=7 handler='on_key'"
+        f"{local_time} DEBUG    counterweight._app Diffed new paint from current paint diff_cells=7 handler='on_key'"
     )
 
 
@@ -92,12 +92,12 @@ async def test_devlog_captures_counterweight_at_every_level_and_others_from_info
     path = tmp_path / "devlog.jsonl"
 
     async with devlog(path):
-        logging.getLogger("counterweight.app").debug("Ours")
+        logging.getLogger("counterweight._app").debug("Ours")
         logging.getLogger("some_library.parser").debug("Chatty")
         logging.getLogger("some_library.parser").info("Notable")
 
     assert captured(path) == [
-        ("counterweight.app", "DEBUG", "Ours"),
+        ("counterweight._app", "DEBUG", "Ours"),
         ("some_library.parser", "INFO", "Notable"),
     ]
 
@@ -113,7 +113,7 @@ async def test_devlog_levels_override_by_logger_name(tmp_path: Path) -> None:
 
     async with devlog(path, levels=BASE_LOG_LEVELS | {"my_app": logging.DEBUG, "counterweight": logging.WARNING}):
         logging.getLogger("my_app.views").debug("Mine")
-        logging.getLogger("counterweight.app").info("Quiet")
+        logging.getLogger("counterweight._app").info("Quiet")
         logging.getLogger("other").debug("Chatty")
 
     assert captured(path) == [("my_app.views", "DEBUG", "Mine")]
@@ -272,7 +272,7 @@ def gate_opens(monkeypatch: pytest.MonkeyPatch, gate: Event, failing: int = 0) -
         async with capturing(path, levels):
             yield
 
-    monkeypatch.setattr("counterweight.logging.capturing", gated)
+    monkeypatch.setattr("counterweight._logging.capturing", gated)
 
 
 async def test_a_devlog_entered_while_another_block_opens_it_waits_until_it_captures(

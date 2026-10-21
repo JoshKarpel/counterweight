@@ -7,7 +7,7 @@ A process table of memo rows, so moving the selection re-runs only the two rows 
 import asyncio
 from dataclasses import dataclass
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

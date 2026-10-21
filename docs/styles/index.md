@@ -68,3 +68,9 @@ and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 ::: counterweight.styles.CellStyle
 ::: counterweight.styles.STYLE_DEFAULTS
 ::: counterweight.styles.CELL_STYLE_DEFAULTS
+::: counterweight.styles.UNSET
+::: counterweight.styles.BorderKind
+::: counterweight.styles.ClipTo
+::: counterweight.styles.OverflowAnchor
+::: counterweight.styles.TextJustify
+::: counterweight.styles.TextWrap

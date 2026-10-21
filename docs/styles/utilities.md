@@ -101,6 +101,9 @@ Hover over a swatch to see its name and hex code.
 
 <!-- utilities-palette -->
 
+::: counterweight.styles.utilities.ColorName
+::: counterweight.styles.utilities.Shade
+
 #### Terminal colors
 
 A `Color` looks the same in every terminal.
@@ -136,6 +139,16 @@ Each has a `not_` form that turns it off when merged over a style that turns it 
 such as a style for a selected row that isn't bold, merged over a table's bold one.
 `text_link(uri)` makes the text a hyperlink that the terminal opens when it's clicked,
 and `text_link(None)` makes it not a link, inside text that is one.
+They're CSS's `font-weight: bold`, `font-style: italic` and `text-decoration`,
+with dim, which a terminal draws faint, in place of CSS's lighter weights.
+
+<!-- example: styles_attributes.py:example -->
+
+![Each text attribute, a style turning two of its attributes off, and borders drawn bold and dim](../assets/styles-attributes.svg)
+
+How each looks is up to the terminal and its font:
+some can draw bold text in a brighter color as well as, or instead of, a heavier weight,
+and a terminal whose font has no italic face can draw italic text upright.
 
 <!-- utilities: text_bold text_dim text_italic text_underline text_strikethrough text_not_* border_bold border_dim border_italic border_underline border_strikethrough border_not_* text_link -->
 
@@ -183,6 +196,8 @@ A side is drawn where its border width is 1, and each width utility has a `_0` f
 See [Borders on some sides](../layout/spacing-and-borders.md#borders-on-some-sides).
 
 <!-- utilities: border border_top border_bottom border_left border_right border_x border_y border_0 border_*_0 border_sides border_collapse border_contract -->
+
+::: counterweight.styles.utilities.Side
 
 #### Border kinds
 

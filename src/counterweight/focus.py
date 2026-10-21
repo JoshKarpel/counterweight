@@ -3,6 +3,7 @@ The values that name what a control acts on: which component to focus, which ele
 and which part of the tree to move focus in.
 They live outside the hooks and elements modules, since controls and events name them,
 and those modules import both.
+Beside them are the errors a render raises when two mounted nodes share a handle, or focus won't settle.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from counterweight.hooks.impls import NodeKey
+    from counterweight.hooks._impls import NodeKey
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -63,3 +64,29 @@ class Subtree:
     """
 
     key: NodeKey
+
+
+class DuplicateElementHandle(Exception):
+    """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
+
+
+class DuplicateFocusHandle(Exception):
+    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
+
+
+class UnsettledFocus(Exception):
+    """
+    Raised when re-rendering the components whose focus a render changed changes focus again,
+    which only a component that hides itself because it gained focus can cause:
+    one that lost focus already rendered unfocused if it became unfocusable, and draws nothing if it's hidden.
+    """
+
+
+__all__ = [
+    "DuplicateElementHandle",
+    "DuplicateFocusHandle",
+    "ElementHandle",
+    "FocusHandle",
+    "Subtree",
+    "UnsettledFocus",
+]

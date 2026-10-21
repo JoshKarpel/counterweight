@@ -6,7 +6,7 @@ Path labels that shorten to fit the width layout gives them.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
@@ -19,7 +19,7 @@ from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 
-PATH = "src/counterweight/hooks/hooks.py"
+PATH = "src/counterweight/focus.py"
 
 # --8<-- [start:example]
 

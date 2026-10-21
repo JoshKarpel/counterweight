@@ -191,7 +191,7 @@ which Counterweight has no design for yet: a fixed number of frames and a fixed 
 
 ## Reading the scroll
 
-[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.hooks.Scroll]: how far the calling component's top-level element is scrolled,
+[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.geometry.Scroll]: how far the calling component's top-level element is scrolled,
 how far it can be, and the size of its padding box, the part of the content in view.
 Given an `ElementHandle`, it reports on the element with that handle instead,
 as a React component reads another element's `scrollTop` through a ref
@@ -224,6 +224,29 @@ or, for a node only partly in view, the first of its descendants in view.
 After the layout, it moves its offset so the anchor's top edge is as far from the top of the view as it was.
 Content that changes below the anchor, or inside it, doesn't move the view;
 content that changes above it moves the view with it.
+
+These two feeds show the same alerts, newest first, and a new one arrives at the top every two seconds.
+The wheel scrolls both together, a row a notch.
+The left one anchors, as every scroll container does unless told otherwise;
+the right one has `overflow_anchor_none`, so its offset stays where it was:
+
+<!-- example: scrolling.py:anchoring -->
+
+=== "Scrolled down two rows"
+
+    ![Both feeds showing alerts 6 to 3](../assets/scrolling-anchoring.svg)
+
+=== "Two alerts later"
+
+    ![The anchored feed still showing alerts 6 to 3, and the other showing 8 to 5](../assets/scrolling-anchoring-later.svg)
+
+While they're scrolled to the top, new alerts push the rest down in both, since a container at the top doesn't anchor.
+Once they're scrolled down, the anchored feed keeps showing the alerts it was showing,
+with the new ones arriving out of view above,
+while the other's offset stays put, so each new alert pushes what it shows down a row.
+Scrolling the anchored feed back up reaches the new ones:
+
+<!-- cast: scrolling-anchoring -->
 
 The anchor is a node, so it follows what each node shows from one render to the next.
 Siblings without keys continue the sibling at the same index,
@@ -324,4 +347,4 @@ as for any box that's [clipped](clipping.md#clipping-and-the-mouse).
 ## API
 
 ::: counterweight.focus.ElementHandle
-::: counterweight.shadow.DuplicateElementHandle
+::: counterweight.focus.DuplicateElementHandle

@@ -3,8 +3,8 @@ from signal import SIGWINCH
 from signal import getsignal
 from signal import raise_signal
 
-from counterweight.app import start_handling_resize_signal
-from counterweight.app import stop_handling_resize_signal
+from counterweight._app import start_handling_resize_signal
+from counterweight._app import stop_handling_resize_signal
 from counterweight.events import AnyEvent
 from counterweight.events import TerminalResized
 

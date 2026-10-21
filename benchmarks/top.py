@@ -17,8 +17,8 @@ from counterweight.components import component
 from counterweight.elements import Chunk
 from counterweight.elements import Div
 from counterweight.elements import Text
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Style
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import cyan_400
 from counterweight.styles.utilities import display_grid

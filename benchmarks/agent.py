@@ -35,7 +35,7 @@ from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles.styles import CellStyle
+from counterweight.styles._styles import CellStyle
 from counterweight.styles.utilities import amber_400
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_color
@@ -149,11 +149,11 @@ VOCABULARY = [
 ]
 
 FILES = (
-    "src/counterweight/layout.py",
-    "src/counterweight/paint.py",
-    "src/counterweight/styles/styles.py",
+    "src/counterweight/_layout.py",
+    "src/counterweight/_paint.py",
+    "src/counterweight/styles/_styles.py",
     "tests/test_layout.py",
-    "src/counterweight/app.py",
+    "src/counterweight/_app.py",
 )
 
 CODE = (

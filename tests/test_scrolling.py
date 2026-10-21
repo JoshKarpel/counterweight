@@ -5,8 +5,17 @@ from collections.abc import Sequence
 import pytest
 import waxy
 
-from counterweight.app import app
-from counterweight.app import stale_readers
+from counterweight import app
+from counterweight._app import stale_readers
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Layouts
+from counterweight._layout import LayoutTree
+from counterweight._layout import PriorScroll
+from counterweight._layout import layout_changes
+from counterweight._output import Frame
+from counterweight._routing import RoutingTable
+from counterweight._routing import route_key
+from counterweight._shadow import update_shadow
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -25,6 +34,7 @@ from counterweight.events import MouseDown
 from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseScrolledRight
 from counterweight.events import Receiver
+from counterweight.focus import DuplicateElementHandle
 from counterweight.focus import ElementHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import ORIGIN
@@ -35,20 +45,10 @@ from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import NodeKey
+from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
-from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import Layouts
-from counterweight.layout import LayoutTree
-from counterweight.layout import PriorScroll
-from counterweight.layout import layout_changes
-from counterweight.output import Frame
-from counterweight.routing import RoutingTable
-from counterweight.routing import route_key
-from counterweight.shadow import DuplicateElementHandle
-from counterweight.shadow import update_shadow
 from counterweight.styles import Style
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_light
 from counterweight.styles.utilities import clip_to_border

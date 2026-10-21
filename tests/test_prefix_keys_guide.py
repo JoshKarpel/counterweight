@@ -6,7 +6,8 @@ import io
 import os
 from asyncio import wait_for
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import component
 from counterweight.controls import Screenshot
 from counterweight.elements import Div
@@ -17,7 +18,6 @@ from counterweight.events import Receiver
 from counterweight.examples.snippets import prefix_keys
 from counterweight.hooks import use_effect
 from counterweight.keys import Key
-from counterweight.output import Frame
 from counterweight.styles.utilities import full
 from tests.terminal import Terminal
 

@@ -21,7 +21,7 @@ from functools import partial
 from pathlib import Path
 from typing import assert_never
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import FocusOn
@@ -34,12 +34,12 @@ from counterweight.events import InputHandler
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
-from counterweight.hooks import ElementHandle
-from counterweight.hooks import FocusHandle
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from counterweight.keys import Key

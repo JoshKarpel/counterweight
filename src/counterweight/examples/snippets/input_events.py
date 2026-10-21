@@ -9,7 +9,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import fields
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
@@ -20,12 +20,12 @@ from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import Receiver
+from counterweight.geometry import clamp
 from counterweight.hooks import Ref
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
-from counterweight.utils import clamp
 
 # --8<-- [start:inspector]
 

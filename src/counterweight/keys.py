@@ -209,3 +209,8 @@ class Key(str, Enum):  # noqa: UP042
 
     def __repr__(self) -> str:
         return str(self)
+
+
+__all__ = [
+    "Key",
+]

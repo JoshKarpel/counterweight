@@ -6,7 +6,7 @@ A window title editor whose keys return controls: set the title, restore it, rin
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Bell
 from counterweight.controls import RestoreTitle

@@ -12,7 +12,7 @@ from functools import cache
 
 from more_itertools import last
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Canvas
 from counterweight.elements import Div
@@ -20,7 +20,7 @@ from counterweight.elements import Text
 from counterweight.emulator import Emulator
 from counterweight.emulator import Screen
 from counterweight.hooks import use_clock
-from counterweight.painters.terminal import ScreenView
+from counterweight.painters import ScreenView
 from counterweight.styles import Color
 from counterweight.styles import Style
 from counterweight.styles.utilities import *

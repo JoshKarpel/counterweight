@@ -1,6 +1,6 @@
 [tools]
 just = "1.58.0"
-uv = { version = "0.13.0", minimum_release_age = "1d" }
+uv = "0.13.0"
 
 [settings]
 # Skip brand-new releases when resolving any fuzzy version, as supply-chain defense.

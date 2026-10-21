@@ -1,6 +1,6 @@
 import pytest
 
-from counterweight.output import clipboard_instructions
+from counterweight._output import clipboard_instructions
 
 
 @pytest.mark.parametrize(

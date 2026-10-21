@@ -6,6 +6,10 @@ from datetime import timedelta
 
 import pytest
 
+from counterweight._layout import NO_LAYOUTS
+from counterweight._shadow import ShadowUpdate
+from counterweight._shadow import until_due
+from counterweight._shadow import update_shadow
 from counterweight.animation import FRAME_INTERVAL
 from counterweight.clock import Instant
 from counterweight.components import component
@@ -14,10 +18,6 @@ from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.hooks import use_loop
 from counterweight.hooks import use_progress
-from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowUpdate
-from counterweight.shadow import until_due
-from counterweight.shadow import update_shadow
 
 MOUNTED = Instant(wall=datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC), monotonic=timedelta(seconds=7))
 TWO_SECONDS = timedelta(seconds=2)

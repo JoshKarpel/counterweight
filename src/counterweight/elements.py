@@ -7,24 +7,35 @@ from functools import lru_cache
 from itertools import chain
 from typing import Protocol
 
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
-from counterweight.styles.styles import _DEFAULT_CELL_STYLE
+from counterweight.styles._styles import _DEFAULT_CELL_STYLE
 
 _DEFAULT_STYLE = Style()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Div:
+    """
+    A box that lays out its children, as a `<div>` is in HTML:
+    in a flex row or column, or a grid, as its style's layout says.
+    """
+
     style: Style = _DEFAULT_STYLE
+    """How the box is laid out and drawn, and how it lays out its children."""
     children: tuple[Component | AnyElement, ...] = ()
+    """The components and elements inside the box, in order."""
     on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target or as they bubble up from a descendant:
+    key presses and pastes while it or a descendant is focused, and mouse events over the parts of it that are painted.
+    """
     handle: ElementHandle | None = None
     """
     The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
@@ -69,9 +80,17 @@ NEWLINE = Chunk(content="\n")
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Text:
+    """A leaf element that shows text, sized by its text unless its style sizes it, and wrapped as its style says."""
+
     content: str | tuple[Chunk, ...]
+    """The text, as a string drawn in the style's `text_style`, or as chunks that each style a run of it."""
     style: Style = _DEFAULT_STYLE
+    """How the element is laid out and drawn, and how its text is styled, justified and wrapped."""
     on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target or as they bubble up from a descendant:
+    key presses and pastes while it is focused, and mouse events over the parts of it that are painted.
+    """
     handle: ElementHandle | None = None
     """
     The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
@@ -142,8 +161,14 @@ class Canvas:
     """
 
     painter: Painter
+    """What draws the canvas's content box."""
     style: Style = _DEFAULT_STYLE
+    """How the canvas is laid out and drawn, and the style its painter's cells take wherever they leave theirs unset."""
     on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target:
+    key presses and pastes while it is focused, and mouse events over the parts of it that are painted.
+    """
     handle: ElementHandle | None = None
     """
     The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
@@ -156,6 +181,7 @@ class Canvas:
 
 
 AnyElement = Div | Text | Canvas
+"""Any element: what a component returns, and what a `Div` holds beside components."""
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 
@@ -175,8 +201,8 @@ class StyledGrapheme:
         object.__setattr__(self, "width", grapheme_width(self.grapheme))
 
 
-# Rows of grapheme clusters, top to bottom, each drawn left to right.
 type Rows = tuple[tuple[StyledGrapheme, ...], ...]
+"""Rows of grapheme clusters, top to bottom, each drawn left to right, as a painter's `draw` returns them."""
 
 
 class _StyledGraphemes(dict[str, StyledGrapheme]):
@@ -224,3 +250,15 @@ def text_pieces(content: str | tuple[Chunk, ...], text_style: CellStyle) -> Iter
 def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
     """The styled grapheme clusters of a `Text`'s content."""
     return tuple(chain.from_iterable(styled_cells(*piece) for piece in text_pieces(content, text_style)))
+
+
+__all__ = [
+    "AnyElement",
+    "Canvas",
+    "Chunk",
+    "Div",
+    "Painter",
+    "Rows",
+    "StyledGrapheme",
+    "Text",
+]

@@ -5,9 +5,9 @@ import pytest
 from without_cli import Streams
 from without_cli import run
 
-from counterweight.cli import LOGO
-from counterweight.cli import cli
-from counterweight.constants import PACKAGE_NAME
+from counterweight._cli import LOGO
+from counterweight._cli import cli
+from counterweight._constants import PACKAGE_NAME
 
 
 def test_help() -> None:

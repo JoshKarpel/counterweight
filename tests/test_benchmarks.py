@@ -33,13 +33,13 @@ from benchmarks.stacks import summarize
 from benchmarks.tables import Column
 from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
-from counterweight import output
-from counterweight.app import app
+from counterweight import _output as output
+from counterweight import app
+from counterweight._input_parsing import parse_input
 from counterweight.controls import Bell
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.events import KeyPressed
-from counterweight.input_parsing import parse_input
 
 
 @pytest.mark.parametrize("name", WORKLOADS)
@@ -165,7 +165,7 @@ def test_workload_steps_to_the_same_models_every_run(module: ModuleType) -> None
 
 
 def test_parse_frame_splits_file_function_and_line() -> None:
-    assert parse_frame("layout.py:compute_layout:42") == Frame(file="layout.py", function="compute_layout")
+    assert parse_frame("_layout.py:compute_layout:42") == Frame(file="_layout.py", function="compute_layout")
 
 
 def test_parse_frame_keeps_artificial_frames_as_bare_functions() -> None:
@@ -174,10 +174,10 @@ def test_parse_frame_keeps_artificial_frames_as_bare_functions() -> None:
 
 COLLAPSED = """\
 tid:7;<frozen runpy>:_run_module_as_main:201;__main__.py:<module>:9 3
-tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:40;layout.py:_measure_text:80 5
-tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:41 2
-tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:300;paint.py:paint_layout:60;<GC> 7
-tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;app.py:app:113;app.py:render_loop:310 11
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;_app.py:app:113;_app.py:render_loop:296;_layout.py:compute_layout:40;_layout.py:_measure_text:80 5
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;_app.py:app:113;_app.py:render_loop:296;_layout.py:compute_layout:41 2
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;_app.py:app:113;_app.py:render_loop:300;_paint.py:paint_layout:60;<GC> 7
+tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;_app.py:app:113;_app.py:render_loop:310 11
 tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;capture.py:run_sink:120;renderers.py:render:80 13
 tid:7;base_events.py:BaseEventLoop._run_once:2001;selectors.py:EpollSelector.select:452 17
 """
@@ -188,8 +188,8 @@ def test_summary_attributes_samples_to_the_function_render_loop_called() -> None
 
     assert summary.stages == {
         STARTUP: 3,
-        "layout.py:compute_layout": 7,
-        "paint.py:paint_layout": 7,
+        "_layout.py:compute_layout": 7,
+        "_paint.py:paint_layout": 7,
         LOOP_ITSELF: 11,
         "task capture.py:run_sink": 13,
         EVENT_LOOP: 17,
@@ -201,10 +201,10 @@ def test_summary_counts_self_samples_on_the_innermost_frame() -> None:
     summary = summarize(parse_collapsed(COLLAPSED))
 
     assert summary.self_samples == {
-        "layout.py:_measure_text": 5,
-        "layout.py:compute_layout": 2,
+        "_layout.py:_measure_text": 5,
+        "_layout.py:compute_layout": 2,
         "<GC>": 7,
-        "app.py:render_loop": 11,
+        "_app.py:render_loop": 11,
         "renderers.py:render": 13,
         "selectors.py:EpollSelector.select": 17,
     }
@@ -214,9 +214,9 @@ def test_summary_counts_inclusive_samples_only_below_each_stage_root() -> None:
     summary = summarize(parse_collapsed(COLLAPSED))
 
     assert summary.inclusive_samples == {
-        "layout.py:compute_layout": 7,
-        "layout.py:_measure_text": 5,
-        "paint.py:paint_layout": 7,
+        "_layout.py:compute_layout": 7,
+        "_layout.py:_measure_text": 5,
+        "_paint.py:paint_layout": 7,
         "<GC>": 7,
         "capture.py:run_sink": 13,
         "renderers.py:render": 13,
@@ -227,14 +227,14 @@ def test_summary_counts_inclusive_samples_only_below_each_stage_root() -> None:
 def test_summary_counts_the_benchmark_command_only_while_it_runs_the_workload() -> None:
     command = "tid:7;base_events.py:BaseEventLoop._run_once:2050;events.py:Handle._run:94;commands.py:action:679;__main__.py:run_workload"
     collapsed = f"""\
-{command}:93;harness.py:run:174;app.py:app:139 3
-{command}:93;harness.py:run:174;app.py:app:113;app.py:render_loop:296;layout.py:compute_layout:40 5
+{command}:93;harness.py:run:174;_app.py:app:139 3
+{command}:93;harness.py:run:174;_app.py:app:113;_app.py:render_loop:296;_layout.py:compute_layout:40 5
 {command}:95;__main__.py:frames_table:182 7
 """
 
     summary = summarize(parse_collapsed(collapsed))
 
-    assert summary.stages == {"task harness.py:run": 3, "layout.py:compute_layout": 5, STARTUP: 7}
+    assert summary.stages == {"task harness.py:run": 3, "_layout.py:compute_layout": 5, STARTUP: 7}
 
 
 def test_table_pads_columns_to_their_widest_cell_and_right_aligns_on_request() -> None:

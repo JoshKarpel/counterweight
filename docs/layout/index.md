@@ -18,7 +18,7 @@ from counterweight.styles.utilities import *
 `waxy` provides the values that styles are built from,
 for the cases no utility covers.
 
-To run one, call the component and pass the result to `counterweight.app.app`,
+To run one, call the component and pass the result to `counterweight.app`,
 as in `app(root())`.
 
 Start with [Choosing a layout model](choosing-a-layout-model.md),

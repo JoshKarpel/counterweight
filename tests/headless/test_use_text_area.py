@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from counterweight import app
+from counterweight._input_parsing import parse_input
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import FocusNext
@@ -20,15 +21,14 @@ from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import Pasted
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.geometry import Position
 from counterweight.handlers import each
 from counterweight.handlers import first
 from counterweight.headless import TextArea
 from counterweight.headless import use_text_area
-from counterweight.hooks import ElementHandle
-from counterweight.hooks import FocusHandle
 from counterweight.hooks import use_state
-from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
 from counterweight.styles.utilities import height
 

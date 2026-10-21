@@ -21,13 +21,24 @@ so a sideways wheel, or the wheel with Shift held, scrolls it:
 Div(style=overflow_x_scroll, on_input=scroll_on_wheel(), children=(code_block(source, "python"),))
 ```
 
-To lay the code out yourself, `highlight` returns its chunks,
-to put in a `Text` with whatever else you like,
-and `code_style` the background and text color to draw them on.
-
 Highlighting is cached by its arguments,
 so a component can highlight the same code on every render without lexing it again.
 Tabs are expanded, to four columns unless `tab_size` says otherwise.
+
+## Laying the code out yourself
+
+To lay the code out yourself, `highlight` returns its chunks,
+to put in a `Text` with whatever else you like,
+and `code_style` the background and text color to draw them on.
+Here the chunks are split into lines, each in a row beside its number,
+and one line is marked, as an editor marks the line its cursor is on:
+
+<!-- example: syntax_highlighting.py:lines -->
+
+![Five lines of Python numbered down the left, the third marked with a lighter background](../assets/syntax-highlighting-lines.svg)
+
+Highlighting the whole of the code at once, rather than a line at a time,
+lets the lexer see what spans lines, such as a string in triple quotes.
 
 ## API
 

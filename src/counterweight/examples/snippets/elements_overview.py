@@ -6,15 +6,15 @@ A Div laying out a Canvas beside a column of Texts.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Canvas
 from counterweight.elements import Chunk
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.geometry import Position
-from counterweight.painters.pixels import HalfBlocks
-from counterweight.painters.pixels import Pixels
+from counterweight.painters import HalfBlocks
+from counterweight.painters import Pixels
 from counterweight.styles.utilities import *
 
 # --8<-- [start:example]

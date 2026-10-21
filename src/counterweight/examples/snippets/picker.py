@@ -16,7 +16,7 @@ from dataclasses import replace
 from fnmatch import fnmatchcase
 from functools import partial
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import ClearFocus
@@ -29,13 +29,13 @@ from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.events import response_controls
+from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import on_click
 from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import use_text_input
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style

@@ -43,7 +43,7 @@ This pane puts a prefix handler before the terminal's, as a tmux-style multiplex
 The hook returns the program's [`Screen`][counterweight.emulator.Screen] as of the last snapshot,
 with its title and the modes it set, and its `status`: starting, running, exited with its status,
 or the reason it failed to start.
-The component's `view` is a [`ScreenView`][counterweight.painters.terminal.ScreenView]
+The component's `view` is a [`ScreenView`][counterweight.painters.ScreenView]
 that draws the cursor while the component is focused.
 
 ## A multiplexer
@@ -124,3 +124,4 @@ A program's colors reach the app's terminal as the program chose them (see [Colo
 ::: counterweight.input_encoding.encode_paste
 ::: counterweight.input_encoding.encode_mouse
 ::: counterweight.input_encoding.encode_focus
+::: counterweight.input_encoding.KEY_SEQUENCES

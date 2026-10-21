@@ -5,7 +5,10 @@ from dataclasses import field
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import LayoutTree
+from counterweight._output import Frame
+from counterweight._paint import Paint
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -15,13 +18,10 @@ from counterweight.elements import Div
 from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Region
-from counterweight.hooks.impls import NodeKey
-from counterweight.layout import LayoutTree
-from counterweight.output import Frame
-from counterweight.paint import Paint
+from counterweight.hooks._impls import NodeKey
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import align_children_start
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col

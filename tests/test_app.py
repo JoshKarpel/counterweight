@@ -4,8 +4,8 @@ from collections.abc import Mapping
 
 import pytest
 
-from counterweight.app import DEFAULT_UNCLAIMED_KEYS
-from counterweight.app import app
+from counterweight import DEFAULT_UNCLAIMED_KEYS
+from counterweight import app
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -36,7 +36,7 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.styles.styles import Style
+from counterweight.styles._styles import Style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import full

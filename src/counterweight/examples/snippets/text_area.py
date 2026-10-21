@@ -9,7 +9,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Chunk
 from counterweight.elements import Div

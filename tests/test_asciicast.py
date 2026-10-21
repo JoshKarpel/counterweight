@@ -13,7 +13,16 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._input_parsing import parse_input
+from counterweight._output import BRACKETED_PASTE_OFF
+from counterweight._output import BRACKETED_PASTE_ON
+from counterweight._output import OUTPUT_CONTROL_START
+from counterweight._output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight._output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight._output import Frame
+from counterweight._output import clipboard_instructions
+from counterweight._output import stop_output_control
 from counterweight.asciicast import SUSPENDED
 from counterweight.asciicast import Recorder
 from counterweight.asciicast import Recording
@@ -48,17 +57,8 @@ from counterweight.events import Receiver
 from counterweight.events import TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks import use_state
-from counterweight.input_parsing import parse_input
 from counterweight.keys import Key
-from counterweight.output import BRACKETED_PASTE_OFF
-from counterweight.output import BRACKETED_PASTE_ON
-from counterweight.output import OUTPUT_CONTROL_START
-from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
-from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
-from counterweight.output import Frame
-from counterweight.output import clipboard_instructions
-from counterweight.output import stop_output_control
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import text_black
 from tests.terminal import Terminal
 

@@ -19,11 +19,12 @@ from counterweight.elements import Chunk
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.geometry import Position
-from counterweight.painters.pixels import HalfBlocks
-from counterweight.painters.pixels import Pixels
-from counterweight.styles.styles import COLORS_BY_NAME
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
+from counterweight.geometry import clamp
+from counterweight.painters._pixels import HalfBlocks
+from counterweight.painters._pixels import Pixels
+from counterweight.styles._styles import COLORS_BY_NAME
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import align_children_center
 from counterweight.styles.utilities import amber_600
 from counterweight.styles.utilities import border
@@ -35,7 +36,6 @@ from counterweight.styles.utilities import justify_children_space_evenly
 from counterweight.styles.utilities import pink_600
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_justify_center
-from counterweight.utils import clamp
 
 WIDTH = 30
 HEIGHT = 30

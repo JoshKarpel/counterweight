@@ -572,3 +572,10 @@ def is_in_image(node: SyntaxTreeNode) -> bool:
     so a link in it, written out or a bare URL, is drawn as the rest of the description is.
     """
     return node.parent is not None and (node.parent.type == "image" or is_in_image(node.parent))
+
+
+__all__ = [
+    "MarkdownStyles",
+    "markdown",
+    "markdown_document",
+]

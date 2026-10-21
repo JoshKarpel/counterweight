@@ -1,11 +1,11 @@
 import pytest
 
+from counterweight._layout import NO_LAYOUTS
+from counterweight._shadow import update_shadow
 from counterweight.components import component
 from counterweight.elements import Text
 from counterweight.hooks import Ref
 from counterweight.hooks import use_ref
-from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import update_shadow
 
 
 def make_initial() -> str:

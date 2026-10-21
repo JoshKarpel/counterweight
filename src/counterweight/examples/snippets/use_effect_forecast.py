@@ -7,7 +7,7 @@ A forecast fetched for the city selected, which a change of city cancels.
 import asyncio
 from dataclasses import dataclass
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
@@ -98,7 +98,7 @@ from datetime import timedelta
 
 from counterweight.autopilot import WaitFor
 from counterweight.examples.scenes import Still
-from counterweight.output import Frame
+from counterweight.paint import Frame
 
 
 def shows(text: str) -> WaitFor:

@@ -12,9 +12,9 @@ from counterweight.events import Receiver
 from counterweight.hooks import Setter
 from counterweight.hooks import toggle
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import MountStatus
-from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.impls import UseState
+from counterweight.hooks._impls import MountStatus
+from counterweight.hooks._impls import NodeKey
+from counterweight.hooks._impls import UseState
 
 
 async def test_use_state() -> None:

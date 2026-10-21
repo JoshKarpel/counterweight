@@ -8,8 +8,11 @@ from datetime import timedelta
 
 import pytest
 
+from counterweight import app
+from counterweight._output import Frame
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.animation import FRAME_INTERVAL
-from counterweight.app import app
 from counterweight.autopilot import Autopilot
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import AutopilotTimedOut
@@ -39,10 +42,7 @@ from counterweight.hooks import use_progress
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.output import Frame
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS
+from counterweight.styles._styles import CELL_STYLE_DEFAULTS
 from counterweight.styles.utilities import size
 
 BLANK = Frame(paint=Paint.blank(1, 1))

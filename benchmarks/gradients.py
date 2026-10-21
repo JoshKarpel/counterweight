@@ -21,8 +21,8 @@ from counterweight.focus import ElementHandle
 from counterweight.gradients import conic_gradient
 from counterweight.gradients import linear_gradient
 from counterweight.gradients import radial_gradient
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Style
 from counterweight.styles.utilities import amber_400
 from counterweight.styles.utilities import blue_500
 from counterweight.styles.utilities import border

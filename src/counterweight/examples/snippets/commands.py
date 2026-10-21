@@ -11,10 +11,9 @@ from functools import cache
 
 from more_itertools import last
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.commands import Cancelled
 from counterweight.commands import CommandRun
-from counterweight.commands import Exited
 from counterweight.commands import command_output
 from counterweight.commands import use_command
 from counterweight.components import component
@@ -25,16 +24,17 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import tab_focus
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.painters.terminal import MAX_LINES
-from counterweight.painters.terminal import Transcript
+from counterweight.painters import MAX_LINES
+from counterweight.painters import Transcript
+from counterweight.programs import Exited
 from counterweight.pseudoterminal import Running
 from counterweight.styles.utilities import *
 from counterweight.widgets import text_area

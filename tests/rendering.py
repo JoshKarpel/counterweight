@@ -14,18 +14,18 @@ from contextlib import asynccontextmanager
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+from counterweight._app import handle_effects
 from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_task_group
+from counterweight._layout import NO_LAYOUTS
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import update_shadow
 from counterweight._utils import cancel_tasks
-from counterweight.app import handle_effects
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.events import AnyEvent
 from counterweight.events import StateSet
-from counterweight.hooks.impls import NodeKey
-from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import update_shadow
+from counterweight.hooks._impls import NodeKey
 
 # Generous, so a loaded machine doesn't fail a test; each test that waits finishes as soon as what it waits for happens.
 TIMEOUT = 10

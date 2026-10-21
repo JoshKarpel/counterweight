@@ -28,7 +28,7 @@ from counterweight.programs import edit_text
 from counterweight.programs import run_program
 
 if TYPE_CHECKING:
-    from counterweight.output import Frame
+    from counterweight._output import Frame
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,7 @@ class Bell(_Control):
 class SetTitle(_Control):
     """
     Set the title of the terminal window.
-    To set it when the application starts, pass `title` to `counterweight.app.app`.
+    To set it when the application starts, pass `title` to `counterweight._app.app`.
 
     The title is set at the beginning of the next render cycle,
     so all other events that are due to be processed in the current cycle
@@ -127,7 +127,7 @@ SCREENSHOT_ENCODINGS: dict[str, Callable[[Frame], str]] = {
 class Screenshot(_Control):
     """
     Take a "screenshot" of the rendered UI,
-    and pass it to the given `handler` callback function as a [`Frame`][counterweight.output.Frame],
+    and pass it to the given `handler` callback function as a [`Frame`][counterweight.paint.Frame],
     which the handler can encode as an SVG image or as text.
 
     The screenshot is taken at the beginning of the next render cycle,
@@ -203,7 +203,7 @@ class Suspend(_Control):
         """
         A `Suspend` that stops the application as a shell job, as Ctrl+Z stops a program in a terminal,
         so the shell takes the terminal back, until it resumes the application with `fg`.
-        It's what Ctrl+Z does by default (see `unclaimed_keys` on `counterweight.app.app`).
+        It's what Ctrl+Z does by default (see `unclaimed_keys` on `counterweight._app.app`).
 
         It stops the application's whole process group, as the terminal's Ctrl+Z does,
         so whatever started the application and waits on it, such as `uv run`, stops too,
@@ -451,6 +451,7 @@ class ScrollBy(_Control):
 
 
 ScrollAlignment = Literal["start", "center", "end", "nearest"]
+"""Where [`ScrollIntoView`][counterweight.controls.ScrollIntoView] puts an element in a scroll container's view."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -503,3 +504,27 @@ AnyControl = (
     | ScrollBy
     | ScrollIntoView
 )
+"""Any control: what an input handler returns, what an autopilot sends, and what a `use_controls` sender sends."""
+
+
+__all__ = [
+    "AdvanceClock",
+    "AnyControl",
+    "Bell",
+    "ClearFocus",
+    "CopyToClipboard",
+    "FocusNext",
+    "FocusOn",
+    "FocusPrevious",
+    "Marker",
+    "Quit",
+    "RestoreTitle",
+    "Screenshot",
+    "ScrollAlignment",
+    "ScrollBy",
+    "ScrollIntoView",
+    "ScrollTo",
+    "SetTitle",
+    "Suspend",
+    "ToggleBorderHealing",
+]

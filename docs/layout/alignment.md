@@ -5,6 +5,7 @@ The `justify_children_*` utilities distribute them along the main axis
 (across a `row`, down a `col`),
 and the `align_children_*` utilities place them on the cross axis.
 A child can override its parent's cross-axis alignment for itself with `align_self_*`.
+In a grid, `justify_items_*` and `justify_self_*` place items within their cells along the row.
 
 The examples on this page title each panel with this helper,
 which draws its text over the top border:
@@ -38,6 +39,23 @@ the others keep each child at its content size and place it.
 
 ![The align_self utilities](../assets/layout-align-self.svg)
 
+## Reversing the main axis
+
+`row_reverse` and `col_reverse` lay children out right to left and bottom to top,
+as CSS's `flex-direction: row-reverse` and `column-reverse` do,
+so the first child ends up last on screen without reordering the children themselves.
+They reverse the main axis too, so with no `justify_children_*`
+the children pack against the main axis's new start, the right edge or the bottom.
+
+`justify_children_start` and `justify_children_end` are CSS's `start` and `end`, not `flex-start` and `flex-end`:
+they name the container's own edges, left and top or right and bottom, whichever way its children run.
+So `row_reverse | justify_children_start` keeps the reversed order and packs it against the left edge,
+as a toolbar whose newest item goes first would.
+
+<!-- example: layout_alignment.py:reverse -->
+
+![Rows and columns in order, reversed, and reversed and packed against the start edge](../assets/layout-reverse.svg)
+
 ## Centering a box
 
 Center a box on both axes with `center_children`,
@@ -50,6 +68,26 @@ To center a box over other content rather than among it, see
 <!-- example: layout_alignment.py:center -->
 
 ![Centering with flexbox and grid](../assets/layout-center.svg)
+
+## Aligning grid items in their cells
+
+In a grid, each item sits in a cell, which can be wider than the item.
+`justify_items_*` on the grid places every item within its cell along the row,
+as CSS's `justify-items` does, and `align_children_*` places them down the column, as on a flex container.
+The default, `justify_items_stretch`, fills the cell's width;
+the others keep each item at its content width and place it.
+Flexbox has no cells, so these do nothing there, as in CSS.
+
+<!-- example: layout_alignment.py:grid-items -->
+
+![The justify_items utilities on a one-column grid](../assets/layout-justify-items.svg)
+
+`justify_self_*` on an item replaces its grid's `justify_items_*` for that item alone,
+as `align_self_*` does on the other axis:
+
+<!-- example: layout_alignment.py:grid-self -->
+
+![The justify_self utilities in a two-column grid](../assets/layout-justify-self.svg)
 
 ## Content larger than its container
 

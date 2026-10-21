@@ -116,10 +116,10 @@ where a browser would show neither end.
 ## On a canvas
 
 A [`Canvas`](../elements/canvas.md) is drawn by its painter, which has no places for a gradient,
-so [`HalfBlockGradient`][counterweight.painters.pixels.HalfBlockGradient] is a painter that fills it with one,
-two pixels to a cell, as [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] draws a picture,
+so [`HalfBlockGradient`][counterweight.painters.HalfBlockGradient] is a painter that fills it with one,
+two pixels to a cell, as [`HalfBlocks`][counterweight.painters.HalfBlocks] draws a picture,
 which shows a gradient at twice the vertical resolution of a `content_gradient`.
-[`Pixels.from_gradient`][counterweight.painters.pixels.Pixels.from_gradient] is a picture of a gradient,
+[`Pixels.from_gradient`][counterweight.painters.Pixels.from_gradient] is a picture of a gradient,
 for a picture that draws more on top of it.
 
 <!-- example: gradients.py:canvas -->
@@ -163,6 +163,7 @@ and all of its cells' colors are sent to the terminal again too.
 ::: counterweight.gradients.LinearGradient
 ::: counterweight.gradients.RadialGradient
 ::: counterweight.gradients.ConicGradient
+::: counterweight.gradients.Stops
 ::: counterweight.gradients.Stop
 ::: counterweight.gradients.Hint
 ::: counterweight.gradients.StopLike
@@ -172,3 +173,4 @@ and all of its cells' colors are sent to the terminal again too.
 ::: counterweight.gradients.Coordinate
 ::: counterweight.gradients.SideOrCorner
 ::: counterweight.gradients.Extent
+::: counterweight.gradients.Shape

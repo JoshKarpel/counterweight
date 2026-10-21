@@ -148,3 +148,4 @@ async def test_the_lap_timer_counts_from_the_last_lap() -> None:
 ::: counterweight.clock.FrozenClock
 ::: counterweight.clock.SystemClock
 ::: counterweight.clock.Instant
+::: counterweight.clock.Clock

@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
+from counterweight._output import paint_to_str
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -15,14 +19,10 @@ from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.hooks import use_state
-from counterweight.output import Frame
-from counterweight.output import paint_to_str
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 
 @pytest.fixture

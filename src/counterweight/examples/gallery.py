@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from counterweight.app import app
+from counterweight._app import app
 from counterweight.components import component
 from counterweight.controls import FocusNext
 from counterweight.controls import FocusOn
@@ -37,20 +37,20 @@ from counterweight.examples.catalog import Root
 from counterweight.examples.catalog import examples
 from counterweight.examples.catalog import shown
 from counterweight.examples.catalog import write_copy
+from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
 from counterweight.highlighting import code_block
-from counterweight.hooks import ElementHandle
-from counterweight.hooks import FocusHandle
+from counterweight.hooks import DuplicateUseFocus
 from counterweight.hooks import toggle
 from counterweight.hooks import use_controls
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import DuplicateUseFocus
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
 

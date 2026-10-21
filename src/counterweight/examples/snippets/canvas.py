@@ -1,18 +1,21 @@
 """
 Elements: Canvas
 
-Pictures drawn in half blocks: sized, fitted to their box, converted from Pillow, drawn by a painter of your own, and painted with the mouse.
+Pictures drawn in half blocks: sized, fitted to their box, converted from Pillow, drawn by a painter of your own, and painted with the mouse,
+and pictures of the screen: a screenshot of a panel, and a wipe from one panel's picture to another's.
 """
 
 import asyncio
 import sys
 from dataclasses import dataclass
+from datetime import timedelta
 from functools import cache
 
 from PIL import Image
 from PIL import ImageOps
 
-from counterweight.app import app
+from counterweight import app
+from counterweight.animation import ease_in_out
 from counterweight.components import component
 from counterweight.controls import Screenshot
 from counterweight.elements import Canvas
@@ -27,13 +30,17 @@ from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
 from counterweight.events import Receiver
 from counterweight.focus import ElementHandle
+from counterweight.hooks import use_progress
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
-from counterweight.output import Frame
-from counterweight.painters.frames import PaintView
-from counterweight.painters.pixels import Fit
-from counterweight.painters.pixels import HalfBlocks
-from counterweight.painters.pixels import Pixels
+from counterweight.keys import Key
+from counterweight.paint import Cell
+from counterweight.paint import Frame
+from counterweight.paint import rows_of
+from counterweight.painters import Fit
+from counterweight.painters import HalfBlocks
+from counterweight.painters import PaintView
+from counterweight.painters import Pixels
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
 from counterweight.styles.utilities import *
@@ -240,12 +247,75 @@ def snapshot() -> Div:
 
 # --8<-- [end:screenshot]
 
+# --8<-- [start:transition]
 
-ROOTS = (picture, sizing, fits, image, ruler, paint, snapshot)
+type Picture = tuple[tuple[Cell, ...], ...]
+
+NO_PICTURE: Picture = ()
+
+
+def wipe(before: Picture, after: Picture, progress: float) -> Picture:
+    """`after` from the left edge up to `progress` of the way across, and `before` from there on."""
+    cut = round(ease_in_out(progress) * max((len(row) for row in before), default=0))
+    return tuple((*new[:cut], *old[cut:]) for old, new in zip(before, after, strict=True))
+
+
+def card(handle: ElementHandle, color: Color, lines: tuple[str, ...]) -> Div:
+    return Div(
+        handle=handle,
+        style=col | border | border_lightrounded | border_color(color) | pad_x(1) | size(14, 5),
+        children=tuple(Text(content=line, style=text_color(color)) for line in lines),
+    )
+
+
+@component
+def transition() -> Div:
+    first, second = use_state(ElementHandle)[0], use_state(ElementHandle)[0]
+    before, after = use_rects(first).border, use_rects(second).border
+    pictures, set_pictures = use_state((NO_PICTURE, NO_PICTURE))
+    plays, set_plays = use_state(0)
+    progress = use_progress(timedelta(seconds=1), deps=(plays,))
+
+    def keep(frame: Frame) -> None:
+        # The cells of each card, as they are in this frame, to mix on every frame of the wipe.
+        set_pictures((frame.paint.cells_in(before), frame.paint.cells_in(after)))
+        set_plays(lambda plays: plays + 1)
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key="s"):
+                return (Screenshot(handler=keep),)
+            case KeyPressed(key=Key.Space):
+                set_plays(lambda plays: plays + 1)
+                return ()
+            case _:
+                return None
+
+    old, new = pictures
+    return Div(
+        style=row | gap(2),
+        on_input=on_input,
+        children=(
+            card(first, Color.from_hex("#2dd4bf"), ("Before", "日本語", "─" * 10)),
+            card(second, Color.from_hex("#fb7185"), ("After", "ひらがな", "═" * 10)),
+            Text(content="Press s", style=text_color("slate", 400))
+            if old == NO_PICTURE
+            else Canvas(painter=PaintView(rows=rows_of(wipe(old, new, progress)), width=before.width)),
+        ),
+    )
+
+
+# --8<-- [end:transition]
+
+
+ROOTS = (picture, sizing, fits, image, ruler, paint, snapshot, transition)
 
 # --8<-- [start:scenes]
 
+from counterweight.autopilot import advance
 from counterweight.autopilot import typed
+from counterweight.controls import AdvanceClock
+from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
 from counterweight.geometry import Position
 
@@ -264,6 +334,22 @@ STILLS = [
     Still("canvas-painter", ruler(), (64, 4)),
     Still("canvas-paint", paint(), (28, 10), steps=stroke()),
     Still("canvas-screenshot", snapshot(), (36, 3), steps=[*typed("++s"), *typed("++")]),
+    Still("canvas-transition", transition(), (46, 5), steps=[*typed("s"), AdvanceClock(by=timedelta(seconds=0.5))]),
+]
+
+DEMOS = [
+    Demo(
+        "canvas-transition",
+        transition(),
+        (46, 5),
+        steps=[
+            AdvanceClock(by=timedelta(seconds=1)),
+            *typed("s"),
+            *advance(timedelta(seconds=2)),
+            KeyPressed(key=Key.Space),
+            *advance(timedelta(seconds=2)),
+        ],
+    ),
 ]
 
 # --8<-- [end:scenes]

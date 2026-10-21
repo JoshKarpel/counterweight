@@ -7,7 +7,7 @@ Boxes dragged around with the mouse.
 import asyncio
 from dataclasses import dataclass
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
@@ -19,12 +19,12 @@ from counterweight.events import MouseUp
 from counterweight.events import Receiver
 from counterweight.geometry import Position
 from counterweight.geometry import Region
+from counterweight.geometry import clamp
 from counterweight.hooks import Ref
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.styles.utilities import *
-from counterweight.utils import clamp
 
 # --8<-- [start:example]
 

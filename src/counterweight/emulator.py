@@ -28,17 +28,17 @@ lazy from pyghostty._ffi import ffi
 lazy from pyghostty._ffi import lib
 lazy from pyghostty.core import init_sized
 
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
 from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.styles.styles import DEFAULT_PALETTE
-from counterweight.styles.styles import UNSET
-from counterweight.styles.styles import AnyColor
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import IndexedColor
+from counterweight.styles._styles import DEFAULT_PALETTE
+from counterweight.styles._styles import UNSET
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import IndexedColor
 
 WHITE = Color.from_name("white")
 BLACK = Color.from_name("black")

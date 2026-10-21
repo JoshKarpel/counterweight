@@ -1,7 +1,7 @@
 """
 Summarizes a Tachyon profile's collapsed stacks: where a running app's samples go, by stage and by function.
 
-The stages aren't listed here, they come from the stack. A sample inside `counterweight.app.render_loop`
+The stages aren't listed here, they come from the stack. A sample inside `counterweight._app.render_loop`
 belongs to whatever function the loop called, so a stage split out of an existing one shows up
 without changes here. A sample in another asyncio task (such as the devlog's sink) belongs to that task,
 and one in the event loop's own machinery (waiting in `select`, scheduling) to the event loop.
@@ -58,7 +58,7 @@ class Summary:
     inclusive_samples: Counter[str]
 
 
-RENDER_LOOP = Frame(file="app.py", function="render_loop")
+RENDER_LOOP = Frame(file="_app.py", function="render_loop")
 TASK_STEP = Frame(file="events.py", function="Handle._run")
 LOOP_ITERATION = Frame(file="base_events.py", function="BaseEventLoop._run_once")
 RUN_COMMAND = Frame(file="__main__.py", function="run_workload")

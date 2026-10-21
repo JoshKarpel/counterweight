@@ -7,7 +7,7 @@ A file browser that sorts and filters its files only when they or the filter cha
 import asyncio
 from datetime import timedelta
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

@@ -16,15 +16,15 @@ from typing import assert_never
 
 from more_itertools import interleave
 
+from counterweight._graphemes import graphemes
+from counterweight._input_parsing import CONTROL_KEYS
+from counterweight._output import Frame
 from counterweight.animation import FRAME_INTERVAL
 from counterweight.controls import AdvanceClock
 from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
-from counterweight.graphemes import graphemes
-from counterweight.input_parsing import CONTROL_KEYS
 from counterweight.keys import Key
-from counterweight.output import Frame
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +52,7 @@ class WaitFor:
     checked after each render, while the app keeps handling events and rendering,
     as [Playwright's assertions](https://playwright.dev/docs/test-assertions) wait for the page.
 
-    The condition receives the whole screen as a [`Frame`][counterweight.output.Frame],
+    The condition receives the whole screen as a [`Frame`][counterweight.paint.Frame],
     so it can look for text with `frame.text(ansi=False)`.
 
     A [`FrozenClock`][counterweight.clock.FrozenClock] runs in real time while the autopilot waits,

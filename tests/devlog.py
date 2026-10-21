@@ -23,7 +23,7 @@ class Lines(logging.Handler):
 
 
 @contextmanager
-def devlog_lines(logger_name: str = "counterweight.app") -> Iterator[list[str]]:
+def devlog_lines(logger_name: str = "counterweight._app") -> Iterator[list[str]]:
     """The devlog lines `logger_name` logs inside the block."""
     logger = logging.getLogger(logger_name)
     handler = Lines()

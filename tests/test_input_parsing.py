@@ -5,6 +5,18 @@ from hypothesis import example
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight._input_parsing import ALT
+from counterweight._input_parsing import CONTROL
+from counterweight._input_parsing import CONTROL_KEYS
+from counterweight._input_parsing import CONTROL_SHIFT
+from counterweight._input_parsing import ESC
+from counterweight._input_parsing import PASTE_START
+from counterweight._input_parsing import SHIFT
+from counterweight._input_parsing import Modifier
+from counterweight._input_parsing import alt_name
+from counterweight._input_parsing import modified
+from counterweight._input_parsing import parse_input
+from counterweight._input_parsing import sequence_keys
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
@@ -16,18 +28,6 @@ from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input_parsing import ALT
-from counterweight.input_parsing import CONTROL
-from counterweight.input_parsing import CONTROL_KEYS
-from counterweight.input_parsing import CONTROL_SHIFT
-from counterweight.input_parsing import ESC
-from counterweight.input_parsing import PASTE_START
-from counterweight.input_parsing import SHIFT
-from counterweight.input_parsing import Modifier
-from counterweight.input_parsing import alt_name
-from counterweight.input_parsing import modified
-from counterweight.input_parsing import parse_input
-from counterweight.input_parsing import sequence_keys
 from counterweight.keys import Key
 
 

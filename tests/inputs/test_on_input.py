@@ -10,7 +10,7 @@ from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
-from counterweight.hooks.impls import NodeKey
+from counterweight.hooks._impls import NodeKey
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import inset_left
 from counterweight.styles.utilities import inset_top

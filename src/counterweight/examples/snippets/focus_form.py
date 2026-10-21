@@ -7,7 +7,7 @@ An order form whose fields take focus in turn, with a confirmation dialog that k
 import asyncio
 from collections.abc import Callable
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import ClearFocus
@@ -19,6 +19,7 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import FocusHandle
 from counterweight.handlers import each
 from counterweight.handlers import first
 from counterweight.handlers import focus_on_press
@@ -26,7 +27,6 @@ from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import on_click
 from counterweight.handlers import tab_focus
 from counterweight.hooks import Focus
-from counterweight.hooks import FocusHandle
 from counterweight.hooks import Setter
 from counterweight.hooks import toggle
 from counterweight.hooks import use_focus

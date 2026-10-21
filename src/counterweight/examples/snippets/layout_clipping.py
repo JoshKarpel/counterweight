@@ -9,11 +9,11 @@ import sys
 
 import waxy
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text
-from counterweight.hooks import ElementHandle
+from counterweight.focus import ElementHandle
 from counterweight.styles import Style
 from counterweight.styles.utilities import *
 

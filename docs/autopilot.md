@@ -207,6 +207,8 @@ Notice the chapters on the player's progress bar, one for each marker, which jum
 ::: counterweight.autopilot.Wait
 ::: counterweight.autopilot.WaitFor
 ::: counterweight.autopilot.AutopilotTimedOut
+::: counterweight.events.AnyEvent
+::: counterweight.events.TerminalResized
 ::: counterweight.autopilot.typed
 ::: counterweight.autopilot.showing
 ::: counterweight.autopilot.advance

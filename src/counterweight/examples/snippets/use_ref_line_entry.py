@@ -6,7 +6,7 @@ A line entry that keeps what it needs between renders in a ref.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Text
 from counterweight.events import InputEvent

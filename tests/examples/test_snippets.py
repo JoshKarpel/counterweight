@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import WaitFor
 from counterweight.components import Component
@@ -38,6 +38,7 @@ from counterweight.examples.snippets import input_handlers
 from counterweight.examples.snippets import picker
 from counterweight.examples.snippets import prefix_keys
 from counterweight.examples.snippets import programs
+from counterweight.examples.snippets import pseudoterminals
 from counterweight.examples.snippets import scrolling
 from counterweight.examples.snippets import terminals
 from counterweight.examples.snippets import text_input
@@ -189,6 +190,12 @@ async def test_a_pane_shows_its_program() -> None:
     )
 
     assert "hello from the pane" in shown
+
+
+async def test_the_pseudoterminal_example_says_why_its_program_failed_to_start() -> None:
+    shown = await screen(pseudoterminals.program(("/nonexistent/program",)), [shows("Failed to start")], (44, 15))
+
+    assert "No such file or directory" in shown
 
 
 async def test_a_slide_runs_its_command_when_shown() -> None:

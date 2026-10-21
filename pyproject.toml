@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.12.23,<0.13"]
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [project]
@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "An experimental TUI framework for Python, inspired by React and Tailwind"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "JoshKarpel", email = "josh.karpel@gmail.com" }
 ]
@@ -69,7 +70,7 @@ dev = [
 ]
 
 [project.scripts]
-counterweight = "counterweight.cli:main"
+counterweight = "counterweight._cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JoshKarpel/counterweight"
@@ -230,8 +231,8 @@ extend-immutable-calls = [
     "counterweight.clock.SystemClock",
     "counterweight.styles.Style",
     "counterweight.styles.CellStyle",
-    "counterweight.styles.styles.Style",
-    "counterweight.styles.styles.CellStyle",
+    "counterweight.styles._styles.Style",
+    "counterweight.styles._styles.CellStyle",
     "counterweight.styles.utilities.*",
     "counterweight.commands.CommandOutputStyles",
     "counterweight.markdown.MarkdownStyles",

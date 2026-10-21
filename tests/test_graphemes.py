@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 
 
 @pytest.mark.parametrize(

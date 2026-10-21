@@ -1,7 +1,8 @@
 """
 Layout: Scrolling
 
-Scroll containers, scrolling from a handler, a windowed list, following the end, a pager's keys, and a table of contents.
+Scroll containers, scrolling from a handler, a windowed list, scroll anchoring, following the end, a pager's keys,
+and a table of contents.
 """
 
 import asyncio
@@ -9,8 +10,9 @@ import sys
 from datetime import timedelta
 from functools import partial
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
+from counterweight.controls import ScrollBy
 from counterweight.controls import ScrollIntoView
 from counterweight.controls import ScrollTo
 from counterweight.elements import Div
@@ -18,18 +20,21 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
+from counterweight.events import MouseScrolledDown
+from counterweight.events import MouseScrolledUp
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.handlers import page_down
 from counterweight.handlers import page_up
 from counterweight.handlers import scroll_on_keys
 from counterweight.handlers import scroll_on_wheel
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 EVENTS = [
@@ -128,6 +133,65 @@ def windowed() -> Div:
 
 
 # --8<-- [end:windowed]
+
+# --8<-- [start:anchoring]
+
+ALERTS = (
+    "disk 91% on db-2",
+    "p99 latency 840ms",
+    "pod web-7 restarted",
+    "cert expiring",
+    "queue depth 12k",
+)
+
+
+@component
+def alert(number: int) -> Text:
+    return Text(content=f"{number:>2} {ALERTS[number % len(ALERTS)]}")
+
+
+@component
+def alert_feed(title: str, viewport: ElementHandle, anchor: Style, newest: int) -> Div:
+    return Div(
+        style=col | border | border_lightrounded | size(26, 6),
+        children=(
+            Text(content=f" {title} ", style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border),
+            Div(
+                style=fill(1) | col | overflow_y_scroll | anchor,
+                handle=viewport,
+                # Newest first, keyed, so each alert keeps its node, which anchoring follows, as new ones arrive above.
+                children=tuple(alert(n).with_key(str(n)) for n in range(newest, 0, -1)),
+            ),
+        ),
+    )
+
+
+@component
+def anchoring() -> Div:
+    feeds, _ = use_state(lambda: (ElementHandle(), ElementHandle()))
+    tick = use_clock(timedelta(seconds=2))
+    # A new alert every two seconds, at the top.
+    newest = 8 + int(tick.since_mount / timedelta(seconds=2))
+
+    def scroll_both(event: InputEvent, receiver: Receiver) -> InputResponse:
+        match event:
+            case MouseScrolledDown() | MouseScrolledUp():
+                return tuple(ScrollBy(feed, y=event.direction) for feed in feeds)
+            case _:
+                return None
+
+    anchored, unanchored = feeds
+    return Div(
+        style=row | gap(1),
+        on_input=scroll_both,
+        children=(
+            alert_feed("Anchored", anchored, overflow_anchor_auto, newest),
+            alert_feed("overflow_anchor_none", unanchored, overflow_anchor_none, newest),
+        ),
+    )
+
+
+# --8<-- [end:anchoring]
 
 # --8<-- [start:tail]
 
@@ -280,7 +344,7 @@ def contents() -> Div:
 # --8<-- [end:contents]
 
 
-ROOTS = (pane, controlled, windowed, tail, jump_to_end, pager, contents)
+ROOTS = (pane, controlled, windowed, anchoring, tail, jump_to_end, pager, contents)
 
 # --8<-- [start:scenes]
 
@@ -292,8 +356,6 @@ from counterweight.controls import Marker
 from counterweight.controls import Screenshot
 from counterweight.events import AnyEvent
 from counterweight.events import MouseDown
-from counterweight.events import MouseScrolledDown
-from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
@@ -319,11 +381,15 @@ READ_BACK: list[AnyEvent | AnyControl] = [TAILED, WHEEL_UP, WHEEL_UP]
 # `use_scroll` reports a scroll one render after it changes, so the button appears, and goes, a render later.
 JUMPED_BACK: list[AnyEvent | AnyControl] = [WHEEL_UP, WHEEL_UP, SETTLE]
 
+ALERTED = AdvanceClock(by=timedelta(seconds=2))
+
 STILLS = [
     Still("scrolling-pane", pane(), (30, 6)),
     Still("scrolling-pane-wheeled", pane(), (30, 6), steps=[WHEEL, WHEEL]),
     Still("scrolling-controls", controlled(), (30, 7), steps=click(12, 0)),
     Still("scrolling-windowed", windowed(), (30, 6), steps=[WHEEL, WHEEL, SETTLE]),
+    Still("scrolling-anchoring", anchoring(), (53, 6), steps=[WHEEL, WHEEL]),
+    Still("scrolling-anchoring-later", anchoring(), (53, 6), steps=[WHEEL, WHEEL, *[ALERTED] * 2]),
     Still("scrolling-tail", tail(), (30, 6), steps=[TAILED]),
     Still("scrolling-tail-later", tail(), (30, 6), steps=[TAILED, AdvanceClock(by=timedelta(seconds=2))]),
     Still("scrolling-tail-read-back", tail(), (30, 6), steps=READ_BACK),
@@ -340,6 +406,22 @@ SECOND = AdvanceClock(by=timedelta(seconds=1))
 GLANCE = AdvanceClock(by=timedelta(milliseconds=400))
 
 DEMOS = [
+    Demo(
+        "scrolling-anchoring",
+        anchoring(),
+        (53, 6),
+        steps=[
+            *[SECOND] * 4,
+            Marker("Scrolled down"),
+            WHEEL,
+            GLANCE,
+            WHEEL,
+            *[SECOND] * 8,
+            Marker("Scrolled back up"),
+            *paced([WHEEL_UP] * 6, pause=GLANCE),
+            *[SECOND] * 2,
+        ],
+    ),
     Demo(
         "scrolling-tail",
         tail(),

@@ -13,7 +13,7 @@ so a new survivor is a test hole (or a new equivalent to argue for and add here)
 
 ```bash
 just mutate                                   # every mutant without a cached verdict
-just mutate 'counterweight.shadow.*'          # re-run only these mutants, cached or not
+just mutate 'counterweight._shadow.*'          # re-run only these mutants, cached or not
 uv run mutmut results                         # what survived
 uv run mutmut show <mutant>                   # one mutant's diff
 ```

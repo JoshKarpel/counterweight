@@ -6,6 +6,9 @@ from weakref import WeakSet
 import pytest
 
 from counterweight._context_vars import current_use_mouse_listeners
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Layouts
+from counterweight._shadow import update_shadow
 from counterweight._utils import cancel_tasks
 from counterweight.components import component
 from counterweight.elements import Text
@@ -16,9 +19,6 @@ from counterweight.hooks import Hovered
 from counterweight.hooks import Mouse
 from counterweight.hooks import use_hovered
 from counterweight.hooks import use_mouse
-from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import Layouts
-from counterweight.shadow import update_shadow
 from tests.rendering import effect_tasks
 from tests.rendering import render
 from tests.rendering import state_sets

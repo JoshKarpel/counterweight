@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.autopilot import AutopilotStep
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
@@ -31,7 +32,6 @@ from counterweight.examples.scenes import nothing_attached
 from counterweight.examples.scenes import recording_of
 from counterweight.geometry import Position
 from counterweight.keys import Key
-from counterweight.output import Frame
 
 ASSETS = Path(__file__).parent.parent.parent / "docs" / "assets"
 
