@@ -2,6 +2,8 @@
 
 ## `0.1.0`
 
+Released `2026-10-21`
+
 Counterweight `0.1.0` rebuilds most of the framework, and adds a great deal on top of it.
 Layout is [taffy](https://github.com/DioxusLabs/taffy)'s flexbox and grid, through [waxy](https://github.com/JoshKarpel/waxy).
 A render re-runs only the components whose state changed.

@@ -1,5 +1,6 @@
 [build-system]
-requires = ["uv_build>=0.12.23,<0.13"]
+# The `sync-uv-build` pre-commit hook keeps this at the uv that `mise.lock` pins.
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [project]
@@ -8,6 +9,7 @@ version = "0.1.0"
 description = "An experimental TUI framework for Python, inspired by React and Tailwind"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "JoshKarpel", email = "josh.karpel@gmail.com" }
 ]

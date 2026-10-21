@@ -117,6 +117,12 @@ repos:
         language: unsupported
         files: ^(codegen/(generate_logo\.py|fonts/)|src/counterweight/styles/utilities\.py$|docs/assets/logo/)
         pass_filenames: false
+      - id: sync-uv-build
+        name: sync uv_build with the pinned uv
+        entry: uv run --frozen python codegen/sync_uv_build.py
+        language: unsupported
+        files: ^(mise\.lock|pyproject\.toml|codegen/sync_uv_build\.py)$
+        pass_filenames: false
       - id: generate-screenshots
         name: generate docs screenshots
         entry: uv run --frozen python -m docs.generate_screenshots
