@@ -124,3 +124,4 @@ A program's colors reach the app's terminal as the program chose them (see [Colo
 ::: counterweight.input_encoding.encode_paste
 ::: counterweight.input_encoding.encode_mouse
 ::: counterweight.input_encoding.encode_focus
+::: counterweight.input_encoding.KEY_SEQUENCES

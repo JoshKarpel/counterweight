@@ -475,6 +475,9 @@ Counterweight requires Python `3.15`.
   with runnable examples, screenshots and recordings, each screenshot with a copyable plain-text twin,
   and added a quick start and a showcase of the example apps to the [home page](index.md).
 
+- Documented [`app`](app.md) and what each of its parameters is for on a page of its own,
+  and gave every public name a docstring and a place in the API reference of the page that covers it.
+
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
   Added a [Layout](layout/index.md) section to the documentation:
   a guide to choosing between flexbox and grid,

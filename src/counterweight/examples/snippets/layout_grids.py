@@ -110,8 +110,33 @@ def wrap() -> Div:
 
 # --8<-- [end:wrap]
 
+# --8<-- [start:wrap-reverse]
 
-ROOTS = (tiles, spans, auto_flow, wrap)
+
+@component
+def wrap_reverse() -> Div:
+    return Div(
+        style=row,
+        children=tuple(
+            Div(
+                style=row | wrapping | align_children_start | gap_width(1) | fill(1) | border | border_heavy,
+                children=(
+                    Text(
+                        content=f" {name} ",
+                        style=position_absolute | inset_top(-1) | inset_left(1) | clip_to_border,
+                    ),
+                    *(Text(style=border | pad_x(1), content=tag) for tag in TAGS),
+                ),
+            )
+            for name, wrapping in (("flex_wrap", flex_wrap), ("flex_wrap_reverse", flex_wrap_reverse))
+        ),
+    )
+
+
+# --8<-- [end:wrap-reverse]
+
+
+ROOTS = (tiles, spans, auto_flow, wrap, wrap_reverse)
 
 # --8<-- [start:scenes]
 
@@ -122,6 +147,7 @@ STILLS = [
     Still("layout-grid-spans", spans(), (60, 12)),
     Still("layout-grid-auto-flow", auto_flow(), (100, 11)),
     Still("layout-flex-wrap", wrap(), (50, 9)),
+    Still("layout-flex-wrap-reverse", wrap_reverse(), (80, 14)),
 ]
 
 # --8<-- [end:scenes]

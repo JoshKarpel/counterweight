@@ -48,3 +48,12 @@ When children have different sizes and there's no grid for them to line up in,
 <!-- example: layout_grids.py:wrap -->
 
 ![Wrapping with flexbox](../assets/layout-flex-wrap.svg)
+
+`flex_wrap_reverse` wraps the same way but stacks the lines from the bottom up,
+as CSS's `flex-wrap: wrap-reverse` does:
+the first line sits at the bottom and each new one goes above it,
+while each line keeps its children in order.
+
+<!-- example: layout_grids.py:wrap-reverse -->
+
+![The same tags wrapped top down and bottom up](../assets/layout-flex-wrap-reverse.svg)

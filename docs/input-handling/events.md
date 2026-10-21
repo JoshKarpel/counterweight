@@ -425,3 +425,10 @@ It receives the presses' moves and releases because it stops each `MouseDown`:
     while `on_input` is more convenient when a component needs to respond to *changes* in the mouse state,
     (e.g., a button release [`MouseUp`][counterweight.events.MouseUp]).
     `use_mouse` sees every change, while a handler sees only the events [routed](#routing-input-events) to its element.
+
+## Keys
+
+`Key` names every key that doesn't type text,
+alone and with the modifiers a terminal reports for it.
+
+::: counterweight.keys.Key

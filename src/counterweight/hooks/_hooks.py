@@ -340,6 +340,8 @@ def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -
 
 @dataclass(frozen=True, slots=True)
 class Mouse:
+    """Where the mouse is and which button is held, as [`use_mouse`][counterweight.hooks.use_mouse] returns it."""
+
     absolute: Position
     """The absolute position of the mouse on the screen (i.e., the top-left corner of the screen is `Position(x=0, y=0)`)."""
 
@@ -380,10 +382,19 @@ def use_mouse() -> Mouse:
 
 @dataclass(frozen=True, slots=True)
 class Hovered:
+    """
+    Which of an element's boxes the mouse is over, as [`use_hovered`][counterweight.hooks.use_hovered] returns it.
+    Each box holds the ones inside it, so the mouse over the content box is over all four.
+    """
+
     content: bool
+    """Whether the mouse is over the content box."""
     padding: bool
+    """Whether the mouse is over the padding box: the content and the padding around it."""
     border: bool
+    """Whether the mouse is over the border box: the padding box and the border around it."""
     margin: bool
+    """Whether the mouse is over the margin box: the border box and the margin around it."""
 
 
 def use_hovered() -> Hovered:

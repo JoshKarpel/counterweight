@@ -80,6 +80,10 @@ def key_sequences() -> dict[str, bytes]:
 
 
 KEY_SEQUENCES: Mapping[str, bytes] = key_sequences()
+"""
+The bytes a terminal sends for each key, by its [`KeyPressed.key`][counterweight.events.KeyPressed.key],
+with the cursor keys in their normal mode.
+"""
 
 APPLICATION_CURSOR_KEYS: Mapping[str, bytes] = {
     key: SS3 + final for final, key in LETTER_KEYS.items() if key not in FUNCTION_KEYS

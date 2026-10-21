@@ -21,12 +21,29 @@ if TYPE_CHECKING:
     from counterweight.gradients import Gradient
 
 TextJustify = Literal["left", "center", "right"]
+"""Where each line of a `Text` sits in its content box, as CSS's `text-align` puts it."""
+
 TextWrap = Literal["none", "stable", "pretty", "balance"]
+"""
+How a `Text` wraps its lines, as CSS's `text-wrap` does:
+not at all, greedily, minimizing raggedness over the paragraph, or evening out the lines' lengths.
+"""
+
 ClipTo = Literal["padding", "border", "screen"]
+"""What clips an element: its parent's padding box, its parent's border box, or only the screen."""
+
 OverflowAnchor = Literal["auto", "none"]
+"""
+Whether a scroll container keeps its content where it was in view as the content above it changes size,
+as CSS's `overflow-anchor` says.
+"""
 
 
 UNSET = sentinel("UNSET")
+"""
+What a style field holds until it's set, so merging a style over another keeps the other's value there.
+An unset field is drawn with its value from `STYLE_DEFAULTS` or `CELL_STYLE_DEFAULTS`.
+"""
 
 
 def or_default[T](value: T | UNSET, default: T) -> T:
@@ -67,12 +84,15 @@ class StyleFragment:
 
 
 class Color(NamedTuple):
+    """A color as red, green and blue channels, each from 0 to 255, which the terminal draws exactly."""
+
     red: int
     green: int
     blue: int
 
     @classmethod
     def from_name(cls, name: str) -> Color:
+        """A color by its CSS name, such as `"rebeccapurple"`."""
         return COLORS_BY_NAME[name]
 
     @classmethod
@@ -95,9 +115,11 @@ class Color(NamedTuple):
 
     @property
     def hex(self) -> str:
+        """The color as `#rrggbb`."""
         return f"#{self.red:02x}{self.green:02x}{self.blue:02x}"
 
     def blend(self, other: Color, alpha: float) -> Color:
+        """This color with `alpha` of `other` mixed in, from `0` (this color) to `1` (`other`), in sRGB."""
         return Color(
             red=int(self.red * (1 - alpha) + other.red * alpha),
             green=int(self.green * (1 - alpha) + other.green * alpha),
@@ -496,6 +518,7 @@ CELL_STYLE_DEFAULTS: ResolvedCellStyle[AnyColor] = ResolvedCellStyle(
     strikethrough=False,
     link=None,
 )
+"""What each field of a `CellStyle` that's left `UNSET` is drawn as: white text on black, with no attributes or link."""
 
 
 def is_solid_cell_style(style: ResolvedCellStyle[AnyColor | Gradient]) -> TypeIs[ResolvedCellStyle[AnyColor]]:
@@ -561,6 +584,11 @@ class BorderParts(NamedTuple):
 
 # https://www.compart.com/en/unicode/block/U+2500
 class BorderKind(Enum):
+    """
+    The characters a border is drawn with, which the `border_<kind>` utilities choose.
+    Where a border is drawn is up to the border widths in `Style.layout`, which `border` and its sides set.
+    """
+
     Light = BorderParts(
         left="│",
         right="│",
@@ -880,6 +908,7 @@ STYLE_DEFAULTS: ResolvedStyle[AnyColor] = ResolvedStyle(
     text_justify="left",
     text_wrap="none",
 )
+"""What each field of a `Style` that's left `UNSET` is drawn as."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

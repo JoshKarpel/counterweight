@@ -104,17 +104,24 @@ CommonMark joins the lines of a paragraph with a space, so a document's source c
 What people type into a chat is different: GitHub's comments and chat apps keep each line break they type.
 Pass `keeps_line_breaks=True` to break the line wherever the source does,
 as the [chat](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py) example does for your messages.
+Here the same message is rendered both ways:
+
+<!-- example: markdown_document.py:line-breaks -->
+
+![A three-line message joined into one paragraph on the left, and kept on three lines on the right](../assets/markdown-line-breaks.svg)
 
 ## Styles
 
 `MarkdownStyles` holds a `Style` for each kind of block and a `CellStyle` for each kind of inline span.
 A code block and a table are each a box around what they show:
 `code_block` and `table` style the box, which scrolls, and `code_block_text` and `table_grid` what's inside it.
-Pass the fields you want to change, and the rest keep their defaults:
+Pass the fields you want to change, and the rest keep their defaults.
+A field you pass replaces its default whole, so merge over the default's value to change only part of it,
+as this document does to recolor its heading, block quote and table without losing their bold, border or wrapping:
 
-```python
-markdown_document(source, MarkdownStyles(heading_1=text_color("amber", 300), code_theme="monokai", block_gap=0))
-```
+<!-- example: markdown_document.py:styles -->
+
+![The document from the top of the page in amber, with no space between its blocks and its code on Monokai's background](../assets/markdown-styles.svg)
 
 ## API
 

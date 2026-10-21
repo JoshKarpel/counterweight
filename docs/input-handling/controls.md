@@ -43,6 +43,31 @@ Other pages show the rest of the controls at work:
 - `Suspend` runs a pager and the user's editor in [Running Programs on the App's Terminal](../terminals/programs.md).
 - `ToggleBorderHealing` turns [border healing](../cookbook/border-healing.md) off and on.
 - `Screenshot`, `AdvanceClock` and `Marker` drive and record an app from an [autopilot](../autopilot.md).
+- `CopyToClipboard` copies a command from a list, [below](#copying-to-the-clipboard).
+
+## Copying to the clipboard
+
+`CopyToClipboard` copies text to the system clipboard,
+as a browser's [`navigator.clipboard.writeText`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) does,
+for an app's own "copy" buttons and keys.
+Here Up and Down move through a list of commands, and Enter or a click copies one:
+
+<!-- example: input_clipboard.py:example -->
+
+The handler that copies also sets state, so the app can say what it copied,
+since nothing else shows that the copy happened:
+
+![The second command selected and copied](../assets/input-clipboard.svg)
+
+<!-- cast: input-clipboard -->
+
+The app asks the terminal to set the clipboard with
+[OSC 52](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands),
+so it works only where the terminal supports that, and the app can't tell whether it did.
+Some terminals turn it off, or ask before letting a program set the clipboard,
+and tmux passes it on only with `set -g set-clipboard on`.
+A headless app copies nothing, and a [recording](../autopilot.md#recording) leaves the copy out,
+since playing it back in a terminal would set the viewer's clipboard.
 
 ## API
 
@@ -85,3 +110,4 @@ and the [autocomplete recipe](../cookbook/autocomplete.md#a-long-list) returns i
 ::: counterweight.controls.ScrollTo
 ::: counterweight.controls.ScrollBy
 ::: counterweight.controls.ScrollIntoView
+::: counterweight.controls.ScrollAlignment

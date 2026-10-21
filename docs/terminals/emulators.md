@@ -21,6 +21,20 @@ and hands out a [`PtyConnection`][counterweight.pseudoterminal.PtyConnection] th
 without blocking and resizes its terminal.
 Cancelling it hangs the program up, as closing a terminal window does.
 
+This component runs a short Python script with `run_pty` in an effect, keeping every byte it writes,
+and shows them twice: as a `Text`, which draws the escape and carriage return characters among them as `␛` and `␍`,
+and as the `Screen` an [emulator](#emulators) makes of them:
+
+<!-- example: pseudoterminals.py:example -->
+
+![The bytes a script wrote, with its escape sequences and carriage returns showing, above the two lines a terminal shows of them](../assets/pseudoterminals.svg)
+
+Notice that the bytes hold every step of the progress bar, each redrawn after a carriage return,
+and the escape sequences that color the text,
+while the terminal shows only where the bar ended and the colors.
+The program printed line feeds, and the pseudo-terminal turned each into a carriage return and a line feed,
+as a terminal's line discipline does.
+
 [`use_pty`][counterweight.pseudoterminal.use_pty] runs a program while its component is mounted,
 as a terminal window or a multiplexer's pane does:
 it starts once its size is positive, resizes the terminal as its size changes,
@@ -145,4 +159,6 @@ which reads as no swap at all on a light theme, and on the right it swaps the th
 ::: counterweight.emulator.Modes
 ::: counterweight.emulator.MouseTracking
 ::: counterweight.emulator.MAX_SCROLLBACK
+::: counterweight.emulator.SNAPSHOT_INTERVAL
+::: counterweight.emulator.BLANK_SCREEN
 ::: counterweight.painters.ScreenView

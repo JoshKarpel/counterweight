@@ -98,7 +98,9 @@ A module is public unless a part of its dotted name starts with an underscore (`
 Each public module lists its public names in `__all__` and re-exports only from private modules, so every public name has exactly one home;
 a package such as `hooks` or `painters` is that home for the names its private submodules define.
 The examples and the docs' references reach the API only through those homes, which `tests/test_public_api.py` checks.
-A new internal module starts with an underscore, and a new public name joins its home's `__all__`.
+A new internal module starts with an underscore, and a new public name joins its home's `__all__`,
+gets a docstring, and gets a `::: <home>.<name>` reference on the docs page that covers it,
+which the same tests require of every public name but the style utilities, which their page's markers list.
 
 ## Development Commands
 

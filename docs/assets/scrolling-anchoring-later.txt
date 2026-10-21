@@ -1,0 +1,6 @@
+╭─ Anchored ─────────────╮ ╭─ overflow_anchor_none ─╮
+│ 6 p99 latency 840ms    │ │ 8 cert expiring        │
+│ 5 disk 91% on db-2     │ │ 7 pod web-7 restarted  │
+│ 4 queue depth 12k      │ │ 6 p99 latency 840ms    │
+│ 3 cert expiring        │ │ 5 disk 91% on db-2     │
+╰────────────────────────╯ ╰────────────────────────╯

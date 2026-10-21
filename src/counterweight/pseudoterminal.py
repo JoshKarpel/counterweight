@@ -103,6 +103,7 @@ class Running:
 
 
 type PtyStatus = Starting | Running | Exited | FailedToStart
+"""Where a program `use_pty` runs is in its life: starting, running, or over, and how it ended."""
 
 
 def program_environment(inherited: Mapping[str, str], env: Mapping[str, str]) -> dict[str, str]:

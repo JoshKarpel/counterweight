@@ -157,3 +157,4 @@ so a canvas can show it without `command_output`.
 ::: counterweight.commands.CommandOutputStyles
 ::: counterweight.commands.COMMAND_ENVIRONMENT
 ::: counterweight.painters.Transcript
+::: counterweight.painters.MAX_LINES

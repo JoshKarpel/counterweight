@@ -146,6 +146,20 @@ Rearrange them, mix in another picture's, and turn the result back into a painte
 [`rows_of`][counterweight.paint.rows_of],
 which draws a wide character's halves that end up apart as spaces, as a terminal does.
 
+This wipe takes a picture of each card when `s` is pressed,
+then, on each frame of a [`use_progress`](../hooks/animation.md#playing-once),
+draws the second card's cells left of a cut that sweeps across and the first card's to its right:
+
+<!-- example: canvas.py:transition -->
+
+![Halfway through the wipe, the third box shows the left half of After and the right half of Before](../assets/canvas-transition.svg)
+
+The pictures are values, taken once, so each frame only rearranges cells it already has,
+and the painter it builds is equal to the last one whenever the cut hasn't moved.
+Space plays the wipe again:
+
+<!-- cast: canvas-transition -->
+
 ## Mouse Input
 
 A canvas takes an `on_input` handler as any element does,
@@ -186,9 +200,15 @@ two built from the same values are equal, so a component can build its painter i
 
 ::: counterweight.elements.Painter
 
+::: counterweight.elements.Rows
+
+::: counterweight.elements.StyledGrapheme
+
 ::: counterweight.painters.Pixels
 
 ::: counterweight.painters.HalfBlocks
+
+::: counterweight.painters.Fit
 
 ::: counterweight.painters.HalfBlockGradient
 

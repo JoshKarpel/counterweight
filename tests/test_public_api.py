@@ -21,6 +21,8 @@ import pytest
 import counterweight
 from counterweight.examples import apps
 from counterweight.examples import snippets
+from counterweight.styles import utilities
+from mkdocs_hooks.utility_tables import public_utilities
 
 ROOT = Path(__file__).parent.parent
 SOURCE = ROOT / "src" / "counterweight"
@@ -132,3 +134,28 @@ def test_docs_reference_objects_by_their_public_home(path: Path) -> None:
     references = [match.group(1) or match.group(2) for match in REFERENCE.finditer(path.read_text())]
 
     assert [reference for reference in references if not resolves_publicly(reference)] == []
+
+
+RENDERED = re.compile(r"^::: (counterweight[\w.]*)$", re.MULTILINE)
+
+
+@pytest.mark.parametrize("module_name", PUBLIC_MODULES)
+def test_docs_render_every_public_name(module_name: str) -> None:
+    """
+    Every name in a public module's `__all__` has a `::: <module>.<name>` reference somewhere in the docs,
+    or its module is rendered whole.
+    The style utilities are the exception: the utilities page lists them, and its hook fails the build on any it misses.
+    """
+    rendered = {
+        match.group(1) for path in (ROOT / "docs").rglob("*.md") for match in RENDERED.finditer(path.read_text())
+    }
+    module = importlib.import_module(module_name)
+    listed_by_utilities_page = public_utilities(utilities) if module is utilities else {}
+
+    assert [
+        name
+        for name in module.__all__
+        if module_name not in rendered
+        and f"{module_name}.{name}" not in rendered
+        and name not in listed_by_utilities_page
+    ] == []

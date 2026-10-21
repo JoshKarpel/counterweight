@@ -7,14 +7,33 @@ from datetime import datetime
 from datetime import timedelta
 
 type Getter[T] = Callable[[], T]
+"""A function that computes a value, such as the initial state `use_state` computes only on the first render."""
+
 type Setter[T] = Callable[[Callable[[T], T] | T], None]
+"""
+What `use_state` returns to set its state: given a value, the next state,
+or given a function, the next state computed from the latest one.
+"""
+
 type Setup = Callable[[], Coroutine[None, None, None]]
+"""What `use_effect` runs: an async function the app runs as a task, and cancels to clean it up."""
+
 type Deps = tuple[object, ...] | None
+"""
+The values an effect depends on, which `use_effect` compares with `==` to the last render's
+to decide whether to run it again, or `None` to run it again after every render of its component.
+"""
 
 
 @dataclass(slots=True)
 class Ref[T]:
+    """
+    A mutable box that keeps a value across renders, which `use_ref` returns, the same box on every render.
+    Changing what it holds doesn't render the component again.
+    """
+
     current: T
+    """The value the box holds."""
 
 
 @dataclass(frozen=True, slots=True)

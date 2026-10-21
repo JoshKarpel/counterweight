@@ -129,3 +129,4 @@ as it does during any suspension.
 ::: counterweight.programs.EditOutcome
 ::: counterweight.programs.Edited
 ::: counterweight.programs.preferred_editor
+::: counterweight.programs.DEFAULT_EDITOR

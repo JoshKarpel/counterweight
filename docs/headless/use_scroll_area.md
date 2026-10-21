@@ -127,7 +127,35 @@ and in a row, `shrink(0)` keeps an area with no width of its own as wide as its 
 The area scrolls the element with the `viewport` handle,
 so a parent that creates the handle with `use_state(ElementHandle)` and passes it to the hook
 can scroll the area with [`ScrollTo`](../layout/scrolling.md#scrolling-from-a-handler) and `ScrollBy`,
-and read its scroll with `use_scroll(handle)`.
+and read its scroll with `use_scroll(handle)`,
+as a React parent scrolls a child's element through a ref it passes down.
+
+This reader passes its handle to a [`scroll_area`](#a-styled-scroll-area),
+which takes the hook's parameters,
+and draws a readout of the lines in view beneath it, with buttons that scroll it to the top and a page on.
+`g` and `G` scroll it to the top and the end, as in a pager:
+the area doesn't scroll for them, so they bubble out of it to the reader's handler:
+
+<!-- example: scroll_area.py:outside -->
+
+=== "At the start"
+
+    ![A bordered log showing lines 1 to 4, above the readout "lines 1-4 of 11" and Top and Next buttons](../assets/scroll-area-outside.svg)
+
+=== "After clicking Next"
+
+    ![The log showing lines 5 to 8, and the readout saying so](../assets/scroll-area-outside-next.svg)
+
+=== "After G"
+
+    ![The log showing its last four lines, 8 to 11](../assets/scroll-area-outside-end.svg)
+
+The readout is a frame behind the scroll, as `use_scroll` always is,
+and `[ Next ]` scrolls by the view's height as of that frame.
+A `ScrollTo` past the end, as `G`'s is, scrolls only as far as the content reaches.
+
+<!-- cast: scroll-area-outside -->
+
 The [chat](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py) example
 passes its transcript's handle to the transcript's scroll area,
 so the root jumps the transcript to its end when a message is sent,

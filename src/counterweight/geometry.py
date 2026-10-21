@@ -15,6 +15,8 @@ def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
 
 @dataclass(frozen=True, slots=True, order=True)
 class Position:
+    """A cell's position, `x` columns right of and `y` rows below the top-left corner of the screen or of a box."""
+
     x: int
     y: int
 
@@ -25,6 +27,7 @@ class Position:
         return Position(self.x - other.x, self.y - other.y)
 
     def fill_to(self, other: Position) -> Iterator[Position]:
+        """Every position in the rectangle with this position and `other` at opposite corners, both included."""
         return (
             Position(x, y)
             for x, y in product(

@@ -86,6 +86,7 @@ type Extent = Literal["closest-side", "closest-corner", "farthest-side", "farthe
 """How large a radial gradient's ending shape is, by the side or corner of the box it reaches."""
 
 type Shape = Literal["circle", "ellipse"]
+"""A radial gradient's ending shape: a circle, round in visual units, or an ellipse, stretched to its box."""
 
 POLAR_SPACES = frozenset({"oklch", "lch", "hsl", "hwb"})
 
@@ -117,6 +118,7 @@ class Hint:
 
 
 type Stops = tuple[Stop | Hint, ...]
+"""A gradient's color stops, in order along its gradient line, with any transition hints between them."""
 
 
 @dataclass(frozen=True, slots=True)

@@ -93,6 +93,7 @@ class Cell:
 
 
 BLANK = Cell.blank(color=Color.from_name("black"))
+"""A space on black, what a cell nothing paints shows."""
 
 
 @dataclass(slots=True)

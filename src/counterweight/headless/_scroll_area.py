@@ -45,8 +45,8 @@ from counterweight.styles.utilities import overflow_y_scroll
 from counterweight.styles.utilities import stick_to_end_x
 from counterweight.styles.utilities import stick_to_end_y
 
-# Which way a scroll area scrolls: sideways, vertically, or both.
 type ScrollAxis = Literal["x", "y", "both"]
+"""Which way a scroll area scrolls: sideways, vertically, or both."""
 
 # The axis an area doesn't scroll clips, so its content can't spill over its border and its siblings.
 # Hidden overflow lets an area that scrolls vertically narrow beside its siblings, as a scroll container can,

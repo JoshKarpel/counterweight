@@ -105,6 +105,7 @@ nav:
   - examples.md
   - ecosystem.md
   - changelog.md
+  - app.md
   - Components:
     - components/index.md
   - Elements:

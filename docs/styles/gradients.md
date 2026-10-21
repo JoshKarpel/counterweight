@@ -163,6 +163,7 @@ and all of its cells' colors are sent to the terminal again too.
 ::: counterweight.gradients.LinearGradient
 ::: counterweight.gradients.RadialGradient
 ::: counterweight.gradients.ConicGradient
+::: counterweight.gradients.Stops
 ::: counterweight.gradients.Stop
 ::: counterweight.gradients.Hint
 ::: counterweight.gradients.StopLike
@@ -172,3 +173,4 @@ and all of its cells' colors are sent to the terminal again too.
 ::: counterweight.gradients.Coordinate
 ::: counterweight.gradients.SideOrCorner
 ::: counterweight.gradients.Extent
+::: counterweight.gradients.Shape

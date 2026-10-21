@@ -451,6 +451,7 @@ class ScrollBy(_Control):
 
 
 ScrollAlignment = Literal["start", "center", "end", "nearest"]
+"""Where [`ScrollIntoView`][counterweight.controls.ScrollIntoView] puts an element in a scroll container's view."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -503,6 +504,7 @@ AnyControl = (
     | ScrollBy
     | ScrollIntoView
 )
+"""Any control: what an input handler returns, what an autopilot sends, and what a `use_controls` sender sends."""
 
 
 __all__ = [

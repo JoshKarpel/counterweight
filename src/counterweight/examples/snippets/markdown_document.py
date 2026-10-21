@@ -10,10 +10,12 @@ import sys
 from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
+from counterweight.elements import Text
 from counterweight.handlers import first
 from counterweight.handlers import scroll_on_keys
 from counterweight.handlers import scroll_on_wheel
 from counterweight.hooks import use_focus
+from counterweight.markdown import MarkdownStyles
 from counterweight.markdown import markdown_document
 from counterweight.styles.utilities import *
 
@@ -111,8 +113,59 @@ def wide() -> Div:
 
 # --8<-- [end:wide]
 
+# --8<-- [start:styles]
 
-ROOTS = (root, github, scrolling, wide)
+DEFAULTS = MarkdownStyles()
+
+# Each field replaces its default, so these merge over the defaults to change only their colors.
+WARM = MarkdownStyles(
+    heading_1=DEFAULTS.heading_1 | text_color("amber", 300),
+    block_quote=DEFAULTS.block_quote | border_color("amber", 500),
+    block_quote_text=DEFAULTS.block_quote_text | text_color("amber", 200).text_style,
+    list_marker=text_color("amber", 400),
+    table_cell=DEFAULTS.table_cell | border_color("stone", 500),
+    code_theme="monokai",
+    block_gap=0,
+)
+
+
+@component
+def styled() -> Div:
+    return Div(style=col | pad_x(1), children=(markdown_document(README, WARM),))
+
+
+# --8<-- [end:styles]
+
+# --8<-- [start:line-breaks]
+
+MESSAGE = """\
+on my way
+running ten minutes late
+save me a seat
+"""
+
+
+@component
+def line_breaks() -> Div:
+    return Div(
+        style=row | gap(2) | pad_x(1),
+        children=tuple(
+            Div(
+                style=col | width(26),
+                children=(
+                    Text(content=label, style=text_color("slate", 400)),
+                    markdown_document(MESSAGE, keeps_line_breaks=keeps_line_breaks),
+                ),
+            )
+            for label, keeps_line_breaks in (("CommonMark", False), ("keeps_line_breaks=True", True))
+        ),
+    )
+
+
+# --8<-- [end:line-breaks]
+
+
+ROOTS = (root, github, scrolling, wide, styled, line_breaks)
 
 # --8<-- [start:scenes]
 
@@ -131,6 +184,8 @@ STILLS = [
     Still("markdown-scrolling-paged", scrolling(), (60, 12), steps=[KeyPressed(key=Key.PageDown)]),
     Still("markdown-wide", wide(), (40, 3)),
     Still("markdown-wide-scrolled", wide(), (40, 3), steps=[WHEEL_RIGHT] * 4),
+    Still("markdown-styles", styled(), (60, 17)),
+    Still("markdown-line-breaks", line_breaks(), (58, 4)),
 ]
 
 # --8<-- [end:scenes]

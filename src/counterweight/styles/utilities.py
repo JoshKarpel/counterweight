@@ -15,6 +15,7 @@ from counterweight.styles import IndexedColor
 from counterweight.styles import Style
 
 Side = Literal["top", "bottom", "left", "right"]
+"""One side of a box."""
 
 # Start generated
 
@@ -339,7 +340,10 @@ ColorName = Literal[
     "pink",
     "rose",
 ]
+"""The name of one of the palette's colors, as the color utilities take it, such as `"sky"`."""
+
 Shade = Literal[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
+"""One of the palette's shades, from lightest (`50`) to darkest (`950`), as in Tailwind's palette."""
 
 _COLOR_MAP: dict[tuple[str, int], Color] = {
     ("slate", 50): slate_50,
