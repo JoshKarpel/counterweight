@@ -12,7 +12,7 @@ from functools import cache
 from PIL import Image
 from PIL import ImageOps
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Screenshot
 from counterweight.elements import Canvas
@@ -29,11 +29,11 @@ from counterweight.events import Receiver
 from counterweight.focus import ElementHandle
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
-from counterweight.output import Frame
-from counterweight.painters.frames import PaintView
-from counterweight.painters.pixels import Fit
-from counterweight.painters.pixels import HalfBlocks
-from counterweight.painters.pixels import Pixels
+from counterweight.paint import Frame
+from counterweight.painters import Fit
+from counterweight.painters import HalfBlocks
+from counterweight.painters import PaintView
+from counterweight.painters import Pixels
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
 from counterweight.styles.utilities import *

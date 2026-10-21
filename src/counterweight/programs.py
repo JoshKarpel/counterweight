@@ -44,10 +44,10 @@ class TerminalStreams:
     """The terminal a suspended app hands back, which a [`Suspend`][counterweight.controls.Suspend] handler receives."""
 
     input: TextIO
-    """The stream the app reads input from, `input_stream` on `counterweight.app.app`."""
+    """The stream the app reads input from, `input_stream` on `counterweight._app.app`."""
 
     output: TextIO
-    """The stream the app draws on, `output_stream` on `counterweight.app.app`."""
+    """The stream the app draws on, `output_stream` on `counterweight._app.app`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,3 +224,19 @@ async def edit_text(
                 return Edited(text=path.read_text(encoding="utf-8"))
             case _:
                 return outcome
+
+
+__all__ = [
+    "DEFAULT_EDITOR",
+    "EditOutcome",
+    "Edited",
+    "Exited",
+    "FailedToStart",
+    "ProgramOutcome",
+    "TerminalStreams",
+    "TimedOut",
+    "edit_file",
+    "edit_text",
+    "preferred_editor",
+    "run_program",
+]

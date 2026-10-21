@@ -1,7 +1,7 @@
 """
 Painters for what a terminal emulator shows, from the [`Screen`][counterweight.emulator.Screen] values it produces:
-[`ScreenView`][counterweight.painters.terminal.ScreenView], a terminal's screen as it is now,
-and [`Transcript`][counterweight.painters.terminal.Transcript], everything a program printed.
+[`ScreenView`][counterweight.painters.ScreenView], a terminal's screen as it is now,
+and [`Transcript`][counterweight.painters.Transcript], everything a program printed.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.emulator import Emulator
 from counterweight.emulator import Screen
-from counterweight.styles.styles import UNSET
-from counterweight.styles.styles import CellStyle
+from counterweight.styles._styles import UNSET
+from counterweight.styles._styles import CellStyle
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +103,7 @@ class Transcript:
     It keeps no aspect ratio, so a canvas wider than `columns` doesn't make it taller.
     Cells in the program's default colors follow the canvas's `text_style`.
 
-    Build one from output recorded ahead of time with [`of`][counterweight.painters.terminal.Transcript.of],
+    Build one from output recorded ahead of time with [`of`][counterweight.painters.Transcript.of],
     and from a running program with [`use_command`][counterweight.commands.use_command].
     """
 

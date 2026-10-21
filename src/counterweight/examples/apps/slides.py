@@ -21,7 +21,7 @@ from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.commands import command_output
 from counterweight.commands import use_command
 from counterweight.components import component
@@ -32,7 +32,7 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
-from counterweight.hooks import ElementHandle
+from counterweight.focus import ElementHandle
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state

@@ -1,3 +1,3 @@
-from counterweight.cli import main
+from counterweight._cli import main
 
 main()

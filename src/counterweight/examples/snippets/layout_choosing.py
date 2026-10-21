@@ -7,7 +7,7 @@ The same app shell in flexbox and in grid, and where each does better.
 import asyncio
 import sys
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

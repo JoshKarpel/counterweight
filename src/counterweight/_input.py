@@ -12,8 +12,8 @@ from dataclasses import field
 from datetime import timedelta
 from typing import TextIO
 
+from counterweight._input_parsing import parse_input
 from counterweight.events import AnyEvent
-from counterweight.input_parsing import parse_input
 
 logger = logging.getLogger(__name__)
 

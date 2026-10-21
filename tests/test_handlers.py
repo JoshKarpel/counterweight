@@ -41,7 +41,7 @@ from counterweight.handlers import page_up
 from counterweight.handlers import scroll_on_keys
 from counterweight.handlers import scroll_on_wheel
 from counterweight.handlers import tab_focus
-from counterweight.hooks.impls import NodeKey
+from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
 
 BORDER = Region(left=2, top=1, right=7, bottom=4)

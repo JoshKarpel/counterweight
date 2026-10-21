@@ -37,7 +37,7 @@ from typing import assert_never
 import waxy
 
 from counterweight.geometry import Region
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 
 type Interpolation = Literal[
     "srgb",

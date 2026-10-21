@@ -12,6 +12,8 @@ from counterweight._context_vars import current_hook_state
 from counterweight._context_vars import current_instant
 from counterweight._context_vars import current_layouts
 from counterweight._context_vars import current_use_mouse_listeners
+from counterweight._layout import INITIAL_RECTS
+from counterweight._layout import Layouts
 from counterweight._utils import forever
 from counterweight.animation import FRAME_INTERVAL
 from counterweight.controls import AnyControl
@@ -23,15 +25,13 @@ from counterweight.geometry import ORIGIN
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Scroll
-from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.types import Deps
-from counterweight.hooks.types import Getter
-from counterweight.hooks.types import Ref
-from counterweight.hooks.types import Setter
-from counterweight.hooks.types import Setup
-from counterweight.hooks.types import Tick
-from counterweight.layout import INITIAL_RECTS
-from counterweight.layout import Layouts
+from counterweight.hooks._impls import NodeKey
+from counterweight.hooks._types import Deps
+from counterweight.hooks._types import Getter
+from counterweight.hooks._types import Ref
+from counterweight.hooks._types import Setter
+from counterweight.hooks._types import Setup
+from counterweight.hooks._types import Tick
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ def use_memo[T](compute: Getter[T], deps: tuple[object, ...]) -> T:
             so an element returned from it keeps the components below it from re-running,
             and a handler returned from it can be passed to a `memo` component without making it re-run.
             The cached value MUST depend only on `deps`;
-            `check_purity` on `counterweight.app.app` catches a value that goes stale.
+            `check_purity` on `counterweight._app.app` catches a value that goes stale.
     """
     return current_hook_state.get().use_memo(compute, deps)
 

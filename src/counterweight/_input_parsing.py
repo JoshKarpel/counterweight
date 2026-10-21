@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Literal
 from typing import assert_never
 
+from counterweight._graphemes import graphemes
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
@@ -28,7 +29,6 @@ from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.graphemes import graphemes
 from counterweight.keys import Key
 
 ESC = 0x1B

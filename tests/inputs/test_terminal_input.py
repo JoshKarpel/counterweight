@@ -14,19 +14,19 @@ from typing import TextIO
 
 import pytest
 
+from counterweight._input import ESCAPE_TIMEOUT
+from counterweight._input import PASTE_TIMEOUT
+from counterweight._input import KeyReader
+from counterweight._input import read_keys
+from counterweight._input import start_input_control
+from counterweight._input import start_reading_keys
+from counterweight._input import stop_input_control
+from counterweight._input import stop_reading_keys
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.events import MouseMoved
 from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input import ESCAPE_TIMEOUT
-from counterweight.input import PASTE_TIMEOUT
-from counterweight.input import KeyReader
-from counterweight.input import read_keys
-from counterweight.input import start_input_control
-from counterweight.input import start_reading_keys
-from counterweight.input import stop_input_control
-from counterweight.input import stop_reading_keys
 from counterweight.keys import Key
 from tests.terminal import Terminal
 
@@ -120,7 +120,7 @@ class KeyReading:
 @pytest.fixture
 async def key_reading(terminal: Terminal) -> AsyncIterator[KeyReading]:
     """`read_keys` reading `terminal`, under input control, on the running event loop."""
-    logger = logging.getLogger("counterweight.input")
+    logger = logging.getLogger("counterweight._input")
     records: Queue[logging.LogRecord] = Queue()
     handler = QueueHandler(records)
     previous_level = logger.level

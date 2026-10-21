@@ -17,20 +17,20 @@ from weakref import ref
 from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_hook_idx
 from counterweight._context_vars import current_purity_checked
+from counterweight._equivalence import equivalent
 from counterweight.clock import Instant
 from counterweight.clock import tick_index
 from counterweight.clock import until_next_tick
-from counterweight.equivalence import equivalent
 from counterweight.events import AnyEvent
 from counterweight.events import StateSet
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
-from counterweight.hooks.types import Deps
-from counterweight.hooks.types import Getter
-from counterweight.hooks.types import Ref
-from counterweight.hooks.types import Setter
-from counterweight.hooks.types import Setup
-from counterweight.hooks.types import Tick
+from counterweight.hooks._types import Deps
+from counterweight.hooks._types import Getter
+from counterweight.hooks._types import Ref
+from counterweight.hooks._types import Setter
+from counterweight.hooks._types import Setup
+from counterweight.hooks._types import Tick
 
 if TYPE_CHECKING:
     from counterweight.geometry import Rects

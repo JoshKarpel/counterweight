@@ -105,3 +105,12 @@ def cell_style_for_token(pygments_style: type[PygmentsStyle], token: _TokenType)
         italic=definition["italic"] or UNSET,
         underline=definition["underline"] or UNSET,
     )
+
+
+__all__ = [
+    "DEFAULT_CODE_THEME",
+    "CodeTheme",
+    "code_block",
+    "code_style",
+    "highlight",
+]

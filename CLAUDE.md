@@ -64,33 +64,41 @@ The framework follows a React-like architecture:
 
 - **Components** (src/counterweight/components.py): Declarative functions decorated with `@component` that return elements and manage state through hooks
 - **Elements** (src/counterweight/elements.py): Core UI primitives like `Div`, `Text` and `Canvas`, with style and event handling capabilities
-- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one module per kind of picture, such as `pixels` (`Pixels` and `HalfBlocks`), `terminal` (`ScreenView` and `Transcript`), and `frames` (`PaintView`, what `Paint.as_painter` makes of a region of a frame)
+- **Painters** (src/counterweight/painters/): What draws a `Canvas`'s cells, one private module per kind of picture, such as `_pixels` (`Pixels` and `HalfBlocks`), `_terminal` (`ScreenView` and `Transcript`), and `_frames` (`PaintView`, what `Paint.as_painter` makes of a region of a frame), all exported from the package
 - **Emulator** (src/counterweight/emulator.py): The terminal emulator (libghostty-vt) behind `Emulator`, a place fed a program's output, which snapshots into immutable `Screen` values; nothing else touches libghostty
 - **One-shot commands** (src/counterweight/commands.py): `use_command`, which runs a program on a pseudo-terminal when asked, feeds an emulator, and snapshots it at most once a frame into `CommandRun` values whose output is a `Transcript` painter, and `command_output`, the widget that shows a run
-- **Embedded terminals** (src/counterweight/headless/terminal.py, src/counterweight/input_encoding.py): `use_terminal`, which runs an interactive program on a pseudo-terminal while its component is mounted, feeds an emulator, snapshots it at most once a frame into `Screen` values, and sends the program the input its focused `Canvas` receives, re-encoded by `input_encoding`'s pure functions (the inverse of `input_parsing`); the `terminal` widget is built on it
+- **Embedded terminals** (src/counterweight/headless/_terminal.py, src/counterweight/input_encoding.py): `use_terminal`, which runs an interactive program on a pseudo-terminal while its component is mounted, feeds an emulator, snapshots it at most once a frame into `Screen` values, and sends the program the input its focused `Canvas` receives, re-encoded by `input_encoding`'s pure functions (the inverse of `_input_parsing`); the `terminal` widget is built on it
 - **Programs on the app's terminal** (src/counterweight/programs.py): `run_program`, which runs a program on the terminal a suspended app hands back, swallowing the Ctrl+C meant for it, and `edit_file` and `edit_text`, which edit a file or a string in the user's editor; `Suspend.to_program`, `Suspend.to_edit_file` and `Suspend.to_edit_text` run them; also `Exited`, `FailedToStart` and `TimedOut`, how any program ends
 - **Pseudo-terminals** (src/counterweight/pseudoterminal.py): Runs a program on a pseudo-terminal and hands back the bytes it writes: `run_pty` until it exits, and `use_pty` while a component is mounted; hangs the program's process group up when it ends, which the hooks leave to the app's task group so it doesn't hold up rendering
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`, `use_controls`), animation built on `use_clock` (`use_progress`, `use_loop`), and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **Animation** (src/counterweight/animation.py): The pure half of animation: CSS's easing functions (`linear`, `piecewise_linear`, `cubic_bezier` and its named curves, `steps`) and `between`, which picks a phase out of an animation's progress
-- **App** (src/counterweight/app.py): Main application loop that handles rendering, input, and event processing; it makes its own event queue, task group and mouse listeners current only while it renders (`app_scope` in `_context_vars.py`), so a hook that needs one later captures it while rendering, and an app can run inside another
+- **App** (src/counterweight/_app.py): Main application loop that handles rendering, input, and event processing; it makes its own event queue, task group and mouse listeners current only while it renders (`app_scope` in `_context_vars.py`), so a hook that needs one later captures it while rendering, and an app can run inside another
 - **Autopilot** (src/counterweight/autopilot.py): What an autopilot drives an app with beyond events and controls, `Wait` and `WaitFor`, which hold it back until real time passes or the screen shows something, the steps built from them and from events (`typed`, `showing`, `advance`), and the `Autopilot` that hands the render loop its next step
 - **Recording** (src/counterweight/asciicast.py): `Recording`, which records an app as an asciicast v3 file, the pure encoding of its lines, and the `Recorder` the render loop records each frame's diff, input, resizes, markers and its exit into, timed by the app's clock with suspensions cut out
-- **Shadow tree** (src/counterweight/shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
-- **Layout** (src/counterweight/layout.py): Lays the shadow tree out with [waxy](https://github.com/JoshKarpel/waxy) (taffy's flexbox and grid), wraps text, settles scroll offsets (anchoring, sticking to the end, the scroll controls), and clips
+- **Shadow tree** (src/counterweight/_shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
+- **Layout** (src/counterweight/_layout.py): Lays the shadow tree out with [waxy](https://github.com/JoshKarpel/waxy) (taffy's flexbox and grid), wraps text, settles scroll offsets (anchoring, sticking to the end, the scroll controls), and clips
 - **Events and controls** (src/counterweight/events.py, src/counterweight/controls.py): What handlers receive (key presses, pastes, mouse events, and the `Receiver`) and what they return to act on the app (`Quit`, the focus and scroll controls, ...)
 - **Focus** (src/counterweight/focus.py): The values controls name their targets by: `FocusHandle` (a focusable component), `ElementHandle` (an element, to scroll), and `Subtree` (part of the tree), and the errors raised when two mounted nodes share a handle or focus won't settle
-- **Input** (src/counterweight/input_parsing.py, src/counterweight/input.py): Pure, incremental parsing of terminal bytes into events, the raw terminal mode that lets every key through, and the reader on the event loop that feeds the parser and times out cut-off escape sequences and pastes
-- **Routing** (src/counterweight/routing.py): Which handlers an input event reaches: its target (the focused node for keys), bubbling, press capture, and the default control of a key press nothing claims; and where focus can move
+- **Input** (src/counterweight/_input_parsing.py, src/counterweight/_input.py): Pure, incremental parsing of terminal bytes into events, the raw terminal mode that lets every key through, and the reader on the event loop that feeds the parser and times out cut-off escape sequences and pastes
+- **Routing** (src/counterweight/_routing.py): Which handlers an input event reaches: its target (the focused node for keys), bubbling, press capture, and the default control of a key press nothing claims; and where focus can move
 - **Handlers** (src/counterweight/handlers.py): Library input handlers (`on_click`, `tab_focus`, `focus_receiver_on_press`, ...) and combinators (`first`, `each`)
-- **Headless components** (src/counterweight/headless/): Hooks that give a component a common control's behavior and leave drawing it to the component, such as `use_text_input`, `use_text_area` and `use_scroll_area`, the text ones each beside its pure core (`text_editing.py`, `text_area_editing.py`): which edit each key press or paste makes, and what it does to a value and a cursor
+- **Headless components** (src/counterweight/headless/): Hooks that give a component a common control's behavior and leave drawing it to the component, such as `use_text_input`, `use_text_area` and `use_scroll_area`, the text ones each beside its pure core (`_text_editing.py`, `_text_area_editing.py`): which edit each key press or paste makes, and what it does to a value and a cursor
 - **Widgets** (src/counterweight/widgets.py): Styled components built on headless components, such as `text_input`, `text_area` and `scroll_area`
 - **Styles** (src/counterweight/styles/): Tailwind-inspired utility classes and styling system; colors are RGB `Color`s, or `IndexedColor` and `TERMINAL_DEFAULT`, which the terminal decides and so follow the user's theme
 - **Gradients** (src/counterweight/gradients.py): Linear, radial and conic gradients any color slot can hold, and the pure functions paint draws them with: a `Ramp` of colors keyed by the stops, and `field_indices`, the ramp entry each cell takes, keyed by the geometry and the box's size
-- **Paint/Rendering** (src/counterweight/paint.py, src/counterweight/output.py): Terminal rendering engine that converts components to terminal output; each slot that holds a gradient paints from fields its element keeps per node in `LayoutTree.fields`, and each solid slot fills with one cell
+- **Paint/Rendering** (src/counterweight/_paint.py, src/counterweight/_output.py): Terminal rendering engine that converts components to terminal output, whose values painters and screenshots use (`Paint`, `Cell`, `Frame`) `counterweight.paint` exports; each slot that holds a gradient paints from fields its element keeps per node in `LayoutTree.fields`, and each solid slot fills with one cell
 - **Rich text** (src/counterweight/markdown.py, src/counterweight/highlighting.py): Pure functions that turn Markdown and source code into elements and chunks, and `markdown_document`, the `memo` component that renders a Markdown document
 - **Examples** (src/counterweight/examples/): The apps and docs snippets that ship with the library, the scenes (`Still`, `Demo`) their screenshots and recordings are rendered from, the catalog that finds them, and the gallery that `counterweight examples gallery` opens; none of it is public API
 
-The entry point is typically through `counterweight.app.app()` which starts the main application loop.
+The entry point is typically through `counterweight.app()` which starts the main application loop.
+
+## Public Modules
+
+A module is public unless a part of its dotted name starts with an underscore (`counterweight._layout`, `counterweight.hooks._hooks`).
+Each public module lists its public names in `__all__` and re-exports only from private modules, so every public name has exactly one home;
+a package such as `hooks` or `painters` is that home for the names its private submodules define.
+The examples and the docs' references reach the API only through those homes, which `tests/test_public_api.py` checks.
+A new internal module starts with an underscore, and a new public name joins its home's `__all__`.
 
 ## Development Commands
 
@@ -105,7 +113,7 @@ uv sync
 just test [-k pattern | tests/test_paint.py ...]
 
 # Run mutation testing (mutmut), or re-run only the named mutants (see the cw-mutate skill)
-just mutate ['counterweight.shadow.*']
+just mutate ['counterweight._shadow.*']
 
 # Build the documentation
 just docs-build
@@ -145,7 +153,7 @@ from the JetBrains Mono outlines in `codegen/fonts/`, so `just codegen` regenera
 They live apart from the screenshots because the screenshot generator fails on any `docs/assets/*.svg` no example writes.
 The favicon's PNGs aren't committed, because Pillow encodes the same pixels to different bytes on macOS and Linux:
 `mkdocs_hooks/logo_icons.py` draws them into the site on every docs build.
-The text logo in `counterweight --help` is `LOGO` in `src/counterweight/cli.py`.
+The text logo in `counterweight --help` is `LOGO` in `src/counterweight/_cli.py`.
 
 ## Examples and Docs Screenshots
 

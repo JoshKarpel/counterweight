@@ -6,13 +6,13 @@ A test log that scrolls its first failure into view from an effect.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import ScrollIntoView
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.focus import ElementHandle
 from counterweight.handlers import scroll_on_wheel
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_controls
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state

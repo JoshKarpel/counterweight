@@ -4,6 +4,7 @@ import pytest
 
 from counterweight.geometry import Position
 from counterweight.geometry import Region
+from counterweight.geometry import clamp
 
 REGION = Region(left=3, top=5, right=7, bottom=8)
 
@@ -131,3 +132,19 @@ def test_fill_to_covers_the_rectangle_between_corners_column_by_column(start: Po
     ys = (7, 8) if start.y < end.y else (8, 7)
 
     assert list(start.fill_to(end)) == [Position(x=x, y=y) for x in xs for y in ys]
+
+
+@pytest.mark.parametrize(
+    ("min_", "val", "max_", "expected"),
+    [
+        (0, 5, 10, 5),
+        (0, -1, 10, 0),
+        (0, 11, 10, 10),
+        (0, 0, 0, 0),
+        (3, 3, 3, 3),
+        (-5, -10, 5, -5),
+        (-5, 10, 5, 5),
+    ],
+)
+def test_clamp(min_: int, val: int, max_: int, expected: int) -> None:
+    assert clamp(min_, val, max_) == expected

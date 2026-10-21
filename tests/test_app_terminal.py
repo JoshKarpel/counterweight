@@ -18,7 +18,22 @@ from signal import signal
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import ALT_SCREEN_OFF
+from counterweight._output import ALT_SCREEN_ON
+from counterweight._output import BRACKETED_PASTE_OFF
+from counterweight._output import BRACKETED_PASTE_ON
+from counterweight._output import CLEAR_SCREEN
+from counterweight._output import CURSOR_OFF
+from counterweight._output import CURSOR_ON
+from counterweight._output import RESTORE_TITLE
+from counterweight._output import SAVE_TITLE
+from counterweight._output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight._output import SYNCHRONIZED_OUTPUT_OFF
+from counterweight._output import SYNCHRONIZED_OUTPUT_ON
+from counterweight._output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
+from counterweight._output import clipboard_instructions
+from counterweight._output import title_instructions
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -46,21 +61,6 @@ from counterweight.hooks import use_focus
 from counterweight.hooks import use_mouse
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.output import ALT_SCREEN_OFF
-from counterweight.output import ALT_SCREEN_ON
-from counterweight.output import BRACKETED_PASTE_OFF
-from counterweight.output import BRACKETED_PASTE_ON
-from counterweight.output import CLEAR_SCREEN
-from counterweight.output import CURSOR_OFF
-from counterweight.output import CURSOR_ON
-from counterweight.output import RESTORE_TITLE
-from counterweight.output import SAVE_TITLE
-from counterweight.output import SET_ANY_EVENT_MOUSE_SGR_FORMAT
-from counterweight.output import SYNCHRONIZED_OUTPUT_OFF
-from counterweight.output import SYNCHRONIZED_OUTPUT_ON
-from counterweight.output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
-from counterweight.output import clipboard_instructions
-from counterweight.output import title_instructions
 from counterweight.programs import TerminalStreams
 from counterweight.styles.utilities import text_black
 from tests.devlog import devlog_lines
@@ -132,7 +132,7 @@ async def test_app_takes_over_the_terminal_draws_rings_the_bell_and_hands_it_bac
 
     drawn = TAKE_OVER + HI
     assert [line for line in lines if "Wrote" in line] == [
-        f"DEBUG    counterweight.app Wrote and flushed instructions to output stream bytes='{len(HI):_}'"
+        f"DEBUG    counterweight._app Wrote and flushed instructions to output stream bytes='{len(HI):_}'"
     ]
     assert output.getvalue() == drawn + "\a" + HAND_BACK
     assert output.flushed[3:5] == [drawn, drawn + "\a"]

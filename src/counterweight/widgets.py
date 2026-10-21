@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
+from counterweight._graphemes import graphemes
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.elements import AnyElement
@@ -23,7 +24,6 @@ from counterweight.elements import Text
 from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
-from counterweight.graphemes import graphemes
 from counterweight.handlers import PAGE_FRACTION
 from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
@@ -414,3 +414,14 @@ def placeholder_chunks(placeholder: str, cursor: CellStyle, style: CellStyle) ->
         Chunk(content=head, style=style | cursor),
         Chunk(content="".join(tail), style=style),
     )
+
+
+__all__ = [
+    "ScrollAreaStyles",
+    "TerminalStyles",
+    "TextFieldStyles",
+    "scroll_area",
+    "terminal",
+    "text_area",
+    "text_input",
+]

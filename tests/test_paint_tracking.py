@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import io
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import Quit

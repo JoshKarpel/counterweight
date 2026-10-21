@@ -15,23 +15,23 @@ from counterweight._context_vars import current_hook_state
 from counterweight._context_vars import current_instant
 from counterweight._context_vars import current_layouts
 from counterweight._context_vars import current_purity_checked
+from counterweight._equivalence import equivalent
+from counterweight._layout import Layouts
 from counterweight.clock import BEGINNING
 from counterweight.clock import Instant
 from counterweight.components import Component
 from counterweight.components import DuplicateKey
 from counterweight.components import ImpureComponent
 from counterweight.elements import AnyElement
-from counterweight.equivalence import equivalent
 from counterweight.focus import DuplicateElementHandle
 from counterweight.focus import DuplicateFocusHandle
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
-from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks
-from counterweight.hooks.impls import InconsistentHookExecution
-from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.impls import UseFocus
-from counterweight.layout import Layouts
+from counterweight.hooks._hooks import rects_in
+from counterweight.hooks._impls import Hooks
+from counterweight.hooks._impls import InconsistentHookExecution
+from counterweight.hooks._impls import NodeKey
+from counterweight.hooks._impls import UseFocus
 
 logger = logging.getLogger(__name__)
 

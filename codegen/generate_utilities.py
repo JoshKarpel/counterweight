@@ -4,11 +4,11 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import ClipTo
-from counterweight.styles.styles import OverflowAnchor
-from counterweight.styles.styles import TextJustify
-from counterweight.styles.styles import TextWrap
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import ClipTo
+from counterweight.styles._styles import OverflowAnchor
+from counterweight.styles._styles import TextJustify
+from counterweight.styles._styles import TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {

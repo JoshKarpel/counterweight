@@ -1,14 +1,14 @@
 import pytest
 
-from counterweight.output import HYPERLINK_END
-from counterweight.output import hyperlink
-from counterweight.output import paint_to_str
-from counterweight.output import sgr_from_cell_style
-from counterweight.paint import Cell
-from counterweight.paint import Paint
+from counterweight._output import HYPERLINK_END
+from counterweight._output import hyperlink
+from counterweight._output import paint_to_str
+from counterweight._output import sgr_from_cell_style
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 
 @pytest.mark.parametrize(

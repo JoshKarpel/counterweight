@@ -20,9 +20,9 @@ from dataclasses import replace
 from functools import lru_cache
 from itertools import accumulate
 
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 from counterweight.keys import Key
 
 

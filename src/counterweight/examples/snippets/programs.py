@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import assert_never
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Suspend
 from counterweight.elements import Div

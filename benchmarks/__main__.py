@@ -49,7 +49,7 @@ from benchmarks.stacks import summarize
 from benchmarks.tables import Column
 from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
-from counterweight.app import app
+from counterweight import app
 
 
 def parse_workload(name: str) -> Runnable:

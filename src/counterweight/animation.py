@@ -205,3 +205,21 @@ def between(progress: float, start: float, stop: float) -> float:
     if stop <= start:
         raise ValueError(f"between's stop must be after its start, but got {start!r} to {stop!r}")
     return min(max((progress - start) / (stop - start), 0.0), 1.0)
+
+
+__all__ = [
+    "FRAME_INTERVAL",
+    "Easing",
+    "StepPosition",
+    "between",
+    "cubic_bezier",
+    "ease",
+    "ease_in",
+    "ease_in_out",
+    "ease_out",
+    "linear",
+    "piecewise_linear",
+    "step_end",
+    "step_start",
+    "steps",
+]

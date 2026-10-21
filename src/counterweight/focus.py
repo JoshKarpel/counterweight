@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from counterweight.hooks.impls import NodeKey
+    from counterweight.hooks._impls import NodeKey
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -80,3 +80,13 @@ class UnsettledFocus(Exception):
     which only a component that hides itself because it gained focus can cause:
     one that lost focus already rendered unfocused if it became unfocusable, and draws nothing if it's hidden.
     """
+
+
+__all__ = [
+    "DuplicateElementHandle",
+    "DuplicateFocusHandle",
+    "ElementHandle",
+    "FocusHandle",
+    "Subtree",
+    "UnsettledFocus",
+]

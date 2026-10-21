@@ -7,7 +7,7 @@ A coding agent's progress, with a spinner on the step it's working on.
 import asyncio
 from datetime import timedelta
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

@@ -13,6 +13,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import assert_never
 
+from counterweight._input_parsing import ALT
+from counterweight._input_parsing import ALT_KEYS
+from counterweight._input_parsing import CONTROL
+from counterweight._input_parsing import CONTROL_KEYS
+from counterweight._input_parsing import CONTROL_SHIFT
+from counterweight._input_parsing import FUNCTION_KEYS
+from counterweight._input_parsing import LETTER_KEYS
+from counterweight._input_parsing import NUMBERED_KEYS
+from counterweight._input_parsing import PASTE_END
+from counterweight._input_parsing import PASTE_START
+from counterweight._input_parsing import SHIFT
+from counterweight._input_parsing import modified
 from counterweight.emulator import Modes
 from counterweight.events import MouseDown
 from counterweight.events import MouseEvent
@@ -23,18 +35,6 @@ from counterweight.events import MouseScrolledRight
 from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.geometry import Position
-from counterweight.input_parsing import ALT
-from counterweight.input_parsing import ALT_KEYS
-from counterweight.input_parsing import CONTROL
-from counterweight.input_parsing import CONTROL_KEYS
-from counterweight.input_parsing import CONTROL_SHIFT
-from counterweight.input_parsing import FUNCTION_KEYS
-from counterweight.input_parsing import LETTER_KEYS
-from counterweight.input_parsing import NUMBERED_KEYS
-from counterweight.input_parsing import PASTE_END
-from counterweight.input_parsing import PASTE_START
-from counterweight.input_parsing import SHIFT
-from counterweight.input_parsing import modified
 from counterweight.keys import Key
 
 ESC = b"\x1b"

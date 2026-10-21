@@ -4,11 +4,11 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 from counterweight.elements import Chunk
 from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
 from counterweight.styles import Style

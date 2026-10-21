@@ -6,7 +6,7 @@ Text that links to a URL, which terminals that support links open on a click.
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Chunk
 from counterweight.elements import Div

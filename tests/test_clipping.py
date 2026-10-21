@@ -6,7 +6,13 @@ from collections.abc import Sequence
 import pytest
 import waxy
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import child_clip
+from counterweight._output import Frame
+from counterweight._paint import BLANK
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import paint_layout
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -21,17 +27,11 @@ from counterweight.events import Receiver
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
-from counterweight.layout import child_clip
-from counterweight.output import Frame
-from counterweight.paint import BLANK
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import paint_layout
 from counterweight.styles import Style
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import JoinedBorderKind
-from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import JoinedBorderKind
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_double
 from counterweight.styles.utilities import border_light

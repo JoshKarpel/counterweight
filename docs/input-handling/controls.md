@@ -54,7 +54,7 @@ Other pages show the rest of the controls at work:
 ::: counterweight.controls.RestoreTitle
 ::: counterweight.controls.CopyToClipboard
 ::: counterweight.controls.Screenshot
-::: counterweight.output.Frame
+::: counterweight.paint.Frame
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
 ::: counterweight.controls.AdvanceClock

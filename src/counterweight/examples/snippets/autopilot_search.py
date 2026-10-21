@@ -11,7 +11,7 @@ from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.asciicast import Recording
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import paced
@@ -28,11 +28,11 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import use_text_input
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
 from counterweight.keys import Key

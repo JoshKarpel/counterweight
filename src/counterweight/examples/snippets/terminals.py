@@ -9,7 +9,7 @@ import os
 import sys
 from functools import cache
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Canvas
@@ -25,7 +25,7 @@ from counterweight.handlers import first
 from counterweight.headless import use_terminal
 from counterweight.hooks import use_rects
 from counterweight.keys import Key
-from counterweight.painters.terminal import ScreenView
+from counterweight.painters import ScreenView
 from counterweight.styles.utilities import *
 from counterweight.widgets import TerminalStyles
 from counterweight.widgets import terminal

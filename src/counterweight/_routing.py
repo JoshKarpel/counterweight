@@ -16,6 +16,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 from typing import assert_never
 
+from counterweight._layout import Layouts
 from counterweight.controls import AnyControl
 from counterweight.controls import ScrollBy
 from counterweight.controls import ScrollTo
@@ -38,11 +39,10 @@ from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
 from counterweight.geometry import Scroll
-from counterweight.layout import Layouts
 
 if TYPE_CHECKING:
-    from counterweight.hooks.impls import NodeKey
-    from counterweight.shadow import ShadowTree
+    from counterweight._shadow import ShadowTree
+    from counterweight.hooks._impls import NodeKey
 
 
 @dataclass(frozen=True, slots=True)

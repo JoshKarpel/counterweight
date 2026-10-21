@@ -12,7 +12,7 @@ import pytest
 from without_cli import Streams
 from without_cli import run
 
-from counterweight.cli import cli
+from counterweight._cli import cli
 from counterweight.examples.catalog import copied
 from counterweight.examples.catalog import shown
 from counterweight.examples.snippets import box_model

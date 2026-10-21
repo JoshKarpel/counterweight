@@ -191,7 +191,7 @@ which Counterweight has no design for yet: a fixed number of frames and a fixed 
 
 ## Reading the scroll
 
-[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.hooks.Scroll]: how far the calling component's top-level element is scrolled,
+[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.geometry.Scroll]: how far the calling component's top-level element is scrolled,
 how far it can be, and the size of its padding box, the part of the content in view.
 Given an `ElementHandle`, it reports on the element with that handle instead,
 as a React component reads another element's `scrollTop` through a ref

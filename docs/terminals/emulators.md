@@ -75,9 +75,9 @@ and rows that didn't change are shared between snapshots, so a canvas drawing on
 [`scrolled_off`][counterweight.emulator.Emulator.scrolled_off] returns the rows that scrolled off the top of the screen
 since it was last called, for an emulator given a `scrollback`.
 
-[`ScreenView`][counterweight.painters.terminal.ScreenView] is the [`Canvas`](../elements/canvas.md) painter
+[`ScreenView`][counterweight.painters.ScreenView] is the [`Canvas`](../elements/canvas.md) painter
 that draws a `Screen`, with its cursor when asked,
-and [`Transcript`][counterweight.painters.terminal.Transcript] the one that draws
+and [`Transcript`][counterweight.painters.Transcript] the one that draws
 everything a program printed.
 
 ### Replaying recorded output
@@ -145,4 +145,4 @@ which reads as no swap at all on a light theme, and on the right it swaps the th
 ::: counterweight.emulator.Modes
 ::: counterweight.emulator.MouseTracking
 ::: counterweight.emulator.MAX_SCROLLBACK
-::: counterweight.painters.terminal.ScreenView
+::: counterweight.painters.ScreenView

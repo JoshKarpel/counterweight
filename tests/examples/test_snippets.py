@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import WaitFor
 from counterweight.components import Component

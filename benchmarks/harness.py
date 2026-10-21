@@ -29,7 +29,8 @@ from time import perf_counter_ns
 from typing import Protocol
 
 import counterweight
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -42,7 +43,6 @@ from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
-from counterweight.output import Frame
 
 
 class Runnable(Protocol):

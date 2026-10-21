@@ -1,13 +1,13 @@
 import pytest
 
-from counterweight.styles.styles import DEFAULT_PALETTE
-from counterweight.styles.styles import TERMINAL_DEFAULT
-from counterweight.styles.styles import AnyColor
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import IndexedColor
-from counterweight.styles.styles import TerminalDefault
-from counterweight.styles.styles import palette
-from counterweight.styles.styles import rgb_of
+from counterweight.styles._styles import DEFAULT_PALETTE
+from counterweight.styles._styles import TERMINAL_DEFAULT
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import IndexedColor
+from counterweight.styles._styles import TerminalDefault
+from counterweight.styles._styles import palette
+from counterweight.styles._styles import rgb_of
 
 
 @pytest.mark.parametrize("hex", ["#1a2b3c", "1a2b3c"])

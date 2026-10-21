@@ -17,19 +17,15 @@ from pathlib import Path
 import pytest
 from more_itertools import unique_justseen
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.commands import Cancelled
 from counterweight.commands import Command
 from counterweight.commands import CommandOutputStyles
 from counterweight.commands import CommandRun
-from counterweight.commands import Exited
-from counterweight.commands import FailedToStart
 from counterweight.commands import Outcome
 from counterweight.commands import Request
-from counterweight.commands import Running
 from counterweight.commands import Runs
-from counterweight.commands import Starting
-from counterweight.commands import TimedOut
 from counterweight.commands import command_output
 from counterweight.commands import outcome_text
 from counterweight.commands import use_command
@@ -43,12 +39,16 @@ from counterweight.focus import ElementHandle
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
-from counterweight.output import Frame
-from counterweight.painters.terminal import MAX_LINES
-from counterweight.painters.terminal import Transcript
+from counterweight.painters._terminal import MAX_LINES
+from counterweight.painters._terminal import Transcript
+from counterweight.programs import Exited
+from counterweight.programs import FailedToStart
+from counterweight.programs import TimedOut
+from counterweight.pseudoterminal import Running
+from counterweight.pseudoterminal import Starting
 from counterweight.pseudoterminal import has_members
 from counterweight.styles import Style
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import fill
 from counterweight.styles.utilities import full

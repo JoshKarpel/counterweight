@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 from weakref import WeakSet
 
 if TYPE_CHECKING:
+    from counterweight._layout import Layouts
     from counterweight.clock import Instant
     from counterweight.components import Component
     from counterweight.events import AnyEvent
     from counterweight.hooks import Mouse
-    from counterweight.hooks.impls import Hooks
-    from counterweight.hooks.impls import NodeKey
-    from counterweight.layout import Layouts
+    from counterweight.hooks._impls import Hooks
+    from counterweight.hooks._impls import NodeKey
 
 # What belongs to one app, set only while its render loop reconciles (see `app_scope`),
 # so a hook that needs one after the render, such as a setter or an effect, captures it while rendering.

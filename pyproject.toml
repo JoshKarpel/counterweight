@@ -69,7 +69,7 @@ dev = [
 ]
 
 [project.scripts]
-counterweight = "counterweight.cli:main"
+counterweight = "counterweight._cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JoshKarpel/counterweight"
@@ -230,8 +230,8 @@ extend-immutable-calls = [
     "counterweight.clock.SystemClock",
     "counterweight.styles.Style",
     "counterweight.styles.CellStyle",
-    "counterweight.styles.styles.Style",
-    "counterweight.styles.styles.CellStyle",
+    "counterweight.styles._styles.Style",
+    "counterweight.styles._styles.CellStyle",
     "counterweight.styles.utilities.*",
     "counterweight.commands.CommandOutputStyles",
     "counterweight.markdown.MarkdownStyles",

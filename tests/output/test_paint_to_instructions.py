@@ -6,22 +6,22 @@ from copy import copy
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight._graphemes import grapheme_width
+from counterweight._output import HYPERLINK_END
+from counterweight._output import RESET_STYLE
+from counterweight._output import hyperlink
+from counterweight._output import move_to
+from counterweight._output import paint_to_instructions
+from counterweight._output import sgr_from_cell_style
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import diff_paint
+from counterweight._paint import runs_of
 from counterweight.geometry import Position
-from counterweight.graphemes import grapheme_width
-from counterweight.output import HYPERLINK_END
-from counterweight.output import RESET_STYLE
-from counterweight.output import hyperlink
-from counterweight.output import move_to
-from counterweight.output import paint_to_instructions
-from counterweight.output import sgr_from_cell_style
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import diff_paint
-from counterweight.paint import runs_of
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import as_solid
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 DEFAULT = as_solid(resolve_cell_style(CellStyle()))
 RED_FG = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))

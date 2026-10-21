@@ -71,7 +71,7 @@ Counterweight requires Python `3.15`.
   The app handles a sent control as it handles one a handler returns, after the events already waiting.
 
 - [#305](https://github.com/JoshKarpel/counterweight/pull/305)
-  Added `counterweight.utils.clamp(min_, val, max_)`, which clamps a number to a range.
+  Added `counterweight.geometry.clamp(min_, val, max_)`, which clamps a number to a range.
 
 #### Input, focus and the terminal
 
@@ -335,7 +335,7 @@ Counterweight requires Python `3.15`.
   A painter is any object with a `natural_size`, `keeps_aspect_ratio` and `draw(width, height)`,
   which returns rows of styled graphemes whose unset styles come from the canvas;
   a canvas draws again only when its painter isn't equal to the last one or its box changes size.
-  `counterweight.painters.pixels` holds `Pixels`, a picture as RGBA bytes,
+  `counterweight.painters` holds `Pixels`, a picture as RGBA bytes,
   which `Pixels.from_image` makes from an image decoded by [Pillow](https://pillow.readthedocs.io/),
   and `HalfBlocks`, a painter that draws a `Pixels` two pixels to a cell with `▀`,
   scaling and placing it as CSS's `object-fit` and `object-position` do,
@@ -359,7 +359,7 @@ Counterweight requires Python `3.15`.
   An `Emulator` is fed bytes, answers the program's queries through `on_reply`, keeps a `scrollback`,
   and snapshots into immutable `Screen` values:
   rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
-  `counterweight.painters.terminal.ScreenView` is the `Canvas` painter that draws a `Screen`.
+  `counterweight.painters.ScreenView` is the `Canvas` painter that draws a `Screen`.
   A program's palette colors stay palette entries, so they follow the user's theme.
   Counterweight imports libghostty's bindings only when an app emulates a terminal,
   so an app that doesn't starts without them.
@@ -389,7 +389,7 @@ Counterweight requires Python `3.15`.
   whose `cancel` hangs it up, and whose `latest` is a `CommandRun` value
   whose output updates at most once a frame while the program runs,
   and whose outcome is `Starting`, `Running`, `Exited`, `FailedToStart`, `Cancelled` or `TimedOut`.
-  A run's output is a `counterweight.painters.terminal.Transcript`, a `Canvas` painter as wide as the run's terminal
+  A run's output is a `counterweight.painters.Transcript`, a `Canvas` painter as wide as the run's terminal
   and as tall as the lines it printed, keeping the last `max_lines`,
   and `Transcript.of` builds one from output recorded ahead of time.
   `command_output` shows a run in a `scroll_area` that follows its end, with its outcome beneath.
@@ -511,6 +511,15 @@ Counterweight requires Python `3.15`.
   [sortable tables](cookbook/sortable-tables.md), and [autocomplete](cookbook/autocomplete.md).
 
 ### Changed
+
+#### Modules
+
+- **Breaking:** the framework's internal modules start with an underscore,
+  such as `counterweight._app`, `counterweight._layout`, `counterweight.hooks._hooks` and `counterweight.styles._styles`,
+  and every public module lists its public names in `__all__`, so each public name has exactly one place to import it from.
+  Import `app` from `counterweight` (`from counterweight import app`), where `DEFAULT_UNCLAIMED_KEYS` and `__version__` are too,
+  and import hooks and styles from their packages, such as `from counterweight.styles import Style`.
+  `counterweight.hooks` no longer re-exports `Rects`, which is in `counterweight.geometry`.
 
 #### App and components
 
@@ -793,7 +802,7 @@ Counterweight requires Python `3.15`.
   Pass `(a, b)` or `tuple(...)` where you passed a list.
 
 - [#385](https://github.com/JoshKarpel/counterweight/pull/385)
-  **Breaking:** a `Screenshot` handler receives a `counterweight.output.Frame`
+  **Breaking:** a `Screenshot` handler receives a `counterweight.paint.Frame`
   instead of an SVG `ElementTree`; call `frame.svg()` or `frame.text()` to encode it.
   A frame's `paint` is a `counterweight.paint.Paint`, a screen-sized grid of cells:
   index it with a `Position` or an `(x, y)` pair, or read it a row at a time with `rows()`.

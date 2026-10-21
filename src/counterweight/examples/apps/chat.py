@@ -24,7 +24,7 @@ from datetime import timedelta
 from functools import partial
 from typing import Literal
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import ScrollTo
 from counterweight.elements import Div
@@ -33,13 +33,13 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.handlers import page_down
 from counterweight.handlers import page_up
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_scroll_area
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_scroll

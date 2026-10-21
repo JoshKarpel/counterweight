@@ -50,7 +50,7 @@ and a button that jumps back to it while it's scrolled back:
 and `to_end` is the [`ScrollTo`](../layout/scrolling.md#scrolling-from-a-handler) that scrolls it there,
 past any end, so it reaches the end of content that grew since the last render.
 `is_at_start` and `to_start` do the same for the start, and `scroll` is the
-[`Scroll`][counterweight.hooks.Scroll] they're read from, as [`use_scroll`](../hooks/use_scroll.md) reports it,
+[`Scroll`][counterweight.geometry.Scroll] they're read from, as [`use_scroll`](../hooks/use_scroll.md) reports it,
 for a readout such as "rows 5-8 of 11".
 Like `use_scroll`, they report the previous frame's scroll,
 so the button appears a frame after the scroll that should show it.

@@ -1,13 +1,13 @@
 import pytest
 
-from counterweight.output import sgr_color
-from counterweight.output import sgr_from_cell_style
+from counterweight._output import sgr_color
+from counterweight._output import sgr_from_cell_style
 from counterweight.styles import TERMINAL_DEFAULT
 from counterweight.styles import AnyColor
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
 from counterweight.styles import IndexedColor
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import resolve_cell_style
 
 
 @pytest.mark.parametrize(

@@ -10,12 +10,12 @@ from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.gradients import linear_gradient
 from counterweight.gradients import radial_gradient
-from counterweight.painters.pixels import Fit
-from counterweight.painters.pixels import HalfBlockGradient
-from counterweight.painters.pixels import HalfBlocks
-from counterweight.painters.pixels import Pixels
+from counterweight.painters._pixels import Fit
+from counterweight.painters._pixels import HalfBlockGradient
+from counterweight.painters._pixels import HalfBlocks
+from counterweight.painters._pixels import Pixels
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 
 RED = Color.from_name("red")
 GREEN = Color.from_name("green")

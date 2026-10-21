@@ -2,8 +2,8 @@ from itertools import product
 
 import pytest
 
-from counterweight.styles.styles import JoinedBorderKind
-from counterweight.styles.styles import JoinedBorderParts
+from counterweight.styles._styles import JoinedBorderKind
+from counterweight.styles._styles import JoinedBorderParts
 
 PARTS = JoinedBorderParts(*JoinedBorderParts._fields)
 

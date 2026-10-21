@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from counterweight._layout import aligned
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import FocusNext
@@ -23,7 +24,6 @@ from counterweight.focus import FocusHandle
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.layout import aligned
 from counterweight.styles import Style
 from counterweight.styles.utilities import clip_to_screen
 from counterweight.styles.utilities import col

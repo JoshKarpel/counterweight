@@ -5,7 +5,7 @@ and showing everything it printed, colors and all, as a terminal would have show
 [`use_command`][counterweight.commands.use_command] runs one when its `run` is called,
 on a pseudo-terminal, feeding what it prints to an emulator, which snapshots at most once a frame
 into a [`CommandRun`][counterweight.commands.CommandRun] value
-whose output is a [`Transcript`][counterweight.painters.terminal.Transcript] painter.
+whose output is a [`Transcript`][counterweight.painters.Transcript] painter.
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.painters.terminal import MAX_LINES
-from counterweight.painters.terminal import Transcript
+from counterweight.painters._terminal import MAX_LINES
+from counterweight.painters._terminal import Transcript
 from counterweight.programs import Exited
 from counterweight.programs import FailedToStart
 from counterweight.programs import TimedOut
@@ -385,12 +385,7 @@ __all__ = [
     "Command",
     "CommandOutputStyles",
     "CommandRun",
-    "Exited",
-    "FailedToStart",
     "Outcome",
-    "Running",
-    "Starting",
-    "TimedOut",
     "command_output",
     "use_command",
 ]

@@ -5,13 +5,13 @@ from functools import lru_cache
 
 from more_itertools import flatten
 
+from counterweight._paint import BorderHealingHints
+from counterweight._paint import Cell
+from counterweight._paint import CellMap
+from counterweight._paint import Paint
 from counterweight.geometry import Position
-from counterweight.paint import BorderHealingHints
-from counterweight.paint import Cell
-from counterweight.paint import CellMap
-from counterweight.paint import Paint
-from counterweight.styles.styles import JoinedBorderKind
-from counterweight.styles.styles import JoinedBorderParts
+from counterweight.styles._styles import JoinedBorderKind
+from counterweight.styles._styles import JoinedBorderParts
 
 logger = logging.getLogger(__name__)
 

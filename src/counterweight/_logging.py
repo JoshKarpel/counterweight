@@ -32,7 +32,7 @@ from without_logging import to_stream
 from without_streams.wiring import compose
 from without_streams.wiring import offload
 
-from counterweight.constants import PACKAGE_NAME
+from counterweight._constants import PACKAGE_NAME
 
 DEVLOG_FILE = Path(gettempdir()) / f"{PACKAGE_NAME}.log.jsonl"
 TAIL_POLL = timedelta(milliseconds=10)

@@ -4,15 +4,15 @@ from dataclasses import dataclass
 import pytest
 import waxy
 
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS
-from counterweight.styles.styles import STYLE_DEFAULTS
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import Style
-from counterweight.styles.styles import StyleFragment
-from counterweight.styles.styles import merge
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CELL_STYLE_DEFAULTS
+from counterweight.styles._styles import STYLE_DEFAULTS
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import Style
+from counterweight.styles._styles import StyleFragment
+from counterweight.styles._styles import merge
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_heavy
 from counterweight.styles.utilities import inset_left

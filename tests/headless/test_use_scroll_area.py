@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import pytest
 
 from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import FocusNext
@@ -24,17 +25,16 @@ from counterweight.events import MouseScrolledRight
 from counterweight.events import MouseScrolledUp
 from counterweight.events import Pasted
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.headless import ScrollArea
 from counterweight.headless import ScrollAxis
 from counterweight.headless import use_scroll_area
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_scroll
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.output import Frame
 from counterweight.styles.utilities import align_children_start
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import fill

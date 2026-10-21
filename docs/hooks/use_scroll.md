@@ -1,7 +1,7 @@
 # `use_scroll`
 
 `use_scroll` tells a component how far a [scroll container](../layout/scrolling.md) is scrolled,
-how far it can be, and how much of its content is in view, as a [`Scroll`][counterweight.hooks.Scroll],
+how far it can be, and how much of its content is in view, as a [`Scroll`][counterweight.geometry.Scroll],
 which holds what the web's `scrollTop`, `scrollHeight` and `clientHeight` say.
 Counterweight draws no scrollbars, so this is how a component shows the reader where they are.
 Here the title counts the lines in view, and the bottom border counts the lines below them:
@@ -31,4 +31,4 @@ and [Jumping to the end](../layout/scrolling.md#jumping-to-the-end) for a button
 ## API
 
 ::: counterweight.hooks.use_scroll
-::: counterweight.hooks.Scroll
+::: counterweight.geometry.Scroll

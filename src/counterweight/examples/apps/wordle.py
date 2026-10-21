@@ -26,7 +26,7 @@ from typing import Literal
 
 from more_itertools import padded
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Bell
 from counterweight.elements import Div
@@ -39,8 +39,8 @@ from counterweight.events import Receiver
 from counterweight.handlers import on_click
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_focus
+from counterweight.hooks import use_hovered
 from counterweight.hooks import use_state
-from counterweight.hooks.hooks import use_hovered
 from counterweight.keys import Key
 from counterweight.styles import Style
 from counterweight.styles.utilities import *

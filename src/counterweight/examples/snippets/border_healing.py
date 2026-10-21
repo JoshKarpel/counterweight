@@ -7,7 +7,7 @@ Neighboring boxes' borders joined where they meet, and left alone where one is c
 import asyncio
 import sys
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import ToggleBorderHealing

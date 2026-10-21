@@ -36,7 +36,7 @@ from counterweight.gradients import ramp
 from counterweight.gradients import ramp_of
 from counterweight.gradients import resolve_stops
 from counterweight.gradients import to_space
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 
 RED = Color(255, 0, 0)
 GREEN = Color(0, 128, 0)

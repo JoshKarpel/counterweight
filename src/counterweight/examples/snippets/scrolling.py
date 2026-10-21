@@ -9,7 +9,7 @@ import sys
 from datetime import timedelta
 from functools import partial
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import ScrollIntoView
 from counterweight.controls import ScrollTo
@@ -19,13 +19,13 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import on_click
 from counterweight.handlers import page_down
 from counterweight.handlers import page_up
 from counterweight.handlers import scroll_on_keys
 from counterweight.handlers import scroll_on_wheel
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_scroll

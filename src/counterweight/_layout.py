@@ -17,6 +17,7 @@ from typing import assert_never
 
 import waxy
 
+from counterweight._graphemes import LINE_BREAKS
 from counterweight.controls import ScrollAlignment
 from counterweight.controls import ScrollBy
 from counterweight.controls import ScrollIntoView
@@ -35,21 +36,20 @@ from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
 from counterweight.geometry import Scroll
-from counterweight.graphemes import LINE_BREAKS
-from counterweight.styles.styles import AnyColor
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import ClipTo
-from counterweight.styles.styles import ResolvedStyle
-from counterweight.styles.styles import Style
-from counterweight.styles.styles import TextWrap
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import ClipTo
+from counterweight.styles._styles import ResolvedStyle
+from counterweight.styles._styles import Style
+from counterweight.styles._styles import TextWrap
 
 if TYPE_CHECKING:
+    from counterweight._paint import NodeFields
+    from counterweight._shadow import ShadowNode
+    from counterweight._shadow import ShadowTree
     from counterweight.focus import ElementHandle
     from counterweight.gradients import Gradient
-    from counterweight.hooks.impls import NodeKey
-    from counterweight.paint import NodeFields
-    from counterweight.shadow import ShadowNode
-    from counterweight.shadow import ShadowTree
+    from counterweight.hooks._impls import NodeKey
 
 
 _EMPTY_REGION = Region(left=0, top=0, right=0, bottom=0)

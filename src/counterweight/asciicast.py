@@ -25,7 +25,7 @@ from counterweight.events import Pasted
 from counterweight.input_encoding import encode_key
 from counterweight.input_encoding import encode_mouse
 from counterweight.input_encoding import encode_paste
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 
 VERSION = 3
 

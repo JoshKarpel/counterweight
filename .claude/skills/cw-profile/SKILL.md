@@ -59,13 +59,13 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
   as seen by a key handler on the root element,
   which covers the whole loop (events, shadow tree, layout, paint, output, effects)
   and anything else the event loop ran in between, such as the devlog's sink task.
-- **Stages**: samples by the function `counterweight.app.render_loop` called, by other asyncio
+- **Stages**: samples by the function `counterweight._app.render_loop` called, by other asyncio
   task (`task ...`, such as without-logging's `capture.<locals>.run_sink`), and in the event
   loop itself, with each stage's share of the mean frame time.
   Stages come from the call stack, so splitting a stage into named functions inside
   `render_loop` is how to get a finer breakdown.
   `harness.py:...on_input` is the workload's own `step`, not framework time,
-  and it sits under `routing.py:route_key`, so subtract it from that stage to see routing's own cost.
+  and it sits under `_routing.py:route_key`, so subtract it from that stage to see routing's own cost.
   Work moved off the render loop onto another task still costs frame time in these
   saturated runs; it only comes for free in an app with idle time between frames.
 - **Self and inclusive samples** per function below each stage's root.

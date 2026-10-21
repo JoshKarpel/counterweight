@@ -43,7 +43,7 @@ This pane puts a prefix handler before the terminal's, as a tmux-style multiplex
 The hook returns the program's [`Screen`][counterweight.emulator.Screen] as of the last snapshot,
 with its title and the modes it set, and its `status`: starting, running, exited with its status,
 or the reason it failed to start.
-The component's `view` is a [`ScreenView`][counterweight.painters.terminal.ScreenView]
+The component's `view` is a [`ScreenView`][counterweight.painters.ScreenView]
 that draws the cursor while the component is focused.
 
 ## A multiplexer

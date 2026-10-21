@@ -26,10 +26,21 @@ from without_cli import option
 from without_cli import optional
 from without_cli import run
 
-from counterweight.app import app
+from counterweight._app import app
+from counterweight._constants import PACKAGE_NAME
+from counterweight._constants import __version__
+from counterweight._input import start_input_control
+from counterweight._input import start_reading_keys
+from counterweight._input import stop_input_control
+from counterweight._input import stop_reading_keys
+from counterweight._logging import last_devlog
+from counterweight._logging import tail_devlog
+from counterweight._output import Frame
+from counterweight._output import start_bracketed_paste
+from counterweight._output import start_mouse_tracking
+from counterweight._output import stop_bracketed_paste
+from counterweight._output import stop_mouse_tracking
 from counterweight.components import component
-from counterweight.constants import PACKAGE_NAME
-from counterweight.constants import __version__
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.elements import Text
@@ -41,17 +52,6 @@ from counterweight.examples.catalog import find
 from counterweight.examples.catalog import shown
 from counterweight.examples.catalog import write_copy
 from counterweight.highlighting import code_block
-from counterweight.input import start_input_control
-from counterweight.input import start_reading_keys
-from counterweight.input import stop_input_control
-from counterweight.input import stop_reading_keys
-from counterweight.logging import last_devlog
-from counterweight.logging import tail_devlog
-from counterweight.output import Frame
-from counterweight.output import start_bracketed_paste
-from counterweight.output import start_mouse_tracking
-from counterweight.output import stop_bracketed_paste
-from counterweight.output import stop_mouse_tracking
 from counterweight.styles.utilities import text_wrap_none
 
 SIGINT_EXIT = 130

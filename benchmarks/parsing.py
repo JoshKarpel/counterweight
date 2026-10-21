@@ -17,10 +17,10 @@ from pathlib import Path
 import counterweight
 from benchmarks.tables import Column
 from benchmarks.tables import render_table
-from counterweight.input_parsing import parse_input
+from counterweight._input_parsing import parse_input
 
 # How many bytes each timed read holds. A terminal hands over at most a few kilobytes per read,
-# whatever counterweight.input.READ_SIZE asks for; this stays at 1 KB so timings compare across runs.
+# whatever counterweight._input.READ_SIZE asks for; this stays at 1 KB so timings compare across runs.
 READ_SIZE = 2**10
 
 

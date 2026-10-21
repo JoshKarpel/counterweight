@@ -550,3 +550,15 @@ def use_pty(
             c.write(data)
 
     return Pty(write=use_memo(lambda: write, ()), status=status)
+
+
+__all__ = [
+    "Pty",
+    "PtyConnection",
+    "PtyStatus",
+    "Running",
+    "StandardInput",
+    "Starting",
+    "run_pty",
+    "use_pty",
+]

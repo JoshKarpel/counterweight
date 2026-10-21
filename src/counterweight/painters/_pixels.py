@@ -24,8 +24,8 @@ from counterweight.geometry import Region
 from counterweight.gradients import Gradient
 from counterweight.gradients import field_indices
 from counterweight.gradients import ramp
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
 
 
 class SupportsRGBA(Protocol):
@@ -82,7 +82,7 @@ class Pixels:
     def from_gradient(cls, width: int, height: int, gradient: Gradient) -> Pixels:
         """
         A `width` by `height` picture of `gradient`, mapped over the whole picture, with its pixels taken as square,
-        as [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] draws them,
+        as [`HalfBlocks`][counterweight.painters.HalfBlocks] draws them,
         so its angles and circles are in pixels, as are any lengths it gives in cells.
         As in an element's box, the gradient spans the centers of the corner pixels, which take its end colors.
         Its `box` names one of an element's boxes, so it has no effect here.
@@ -208,7 +208,7 @@ class HalfBlocks:
 class HalfBlockGradient:
     """
     A [`Canvas`][counterweight.elements.Canvas] painter that fills its canvas with `gradient`,
-    two pixels to a cell, as [`HalfBlocks`][counterweight.painters.pixels.HalfBlocks] draws a picture,
+    two pixels to a cell, as [`HalfBlocks`][counterweight.painters.HalfBlocks] draws a picture,
     which shows a gradient at twice the vertical resolution of an element's color slots.
 
     It draws a new picture at its box's size each time its canvas is drawn,

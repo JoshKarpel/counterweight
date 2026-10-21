@@ -1,7 +1,7 @@
 # `use_rects`
 
 `use_rects` tells a component where the element it returns is on the screen,
-as [`Rects`][counterweight.hooks.Rects]: the regions of its content, padding, border and margin boxes,
+as [`Rects`][counterweight.geometry.Rects]: the regions of its content, padding, border and margin boxes,
 and how much of it its ancestors' clips leave visible.
 A component can fit what it shows to the space layout gives it,
 as a CSS [container query](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries) does.
@@ -9,7 +9,7 @@ Here each label shortens a path to fit its own width:
 
 <!-- example: use_rects_path_label.py:example -->
 
-![A wide pane showing the whole path, and a narrow one showing only hooks.py](../assets/use-rects-path-label.svg)
+![A wide pane showing the whole path, and a narrow one showing only focus.py](../assets/use-rects-path-label.svg)
 
 Left and Right move the border between the panes, and each label follows its pane's width:
 
@@ -49,5 +49,5 @@ one that grows whenever it reads its own size renders without end.
 ## API
 
 ::: counterweight.hooks.use_rects
-::: counterweight.hooks.Rects
+::: counterweight.geometry.Rects
 ::: counterweight.geometry.Region

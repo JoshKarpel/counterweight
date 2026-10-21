@@ -26,14 +26,14 @@ Here is the [process table](#how-do-i-skip-a-component-whose-arguments-didnt-cha
 below handling one key press:
 
 ```text
-03:36:29.273368 DEBUG    counterweight.app Updated shadow tree components_run=3
-03:36:29.273499 DEBUG    counterweight.app Calculated layout
-03:36:29.273592 DEBUG    counterweight.app Generated new paint
-03:36:29.273606 DEBUG    counterweight.app Healed borders in new paint hint_cells=0 diff_cells=0
-03:36:29.273638 DEBUG    counterweight.app Diffed new paint from current paint diff_runs=2 diff_cells=50
-03:36:29.273655 DEBUG    counterweight.app Generated instructions from paint diff
-03:36:29.273667 DEBUG    counterweight.app Reconciled effects
-03:36:29.273675 DEBUG    counterweight.app Completed render cycle
+03:36:29.273368 DEBUG    counterweight._app Updated shadow tree components_run=3
+03:36:29.273499 DEBUG    counterweight._app Calculated layout
+03:36:29.273592 DEBUG    counterweight._app Generated new paint
+03:36:29.273606 DEBUG    counterweight._app Healed borders in new paint hint_cells=0 diff_cells=0
+03:36:29.273638 DEBUG    counterweight._app Diffed new paint from current paint diff_runs=2 diff_cells=50
+03:36:29.273655 DEBUG    counterweight._app Generated instructions from paint diff
+03:36:29.273667 DEBUG    counterweight._app Reconciled effects
+03:36:29.273675 DEBUG    counterweight._app Completed render cycle
 ```
 
 `components_run` counts the components the frame called,

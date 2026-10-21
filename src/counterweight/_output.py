@@ -11,19 +11,19 @@ from typing import assert_never
 from xml.etree.ElementTree import indent as indent_svg
 from xml.etree.ElementTree import tostring
 
+from counterweight._graphemes import LINE_BREAKS
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import Run
+from counterweight._paint import svg
 from counterweight.geometry import Position
-from counterweight.graphemes import LINE_BREAKS
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import Run
-from counterweight.paint import svg
-from counterweight.styles.styles import AnyColor
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import IndexedColor
-from counterweight.styles.styles import ResolvedCellStyle
-from counterweight.styles.styles import TerminalDefault
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import IndexedColor
+from counterweight.styles._styles import ResolvedCellStyle
+from counterweight.styles._styles import TerminalDefault
 
 if TYPE_CHECKING:
     pass
@@ -282,7 +282,7 @@ class Frame:
     """
     One rendered frame of the UI, as captured by a [`Screenshot`][counterweight.controls.Screenshot].
 
-    Encode it with [`svg`][counterweight.output.Frame.svg] or [`text`][counterweight.output.Frame.text].
+    Encode it with [`svg`][counterweight.paint.Frame.svg] or [`text`][counterweight.paint.Frame.text].
     """
 
     paint: Paint

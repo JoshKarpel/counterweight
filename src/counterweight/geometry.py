@@ -8,6 +8,11 @@ from itertools import product
 from counterweight._utils import unordered_range
 
 
+def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
+    """`val`, moved into the range from `min_` to `max_`, inclusive, such as a dragged position kept inside a box."""
+    return max(min_, min(val, max_))
+
+
 @dataclass(frozen=True, slots=True, order=True)
 class Position:
     x: int
@@ -191,3 +196,12 @@ class Scroll:
             max(0, min(offset.x, self.max_offset.x)),
             max(0, min(offset.y, self.max_offset.y)),
         )
+
+
+__all__ = [
+    "Position",
+    "Rects",
+    "Region",
+    "Scroll",
+    "clamp",
+]

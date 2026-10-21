@@ -15,10 +15,10 @@ from counterweight.emulator import MouseTracking
 from counterweight.emulator import Screen
 from counterweight.geometry import Position
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import UNSET
-from counterweight.styles.styles import AnyColor
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import IndexedColor
+from counterweight.styles._styles import UNSET
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import IndexedColor
 
 FOREGROUND = Color(230, 220, 210)
 BACKGROUND = Color(10, 20, 30)
@@ -561,7 +561,7 @@ def test_an_emulators_scrollback_must_fit_what_libghostty_captures_at_once(scrol
 
 def test_importing_the_app_does_not_load_the_emulators_bindings() -> None:
     result = subprocess.run(
-        [sys.executable, "-c", "import sys, counterweight.app; print('pyghostty._ffi' in sys.modules)"],
+        [sys.executable, "-c", "import sys, counterweight._app; print('pyghostty._ffi' in sys.modules)"],
         capture_output=True,
         text=True,
         check=True,

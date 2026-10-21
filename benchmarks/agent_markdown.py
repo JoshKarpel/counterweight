@@ -91,8 +91,8 @@ CODE_SPANS = (
 )
 COMMANDS = (
     ("just test -k layout", ("tests pass", "coverage: 100%")),
-    ("git status --short", (" M src/counterweight/layout.py", " M tests/test_layout.py")),
-    ("rg -n 'def wrap_cells' src", ("src/counterweight/layout.py:212:def wrap_cells(",)),
+    ("git status --short", (" M src/counterweight/_layout.py", " M tests/test_layout.py")),
+    ("rg -n 'def wrap_cells' src", ("src/counterweight/_layout.py:212:def wrap_cells(",)),
     ("uv run mypy", ("Success: no issues found in 96 source files",)),
 )
 

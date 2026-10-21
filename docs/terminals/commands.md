@@ -133,7 +133,7 @@ so a program that never stops printing can't grow it without bound.
 
 ## Recorded output
 
-[`Transcript.of`][counterweight.painters.terminal.Transcript.of] turns output recorded ahead of time,
+[`Transcript.of`][counterweight.painters.Transcript.of] turns output recorded ahead of time,
 such as with `script`, into the same output a run has, with no program run,
 so a slide can show a command's output without running it.
 That's how the screenshots on this page are drawn:
@@ -141,9 +141,9 @@ That's how the screenshots on this page are drawn:
 <!-- example: commands.py:recorded -->
 
 The recording of a streaming run feeds its output to an emulator in chunks instead,
-taking the transcript after each with [`followed_by`][counterweight.painters.terminal.Transcript.followed_by],
+taking the transcript after each with [`followed_by`][counterweight.painters.Transcript.followed_by],
 as a run does while its program prints.
-A [`Transcript`][counterweight.painters.terminal.Transcript] is a [`Canvas`](../elements/canvas.md) painter,
+A [`Transcript`][counterweight.painters.Transcript] is a [`Canvas`](../elements/canvas.md) painter,
 so a canvas can show it without `command_output`.
 
 ## API
@@ -156,4 +156,4 @@ so a canvas can show it without `command_output`.
 ::: counterweight.commands.command_output
 ::: counterweight.commands.CommandOutputStyles
 ::: counterweight.commands.COMMAND_ENVIRONMENT
-::: counterweight.painters.terminal.Transcript
+::: counterweight.painters.Transcript

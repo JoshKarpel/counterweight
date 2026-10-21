@@ -30,7 +30,46 @@ from weakref import WeakSet
 
 import waxy
 
+from counterweight._border_healing import heal_borders
 from counterweight._context_vars import app_scope
+from counterweight._input import start_input_control
+from counterweight._input import start_reading_keys
+from counterweight._input import stop_input_control
+from counterweight._input import stop_reading_keys
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Layouts
+from counterweight._layout import LayoutTree
+from counterweight._layout import ScrollRequest
+from counterweight._layout import layout_changes
+from counterweight._layout import prior_scrolls
+from counterweight._logging import app_log_levels
+from counterweight._logging import devlog
+from counterweight._output import CLEAR_SCREEN
+from counterweight._output import OUTPUT_CONTROL_START
+from counterweight._output import Frame
+from counterweight._output import clipboard_instructions
+from counterweight._output import paint_to_instructions
+from counterweight._output import start_bracketed_paste
+from counterweight._output import start_mouse_tracking
+from counterweight._output import start_output_control
+from counterweight._output import stop_bracketed_paste
+from counterweight._output import stop_mouse_tracking
+from counterweight._output import stop_output_control
+from counterweight._output import synchronized
+from counterweight._output import title_instructions
+from counterweight._paint import DEFAULT_CELL_ASPECT_RATIO
+from counterweight._paint import Paint
+from counterweight._paint import diff_paint
+from counterweight._paint import paint_layout
+from counterweight._paint import runs_of
+from counterweight._routing import Press
+from counterweight._routing import RoutingTable
+from counterweight._routing import named_key
+from counterweight._routing import route_key
+from counterweight._routing import route_mouse
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import until_due
+from counterweight._shadow import update_shadow
 from counterweight._utils import cancel_tasks
 from counterweight._utils import drain_queue
 from counterweight._utils import maybe_await
@@ -38,7 +77,6 @@ from counterweight.asciicast import Recorder
 from counterweight.asciicast import Recording
 from counterweight.autopilot import Autopilot
 from counterweight.autopilot import AutopilotStep
-from counterweight.border_healing import heal_borders
 from counterweight.clock import Clock
 from counterweight.clock import Instant
 from counterweight.clock import SystemClock
@@ -84,50 +122,12 @@ from counterweight.focus import Subtree
 from counterweight.focus import UnsettledFocus
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
-from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.hooks import scroll_in
-from counterweight.hooks.impls import Hooks
-from counterweight.hooks.impls import NodeKey
-from counterweight.input import start_input_control
-from counterweight.input import start_reading_keys
-from counterweight.input import stop_input_control
-from counterweight.input import stop_reading_keys
+from counterweight.hooks._hooks import rects_in
+from counterweight.hooks._hooks import scroll_in
+from counterweight.hooks._impls import Hooks
+from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
-from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import Layouts
-from counterweight.layout import LayoutTree
-from counterweight.layout import ScrollRequest
-from counterweight.layout import layout_changes
-from counterweight.layout import prior_scrolls
-from counterweight.logging import app_log_levels
-from counterweight.logging import devlog
-from counterweight.output import CLEAR_SCREEN
-from counterweight.output import OUTPUT_CONTROL_START
-from counterweight.output import Frame
-from counterweight.output import clipboard_instructions
-from counterweight.output import paint_to_instructions
-from counterweight.output import start_bracketed_paste
-from counterweight.output import start_mouse_tracking
-from counterweight.output import start_output_control
-from counterweight.output import stop_bracketed_paste
-from counterweight.output import stop_mouse_tracking
-from counterweight.output import stop_output_control
-from counterweight.output import synchronized
-from counterweight.output import title_instructions
-from counterweight.paint import DEFAULT_CELL_ASPECT_RATIO
-from counterweight.paint import Paint
-from counterweight.paint import diff_paint
-from counterweight.paint import paint_layout
-from counterweight.paint import runs_of
 from counterweight.programs import TerminalStreams
-from counterweight.routing import Press
-from counterweight.routing import RoutingTable
-from counterweight.routing import named_key
-from counterweight.routing import route_key
-from counterweight.routing import route_mouse
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import until_due
-from counterweight.shadow import update_shadow
 from counterweight.styles import Style
 
 logger = logging.getLogger(__name__)
@@ -258,7 +258,7 @@ async def app(
             as a browser takes a key's default action unless a listener prevents it.
             The application reads the terminal raw, so every key reaches it as a key press,
             including Ctrl+C and Ctrl+Z, which a terminal otherwise turns into signals,
-            and the defaults, [`DEFAULT_UNCLAIMED_KEYS`][counterweight.app.DEFAULT_UNCLAIMED_KEYS],
+            and the defaults, [`DEFAULT_UNCLAIMED_KEYS`][counterweight.DEFAULT_UNCLAIMED_KEYS],
             give those two what they'd do there:
             Ctrl+C returns [`Quit`][counterweight.controls.Quit],
             and Ctrl+Z [`Suspend.to_shell()`][counterweight.controls.Suspend.to_shell].

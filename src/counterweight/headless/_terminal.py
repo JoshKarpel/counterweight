@@ -43,12 +43,12 @@ from counterweight.input_encoding import encode_focus
 from counterweight.input_encoding import encode_key
 from counterweight.input_encoding import encode_mouse
 from counterweight.input_encoding import encode_paste
-from counterweight.painters.terminal import ScreenView
+from counterweight.painters._terminal import ScreenView
 from counterweight.pseudoterminal import HANGUP_GRACE
 from counterweight.pseudoterminal import PtyStatus
 from counterweight.pseudoterminal import Running
 from counterweight.pseudoterminal import use_pty
-from counterweight.styles.styles import Color
+from counterweight.styles._styles import Color
 
 
 @dataclass(frozen=True, slots=True)

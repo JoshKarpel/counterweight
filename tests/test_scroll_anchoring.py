@@ -5,6 +5,16 @@ from collections.abc import Sequence
 
 import pytest
 
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Anchor
+from counterweight._layout import Layouts
+from counterweight._layout import LayoutTree
+from counterweight._layout import PriorScroll
+from counterweight._layout import layout_changes
+from counterweight._layout import prior_scrolls
+from counterweight._layout import requested_offset
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import update_shadow
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import ScrollBy
@@ -20,16 +30,6 @@ from counterweight.events import Receiver
 from counterweight.events import TerminalResized
 from counterweight.geometry import Position
 from counterweight.hooks import use_state
-from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import Anchor
-from counterweight.layout import Layouts
-from counterweight.layout import LayoutTree
-from counterweight.layout import PriorScroll
-from counterweight.layout import layout_changes
-from counterweight.layout import prior_scrolls
-from counterweight.layout import requested_offset
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import update_shadow
 from counterweight.styles import Style
 from counterweight.styles.utilities import clip_to_screen
 from counterweight.styles.utilities import col

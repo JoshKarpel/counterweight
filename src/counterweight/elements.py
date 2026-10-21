@@ -7,15 +7,15 @@ from functools import lru_cache
 from itertools import chain
 from typing import Protocol
 
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
-from counterweight.styles.styles import _DEFAULT_CELL_STYLE
+from counterweight.styles._styles import _DEFAULT_CELL_STYLE
 
 _DEFAULT_STYLE = Style()
 
@@ -224,3 +224,15 @@ def text_pieces(content: str | tuple[Chunk, ...], text_style: CellStyle) -> Iter
 def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
     """The styled grapheme clusters of a `Text`'s content."""
     return tuple(chain.from_iterable(styled_cells(*piece) for piece in text_pieces(content, text_style)))
+
+
+__all__ = [
+    "AnyElement",
+    "Canvas",
+    "Chunk",
+    "Div",
+    "Painter",
+    "Rows",
+    "StyledGrapheme",
+    "Text",
+]

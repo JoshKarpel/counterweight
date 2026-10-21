@@ -6,7 +6,7 @@ A to-do list whose rows keep their own state, with and without keys, as items ar
 
 import asyncio
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.elements import Div
 from counterweight.elements import Text

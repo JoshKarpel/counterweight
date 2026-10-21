@@ -22,14 +22,14 @@ from typing import TextIO
 
 from more_itertools import one
 
-from counterweight.app import app
+from counterweight._app import app
+from counterweight._output import Frame
 from counterweight.asciicast import Recording
 from counterweight.autopilot import AutopilotStep
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
-from counterweight.output import Frame
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,7 +8,7 @@ import asyncio
 import sys
 from collections.abc import Callable
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import component
 from counterweight.controls import ScrollBy
 from counterweight.elements import Chunk
@@ -18,12 +18,12 @@ from counterweight.events import InputEvent
 from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.focus import ElementHandle
 from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import scroll_on_wheel
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_text_input
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
 from counterweight.keys import Key
