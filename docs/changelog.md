@@ -471,7 +471,7 @@ Counterweight requires Python `3.15`.
   and `copy` writes a file of your own that runs it, to start from.
   `counterweight examples gallery` browses them all, with each one's description and source,
   and runs the one selected in place.
-  `counterweight.examples` is importable, but no part of the public API.
+  `counterweight.examples` is importable, but not part of the public API.
 
 - Showed every hook, element, input handling page, style page and terminal feature
   with runnable examples, screenshots and recordings, each screenshot with a copyable plain-text twin,
