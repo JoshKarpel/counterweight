@@ -6,6 +6,7 @@ from counterweight import app
 from counterweight._output import Frame
 from counterweight.components import component
 from counterweight.controls import AnyControl
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.controls import Suspend
@@ -28,6 +29,14 @@ def screenshot(frame: Frame) -> None:
 
 def broken_screenshot(frame: Frame) -> None:
     raise ValueError("no screenshot")
+
+
+def copied(text: str) -> None:
+    pass
+
+
+def broken_copy(text: str) -> None:
+    raise ValueError("no copy")
 
 
 def suspended(terminal: TerminalStreams) -> None:
@@ -66,6 +75,8 @@ async def test_the_devlog_records_each_frame_control_and_handler_failure() -> No
     autopilot: list[AnyControl] = [
         Screenshot(handler=screenshot),
         Screenshot(handler=broken_screenshot),
+        CopyToClipboard(text="hi", handler=copied),
+        CopyToClipboard(text="hi", handler=broken_copy),
         Suspend(handler=suspended),
         Suspend(handler=broken_suspension),
         Quit(),
@@ -83,16 +94,20 @@ async def test_the_devlog_records_each_frame_control_and_handler_failure() -> No
         "ERROR    counterweight._app Error in screenshot handler "
         f"error=\"ValueError('no screenshot')\" handler={broken_screenshot!r}",
         *handled(autopilot[2]),
+        f"DEBUG    counterweight._app Copied text handler={copied!r}",
+        *handled(autopilot[3]),
+        f"ERROR    counterweight._app Error in copy handler error=\"ValueError('no copy')\" handler={broken_copy!r}",
+        *handled(autopilot[4]),
         f"DEBUG    counterweight._app Suspending application handler={suspended!r}",
         f"DEBUG    counterweight._app Resuming application handler={suspended!r}",
         *FRAME,
-        *handled(autopilot[3]),
+        *handled(autopilot[5]),
         f"DEBUG    counterweight._app Suspending application handler={broken_suspension!r}",
         "ERROR    counterweight._app Error in suspend handler "
         f"handler={broken_suspension!r} error=\"ValueError('no suspension')\"",
         f"DEBUG    counterweight._app Resuming application handler={broken_suspension!r}",
         *FRAME,
-        *handled(autopilot[4]),
+        *handled(autopilot[6]),
         "INFO     counterweight._app Quitting application...",
         "DEBUG    counterweight._app Caught KeyboardInterrupt()",
         "INFO     counterweight._app Application stopping...",

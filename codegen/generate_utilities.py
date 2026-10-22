@@ -8,6 +8,7 @@ from counterweight.styles._styles import BorderKind
 from counterweight.styles._styles import ClipTo
 from counterweight.styles._styles import OverflowAnchor
 from counterweight.styles._styles import TextJustify
+from counterweight.styles._styles import TextOverflow
 from counterweight.styles._styles import TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
@@ -598,6 +599,10 @@ generated_lines.append("")
 # --- Text wrap ---
 
 generated_lines.extend(f'text_wrap_{w} = Style(text_wrap="{w}")' for w in get_args(TextWrap))
+
+# --- Text overflow ---
+
+generated_lines.extend(f'text_overflow_{o} = Style(text_overflow="{o}")' for o in get_args(TextOverflow))
 
 generated_lines.append("")
 

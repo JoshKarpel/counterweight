@@ -247,6 +247,7 @@ on both axes or, with `_x` or `_y`, on one; `unstick` undoes it.
 
 ### Text
 
-See [Text wrapping](text-wrapping.md) and [Text in layout](../layout/text.md).
+See [Text wrapping](text-wrapping.md), [Ending a line with `…`](text-wrapping.md#ending-a-line-with-an-ellipsis),
+and [Text in layout](../layout/text.md).
 
-<!-- utilities: text_justify_* text_wrap_* -->
+<!-- utilities: text_justify_* text_wrap_* text_overflow_* -->

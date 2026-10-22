@@ -1,5 +1,67 @@
 # Changelog
 
+## `0.1.1`
+
+Released `2026-10-22`
+
+Counterweight `0.1.1` fixes what the first apps to move onto `0.1.0` ran into:
+empty frames in recordings, an autopilot that could stall on an app that never goes quiet,
+and text that ignored its own `content_color`.
+It also exports the names those apps had to import from private modules,
+and adds `text_overflow` and handlers for copies.
+
+### Added
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  Added `text_overflow`, with the `text_overflow_clip` and `text_overflow_ellipsis` utilities,
+  which ends a line too wide for its `Text`'s content box with `…` in the box's last cell,
+  as CSS's `text-overflow: ellipsis` does
+  (see [Ending a line with an ellipsis](styles/text-wrapping.md#ending-a-line-with-an-ellipsis)).
+  It changes only what's painted, never an element's size.
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  Added a `handler` to `CopyToClipboard` and a `clipboard_handler` to `app`,
+  which take a copy's text in place of the terminal's clipboard, headless or not,
+  so a test can check what an app copies (see [Copying to the clipboard](input-handling/controls.md#copying-to-the-clipboard)).
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  `Subtree()` makes a subtree that names nothing mounted, as a fresh `FocusHandle` does,
+  so a test can build a `Receiver` to call a handler with, without reaching into the hooks.
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  Exported names that apps were importing from private modules, and the ones beside them:
+  `counterweight.text`, a new module of `graphemes`, `grapheme_width` and `visible`,
+  for an app that cuts or pads text itself to match how counterweight measures it;
+  `ramp`, `Ramp`, `field_indices` and `Indices` from `counterweight.gradients`, to read a gradient's colors;
+  `ResolvedCellStyle`, `resolve_cell_style`, `is_solid_cell_style`, `as_solid`, `with_colors`, `is_solid_color`,
+  `rgb_of` and `palette` from `counterweight.styles`;
+  `styled_grapheme`, `SCREENSHOT_FOREGROUND` and `SCREENSHOT_BACKGROUND` from `counterweight.paint`,
+  the last two the colors an SVG screenshot draws the terminal's defaults in, for an asciicast `Theme` to match;
+  `outcome_text` from `counterweight.commands`;
+  and `SETTLE_LIMIT` from `counterweight.autopilot`.
+
+### Fixed
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  A `Screenshot` handler that sets state no longer renders the app twice:
+  the render that follows the handler shows the new state, and nothing renders again for it.
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  A render that changes no cell writes nothing to the terminal, so a recording has no empty frames,
+  such as the ones a clock-driven component's ticks made once its animation stopped changing anything.
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  The autopilot holds a step back for an app that hasn't settled for at most `SETTLE_LIMIT` (50) passes
+  of the render loop, then takes it anyway and logs a warning, so an app that never goes quiet,
+  such as one showing a program that prints without pause, no longer stalls it.
+  A `WaitFor` is checked on every pass, settled or not, so it times out on time.
+
+- [#448](https://github.com/JoshKarpel/counterweight/pull/448)
+  A `Text`'s characters are drawn on its own `content_color` where its `text_style` sets no background,
+  as a `Canvas`'s painter's cells already were, so a box filled with a color shows it under its own text
+  (see [Text in a filled box](styles/index.md#text-in-a-filled-box)).
+  They still don't take the color of a box they lie in.
+
 ## `0.1.0`
 
 Released `2026-10-21`

@@ -8,9 +8,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
 from datetime import timedelta
-from itertools import count
 from typing import TYPE_CHECKING
-from typing import NewType
 from typing import assert_never
 from weakref import ref
 
@@ -18,6 +16,8 @@ from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_hook_idx
 from counterweight._context_vars import current_purity_checked
 from counterweight._equivalence import equivalent
+from counterweight._node_keys import NodeKey
+from counterweight._node_keys import next_node_key
 from counterweight.clock import Instant
 from counterweight.clock import tick_index
 from counterweight.clock import until_next_tick
@@ -35,16 +35,6 @@ from counterweight.hooks._types import Tick
 if TYPE_CHECKING:
     from counterweight.geometry import Rects
     from counterweight.geometry import Scroll
-
-# Identifies one mounted node across frames, for as long as its hooks carry over.
-NodeKey = NewType("NodeKey", int)
-
-_node_keys = count()
-
-
-def _next_node_key() -> NodeKey:
-    """A key no other `Hooks` in the process has, so keys from different apps and tests never collide."""
-    return NodeKey(next(_node_keys))
 
 
 @dataclass(slots=True)
@@ -207,7 +197,7 @@ class StaleMemo(Exception):
 class Hooks:
     data: list[AnyHook] = field(default_factory=list)
     mount_status: MountStatus = field(default_factory=MountStatus)
-    key: NodeKey = field(default_factory=_next_node_key)
+    key: NodeKey = field(default_factory=next_node_key)
     rects: dict[ElementHandle | None, Rects] | None = None
     """
     What each `use_rects` call in this node's last run returned, by the handle it was given,

@@ -41,7 +41,6 @@ from counterweight.handlers import page_up
 from counterweight.handlers import scroll_on_keys
 from counterweight.handlers import scroll_on_wheel
 from counterweight.handlers import tab_focus
-from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
 
 BORDER = Region(left=2, top=1, right=7, bottom=4)
@@ -57,7 +56,7 @@ RECEIVER = Receiver(
     is_target=True,
     focus_handle=None,
     is_focused=False,
-    subtree=Subtree(key=NodeKey(7)),
+    subtree=Subtree(),
     scroll=None,
 )
 KEY = KeyPressed(key="k")

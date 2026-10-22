@@ -154,6 +154,7 @@ so a canvas can show it without `command_output`.
 ::: counterweight.commands.Outcome
 ::: counterweight.commands.Cancelled
 ::: counterweight.commands.command_output
+::: counterweight.commands.outcome_text
 ::: counterweight.commands.CommandOutputStyles
 ::: counterweight.commands.COMMAND_ENVIRONMENT
 ::: counterweight.painters.Transcript

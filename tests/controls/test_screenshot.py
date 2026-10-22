@@ -18,6 +18,7 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_controls
 from counterweight.hooks import use_state
 from counterweight.styles._styles import CellStyle
 from counterweight.styles._styles import Color
@@ -111,6 +112,45 @@ async def test_frame_does_not_change_after_later_renders() -> None:
     )
 
     assert [frame.text(ansi=False).strip() for frame in frames] == ["before", "after"]
+
+
+async def test_state_a_screenshot_handler_sets_is_shown_by_the_render_that_follows_without_another() -> None:
+    contents: list[str] = []
+
+    @component
+    def root() -> Text:
+        content, set_content = use_state("before")
+        contents.append(content)
+
+        def on_input(event: InputEvent, _: Receiver) -> Screenshot:
+            set_content("pressed")
+            return Screenshot(handler=lambda frame: set_content("shot"))
+
+        return Text(content=content, on_input=on_input)
+
+    await app(root(), headless=True, dimensions=(10, 1), autopilot=[KeyPressed(key="x"), Quit()])
+
+    assert contents == ["before", "before", "shot"]
+
+
+async def test_controls_a_screenshot_handler_sends_are_handled_in_order_after_the_render_that_follows() -> None:
+    frames: list[Frame] = []
+
+    @component
+    def root() -> Text:
+        content, set_content = use_state("before")
+        send = use_controls()
+
+        def on_shot(frame: Frame) -> None:
+            set_content("after")
+            send(Screenshot(handler=frames.append))
+            send(Screenshot(handler=lambda frame: frames.append(Frame(paint=Paint.blank(1, 1)))))
+
+        return Text(content=content, on_input=lambda event, _: Screenshot(handler=on_shot))
+
+    await app(root(), headless=True, dimensions=(6, 1), autopilot=[KeyPressed(key="x"), Quit()])
+
+    assert [frame.text(ansi=False) for frame in frames] == ["after ", " "]
 
 
 def test_to_file_creates_missing_parent_directories(tmp_path: Path, frame: Frame) -> None:

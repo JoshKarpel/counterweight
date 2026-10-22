@@ -772,6 +772,8 @@ text_wrap_none = Style(text_wrap="none")
 text_wrap_stable = Style(text_wrap="stable")
 text_wrap_pretty = Style(text_wrap="pretty")
 text_wrap_balance = Style(text_wrap="balance")
+text_overflow_clip = Style(text_overflow="clip")
+text_overflow_ellipsis = Style(text_overflow="ellipsis")
 
 # Stop generated
 
@@ -1796,6 +1798,8 @@ __all__ = [
     "text_not_italic",
     "text_not_strikethrough",
     "text_not_underline",
+    "text_overflow_clip",
+    "text_overflow_ellipsis",
     "text_strikethrough",
     "text_terminal_default",
     "text_underline",

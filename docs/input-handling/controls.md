@@ -69,6 +69,18 @@ and tmux passes it on only with `set -g set-clipboard on`.
 A headless app copies nothing, and a [recording](../autopilot.md#recording) leaves the copy out,
 since playing it back in a terminal would set the viewer's clipboard.
 
+To send copies somewhere else, such as to a list a test checks or to the system clipboard through a library,
+give `app` a `clipboard_handler`, which takes the text of every copy, headless or not,
+in place of the terminal's clipboard:
+
+```python
+copied: list[str] = []
+await app(command_list(), headless=True, autopilot=[KeyPressed(key=Key.Enter), Quit()], clipboard_handler=copied.append)
+```
+
+A `CopyToClipboard` given a `handler` of its own sends its text there instead, whatever `app` was given,
+as a `Screenshot`'s handler chooses where its frame goes.
+
 ## API
 
 ::: counterweight.controls.AnyControl
@@ -80,6 +92,8 @@ since playing it back in a terminal would set the viewer's clipboard.
 ::: counterweight.controls.CopyToClipboard
 ::: counterweight.controls.Screenshot
 ::: counterweight.paint.Frame
+::: counterweight.paint.SCREENSHOT_FOREGROUND
+::: counterweight.paint.SCREENSHOT_BACKGROUND
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
 ::: counterweight.controls.AdvanceClock

@@ -44,6 +44,31 @@ long texts.
 
 ---
 
+## Ending a Line with an Ellipsis
+
+A line that doesn't wrap can be wider than its `Text`'s content box.
+`text_overflow_clip`, the default, draws it whole, for a [clip](../layout/clipping.md) to cut;
+`text_overflow_ellipsis` keeps what fits before the box's last cell and draws `…` there,
+as CSS's [`text-overflow: ellipsis`](https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow) does:
+
+<!-- example: text_overflow.py:example -->
+
+![Paths clipped and ended with an ellipsis, and a status bar's path ended with one](../assets/text-overflow.svg)
+
+The cut is measured in cells, as layout measures text,
+so a [wide character](../elements/text.md#wide-characters) the box's edge runs through is left out,
+with a space in its place, as `テ` is in the last path.
+The `…` is drawn in the `Text`'s own style, rather than its chunks', as CSS draws it in its block's style.
+
+It changes only what's painted, not any element's size,
+so it shows only where the `Text`'s content box is narrower than its line.
+A `Text` in a column stretches across it, as the paths do.
+In a row, a `Text` keeps the width of its line, and only shrinks below it with `overflow_x_hidden`,
+as a flex item with `overflow: hidden` does in CSS, so the status bar's path sets both,
+and `grow(1)` to take the room the position leaves it.
+
+---
+
 ## Layout
 
 A wrapping `Text` wraps to the width layout gives it, inside its border and padding.

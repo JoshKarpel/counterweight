@@ -234,6 +234,24 @@ async def test_copy_to_clipboard_copies_the_last_text_copied_in_each_cycle(termi
     assert TAKE_OVER + HI + copy in output.flushed
 
 
+@pytest.mark.parametrize("is_the_apps", [False, True], ids=["copys-own", "apps"])
+async def test_a_copy_to_a_handler_writes_nothing_to_the_terminal(terminal: Terminal, is_the_apps: bool) -> None:
+    output = Output()
+    copied: list[str] = []
+
+    await app(
+        hi(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(3, 1),
+        autopilot=[CopyToClipboard(text="two", handler=None if is_the_apps else copied.append), Quit()],
+        clipboard_handler=copied.append if is_the_apps else None,
+    )
+
+    assert output.getvalue() == TAKE_OVER + HI + HAND_BACK
+    assert copied == ["two"]
+
+
 async def test_the_title_app_is_given_is_set_before_the_first_frame(terminal: Terminal) -> None:
     output = Output()
 

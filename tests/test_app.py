@@ -1,5 +1,8 @@
 import io
+from asyncio import sleep
 from asyncio import wait_for
+from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Mapping
 
 import pytest
@@ -199,6 +202,76 @@ async def test_a_headless_app_writes_nothing_even_for_a_control_that_writes_to_t
     await app(root(), output_stream=output, headless=True, dimensions=(3, 1), autopilot=[*controls, Quit()])
 
     assert output.getvalue() == ""
+
+
+@component
+def copies(handler: Callable[[str], Awaitable[None] | None] | None = None) -> Text:
+    return Text(content="hi", on_input=lambda event, _: CopyToClipboard(text="copied", handler=handler))
+
+
+async def test_a_copy_with_a_handler_gives_it_the_text_in_a_headless_app() -> None:
+    copied: list[str] = []
+
+    await app(copies(copied.append), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="c"), Quit()])
+
+    assert copied == ["copied"]
+
+
+async def test_a_copy_awaits_a_handler_that_returns_an_awaitable() -> None:
+    copied: list[str] = []
+
+    async def copy(text: str) -> None:
+        await sleep(0)
+        copied.append(text)
+
+    await app(copies(copy), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="c"), Quit()])
+
+    assert copied == ["copied"]
+
+
+async def test_the_apps_clipboard_handler_takes_a_copy_without_a_handler_of_its_own() -> None:
+    copied: list[str] = []
+
+    await app(
+        copies(),
+        headless=True,
+        dimensions=(3, 1),
+        autopilot=[KeyPressed(key="c"), Quit()],
+        clipboard_handler=copied.append,
+    )
+
+    assert copied == ["copied"]
+
+
+async def test_a_copys_own_handler_takes_it_in_place_of_the_apps_clipboard_handler() -> None:
+    own: list[str] = []
+    apps: list[str] = []
+
+    await app(
+        copies(own.append),
+        headless=True,
+        dimensions=(3, 1),
+        autopilot=[KeyPressed(key="c"), Quit()],
+        clipboard_handler=apps.append,
+    )
+
+    assert (own, apps) == (["copied"], [])
+
+
+async def test_an_app_keeps_running_after_a_copy_handler_raises() -> None:
+    def broken(text: str) -> None:
+        raise ValueError("no copy")
+
+    copied: list[str] = []
+
+    await app(
+        copies(broken),
+        headless=True,
+        dimensions=(3, 1),
+        autopilot=[KeyPressed(key="c"), CopyToClipboard(text="after", handler=copied.append), Quit()],
+    )
+
+    assert copied == ["after"]
 
 
 HANDLE = ElementHandle()

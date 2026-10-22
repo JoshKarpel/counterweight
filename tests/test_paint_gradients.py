@@ -50,6 +50,7 @@ from counterweight.styles.utilities import margin_y
 from counterweight.styles.utilities import pad_top
 from counterweight.styles.utilities import pad_y
 from counterweight.styles.utilities import size
+from counterweight.styles.utilities import text_overflow_ellipsis
 
 BLACK = Color(0, 0, 0)
 WHITE = Color(255, 255, 255)
@@ -165,6 +166,12 @@ async def test_a_gradient_text_past_the_edge_of_the_screen_is_cut_off() -> None:
     assert (frame.text(ansi=False), foregrounds(frame.paint)) == ("abcd", [[0, 255, 255, 255]])
 
 
+async def test_a_gradient_text_takes_the_same_cut_as_solid_text() -> None:
+    style = size(5, 1) | text_overflow_ellipsis | Style(text_style=CellStyle(foreground=RIGHT))
+    frame = await render(Text(content="abc日de", style=style), (5, 1))
+    assert (frame.text(ansi=False), foregrounds(frame.paint)) == ("abc …", [[0, 64, 128, 191, 255]])
+
+
 async def test_a_gradient_text_draws_no_cell_for_a_zero_width_cluster() -> None:
     style = size(3, 1) | Style(text_style=CellStyle(foreground=RIGHT))
     frame = await render(Text(content="a\u200bbc", style=style), (3, 1))
@@ -198,6 +205,12 @@ async def test_a_canvas_cell_with_no_background_shows_its_content_color_gradient
     style = size(1, 4) | pad_top(1) | Style(content_color=DOWN, padding_color=RED)
     frame = await render(Canvas(painter=Blank(), style=style), (1, 4))
     assert backgrounds(frame.paint) == [[255], [85], [170], [255]]
+
+
+async def test_a_texts_glyphs_with_no_background_show_its_content_color_gradient_over_its_border_box() -> None:
+    style = size(1, 4) | pad_top(1) | Style(content_color=DOWN, padding_color=RED)
+    frame = await render(Text(content="a\nb\nc", style=style), (1, 4))
+    assert (frame.text(ansi=False), backgrounds(frame.paint)) == (" \na\nb\nc", [[255], [85], [170], [255]])
 
 
 async def test_a_canvas_content_color_gradient_that_names_its_box_keeps_it() -> None:

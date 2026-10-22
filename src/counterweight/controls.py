@@ -111,9 +111,16 @@ class CopyToClipboard(_Control):
     (its default, `external`, ignores applications' requests).
     A headless app copies nothing, and a recording doesn't record the copy,
     since replaying it in a terminal would set the viewer's clipboard.
+
+    A `handler` takes the text in place of the terminal's clipboard, headless or not,
+    as a `Screenshot`'s handler chooses where its frame goes,
+    and is awaited if it returns an awaitable;
+    without one, `app`'s `clipboard_handler` takes it, if it was given one.
+    Either way nothing is written to the terminal, and an error the handler raises is logged rather than stopping the app.
     """
 
     text: str
+    handler: Callable[[str], Awaitable[None] | None] | None = None
 
 
 # How Screenshot.to_file encodes a frame, by the suffix of the path it writes to.
