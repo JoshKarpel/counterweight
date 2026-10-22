@@ -70,6 +70,10 @@ Where a [clip](../layout/clipping.md) cuts across one, it is left out, with a sp
   which is left out, with a space in the ninth cell.
 - In `overflows`, the unwrapped line runs past the pane's border.
 
+To cut or pad text yourself, measure it as counterweight does,
+with [`graphemes`][counterweight.text.graphemes] and [`grapheme_width`][counterweight.text.grapheme_width]
+from `counterweight.text`, so your cuts land where layout's and paint's do.
+
 ## Control Characters
 
 Newlines (`\n` and `\r\n`) start a new line.
@@ -83,6 +87,7 @@ where it would run as a command instead of drawing anything.
 
 The tabs, the escape sequences that would have turned the text red, and the bell at the end
 are each drawn as one symbol, while `\n` and `\r\n` break the lines.
+[`visible`][counterweight.text.visible] gives the symbol a control character is drawn as.
 To color text, use [chunks](#styling-parts-of-the-text) instead of escape sequences.
 To show a program's colored output, run it in a [terminal emulator](../terminals/emulators.md).
 
@@ -91,3 +96,9 @@ To show a program's colored output, run it in a [terminal emulator](../terminals
 ::: counterweight.elements.Text
 
 ::: counterweight.elements.Chunk
+
+::: counterweight.text.graphemes
+
+::: counterweight.text.grapheme_width
+
+::: counterweight.text.visible

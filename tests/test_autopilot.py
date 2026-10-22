@@ -13,6 +13,7 @@ from counterweight._output import Frame
 from counterweight._paint import Cell
 from counterweight._paint import Paint
 from counterweight.animation import FRAME_INTERVAL
+from counterweight.autopilot import SETTLE_LIMIT
 from counterweight.autopilot import Autopilot
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import AutopilotTimedOut
@@ -70,36 +71,38 @@ def always(frame: Frame) -> bool:
 def test_an_autopilot_gives_its_events_and_controls_in_order_then_nothing() -> None:
     pilot = Autopilot(steps=iter([KeyPressed(key="a"), Quit()]))
 
-    assert [pilot.next(0, blank) for _ in range(3)] == [KeyPressed(key="a"), Quit(), None]
+    assert [pilot.next(0, blank, is_settled=True) for _ in range(3)] == [KeyPressed(key="a"), Quit(), None]
 
 
 def test_a_wait_holds_the_autopilot_back_until_its_duration_passes() -> None:
     pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
 
-    assert [pilot.next(now, blank) for now in (10, 11.9, 12)] == [None, None, Quit()]
+    assert [pilot.next(now, blank, is_settled=True) for now in (10, 11.9, 12)] == [None, None, Quit()]
 
 
 def test_a_wait_of_no_time_holds_nothing_back() -> None:
-    assert Autopilot(steps=iter([Wait(timedelta()), Quit()])).next(10, blank) == Quit()
+    assert Autopilot(steps=iter([Wait(timedelta()), Quit()])).next(10, blank, is_settled=True) == Quit()
 
 
 def test_waits_in_a_row_each_wait_their_duration_from_when_the_last_ended() -> None:
     pilot = Autopilot(steps=iter([Wait(timedelta(seconds=1)), Wait(timedelta(seconds=1)), Quit()]))
 
-    assert [pilot.next(now, blank) for now in (0, 1, 1.5, 2)] == [None, None, None, Quit()]
+    assert [pilot.next(now, blank, is_settled=True) for now in (0, 1, 1.5, 2)] == [None, None, None, Quit()]
 
 
 def test_a_wait_for_a_condition_that_holds_holds_nothing_back() -> None:
-    assert Autopilot(steps=iter([WaitFor(always, timeout=timedelta()), Quit()])).next(0, blank) == Quit()
+    assert (
+        Autopilot(steps=iter([WaitFor(always, timeout=timedelta()), Quit()])).next(0, blank, is_settled=True) == Quit()
+    )
 
 
 def test_a_wait_for_holds_the_autopilot_back_until_its_condition_holds() -> None:
     shown = [False]
     pilot = Autopilot(steps=iter([WaitFor(lambda frame: shown[0], timeout=timedelta(seconds=5)), Quit()]))
 
-    assert pilot.next(0, blank) is None
+    assert pilot.next(0, blank, is_settled=True) is None
     shown[0] = True
-    assert pilot.next(1, blank) == Quit()
+    assert pilot.next(1, blank, is_settled=True) == Quit()
 
 
 def test_a_wait_for_gives_its_condition_the_frame_on_screen() -> None:
@@ -109,7 +112,7 @@ def test_a_wait_for_gives_its_condition_the_frame_on_screen() -> None:
         seen.append(frame)
         return True
 
-    Autopilot(steps=iter([WaitFor(records, timeout=timedelta())])).next(0, blank)
+    Autopilot(steps=iter([WaitFor(records, timeout=timedelta())])).next(0, blank, is_settled=True)
 
     assert seen == [BLANK]
 
@@ -117,10 +120,66 @@ def test_a_wait_for_gives_its_condition_the_frame_on_screen() -> None:
 def test_a_wait_for_whose_condition_never_holds_times_out() -> None:
     pilot = Autopilot(steps=iter([WaitFor(never, timeout=timedelta(seconds=5)), Quit()]))
 
-    assert pilot.next(0, blank) is None
-    assert pilot.next(4.9, blank) is None
+    assert pilot.next(0, blank, is_settled=True) is None
+    assert pilot.next(4.9, blank, is_settled=True) is None
     with pytest.raises(AutopilotTimedOut, match="never"):
-        pilot.next(5, blank)
+        pilot.next(5, blank, is_settled=True)
+
+
+def test_an_autopilot_holds_its_next_step_back_while_the_app_is_not_settled() -> None:
+    pilot = Autopilot(steps=iter([KeyPressed(key="a")]))
+
+    assert [pilot.next(0, blank, is_settled=is_settled) for is_settled in (False, False, True)] == [
+        None,
+        None,
+        KeyPressed(key="a"),
+    ]
+
+
+def test_an_autopilot_takes_its_next_step_anyway_once_it_has_held_it_back_its_limit() -> None:
+    pilot = Autopilot(steps=iter([KeyPressed(key="a"), KeyPressed(key="b")]))
+
+    held = [pilot.next(0, blank, is_settled=False) for _ in range(SETTLE_LIMIT)]
+
+    assert held == [None] * SETTLE_LIMIT
+    assert pilot.next(0, blank, is_settled=False) == KeyPressed(key="a")
+
+
+def test_an_autopilot_holds_the_step_after_one_it_took_unsettled_back_its_full_limit_again() -> None:
+    pilot = Autopilot(steps=iter([KeyPressed(key="a"), KeyPressed(key="b")]))
+    for _ in range(SETTLE_LIMIT + 1):
+        pilot.next(0, blank, is_settled=False)
+
+    held = [pilot.next(0, blank, is_settled=False) for _ in range(SETTLE_LIMIT)]
+
+    assert held == [None] * SETTLE_LIMIT
+    assert pilot.next(0, blank, is_settled=False) == KeyPressed(key="b")
+
+
+def test_an_autopilot_counts_only_the_passes_in_a_row_it_held_a_step_back() -> None:
+    pilot = Autopilot(steps=iter([KeyPressed(key="a"), KeyPressed(key="b")]))
+    pilot.next(0, blank, is_settled=False)
+    pilot.next(0, blank, is_settled=True)
+
+    held = [pilot.next(0, blank, is_settled=False) for _ in range(SETTLE_LIMIT)]
+
+    assert held == [None] * SETTLE_LIMIT
+
+
+def test_a_wait_for_times_out_while_the_app_is_not_settled() -> None:
+    pilot = Autopilot(steps=iter([WaitFor(never, timeout=timedelta(seconds=5)), Quit()]))
+    pilot.next(0, blank, is_settled=True)
+
+    with pytest.raises(AutopilotTimedOut):
+        pilot.next(5, blank, is_settled=False)
+
+
+def test_a_wait_ends_while_the_app_is_not_settled_and_holds_the_next_step_back() -> None:
+    pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
+    pilot.next(0, blank, is_settled=True)
+
+    assert pilot.next(2, blank, is_settled=False) is None
+    assert pilot.waiting is None
 
 
 def test_an_autopilot_that_has_not_waited_has_waited_no_time() -> None:
@@ -129,15 +188,15 @@ def test_an_autopilot_that_has_not_waited_has_waited_no_time() -> None:
 
 def test_a_wait_counts_the_time_it_has_waited_so_far() -> None:
     pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
-    pilot.next(10, blank)
+    pilot.next(10, blank, is_settled=True)
 
     assert pilot.time_waited(11.5) == timedelta(seconds=1.5)
 
 
 def test_a_wait_counts_no_more_than_its_duration_however_late_it_ends() -> None:
     pilot = Autopilot(steps=iter([Wait(timedelta(seconds=2)), Quit()]))
-    pilot.next(10, blank)
-    pilot.next(12.75, blank)
+    pilot.next(10, blank, is_settled=True)
+    pilot.next(12.75, blank, is_settled=True)
 
     assert pilot.time_waited(20) == timedelta(seconds=2)
 
@@ -145,9 +204,9 @@ def test_a_wait_counts_no_more_than_its_duration_however_late_it_ends() -> None:
 def test_a_wait_for_counts_the_time_until_its_condition_holds() -> None:
     shown = [False]
     pilot = Autopilot(steps=iter([WaitFor(lambda frame: shown[0], timeout=timedelta(seconds=5)), Quit()]))
-    pilot.next(10, blank)
+    pilot.next(10, blank, is_settled=True)
     shown[0] = True
-    pilot.next(13.25, blank)
+    pilot.next(13.25, blank, is_settled=True)
 
     assert pilot.time_waited(20) == timedelta(seconds=3.25)
 
@@ -156,9 +215,9 @@ def test_the_time_waited_adds_up_across_waits() -> None:
     pilot = Autopilot(
         steps=iter([Wait(timedelta(seconds=2)), KeyPressed(key="a"), WaitFor(never, timeout=timedelta(seconds=9))])
     )
-    pilot.next(10, blank)
-    pilot.next(12.5, blank)
-    pilot.next(13, blank)
+    pilot.next(10, blank, is_settled=True)
+    pilot.next(12.5, blank, is_settled=True)
+    pilot.next(13, blank, is_settled=True)
 
     assert pilot.time_waited(14) == timedelta(seconds=3)
 
@@ -170,7 +229,7 @@ def test_an_autopilot_that_is_not_waiting_has_no_deadline() -> None:
 @pytest.mark.parametrize("step", [Wait(timedelta(seconds=3)), WaitFor(never, timeout=timedelta(seconds=3))])
 def test_an_autopilot_that_is_waiting_wakes_when_its_wait_ends(step: Wait | WaitFor) -> None:
     pilot = Autopilot(steps=iter([step]))
-    pilot.next(10, blank)
+    pilot.next(10, blank, is_settled=True)
 
     assert [pilot.until_deadline(now) for now in (11, 14)] == [2, 0]
 
@@ -253,6 +312,31 @@ async def test_the_renders_a_step_causes_happen_before_the_autopilot_takes_its_n
     await drive(own_width(), (6, 1), [KeyPressed(key="x"), Screenshot(frames.append), Quit()])
 
     assert frames[0].text(ansi=False).strip() == "5"
+
+
+@component
+def never_settles() -> Text:
+    """Sets its state from an effect after every render, as a component showing a program's endless output would."""
+    count, set_count = use_state(0)
+
+    async def bump() -> None:
+        set_count(lambda c: c + 1)
+
+    use_effect(bump, deps=None)
+    return Text(content=f"{count}")
+
+
+async def test_an_app_that_never_settles_does_not_stall_its_autopilot() -> None:
+    frames: list[Frame] = []
+
+    await drive(never_settles(), (6, 1), [Screenshot(frames.append), Screenshot(frames.append), Quit()])
+
+    assert len(frames) == 2
+
+
+async def test_a_wait_for_times_out_while_the_app_never_settles() -> None:
+    with pytest.raises(AutopilotTimedOut):
+        await drive(never_settles(), (6, 1), [WaitFor(never, timeout=timedelta(milliseconds=10)), Quit()])
 
 
 async def test_an_autopilot_waiting_for_a_condition_resumes_once_a_frame_shows_it() -> None:

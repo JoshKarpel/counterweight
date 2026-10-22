@@ -765,7 +765,12 @@ def ramp_of(stops: ResolvedStops, repeating: bool, interpolation: Interpolation,
 
 
 def ramp(gradient: Gradient) -> Ramp:
-    """The ramp of `gradient`'s colors."""
+    """
+    The ramp of `gradient`'s colors, which paint draws it from,
+    so `ramp(gradient).color(ramp(gradient).index(position))` is its color at `position` along it,
+    where its first stop is at 0 and its last at 1, unless they name other positions.
+    Ramps are cached by the gradient's stops and how it mixes them, so this is cheap to call again.
+    """
     return ramp_of(gradient.resolved, gradient.repeating, gradient.interpolation, gradient.hue)
 
 
@@ -774,6 +779,7 @@ def ramp(gradient: Gradient) -> Ramp:
 # and the gradient box spans from there to the center of its bottom right cell.
 
 type Indices = tuple[tuple[int, ...], ...]
+"""Rows of entries of a gradient's [`Ramp`][counterweight.gradients.Ramp], one per cell, as `field_indices` gives them."""
 
 
 def field_indices(gradient: Gradient, width: int, height: int, aspect: float, region: Region) -> Indices:
@@ -782,6 +788,8 @@ def field_indices(gradient: Gradient, width: int, height: int, aspect: float, re
     for `gradient` mapped over a box of `width` by `height` cells,
     where `region` is relative to the box's top left cell, and can reach outside it,
     where the gradient's geometry continues.
+    Paint draws a gradient this way, with `aspect` the app's `cell_aspect_ratio`:
+    each cell takes `ramp(gradient).color(entry)` for its entry.
     """
     positions = _positions(gradient, max(width - 1, 0), max(height - 1, 0) * aspect, aspect)
     indices = ramp(gradient).indices
@@ -969,15 +977,19 @@ __all__ = [
     "Gradient",
     "Hint",
     "HueMethod",
+    "Indices",
     "Interpolation",
     "LinearGradient",
     "RadialGradient",
+    "Ramp",
     "Shape",
     "SideOrCorner",
     "Stop",
     "StopLike",
     "Stops",
     "conic_gradient",
+    "field_indices",
     "linear_gradient",
     "radial_gradient",
+    "ramp",
 ]

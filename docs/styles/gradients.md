@@ -126,6 +126,20 @@ for a picture that draws more on top of it.
 
 ![A conic gradient as a content gradient and on a canvas](../assets/gradients-canvas.svg)
 
+### Sampling a gradient's colors
+
+To color something a gradient can't fill, such as one character of a `Text` or a pixel a painter computes,
+read the gradient's colors yourself from its [`ramp`][counterweight.gradients.ramp],
+which paint draws it from:
+
+```python
+colors = ramp(linear_gradient(Color.from_name("red"), Color.from_name("blue")))
+halfway = colors.color(colors.index(0.5))
+```
+
+[`field_indices`][counterweight.gradients.field_indices] gives the entry of the ramp each cell of a box takes,
+as paint maps the gradient over it, for drawing a whole gradient cell by cell.
+
 ## Animating a gradient
 
 A gradient is a value, so animating one means building a new one each frame from the time,
@@ -174,3 +188,7 @@ and all of its cells' colors are sent to the terminal again too.
 ::: counterweight.gradients.SideOrCorner
 ::: counterweight.gradients.Extent
 ::: counterweight.gradients.Shape
+::: counterweight.gradients.ramp
+::: counterweight.gradients.Ramp
+::: counterweight.gradients.field_indices
+::: counterweight.gradients.Indices

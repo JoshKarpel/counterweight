@@ -33,6 +33,7 @@ from counterweight.asciicast import input_bytes
 from counterweight.asciicast import milliseconds
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import Wait
+from counterweight.autopilot import advance
 from counterweight.clock import FrozenClock
 from counterweight.components import Component
 from counterweight.components import component
@@ -56,6 +57,7 @@ from counterweight.events import Pasted
 from counterweight.events import Receiver
 from counterweight.events import TerminalResized
 from counterweight.geometry import Position
+from counterweight.hooks import use_clock
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles._styles import Color
@@ -265,6 +267,18 @@ async def test_a_frame_records_only_what_changed(tmp_path: Path) -> None:
     last_frame = [data for _, code, data in events if code == "o"][-1]
     assert "typed" not in last_frame
     assert "a" in last_frame
+
+
+@component
+def ticks_without_changing() -> Text:
+    use_clock(timedelta(milliseconds=10))
+    return Text(content="still")
+
+
+async def test_a_render_that_changes_no_cell_records_no_frame(tmp_path: Path) -> None:
+    events = await record(tmp_path / "x.cast", [*advance(timedelta(milliseconds=30))], root=ticks_without_changing())
+
+    assert [(time, code) for time, code, _ in events] == [(0, "o"), (0, "o"), (30, "x")]
 
 
 async def test_playing_a_recordings_output_back_shows_the_last_frame(tmp_path: Path) -> None:

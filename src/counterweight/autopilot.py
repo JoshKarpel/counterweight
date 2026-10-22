@@ -5,6 +5,7 @@ and the steps that hold it back until real time has passed or the screen shows s
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -25,6 +26,8 @@ from counterweight.controls import AnyControl
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.keys import Key
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +144,14 @@ def paced(steps: Iterable[AutopilotStep], pause: AutopilotStep) -> list[Autopilo
     return list(interleave(repeat(pause), steps))
 
 
+SETTLE_LIMIT = 50
+"""
+How many passes of the render loop in a row the autopilot holds its next step back while the app has work queued,
+before it takes the step anyway, so an app that never goes quiet, such as one streaming a program's output,
+doesn't stall it, as React stops a cascade of updates after 50.
+"""
+
+
 @dataclass(slots=True)
 class Autopilot:
     """An autopilot partway through its steps, the wait it's in, and how long its waits have taken."""
@@ -151,12 +162,18 @@ class Autopilot:
     """When the wait began, on the event loop's clock."""
     waited: timedelta = timedelta()
     """How long the waits that have ended took: each `Wait` its duration, and each `WaitFor` until its condition held."""
+    held: int = 0
+    """How many passes in a row the next step has been held back for an app that wasn't settled."""
 
-    def next(self, now: float, frame: Callable[[], Frame]) -> AnyEvent | AnyControl | None:
+    def next(self, now: float, frame: Callable[[], Frame], is_settled: bool) -> AnyEvent | AnyControl | None:
         """
         The next event or control for the app at `now`, on the event loop's clock,
         or `None` while a wait holds the autopilot back or once it has no more steps.
         `frame` gives the frame on screen, for a `WaitFor`'s condition.
+
+        Between steps, the next one waits for the app to be settled, with no work queued,
+        for at most `SETTLE_LIMIT` calls in a row.
+        A wait is checked whether or not the app is settled, so a `WaitFor` times out on time.
         """
         while True:
             match self.waiting:
@@ -170,7 +187,20 @@ class Autopilot:
                     self.waited = self.time_waited(now)
                     self.waiting = None
 
-            match step := next(self.steps, None):
+            if not is_settled and self.held < SETTLE_LIMIT:
+                self.held += 1
+                return None
+            is_unsettled, self.held = not is_settled, 0
+
+            step = next(self.steps, None)
+            if is_unsettled and step is not None:
+                logger.warning(
+                    f"Autopilot took its next step after holding it back for {SETTLE_LIMIT} passes "
+                    "of the render loop without the app settling",
+                    extra={"step": step},
+                )
+
+            match step:
                 case Wait() | WaitFor():
                     self.waiting = step
                     self.started = now
@@ -204,6 +234,7 @@ class Autopilot:
 
 
 __all__ = [
+    "SETTLE_LIMIT",
     "AutopilotStep",
     "AutopilotTimedOut",
     "Wait",

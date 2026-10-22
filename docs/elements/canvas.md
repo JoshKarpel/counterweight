@@ -223,3 +223,5 @@ two built from the same values are equal, so a component can build its painter i
 ::: counterweight.paint.BLANK
 
 ::: counterweight.paint.rows_of
+
+::: counterweight.paint.styled_grapheme

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from dataclasses import replace
 from functools import lru_cache
+from itertools import accumulate
 from itertools import groupby
 from textwrap import dedent
 from typing import Literal
@@ -50,6 +51,7 @@ from counterweight.styles._styles import JoinedBorderParts
 from counterweight.styles._styles import ResolvedCellStyle
 from counterweight.styles._styles import Style
 from counterweight.styles._styles import TextJustify
+from counterweight.styles._styles import TextOverflow
 from counterweight.styles._styles import as_solid
 from counterweight.styles._styles import is_solid_cell_style
 from counterweight.styles._styles import is_solid_color
@@ -244,7 +246,12 @@ class Paint:
 
 @lru_cache(maxsize=2**14)
 def styled_grapheme(cell: Cell) -> StyledGrapheme:
-    """`cell` as a canvas draws it: its grapheme, in its style with every field set."""
+    """
+    `cell` as a [`Canvas`][counterweight.elements.Canvas] painter draws it: its grapheme, in its style with every field set,
+    so the canvas's own styles change nothing about it.
+    [`rows_of`][counterweight.paint.rows_of] draws whole rows of cells this way,
+    and handles the two halves of a wide grapheme, which this leaves to the caller.
+    """
     style = cell.style
     return StyledGrapheme(
         grapheme=cell.grapheme,
@@ -468,24 +475,25 @@ def paint_element[K: Hashable](
             write_runs(paint, slots.background("padding", padding_color, "padding", padding), clip)
 
     if rows:
-        if isinstance(element, Canvas):
-            text_justify: TextJustify = "left"
-            text_style = canvas_text_style(element.style)
-        else:
-            text_justify = style.text_justify
-            text_style = style.text_style
+        text_justify: TextJustify = "left" if isinstance(element, Canvas) else style.text_justify
+        text_style = glyph_style(element.style)
+        text_overflow = style.text_overflow
         if lines_are_solid and is_solid_cell_style(text_style):
             content = resolved.content
             for y in rows:
                 paint.write_row(
                     content.left,
                     y,
-                    line_cells(lines[y - content.top], text_justify, text_style, content.width),
+                    line_cells(lines[y - content.top], text_justify, text_overflow, text_style, content.width),
                     text_clip,
                 )
         else:
             slots = slots or gradient_slots(fields, key, resolved, aspect, clip, screen)
-            write_runs(paint, gradient_text(slots, lines, rows, text_clip, text_justify, text_style), text_clip)
+            write_runs(
+                paint,
+                gradient_text(slots, lines, rows, text_clip, text_justify, text_overflow, text_style),
+                text_clip,
+            )
 
     if slots is not None:
         slots.node.fields = slots.used
@@ -701,6 +709,7 @@ def gradient_text(
     rows: range,
     text_clip: Region,
     justify: TextJustify,
+    overflow: TextOverflow,
     text_style: ResolvedCellStyle[AnyColor | Gradient],
 ) -> tuple[Run, ...]:
     """
@@ -712,7 +721,7 @@ def gradient_text(
     content = slots.resolved.content
 
     def draw() -> tuple[Run, ...]:
-        justified = [justify_line(list(lines[y - content.top]), content.width, justify) for y in rows]
+        justified = [justify_line(list(lines[y - content.top]), content.width, justify, overflow) for y in rows]
         longest = max(cells_width(line) for line in justified)
         extent = Region(left=content.left, top=rows.start, right=content.left + longest, bottom=rows.stop)
         on_screen = slots.area.intersection(extent)
@@ -756,7 +765,8 @@ def gradient_text(
         return tuple(runs)
 
     boxes = (slots.resolved.border, slots.resolved.padding, content, slots.resolved.margin)
-    return slots.painted("text", (lines, rows, text_clip, slots.area, justify, text_style, boxes, slots.aspect), draw)
+    inputs = (lines, rows, text_clip, slots.area, justify, overflow, text_style, boxes, slots.aspect)
+    return slots.painted("text", inputs, draw)
 
 
 _UNSEEN = Color(0, 0, 0)
@@ -764,12 +774,14 @@ _UNSEEN = Color(0, 0, 0)
 
 
 @lru_cache(maxsize=2**8)
-def canvas_text_style(style: Style) -> ResolvedCellStyle[AnyColor | Gradient]:
+def glyph_style(style: Style) -> ResolvedCellStyle[AnyColor | Gradient]:
     """
-    The style a `Canvas` with `style` resolves its painter's cells against:
-    its `text_style`, whose background is its `content_color` unless the `text_style` sets one.
+    The style an element with `style` resolves its glyphs against, a `Text`'s text or a `Canvas`'s painter's cells:
+    its `text_style`, whose background is its `content_color` unless the `text_style` sets one,
+    so a box filled with a color shows it under its own glyphs.
     A `content_color` gradient maps over the border box there too, unless it names its own box,
-    so the cells the painter leaves transparent match the rest of the box.
+    so the glyphs, and the cells a painter leaves transparent, match the rest of the box.
+    An unset background is otherwise the default, not the color of whatever the element lies over.
     """
     resolved = style.resolved
     if style.text_style.background is not UNSET:
@@ -792,8 +804,13 @@ def edge_strips(outer: Region, inner: Region) -> tuple[Region, ...]:
     return tuple(strip for strip in strips if not strip.is_empty)
 
 
-def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -> list[StyledGrapheme]:
+def justify_line(
+    line: list[StyledGrapheme], width: int, justify: TextJustify, overflow: TextOverflow
+) -> list[StyledGrapheme]:
+    """`line` placed in `width` cells: padded with spaces as `justify` says, or, if it's wider, ended as `overflow` says."""
     space = width - cells_width(line)
+    if space < 0 and overflow == "ellipsis":
+        return ellipsized(line, width)
     if space <= 0:
         return line
     if justify == "left":
@@ -806,18 +823,42 @@ def justify_line(line: list[StyledGrapheme], width: int, justify: TextJustify) -
     assert_never(justify)
 
 
+ELLIPSIS = StyledGrapheme(grapheme="…")
+"""What ends a line `text_overflow="ellipsis"` cuts, in the `Text`'s own style."""
+
+
+def ellipsized(line: list[StyledGrapheme], width: int) -> list[StyledGrapheme]:
+    """
+    `line`, which is wider than `width`, cut to the graphemes that fit before its last cell, then `ELLIPSIS`.
+    A two-cell grapheme the cut runs through becomes a space in its style, as a clip leaves it.
+    """
+    if width <= 0:
+        return []
+    room = width - 1
+    cut = next(index for index, used in enumerate(accumulate(styled.width for styled in line)) if used > room)
+    kept = line[:cut]
+    # One cell is left over only when a two-cell grapheme is cut.
+    left_over = room - cells_width(kept)
+    return [*kept, *[StyledGrapheme(grapheme=" ", style=line[cut].style)] * left_over, ELLIPSIS]
+
+
 @lru_cache(maxsize=2**12)
 def line_cells(
-    line: tuple[StyledGrapheme, ...], justify: TextJustify, text_style: ResolvedCellStyle[AnyColor], width: int
+    line: tuple[StyledGrapheme, ...],
+    justify: TextJustify,
+    overflow: TextOverflow,
+    text_style: ResolvedCellStyle[AnyColor],
+    width: int,
 ) -> tuple[Cell, ...]:
     """
-    The cells one wrapped row of text fills when justified at `width`, at least `width` cells long.
+    The cells one wrapped row of text fills when justified at `width`, at least `width` cells long,
+    unless `overflow` ends a longer one at `width`.
     A zero-width cluster takes no cell, so it isn't drawn.
     Every grapheme's style must be solid, as a gradient's colors depend on where its cells are.
     """
     cells: list[Cell] = []
     previous_style = None
-    for styled in justify_line(list(line), width, justify):
+    for styled in justify_line(list(line), width, justify, overflow):
         if not styled.width:
             continue
         if styled.style is not previous_style:
@@ -945,9 +986,14 @@ def border_parts(
     return tuple(parts), tuple((corner, jbv) for corner in corners)
 
 
-SVG_FOREGROUND = Color.from_name("white")
-SVG_BACKGROUND = Color.from_name("black")
-"""What `svg` draws the terminal's default foreground and background in."""
+SCREENSHOT_FOREGROUND = Color.from_name("white")
+SCREENSHOT_BACKGROUND = Color.from_name("black")
+"""
+The colors an SVG screenshot ([`Frame.svg`][counterweight.paint.Frame.svg]) draws the terminal's default
+foreground and background in, where no terminal decides them: white text on black.
+Give them to an asciicast [`Theme`][counterweight.asciicast.Theme] to play a recording in the colors its screenshots show,
+or to [`rgb_of`][counterweight.styles.rgb_of] to find the RGB a cell's color is drawn in.
+"""
 
 
 def svg(paint: Paint) -> Element:
@@ -997,7 +1043,7 @@ def svg(paint: Paint) -> Element:
             "y": f"{0 * y_mul:{fmt}}{unit}",
             "width": f"{w * x_mul:{fmt}}{unit}",
             "height": f"{h * y_mul:{fmt}}{unit}",
-            "fill": SVG_BACKGROUND.hex,
+            "fill": SCREENSHOT_BACKGROUND.hex,
         },
     )
 
@@ -1005,7 +1051,7 @@ def svg(paint: Paint) -> Element:
         root,
         "text",
         {
-            "fill": SVG_FOREGROUND.hex,
+            "fill": SCREENSHOT_FOREGROUND.hex,
             "font-family": "monospace",
         },
     )
@@ -1021,7 +1067,7 @@ def svg(paint: Paint) -> Element:
         )
 
         for bg_color, x_cells_group in groupby(
-            cells, key=lambda x_cell: rgb_of(x_cell[1].style.background, SVG_BACKGROUND).hex
+            cells, key=lambda x_cell: rgb_of(x_cell[1].style.background, SCREENSHOT_BACKGROUND).hex
         ):
             # Optimization: write out long horizontal rectangles of the same background color as rectangles instead of individual cell-sized rectangles
             x_cells = tuple(x_cells_group)
@@ -1053,7 +1099,7 @@ def svg(paint: Paint) -> Element:
                 )
 
                 # optimization: don't write the default foreground
-                if (foreground := rgb_of(cell.style.foreground, SVG_FOREGROUND)) != SVG_FOREGROUND:
+                if (foreground := rgb_of(cell.style.foreground, SCREENSHOT_FOREGROUND)) != SCREENSHOT_FOREGROUND:
                     ts.attrib["fill"] = foreground.hex
                 ts.attrib.update(svg_text_style(cell.style))
                 ts.text = cell.grapheme

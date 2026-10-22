@@ -29,6 +29,14 @@ How a `Text` wraps its lines, as CSS's `text-wrap` does:
 not at all, greedily, minimizing raggedness over the paragraph, or evening out the lines' lengths.
 """
 
+TextOverflow = Literal["clip", "ellipsis"]
+"""
+How a `Text` ends a line too wide for its content box, as CSS's
+[`text-overflow`](https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow) does:
+by drawing the whole line, for a clip (or nothing) to cut,
+or by keeping what fits before the box's last cell and drawing `…` there.
+"""
+
 ClipTo = Literal["padding", "border", "screen"]
 """What clips an element: its parent's padding box, its parent's border box, or only the screen."""
 
@@ -302,7 +310,9 @@ class TerminalDefault:
     """
     The terminal's default color, which the user's theme sets:
     its default foreground where it colors text (SGR `39`), and its default background where it fills one (SGR `49`).
-    Where no terminal decides, as in a screenshot, it's drawn as white text on black.
+    Where no terminal decides, as in a screenshot, it's drawn as white text on black
+    ([`SCREENSHOT_FOREGROUND`][counterweight.paint.SCREENSHOT_FOREGROUND] and
+    [`SCREENSHOT_BACKGROUND`][counterweight.paint.SCREENSHOT_BACKGROUND]).
 
     Every `TerminalDefault` is equal, so use [`TERMINAL_DEFAULT`][counterweight.styles.TERMINAL_DEFAULT].
     """
@@ -322,7 +332,7 @@ SOLID_COLORS = (Color, IndexedColor, TerminalDefault)
 
 
 def is_solid_color(color: AnyColor | Gradient) -> TypeIs[AnyColor]:
-    """Whether `color` is one color, rather than a gradient."""
+    """Whether `color` is one color, rather than a [gradient][counterweight.gradients.Gradient]."""
     return isinstance(color, SOLID_COLORS)
 
 
@@ -374,7 +384,10 @@ then xterm's color cube and grays.
 def rgb_of(color: AnyColor, terminal_default: Color) -> Color:
     """
     The RGB `color` is drawn in where no terminal decides, as in a screenshot:
-    `DEFAULT_PALETTE`'s entry for an `IndexedColor`, and `terminal_default` for `TerminalDefault`.
+    [`DEFAULT_PALETTE`][counterweight.styles.DEFAULT_PALETTE]'s entry for an `IndexedColor`,
+    and `terminal_default` for `TerminalDefault`, which a screenshot draws as
+    [`SCREENSHOT_FOREGROUND`][counterweight.paint.SCREENSHOT_FOREGROUND] for text
+    and [`SCREENSHOT_BACKGROUND`][counterweight.paint.SCREENSHOT_BACKGROUND] for a fill.
     """
     match color:
         case Color():
@@ -522,12 +535,18 @@ CELL_STYLE_DEFAULTS: ResolvedCellStyle[AnyColor] = ResolvedCellStyle(
 
 
 def is_solid_cell_style(style: ResolvedCellStyle[AnyColor | Gradient]) -> TypeIs[ResolvedCellStyle[AnyColor]]:
-    """Whether `style`'s colors are each one color, so that a cell can be drawn in it as it is."""
+    """
+    Whether `style`'s colors are each one color, so that a cell can be drawn in it as it is,
+    narrowing its type to the one a [`Cell`][counterweight.paint.Cell]'s style has.
+    """
     return style.is_solid
 
 
 def as_solid(style: ResolvedCellStyle[AnyColor | Gradient]) -> ResolvedCellStyle[AnyColor]:
-    """`style`, which must be solid, as the type a cell is drawn in, raising `TypeError` if it holds a gradient."""
+    """
+    `style`, which must be solid, as the type a cell is drawn in, raising `TypeError` if it holds a gradient,
+    as a `CellStyle` with no gradient resolves to: `as_solid(resolve_cell_style(style))`.
+    """
     if not is_solid_cell_style(style):
         raise TypeError(f"A cell is drawn in solid colors, but {style!r} holds a gradient")
     return style
@@ -536,7 +555,7 @@ def as_solid(style: ResolvedCellStyle[AnyColor | Gradient]) -> ResolvedCellStyle
 def with_colors[C: AnyColor | Gradient](
     style: ResolvedCellStyle[AnyColor | Gradient], foreground: C, background: C
 ) -> ResolvedCellStyle[C]:
-    """`style`'s attributes with `foreground` and `background` for its colors."""
+    """`style`'s attributes with `foreground` and `background` for its colors, such as a gradient's colors at a cell."""
     return ResolvedCellStyle(
         foreground=foreground,
         background=background,
@@ -554,7 +573,8 @@ def resolve_cell_style(
     style: CellStyle, defaults: ResolvedCellStyle[AnyColor | Gradient] = CELL_STYLE_DEFAULTS
 ) -> ResolvedCellStyle[AnyColor | Gradient]:
     """
-    Fill `style`'s unset fields from `defaults`.
+    Fill `style`'s unset fields from `defaults`, as paint does for every cell it draws,
+    so the result says exactly what a cell in `style` looks like.
 
     Resolving against a resolved base is the same as merging onto it first:
     `resolve_cell_style(b, resolve_cell_style(a))` equals `resolve_cell_style(a | b)`.
@@ -890,6 +910,7 @@ class ResolvedStyle[C: AnyColor | Gradient]:
     text_style: ResolvedCellStyle[C]
     text_justify: TextJustify
     text_wrap: TextWrap
+    text_overflow: TextOverflow
 
 
 STYLE_DEFAULTS: ResolvedStyle[AnyColor] = ResolvedStyle(
@@ -907,6 +928,7 @@ STYLE_DEFAULTS: ResolvedStyle[AnyColor] = ResolvedStyle(
     text_style=CELL_STYLE_DEFAULTS,
     text_justify="left",
     text_wrap="none",
+    text_overflow="clip",
 )
 """What each field of a `Style` that's left `UNSET` is drawn as."""
 
@@ -950,6 +972,13 @@ class Style(StyleFragment):
     an anchor for the scroll container around it.
     A scroll container that sticks to its end on an axis and is scrolled to its end there
     stays scrolled to its end when its content grows.
+
+    `text_overflow` chooses how a `Text` ends a line wider than its content box.
+    With `"clip"`, the default, the line is drawn whole, past the box unless something clips it;
+    with `"ellipsis"`, it keeps the graphemes that fit before the box's last cell, which `…` takes,
+    in the `Text`'s own style, as CSS draws the ellipsis in its block's.
+    A two-cell grapheme the cut runs through is left out, with a space in its style in its place.
+    It changes only what's painted, never the size of any element.
     """
 
     layout: waxy.Style = field(default_factory=waxy.Style)
@@ -970,6 +999,7 @@ class Style(StyleFragment):
     text_style: CellStyle = _DEFAULT_CELL_STYLE
     text_justify: TextJustify | UNSET = UNSET
     text_wrap: TextWrap | UNSET = UNSET
+    text_overflow: TextOverflow | UNSET = UNSET
 
     _hash: int = field(init=False, repr=False, compare=False, hash=False, default=0)
     resolved: ResolvedStyle[AnyColor | Gradient] = field(init=False, repr=False, compare=False, hash=False)
@@ -1006,6 +1036,7 @@ class Style(StyleFragment):
                     self.text_style,
                     self.text_justify,
                     self.text_wrap,
+                    self.text_overflow,
                 )
             ),
         )
@@ -1032,6 +1063,7 @@ class Style(StyleFragment):
             text_style=resolve_cell_style(self.text_style, defaults.text_style),
             text_justify=or_default(self.text_justify, defaults.text_justify),
             text_wrap=or_default(self.text_wrap, defaults.text_wrap),
+            text_overflow=or_default(self.text_overflow, defaults.text_overflow),
         )
 
 

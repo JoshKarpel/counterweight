@@ -54,6 +54,28 @@ When an element is drawn, any field still unset takes its default from
 [`STYLE_DEFAULTS`][counterweight.styles.STYLE_DEFAULTS]
 and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 
+## Text in a filled box
+
+A `Text`'s characters are drawn on its `text_style`'s background,
+and where that's unset, on the `Text`'s own `content_color`, as a `Canvas`'s painter's cells are.
+They don't take the color of a box the `Text` lies in:
+an unset background is the default, black, not transparent as a CSS `background-color` starts out.
+Layouts here put elements side by side, or lay a modal over the rest with a fill of its own,
+rather than stacking partly painted elements, so each cell's color is decided by the element that draws it.
+A `Div` with a `content_color` therefore shows it around a `Text` inside it, but not under the text,
+and there are two ways to color text inside a filled box:
+
+```python
+Div(style=content_color("slate", 800), children=(Text(content="hi", style=content_color("slate", 800)),))
+Div(style=content_color("slate", 800), children=(Text(content="hi", style=text_bg("slate", 800)),))
+```
+
+The first colors the `Text`'s whole content box, under its text and below its last line,
+and the second colors only its lines of text, each across the content box's width.
+Padding takes its `padding_color` either way.
+What isn't painted at all still shows what lies beneath it:
+a margin without a `margin_color`, and an element with no border, padding, text or `content_color`.
+
 ## API
 
 ::: counterweight.styles.Style
@@ -68,9 +90,18 @@ and [`CELL_STYLE_DEFAULTS`][counterweight.styles.CELL_STYLE_DEFAULTS].
 ::: counterweight.styles.CellStyle
 ::: counterweight.styles.STYLE_DEFAULTS
 ::: counterweight.styles.CELL_STYLE_DEFAULTS
+::: counterweight.styles.ResolvedCellStyle
+::: counterweight.styles.resolve_cell_style
+::: counterweight.styles.is_solid_cell_style
+::: counterweight.styles.as_solid
+::: counterweight.styles.with_colors
+::: counterweight.styles.is_solid_color
+::: counterweight.styles.rgb_of
+::: counterweight.styles.palette
 ::: counterweight.styles.UNSET
 ::: counterweight.styles.BorderKind
 ::: counterweight.styles.ClipTo
 ::: counterweight.styles.OverflowAnchor
 ::: counterweight.styles.TextJustify
 ::: counterweight.styles.TextWrap
+::: counterweight.styles.TextOverflow

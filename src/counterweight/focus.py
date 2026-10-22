@@ -9,10 +9,10 @@ Beside them are the errors a render raises when two mounted nodes share a handle
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import field
 
-if TYPE_CHECKING:
-    from counterweight.hooks._impls import NodeKey
+from counterweight._node_keys import NodeKey
+from counterweight._node_keys import next_node_key
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -61,9 +61,13 @@ class Subtree:
     take one in place of an [`ElementHandle`][counterweight.focus.ElementHandle], to name the element itself,
     so a handler can scroll its own element without a handle.
     A handler gets its own element's from its [`Receiver`][counterweight.events.Receiver].
+
+    `Subtree()` names nothing mounted, as a fresh `FocusHandle` does until a component takes it,
+    so a test can build a `Receiver` to call a handler with directly;
+    a control naming it moves nothing.
     """
 
-    key: NodeKey
+    key: NodeKey = field(default_factory=next_node_key)
 
 
 class DuplicateElementHandle(Exception):

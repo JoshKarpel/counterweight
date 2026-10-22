@@ -186,6 +186,7 @@ STYLE_FIELD_CASES: tuple[tuple[str, Style, Style], ...] = (
     ("text_style", Style(text_style=CellStyle(italic=True)), Style(text_style=EXPLICIT_DEFAULT_CELL_STYLE)),
     ("text_justify", Style(text_justify="center"), Style(text_justify=STYLE_DEFAULTS.text_justify)),
     ("text_wrap", Style(text_wrap="pretty"), Style(text_wrap=STYLE_DEFAULTS.text_wrap)),
+    ("text_overflow", Style(text_overflow="ellipsis"), Style(text_overflow=STYLE_DEFAULTS.text_overflow)),
     ("clip_to", Style(clip_to="border"), Style(clip_to=STYLE_DEFAULTS.clip_to)),
     ("overflow_anchor", Style(overflow_anchor="none"), Style(overflow_anchor=STYLE_DEFAULTS.overflow_anchor)),
     ("stick_to_end_x", Style(stick_to_end_x=True), Style(stick_to_end_x=STYLE_DEFAULTS.stick_to_end_x)),

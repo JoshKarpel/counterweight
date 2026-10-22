@@ -351,7 +351,11 @@ def command_output(
 
 
 def outcome_text(outcome: Outcome) -> str:
-    """What the line beneath a run's output says about `outcome`."""
+    """
+    What the line beneath a run's output in [`command_output`][counterweight.commands.command_output]
+    says about `outcome`, such as `"exited 0"` or `"ended by SIGTERM"`,
+    for an app that shows a run its own way.
+    """
     match outcome:
         case Starting():
             return "starting"
@@ -387,5 +391,6 @@ __all__ = [
     "CommandRun",
     "Outcome",
     "command_output",
+    "outcome_text",
     "use_command",
 ]

@@ -268,6 +268,15 @@ async def test_focus_previous_focuses_the_last_in_tree_order_and_moves_backwards
     assert probed(deliveries) == ["c", "b", "a", "c"]
 
 
+@pytest.mark.parametrize("control", [FocusNext(within=Subtree()), FocusPrevious(within=Subtree())])
+async def test_moving_focus_within_a_fresh_subtree_moves_nothing(control: AnyControl) -> None:
+    deliveries: list[Delivery] = []
+
+    await run(rooted(deliveries, three(deliveries)), [FocusNext(), control, PROBE])
+
+    assert probed(deliveries) == ["a"]
+
+
 async def test_focus_next_skips_a_focusable_in_a_hidden_subtree() -> None:
     deliveries: list[Delivery] = []
 

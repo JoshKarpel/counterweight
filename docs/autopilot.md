@@ -13,6 +13,9 @@ This page covers both, and how they combine to record a demo that comes out the 
 `app`'s `autopilot` is an iterable of events and controls, which the app handles in order, starting after its first frame.
 Each step waits for what the last one set off, as a person's next key press would:
 the renders it caused, and the effects those renders started, up to where each first waits on something.
+An app that never goes quiet, such as one showing a program that prints without pause,
+holds a step back for at most [`SETTLE_LIMIT`][counterweight.autopilot.SETTLE_LIMIT] passes of its render loop,
+as React stops a cascade of updates after 50, and then the autopilot takes the step anyway.
 It doesn't quit the app when it runs out, so end it with `Quit()`.
 With `headless=True` the app neither reads the terminal nor draws on it,
 and `dimensions` gives it a screen size:
@@ -207,6 +210,7 @@ Notice the chapters on the player's progress bar, one for each marker, which jum
 ::: counterweight.autopilot.Wait
 ::: counterweight.autopilot.WaitFor
 ::: counterweight.autopilot.AutopilotTimedOut
+::: counterweight.autopilot.SETTLE_LIMIT
 ::: counterweight.events.AnyEvent
 ::: counterweight.events.TerminalResized
 ::: counterweight.autopilot.typed

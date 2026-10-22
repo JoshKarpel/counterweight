@@ -10,6 +10,7 @@ from asyncio import get_running_loop
 from asyncio import sleep
 from asyncio import timeout
 from collections import deque
+from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Collection
 from collections.abc import Iterable
@@ -204,6 +205,7 @@ async def app(
     unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
     cell_aspect_ratio: float = DEFAULT_CELL_ASPECT_RATIO,
     recording: Recording | None = None,
+    clipboard_handler: Callable[[str], Awaitable[None] | None] | None = None,
 ) -> None:
     """
     Parameters:
@@ -222,6 +224,10 @@ async def app(
             Each step is handled once the renders the last one caused are painted,
             and the effects they started have run up to where each first waits on something,
             as a person's next key press would be.
+            An app that never settles, such as one showing a program that prints without pause,
+            holds a step back for at most [`SETTLE_LIMIT`][counterweight.autopilot.SETTLE_LIMIT] passes
+            of the render loop, after which the autopilot takes it anyway.
+            A `Wait` or `WaitFor` is checked on every pass, settled or not, so a `WaitFor` times out on time.
             Note that the autopilot will not be processed until after the initial render cycle,
             and that using the autopilot does not automatically cause the application to quit!
         check_purity: If `True`, check that components are pure: that their output depends only on their arguments
@@ -273,6 +279,11 @@ async def app(
         recording: Where and how to record the application as an asciicast,
             which asciinema-player plays back, whether it's headless or not.
             If `None`, the application isn't recorded.
+        clipboard_handler: What a [`CopyToClipboard`][counterweight.controls.CopyToClipboard] without a `handler`
+            of its own does with its text, awaited if it returns an awaitable,
+            such as `copied.append` in a test, which can't reach the controls the app's handlers return.
+            If `None`, the text goes to the terminal's clipboard over OSC 52, or nowhere when headless.
+            An error it raises is logged rather than stopping the app.
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
@@ -289,6 +300,7 @@ async def app(
                 unclaimed_keys,
                 cell_aspect_ratio,
                 recording,
+                clipboard_handler,
             )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
@@ -316,6 +328,7 @@ async def render_loop(
     unclaimed_keys: Mapping[str, AnyControl],
     cell_aspect_ratio: float,
     recording: Recording | None,
+    clipboard_handler: Callable[[str], Awaitable[None] | None] | None,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
@@ -399,7 +412,7 @@ async def render_loop(
 
         should_quit = False
         should_bell = False
-        pending_copy: str | None = None
+        pending_copy: CopyToClipboard | None = None
         pending_screenshots: list[Screenshot] = []
         should_suspend: Suspend | None = None
 
@@ -503,7 +516,7 @@ async def render_loop(
                 case RestoreTitle():
                     title = None
                 case CopyToClipboard():
-                    pending_copy = control.text
+                    pending_copy = control
                 case Screenshot():
                     pending_screenshots.append(control)
                 case Suspend():
@@ -558,11 +571,18 @@ async def render_loop(
                     should_bell = False
 
                 if pending_copy is not None:
-                    # Not through `write`, which records: a player replaying it would set the viewer's clipboard.
-                    if not headless:
-                        output_stream.write(clipboard_instructions(pending_copy))
+                    copy, pending_copy = pending_copy, None
+                    copy_handler = copy.handler if copy.handler is not None else clipboard_handler
+                    if copy_handler is not None:
+                        try:
+                            await maybe_await(copy_handler(copy.text))
+                            logger.debug("Copied text", extra={"handler": copy_handler})
+                        except Exception as ex:  # noqa: BLE001 (a failing user handler is logged, not fatal)
+                            logger.error("Error in copy handler", extra={"error": repr(ex), "handler": copy_handler})
+                    elif not headless:
+                        # Not through `write`, which records: a player replaying it would set the viewer's clipboard.
+                        output_stream.write(clipboard_instructions(copy.text))
                         output_stream.flush()
-                    pending_copy = None
 
                 if pending_screenshots:
                     # A copy, so a screenshot handler that changes its frame can't change current_paint.
@@ -626,6 +646,20 @@ async def render_loop(
                 if title != shown_title:
                     write(title_instructions(title))
                     shown_title = title
+
+                # A handler above that set state queued a `StateSet`, which the render below shows,
+                # so it's taken now rather than after the render, which would render again to show nothing new.
+                carried: deque[AnyEvent] = deque()
+                while True:
+                    try:
+                        queued = event_queue.get_nowait()
+                    except QueueEmpty:
+                        break
+                    if isinstance(queued, StateSet):
+                        should_render = True
+                        dirty.add(queued.key)
+                    else:
+                        carried.append(queued)
 
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
@@ -719,16 +753,21 @@ async def render_loop(
                         extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
                     )
 
-                    # The clear goes in the same synchronized update as the frame, so the blank screen never shows.
-                    instructions = synchronized((CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff))
-                    should_clear = False
-                    logger.debug("Generated instructions from paint diff")
-
-                    write(instructions)
-                    if not headless:
-                        logger.debug(
-                            "Wrote and flushed instructions to output stream", extra={"bytes": f"{len(instructions):_}"}
+                    # A frame that changes nothing isn't written, so a recording doesn't play an empty one.
+                    if diff or should_clear:
+                        # The clear goes in the same synchronized update as the frame, so the blank screen never shows.
+                        instructions = synchronized(
+                            (CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff)
                         )
+                        should_clear = False
+                        logger.debug("Generated instructions from paint diff")
+
+                        write(instructions)
+                        if not headless:
+                            logger.debug(
+                                "Wrote and flushed instructions to output stream",
+                                extra={"bytes": f"{len(instructions):_}"},
+                            )
 
                     await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
                     logger.debug("Reconciled effects")
@@ -747,7 +786,7 @@ async def render_loop(
 
                 # The next step waits for the renders the last one caused, as a person's next key press would:
                 # the ones that what the render measured or the effects it started queued.
-                ap = pilot.next(loop.time(), frame=frame_on_screen) if event_queue.empty() else None
+                ap = pilot.next(loop.time(), frame=frame_on_screen, is_settled=not carried and event_queue.empty())
                 if ap is not None:
                     if isinstance(ap, _Control):
                         handle_control(ap)
@@ -777,11 +816,15 @@ async def render_loop(
                     )
                     if seconds is not None
                 ]
-                try:
-                    async with timeout(min(wakes, default=None)):
-                        events = deque(await drain_queue(event_queue))
-                except TimeoutError:
-                    events = deque()
+                if carried:
+                    # The events taken before the render go first, and the loop below takes what was queued since.
+                    events = carried
+                else:
+                    try:
+                        async with timeout(min(wakes, default=None)):
+                            events = deque(await drain_queue(event_queue))
+                    except TimeoutError:
+                        events = deque()
 
                 while events:
                     event = events.popleft()
