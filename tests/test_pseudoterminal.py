@@ -814,7 +814,7 @@ async def test_use_pty_starts_the_program_again_in_a_new_cwd(directory: Path) ->
 
     async with mounted() as m:
         await m.render(terminal(argv, 80, 4, output, ptys, cwd=first))
-        await output.wait_for(b"first")
+        await output.wait_for(b"first\r\n")
         await m.render(terminal(argv, 80, 4, output, ptys, cwd=second))
         await output.wait_for(b"second")
 
