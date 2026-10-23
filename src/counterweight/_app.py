@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import logging
 import shutil
 import sys
@@ -206,6 +207,7 @@ async def app(
     cell_aspect_ratio: float = DEFAULT_CELL_ASPECT_RATIO,
     recording: Recording | None = None,
     clipboard_handler: Callable[[str], Awaitable[None] | None] | None = None,
+    collect_garbage_between_frames: bool = True,
 ) -> None:
     """
     Parameters:
@@ -284,6 +286,21 @@ async def app(
             such as `copied.append` in a test, which can't reach the controls the app's handlers return.
             If `None`, the text goes to the terminal's clipboard over OSC 52, or nowhere when headless.
             An error it raises is logged rather than stopping the app.
+        collect_garbage_between_frames: If `True`, the default, Python's cyclic garbage collector doesn't run while a frame
+            is generated, from re-running components to writing the frame to the terminal,
+            and runs once after the frame is written instead, if the objects the frame allocated and didn't free
+            call for it, as a browser schedules garbage collection in the idle time between frames.
+            The temporary objects a frame frees before it ends then never trigger a collection,
+            a frame that keeps enough for several triggers one,
+            and the older generations, collected once every so many collections of the youngest,
+            are collected less often, so cyclic garbage is freed later than it would be.
+            Nothing frees the cyclic garbage a frame makes until the frame is written,
+            so memory grows with every cycle a frame drops.
+            The collector is paused for every thread of the process, not just the app's,
+            and isn't touched if it's already disabled, such as by `gc.disable()`.
+            Pass `False` to let it run whenever it would,
+            as an app whose frames make and drop a lot of cyclic garbage should
+            (see [When not to pause it](performance.md#when-not-to-pause-it)).
     """
     async with devlog(levels=app_log_levels(root.func.__module__, log_levels)):
         try:
@@ -301,6 +318,7 @@ async def app(
                 cell_aspect_ratio,
                 recording,
                 clipboard_handler,
+                collect_garbage_between_frames,
             )
         except BaseExceptionGroup as group:
             # The render loop's task group wraps even a lone error, which buries it in asyncio's frames
@@ -329,6 +347,7 @@ async def render_loop(
     cell_aspect_ratio: float,
     recording: Recording | None,
     clipboard_handler: Callable[[str], Awaitable[None] | None] | None,
+    collect_garbage_between_frames: bool,
 ) -> None:
     # Whether the screen may not show the current paint, so the next frame clears it and draws every cell,
     # instead of drawing only the cells that changed.
@@ -396,6 +415,10 @@ async def render_loop(
 
     # What the recording says the app exited with: 0 once it quits, and 1 if it stops any other way.
     exit_status = 1
+
+    # Whether this app disabled the garbage collector for the frame it's generating,
+    # so a frame that raises enables it again on the way out.
+    is_collection_paused = False
 
     # Taking output control is the first thing the try does, since the finally block hands it back,
     # and restoring a title the app never saved would pop one off the terminal's title stack that isn't the app's.
@@ -663,6 +686,11 @@ async def render_loop(
 
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
+                    # Nothing from here to the write awaits, so no other task runs with the collector paused.
+                    if collect_garbage_between_frames and gc.isenabled():
+                        gc.disable()
+                        is_collection_paused = True
+
                     previous_layouts = layouts
                     # Picked from the frame on screen, before the update below changes what's in it.
                     priors = prior_scrolls(layouts)
@@ -768,6 +796,11 @@ async def render_loop(
                                 "Wrote and flushed instructions to output stream",
                                 extra={"bytes": f"{len(instructions):_}"},
                             )
+
+                    # Enabled, the collector runs at the next allocation if the frame's allocations call for it.
+                    if is_collection_paused:
+                        gc.enable()
+                        is_collection_paused = False
 
                     await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
                     logger.debug("Reconciled effects")
@@ -887,6 +920,9 @@ async def render_loop(
         exit_status = 0
     finally:
         logger.info("Application stopping...")
+
+        if is_collection_paused:
+            gc.enable()
 
         if recorder is not None:
             recorder.stop(exit_status)

@@ -3,7 +3,8 @@
 This page is for an app that feels slow.
 It covers finding where a frame's time goes,
 which components a frame runs,
-and how to skip the ones whose output can't have changed.
+how to skip the ones whose output can't have changed,
+and when Python's garbage collector runs.
 It quotes no frame times, since they depend on the app, the machine and the terminal:
 measure your own.
 
@@ -374,3 +375,91 @@ It only checks the frames a test drives,
 so drive the interactions that change what a component might read without being told,
 such as a setting changed from another screen.
 [`use_ref`](hooks/use_ref.md#not-reading-or-writing-a-ref-while-rendering) covers what it catches for refs.
+
+## When does garbage collection run?
+
+Python frees most objects as soon as nothing refers to them.
+Its **cyclic garbage collector** frees the rest, objects that refer only to each other,
+by scanning the objects allocated and not yet freed.
+It runs whenever enough of those pile up, which can be in the middle of a frame,
+and a collection of its oldest generation scans nearly every object in the process,
+which can take longer than a frame.
+
+`app` pauses the collector while a frame is generated,
+from re-running components to writing the frame to the terminal,
+and lets it run once after the frame is written, if what the frame allocated and kept calls for a collection.
+Chrome does much the same, giving V8
+[the idle time between frames](https://v8.dev/blog/free-garbage-collection) to collect in.
+Unlike V8's, Python's collections can't be split up to fit a deadline,
+so one that runs after a frame still delays handling the input that arrives during it,
+but never the frame already on screen.
+
+Pausing changes how much the collector does, not only when.
+The temporary objects a frame frees before it ends never trigger a collection,
+a frame that keeps enough objects for several collections triggers one,
+and the older generations, collected once every so many collections of the youngest, are collected less often.
+Cyclic garbage still counts toward the next collection, so it's freed, only later.
+
+Effects and handlers run with the collector on, since they run between frames.
+If it's already disabled, such as by `gc.disable()`, `app` leaves it disabled.
+
+### When not to pause it
+
+Nothing frees cyclic garbage while a frame is generated,
+so an app is at risk if its frames make a lot of it.
+Pass `collect_garbage_between_frames=False` to `app` to let the collector run whenever it would,
+if your app is one of these:
+
+- **A component that makes and drops many cycles on every render**,
+  such as one that parses a large document into a tree whose nodes link to their parents.
+  Memory grows with every cycle the frame drops, and comes back once it's written.
+  Parsing in a `use_memo` keyed by the document, or in an effect,
+  does the work once and keeps it out of the frame anyway.
+- **A long frame while other threads make cycles.**
+  The collector belongs to the process, so it's paused for every thread, not only the app's,
+  and their garbage piles up for as long as the frame takes.
+- **Cycles whose `__del__` methods or `weakref` callbacks release something scarce**,
+  such as file descriptors or locks, made and dropped many at a time in a frame:
+  they're released after the frame instead of during it.
+
+Whether pausing helps depends on how much your frames allocate and how much your app keeps,
+so measure it: [`gc.callbacks`](https://docs.python.org/3/library/gc.html#gc.callbacks)
+reports when each collection starts and stops, and the devlog when each frame does.
+
+### Why are full collections slow?
+
+A collection of the oldest generation scans every object the collector tracks,
+including the ones the app keeps for as long as it runs, such as a large document's lines or a diff's rows,
+so an app that holds a lot pays for all of it on every full collection, however little of it is garbage.
+Pausing the collector keeps such a collection out of the frame, but it still runs between frames,
+and input that arrives meanwhile waits for it.
+
+[`gc.freeze()`](https://docs.python.org/3/library/gc.html#gc.freeze) moves every object the collector tracks
+into a permanent generation that no collection scans.
+Call it from an effect that runs when the structure is rebuilt,
+after a `gc.collect()` that frees the garbage already dead, so none of it is frozen:
+
+```python
+@component
+def diff_view(diff: Diff) -> Div:
+    rows = use_memo(lambda: diff_rows(diff), deps=(diff,))
+
+    async def freeze_rows() -> None:
+        gc.collect()
+        gc.freeze()
+
+    use_effect(freeze_rows, deps=(rows,))
+
+    return Div(children=rows)
+```
+
+Each rebuild's `gc.collect()` scans only what was built since the last freeze, so it's cheap after the first.
+
+Reference counting still frees a frozen object that nothing refers to, but the collector never frees a frozen cycle,
+so each rebuild leaks whatever cycles the structure it replaced held, such as rows that link to their parents.
+To check, rebuild the structure many times in a test, then call `gc.unfreeze()` and `gc.collect()`:
+it returns how many objects freezing kept from being freed,
+which stays the same however many rebuilds run if the structure has no cycles.
+If it grows, only `gc.unfreeze()` lets the collector find the frozen cycles,
+and the `gc.collect()` after it scans everything again, the full collection freezing exists to avoid,
+so do that now and then, such as every so many rebuilds, rather than on every one.
