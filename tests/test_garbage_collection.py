@@ -204,3 +204,32 @@ async def test_a_collector_disabled_before_the_app_starts_stays_disabled() -> No
     await app(root(), headless=True, autopilot=[Quit()], collect_garbage_between_frames=True)
 
     assert (seen, gc.isenabled()) == ([False], False)
+
+
+async def test_a_collector_disabled_by_an_effect_after_a_paused_frame_stays_disabled() -> None:
+    seen: list[bool] = []
+
+    @component
+    def root() -> Div:
+        frame, set_frame = use_state(0)
+        seen.append(gc.isenabled())
+
+        async def disable_collector() -> None:
+            gc.disable()
+
+        use_effect(disable_collector, deps=())
+
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            set_frame(frame + 1)
+
+        return Div(on_input=on_input)
+
+    await app(
+        root(),
+        headless=True,
+        autopilot=[KeyPressed(key="n"), Quit()],
+        collect_garbage_between_frames=True,
+    )
+
+    # The warmup render, the first frame, which the app paused, and the frame after the effect disabled it.
+    assert (seen, gc.isenabled()) == ([True, False, False], False)

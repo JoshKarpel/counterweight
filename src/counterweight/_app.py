@@ -18,6 +18,8 @@ from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from contextlib import AbstractContextManager
+from contextlib import contextmanager
+from contextlib import nullcontext
 from datetime import timedelta
 from itertools import chain
 from signal import SIG_DFL
@@ -167,6 +169,24 @@ def stop_handling_interrupt_signal(previous: SignalHandler) -> None:
     signal(SIGINT, previous)
 
 
+@contextmanager
+def collection_paused() -> Iterator[None]:
+    """
+    Disables the cyclic garbage collector while the block runs, if it's enabled,
+    and enables it again when the block exits, so it runs at the next allocation if the block's allocations call for it.
+    A collector that's disabled when the block starts is left alone, since something else disabled it.
+    """
+    if not gc.isenabled():
+        yield
+        return
+
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()
+
+
 DEFAULT_UNCLAIMED_KEYS: Mapping[str, AnyControl] = frozendict({Key.ControlC: Quit(), Key.ControlZ: Suspend.to_shell()})
 """
 What `app` does with a key press no handler claims, by default:
@@ -286,8 +306,9 @@ async def app(
             such as `copied.append` in a test, which can't reach the controls the app's handlers return.
             If `None`, the text goes to the terminal's clipboard over OSC 52, or nowhere when headless.
             An error it raises is logged rather than stopping the app.
-        collect_garbage_between_frames: If `True`, the default, Python's cyclic garbage collector doesn't run while a frame
-            is generated, from re-running components to writing the frame to the terminal,
+        collect_garbage_between_frames: If `True`, the default,
+            Python's cyclic garbage collector doesn't run while a frame is generated,
+            from re-running components to writing the frame to the terminal,
             and runs once after the frame is written instead, if the objects the frame allocated and didn't free
             call for it, as a browser schedules garbage collection in the idle time between frames.
             The temporary objects a frame frees before it ends then never trigger a collection,
@@ -297,7 +318,9 @@ async def app(
             Nothing frees the cyclic garbage a frame makes until the frame is written,
             so memory grows with every cycle a frame drops.
             The collector is paused for every thread of the process, not just the app's,
-            and isn't touched if it's already disabled, such as by `gc.disable()`.
+            and isn't touched by a frame that starts with it disabled, such as by `gc.disable()`,
+            though a frame that paused it enables it again once it's written,
+            even if another thread disabled it meanwhile.
             Pass `False` to let it run whenever it would,
             as an app whose frames make and drop a lot of cyclic garbage should
             (see [When not to pause it](performance.md#when-not-to-pause-it)).
@@ -415,10 +438,6 @@ async def render_loop(
 
     # What the recording says the app exited with: 0 once it quits, and 1 if it stops any other way.
     exit_status = 1
-
-    # Whether this app disabled the garbage collector for the frame it's generating,
-    # so a frame that raises enables it again on the way out.
-    is_collection_paused = False
 
     # Taking output control is the first thing the try does, since the finally block hands it back,
     # and restoring a title the app never saved would pop one off the terminal's title stack that isn't the app's.
@@ -686,58 +705,25 @@ async def render_loop(
 
                 instant = read_clock()
                 if should_render or until_due(shadow, instant) == timedelta():
-                    # Nothing from here to the write awaits, so no other task runs with the collector paused.
-                    if collect_garbage_between_frames and gc.isenabled():
-                        gc.disable()
-                        is_collection_paused = True
-
-                    previous_layouts = layouts
-                    # Picked from the frame on screen, before the update below changes what's in it.
-                    priors = prior_scrolls(layouts)
-                    with rendering():
-                        update = update_shadow(
-                            root_component,
-                            shadow,
-                            layouts,
-                            frozenset(dirty),
-                            check_purity,
-                            focused=focused,
-                            instant=instant,
-                        )
-                    dirty.clear()
-                    previous_shadow, shadow = shadow, update.tree
-                    logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
-
-                    layouts = layout_tree.compute(
-                        layout_changes(previous_shadow, shadow),
-                        shadow,
-                        w,
-                        h,
-                        priors,
-                        scroll_requests(pending_scrolls, shadow),
-                    )
-                    logger.debug("Calculated layout")
-
-                    routing = RoutingTable.of(shadow, layouts)
-                    settled = routing.reconciled_focus(focused, update.mounted, requested_focus)
-                    requested_focus = None
-
-                    # Re-render the components whose focus changed before painting,
-                    # so no frame shows focus where it was before the render moved it.
-                    if settled != focused:
+                    # Nothing in the block awaits, so no other task runs with the collector paused.
+                    with collection_paused() if collect_garbage_between_frames else nullcontext():
+                        previous_layouts = layouts
+                        # Picked from the frame on screen, before the update below changes what's in it.
+                        priors = prior_scrolls(layouts)
                         with rendering():
-                            refocused = update_shadow(
+                            update = update_shadow(
                                 root_component,
                                 shadow,
-                                previous_layouts,
-                                frozenset(key for key in (focused, settled) if key is not None),
+                                layouts,
+                                frozenset(dirty),
                                 check_purity,
-                                focused=settled,
+                                focused=focused,
                                 instant=instant,
                             )
-                        previous_shadow, shadow = shadow, refocused.tree
-                        if settled is not None:
-                            pending_scrolls.append(focus_into_view(settled))
+                        dirty.clear()
+                        previous_shadow, shadow = shadow, update.tree
+                        logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
+
                         layouts = layout_tree.compute(
                             layout_changes(previous_shadow, shadow),
                             shadow,
@@ -746,61 +732,87 @@ async def render_loop(
                             priors,
                             scroll_requests(pending_scrolls, shadow),
                         )
+                        logger.debug("Calculated layout")
+
                         routing = RoutingTable.of(shadow, layouts)
-                        if routing.reconciled_focus(settled, refocused.mounted, requested=None) != settled:
-                            raise UnsettledFocus(
-                                "Focus changed again after re-rendering the components that gained and lost it, "
-                                "so a component hid itself because it gained focus."
+                        settled = routing.reconciled_focus(focused, update.mounted, requested_focus)
+                        requested_focus = None
+
+                        # Re-render the components whose focus changed before painting,
+                        # so no frame shows focus where it was before the render moved it.
+                        if settled != focused:
+                            with rendering():
+                                refocused = update_shadow(
+                                    root_component,
+                                    shadow,
+                                    previous_layouts,
+                                    frozenset(key for key in (focused, settled) if key is not None),
+                                    check_purity,
+                                    focused=settled,
+                                    instant=instant,
+                                )
+                            previous_shadow, shadow = shadow, refocused.tree
+                            if settled is not None:
+                                pending_scrolls.append(focus_into_view(settled))
+                            layouts = layout_tree.compute(
+                                layout_changes(previous_shadow, shadow),
+                                shadow,
+                                w,
+                                h,
+                                priors,
+                                scroll_requests(pending_scrolls, shadow),
                             )
-                        update = update.followed_by(refocused)
-                        focused = settled
-                        logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+                            routing = RoutingTable.of(shadow, layouts)
+                            if routing.reconciled_focus(settled, refocused.mounted, requested=None) != settled:
+                                raise UnsettledFocus(
+                                    "Focus changed again after re-rendering the components that gained and lost it, "
+                                    "so a component hid itself because it gained focus."
+                                )
+                            update = update.followed_by(refocused)
+                            focused = settled
+                            logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
 
-                    pending_scrolls.clear()
-                    for key in stale_readers(shadow, layouts):
-                        event_queue.put_nowait(StateSet(key=key))
+                        pending_scrolls.clear()
+                        for key in stale_readers(shadow, layouts):
+                            event_queue.put_nowait(StateSet(key=key))
 
-                    new_paint, border_healing_hints = paint_layout(
-                        layouts.in_paint_order, w, h, layout_tree.fields, cell_aspect_ratio
-                    )
-                    logger.debug("Generated new paint")
-
-                    if do_heal_borders:
-                        healing_diff = heal_borders(new_paint, border_healing_hints)
-                        for position, cell in healing_diff.items():
-                            new_paint[position] = cell
-                        logger.debug(
-                            "Healed borders in new paint",
-                            extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
+                        new_paint, border_healing_hints = paint_layout(
+                            layouts.in_paint_order, w, h, layout_tree.fields, cell_aspect_ratio
                         )
+                        logger.debug("Generated new paint")
 
-                    diff = runs_of(new_paint) if should_clear else diff_paint(new_paint, current_paint)
-                    current_paint = new_paint
-                    logger.debug(
-                        "Diffed new paint from current paint",
-                        extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
-                    )
-
-                    # A frame that changes nothing isn't written, so a recording doesn't play an empty one.
-                    if diff or should_clear:
-                        # The clear goes in the same synchronized update as the frame, so the blank screen never shows.
-                        instructions = synchronized(
-                            (CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff)
-                        )
-                        should_clear = False
-                        logger.debug("Generated instructions from paint diff")
-
-                        write(instructions)
-                        if not headless:
+                        if do_heal_borders:
+                            healing_diff = heal_borders(new_paint, border_healing_hints)
+                            for position, cell in healing_diff.items():
+                                new_paint[position] = cell
                             logger.debug(
-                                "Wrote and flushed instructions to output stream",
-                                extra={"bytes": f"{len(instructions):_}"},
+                                "Healed borders in new paint",
+                                extra={"hint_cells": len(border_healing_hints), "diff_cells": len(healing_diff)},
                             )
 
-                    # Enabled, the collector runs at the next allocation if the frame's allocations call for it.
-                    if is_collection_paused:
-                        gc.enable()
-                        is_collection_paused = False
+                        diff = runs_of(new_paint) if should_clear else diff_paint(new_paint, current_paint)
+                        current_paint = new_paint
+                        logger.debug(
+                            "Diffed new paint from current paint",
+                            extra={"diff_runs": len(diff), "diff_cells": sum(len(cells) for _, _, cells in diff)},
+                        )
+
+                        # A frame that changes nothing isn't written, so a recording doesn't play an empty one.
+                        if diff or should_clear:
+                            # The clear goes in the same synchronized update as the frame,
+                            # so the blank screen never shows.
+                            instructions = synchronized(
+                                (CLEAR_SCREEN if should_clear else "") + paint_to_instructions(diff)
+                            )
+                            should_clear = False
+                            logger.debug("Generated instructions from paint diff")
+
+                            write(instructions)
+                            if not headless:
+                                logger.debug(
+                                    "Wrote and flushed instructions to output stream",
+                                    extra={"bytes": f"{len(instructions):_}"},
+                                )
 
                     await handle_effects(ran=update.ran, unmounted=update.unmounted, task_group=task_group)
                     logger.debug("Reconciled effects")
@@ -920,9 +932,6 @@ async def render_loop(
         exit_status = 0
     finally:
         logger.info("Application stopping...")
-
-        if is_collection_paused:
-            gc.enable()
 
         if recorder is not None:
             recorder.stop(exit_status)

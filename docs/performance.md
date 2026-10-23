@@ -401,7 +401,8 @@ and the older generations, collected once every so many collections of the young
 Cyclic garbage still counts toward the next collection, so it's freed, only later.
 
 Effects and handlers run with the collector on, since they run between frames.
-If it's already disabled, such as by `gc.disable()`, `app` leaves it disabled.
+If it's disabled when a frame starts, such as by `gc.disable()` in an effect, `app` leaves it disabled.
+A frame that paused it enables it again once it's written, even if another thread disabled it meanwhile.
 
 ### When not to pause it
 
