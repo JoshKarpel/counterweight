@@ -39,6 +39,7 @@ The rest of `app`'s parameters each belong to a part of the framework, with its 
 | Drive it without a person, or without a terminal | `autopilot`, `headless`, `dimensions` | [Autopilot](autopilot.md#driving-an-app) |
 | Record it as an asciicast | `recording` | [Recording](autopilot.md#recording) |
 | Catch components that go stale | `check_purity` | [Performance](performance.md#how-do-i-catch-stale-output) |
+| Let garbage collection run in the middle of a frame | `collect_garbage_between_frames` | [Performance](performance.md#when-not-to-pause-it) |
 | See other libraries' debug logs in the devlog | `log_levels` | [The devlog](performance.md#the-devlog) |
 | Match a font that isn't twice as tall as it is wide | `cell_aspect_ratio` | [Gradients](styles/gradients.md#what-cells-change) |
 | Draw on a terminal other than standard input and output | `input_stream`, `output_stream` | [Running programs](terminals/programs.md) |
