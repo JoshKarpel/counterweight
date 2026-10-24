@@ -137,58 +137,23 @@ from counterweight.styles import Style
 logger = logging.getLogger(__name__)
 
 UNKNOWN_TERMINAL_DIMENSIONS = (80, 24)
-"""The dimensions of each that neither the terminal nor the environment gives, as `shutil`'s are."""
+"""The dimensions of a stream that isn't a terminal, and of each that a terminal reports as 0, as `shutil`'s are."""
 
 
-def reported_dimensions(stream: TextIO) -> tuple[int, int]:
+def terminal_dimensions(stream: TextIO) -> tuple[int, int]:
     """
-    The columns and rows the terminal `stream` writes to reports,
-    so an app drawing on `/dev/tty` while its standard output is a pipe, as in `$(picker)`, fills the terminal,
-    where `shutil.get_terminal_size` would ask standard output.
-    Each is 0 where the terminal doesn't know it, as some don't before anything sizes them
-    (`docker run -t`, serial consoles), and both are for a stream that isn't a terminal.
+    The columns and rows of the terminal `stream` writes to,
+    so an app drawing on `/dev/tty` while its standard output is a pipe, as in `$(picker)`, fills the terminal.
+    Unlike `shutil.get_terminal_size`, which asks standard output, this ignores `COLUMNS` and `LINES`,
+    which describe the terminal when the process started and go stale once it resizes.
     """
     try:
         size = os.get_terminal_size(stream.fileno())
     # A stream with no file descriptor raises io.UnsupportedOperation, a closed one ValueError, a non-terminal OSError.
     except OSError, ValueError:
-        return 0, 0
-    return size.columns, size.lines
-
-
-def initial_terminal_dimensions(stream: TextIO, environment: Mapping[str, str]) -> tuple[int, int]:
-    """
-    The columns and rows an app starts with: `COLUMNS` and `LINES` in `environment`, which override the terminal's,
-    as `shutil.get_terminal_size` lets them, since the shell keeps them current until the app starts.
-    """
-    reported_columns, reported_rows = reported_dimensions(stream)
+        return UNKNOWN_TERMINAL_DIMENSIONS
     columns, rows = UNKNOWN_TERMINAL_DIMENSIONS
-    return (
-        environment_dimension(environment, "COLUMNS") or reported_columns or columns,
-        environment_dimension(environment, "LINES") or reported_rows or rows,
-    )
-
-
-def terminal_dimensions(stream: TextIO, environment: Mapping[str, str]) -> tuple[int, int]:
-    """
-    The columns and rows of an app after the terminal can have resized under it,
-    when `COLUMNS` and `LINES` in `environment` may be stale, so they give only what the terminal doesn't report.
-    """
-    reported_columns, reported_rows = reported_dimensions(stream)
-    columns, rows = UNKNOWN_TERMINAL_DIMENSIONS
-    return (
-        reported_columns or environment_dimension(environment, "COLUMNS") or columns,
-        reported_rows or environment_dimension(environment, "LINES") or rows,
-    )
-
-
-def environment_dimension(environment: Mapping[str, str], name: str) -> int | None:
-    """The positive integer `environment` holds under `name`, or `None` if it's missing or holds anything else."""
-    try:
-        dimension = int(environment[name])
-    except KeyError, ValueError:
-        return None
-    return dimension if dimension > 0 else None
+    return size.columns or columns, size.lines or rows
 
 
 def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
@@ -294,12 +259,8 @@ async def app(
         headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
             This is primarily useful when combined with the `autopilot` parameter.
         dimensions: The dimensions of the terminal window, in characters.
-            If `None`, the app starts at the size the `COLUMNS` and `LINES` environment variables give,
-            or else the size of the terminal `output_stream` writes to, or else 80 by 24.
-            It reads the terminal's size again each time the process gets `SIGWINCH`,
-            as it does when its controlling terminal resizes, and after each suspension,
-            when the terminal may have resized and the variables may be stale,
-            so from then on they size only what the terminal doesn't report.
+            If `None`, the size of the terminal `output_stream` writes to, read again on each resize,
+            or 80 by 24 if it isn't a terminal. The `COLUMNS` and `LINES` environment variables are ignored.
         autopilot: An iterable of events and controls to be processed by the application,
             and of [`Wait`][counterweight.autopilot.Wait] and [`WaitFor`][counterweight.autopilot.WaitFor],
             which hold the rest back until real time has passed or the screen shows something.
@@ -440,13 +401,10 @@ async def render_loop(
     # Started once the clock and the screen's size are known, and stopped when the app stops.
     recorder: Recorder | None = None
 
-    def handle_screen_size_change(
-        override: tuple[int, int] | None = None,
-        measure: Callable[[TextIO, Mapping[str, str]], tuple[int, int]] = terminal_dimensions,
-    ) -> tuple[Component, Paint, int, int]:
+    def handle_screen_size_change(override: tuple[int, int] | None = None) -> tuple[Component, Paint, int, int]:
         nonlocal should_clear
 
-        w, h = override or dimensions or measure(output_stream, os.environ)
+        w, h = override or dimensions or terminal_dimensions(output_stream)
         should_clear = True
         if recorder is not None:
             recorder.resize(w, h)
@@ -511,7 +469,7 @@ async def render_loop(
             start_mouse_tracking(stream=output_stream)
             start_bracketed_paste(stream=output_stream)
 
-        root_component, current_paint, w, h = handle_screen_size_change(measure=initial_terminal_dimensions)
+        root_component, current_paint, w, h = handle_screen_size_change()
 
         should_render = True
         dirty: set[NodeKey] = set()
