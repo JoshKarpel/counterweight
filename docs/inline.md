@@ -138,7 +138,8 @@ rather than garbling the alternate screen.
 The streams are put back while the app is suspended and when it stops,
 which writes out any line left without its newline.
 A replaced stream that something kept, such as a `logging.StreamHandler` made while the app ran,
-writes straight to the stream it replaced from then on.
+writes straight to the stream it replaced while the app is suspended, prints again once it resumes,
+and writes straight to the stream it replaced once the app stops.
 Pass `capture_output=False` to `app` to leave them alone.
 A program that writes to the terminal itself, such as a subprocess, isn't caught.
 

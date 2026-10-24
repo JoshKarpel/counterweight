@@ -20,7 +20,8 @@ class CapturedLines(io.TextIOBase):
     A stream that hands each line written to it, without its newline, to `send`, from whichever thread wrote it,
     and holds the text after the last newline until the next write ends it.
     Once released, it writes straight to `original`, so code that kept a reference to it,
-    such as a logging handler made while it was `sys.stderr`, doesn't send lines to an app that has stopped.
+    such as a logging handler made while it was `sys.stderr`, doesn't send lines to an app that has stopped,
+    or to one that's suspended, which recaptures it when it resumes, so that code sends lines again.
 
     It isn't a terminal, so a library that colors its output only on a terminal writes plain text to it.
     """
@@ -69,6 +70,11 @@ class CapturedLines(io.TextIOBase):
             self.is_released = True
         return partial
 
+    def recapture(self) -> None:
+        """Starts sending lines again after `release`, as an app does when it resumes from a suspension."""
+        with self.lock:
+            self.is_released = False
+
 
 @dataclass(frozen=True, slots=True)
 class Capture:
@@ -87,6 +93,17 @@ def start_capturing(send: Callable[[str, PrintStream], None]) -> Capture:
     sys.stdout = capture.stdout
     sys.stderr = capture.stderr
     return capture
+
+
+def resume_capturing(capture: Capture) -> None:
+    """
+    Replaces `sys.stdout` and `sys.stderr` with `capture`'s streams again, after `stop_capturing` put back the ones
+    they replaced, so code that kept a reference to them while they were captured sends lines again.
+    """
+    capture.stdout.recapture()
+    capture.stderr.recapture()
+    sys.stdout = capture.stdout
+    sys.stderr = capture.stderr
 
 
 def stop_capturing(capture: Capture) -> None:

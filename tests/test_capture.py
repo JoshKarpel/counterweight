@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import fcntl
 import io
 import os
@@ -23,6 +24,7 @@ from counterweight.autopilot import AutopilotStep
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
+from counterweight.controls import Bell
 from counterweight.controls import Quit
 from counterweight.controls import Suspend
 from counterweight.elements import Text
@@ -30,6 +32,8 @@ from counterweight.emulator import Emulator
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_controls
+from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from tests.terminal import Terminal
 
@@ -180,6 +184,62 @@ async def test_the_streams_are_put_back_while_the_app_is_suspended_and_when_it_s
     assert (sys.stdout, sys.stderr) == before
     assert len(running) == 2
     assert all(isinstance(stream, CapturedLines) for streams in running for stream in streams)
+
+
+async def test_a_stream_kept_from_before_a_suspension_is_captured_again_after_it(
+    screen: Screen, terminal: Terminal
+) -> None:
+    kept: list[TextIO] = []
+
+    @component
+    def keeps() -> Text:
+        def on_input(event: InputEvent, _: Receiver) -> None:
+            if not kept:
+                kept.append(sys.stdout)
+            else:
+                print("resumed", file=kept[0])
+
+        return Text(content="region", on_input=on_input)
+
+    await run(keeps(), screen, terminal, [KEY, Suspend(handler=lambda streams: None), KEY])
+
+    assert screen.shown()[0] == "resumed"
+
+
+async def test_a_line_an_effect_prints_as_the_app_stops_is_printed(screen: Screen, terminal: Terminal) -> None:
+    @component
+    def stopping() -> Text:
+        async def wait() -> None:
+            try:
+                await asyncio.Event().wait()
+            finally:
+                print("stopped")
+
+        use_effect(wait, deps=())
+        return Text(content="region")
+
+    await run(stopping(), screen, terminal, [])
+
+    assert screen.shown() == ["stopped", "region", "", ""]
+
+
+async def test_controls_other_than_prints_sent_as_the_app_stops_do_nothing(screen: Screen, terminal: Terminal) -> None:
+    @component
+    def rings() -> Text:
+        send = use_controls()
+
+        async def wait() -> None:
+            try:
+                await asyncio.Event().wait()
+            finally:
+                send(Bell())
+
+        use_effect(wait, deps=())
+        return Text(content="region")
+
+    await run(rings(), screen, terminal, [])
+
+    assert b"\a" not in os.read(screen.reader, 2**16)
 
 
 async def test_an_app_that_doesnt_capture_output_leaves_the_streams_alone(screen: Screen, terminal: Terminal) -> None:

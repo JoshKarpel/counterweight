@@ -41,6 +41,7 @@ import waxy
 
 from counterweight._border_healing import heal_borders
 from counterweight._capture import Capture
+from counterweight._capture import resume_capturing
 from counterweight._capture import start_capturing
 from counterweight._capture import stop_capturing
 from counterweight._context_vars import app_scope
@@ -697,15 +698,21 @@ async def render_loop(
     capture: Capture | None = None
 
     def start_capture() -> None:
+        """
+        Captures `sys.stdout` and `sys.stderr`, if the app does, with the same streams after a suspension,
+        so code that kept a reference to one, such as a logging handler, is captured again too.
+        """
         nonlocal capture
-        if capture_output and not headless:
+        if not capture_output or headless:
+            return
+        if capture is None:
             capture = start_capturing(print_captured)
+        else:
+            resume_capturing(capture)
 
     def stop_capture() -> None:
-        nonlocal capture
         if capture is not None:
             stop_capturing(capture)
-            capture = None
 
     def quit_from_signal() -> None:
         """Quits as an autopilot `Quit` does, from a signal handler, which runs outside the loop."""
@@ -765,6 +772,23 @@ async def render_loop(
                     assert_never(unreachable)
         pending_prints.clear()
         return "".join(above), rows
+
+    def print_sent_while_stopping() -> None:
+        """
+        Prints what was sent after the last frame, as the app stopped, such as a line an effect printed
+        as the app cancelled it, above an inline region, which it draws again below what it printed.
+        """
+        while True:
+            try:
+                queued = event_queue.get_nowait()
+            except QueueEmpty:
+                break
+            if isinstance(queued, ControlSent) and isinstance(queued.control, Print):
+                pending_prints.append(queued.control)
+        printed, _ = print_pending()
+        if printed:
+            before, diff = frame_changes(viewport, None, current_paint)
+            write(synchronized(ERASE_DOWN + printed + before + paint_to_instructions(diff, cursor_moves(viewport))))
 
     def print_held() -> None:
         """
@@ -1304,6 +1328,9 @@ async def render_loop(
     except KeyboardInterrupt as ex:
         logger.debug(f"Caught {ex!r}")
         exit_status = 0
+        # The task group has stopped the effects by now, which can print as they stop.
+        if not is_suspended:
+            print_sent_while_stopping()
     finally:
         logger.info("Application stopping...")
 
