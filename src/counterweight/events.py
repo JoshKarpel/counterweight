@@ -219,6 +219,16 @@ class Dummy(_Event):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class CursorPositionReported(_Event):
+    """
+    Where the terminal says the cursor is, in its reply to the app asking (`CSI 6 n`),
+    which an inline app that tracks the mouse reads where its region is from.
+    """
+
+    position: Position
+
+
 MouseEvent = (
     MouseMoved | MouseDown | MouseUp | MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight
 )
@@ -300,7 +310,7 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
             return (response,)
 
 
-AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | ControlSent | MouseEvent | Dummy
+AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | ControlSent | MouseEvent | Dummy | CursorPositionReported
 """Any event the app handles, which an autopilot can send it beside controls."""
 
 

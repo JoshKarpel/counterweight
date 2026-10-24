@@ -23,6 +23,7 @@ from counterweight._output import UNSET_ANY_EVENT_MOUSE_SGR_FORMAT
 from counterweight._output import Frame
 from counterweight._output import clipboard_instructions
 from counterweight._output import stop_output_control
+from counterweight._viewports import FullScreen
 from counterweight.asciicast import SUSPENDED
 from counterweight.asciicast import Recorder
 from counterweight.asciicast import Recording
@@ -411,7 +412,7 @@ async def test_a_headful_recording_holds_what_the_app_draws_on_its_terminal(tmp_
     )
 
     hand_back = io.StringIO()
-    stop_output_control(hand_back)
+    stop_output_control(hand_back, viewport=FullScreen())
     drawn = (
         output.getvalue()
         .replace(SET_ANY_EVENT_MOUSE_SGR_FORMAT + BRACKETED_PASTE_ON, "")

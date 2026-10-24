@@ -19,6 +19,7 @@ from typing import assert_never
 
 from counterweight._graphemes import graphemes
 from counterweight.events import AnyEvent
+from counterweight.events import CursorPositionReported
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
@@ -206,6 +207,11 @@ SEQUENCE_KEYS: Mapping[bytes, Key] = sequence_keys()
 # per ECMA-48, independent of what it means. Without its final byte, the match is a sequence cut short:
 # by the end of the input if it reaches the end, or by a byte that can't appear in a sequence if it doesn't.
 ESCAPE_SEQUENCE = re.compile(rb"\x1b(?:\[[\x30-\x3f]*[\x20-\x2f]*|O)([\x40-\x7e])?")
+
+# A cursor position report, `CSI row ; column R`, for a cursor in the first column,
+# which is the only column the app asks from. A modified F3 is `CSI 1 ; modifier R` with a modifier of at least 2,
+# so the two can't be mistaken for each other.
+CURSOR_POSITION_REPORT = re.compile(rb"\x1b\[(\d+);1R")
 
 # https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Extended-coordinates
 SGR_MOUSE = re.compile(rb"\x1b\[<(\d+);(\d+);(\d+)([Mm])")
@@ -436,6 +442,9 @@ def sequence_event(sequence: bytes) -> AnyEvent | None:
 
     if report := SGR_MOUSE.fullmatch(sequence):
         return sgr_mouse_event(report)
+
+    if report := CURSOR_POSITION_REPORT.fullmatch(sequence):
+        return CursorPositionReported(position=Position(x=0, y=int(report[1]) - 1))
 
     return None
 

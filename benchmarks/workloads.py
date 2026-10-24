@@ -4,10 +4,14 @@ from benchmarks import agent
 from benchmarks import agent_markdown
 from benchmarks import agent_typing
 from benchmarks import canvas
+from benchmarks import chat
 from benchmarks import dashboard
 from benchmarks import dashboard_local
+from benchmarks import devloop
 from benchmarks import document
 from benchmarks import gradients
+from benchmarks import picker
+from benchmarks import tasks
 from benchmarks import top
 from benchmarks.harness import Runnable
 
@@ -27,6 +31,10 @@ WORKLOADS: dict[str, Runnable] = {
         dashboard.WORKLOAD,
         dashboard.MEMO_WORKLOAD,
         dashboard_local.WORKLOAD,
+        devloop.WORKLOAD,
+        chat.WORKLOAD,
+        tasks.WORKLOAD,
+        picker.WORKLOAD,
         document.WORKLOAD,
         document.LINES_WORKLOAD,
         document.TEXT_AREA_WORKLOAD,

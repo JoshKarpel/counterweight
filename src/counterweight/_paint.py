@@ -41,6 +41,7 @@ from counterweight.gradients import field_indices
 from counterweight.gradients import ramp
 from counterweight.painters._frames import PaintView
 from counterweight.styles._styles import CELL_STYLE_DEFAULTS
+from counterweight.styles._styles import TERMINAL_DEFAULT
 from counterweight.styles._styles import UNSET
 from counterweight.styles._styles import AnyColor
 from counterweight.styles._styles import BorderKind
@@ -96,6 +97,9 @@ class Cell:
 
 BLANK = Cell.blank(color=Color.from_name("black"))
 """A space on black, what a cell nothing paints shows."""
+
+ERASED = Cell(" ", with_colors(CELL_STYLE_DEFAULTS, TERMINAL_DEFAULT, TERMINAL_DEFAULT))
+"""A space in the terminal's default colors, what a cell the terminal erased shows."""
 
 
 @dataclass(slots=True)
@@ -207,7 +211,7 @@ class Paint:
     def rows(self) -> Iterator[list[Cell]]:
         """Each row of cells, top to bottom."""
         w = self.width
-        return (self.cells[start : start + w] for start in range(0, w * self.height, w))
+        return (self.cells[y * w : (y + 1) * w] for y in range(self.height))
 
     def items(self) -> Iterator[tuple[Position, Cell]]:
         """Each cell with its position, row by row."""
@@ -292,6 +296,30 @@ def styled_row(row: Sequence[Cell]) -> tuple[StyledGrapheme, ...]:
             styled = styled_grapheme(cell.erased())
         drawn.append(styled)
     return tuple(drawn)
+
+
+def with_height(paint: Paint, height: int) -> Paint:
+    """
+    A paint of `paint`'s rows, cut to `height` rows or followed by rows of `ERASED` cells,
+    as an inline region's rows are on the screen after it shrinks or grows.
+    """
+    cells = paint.cells[: paint.width * height]
+    return Paint(paint.width, height, cells + [ERASED] * (paint.width * height - len(cells)))
+
+
+def paint_of_rows(rows: Rows, width: int) -> Paint:
+    """
+    `rows` of grapheme clusters, each taking `width` cells, as a terminal emulator's `Screen` holds them, as a paint,
+    with each style's unset fields drawn as `CELL_STYLE_DEFAULTS`, as the cells nothing paints are.
+    """
+    cells: list[Cell] = []
+    for row in rows:
+        for styled in row:
+            style = as_solid(resolve_cell_style(styled.style))
+            cells.append(Cell(styled.grapheme, style))
+            if styled.width == 2:
+                cells.append(Cell("", style))
+    return Paint(width, len(rows), cells)
 
 
 CellMap = dict[Position, Cell]

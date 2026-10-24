@@ -11,12 +11,15 @@ from counterweight._graphemes import grapheme_width
 from counterweight._layout import MeasurableText
 from counterweight._output import Frame
 from counterweight._paint import BLANK
+from counterweight._paint import ERASED
 from counterweight._paint import Cell
 from counterweight._paint import Paint
 from counterweight._paint import border_fills
 from counterweight._paint import diff_paint
 from counterweight._paint import ellipsized
 from counterweight._paint import line_cells
+from counterweight._paint import paint_of_rows
+from counterweight._paint import with_height
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -660,3 +663,28 @@ async def test_an_ellipsis_leaves_the_texts_size_as_it_is() -> None:
 
 def test_an_ellipsis_in_a_box_with_no_room_draws_nothing() -> None:
     assert ellipsized([StyledGrapheme(grapheme="a")], 0) == []
+
+
+def test_a_paint_cut_to_fewer_rows_keeps_its_top_rows() -> None:
+    paint = Paint(2, 3, [Cell(str(index), BLANK.style) for index in range(6)])
+
+    assert with_height(paint, 1) == Paint(2, 1, paint.cells[:2])
+
+
+def test_a_paint_with_more_rows_has_erased_rows_below() -> None:
+    paint = Paint(2, 1, [Cell("a", BLANK.style), Cell("b", BLANK.style)])
+
+    assert with_height(paint, 3) == Paint(2, 3, [*paint.cells, *[ERASED] * 4])
+
+
+def test_rows_of_graphemes_paint_wide_ones_with_their_continuation_and_unset_colors_as_defaults() -> None:
+    red = CellStyle(foreground=Color.from_name("red"))
+
+    paint = paint_of_rows(((StyledGrapheme(grapheme="界", style=red), StyledGrapheme(grapheme=" ")),), 3)
+
+    resolved = as_solid(resolve_cell_style(red))
+    assert paint == Paint(3, 1, [Cell("界", resolved), Cell("", resolved), BLANK])
+
+
+def test_a_paint_no_cells_wide_has_its_rows_empty() -> None:
+    assert list(Paint(0, 2, []).rows()) == [[], []]
