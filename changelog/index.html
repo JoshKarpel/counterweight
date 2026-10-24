@@ -1,0 +1,5297 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://www.counterweight.dev/changelog/">
+      
+      
+        <link rel="prev" href="../ecosystem/">
+      
+      
+        <link rel="next" href="../app/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Changelog - Counterweight</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../assets/style.css">
+    
+      <link rel="stylesheet" href="../assets/vendor/asciinema-player-3.17.0/asciinema-player.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link rel="icon" href="../assets/logo/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Counterweight" class="md-header__button md-logo" aria-label="Counterweight" data-md-component="logo">
+      
+  <img src="../assets/logo/favicon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Counterweight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/JoshKarpel/counterweight" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Counterweight" class="md-nav__button md-logo" aria-label="Counterweight" data-md-component="logo">
+      
+  <img src="../assets/logo/favicon.svg" alt="logo">
+
+    </a>
+    Counterweight
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/JoshKarpel/counterweight" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecosystem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ecosystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#011" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.1
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.1">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Added">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components-and-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components and hooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-focus-and-the-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input, focus and the terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout-and-scrolling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout and scrolling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text-and-rich-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Text and rich text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#headless-components-and-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Headless components and widgets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canvas-and-terminals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canvas and terminals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-and-recording" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing and recording
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples-and-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples and documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-and-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App and components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-and-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input and focus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styles_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements-painting-and-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Elements, painting and output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.9
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.8
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.7
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.6
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.5
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.4
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../components/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../elements/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elements
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Elements
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../elements/div/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Div
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../elements/text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../elements/canvas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canvas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../hooks/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_state
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_effect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_effect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_ref/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_ref
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_memo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_memo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_clock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_clock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/animation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_mouse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_mouse
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_rects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_rects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_scroll/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_scroll
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_focus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_focus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hooks/use_hovered/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_hovered
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../headless/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Headless Components
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Headless Components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/use_text_input/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_text_input
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/use_text_area/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_text_area
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/use_scroll_area/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_scroll_area
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../input-handling/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Handling
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Input Handling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../input-handling/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../input-handling/handlers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Handlers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../input-handling/controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_11" id="__nav_11_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/choosing-a-layout-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Layout Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/how-layout-sizes-things/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How Layout Sizes Things
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/splitting-space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splitting Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/sizing-one-box/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing One Box
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment and Distribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/spacing-and-borders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing and Borders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/layering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/clipping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/scrolling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scrolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/grids-and-wrapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grids and Wrapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text in Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/app-shells/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App Shells
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../styles/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Styles
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_12" id="__nav_12_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Styles
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../styles/text-wrapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text Wrapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../styles/gradients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gradients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../styles/utilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Terminals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terminals/commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    One-Shot Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terminals/programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Programs on the App's Terminal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terminals/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedded Terminals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terminals/emulators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Emulators and Pseudo-Terminals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rich Text
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rich Text
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rich-text/hyperlinks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hyperlinks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rich-text/syntax-highlighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Highlighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rich-text/markdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cookbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/autocomplete/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autocomplete
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/border-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Border Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/border-healing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Border Healing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/draggable-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Draggable Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/prefix-keys/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefix Keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/sortable-tables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sortable Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/spinners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spinners
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autopilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autopilot and Recording
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../under-the-hood/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Under the Hood
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Under the Hood
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#011" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.1
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.1">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Added">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components-and-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components and hooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-focus-and-the-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input, focus and the terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout-and-scrolling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout and scrolling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text-and-rich-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Text and rich text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#headless-components-and-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Headless components and widgets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canvas-and-terminals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canvas and terminals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-and-recording" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing and recording
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples-and-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples and documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-and-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App and components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-and-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input and focus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styles_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements-painting-and-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Elements, painting and output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.9
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.8
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.7
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.6
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.5
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.4
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="changelog">Changelog</h1>
+<h2 id="011"><code>0.1.1</code></h2>
+<p>Released <code>2026-10-22</code></p>
+<p>Counterweight <code>0.1.1</code> fixes what the first apps to move onto <code>0.1.0</code> ran into:
+empty frames in recordings, an autopilot that could stall on an app that never goes quiet,
+and text that ignored its own <code>content_color</code>.
+It also exports the names those apps had to import from private modules,
+and adds <code>text_overflow</code> and handlers for copies.</p>
+<h3 id="added">Added</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  Added <code>text_overflow</code>, with the <code>text_overflow_clip</code> and <code>text_overflow_ellipsis</code> utilities,
+  which ends a line too wide for its <code>Text</code>'s content box with <code>…</code> in the box's last cell,
+  as CSS's <code>text-overflow: ellipsis</code> does
+  (see <a href="../styles/text-wrapping/#ending-a-line-with-an-ellipsis">Ending a line with an ellipsis</a>).
+  It changes only what's painted, never an element's size.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  Added a <code>handler</code> to <code>CopyToClipboard</code> and a <code>clipboard_handler</code> to <code>app</code>,
+  which take a copy's text in place of the terminal's clipboard, headless or not,
+  so a test can check what an app copies (see <a href="../input-handling/controls/#copying-to-the-clipboard">Copying to the clipboard</a>).</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  <code>Subtree()</code> makes a subtree that names nothing mounted, as a fresh <code>FocusHandle</code> does,
+  so a test can build a <code>Receiver</code> to call a handler with, without reaching into the hooks.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  Exported names that apps were importing from private modules, and the ones beside them:
+  <code>counterweight.text</code>, a new module of <code>graphemes</code>, <code>grapheme_width</code> and <code>visible</code>,
+  for an app that cuts or pads text itself to match how counterweight measures it;
+  <code>ramp</code>, <code>Ramp</code>, <code>field_indices</code> and <code>Indices</code> from <code>counterweight.gradients</code>, to read a gradient's colors;
+  <code>ResolvedCellStyle</code>, <code>resolve_cell_style</code>, <code>is_solid_cell_style</code>, <code>as_solid</code>, <code>with_colors</code>, <code>is_solid_color</code>,
+  <code>rgb_of</code> and <code>palette</code> from <code>counterweight.styles</code>;
+  <code>styled_grapheme</code>, <code>SCREENSHOT_FOREGROUND</code> and <code>SCREENSHOT_BACKGROUND</code> from <code>counterweight.paint</code>,
+  the last two the colors an SVG screenshot draws the terminal's defaults in, for an asciicast <code>Theme</code> to match;
+  <code>outcome_text</code> from <code>counterweight.commands</code>;
+  and <code>SETTLE_LIMIT</code> from <code>counterweight.autopilot</code>.</p>
+</li>
+</ul>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  A <code>Screenshot</code> handler that sets state no longer renders the app twice:
+  the render that follows the handler shows the new state, and nothing renders again for it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  A render that changes no cell writes nothing to the terminal, so a recording has no empty frames,
+  such as the ones a clock-driven component's ticks made once its animation stopped changing anything.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  The autopilot holds a step back for an app that hasn't settled for at most <code>SETTLE_LIMIT</code> (50) passes
+  of the render loop, then takes it anyway and logs a warning, so an app that never goes quiet,
+  such as one showing a program that prints without pause, no longer stalls it.
+  A <code>WaitFor</code> is checked on every pass, settled or not, so it times out on time.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/448">#448</a>
+  A <code>Text</code>'s characters are drawn on its own <code>content_color</code> where its <code>text_style</code> sets no background,
+  as a <code>Canvas</code>'s painter's cells already were, so a box filled with a color shows it under its own text
+  (see <a href="../styles/#text-in-a-filled-box">Text in a filled box</a>).
+  They still don't take the color of a box they lie in.</p>
+</li>
+</ul>
+<h2 id="010"><code>0.1.0</code></h2>
+<p>Released <code>2026-10-21</code></p>
+<p>Counterweight <code>0.1.0</code> rebuilds most of the framework, and adds a great deal on top of it.
+Layout is <a href="https://github.com/DioxusLabs/taffy">taffy</a>'s flexbox and grid, through <a href="https://github.com/JoshKarpel/waxy">waxy</a>.
+A render re-runs only the components whose state changed.
+Input goes to the focused element and bubbles, as in the DOM, and boxes clip and scroll.
+New on top of that are headless components and the widgets built on them, Markdown and syntax highlighting,
+the <code>Canvas</code> element and embedded terminals, animation, gradients, and recordings,
+and the <a href="../examples/">examples</a> ship with the library, runnable from the <code>counterweight</code> CLI.</p>
+<p>Most apps written for <code>0.0.9</code> need changes: every change that breaks one is marked <strong>Breaking:</strong> below.
+Counterweight requires Python <code>3.15</code>.</p>
+<h3 id="added_1">Added</h3>
+<h4 id="components-and-hooks">Components and hooks</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>
+  Added <code>@component(memo=True)</code>, which skips re-running a component when its parent re-runs
+  and passes it arguments equal to the previous render's,
+  and <code>check_purity</code> on <code>app</code>, which runs every component again after each render
+  and raises <code>counterweight.components.ImpureComponent</code> when that builds something different,
+  because a component depends on more than its arguments and hooks.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>
+  Added <a href="../hooks/use_memo/"><code>use_memo</code></a>, which caches a value until its dependencies change,
+  so a component can keep an expensive derived value, an unchanging part of its output,
+  or a handler it passes to a <code>memo</code> component.
+  With <code>check_purity</code> on, a cached value that a dependency missing from its list would change
+  raises <code>counterweight.hooks.StaleMemo</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <code>counterweight.hooks.toggle</code>, which flips a flag through a <code>use_state</code> setter (<code>set_open(toggle)</code>),
+  so toggles that land before the next render each flip the latest value,
+  and a type checker rejects it for state that isn't a <code>bool</code>.
+  The <a href="../hooks/use_state/#updating-state-from-its-previous-value"><code>use_state</code></a> docs show how setting state
+  from a value computed from the state a render saw loses updates, and when to pass a function instead.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/400">#400</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/404">#404</a>
+  Added <a href="../hooks/use_clock/"><code>use_clock</code></a>, which gives a component the time
+  (the wall-clock time, and how long since the app started and since the component mounted)
+  while it stays pure: it re-runs when its next tick starts, ticks follow the wall clock,
+  and components reading it in the same frame see the same time.
+  <code>app</code> takes a <code>clock</code> to read the time from: a <code>SystemClock</code>, in UTC unless it's given a timezone,
+  or a <code>FrozenClock</code> for tests and screenshots, which only an autopilot moves,
+  and the <code>AdvanceClock</code> control moves either forward.
+  An <code>interval</code> of <code>None</code> <a href="../hooks/use_clock/#pausing">pauses</a> it, as a <code>null</code> delay pauses React's <code>useInterval</code>:
+  the component keeps its last reading and the clock never re-runs it,
+  and the render that gives it an interval again takes a fresh reading.
+  The cookbook shows how to <a href="../cookbook/spinners/">animate a spinner</a> with it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/444">#444</a>
+  Added <a href="../hooks/animation/">animation</a>: <code>use_progress(duration, deps)</code>, which rises from 0 to 1 over <code>duration</code>
+  and holds there, starting again whenever its <code>deps</code> change, as a CSS animation that plays once,
+  and <code>use_loop(period, deps)</code>, which repeats every <code>period</code> and pauses with <code>is_playing=False</code>,
+  as one whose iteration count is <code>infinite</code>.
+  Both read the clock every <code>FRAME_INTERVAL</code> (20 frames a second) while they move, unless given an <code>interval</code>,
+  and stop reading it while they don't, so a paused animation never re-runs its component,
+  and a finished one only once more.
+  <code>counterweight.animation</code> holds CSS's easing functions, to shape how an animation moves:
+  <code>linear</code> and <code>piecewise_linear</code> (CSS's <code>linear()</code>), <code>cubic_bezier</code> and the curves CSS names
+  (<code>ease</code>, <code>ease_in</code>, <code>ease_out</code>, <code>ease_in_out</code>), and <code>steps</code>, <code>step_start</code> and <code>step_end</code>,
+  and <code>between</code>, which picks one phase out of an animation's progress, as a keyframe does.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added <a href="../hooks/use_controls/"><code>use_controls</code></a>, which gives a component a sender that hands the app a control
+  from outside an input handler, such as an effect that quits when a program exits.
+  The app handles a sent control as it handles one a handler returns, after the events already waiting.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>
+  Added <code>counterweight.geometry.clamp(min_, val, max_)</code>, which clamps a number to a range.</p>
+</li>
+</ul>
+<h4 id="input-focus-and-the-terminal">Input, focus and the terminal</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Added <a href="../hooks/use_focus/"><code>use_focus</code></a>, which makes a component focusable, so that key presses go to it while it's focused.
+  It takes <code>auto_focus</code>, to take focus on mount when nothing else has it,
+  or when what has it is out of Tab order and the component mounts inside it, as <code>autofocus</code> takes focus from a page's body;
+  <code>handle</code>, a <code>FocusHandle</code> a parent creates to focus a child it renders;
+  <code>is_focusable=False</code>, to disable it; and <code>in_focus_order=False</code>, to leave it out of Tab order.
+  The controls <code>FocusNext</code>, <code>FocusPrevious</code>, <code>FocusOn(handle)</code> and <code>ClearFocus</code> move focus,
+  and <code>FocusNext</code> and <code>FocusPrevious</code> take a <code>within</code> subtree, or an element's handle, to move only inside one element.
+  <a href="../hooks/use_focus/#focusing-a-component-as-it-mounts"><code>FocusOn</code></a> also focuses a component that mounts
+  in the render its handler causes, before that frame is drawn, unless another control moves focus first.
+  <code>counterweight.handlers</code> has <code>tab_focus</code>, <code>focus_receiver_on_press</code>, <code>focus_on_press</code> and <code>clear_focus</code>,
+  which return them for Tab and for presses; nothing moves focus unless a handler does.
+  A <code>Receiver</code> carries the element's <code>focus_handle</code>, whether it <code>is_focused</code>, and its <code>subtree</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  Added <a href="../input-handling/handlers/"><code>counterweight.handlers</code></a>, with <code>on_click(action)</code>, which calls <code>action</code>
+  when a press on its element is released inside it,
+  and <code>first</code> and <code>each</code>, which compose several handlers into the one an element takes.
+  A handler can return a tuple of controls, applied in order and skipping any <code>None</code>,
+  or <code>()</code> to stop an event with nothing more to do.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Mouse events say which modifier keys were held, in <code>is_shift_held</code>, <code>is_alt_held</code> and <code>is_control_held</code>,
+  as the DOM's <code>MouseEvent</code> does, so a handler can match a Ctrl+click or a Shift+wheel.
+  Some terminals keep Shift with the wheel for their own scrollback and never report it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added <code>Key.ControlBackslash</code>, <code>Key.ControlRightBracket</code>, <code>Key.ControlCaret</code> and <code>Key.ControlUnderscore</code>,
+  and their Ctrl+Alt forms, so every control byte a terminal sends is a key.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/411">#411</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/412">#412</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/422">#422</a>
+  Added the <code>SetTitle</code> control, which sets the title of the terminal window,
+  and the <code>title</code> argument to <code>app</code>, which sets it when the app starts.
+  The app saves the title it started with and restores it when it quits and while it's suspended,
+  on terminals that support xterm's title stack,
+  and the <code>RestoreTitle</code> control brings it back while the app runs.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/445">#445</a>
+  Added the <code>CopyToClipboard</code> control, which copies text to the system clipboard,
+  as a browser's <code>navigator.clipboard.writeText</code> does, by asking the terminal to with OSC 52.
+  It works only where the terminal supports OSC 52, and in tmux only with <code>set -g set-clipboard on</code>.</p>
+</li>
+</ul>
+<h4 id="layout-and-scrolling">Layout and scrolling</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/415">#415</a>
+  Added <a href="../layout/scrolling/">scroll containers</a>: a box whose overflow is <code>Scroll</code>
+  (set by <code>overflow_scroll</code>, <code>overflow_x_scroll</code> or <code>overflow_y_scroll</code>)
+  shows the part of its content its offset scrolls into view.
+  Counterweight holds each container's offset, and after every layout keeps the content in view where it was,
+  as CSS's scroll anchoring does, and clamps the offset to how far the content reaches.
+  The <code>overflow_anchor</code> style field, with <code>overflow_anchor_auto</code> and <code>overflow_anchor_none</code>, turns anchoring off,
+  and the <code>stick_to_end_x</code> and <code>stick_to_end_y</code> style fields, with <code>stick_to_end</code> and <code>unstick</code> and their <code>_x</code> and <code>_y</code> forms,
+  keep a container that's scrolled to its end there as its content grows, as a log or a chat transcript wants.
+  The controls <code>ScrollTo</code> and <code>ScrollBy</code> scroll a container named by an <code>ElementHandle</code>,
+  which an element takes as its <code>handle</code>, or by a receiver's <code>subtree</code>,
+  and <code>ScrollIntoView</code> scrolls every container above an element until it's in view,
+  as the web's <code>scrollIntoView</code> does, aligning it as its <code>block</code> and <code>inline</code> say.
+  All three apply in order to the layout of the next render,
+  so they scroll the content laid out by any state change returned beside them, in the same frame.
+  Moving focus scrolls the newly focused element into view.
+  <code>counterweight.handlers</code> has <code>scroll_on_wheel</code> and <code>scroll_on_keys</code>, which make handlers that scroll for the wheel
+  and for the arrow keys, PageUp, PageDown, Home and End,
+  and pass the event on to the container outside once their own reaches an end,
+  and <code>page_down</code> and <code>page_up</code>, which return the <code>ScrollBy</code> for a page of any fraction of the view.
+  <a href="../input-handling/handlers/#scrolling"><code>scroll_on_wheel</code></a> scrolls sideways for the vertical wheel with Shift held,
+  as browsers on Windows and Linux do.
+  <a href="../hooks/use_scroll/"><code>use_scroll</code></a> returns how far the calling component's element,
+  or the element with a given <code>ElementHandle</code>, is scrolled and how far it can be, as a <code>Scroll</code>,
+  and a <code>Receiver</code> carries the same as its <code>scroll</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/388">#388</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/415">#415</a>
+  Added the overflow utilities <code>overflow_visible</code>, <code>overflow_hidden</code> and <code>overflow_clip</code>,
+  with <code>overflow_x_*</code> and <code>overflow_y_*</code> forms that set one axis.
+  A box whose overflow is <code>Hidden</code>, <code>Clip</code> or <code>Scroll</code> clips its children to its padding box
+  on each axis that sets it, and the mouse reaches an element only where it's painted:
+  routing, <code>use_hovered</code> and <code>on_click</code> ignore the parts of an element its ancestors clip away.
+  The <code>clip_to</code> style field chooses what clips an element: its parent's padding box (<code>clip_to_padding</code>, the default),
+  its parent's border box (<code>clip_to_border</code>), so a child such as a border title can draw on the border of a parent that clips,
+  or only the screen (<code>clip_to_screen</code>), so a popup such as a dropdown escapes every clip above it.
+  <code>Rects</code> has <code>clip</code>, the region an element's ancestors let it draw in,
+  and <code>visible</code>, the part of its border box inside that region.
+  See <a href="../layout/clipping/">Clipping</a>, and the <a href="../cookbook/autocomplete/">autocomplete recipe</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>
+  Added the layout utilities that taffy's flexbox and grid offer:
+  sizes (<code>width(n)</code>, <code>height(n)</code>, <code>size(w, h)</code>, their <code>min_</code> and <code>max_</code> forms, and <code>aspect_ratio</code>),
+  flexing (<code>grow(n)</code>, <code>shrink(n)</code>, <code>row_reverse</code>, <code>col_reverse</code>, <code>flex_wrap</code>, <code>flex_no_wrap</code> and <code>flex_wrap_reverse</code>),
+  <code>display_flex</code>, <code>display_grid</code>, <code>display_block</code> and <code>display_none</code>,
+  grid (<code>grid_template_columns</code>, <code>grid_template_rows</code>, <code>grid_row</code>, <code>grid_column</code>,
+  and the <code>grid_auto_flow_*</code>, <code>justify_items_*</code> and <code>justify_self_*</code> utilities),
+  box sizing (<code>border_box</code> and <code>content_box</code>),
+  and <code>full</code>, <code>full_width</code> and <code>full_height</code>, which fill the parent after the box's margins.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  Added the sizing keyword utilities <code>min_content_width</code>, <code>max_content_width</code>,
+  <code>fit_content_width</code> and <code>stretch_width</code>, and their <code>_height</code> counterparts,
+  which size a box from its content or fill the space available after its margins.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/415">#415</a>
+  Added the constraint utilities <code>length(n)</code>, <code>percentage(p)</code>, <code>ratio(a, b)</code> and <code>fill(n)</code>,
+  which split space along the parent's main axis the way ratatui's constraints of the same names do:
+  a child takes its share whatever its content, in a <code>row</code> or a <code>col</code>, hiding its overflow.
+  For grid, <code>fr(n)</code> is a track of <code>n</code> shares that content can't widen (<code>minmax(0, n fr)</code>),
+  and <code>span(n)</code> places a child across <code>n</code> tracks.
+  <code>grid_template_columns</code> and <code>grid_template_rows</code> accept a plain <code>int</code> as a track of that many cells,
+  and <code>grid_row</code> and <code>grid_column</code> accept one as a grid line.
+  <code>center_children</code> centers children on both axes.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  Added <code>inset(n)</code>, <code>inset_x(n)</code> and <code>inset_y(n)</code>, which set all four, the left and right, or the top and bottom insets;
+  <code>inset_sides</code>, <code>margin_sides</code> and <code>pad_sides</code>, which set each side separately in the order of CSS's four-value shorthands;
+  and <code>auto</code> margins for every side and pair of sides, from <code>margin_auto</code> to <code>margin_right_auto</code>.
+  <code>position_absolute | inset(0) | margin_auto | fit_content_width | fit_content_height</code>
+  centers a box over its parent at its own size, as in CSS.</p>
+</li>
+</ul>
+<h4 id="styles">Styles</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/443">#443</a>
+  Added <a href="../styles/utilities/#attributes">attribute utilities</a> that draw the text or the border characters
+  bold, dim, italic, underlined or struck through (<code>text_bold</code>, <code>border_italic</code>, ...),
+  each with a <code>not_</code> form (<code>text_not_bold</code>) that turns it off when merged over a style that turns it on.
+  A <code>Chunk</code>'s style can be a <code>Style</code>, of which the chunk takes the <code>text_style</code>,
+  so the utilities that style a <code>Text</code>, such as <code>text_bold | text_color("sky", 300)</code>,
+  <a href="../elements/text/#styling-parts-of-the-text">style a chunk</a> too.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/123">#123</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  Added <code>content_color</code>, an element's background, which fills its border box beneath its padding, border and text,
+  even when the element has nothing else to draw.
+  An element with no margin, border, padding, text or <code>content_color</code> paints nothing,
+  so an undecorated container laid over other elements leaves them visible.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added colors the terminal decides, which follow the user's theme:
+  <code>IndexedColor(n)</code>, entry <code>n</code> of the terminal's 256-color palette,
+  and <code>TERMINAL_DEFAULT</code>, the terminal's default foreground where it colors text and default background where it fills one.
+  Every style field that took a <code>Color</code> takes either (<code>AnyColor</code>),
+  and the <code>*_indexed(n)</code> and <code>*_terminal_default</code> utilities set them wherever the color utilities do.
+  Screenshots draw palette entries in <code>DEFAULT_PALETTE</code> and the defaults as white on black.
+  See <a href="../styles/utilities/#terminal-colors">Terminal colors</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/430">#430</a>
+  Added <a href="../styles/gradients/">gradients</a>: linear, radial and conic, with CSS's geometry, stops, hints and repeating,
+  built by <code>linear_gradient</code>, <code>radial_gradient</code> and <code>conic_gradient</code> in <code>counterweight.gradients</code>.
+  Any color a style holds can be a gradient: <code>margin_color</code>, <code>padding_color</code>, <code>content_color</code>,
+  and the foreground and background of <code>border_style</code>, <code>text_style</code> and a chunk's style,
+  each mapping it over the box it paints unless the gradient's <code>box</code> names another,
+  and the <code>*_gradient</code> utilities put one in each of those places.
+  Colors mix in Oklab by default, or in another of CSS's color spaces, with its hue methods for the polar ones.
+  Angles and circles are in visual units, where a row is <code>app</code>'s <code>cell_aspect_ratio</code> columns tall (2 by default),
+  and a gradient spans its box's corner cells' centers, so they take its end colors.
+  Paint keeps each element's gradient cells from frame to frame, so a gradient that doesn't change isn't computed again.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  Added <code>counterweight.styles.merge</code>, which merges any number of <code>Style</code>s left to right,
+  as an alternative to chaining <code>|</code>: <code>merge(a, b, c)</code> is <code>a | b | c</code>.
+  It skips <code>None</code> arguments wherever they appear.</p>
+</li>
+</ul>
+<h4 id="text-and-rich-text">Text and rich text</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/318">#318</a>
+  Added <a href="../styles/text-wrapping/">text wrapping</a> for <code>Text</code> elements: <code>text_wrap_stable</code> (greedy),
+  <code>text_wrap_balance</code> (equalizes line lengths), and <code>text_wrap_pretty</code> (Knuth–Plass, minimizes ragged lines).
+  <code>text_wrap_none</code>, the default, doesn't wrap.
+  Words longer than the available width are broken with a hyphen.
+  A wrapping <code>Text</code>'s minimum size is its widest word, so wrapping <code>Text</code>s side by side
+  in a row shrink to share it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/330">#330</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <a href="../rich-text/markdown/"><code>markdown_document</code></a>, a component that renders a Markdown document
+  (GitHub Flavored Markdown with its task lists, alerts, footnotes, bare URLs and math, and YAML front matter),
+  styled by a <code>MarkdownStyles</code> with a field for each kind of block and span.
+  It's a <code>memo</code> component, which parses its document again only when its arguments change,
+  and <code>markdown</code>, the function it calls, returns the document as a <code>Div</code> of elements.
+  Links are hyperlinks, and fenced code blocks and front matter are highlighted.
+  Code blocks and tables too wide for the space they're given
+  <a href="../rich-text/markdown/#wide-code-and-tables">scroll sideways</a> with the wheel, as GitHub's styles scroll them,
+  and a table wraps its cells as narrow as their words allow before it scrolls.
+  <code>keeps_line_breaks=True</code> keeps each line break inside a paragraph, as GitHub's comments and chat apps do.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/330">#330</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>
+  Added <a href="../rich-text/syntax-highlighting/">syntax highlighting</a> with Pygments:
+  <code>highlight</code> returns code as styled chunks, <code>code_style</code> its theme's background and text color,
+  and <code>code_block</code> a <code>Text</code> of the highlighted code on that background.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/443">#443</a>
+  Added <a href="../rich-text/hyperlinks/">hyperlinks</a>: <code>CellStyle</code>'s <code>link</code> makes a <code>Chunk</code> or <code>Text</code> a hyperlink
+  that the terminal opens when it's clicked, and the <code>text_link(uri)</code> utility sets it, or with <code>None</code> unsets it.
+  A link must be printable ASCII, or <code>CellStyle</code> raises <code>ValueError</code>.</p>
+</li>
+</ul>
+<h4 id="headless-components-and-widgets">Headless components and widgets</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/391">#391</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <a href="../headless/">headless components</a> in <code>counterweight.headless</code>,
+  hooks that give a component a common control's behavior and leave drawing it to the component,
+  starting with <a href="../headless/use_text_input/"><code>use_text_input</code></a>, which edits one line of text.
+  The caller owns the value and passes its setter; the hook owns the cursor and makes the component focusable.
+  It returns the value split around the cursor, an <code>on_input</code> handler for Readline's editing keys and pastes,
+  an <code>on_press</code> handler that puts the cursor where a press lands and focuses the field,
+  as a click in a browser's <code>&lt;input&gt;</code> does,
+  and a <code>cursor_cell</code> element handle that its handler scrolls into view with each edit,
+  so a value wider than its box scrolls to keep the cursor in view.
+  <code>counterweight.widgets.text_input</code> is a bordered box built on it, with a placeholder.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <a href="../headless/use_text_area/"><code>use_text_area</code></a>, which edits text that wraps onto rows.
+  It wraps the value itself, at the width the caller gives it,
+  and returns the rows split around the cursor, so Up and Down move between the rows on screen, keeping their column,
+  and Home, End, Ctrl+U and Ctrl+K act on the cursor's row.
+  Ctrl+J and Alt+Enter insert a line break, and so does Enter with <code>enter_inserts_newline=True</code>;
+  otherwise Enter bubbles, as for a form or a chat that submits on it.
+  Its <code>on_press</code> handler puts the cursor where a press lands, as for <code>use_text_input</code>,
+  and its <code>cursor_row</code> element handle, which its handler scrolls into view with each edit,
+  keeps the cursor in view in a scroll container.
+  <code>counterweight.widgets.text_area</code> is a bordered box built on it, which wraps at its own width
+  and grows to fit its rows up to a <code>max_height</code> in its style, past which it scrolls.
+  Both hooks take Readline's Alt+B, Alt+F, Alt+D and Alt+Backspace,
+  with Alt+Left, Alt+Right and Alt+Delete, to move and delete by word.
+  The <a href="https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py">chat</a> example
+  sends Markdown messages from a <code>text_area</code> to a transcript that sticks to its end as replies stream in.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <a href="../headless/use_scroll_area/"><code>use_scroll_area</code></a>, which scrolls a box with the keys, the wheel and controls,
+  as Radix UI's ScrollArea does for React.
+  It makes the component focusable, as browsers make a scroll container focusable, so Tab reaches it,
+  and its handler scrolls for the arrows, PageUp, PageDown, Space, Home and End, and for the wheel,
+  passing an event on once the area reaches an end,
+  and focuses the area for a press nothing inside it claims.
+  It returns the style that makes the element that scrolls a scroll container on its <code>axis</code> (<code>"x"</code>, <code>"y"</code> or <code>"both"</code>),
+  clipping the other axis and sticking to the end with <code>stick_to_end</code>, to merge after any constraint utility,
+  a <code>viewport</code> element handle that a parent can pass in to scroll the area from outside,
+  its <code>scroll</code>, <code>is_at_start</code> and <code>is_at_end</code>, and <code>to_start</code> and <code>to_end</code> controls, as for a "jump to latest" button.
+  The element that scrolls can be inside the one that's focused, with a title or a button beside it.
+  <code>counterweight.widgets.scroll_area</code> is a bordered box built on it, whose border shows focus,
+  styled by a <code>ScrollAreaStyles</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  Added <code>counterweight.widgets.TextFieldStyles</code>, which the <code>text_input</code> and <code>text_area</code> widgets take as <code>styles</code>,
+  for their box while unfocused, focused and unfocusable, their cursor, and their placeholder.
+  A widget's <code>style</code> merges under the focused and unfocusable styles, so a custom border color doesn't hide which field is focused.</p>
+</li>
+</ul>
+<h4 id="canvas-and-terminals">Canvas and terminals</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added the <a href="../elements/canvas/"><code>Canvas</code></a> element, a leaf whose content box its painter draws cell by cell,
+  sized as an <code>&lt;img&gt;</code> is, from its painter's natural size and aspect ratio.
+  A painter is any object with a <code>natural_size</code>, <code>keeps_aspect_ratio</code> and <code>draw(width, height)</code>,
+  which returns rows of styled graphemes whose unset styles come from the canvas;
+  a canvas draws again only when its painter isn't equal to the last one or its box changes size.
+  <code>counterweight.painters</code> holds <code>Pixels</code>, a picture as RGBA bytes,
+  which <code>Pixels.from_image</code> makes from an image decoded by <a href="https://pillow.readthedocs.io/">Pillow</a>,
+  and <code>HalfBlocks</code>, a painter that draws a <code>Pixels</code> two pixels to a cell with <code>▀</code>,
+  scaling and placing it as CSS's <code>object-fit</code> and <code>object-position</code> do,
+  and whose <code>pixels_at</code> finds the pixels a cell shows, for mouse input.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/430">#430</a>
+  Added <code>HalfBlockGradient</code>, a canvas painter that fills its canvas with a gradient two pixels to a cell,
+  and <code>Pixels.from_gradient</code>, a picture of one.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/444">#444</a>
+  Added <a href="../elements/canvas/#drawing-a-screenshot"><code>Paint.as_painter</code></a>, a <code>Canvas</code> painter, a <code>PaintView</code>,
+  that draws a region of a paint, such as a screenshot's frame, as it was when it was made.
+  <code>Paint.cells_in</code> takes a region's cells row by row, as a value, to rearrange or mix with another picture's,
+  and <code>counterweight.paint.rows_of</code> turns cells back into a painter's rows,
+  drawing either half of a wide character whose other half isn't beside it as a space, as a terminal does.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added <code>counterweight.emulator</code>, a terminal emulator
+  (<a href="https://ghostty.org">libghostty-vt</a>, through <a href="https://github.com/AnswerDotAI/pyghostty">pyghostty</a>)
+  that turns the bytes a program writes into what its terminal shows.
+  An <code>Emulator</code> is fed bytes, answers the program's queries through <code>on_reply</code>, keeps a <code>scrollback</code>,
+  and snapshots into immutable <code>Screen</code> values:
+  rows of styled graphemes, the cursor, the title, and the modes that change how the program's input is encoded.
+  <code>counterweight.painters.ScreenView</code> is the <code>Canvas</code> painter that draws a <code>Screen</code>.
+  A program's palette colors stay palette entries, so they follow the user's theme.
+  Counterweight imports libghostty's bindings only when an app emulates a terminal,
+  so an app that doesn't starts without them.
+  See <a href="../terminals/emulators/">Emulators and Pseudo-Terminals</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Added <code>counterweight.pseudoterminal</code>, which runs a program on a pseudo-terminal, as a terminal window does,
+  and hands back the bytes it writes, standard output and standard error together.
+  <code>run_pty</code> runs one until it exits, returning <code>Exited</code> with its status, <code>FailedToStart</code> with the reason,
+  or <code>TimedOut</code> if it outran its <code>timeout</code>, and hands out a <code>PtyConnection</code> that writes to the program and resizes its terminal.
+  <code>use_pty</code> runs one while its component is mounted, starting it once its size is positive,
+  so a terminal sized from <code>use_rects</code> starts at its real size,
+  and starting it again when its <code>argv</code>, <code>env</code> or <code>cwd</code> change.
+  Once the program exits, or it's cancelled, its whole process group is hung up as closing a terminal window does,
+  with <code>SIGHUP</code>, then <code>SIGTERM</code> and <code>SIGKILL</code> a <code>hangup_grace</code> apart,
+  so nothing it started outlives it; <code>use_pty</code> does this in the background, so it doesn't hold up rendering.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Added <a href="../terminals/commands/">one-shot commands</a> in <code>counterweight.commands</code>:
+  running a program that's expected to exit, and showing everything it printed, colors and all,
+  as a terminal would have shown it.
+  <code>use_command</code> returns a <code>Command</code>, whose <code>run(argv)</code> starts a program on a pseudo-terminal <code>columns</code> wide
+  (waiting until that's positive, so it can come from <code>use_rects</code>) and <code>rows</code> tall, in <code>cwd</code>,
+  with standard input on <code>/dev/null</code> and <code>PAGER</code> and <code>GIT_PAGER</code> set to <code>cat</code>,
+  whose <code>cancel</code> hangs it up, and whose <code>latest</code> is a <code>CommandRun</code> value
+  whose output updates at most once a frame while the program runs,
+  and whose outcome is <code>Starting</code>, <code>Running</code>, <code>Exited</code>, <code>FailedToStart</code>, <code>Cancelled</code> or <code>TimedOut</code>.
+  A run's output is a <code>counterweight.painters.Transcript</code>, a <code>Canvas</code> painter as wide as the run's terminal
+  and as tall as the lines it printed, keeping the last <code>max_lines</code>,
+  and <code>Transcript.of</code> builds one from output recorded ahead of time.
+  <code>command_output</code> shows a run in a <code>scroll_area</code> that follows its end, with its outcome beneath.
+  The <a href="https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/slides.py">slides</a> example
+  runs a command on each slide when it's shown.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Added <a href="../terminals/embedding/">embedded terminals</a>: running an interactive program, such as a shell or an editor,
+  in a box that shows its screen and sends it the input the box receives, as a multiplexer's pane does.
+  <code>counterweight.headless.use_terminal</code> runs one on a pseudo-terminal while its component is mounted,
+  emulates its terminal, snapshotting it at most once a frame, and makes the component focusable,
+  returning an <code>EmbeddedTerminal</code>: the <code>Screen</code>, a <code>ScreenView</code> painter that draws the cursor while focused,
+  the program's status, a <code>write</code> that sends it bytes,
+  and an <code>on_input</code> handler for the <code>Canvas</code> the component draws it in.
+  While focused, the handler sends the program every key press and paste, Ctrl+C and Ctrl+Z included,
+  and the mouse events it asked for,
+  and a program that asked gets focus events as the component gains and loses focus.
+  A handler put before it with <code>first</code> takes keys first, as a prefix key does,
+  and <code>skips</code> names keys the program isn't sent, which bubble up to the app's handlers instead.
+  <code>counterweight.widgets.terminal</code> is a bordered box built on it, sized by its <code>style</code>,
+  whose <code>intercept</code> handler sees each event before the program does.
+  The <a href="https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/multiplexer.py">multiplexer</a> example
+  runs shells side by side with direct hotkeys, as zellij does, showing them along the bottom,
+  and closes a pane when its shell exits.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Added <a href="../terminals/programs/">running programs on the app's terminal</a>, as <code>git commit</code> runs an editor.
+  <code>Suspend.to_program</code> suspends the app, runs a program on the app's <code>input_stream</code> and <code>output_stream</code>
+  until it exits, with the app's environment and <code>env</code> (or only <code>env</code> with <code>clear_env</code>) in <code>cwd</code>,
+  and calls <code>on_exit</code> with <code>Exited</code> or <code>FailedToStart</code>.
+  While it runs, the app swallows <code>SIGINT</code> and <code>SIGQUIT</code>, as POSIX's <code>system()</code> does,
+  so Ctrl+C in a pager reaches the pager without quitting the app.
+  <code>Suspend.to_edit_file</code> opens a file in the user's editor, <code>$VISUAL</code>, then <code>$EDITOR</code>, then <code>vi</code>,
+  and calls <code>on_exit</code> with how the editor exited.
+  <code>Suspend.to_edit_text</code> edits a string the same way, through a file whose name sets the editor's highlighting,
+  and calls <code>on_edit</code> with <code>Edited(text)</code>, or with how the editor failed, so vim's <code>:cq</code> abandons the edit.
+  <code>counterweight.programs</code> holds the functions they run,
+  <code>run_program</code>, <code>edit_file</code>, <code>edit_text</code> and <code>preferred_editor</code>.</p>
+</li>
+</ul>
+<h4 id="testing-and-recording">Testing and recording</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/436">#436</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/444">#444</a>
+  Added the autopilot steps <a href="../autopilot/#waiting-for-real-work"><code>Wait</code></a>, which holds the autopilot back
+  for a duration of real time, and <code>WaitFor</code>, which holds it back until a condition is true of the frame on screen,
+  raising <code>AutopilotTimedOut</code> after its timeout,
+  while the app keeps handling events and rendering, so it can wait on work like a subprocess.
+  A <code>FrozenClock</code> runs in real time while the autopilot waits,
+  so a recording can show real work at its real pace between steps that <code>AdvanceClock</code> paces.
+  <code>typed(text)</code> gives the key presses that type some text, one per grapheme cluster,
+  <code>showing(text)</code> waits until some text is on screen,
+  <code>advance(by)</code> moves the clock on a frame of the animation hooks at a time, so an animation plays out,
+  and <code>paced(steps, pause)</code> puts a step before each of some steps, such as an <code>AdvanceClock</code> to pace a recording.
+  They give plain lists of steps, to combine with each other and with <code>itertools</code> and <code>more-itertools</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/436">#436</a>
+  Added <a href="../autopilot/#recording">recording</a>: <code>app</code> takes a <code>Recording</code>, and writes what the app draws,
+  with its timing, to an <a href="https://docs.asciinema.org/manual/asciicast/v3/">asciicast v3</a> file
+  that asciinema-player and <code>asciinema play</code> play back, whether it's headless or on a terminal.
+  Each frame is recorded as the cells it changed, timed by the app's clock,
+  so with a <code>FrozenClock</code> an autopilot's <code>AdvanceClock</code>s are the recording's timing,
+  and it comes out the same on every run.
+  It records the screen's size when it changes, and how the app exited,
+  and cuts the time the app spends suspended out, with a <code>suspended</code> marker where the cut is.
+  A <code>Recording</code> also takes a <code>title</code>, an <code>idle_time_limit</code>, and a <code>Theme</code> for the colors the app leaves to the terminal.
+  <code>Recording(input=True)</code> records the input the app handles too; it's off by default, since it records everything typed.
+  The <a href="../input-handling/controls/"><code>Marker</code></a> control marks a point in the recording that players show as a chapter.</p>
+</li>
+</ul>
+<h4 id="examples-and-documentation">Examples and documentation</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Counterweight ships with its <a href="../examples/">examples</a>: a few complete apps, such as a chat, a Markdown viewer,
+  a terminal multiplexer and Wordle, and the snippets the docs show, each of which runs on its own.
+  <code>counterweight examples list</code> lists them, <code>run</code> runs one, <code>show</code> prints its source, highlighted on a terminal,
+  and <code>copy</code> writes a file of your own that runs it, to start from.
+  <code>counterweight examples gallery</code> browses them all, with each one's description and source,
+  and runs the one selected in place.
+  <code>counterweight.examples</code> is importable, but not part of the public API.</p>
+</li>
+<li>
+<p>Showed every hook, element, input handling page, style page and terminal feature
+  with runnable examples, screenshots and recordings, each screenshot with a copyable plain-text twin,
+  and added a quick start and a showcase of the example apps to the <a href="../">home page</a>.</p>
+</li>
+<li>
+<p>Documented <a href="../app/"><code>app</code></a> and what each of its parameters is for on a page of its own,
+  and gave every public name a docstring and a place in the API reference of the page that covers it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  Added a <a href="../layout/">Layout</a> section to the documentation:
+  a guide to choosing between flexbox and grid,
+  and pages on sizing, splitting space, alignment, spacing and borders, layering, clipping and scrolling.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/395">#395</a>
+  Documented every style utility on the <a href="../styles/utilities/">utilities page</a>,
+  grouped by family: what each constant sets, each function's signature,
+  and the color palette.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>
+  Documented how to find where a frame's time goes, which components a frame re-runs,
+  and how to skip the rest with <code>memo=True</code> and <code>use_memo</code>, with their failure modes,
+  in <a href="../performance/">Performance</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  Documented how Counterweight compares with Textual, Ink, OpenTUI, Bubble Tea, Ratatui and iocraft,
+  and what it doesn't do, in <a href="../ecosystem/">Ecosystem</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/436">#436</a>
+  Documented driving an app with an autopilot and recording it, in <a href="../autopilot/">Autopilot and Recording</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  Documented how components keep their state across renders, how to use keys to move or reset that state,
+  and that a component must call the same hooks in the same order on every render,
+  with how to move a hook that is only sometimes needed into a child component.</p>
+</li>
+<li>
+<p>Documented what <a href="../hooks/use_ref/"><code>use_ref</code></a> is for,
+  and why a component shouldn't read or write a ref while rendering.</p>
+</li>
+<li>
+<p>Added cookbook recipes for <a href="../cookbook/draggable-components/">draggable components</a> that stay inside their parent,
+  a tmux-style <a href="../cookbook/prefix-keys/">prefix key</a>, <a href="../cookbook/spinners/">spinners</a>,
+  <a href="../cookbook/sortable-tables/">sortable tables</a>, and <a href="../cookbook/autocomplete/">autocomplete</a>.</p>
+</li>
+</ul>
+<h3 id="changed">Changed</h3>
+<h4 id="modules">Modules</h4>
+<ul>
+<li><strong>Breaking:</strong> the framework's internal modules start with an underscore,
+  such as <code>counterweight._app</code>, <code>counterweight._layout</code>, <code>counterweight.hooks._hooks</code> and <code>counterweight.styles._styles</code>,
+  and every public module lists its public names in <code>__all__</code>, so each public name has exactly one place to import it from.
+  Import <code>app</code> from <code>counterweight</code> (<code>from counterweight import app</code>), where <code>DEFAULT_UNCLAIMED_KEYS</code> and <code>__version__</code> are too,
+  and import hooks and styles from their packages, such as <code>from counterweight.styles import Style</code>.
+  <code>counterweight.hooks</code> no longer re-exports <code>Rects</code>, which is in <code>counterweight.geometry</code>.</li>
+</ul>
+<h4 id="app-and-components">App and components</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/271">#271</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/401">#401</a>
+  <strong>Breaking:</strong> <code>app</code> takes the root component already called, as <code>app(root())</code> rather than <code>app(root)</code>,
+  so a root component can take arguments like any other: <code>app(root(Path(sys.argv[1])))</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>
+  <strong>Breaking:</strong> a render calls only the components whose state changed and the components they return,
+  instead of every component, and keeps the previous render's output for the rest,
+  so a component whose output depends on anything but its arguments and hooks goes stale.
+  <code>check_purity</code> catches such a component in tests.
+  An effect with <code>deps=None</code> runs after every render of its own component,
+  rather than after every render of the app.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>
+  <strong>Breaking:</strong> an error raised while the app runs, in a component, a handler or an effect,
+  propagates out of <code>app</code> as itself rather than wrapped in an <code>ExceptionGroup</code>,
+  after the terminal is restored, so its traceback ends at the line that raised it
+  and callers can catch it by its own type.
+  Errors raised at the same moment from more than one effect are raised together in an <code>ExceptionGroup</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/408">#408</a>
+  Cancelling the task running <code>app</code> raises <code>CancelledError</code> out of it once the terminal is restored,
+  as asyncio expects, so <code>asyncio.timeout</code> and <code>wait_for</code> around an app can tell it was cancelled.
+  Previously <code>app</code> returned as if the app had quit.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  <strong>Breaking:</strong> a component that calls a different number of hooks than on its previous render
+  raises <code>counterweight.hooks.InconsistentHookExecution</code>.
+  Previously calling more or fewer hooks passed silently, and a skipped <code>use_effect</code> kept running.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  <strong>Breaking:</strong> component keys are strings only, so <code>with_key</code> no longer accepts an <code>int</code>:
+  convert numeric ids with <code>str()</code>.
+  Keyed sibling components that share a key raise <code>counterweight.components.DuplicateKey</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/315">#315</a>
+  <strong>Breaking:</strong> <code>Style</code>, <code>CellStyle</code>, <code>Div</code>, <code>Text</code>, <code>Chunk</code> and the hooks' types are frozen dataclasses
+  rather than Pydantic models (<code>Ref</code> is a mutable one), so they don't validate their fields at runtime
+  and have none of Pydantic's methods, such as <code>model_copy</code>.
+  <code>Div</code> and <code>Text</code> no longer have a <code>type</code> field, and <code>counterweight.types</code> is removed.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  <strong>Breaking:</strong> a <code>Suspend</code> handler takes one argument, the terminal the app handed back, as <code>TerminalStreams</code>,
+  so it can run a program on the terminal the app draws on even when that isn't standard output.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  The setter returned by <code>use_state</code> is the same object on every render of a component,
+  so including it in an effect's <code>deps</code> doesn't rerun the effect each render.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/394">#394</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  <a href="../hooks/use_rects/"><code>use_rects</code></a> takes an optional <code>ElementHandle</code>, and reports the rectangles of the element
+  with that handle rather than the calling component's own, as a React component measures an element through a ref,
+  so a component can measure an element a child component draws.
+  A component that calls it renders again as soon as any of the rectangles it read move.
+  Previously it rendered again only once something else started a render,
+  so a component that mounted after the first frame read empty rectangles until then.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/444">#444</a>
+  <strong>Breaking:</strong> counterweight logs through the standard library's <code>logging</code>, and doesn't configure structlog.
+  While an app runs, its log records
+  (<code>logging.getLogger(__name__).debug("...", extra={...})</code>) are written to the devlog off the render loop
+  by <a href="https://www.without.help/without-logging/">without-logging</a>:
+  by default, counterweight's and the app's own at every level (the app's being the top-level package
+  of the module that defines its root component), and every other logger's from <code>INFO</code> up,
+  so a library that logs at <code>DEBUG</code> on a hot path costs nothing unless an app asks for its records.
+  <code>app</code>'s <code>log_levels</code> sets levels by logger name, as <code>logging.config</code> does, over those defaults.
+  The devlog is a single JSON-lines file, which <code>counterweight devlog</code> renders for reading
+  (<code>--json</code> prints the raw lines, and <code>--last N</code> the last <code>N</code> messages).
+  An app that runs while another has the devlog open, such as one run headless in another's handler,
+  writes into that devlog, at the levels the other app set, rather than truncating it.
+  Its messages don't carry <code>elapsed_ns</code> timings:
+  to see where a frame's time goes, profile the app with Python's sampling profiler
+  (<code>python -m profiling.sampling run app.py</code>).</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/406">#406</a>
+  <strong>Breaking:</strong> the <code>counterweight</code> CLI is built on <a href="https://www.without.help/without-cli/">without-cli</a>,
+  and shell completion (<code>--install-completion</code>) is gone.
+  <code>counterweight</code> with no command prints a short usage error instead of the full help,
+  and <code>counterweight --version</code> prints the version as <code>counterweight version</code> does.</p>
+</li>
+</ul>
+<h4 id="input-and-focus">Input and focus</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  <strong>Breaking:</strong> the app reads the terminal raw, as tmux does,
+  so Ctrl+C, Ctrl+Z, Ctrl+\, Ctrl+S and Ctrl+Q reach it as key presses rather than the terminal acting on them,
+  and Enter, a carriage return, is <code>Key.Enter</code> while Ctrl+J, a line feed, is <code>Key.ControlJ</code>, where both were <code>Key.Enter</code>.
+  <code>app</code> takes <code>unclaimed_keys</code>, what a key press does when no handler on its path claims it,
+  as a browser takes a key's default action unless a listener prevents it.
+  <code>DEFAULT_UNCLAIMED_KEYS</code> gives Ctrl+C <code>Quit</code> and Ctrl+Z <code>Suspend.to_shell()</code>,
+  which suspends the app as a shell job until the shell resumes it with <code>fg</code>,
+  stopping its whole process group as the terminal's Ctrl+Z does, so <code>uv run</code> and the like stop with it.
+  Pass <code>{}</code> for no defaults, or merge onto them to change some.
+  A handler that claims Ctrl+C keeps it, such as to cancel a command.
+  See <a href="../input-handling/events/#keys-the-terminal-would-act-on">Keys the terminal would act on</a>.
+  Previously Ctrl+Z and Ctrl+\ stopped and killed the app without handing the terminal back,
+  and Ctrl+S froze its output until Ctrl+Q.
+  An interrupt sent from outside, with <code>kill -INT</code>, quits the app and <code>app</code> returns;
+  a second, before a stuck app has quit, goes to the interrupt handler <code>app</code> replaced,
+  which for <code>asyncio.run</code> raises <code>KeyboardInterrupt</code>.
+  An app whose render loop is stuck can't be quit with Ctrl+C, since nothing reads it.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  <strong>Breaking:</strong> a key press goes to the focused element, or to the root component's element when nothing is focused,
+  then bubbles through its ancestors until a handler returns something other than <code>None</code>,
+  and a key press nothing claims gets its <code>unclaimed_keys</code> default.
+  Previously every handler received every key press, whatever the others returned.
+  A component that handles keys below the root calls <code>use_focus</code>, with <code>auto_focus=True</code> to have keys from the start,
+  and puts its handler on the element it returns;
+  one that should act on keys wherever focus is moves its handler to the root component's element.
+  Tab has no built-in meaning: put <code>tab_focus</code> on the root for Tab navigation.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  <strong>Breaking:</strong> a mouse event goes to one target, the element drawn on top at the pointer,
+  then bubbles through its ancestors until a handler returns something other than <code>None</code>.
+  A press runs from the first button going down to the last coming up,
+  and is captured by the element whose handler stops its first <code>MouseDown</code>:
+  its moves, and every button's presses and releases while it lasts, go to that element alone,
+  wherever the pointer is, and reach no handler if nothing stopped the first <code>MouseDown</code>.
+  Previously every element under the pointer's current or previous position received every mouse event,
+  so a drag that outran a render lost its element.
+  A handler that acts on a release or a drag returns <code>()</code> for the <code>MouseDown</code>,
+  or uses <code>on_click</code>, and one that acts on any mouse event returns <code>()</code> to keep its ancestors from acting on it too.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/415">#415</a>
+  <strong>Breaking:</strong> <code>Div</code> and <code>Text</code> take one <code>on_input</code> handler in place of <code>on_key</code> and <code>on_mouse</code>.
+  It receives key presses, pastes and mouse events, so one <code>match</code> case can handle <code>Down</code> and the scroll wheel alike,
+  and a <code>Receiver</code> describing the element, whose <code>rects</code> and <code>relative</code> locate a mouse event inside it,
+  and whose <code>is_target</code> tells the event's target from an ancestor it bubbled to.
+  A handler that takes only the event, or annotates it as <code>KeyPressed</code> or <code>MouseEvent</code>, fails to type-check;
+  annotate it as <code>InputEvent</code> and match on the event's class.
+  <code>Rects</code> lives in <code>counterweight.geometry</code>, and <code>counterweight.hooks</code> still exports it;
+  it's keyword-only, and has <code>clip</code> and <code>visible</code> fields.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/391">#391</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  <strong>Breaking:</strong> the app turns on the terminal's bracketed paste mode,
+  so pasted text arrives as one <a href="../input-handling/events/#handling-pastes"><code>Pasted</code></a> event holding all of it,
+  routed to the focused element like a key press, with its line breaks as <code>"\n"</code>.
+  Previously it arrived as key presses, and its line breaks as Enter.
+  <code>counterweight check-input</code> shows pastes too.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  <strong>Breaking:</strong> keys pressed with Alt arrive as one key press:
+  <code>Key.AltEnter</code>, <code>Key.AltBackspace</code>, <code>Key.ControlAltA</code> and the other Ctrl+Alt letters,
+  <code>Key.AltUp</code> and the other navigation keys, <code>Key.AltF1</code> through <code>Key.AltF12</code>,
+  and <code>"alt+"</code> before the text for text, such as <code>"alt+b"</code>.
+  Previously Alt with text, Enter or Backspace arrived as Escape and then the key,
+  and Alt with an arrow, navigation or function key was dropped.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/318">#318</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  <strong>Breaking:</strong> <code>Key.Space</code> is <code>" "</code> rather than <code>"space"</code>,
+  and <code>Key.ControlSpace</code> is <code>"ctrl+space"</code>, like every other key, rather than <code>"ctrl-space"</code>.
+  Code that matched on the string value must be updated;
+  matching on the enum member (<code>Key.Space</code>) is unaffected.</p>
+</li>
+</ul>
+<h4 id="layout">Layout</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  <strong>Breaking:</strong> layout is <a href="https://github.com/DioxusLabs/taffy">taffy</a>'s flexbox and grid,
+  through <a href="https://github.com/JoshKarpel/waxy">waxy</a>, with CSS's semantics.
+  <code>Style.layout</code> is a <code>waxy.Style</code>, which the layout utilities set.
+  Elements size to their content and don't grow to fill their parent unless given <code>grow(n)</code>,
+  where in <code>0.0.9</code> every element took a share of its parent's spare space, with a <code>weight</code> of 1.
+  An app keeps one layout tree for its lifetime, so taffy reuses the layout of every element
+  whose style, text and children are unchanged, and a <code>Text</code> is wrapped at most once per width it is measured at.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>
+  <strong>Breaking:</strong> the spacing utilities are functions rather than one constant per size:
+  <code>pad(n)</code>, <code>pad_x(n)</code>, <code>pad_y(n)</code>, <code>pad_top(n)</code> and the other sides,
+  <code>margin(n)</code>, <code>margin_x(n)</code>, <code>margin_y(n)</code>, <code>margin_top(n)</code> and the other sides,
+  <code>gap(n)</code>, <code>gap_width(n)</code> and <code>gap_height(n)</code> for <code>gap_children_N</code>,
+  <code>grow(n)</code> for <code>weight_N</code>, and <code>border_contract(n)</code> for <code>border_contract_N</code>.
+  Write <code>pad(1)</code> where you wrote <code>pad_1</code>.
+  <code>weight_none</code> and <code>align_self_none</code> are removed.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>
+  <strong>Breaking:</strong> <code>absolute(x, y)</code> and <code>relative(x, y)</code> are <code>position_absolute</code> and <code>position_relative</code>,
+  with offsets set by <code>inset_left(n)</code>, <code>inset_top(n)</code>, <code>inset_right(n)</code> and <code>inset_bottom(n)</code>.
+  <code>fixed(x, y)</code> is removed, since taffy has no fixed positioning.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  <strong>Breaking:</strong> borders work as they do in Tailwind.
+  A border side is drawn where its width in <code>Style.layout</code> is 1, and <code>border_kind</code> only chooses the characters.
+  <code>border_kind</code> defaults to <code>BorderKind.Light</code>, so the new <code>border</code> utility alone draws a light border,
+  and the <code>border_&lt;kind&gt;</code> utilities don't reserve space or draw anything on their own:
+  write <code>border | border_heavy</code> where you wrote <code>border_heavy</code>.
+  <code>border_top</code>, <code>border_bottom</code>, <code>border_left</code> and <code>border_right</code> set one side, the new <code>border_x</code> and <code>border_y</code>
+  set a pair, and each has a new <code>_0</code> form (<code>border_0</code>, <code>border_top_0</code>, ...) that clears its sides,
+  so sides compose: <code>border_top | border_left</code> draws both.
+  A <code>border_kind</code> of <code>None</code> (<code>border_none</code>) removes the border along with the space reserved for it.
+  A border width in <code>Style.layout</code> other than <code>Length(0)</code> or <code>Length(1)</code> raises <code>ValueError</code>.
+  The edge combinations such as <code>border_top_left</code> and <code>border_top_bottom</code> are removed:
+  use <code>border</code>, or compose sides as in <code>border_top | border_left</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  The <code>*_center</code> and <code>*_end</code> alignment utilities
+  (<code>justify_children_*</code>, <code>align_children_*</code>, <code>align_self_*</code>, <code>justify_items_*</code>, <code>justify_self_*</code>)
+  use CSS's safe alignment: content too large for its container starts at the start edge
+  instead of overflowing past it.
+  Each has an <code>*_unsafe</code> counterpart, such as <code>justify_children_center_unsafe</code>,
+  that centers or end-aligns overflowing content anyway.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/315">#315</a>
+  <strong>Breaking:</strong> <code>counterweight.geometry.Rect</code> and <code>Edge</code> are removed, and <code>Rects</code> holds <code>Region</code>s.
+  A <code>Region</code> is keyword-only (<code>left</code>, <code>top</code>, <code>right</code>, <code>bottom</code>), its <code>right</code> and <code>bottom</code> are exclusive
+  (the first column and row outside it), so <code>width</code> and <code>height</code> count cells,
+  and its corner properties (such as <code>top_left</code>) are <code>Position</code>s.
+  A <code>Position</code> is a frozen dataclass rather than a <code>NamedTuple</code>, so it doesn't unpack or index like a tuple.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/416">#416</a>
+  <strong>Breaking:</strong> a <code>Text</code> overflows its box, as CSS's text does:
+  a line wider than its content box runs past it, and rows beyond its height draw below it,
+  until an ancestor whose overflow is <code>Hidden</code>, <code>Clip</code> or <code>Scroll</code> cuts them off.
+  Previously a <code>Text</code> cut its lines off at its content box.
+  A <code>Text</code> that should cut its text off takes <code>overflow_hidden</code>, which cuts at its padding box,
+  as the constraint utilities set.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  <strong>Breaking:</strong> <code>z</code> follows CSS's stacking contexts.
+  An element that sets <code>z</code>, <code>z(0)</code> included, paints with its descendants as one layer at its <code>z</code>,
+  and its descendants' <code>z</code> orders them only among each other,
+  while an element that sets no <code>z</code> leaves its descendants to be layered alongside it.
+  Children always paint over their parent, and a negative <code>z</code> paints beneath the rest of its stacking context
+  but over the element that forms it.
+  Previously every element was sorted by <code>z</code> in one flat order, where an element that set none had <code>z</code> 0,
+  so an element with a higher <code>z</code> than its children painted over them,
+  and an element with a negative <code>z</code> painted beneath every element, its own parent included.</p>
+</li>
+</ul>
+<h4 id="styles_1">Styles</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  <strong>Breaking:</strong> every field of a <code>CellStyle</code>, and of a <code>Style</code> except <code>layout</code>, <code>border_style</code> and <code>text_style</code>,
+  starts out as the <code>counterweight.styles.UNSET</code> sentinel rather than its default value,
+  so reading a field of a style you built can return <code>UNSET</code>;
+  <code>border_style</code> and <code>text_style</code> start out as empty <code>CellStyle</code>s.
+  Merging with <code>|</code> takes the right side's value wherever it's set, even to the default,
+  and unset fields take their values from <code>counterweight.styles.STYLE_DEFAULTS</code> and <code>CELL_STYLE_DEFAULTS</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/443">#443</a>
+  <strong>Breaking:</strong> the color utilities are functions rather than one constant per color and shade:
+  <code>text_color</code>, <code>text_bg</code>, <code>border_color</code>, <code>border_bg</code>, <code>margin_color</code> and <code>padding_color</code>, and the new <code>content_color</code>.
+  Write <code>text_color("slate", 500)</code> where you wrote <code>text_slate_500</code>, and <code>border_color("slate", 500)</code> for <code>border_slate_500</code>.
+  Each takes a palette name and shade, or any color:
+  a <code>Color</code>, such as <code>rose_200</code> or <code>Color.from_hex("#fbbf24")</code>, an <code>IndexedColor</code>, <code>TERMINAL_DEFAULT</code>, or a gradient.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/443">#443</a>
+  <strong>Breaking:</strong> <code>from counterweight.styles.utilities import *</code> brings in only the utilities, the palette's colors,
+  and the <code>ColorName</code>, <code>Shade</code> and <code>Side</code> types, not the names the module imports,
+  such as <code>Style</code>, <code>Color</code>, <code>CellStyle</code> and <code>BorderKind</code>.
+  Import those from <code>counterweight.styles</code> instead.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  <strong>Breaking:</strong> an element's margin is painted only where its style sets <code>margin_color</code>,
+  so a margin leaves whatever lies beneath it visible, as on the web.
+  Previously every element that painted anything filled its whole margin box black,
+  so an absolutely positioned box with large margins blanked out its parent.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>
+  <code>Color.from_hex</code> accepts the CSS shorthand <code>#rgb</code> as well as <code>#rrggbb</code>,
+  and raises <code>ValueError</code> for any other number of digits
+  instead of dropping the extra digits of a color like <code>#rrggbbaa</code>.</p>
+</li>
+</ul>
+<h4 id="elements-painting-and-output">Elements, painting and output</h4>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>
+  <strong>Breaking:</strong> a <code>Div</code>'s <code>children</code> is a tuple, and so is a <code>Text</code>'s <code>content</code> when it's chunks,
+  so an element is a value that can be cached and shared without anything changing it afterwards.
+  Pass <code>(a, b)</code> or <code>tuple(...)</code> where you passed a list.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  <strong>Breaking:</strong> a <code>Screenshot</code> handler receives a <code>counterweight.paint.Frame</code>
+  instead of an SVG <code>ElementTree</code>; call <code>frame.svg()</code> or <code>frame.text()</code> to encode it.
+  A frame's <code>paint</code> is a <code>counterweight.paint.Paint</code>, a screen-sized grid of cells:
+  index it with a <code>Position</code> or an <code>(x, y)</code> pair, or read it a row at a time with <code>rows()</code>.
+  <code>Screenshot.to_file</code> chooses the encoding from the path's suffix
+  (<code>.svg</code> for SVG, <code>.txt</code> for text with ANSI escape codes, and <code>ValueError</code> for any other),
+  always indents SVGs, and doesn't take <code>indent</code>.
+  <code>Screenshot.to_stream</code> prints a screenshot as a text grid
+  (with or without ANSI escape codes), useful for debugging layout and in tests.
+  Every <code>Screenshot</code> requested in the same render cycle receives the same frame,
+  where previously only the last one ran.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/398">#398</a>
+  <strong>Breaking:</strong> the painted cell <code>counterweight.paint.P</code> is renamed <code>Cell</code>, and its <code>char</code> is renamed <code>grapheme</code>.
+  It is a frozen dataclass of a grapheme cluster and its resolved style, and doesn't carry its element's <code>z</code>.
+  A cluster two cells wide is followed by a continuation <code>Cell</code> whose <code>grapheme</code> is <code>""</code>.
+  <code>counterweight.elements.CellPaint</code>, a grapheme cluster and its unresolved <code>CellStyle</code>,
+  is renamed <code>StyledGrapheme</code>, its <code>char</code> is renamed <code>grapheme</code>,
+  and its <code>width</code> is the number of cells the cluster takes.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/176">#176</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/410">#410</a>
+  Each frame is written as one <a href="https://github.com/contour-terminal/vt-extensions/blob/master/synchronized-output.md">synchronized update</a>,
+  so terminals that support it show the whole frame at once instead of tearing partway through drawing it,
+  and redrawing the screen after a resize or a suspension doesn't flash it blank first.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/425">#425</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/430">#430</a>
+  Painting and writing a frame costs less.
+  Elements paint straight into one screen-sized grid of cells, a row at a time,
+  an element's text and border are cached wherever it moves on the screen,
+  and a long <code>Text</code> paints only the rows inside its clip.
+  The changed cells are written with one cursor move per run of them,
+  and a style change only where the style changes, sending only the colors when nothing else changes.</p>
+</li>
+</ul>
+<h4 id="dependencies">Dependencies</h4>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/315">#315</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/398">#398</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/406">#406</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/409">#409</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/429">#429</a>
+  Counterweight depends on <a href="https://github.com/JoshKarpel/waxy">waxy</a> for layout,
+  <a href="https://github.com/jquast/wcwidth">wcwidth</a> for text width,
+  markdown-it-py, mdit-py-plugins and Pygments for rich text,
+  <a href="https://github.com/AnswerDotAI/pyghostty">pyghostty</a> for terminal emulation,
+  <a href="https://pillow.readthedocs.io/">Pillow</a> for images,
+  and without-cli, without-logging and without-streams for the CLI and the devlog.
+  It no longer depends on typer (nor, through it, click, rich and shellingham), pydantic, structlog, parsy or cachetools.</li>
+</ul>
+<h3 id="fixed_1">Fixed</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/431">#431</a>
+  An autopilot hands the app each step once the renders the last one caused are painted,
+  and the effects they started have run up to where each first waits on something, as a person's next key press would.
+  Previously effects didn't start until the autopilot ran out of steps, so <code>use_mouse</code> and <code>use_hovered</code>
+  never saw its mouse events.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/444">#444</a>
+  An app run inside another, such as one rendered headless in another's <code>Screenshot</code> handler,
+  doesn't leave the other's state setters sending their updates to it,
+  where they were lost, so the other app never re-rendered for them.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/407">#407</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/409">#409</a>
+  Terminal input is parsed incrementally, so typed text arrives intact:</p>
+</li>
+<li>
+<p>Text beyond ASCII is decoded as UTF-8, one <code>KeyPressed</code> per grapheme cluster (<code>"é"</code>, <code>"日"</code>).
+    Previously it was dropped, along with everything else read alongside it.</p>
+</li>
+<li>An escape sequence Counterweight doesn't recognize (such as Ctrl+digit in some terminals) is skipped.
+    Previously it arrived as an Escape key press followed by its characters,
+    or was dropped with the rest of the read.</li>
+<li>
+<p>An escape sequence or UTF-8 character split between two reads is held over and completed by the next one,
+    and a lone <code>ESC</code> is the Escape key once no more input follows for 50 milliseconds.
+    Previously a split sequence turned into stray key presses, most often during a flood of mouse motion.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/125">#125</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  The mouse wheel is reported as the new <code>MouseScrolledUp</code> and <code>MouseScrolledDown</code> events, as xterm defines them,
+  with Shift, Alt or Control held too, and the horizontal wheel as <code>MouseScrolledLeft</code> and <code>MouseScrolledRight</code>.
+  Previously all of these were reported as presses of buttons 1 to 4,
+  so scrolling, or a sideways trackpad swipe, clicked whatever was under the pointer.
+  Buttons 8 to 11, such as back and forward, are reported by their own numbers
+  rather than as buttons 1 to 4.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/125">#125</a>
+  <code>counterweight check-input</code> works. Previously its input thread crashed at startup.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/402">#402</a>
+  Home, Page Up and Page Down are reported, as the new <code>Key.Home</code>, <code>Key.PageUp</code> and <code>Key.PageDown</code>,
+  and so is every key the <code>Key</code> enum names with Shift, Control, or both,
+  such as <code>Key.ShiftHome</code>, <code>Key.ControlPageDown</code> and <code>Key.ControlF5</code>,
+  with Shift and F1 to F12 reported as F13 to F24, as xterm does.
+  Previously only the arrow keys and Delete were reported with modifiers.
+  Control+Shift+Delete is reported as <code>Key.ControlShiftDelete</code> rather than <code>Key.ControlShiftInsert</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/392">#392</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/398">#398</a>
+  Text is measured, wrapped and painted by grapheme cluster and its display width, as measured by wcwidth,
+  so CJK characters and emoji take two cells and don't push the rest of their line out of place,
+  combining marks and joined emoji (<code>👩‍💻</code>) stay whole,
+  and zero-width characters such as zero-width spaces take no cells.
+  See <a href="../elements/text/#wide-characters">wide characters</a>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/issues/392">#392</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/398">#398</a>
+  Control characters in text other than line breaks, such as tab and escape,
+  are drawn as symbols (<code>␉</code>, <code>␛</code>) rather than written to the terminal, where they ran as commands.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  Calling a <code>use_state</code> setter after its component has unmounted does nothing,
+  instead of updating orphaned state and triggering a render that changes nothing.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  A component replaced by a plain element at the same position is unmounted:
+  its effects are cancelled, and components nested under it start with fresh state.
+  Previously the element inherited the component's hooks, so its effects
+  (including <code>use_mouse</code> listeners) kept running.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  Effects that rerun or unmount in a render are cancelled concurrently,
+  and all of them finish before any effect starts,
+  so an effect's cleanup always finishes before its replacement or a sibling's setup begins.
+  Previously a rerun effect's new task started before the old one was cancelled.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/386">#386</a>
+  Keyed sibling components are matched by key across renders rather than by position,
+  so reordering, inserting, or removing keyed children keeps each one's state and effects.
+  Unkeyed children match the unkeyed child at the same index.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/408">#408</a>
+  <code>app</code> stops reading keys from the terminal before it returns,
+  so input typed afterward reaches whatever runs next.
+  Previously its key-reading thread kept running and consumed that input.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/414">#414</a>
+  SVG screenshots draw text that is bold, dim, italic, underlined or struck through,
+  instead of drawing it plain.</p>
+</li>
+</ul>
+<h3 id="removed">Removed</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/305">#305</a>
+  <strong>Breaking:</strong> the style types <code>Border</code>, <code>BorderEdge</code>, <code>Margin</code>, <code>Padding</code>, <code>Span</code>, <code>Typography</code>,
+  <code>Relative</code>, <code>Absolute</code>, <code>Fixed</code>, <code>Flex</code> and <code>Inset</code> are removed.
+  Sizes, spacing and position live in <code>Style.layout</code>, a <code>waxy.Style</code>, which the layout utilities set,
+  and colors, borders and text settings are fields of <code>Style</code> itself,
+  such as <code>margin_color</code>, <code>border_kind</code>, <code>border_style</code>, <code>text_style</code>, <code>text_justify</code> and <code>text_wrap</code>.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/165">#165</a>,
+  <a href="https://github.com/JoshKarpel/counterweight/pull/385">#385</a>
+  <strong>Breaking:</strong> dropped support for Python <code>3.11</code> through <code>3.14</code>.
+  Python <code>3.15</code> or later is required.</p>
+</li>
+</ul>
+<h2 id="009"><code>0.0.9</code></h2>
+<p>Released <code>2024-02-27</code></p>
+<h3 id="fixed_2">Fixed</h3>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/121">#121</a>
+  A change in effect reconciliation introduced in <code>0.0.8</code> caused a regression in the behavior of <code>use_effect</code>,
+  where if the <code>setup</code> function <code>return</code>ed (i.e., stopped itself),
+  Counterweight would crash when trying to cancel the effect.
+  This now works again.</li>
+</ul>
+<h2 id="008"><code>0.0.8</code></h2>
+<p>Released <code>2024-02-17</code></p>
+<h3 id="changed_1">Changed</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/110">#110</a>
+  Calling a <code>use_state</code> setter with a <code>value</code> equal to the current value of the state
+  no longer emits a <code>SetState</code> event, to avoid triggering unnecessary render cycles.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/111">#111</a>
+  Border healing is now more efficient, especially when there are many non-border characters in the UI.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/112">#112</a>
+  Major, backwards-incompatible changes to how Counterweight handles mouse interactions.
+  The <code>on_mouse_down</code> and <code>on_mouse_up</code> event handlers have been removed;
+  use the new combined <code>on_mouse</code> event handler instead, which receives all mouse events
+  (<a class="autorefs autorefs-internal" title="            counterweight.events.MouseMoved
+
+
+  
+      dataclass
+  " href="../input-handling/events/#counterweight.events.MouseMoved"><code>MouseMoved</code></a>,
+  <a class="autorefs autorefs-internal" title="            counterweight.events.MouseDown
+
+
+  
+      dataclass
+  " href="../input-handling/events/#counterweight.events.MouseDown"><code>MouseDown</code></a>, and
+  <a class="autorefs autorefs-internal" title="            counterweight.events.MouseUp
+
+
+  
+      dataclass
+  " href="../input-handling/events/#counterweight.events.MouseUp"><code>MouseUp</code></a>).
+  The <code>on_hover</code> style attribute on elements has been removed;
+  use the new
+  <a href="../hooks/use_mouse/"><code>use_mouse</code></a>,
+  <a href="../hooks/use_rects/"><code>use_rects</code></a>,
+  and <a href="../hooks/use_hovered/"><code>use_hovered</code></a>
+  hooks instead, and calculate the desired style in your component.
+  The goal of these changes is to provide more flexibility and control over mouse interactions
+  to application authors while minimizing the work that Counterweight needs to do while rendering,
+  at the cost of more complex application code for simple cases like detecting hover state.</p>
+</li>
+</ul>
+<h2 id="007"><code>0.0.7</code></h2>
+<p>Released <code>2024-02-02</code></p>
+<h3 id="changed_2">Changed</h3>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/105">#105</a>
+  <code>Screenshot</code> and <code>Suspend</code> handlers can now be <code>async</code> functions.</li>
+</ul>
+<h2 id="006"><code>0.0.6</code></h2>
+<p>Released <code>2024-01-28</code></p>
+<h3 id="added_2">Added</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/92">#92</a>
+  Added an <code>inset</code> attribute to <code>Absolute</code> that chooses which corner
+  of the parent's context box to use as the origin for the absolute positioning.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/98">#98</a>
+  Added a <code>z</code> attribute to <code>Flex</code> that controls the stacking order of elements.</p>
+</li>
+</ul>
+<h3 id="changed_3">Changed</h3>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/101">#101</a>
+  The <code>initial_value</code> of <a class="autorefs autorefs-internal" title="            counterweight.hooks.use_ref" href="../hooks/use_ref/#counterweight.hooks.use_ref"><code>use_ref</code></a> may now be a <code>Callable[[], T]</code> instead of just a <code>T</code>.</li>
+</ul>
+<h3 id="removed_1">Removed</h3>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/96">#96</a>
+  <code>Chunk</code>s can no longer be created with <code>CellPaint</code>s directly.</li>
+</ul>
+<h2 id="005"><code>0.0.5</code></h2>
+<p>Released <code>2024-01-06</code></p>
+<h3 id="added_3">Added</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/86">#86</a>
+  Added a <code>Suspend</code> control which suspends the Counterweight application while a user-supplied callback function runs.
+  Counterweight will stop controlling the terminal while the callback runs, and will resume when the callback returns.
+  This can be used to run a subprocess that also wants control of the terminal (e.g., a text editor).</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/88">#88</a>
+  <a href="https://github.com/JoshKarpel/counterweight/pull/90">#90</a>
+  Implemented <code>Absolute</code> and <code>Fixed</code>
+  positioning, which allow for precise placement of elements outside the normal layout flow.</p>
+</li>
+</ul>
+<h2 id="004"><code>0.0.4</code></h2>
+<p>Released <code>2023-12-31</code></p>
+<h3 id="fixed_3">Fixed</h3>
+<ul>
+<li><a href="https://github.com/JoshKarpel/counterweight/pull/83">#83</a>
+  Fixed virtual terminal escape code parsing for mouse tracking when the moues coordinates are large (&gt;94 or so).
+  Mouse tracking should now work for any terminal size.
+  Various <code>Key</code> members that aren't currently parseable have been removed to avoid confusion.</li>
+</ul>
+<h2 id="003"><code>0.0.3</code></h2>
+<p>Released <code>2023-12-30</code></p>
+<h3 id="changed_4">Changed</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/71">#71</a>
+  Controls are now a union over different <code>@dataclass</code>es (instead of an <code>Enum</code>) to allow for more flexibility.
+  The <code>Screenshot</code> control now takes a callback function which will be called with the SVG screenshot as an XML tree.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/81">#81</a>
+  The minimum Python version has been raised to <code>3.11.2</code> due to a <a href="https://github.com/python/cpython/issues/100098">bug in CPython <code>3.11.1</code></a></p>
+</li>
+</ul>
+<h2 id="002"><code>0.0.2</code></h2>
+<p>Released <code>2023-12-26</code></p>
+<h3 id="added_4">Added</h3>
+<ul>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/65">#65</a>
+  Added ability to take an SVG "screenshot" by returning <code>Control.Screenshot</code> from an event handler.
+  The screenshot will be saved to the current working directory as <code>screenshot.svg</code>; more options will be added in the future.</p>
+</li>
+<li>
+<p><a href="https://github.com/JoshKarpel/counterweight/pull/66">#66</a>
+  Added "border healing": when border elements for certain border types are adjacent to each other and appear as if they
+  should "join up", but don't because they belong to different elements, they will now be joined up.</p>
+</li>
+</ul>
+<h3 id="changed_5">Changed</h3>
+<ul>
+<li>Various namespaces moved around to make more sense (especially in documentation)
+  and separate concerns better as part of <a href="https://github.com/JoshKarpel/counterweight/pull/68">#68</a>.</li>
+</ul>
+<h2 id="001"><code>0.0.1</code></h2>
+<p>Released <code>2023-12-19</code></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/JoshKarpel/counterweight" target="_blank" rel="noopener" title="Counterweight on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "toc.follow", "content.code.annotate", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../assets/vendor/asciinema-player-3.17.0/asciinema-player.min.js"></script>
+      
+        <script src="../assets/casts.js"></script>
+      
+    
+  </body>
+</html>

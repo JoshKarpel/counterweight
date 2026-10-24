@@ -1,0 +1,6 @@
+╭─ Deploy log ───────────────╮
+│ 5 traffic shifted to 10%   │
+│ 6 error rate nominal       │
+│ 7 traffic shifted to 50%   │
+│ 8 lat ↓ Jump to latest dget│
+╰────────────────────────────╯

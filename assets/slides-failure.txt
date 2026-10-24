@@ -1,0 +1,18 @@
+                                                                                
+  Failures are results too                                                      
+                                                                                
+  A command that exits with a failing status shows it beneath its output.       
+                                                                                
+  $ cat missing.txt                                                             
+                                                                                
+  ╭──────────────────────────────────────────────────────────────────────────╮  
+  │ cat: missing.txt: No such file or directory                              │  
+  │                                                                          │  
+  │                                                                          │  
+  │                                                                          │  
+  │                                                                          │  
+  │                                                                          │  
+  ╰──────────────────────────────────────────────────────────────────────────╯  
+  exited 1                                                                      
+                                                                                
+ 5 / 5  ·  e: edit the notes                                                    

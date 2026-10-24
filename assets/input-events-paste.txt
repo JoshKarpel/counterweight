@@ -1,0 +1,11 @@
+╭──────────────────────────────────────────────────────────────────────╮
+│ Press keys, paste, or use the mouse. Ctrl+C quits.                   │
+│ KeyPressed(key='h')                                                  │
+│ KeyPressed(key='i')                                                  │
+│ Pasted(text='first line\nsecond line')                               │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯

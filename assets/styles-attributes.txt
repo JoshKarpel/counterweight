@@ -1,0 +1,13 @@
+text_bold                                                     
+text_dim                                                      
+text_italic                                                   
+text_underline                                                
+text_strikethrough                                            
+                                                              
+EMPHASIS                                                      
+EMPHASIS | text_not_italic                                    
+EMPHASIS | text_not_underline                                 
+                                                              
+┏━━━━━━━━━━━━━┓ ┏━━━━━━━━━━━━┓ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ border_bold ┃ ┃ border_dim ┃ ┃ border_dim | border_not_dim ┃
+┗━━━━━━━━━━━━━┛ ┗━━━━━━━━━━━━┛ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛

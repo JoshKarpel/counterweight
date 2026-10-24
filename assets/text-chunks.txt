@@ -1,0 +1,3 @@
+ warning: 3 tests were skipped (run with -v to see why)         
+                                                                
+ This whole Text is bold and sky blue, except this.             
