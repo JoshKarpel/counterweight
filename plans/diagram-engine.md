@@ -13,7 +13,7 @@ a working prototype and what it established,
 and the prior art it draws on.
 It settles one piece of public API, the `Path` element that draws lines,
 and leaves the rest open.
-The decisions its steps rest on are listed before the steps.
+The decisions its steps rest on, and the questions they leave open, are listed before the steps.
 
 The use cases are an ASCII diagram editor,
 and diagrams whose layout is decoupled from their content:
@@ -356,7 +356,7 @@ to land where its edge already is, as the probe's do.
 
 ### Edge labels
 
-An edge label is a dummy node, sized to its text, in a rank of its own between the edge's ends.
+An edge label is a dummy node, sized to its text, in a rank between the edge's ends.
 The edge runs into the label and out the other side,
 so the label sits on the line, and coordinate assignment keeps room for it as for any node.
 dagre, which lays out Mermaid's flowcharts, places labels this way,
@@ -364,6 +364,7 @@ but doubles every edge's minimum length and halves the rank gap to make the room
 Counterweight gives only labelled edges a minimum length of 2,
 since a rank is at least one row and can't be halved,
 so a diagram with one labelled edge isn't twice as tall.
+The label's rank can then hold real nodes too, where dagre's label ranks hold only labels and dummies.
 
 ### Direction
 
@@ -477,6 +478,9 @@ That is the piece the editor case needs most.
   its style gives the line's weight, color, and z,
   and arrowheads at either end take the place of SVG's `marker-start` and `marker-end`.
   The graph container draws its edges as `Path`s, and node borders join the same canvas.
+  The existing `Canvas` element is a different thing despite the name:
+  a leaf sized as a replaced element, whose painter's cells never leave its content box
+  and don't merge with other elements' lines, which is what `Path` and the line canvas add.
 - Merge by z: lines merge only with lines at the same z,
   and anything at a higher z covers the cells below it, as stacking does on the web,
   so a popup over a diagram never joins its border to the edges underneath.
@@ -492,8 +496,8 @@ That is the piece the editor case needs most.
   each cell stores direction bits plus a line weight per direction.
   termaid merges with bits but every junction comes out light,
   so heavy, double, and rounded styles vanish where lines meet.
-  `JoinedBorderParts` already knows the four weights,
-  and connectors need them mixed:
+  `JoinedBorderKind` has junction glyphs for each border kind (light, rounded, heavy, double),
+  but each `JoinedBorderParts` is a single kind, and connectors need them mixed:
   a light edge leaving a heavy border is `┯`, neither `┬` nor `┳`.
 - Heal along whole edges, not only corners.
   `border_fills` emits healing hints for a border's four corners only,
@@ -522,7 +526,7 @@ def drop_shadow(*children: Text | Div) -> Div:
     shadow = border_lightshade | border_color("gray", 400)
     return Div(
         style=border_right | border_bottom | border_contract(1) | shadow,
-        children=list(children),
+        children=children,
     )
 ```
 
@@ -587,8 +591,8 @@ What it showed:
   An edge crosses the shadow row as the first row of its channel, as in the probe.
 - An edge leaves through the shadow row below its box,
   so edges draw above shadows and cut through them (`░░│░░`).
-- Healing joins only corners, so the probe draws each exit tee itself,
-  matched to the border's weight (`┯`).
+- Healing joins only corners, so the probe draws each tee itself,
+  matched to the border's weight (`┯`, and `┷` where an edge runs into a box without an arrowhead).
 
 ## Fitting the screen and staying put
 
@@ -654,9 +658,42 @@ The use cases rank diagrams above the editor.
    They merge only with lines at the same z,
    and a junction takes the style of the line painted last
    (see [Glyphs and effects](#glyphs-and-effects)).
-5. An edge label is a dummy node in a rank of its own, as in dagre,
+5. An edge label is a dummy node in a rank between the edge's ends, as in dagre,
    and only labelled edges are lengthened to make room for it
    (see [Edge labels](#edge-labels)).
+
+## Open questions
+
+Each of these needs a design before the step it names can be finished.
+
+- Where do the labels go on a shared line?
+  Edges between the same two nodes share one line,
+  but each labelled edge needs its own label dummy in a rank between its ends,
+  so `a -->|send| b` with `b -->|ack| a` has two labels for one line.
+  Two labelled edges from `a` to `b` collapse into one the same way.
+  Steps 1 and 6.
+- What runs the core again when the available width changes?
+  The graph container lays out a second time only when a node's size changes,
+  but fitting depends on the width the diagram has,
+  which can change while every node keeps its size,
+  so a narrowed terminal would keep the wide placement.
+  Steps 3 and 4.
+- What z does a drop shadow take relative to edges?
+  Edges cut through the shadow row below a box,
+  but the shadow is the wrapper's own border, and the line canvas protects node borders,
+  so under merge by z the edges have to sit above the shadow and below the bordered child.
+  Steps 2 and 5.
+- Which step routes self-loops?
+  A self-loop needs a route around a box's side,
+  the graph container doesn't use the connectors' A*,
+  and no step adds side routing to the core,
+  so the Mermaid subset rejects them with no step that lifts it.
+  Step 6.
+- How far apart are arrowheads along a left-to-right box?
+  Direction spaces them two cells apart either way,
+  but its own reasoning says neighbours a row apart don't read as touching.
+  At two rows, a 3-row box with two arrivals grows to 5 rows, and one with three to 7.
+  Step 1.
 
 ## Proposed steps
 
@@ -1351,13 +1388,13 @@ def swatches() -> Div:
     }
     return Div(
         style=row | gap(3) | pad(1) | align_children_start,
-        children=[
+        children=tuple(
             Div(
                 style=drop_shadow(kind, border_color("slate", 600)),
-                children=[Text(content=name, style=border | border_lightrounded | pad_x(1))],
+                children=(Text(content=name, style=border | border_lightrounded | pad_x(1)),),
             )
             for name, kind in kinds.items()
-        ],
+        ),
     )
 
 
@@ -1365,20 +1402,26 @@ GAP = 3  # One more cell between neighbours than the plain diagram, for the shad
 
 
 @component
-def diagram(graph: str, columns: int, shadow: Style, node: Style, tee: str) -> Div:
+def diagram(graph: str, columns: int, shadow: Style, node: Style, tees: tuple[str, str]) -> Div:
     """
     The prototype's layout drawn with counterweight elements: shadowed nodes placed absolutely,
     with the edges as runs of text above both.
-    Edges touch a node only at the border cell they leave from, which the router draws as a tee
-    (`tee`, to match the node's border weight), because border healing only joins corners.
+    Edges touch a node only at the border cells they leave from and run into without an arrowhead,
+    which the router draws as tees (`tees`, the exit and the entry, to match the node's border weight),
+    because border healing only joins corners.
     """
     rects, _, _, cells = layered.draw(*layered.GRAPHS[graph], columns, gap=GAP, boxes=False)
+    exit_tee, entry_tee = tees
     exits = {(x, y + h - 1) for x0, y, w, h in rects.values() for x in range(x0, x0 + w)}
-    cells = {p: tee if p in exits and c == "┬" else c for p, c in cells.items()}
+    entries = {(x, y) for x0, y, w, h in rects.values() for x in range(x0, x0 + w)}
+    cells = {
+        p: exit_tee if p in exits and c == "┬" else entry_tee if p in entries and c == "┴" else c
+        for p, c in cells.items()
+    }
     nodes = [
         Div(
             style=position_absolute | inset_left(x) | inset_top(y) | shadow | z(0),
-            children=[Text(content=name, style=border | node | width(w) | text_justify_center | z(2))],
+            children=(Text(content=name, style=border | node | width(w) | text_justify_center | z(2)),),
         )
         for name, (x, y, w, h) in rects.items()
     ]
@@ -1398,7 +1441,7 @@ def diagram(graph: str, columns: int, shadow: Style, node: Style, tee: str) -> D
             )
             if x is not None:
                 start = previous = x
-    return Div(children=[*runs, *nodes])
+    return Div(children=(*runs, *nodes))
 
 
 def save(name: str, frame: Frame) -> None:
@@ -1420,9 +1463,9 @@ STYLES = {
     "slides": (
         drop_shadow(border_lightshade, border_color("gray", 400)),
         border_heavy | border_color("gray", 200),
-        "┯",
+        ("┯", "┷"),
     ),
-    "thick": (drop_shadow(border_thick, border_color("slate", 500)), border_lightrounded, "┬"),
+    "thick": (drop_shadow(border_thick, border_color("slate", 500)), border_lightrounded, ("┬", "┴")),
 }
 
 
@@ -1430,8 +1473,8 @@ async def main() -> None:
     await shoot(swatches(), "swatches", (100, 6))
     for graph, columns in [("request", 44), ("ci", 90)]:
         _, columns, height, _ = layered.draw(*layered.GRAPHS[graph], columns, gap=GAP)
-        for name, (shadow, node, tee) in STYLES.items():
-            await shoot(diagram(graph, columns, shadow, node, tee), f"{graph}-{name}", (columns, height + 1))
+        for name, (shadow, node, tees) in STYLES.items():
+            await shoot(diagram(graph, columns, shadow, node, tees), f"{graph}-{name}", (columns, height + 1))
 
 
 if __name__ == "__main__":
