@@ -5,7 +5,8 @@ Artifact: https://claude.ai/code/artifact/ad723da1-a0f8-4971-a221-f0be22e0bbe9
 This plan adds the parts every counterweight picker has written its own copy of,
 and leaves wiring them to keys, state and drawing to the app.
 It adds `Highlight`, `fuzzy_matches` and `substring_matches` to `counterweight.headless`,
-`get` to `use_state`'s setter, so a handler can read the state as the updates since the last render left it,
+a return value to `use_state`'s setter, the state it settled at,
+so a handler can read the state as the updates since the last render left it,
 and `combobox`, a widget that wires the parts the one way the WAI-ARIA combobox pattern does.
 Everything else a picker does (an always-open list, Tab cycling, marks, keys of its own, previews)
 is a recipe in the docs, built from the parts.
@@ -134,8 +135,8 @@ Where counterweight differs:
   and each runs a handler the last render made.
   A handler that decides from the values it rendered with decides from stale state,
   and a getter that reads a copy refreshed each render, as ahooks' does, is just as stale.
-  `use_state`'s setter applies an updater immediately, so the state itself is current;
-  `get` reads it there.
+  `use_state`'s setter applies an updater immediately, so the state itself is current,
+  and the setter returns it.
 - There's no `aria-activedescendant`, but the same idea applies.
   The highlighted row gets an `ElementHandle`, and `ScrollIntoView` brings it into view.
 - There's no anchor positioning, so a popup can't flip itself above its field when it would overflow;
@@ -160,8 +161,9 @@ and edits its query by hand.
   who owns the state and how the text is edited all differ.
   The overlap is `edited` (a changed text puts the highlight on the first match), a few lines in each.
 - The one subtle piece the picker needed beyond the parts was reading the latest state in its Enter handler.
-  The spike read it by passing the setter an identity updater, which works only because the setter
-  applies updaters immediately, and reads by writing; `get` replaces it.
+  The spike read it by passing the setter an identity updater that copied out the value it was given,
+  which works because the setter applies updaters immediately;
+  the setter returning the state makes that read the identity updater alone.
   On a real pseudo-terminal, writing `pypy` and Enter in one write, the picker before the port kept 3.15,
   choosing from the list as last rendered, and the port chose `pypy3.11`.
   `port-manage` avoids the problem by doing everything inside the updater,
@@ -178,7 +180,8 @@ and stopping at the ends (`inline_picker.py`).
 | Who filters | The caller, with `fuzzy_matches` and `substring_matches` exported for it | Every caller writes the line that filters |
 | Highlight by index or by option | `Highlight` holds both: the option's key, and its index, which is where it lands when its option goes | Options need a key that isn't `None`, and each of `Highlight`'s methods takes the `key` function |
 | Rows the highlight skips | An `is_disabled` predicate on `Highlight`'s methods, as Downshift's `isItemDisabled` | One more parameter on each method |
-| Reading the latest state in a handler | `get` on `use_state`'s setter, which raises while a component renders | A thing called a setter also reads |
+| Reading the latest state in a handler | `use_state`'s setter returns the state it settled at, so an identity updater reads it | Reading is a write that changes nothing; a parameter written out as `Callable[..., None]` rather than `Setter[T]` stops accepting a setter |
+| Rendering between events, as React does | No: a handler reads where a decision needs the latest state (see [Why not render between events](#why-not-render-between-events)) | A handler that decides from what it rendered with decides from stale state when keys arrive before a render |
 | Which keys do what | The app's handler, for every caller but the widget | No key map to share; the command-line family's scripts each spell out the same keys |
 | Popup open and dismissed | The widget's own state, and a recipe for apps that build their own | Each popup picker writes the few lines of Escape and reopening |
 | What the widget is called | `combobox`, the APG pattern it implements | none; there's no hook to name, so the always-open list needs no name either |
@@ -193,34 +196,85 @@ The parts fix the same bugs and leave the wiring where it varies.
 If the ports in [Steps](#steps) find the same subtle lines in several callers' wiring, those lines are the hook,
 found from the code rather than designed ahead of it.
 
-### Why `get` on the setter
+### Why handlers read the latest state
 
-`use_state` returns a value and a setter in every one of its call sites, in the library, the docs and users' apps,
-so a third element in the tuple breaks them all.
-A second hook that returns a getter makes every component choose between two hooks for one piece of state.
-The setter is already the handle to the state, built once when the state is made,
-so a handle that can also be read says what a handler needs without changing what anyone unpacks.
+An updater computes the next state from the latest one, so a handler that only moves state along needs no read:
+the cookbook picker's Down and Up, and every edit, are updaters.
+What an updater can't hand back is the rest of what a handler decides from that state:
+whether it claims the event or lets it bubble, which controls it returns, and which option it gives the parent.
+Routing needs all three when the handler returns, before the next event,
+so they can't wait for a render or an effect.
+`port-manage` carries its callbacks out in an effect, from a queue of pending actions it keeps in its state,
+which costs a frame and the queue, and still can't put off whether a key bubbles.
 
-The value stays what a render reads.
-A render that read the latest state would read a place rather than a value, which is what `check_purity` catches,
-so `get` raises while a component renders, as `useEffectEvent` forbids being called during rendering.
+So the setter returns the state it settled at, and an identity updater reads the latest state,
+which `get_state(setter)` names, so a handler doesn't spell the updater out.
+Every caller discards the setter's return value today, so returning the state changes nothing at runtime.
+A return value also passes through a function that wraps the setter, as `lambda edit: set_value(...)` does,
+where a method such as `get` wouldn't, so `use_text_input`'s validating callers keep working.
+An updater that returns a result beside the next state, as Haskell's `atomicModifyIORef` does, adds nothing:
+a handler is synchronous and nothing runs between its read and its write,
+so reading and then setting in plain code is as atomic.
+
+The value stays what a render reads, and a handler that decides from it rather than reading
+decides from stale state when keys arrive before a render.
+That's a rule of the hooks, like the others, and the docs state it once.
+
+### Why not render between events
+
+React renders between discrete events, so every handler sees the state the last event left, and nothing reads.
+A prototype rendered (without painting) before routing each key press or paste whenever state had changed since
+the last render, with mouse events still routed through the painted frame, so clicks hit what was drawn.
+Mouse moves never triggered it, and a hover followed by a key cost one render.
+Typing a burst into a picker over 5000 paths, all of it landing in one batch, the median per burst in ms was:
+
+| Burst | Picker alone, matching cached | Picker alone, matching each render | Beside a 2000-row log, matching cached |
+|---|---|---|---|
+| 4 keys | 0.58 → 1.56 | 2.48 → 14.3 | 12.1 → 38.0 |
+| 16 keys | 0.71 → 5.52 | 2.62 → 50.2 | 12.2 → 150 |
+| 64 keys | 1.42 → 12.0 | 3.27 → 194 | 12.9 → 509 |
+
+A burst costs one render today and one per key with renders between them.
+The framework's part of each is small in a small app (0.1 to 0.3 ms),
+and grows with the whole tree in a large one (6 to 9 ms beside the log, most of it `place` walking every node),
+on top of whatever the app's components do in a render: 3 ms of matching per key, which today runs once a burst.
+A terminal without bracketed paste sends a paste as a key press per grapheme,
+so a long paste would render once per character.
+And it buys more than handlers need, since only their decisions need the latest state.
+
+`place` is also about a quarter of that large app's ordinary frames, which is worth a look of its own.
+The `picker-burst` benchmark keeps a frame of typed-ahead keys measured: each frame's key press queues a burst
+of edits and moves into a picker, which the loop handles in one batch before it renders once.
 
 ## Public API
 
-### `Setter.get`
+### `Setter`
 
 ```python
-class Setter[T](Protocol):
-    def __call__(self, value: Callable[[T], T] | T, /) -> None: ...
-    def get(self) -> T: ...
+type Setter[T] = Callable[[Callable[[T], T] | T], T]
 ```
 
-`Setter` becomes a protocol with the call it has now and `get`,
-the state as every update since the last render left it.
-`get` is for handlers and effects:
-it raises while any component renders (while `_shadow.py` has set `current_hook_state`),
-where the value `use_state` returned is the state to read.
-After the component unmounts, it returns the state as it was when it unmounted.
+`use_state`'s setter returns the state as it settled: the value it was given, or what the updater returned.
+Given `lambda state: state`, it returns the state as every update since the last render left it,
+and since that leaves the state equal, it queues no render.
+After the component unmounts, it ignores updates and returns the state as it was when the component unmounted.
+
+```python
+def get_state[T](set_state: Setter[T]) -> T: ...
+```
+
+`get_state` is the state as every update since the last render left it, read by calling `set_state` with
+an updater that returns the state it's given, so it changes nothing and queues no render.
+It's for handlers and effects; a render reads the value `use_state` returned.
+
+`use_text_input`, `use_text_area`, `text_input` and `text_area` take
+`set_value: Callable[[Callable[[str], str]], str]`, a function that applies an edit and returns the value it settled at,
+so a wrapper that validates (`lambda edit: set_value(...)`) passes the result through,
+and the hooks read the latest value and the edited one from what it returns.
+A parameter annotated `-> None` won't accept a function that returns a value under mypy,
+so these change in the same release.
+A user's parameter annotated `Setter[T]` follows the alias and needs nothing;
+only one that writes the type out as `Callable[..., None]` needs `Setter[T]` instead.
 
 ### `Highlight`
 
@@ -305,7 +359,7 @@ completion lists, since a field that completes as you type has nothing better fo
 
 A dismiss key on a dismissed list bubbles, so a dialog around the field can close on it.
 Ctrl+J chooses because a tty turns an Enter typed ahead, before the app makes it raw, into a line feed.
-Each key decides from the latest state through `get`.
+Each key decides from the latest state, read through the setters.
 Hovering a row highlights it, and clicking it chooses it, keeping focus in the field.
 An app that wants other keys builds its own from the parts, as the docs' recipes do.
 `ComboboxStyles` holds a `TextFieldStyles` for the box and cursor,
@@ -348,12 +402,12 @@ How the examples answer them:
 | [Marks](#marking-several-options) | Always | Several options | First match | Fuzzy by `key`, always | Key | Acts on the marks | The pattern's, and Space | Several |
 
 The examples were written as a module and type-checked with mypy in strict mode,
-against a stand-in for `Setter.get` that reads through an identity updater,
+against stand-ins for `use_state` and `use_text_input` whose setters return the state,
 and each was driven headless through the keys its section describes.
-Imports are left out; `Setter` is `counterweight.hooks.Setter`, with `get`.
+Imports are left out; `Setter` and `get_state` are `counterweight.hooks`'s.
 The module becomes `snippets/options.py` (see [Docs](#docs)).
 
-### Drawing
+### Shared functions
 
 Every example draws the text and its rows with these two functions,
 so the examples below differ only in their behavior:
@@ -430,7 +484,7 @@ def package_field(text: str, set_text: Setter[str]) -> Div:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_suggesting.get()
+        before, now = get_state(set_text), get_state(set_suggesting)
         now_shown = fuzzy_matches(before, PACKAGES) if before else ()
         index = now.highlight.index_in(now_shown)
         match event:
@@ -450,7 +504,7 @@ def package_field(text: str, set_text: Setter[str]) -> Div:
             case _:
                 if (controls := response_controls(field.on_input(event, receiver))) is None:
                     return None
-                if set_text.get() != before:
+                if get_state(set_text) != before:
                     set_suggesting(Suggesting())
                 return (*controls, ScrollIntoView(row_handle, block="nearest"))
 
@@ -482,7 +536,7 @@ def command_palette(run: Callable[[str], InputResponse]) -> Div:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_highlight.get()
+        before, now = get_state(set_text), get_state(set_highlight)
         now_shown = substring_matches(before, COMMANDS)
         index = now.index_in(now_shown)
         match event:
@@ -494,7 +548,7 @@ def command_palette(run: Callable[[str], InputResponse]) -> Div:
             case _:
                 if (controls := response_controls(field.on_input(event, receiver))) is None:
                     return None
-                if set_text.get() != before:
+                if get_state(set_text) != before:
                     set_highlight(Highlight())
                 return (*controls, ScrollIntoView(row_handle, block="nearest"))
 
@@ -527,7 +581,7 @@ def search_box(search: Callable[[str], InputResponse]) -> Div:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_highlight.get()
+        before, now = get_state(set_text), get_state(set_highlight)
         now_shown = substring_matches(before, QUERIES) if before else ()
         match event:
             case KeyPressed(key=Key.Down | Key.Up as key) if now_shown:
@@ -543,7 +597,7 @@ def search_box(search: Callable[[str], InputResponse]) -> Div:
             case _:
                 if (controls := response_controls(field.on_input(event, receiver))) is None:
                     return None
-                if set_text.get() != before:
+                if get_state(set_text) != before:
                     set_highlight(None)
                 return (*controls, ScrollIntoView(row_handle, block="nearest"))
 
@@ -578,7 +632,7 @@ def command_line() -> Div:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_cycling.get()
+        before, now = get_state(set_text), get_state(set_cycling)
         match event:
             case KeyPressed(key=Key.Tab | Key.BackTab as key):
                 by = 1 if key == Key.Tab else -1
@@ -595,7 +649,7 @@ def command_line() -> Div:
                 return ()
             case _:
                 response = field.on_input(event, receiver)
-                if set_text.get() != before:
+                if get_state(set_text) != before:
                     set_cycling(None)
                 return response
 
@@ -621,7 +675,7 @@ def shell_prompt() -> Div:
             return None
         match event:
             case KeyPressed(key=Key.Right) if (
-                field.cursor == len(now := set_text.get()) and (line := suggestion(now)) is not None
+                field.cursor == len(now := get_state(set_text)) and (line := suggestion(now)) is not None
             ):
                 set_text(line)
                 return ()
@@ -659,7 +713,7 @@ def process_list(processes: tuple[Process, ...], stop: Callable[[Process], Input
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_highlight.get()
+        before, now = get_state(set_text), get_state(set_highlight)
         now_shown = matching(before)
         index = now.index_in(now_shown, pid_of)
         match event:
@@ -674,8 +728,8 @@ def process_list(processes: tuple[Process, ...], stop: Callable[[Process], Input
             case _:
                 if (controls := response_controls(field.on_input(event, receiver))) is None:
                     return None
-                if set_text.get() != before:
-                    set_highlight(Highlight().landed(matching(set_text.get()), pid_of))
+                if get_state(set_text) != before:
+                    set_highlight(Highlight().landed(matching(get_state(set_text)), pid_of))
                 return (*controls, ScrollIntoView(row_handle, block="nearest"))
 
     return Div(
@@ -719,7 +773,7 @@ def cleanup(remove: Callable[[frozenset[str]], InputResponse]) -> Div:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
             return None
-        before, now = set_text.get(), set_highlight.get()
+        before, now = get_state(set_text), get_state(set_highlight)
         now_shown = fuzzy_matches(before, WORKTREES, key=branch_of)
         index = now.index_in(now_shown, branch_of)
         match event:
@@ -728,14 +782,14 @@ def cleanup(remove: Callable[[frozenset[str]], InputResponse]) -> Div:
                 return ScrollIntoView(row_handle, block="nearest")
             case KeyPressed(key=" ") if index is not None:
                 if not (worktree := now_shown[index]).is_dirty:
-                    set_marked(set_marked.get() ^ {worktree.branch})
+                    set_marked(lambda marked: marked ^ {worktree.branch})
                 return ()
             case KeyPressed(key=Key.Enter | Key.ControlJ):
-                return remove(marks) if (marks := set_marked.get()) else ()
+                return remove(marks) if (marks := get_state(set_marked)) else ()
             case _:
                 if (controls := response_controls(field.on_input(event, receiver))) is None:
                     return None
-                if set_text.get() != before:
+                if get_state(set_text) != before:
                     set_highlight(Highlight())
                 return (*controls, ScrollIntoView(row_handle, block="nearest"))
 
@@ -761,21 +815,29 @@ each picker settles differently, and one picker needs it, so it waits for a seco
 ### What the examples show
 
 - Two blocks recur in most of the handlers.
-  The first, at the top: read the text and the highlight with `get`, match the latest text, and resolve the index.
+  The first, at the top: read the text and the highlight with `get_state`, match the latest text, and resolve the index.
   The second, in the last case: pass the event to the text field, reset the highlight if the text changed,
   and scroll the list.
   They are the candidates for a part of their own, if the ports in [Steps](#steps) find them too.
-- With `get`, a handler reads the state once and writes plain values rather than updaters,
-  since nothing changes the state between its read and its write.
+- Every handler here decides something from the latest state (whether to claim a key, which option to choose),
+  so each reads once at the top and writes plain values, since nothing changes the state between its read and its write.
+  A case that only moves state along, as toggling a mark does, is an updater and reads nothing.
 - `TextInput.cursor` is the cursor as last rendered, so inline completion's "Right at the end"
-  decides from a stale cursor when keys arrive before a render; `use_text_input` has no `get` for its cursor.
+  decides from a stale cursor when keys arrive before a render;
+  the setter's return value reaches the state a component holds, not the cursor `use_text_input` holds.
 - Nothing here needed a wired hook's parameters: each kind is a different set of cases,
   not a different setting of the same ones.
 
 ## Implementation
 
-- `src/counterweight/hooks/_types.py` and `src/counterweight/hooks/_impls.py`: `Setter` as a protocol,
-  and the setter `UseState` builds as an object with `__call__` and `get`, holding the state weakly as it does now.
+- `src/counterweight/hooks/_types.py` and `src/counterweight/hooks/_impls.py`: `Setter` returning `T`,
+  and the setter `UseState` builds holding the value itself, with the mount status, the node key and the queue,
+  rather than holding the `UseState` weakly, so it still has a state to return once the `UseState` is collected,
+  and forms no cycle with it.
+- `src/counterweight/headless/_text_input.py`, `_text_area.py` and `src/counterweight/widgets.py`:
+  `set_value` returns the value it settled at, and the hooks read the latest value and the edited one from it.
+- `src/counterweight/hooks/`: `get_state`, joining `counterweight.hooks.__all__`.
+- `benchmarks/picker_burst.py`: its `latest`, which copies the value out of an identity updater, replaced by `get_state`.
 - `src/counterweight/headless/_options.py`, pure: `Highlight`, `fuzzy_matches` and `substring_matches`.
 - `src/counterweight/widgets.py`: `combobox` and `ComboboxStyles`,
   sharing `cursor_chunks` and `placeholder_chunks` with `text_input`.
@@ -784,8 +846,13 @@ each picker settles differently, and one picker needs it, so it waits for a seco
 
 ## Tests
 
-- `tests/hooks/test_use_state.py`: `get` reading an update made since the render,
-  and several updates in one handler; raising while a component renders; the state at unmount after it.
+- `tests/hooks/test_use_state.py`: the setter returning the value it's given and what an updater returns;
+  an identity updater reading an update made since the render, and queueing no render;
+  several updates in one handler; and the state at unmount, after the `UseState` is collected.
+  `assert_type` on what a setter returns, so the type can't fall back to `None`.
+  `get_state` reading an update made since the render, without queueing a render.
+- `tests/headless/test_use_text_input.py` and `test_use_text_area.py`: a validating wrapper (`lambda edit: set_value(...)`)
+  that rejects an edit leaves the cursor where it was.
 - `tests/headless/test_options.py`, on the parts:
   the highlight staying on its option as an option before it appears and as one before it goes,
   landing on the option that took its place when its own goes, on the new last when the last goes,
@@ -830,9 +897,9 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   Matching and "A long list" move to it from the cookbook.
 - `snippets/options.py` holds every kind on that page as a root in `ROOTS`, each between section markers of its own,
   which the page shows with `<!-- example: options.py:<kind> -->`,
-  and the drawing functions in one more section, which the page shows once, before the kinds.
+  and the shared functions in one more section, which the page shows once, before the kinds.
   It's one module rather than one per kind because an example imports only from the library,
-  so a module per kind would each carry its own copy of the drawing functions;
+  so a module per kind would each carry its own copy of the shared functions;
   the cost is that `counterweight examples copy` hands over every kind at once.
   The kinds checked for this plan are the start of it.
   Its `STILLS` has a still per kind, after the keys its section describes, named `options-<kind>`,
@@ -841,7 +908,9 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   Escape and Up reopening the combobox, Enter on typed text in the search box, Tab and Shift+Tab cycling,
   Right accepting a completion, a row appearing above the highlight, Space marking and refusing),
   which each section plays with `<!-- cast: options-<kind> -->` beside its still.
-- `docs/hooks/use_state.md`: reading the latest state in a handler with `get`, and why a render can't.
+- `docs/hooks/use_state.md`: what the setter returns, and reading the latest state in a handler with `get_state`
+  where a decision needs it, since the value a render saw is stale once keys arrive before the next render,
+  with a `::: counterweight.hooks.get_state` reference.
 - `docs/headless/index.md`: a row for the parts and `combobox`.
 - `docs/cookbook/autocomplete.md` keeps what's about layout (escaping the panel, inside a scroll container,
   opening upward, and opening a picker with a key, with its sections and handles), built on the parts,
@@ -850,13 +919,15 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   links to the new page.
 - Links to `#a-long-list`, inbound from `input-handling/controls.md` and `layout/scrolling.md`
   and the cookbook page's own "[scrolls](#a-long-list)", point at the new page.
-- `docs/changelog.md`: Added entries for the parts, `get`, and the widget.
+- `docs/changelog.md`: Added entries for the parts, `get_state`, and the widget;
+  Changed entries for the setter returning the state, and for the text hooks' `set_value` returning the value,
+  each saying that a parameter typed `Setter[T]` needs nothing, and one written out as `Callable[..., None]` needs `Setter[T]`.
 
 ## Steps
 
-1. `Setter.get` and its tests.
+1. The setter returning the state, `get_state`, the text hooks reading through the setter, and their tests.
 2. The parts, with `is_disabled`, and their tests.
-3. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the parts and `get`,
+3. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the parts and the setter's return value,
    with their stills unchanged.
 4. Port every other picker onto them locally, against an editable install, to prove the parts before they ship:
    whats-new's picker and assess's two, and `wt`, `kube-pick`, `port-manage` and `zellij-pick-tab`,
@@ -868,34 +939,27 @@ each picker settles differently, and one picker needs it, so it waits for a seco
 7. After a release: land the ports.
 
 The spike's `_options.py`, its tests and the ported `picker.py` are the start of steps 2 and 3,
-with the picker's identity-updater read to be replaced by `get`.
+with the picker's `latest`, which copies the value out of an identity updater, replaced by `get_state`.
 
 ## Open questions
 
-1. **Rendering between events instead.** Rendering, without painting, after each event would make every handler
-   current, as React's are, and remove the need for `get` and `use_text_input`'s MUST on its setter.
-   It costs a render per event in a burst (fast typing, keys typed before the first frame), which is unmeasured.
-   Is it worth a benchmark before `get` ships?
-2. **`use_text_input` and `get`.** It reads the latest value by calling `set_value` with an identity updater,
-   as the spike did. Taking a `Setter` would let it use `get`,
-   but a caller that validates by wrapping the setter passes a plain function, which has no `get`.
-3. **Stopping at the ends.** `inline_picker.py` stops rather than wrapping, because it doesn't scroll.
+1. **Stopping at the ends.** `inline_picker.py` stops rather than wrapping, because it doesn't scroll.
    A `wrap` parameter on `moved`, or the caller computing the index itself?
-4. **Binding `key` once.** Every `Highlight` method takes `key` and `is_disabled`,
+2. **Binding `key` once.** Every `Highlight` method takes `key` and `is_disabled`,
    which `port-manage` wraps in methods of its own state to avoid repeating.
-5. **Flipping the widget's list.** `opens` puts the choice on the caller.
+3. **Flipping the widget's list.** `opens` puts the choice on the caller.
    The web's answer is CSS anchor positioning's `position-try-fallbacks: flip-block`,
    a layout feature counterweight doesn't have; adding something like it would let the widget flip itself.
-6. **Down on an empty widget.** Chrome opens every `<datalist>` option on Down in an empty field.
+4. **Down on an empty widget.** Chrome opens every `<datalist>` option on Down in an empty field.
    The widget could do the same by showing every option once the list is reopened with nothing typed.
-7. **The matchers' names.** `fuzzy_matches` is the common word (fzf, VS Code's quick open),
+5. **The matchers' names.** `fuzzy_matches` is the common word (fzf, VS Code's quick open),
    though "fuzzy" often implies scoring, and this only puts the exact name first.
-8. **`filter_list`'s close on blur.** `filter_list` throws its whole state away when its field loses focus,
+6. **`filter_list`'s close on blur.** `filter_list` throws its whole state away when its field loses focus,
    and counterweight has no blur event to hang that on, so it keeps its `run_on_mount`.
-9. **The recurring handler blocks.** Reading the latest state and matching it, and passing an edit to the field
+7. **The recurring handler blocks.** Reading the latest state and matching it, and passing an edit to the field
    and resetting the highlight, recur across the [examples](#what-the-examples-show).
    A part for them would be a function over a `TextInput`, a text `Setter` and a highlight `Setter`;
    whether it's worth one depends on whether the real pickers repeat them as the examples do.
-10. **The cursor's latest position.** `use_text_input` keeps its cursor in state of its own,
+8. **The cursor's latest position.** `use_text_input` keeps its cursor in state of its own,
     and `TextInput.cursor` is the one the last render saw.
     A handler that decides from the cursor, as inline completion's Right does, needs a way to read the latest.

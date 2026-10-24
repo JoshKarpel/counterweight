@@ -114,6 +114,13 @@ async def test_typing_agent_empties_its_prompt_when_it_sends_the_message(tmp_pat
     assert prompt.strip("│ ") == "Try fix the failing test or explain this diff"
 
 
+async def test_picker_burst_replaces_the_last_frames_query_with_the_next_in_each_burst(tmp_path: Path) -> None:
+    await run(WORKLOADS["picker-burst"], frames=5, warmup=0, snapshot=tmp_path / "snapshot.txt")
+
+    field, *_ = (tmp_path / "snapshot.txt").read_text().splitlines()
+    assert field.rstrip() == "> srcpai"
+
+
 async def test_scrolled_agent_reads_back_where_its_twin_follows_the_end(tmp_path: Path) -> None:
     frames = agent.SCROLLED_BACK_AT + 5
     for workload in ("agent", "agent-scrolled"):
