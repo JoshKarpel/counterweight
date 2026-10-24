@@ -137,7 +137,7 @@ Where counterweight differs:
 | Who owns the state | The caller, wholesale, as one `Query`, as `use_text_input`'s caller owns its value | A caller that only wants the text carries a `Query` and reads `query.text` |
 | Highlight by index or by option | By the option's key, and by its index, which is where the highlight lands when its option is gone | Options need a hashable key; and a highlight that has landed on a neighbor returns to its option if that comes back before the next key moves it |
 | Which keys do what | An `AutocompleteKeys` value, defaulting to the combobox pattern's | One more parameter; the command-line family passes its own |
-| One hook or two | One: open and dismissed are part of `Query`, and an always-open picker never reads them | Pickers carry an `is_dismissed` they ignore |
+| One hook or two | One: open and dismissed are part of `Query`, and an always-open picker never draws from them | Pickers carry an `is_dismissed` they don't draw; one that stays open passes an `on_dismiss` that closes it, or `dismiss=frozenset()`, since a dismissed list's choose keys bubble |
 | What choosing does | The caller's `choose` decides, and its response is the hook's; the hook never closes anything itself | The widget and the cookbook autocomplete each write `q.chosen(text)` |
 | Rows the highlight skips | An `is_disabled` predicate, as Downshift's `isItemDisabled` | none beyond the parameter |
 | Several options | Left to the caller, composed on top (see [Marking several options](#marking-several-options)) | Each multi-select picker keeps its own marks and its own mark key |
@@ -177,19 +177,27 @@ class Query:
 
     def edited(self, text: str) -> Query: ...
     def chosen(self, text: str) -> Query: ...
-    def highlighted_in[T](self, shown: Sequence[T], key: Callable[[T], Hashable] = ...) -> T | None: ...
+    def highlighted_in[T](
+        self,
+        shown: Sequence[T],
+        key: Callable[[T], Hashable] = ...,
+        is_disabled: Callable[[T], bool] | None = None,
+    ) -> T | None: ...
 ```
 
 What's typed, which option is highlighted, and whether the list was dismissed.
 The caller constructs it, so its fields have defaults: `Query(highlighted_key=current)`
 opens a picker on its current option, wherever the list puts it.
+A query with no `highlighted_key` highlights by index alone until a key, an edit or the pointer moves the highlight,
+so a picker whose rows refresh before the first key, as `port-manage`'s do, passes the key it opens on.
 `edited` returns the query unchanged when the text is the same, and otherwise the new text
 with the first option highlighted and the list no longer dismissed, so moving the cursor leaves the highlight alone.
 `chosen` is the query after choosing an option that fills in `text`: that text, dismissed.
 `highlighted_in` is the highlighted option among `shown`: the one whose key is `highlighted_key`,
 or the one at `highlighted_index`, clamped to the last, or `None` if there are none,
-passing over disabled options in the hook,
-so a parent that previews the highlighted option agrees with the hook about which it is.
+passing over the options `is_disabled` marks,
+so a parent that previews the highlighted option, passing the hook's `key` and `is_disabled`,
+agrees with the hook about which it is.
 `key` defaults to the option itself.
 
 ### `fuzzy_matches` and `substring_matches`
@@ -253,13 +261,20 @@ def use_autocomplete[T](
 - `query` and `set_query` are the caller's state; `set_query` takes an updater, which it MUST apply before returning,
   as a `use_state` setter does.
 - `matching` is the options to show for a text, in order: the hook calls it on the query it renders with,
-  and again on the latest query for each key it handles.
-- `choose` is called, in the handler, with the option the latest query highlights, and the hook returns its response.
+  again on the latest query for each key in `keys`,
+  and on the edited text for each edit that changes it, to record the first enabled option's key with its index,
+  so the highlight follows that option from the first keystroke.
+  Other events, such as cursor moves, don't call it.
+- `choose` is called, in the handler, with the option the latest query highlights, and the hook returns its response,
+  or `()` for `None`, as `on_click` returns for its action, so a `choose` that only sets state still claims the key.
   It closes nothing; a picker that closes on choosing does that in `choose`.
 - `key` identifies an option across renders, for the highlight to follow; it defaults to the option itself.
+  It MUST NOT return `None`, which `highlighted_key` holds for no option.
 - `is_disabled` marks options the highlight passes over and that can't be chosen, such as headings.
 - `on_dismiss` is called when a dismiss key dismisses the list, after the query is dismissed,
-  and the hook returns its response; a picker passes one that closes it and gives focus back,
+  and the hook returns its response, or `()` for `None` or no `on_dismiss`,
+  so a dialog around the field doesn't also close on the key that closed the list;
+  a picker passes one that closes it and gives focus back,
   and `wt` one that goes back a step.
 - `keys` says which keys do what.
 - `highlighted_row` is the handle the highlighted row gets, passed in when whatever opens the list
@@ -282,12 +297,12 @@ def use_autocomplete[T](
 ### Keys
 
 `on_input` handles nothing while its element isn't focused,
-and decides each key from the latest query and the options `matching` gives for its text.
+and decides each key in `keys` from the latest query and the options `matching` gives for its text.
 
 | Key | Open, with an option highlighted | Open, nothing to highlight | Dismissed |
 |---|---|---|---|
-| `highlight_next` | Highlight the next enabled option, wrapping | Bubbles | Reopen with the first enabled option highlighted |
-| `highlight_previous` | Highlight the previous enabled option, wrapping | Bubbles | Reopen with the last enabled option highlighted |
+| `highlight_next` | Highlight the next enabled option, wrapping | Bubbles | Reopen, with the first enabled option highlighted if there is one |
+| `highlight_previous` | Highlight the previous enabled option, wrapping | Bubbles | Reopen, with the last enabled option highlighted if there is one |
 | `choose` | Return `choose(option)` | Bubbles | Bubbles |
 | `dismiss` | Dismiss, and return `on_dismiss()` | Dismiss, and return `on_dismiss()` | Bubbles |
 | Anything else | `field.on_input` | `field.on_input` | `field.on_input` |
@@ -298,7 +313,9 @@ so the list scrolls in the frame the highlight moves.
 Reopening a dismissed list follows the combobox pattern.
 A dismiss key on a dismissed list bubbles rather than clearing the text, which the pattern allows,
 so a dialog around the field can close on it.
-A `choose` that returns `None` lets the key bubble, as `wt`'s Enter with nothing marked does.
+A `choose` or `on_dismiss` that returns `None` claims the key, as `on_click`'s action does,
+so `wt`'s Enter with nothing marked does nothing,
+and the widget's Tab chooses without also moving focus.
 PageUp and PageDown aren't handled: the pattern doesn't bind them,
 and how far a page is depends on drawing the hook doesn't do.
 
@@ -306,8 +323,9 @@ and how far a page is depends on drawing the hook doesn't do.
 
 `option_on_input(index)` highlights the option at `index` when the pointer moves over its row with no button held,
 leaving the query as it is if it's already highlighted,
-and chooses it on a press of the left button, claiming the press as `on_click` does,
-so focus stays in the field unless `choose`'s response moves it.
+and chooses it on a click, as `on_click` does: claiming the left button's press,
+and choosing on its release over the row, so a press dragged off the row chooses nothing.
+Claiming the press keeps focus in the field unless `choose`'s response moves it.
 It does neither for a disabled option.
 
 ### Keys of the caller's own
@@ -396,8 +414,9 @@ As the text hooks are, beside their pure cores:
 - `tests/headless/test_use_autocomplete.py`, driving an app: keys typed ahead before the first render,
   and a run of text and Enter between renders, choosing the option the latest text highlights;
   the list scrolling in the frame the highlight moves; `choose`'s and `on_dismiss`'s responses coming back;
-  a `choose` returning `None` letting Enter bubble; nothing handled while unfocused;
-  Tab moving focus with the default keys; hovering highlighting a row; a press choosing and focus staying;
+  a `choose` returning `None` claiming the key, so Tab chooses without moving focus;
+  an Escape that closes the list not reaching a handler above it; nothing handled while unfocused;
+  Tab moving focus with the default keys; hovering highlighting a row; a click choosing and focus staying;
   and a `highlighted_row` passed in being the one the highlighted row gets.
 - `tests/test_widgets.py`: the widget opening below and above, choosing filling in the text, Escape and reopening.
 - The cookbook's existing stills stay byte-identical after the port, which checks the hook against the code it replaces.
@@ -416,8 +435,8 @@ As the text hooks are, beside their pure cores:
 - `docs/cookbook/autocomplete.md` keeps what's about layout (escaping the panel, inside a scroll container,
   opening upward, and opening a picker with a key, with its sections and handles), built on the hook,
   and links to the new page for matching, keys and scrolling.
-- Inbound links to `cookbook/autocomplete.md#a-long-list` in `input-handling/controls.md` and `layout/scrolling.md`
-  point at the new page.
+- Links to `#a-long-list`, inbound from `input-handling/controls.md` and `layout/scrolling.md`
+  and the cookbook page's own "[scrolls](#a-long-list)", point at the new page.
 - `docs/changelog.md`: an Added entry.
 
 ## Steps
