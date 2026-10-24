@@ -73,6 +73,8 @@ The framework follows a React-like architecture:
 - **Hooks** (src/counterweight/hooks/): State and side effects (`use_state` and its `toggle`, `use_ref`, `use_memo`, `use_effect`, `use_clock`, `use_controls`), animation built on `use_clock` (`use_progress`, `use_loop`), and what the UI looks like now (`use_rects`, `use_scroll`, `use_mouse`, `use_hovered`, `use_focus`)
 - **Animation** (src/counterweight/animation.py): The pure half of animation: CSS's easing functions (`linear`, `piecewise_linear`, `cubic_bezier` and its named curves, `steps`) and `between`, which picks a phase out of an animation's progress
 - **App** (src/counterweight/_app.py): Main application loop that handles rendering, input, and event processing; it makes its own event queue, task group and mouse listeners current only while it renders (`app_scope` in `_context_vars.py`), so a hook that needs one later captures it while rendering, and an app can run inside another
+- **Viewports** (src/counterweight/_viewports.py): `FullScreen` and `Inline`, where an app draws: the alternate screen, or a region below the prompt as tall as the root, which the render loop draws with cursor moves relative to its top-left (`region_change` and `paint_to_instructions` in `_output.py`), and which keeps an `Emulator` of its terminal for screenshots that include the scrollback
+- **Printing** (src/counterweight/_app.py, src/counterweight/_capture.py): `Print`, which renders content once (`render_once`) and writes it above an inline region, holds it until a full-screen app hands the screen back, or writes it to a stream of its own; and the streams that replace `sys.stdout` and `sys.stderr` while an app runs, turning each line into a `Print`
 - **Autopilot** (src/counterweight/autopilot.py): What an autopilot drives an app with beyond events and controls, `Wait` and `WaitFor`, which hold it back until real time passes or the screen shows something, the steps built from them and from events (`typed`, `showing`, `advance`), and the `Autopilot` that hands the render loop its next step
 - **Recording** (src/counterweight/asciicast.py): `Recording`, which records an app as an asciicast v3 file, the pure encoding of its lines, and the `Recorder` the render loop records each frame's diff, input, resizes, markers and its exit into, timed by the app's clock with suspensions cut out
 - **Shadow tree** (src/counterweight/_shadow.py): Runs components and reconciles each render's elements, by key, into the tree of nodes that holds their hooks
@@ -169,6 +171,8 @@ Its docstring's first line is its title, after its docs section and a colon for 
 and the rest its description, which `counterweight examples list` and the gallery show.
 It quits on Ctrl+C, the app's default, rather than a key of its own, and never claims Ctrl+],
 which brings focus back to the gallery's list (an embedded terminal `skips` it), as `tests/examples/test_gallery.py` checks.
+An example that draws inline sets a module-level `VIEWPORT = Inline(...)`, which `counterweight examples run` runs it in,
+its `__main__` block and scenes pass on, and the gallery honors by running it as a program in an embedded terminal.
 Each module declares the screenshots it produces in a `STILLS` list of `Still`s,
 from `counterweight.examples.scenes`, each named for the asset it's saved as.
 They sit, with the imports only they use, between `# --8<-- [start:scenes]` and `# --8<-- [end:scenes]`,

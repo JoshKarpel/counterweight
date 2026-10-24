@@ -143,14 +143,18 @@ A fixed-height inline region is a root with a fixed `height`, so `Inline` doesn'
 ### The region
 
 The app places the root in a screen element as wide as the terminal and as tall as the root's content,
-at most the terminal's height: an auto grid row with `max_size_height`, where `FullScreen` uses a fixed one.
-A root taller than that is clipped at the bottom like any other overflow.
-A log that should show its newest lines keeps them in a `scroll_area` that sticks to the end.
+at most the terminal's height: a flex column with `max_size_height`, where `FullScreen` uses a fixed grid cell.
+A grid's auto row would keep a root as tall as its content however it's styled,
+where a flex column shrinks a root that can shrink:
+in taffy, a scroll container root 25 rows tall stays 25 rows in an auto row capped at 10, and is 10 in the column.
+A root taller than the cap is clipped at the bottom like any other overflow.
+A log that should show its newest lines keeps them in a `scroll_area` that sticks to the end,
+in a root with `min_height(0)`, since a flex item is at least as tall as its content otherwise, as on the web.
 Ink instead erases from the top of the screen and writes the whole frame again whenever it outgrows the terminal.
 
-`LayoutTree.compute` takes the height as `int | None`.
-With `None`, it lays the tree out with a max-content height and clips to the root's height,
-which is how both the region and printed output are laid out.
+`LayoutTree.compute` takes the width and the height as `int | None`.
+With `None`, it lays the tree out at its max-content size on that axis and clips to the root's size,
+which is how the region and printed output are laid out, and output printed to a file, at its max-content width.
 The paint, the `Frame` a `Screenshot` takes, and everything `use_rects` reports are the region's size and coordinates.
 
 ### Drawing without knowing where the region is
@@ -224,10 +228,13 @@ class Screenshot(_Control):
 Without it, the frame is the region, as `use_rects` sees it.
 With it, the frame is everything the app's terminal holds, as a terminal shows it:
 the rows scrolled off the top, then the screen, with what was printed above the region and the region below.
+The rows above the screen come from `Emulator.history`, which returns them as the emulator holds them now,
+rewrapped by every resize, where `scrolled_off` returns each row as it was when it scrolled off.
 A full-screen app's alternate screen has no scrollback, so it's the same frame either way.
 An inline app that isn't headless keeps the same emulator, fed what it writes to the terminal,
-so a screenshot means the same thing whether the app is headless or not;
-step 1 measures what feeding it costs a frame with `just profile` on a workload that prints, before settling that.
+so a screenshot means the same thing whether the app is headless or not.
+Feeding it costs about 1% of a frame: 0.014 ms of 1.14 ms on the `devloop` benchmark workload,
+which prints three lines a frame above a status bar.
 
 That's how a test of an inline app reads what it printed, with no pseudo-terminal:
 an autopilot that drives the app, resizes it with `TerminalResized(dimensions=...)`,
@@ -325,7 +332,10 @@ With `Inline(mouse=True)`, the app asks with a cursor position report (`CSI 6 n`
 and works out the region's top in between, since it knows the terminal's height and each frame's:
 after a frame that prints `k` rows and draws `h`, the top is `min(top + k, rows − h)`.
 That's a pure function, tested on its own.
-Mouse events above the region are over the scrollback, not the app, so they're dropped.
+Mouse events above the region are over the scrollback, not the app, so they're dropped,
+as are those that arrive before the terminal answers.
+A headless app's terminal is its emulator, which answers `CSI 6 n` itself,
+so its reply goes into the event queue as a real terminal's would, and a test exercises the same path.
 
 A report is `CSI row ; col R`, which a modified F3 also is: Ctrl+F3 is `CSI 1 ; 5 R`.
 Textual reads every one as a report, so Ctrl+F3 moves its mouse offset, and crossterm swallows them.
@@ -379,11 +389,30 @@ flowchart LR
    and three snippets, each with a still of its region and a cast of it running:
    a dev loop in synth's shape (several processes' lines printed with a prefix and a hanging indent, under a status bar),
    a picker that prints what was picked and erases itself, and a test run's live progress with failures printed above.
+   An inline example sets a module-level `VIEWPORT = Inline(...)`, which `counterweight examples run` runs it in,
+   and the gallery runs it as a program in an embedded terminal,
+   since run in place in the full-screen gallery, its prints would be held until the gallery quits.
    A changelog entry.
 5. **Mouse inline.** `Inline(mouse=...)`, the cursor position request and its reply in the input parser,
    tracking the region's top, translating mouse events and dropping those above the region.
    Tests: the region-top function across growing, printing and shrinking;
    parsing a reply beside a modified F3; and an app on a pseudo-terminal whose clicks land on the right element.
+
+## What building it found
+
+- **Tested only in tmux and libghostty.** kitty, iTerm2 and a VTE terminal weren't to hand.
+  In tmux, growing past the bottom, shrinking, narrowing and widening, suspending with Ctrl+Z and `fg`,
+  and exiting both ways left nothing behind, and printed rows rewrapped without blank padding rows.
+- **Printing is most of a printing frame.** On the `devloop` workload, rendering prints once takes 38% of a frame,
+  mostly building a fresh `LayoutTree` for each printed line.
+  Laying out every print in a frame in one tree would cut it, if a workload shows it matters.
+- **Scenes print to the terminal they draw on.** `frame_of` and `recording_of` give the app `/dev/null`
+  as `output_stream`, so they pass it as `stdout` and `stderr` too,
+  or a still's prints would go to the real standard output rather than above its region.
+- **`Text` doesn't wrap by default.** Its `text_wrap` defaults to `"none"`,
+  so printed content that should wrap says so, as the captured lines of `print` do with `text_wrap_stable`.
+- **A zero-width paint had no rows.** A terminal that reports 0 columns, as an unsized pseudo-terminal does,
+  made `Paint.rows()` divide by its width; it yields empty rows now.
 
 ## Deferred
 

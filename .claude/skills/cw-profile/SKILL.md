@@ -34,6 +34,9 @@ so compare it with `agent` to see what a key press costs on a busy screen.
 as a pager would draw a file, `document-lines` draws it as one `Text` per line, as `markdown` draws one per block,
 and `document-text-area` types into it in a `text_area`, which wraps it itself and draws it as a few `Text`s:
 use them to see what content scrolled out of view costs.
+`devloop` is an `Inline` app that prints three log lines a frame above a small status bar:
+use it to see what printing costs (rendering each print once, writing it above the region)
+and what feeding the emulator an inline app keeps of its terminal costs.
 
 ## Profile a run
 

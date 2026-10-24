@@ -338,6 +338,29 @@ class Emulator:
         self.pending = []
         return scrolled_off
 
+    def history(self) -> Rows:
+        """
+        The rows above the screen, oldest first, the newest `scrollback` of them,
+        as the terminal holds them now: rewrapped to its width by every resize since they scrolled off,
+        as a terminal's scrollback is, where `scrolled_off` returns each as it was when it scrolled off.
+        It converts every row each call, so it's for looking at a terminal now and then, not every frame.
+        """
+        if not self.scrollback:
+            return ()
+        if self.overscan.above != self.scrollback:
+            self.request_overscan(self.scrollback)
+        foreground, background = self.update()
+        check(
+            lib.ghostty_render_state_get(self.state[0], lib.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, self.row_iterator),
+            "rows",
+        )
+        rows = self.row_iterator[0]
+        history = []
+        for _ in range(self.captured.above):
+            lib.ghostty_render_state_row_iterator_next(rows)
+            history.append(self.convert_row(rows, foreground, background))
+        return tuple(history)
+
     def update(self) -> tuple[Color, Color]:
         """
         Brings the render state up to date with the terminal, setting aside the rows that scrolled off the screen

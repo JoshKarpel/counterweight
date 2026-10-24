@@ -18,6 +18,7 @@ from counterweight._input_parsing import modified
 from counterweight._input_parsing import parse_input
 from counterweight._input_parsing import sequence_keys
 from counterweight.events import AnyEvent
+from counterweight.events import CursorPositionReported
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseMoved
@@ -269,6 +270,11 @@ KEY_SEQUENCES: list[tuple[bytes, Key]] = [
         (b"\x1b[<128;3;4M", [MouseDown(absolute=Position(x=2, y=3), button=8)]),
         (b"\x1b[<129;3;4m", [MouseUp(absolute=Position(x=2, y=3), button=9)]),
         (b"\x1b[<160;3;4M", [MouseMoved(absolute=Position(x=2, y=3), button=8)]),
+        # A cursor position report in the first column, beside a modified F3, whose second number is at least 2
+        (b"\x1b[7;1R", [CursorPositionReported(position=Position(x=0, y=6))]),
+        (b"\x1b[1;1R", [CursorPositionReported(position=Position(x=0, y=0))]),
+        (b"\x1b[1;5R", [KeyPressed(key=Key.ControlF3)]),
+        (b"\x1b[1;2R\x1b[3;1R", [KeyPressed(key=Key.F15), CursorPositionReported(position=Position(x=0, y=2))]),
     ],
 )
 def test_known_input_parses_to_its_events(buffer: bytes, expected: list[AnyEvent]) -> None:

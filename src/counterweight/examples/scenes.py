@@ -24,6 +24,8 @@ from more_itertools import one
 
 from counterweight._app import app
 from counterweight._output import Frame
+from counterweight._viewports import FullScreen
+from counterweight._viewports import Inline
 from counterweight.asciicast import Recording
 from counterweight.autopilot import AutopilotStep
 from counterweight.clock import FrozenClock
@@ -40,12 +42,15 @@ class Still:
 
     The app's clock is frozen, so an `AdvanceClock` among the steps is the only way time passes
     that comes out the same on every run.
+    The screenshot shows everything the app's terminal holds, so an `Inline` app's shows what it printed above its region,
+    whichever of its streams it printed to.
     """
 
     name: str
     root: Component
     dimensions: tuple[int, int]
     steps: Sequence[AutopilotStep] = ()
+    viewport: FullScreen | Inline = FullScreen()
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +67,7 @@ class Demo:
     root: Component
     dimensions: tuple[int, int]
     steps: Sequence[AutopilotStep]
+    viewport: FullScreen | Inline = FullScreen()
 
 
 SCENE_TIME = datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC)
@@ -76,11 +82,14 @@ async def frame_of(still: Still) -> Frame:
             still.root,
             input_stream=input_stream,
             output_stream=output_stream,
+            stdout=output_stream,
+            stderr=output_stream,
             headless=True,
             dimensions=still.dimensions,
-            autopilot=[*still.steps, Screenshot(handler=frames.append), Quit()],
+            autopilot=[*still.steps, Screenshot(handler=frames.append, include_scrollback=True), Quit()],
             check_purity=True,
             clock=FrozenClock(SCENE_TIME),
+            viewport=still.viewport,
         )
     return one(frames)
 
@@ -93,12 +102,15 @@ async def recording_of(demo: Demo) -> str:
             demo.root,
             input_stream=input_stream,
             output_stream=output_stream,
+            stdout=output_stream,
+            stderr=output_stream,
             headless=True,
             dimensions=demo.dimensions,
             autopilot=[*demo.steps, Quit()],
             check_purity=True,
             clock=FrozenClock(SCENE_TIME),
             recording=Recording(path, input=True),
+            viewport=demo.viewport,
         )
         return path.read_text()
 

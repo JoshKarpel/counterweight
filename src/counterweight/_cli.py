@@ -133,11 +133,11 @@ async def list_examples(streams: Streams, roots: bool) -> int:
 async def run_example(streams: Streams, name: str) -> int:
     """Run an example in the terminal."""
     try:
-        _, root = find(name, examples())
+        example, root = find(name, examples())
     except UnknownExample as e:
         return unknown(streams, e)
     # The app needs the real terminal, which `streams` doesn't carry.
-    await app(root())
+    await app(root(), viewport=example.viewport)
     return 0
 
 

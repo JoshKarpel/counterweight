@@ -16,6 +16,7 @@ from benchmarks.dashboard import WORKLOAD as DASHBOARD
 from benchmarks.dashboard import frame_text
 from benchmarks.dashboard import layout
 from benchmarks.dashboard import metric_card
+from counterweight import FullScreen
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.elements import Div
@@ -39,6 +40,7 @@ class LocalDashboard:
     interjections: Mapping[int, tuple[AnyEvent | AnyControl, ...]] = field(default_factory=dict)
     cycled_interjections: tuple[AnyEvent | AnyControl, ...] = ()
     step_key: str = "n"
+    viewport: FullScreen = FullScreen()
 
     @component
     def root(self, key_press_times: list[int]) -> Div:

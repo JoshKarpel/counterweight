@@ -6,6 +6,7 @@ from benchmarks import agent_typing
 from benchmarks import canvas
 from benchmarks import dashboard
 from benchmarks import dashboard_local
+from benchmarks import devloop
 from benchmarks import document
 from benchmarks import gradients
 from benchmarks import top
@@ -27,6 +28,7 @@ WORKLOADS: dict[str, Runnable] = {
         dashboard.WORKLOAD,
         dashboard.MEMO_WORKLOAD,
         dashboard_local.WORKLOAD,
+        devloop.WORKLOAD,
         document.WORKLOAD,
         document.LINES_WORKLOAD,
         document.TEXT_AREA_WORKLOAD,

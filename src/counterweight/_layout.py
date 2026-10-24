@@ -395,8 +395,8 @@ class LayoutTree:
         self,
         changes: Iterable[LayoutChange],
         shadow: ShadowTree,
-        width: int,
-        height: int,
+        width: int | None,
+        height: int | None,
         priors: Mapping[NodeKey, PriorScroll],
         requests: Sequence[ScrollRequest] = (),
     ) -> Layouts:
@@ -404,12 +404,22 @@ class LayoutTree:
         Apply `changes`, which make the tree match `shadow`, then lay it out on a `width` by `height` screen,
         with each scroll container scrolled as `place` scrolls it from how it was scrolled before, in `priors`,
         and then as each of `requests` scrolls it, in order.
+
+        Where `width` or `height` is `None`, the screen is as wide or as tall as the root,
+        laid out at its max-content size on that axis, as an inline region's height is,
+        and the width of output printed to a file.
         """
         self.apply(changes)
 
         root = self.nodes[shadow.root.key]
-        available = waxy.AvailableSize(width=waxy.Definite(width), height=waxy.Definite(height))
+        available = waxy.AvailableSize(
+            width=waxy.MaxContent() if width is None else waxy.Definite(width),
+            height=waxy.MaxContent() if height is None else waxy.Definite(height),
+        )
         self.tree.compute_layout(root, available, measure=_measure_leaf)
+        size = self.tree.layout(root).size
+        width = int(size.width) if width is None else width
+        height = int(size.height) if height is None else height
 
         keys = {self.nodes[node.key]: node.key for node in shadow.nodes}
         boxes = {keys[node]: (position, layout) for node, position, layout in self.tree.absolute_layouts(root)}

@@ -1,0 +1,12 @@
+15:09:27 api    listening on http://127.0.0.1:8000          
+15:09:27 worker connected to the queue at                   
+                redis://127.0.0.1:6379                      
+15:09:28 api    GET /api/projects 200 in 18ms               
+15:09:28 web    compiled 214 modules in 1.42s               
+15:09:29 api    GET /api/projects/42/builds?status=running  
+                200 in 31ms                                 
+15:09:29 worker job 9f3c2a picked up after waiting 120ms,   
+                running sync_repositories for 14            
+                repositories                                
+────────────────────────────────────────────────────────────
+api running   worker running   web running                  

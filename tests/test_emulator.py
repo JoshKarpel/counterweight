@@ -448,6 +448,36 @@ def numbered_lines(start: int, stop: int) -> bytes:
     return b"".join(b"line %d\r\n" % number for number in range(start, stop))
 
 
+def test_history_is_every_row_above_the_screen_however_often_it_is_read() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(numbered_lines(0, 4))
+        emulator.scrolled_off()
+
+        assert rows_text(emulator.history()) == rows_text(emulator.history()) == ["line 0", "line 1"]
+
+
+def test_history_is_rewrapped_to_the_width_of_the_screen() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=20) as emulator:
+        emulator.feed(b"a long line\r\n" + numbered_lines(0, 2))
+        emulator.resize(5, 3)
+
+        assert rows_text(emulator.history()) == ["a lon", "g lin", "e", "line", "0"]
+
+
+def test_history_holds_the_newest_rows_up_to_its_scrollback() -> None:
+    with Emulator(10, 3, ignore_replies, scrollback=2) as emulator:
+        emulator.feed(numbered_lines(0, 6))
+
+        assert rows_text(emulator.history()) == ["line 2", "line 3"]
+
+
+def test_history_without_a_scrollback_is_empty() -> None:
+    with Emulator(10, 3, ignore_replies) as emulator:
+        emulator.feed(numbered_lines(0, 6))
+
+        assert emulator.history() == ()
+
+
 def test_scrolled_off_returns_the_rows_that_scrolled_off_the_top_of_the_screen_oldest_first() -> None:
     with Emulator(10, 3, ignore_replies, scrollback=20) as emulator:
         emulator.feed(numbered_lines(0, 4))

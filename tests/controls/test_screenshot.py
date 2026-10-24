@@ -49,6 +49,16 @@ def test_to_file_with_txt_suffix_writes_ansi_text(tmp_path: Path, frame: Frame) 
     assert path.read_text() == frame.text(ansi=True)
 
 
+@pytest.mark.parametrize("include_scrollback", [False, True])
+def test_to_file_and_to_stream_take_whether_to_include_the_scrollback(tmp_path: Path, include_scrollback: bool) -> None:
+    screenshots = (
+        Screenshot.to_file(tmp_path / "screenshot.txt", include_scrollback=include_scrollback),
+        Screenshot.to_stream(io.StringIO(), include_scrollback=include_scrollback),
+    )
+
+    assert [screenshot.include_scrollback for screenshot in screenshots] == [include_scrollback] * 2
+
+
 def test_to_file_with_unknown_suffix_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match=r"screenshot\.png"):
         Screenshot.to_file(tmp_path / "screenshot.png")

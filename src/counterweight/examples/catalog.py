@@ -6,7 +6,8 @@ An example is a module in `counterweight.examples.apps` or `counterweight.exampl
 Its docstring's first line is its title, after its docs section and a colon for a snippet,
 and the rest is its description.
 An app's root is its `root`, and a snippet's roots are its `ROOTS`.
-Its scenes are its `STILLS` and, if it has any, its `DEMOS`.
+Its scenes are its `STILLS` and, if it has any, its `DEMOS`,
+and it draws in its `VIEWPORT`, if it has one, and otherwise on the whole screen.
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ from typing import Literal
 
 import counterweight.examples.apps
 import counterweight.examples.snippets
+from counterweight._viewports import FullScreen
+from counterweight._viewports import Inline
 from counterweight.components import Component
 from counterweight.examples.scenes import Demo
 from counterweight.examples.scenes import Still
@@ -58,6 +61,8 @@ class Example:
     demos: tuple[Demo, ...]
     path: Path
     """The module's source file."""
+    viewport: FullScreen | Inline
+    """Where the example draws: its module's `VIEWPORT`, or the whole screen if it has none."""
 
     def root_name(self, root: Root) -> str:
         """What names `root` to the CLI: the example's name, then a colon and the root's for one of several."""
@@ -105,6 +110,7 @@ def example_of(module: ModuleType, kind: Literal["app", "snippet"]) -> Example:
         stills=tuple(module.STILLS),
         demos=tuple(getattr(module, "DEMOS", ())),
         path=path,
+        viewport=getattr(module, "VIEWPORT", FullScreen()),
     )
 
 

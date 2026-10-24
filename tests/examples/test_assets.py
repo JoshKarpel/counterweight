@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from counterweight import FullScreen
+from counterweight import Inline
 from counterweight import app
 from counterweight._output import Frame
 from counterweight.autopilot import AutopilotStep
@@ -57,7 +59,9 @@ async def test_a_demo_records_what_its_recording_does(demo: Demo) -> None:
     assert await recording_of(demo) == (ASSETS / f"{demo.name}.cast").read_text(), REGENERATE
 
 
-ROOTS = [pytest.param(root, id=example.root_name(root)) for example in CATALOG for root in example.roots]
+ROOTS = [
+    pytest.param(root, example.viewport, id=example.root_name(root)) for example in CATALOG for root in example.roots
+]
 
 UNBOUND: list[AutopilotStep] = [
     KeyPressed(key=Key.F12),
@@ -69,8 +73,10 @@ UNBOUND: list[AutopilotStep] = [
 ]
 
 
-@pytest.mark.parametrize("root", ROOTS)
-async def test_every_root_runs_and_ignores_input_it_does_not_bind(root: Callable[[], Component]) -> None:
+@pytest.mark.parametrize(("root", "viewport"), ROOTS)
+async def test_every_root_runs_and_ignores_input_it_does_not_bind(
+    root: Callable[[], Component], viewport: FullScreen | Inline
+) -> None:
     frames: list[Frame] = []
     with nothing_attached() as (input_stream, output_stream):
         await app(
@@ -82,6 +88,7 @@ async def test_every_root_runs_and_ignores_input_it_does_not_bind(root: Callable
             autopilot=[*UNBOUND, Screenshot(handler=frames.append), Quit()],
             check_purity=True,
             clock=FrozenClock(SCENE_TIME),
+            viewport=viewport,
         )
 
     assert len(frames) == 1

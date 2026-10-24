@@ -14,6 +14,7 @@ Ctrl+C quits, as it does any app, so an example that quits on its own quits the 
 from __future__ import annotations
 
 import asyncio
+import sys
 from collections.abc import Callable
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -21,6 +22,8 @@ from functools import partial
 from pathlib import Path
 
 from counterweight._app import app
+from counterweight._viewports import FullScreen
+from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import FocusNext
 from counterweight.controls import FocusOn
@@ -53,6 +56,8 @@ from counterweight.hooks import use_memo
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import *
+from counterweight.widgets import TerminalStyles
+from counterweight.widgets import terminal
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,7 +239,11 @@ def preview(entry: Entry, frame: FocusHandle, enters: int) -> Div:
         handle=area,
         children=(
             Text(content=f" {entry.name} ", style=title),
-            example_frame(entry.root, frame, area, enters).with_key(entry.name)
+            (
+                example_frame(entry.root, frame, area, enters)
+                if isinstance(entry.example.viewport, FullScreen)
+                else inline_example(entry.name, frame)
+            ).with_key(entry.name)
             if enters
             else Text(
                 # The rest of the description, which for an app says how to use it.
@@ -242,6 +251,23 @@ def preview(entry: Entry, frame: FocusHandle, enters: int) -> Div:
                 style=text_wrap_pretty | text_color("slate", 500) | pad_x(1),
             ),
         ),
+    )
+
+
+def inline_example(name: str, handle: FocusHandle) -> Component:
+    """
+    An example that draws inline, run by `counterweight examples run` in a terminal of its own,
+    since it draws below that terminal's prompt and prints above it, where an example run in place
+    would print into the gallery, which holds what's printed until it quits.
+    Ctrl+] passes it by, to bring focus back to the list.
+    """
+    return terminal(
+        argv=(sys.executable, "-m", "counterweight", "examples", "run", name),
+        style=fill(1),
+        # Inside the preview's box, as an example run in place is.
+        styles=TerminalStyles(box=default, focused_box=default),
+        handle=handle,
+        skips=frozenset({Key.ControlRightBracket}),
     )
 
 

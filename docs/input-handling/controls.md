@@ -44,6 +44,7 @@ Other pages show the rest of the controls at work:
 - `ToggleBorderHealing` turns [border healing](../cookbook/border-healing.md) off and on.
 - `Screenshot`, `AdvanceClock` and `Marker` drive and record an app from an [autopilot](../autopilot.md).
 - `CopyToClipboard` copies a command from a list, [below](#copying-to-the-clipboard).
+- `Print` prints finished output above an [inline app](../inline.md#printing)'s region.
 
 ## Copying to the clipboard
 
@@ -94,6 +95,8 @@ as a `Screenshot`'s handler chooses where its frame goes.
 ::: counterweight.paint.Frame
 ::: counterweight.paint.SCREENSHOT_FOREGROUND
 ::: counterweight.paint.SCREENSHOT_BACKGROUND
+::: counterweight.controls.Print
+::: counterweight.controls.PrintStream
 ::: counterweight.controls.Suspend
 ::: counterweight.controls.ToggleBorderHealing
 ::: counterweight.controls.AdvanceClock
