@@ -12,6 +12,7 @@ from asyncio import get_running_loop
 from asyncio import wait_for
 from collections.abc import Callable
 from collections.abc import Iterator
+from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
 from signal import SIGINT
@@ -23,6 +24,8 @@ from typing import TextIO
 import pytest
 
 from counterweight import app
+from counterweight._app import initial_terminal_dimensions
+from counterweight._app import reported_dimensions
 from counterweight._app import terminal_dimensions
 from counterweight._output import ALT_SCREEN_OFF
 from counterweight._output import ALT_SCREEN_ON
@@ -64,6 +67,7 @@ from counterweight.hooks import Mouse
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_mouse
+from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.programs import TerminalStreams
@@ -484,67 +488,162 @@ async def test_a_resize_signal_redraws_the_screen(
     assert output.getvalue() == before_resize + HI + HAND_BACK
 
 
-async def test_app_sizes_the_screen_from_the_terminal_its_output_stream_writes_to(terminal: Terminal) -> None:
+@pytest.fixture
+def unsized_environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    """Removes `COLUMNS` and `LINES` from the environment, so the terminal alone sizes an app."""
+    monkeypatch.delenv("COLUMNS", raising=False)
+    monkeypatch.delenv("LINES", raising=False)
+    return monkeypatch
+
+
+@component
+def resizes_then_quits(terminal: Terminal) -> Text:
+    """Resizes `terminal` to 8 columns once it has drawn, then quits once it has drawn again."""
+    redraws = use_ref(0)
+
+    async def resize_then_quit_once_redrawn() -> None:
+        redraws.current += 1
+        if redraws.current == 1:
+            termios.tcsetwinsize(terminal.stream, (1, 8))
+            raise_signal(SIGWINCH)
+        else:
+            os.write(terminal.keyboard, b"q")
+
+    use_effect(resize_then_quit_once_redrawn)
+    return Text(content="hi", style=text_black, on_input=quit_on_q)
+
+
+async def test_app_sizes_the_screen_from_the_terminal_its_output_stream_writes_to(
+    terminal: Terminal, unsized_environment: pytest.MonkeyPatch
+) -> None:
     output = TerminalOutput(terminal)
     termios.tcsetwinsize(terminal.stream, (1, 5))
-    redraws = 0
 
-    @component
-    def root() -> Text:
-        async def resize_then_quit_once_redrawn() -> None:
-            nonlocal redraws
-            redraws += 1
-            if redraws == 1:
-                termios.tcsetwinsize(terminal.stream, (1, 8))
-                raise_signal(SIGWINCH)
-            else:
-                os.write(terminal.keyboard, b"q")
-
-        use_effect(resize_then_quit_once_redrawn)
-        return Text(content="hi", style=text_black, on_input=quit_on_q)
-
-    await wait_for(app(root(), output_stream=output, input_stream=terminal.stream), TIMEOUT)
+    await wait_for(app(resizes_then_quits(terminal), output_stream=output, input_stream=terminal.stream), TIMEOUT)
 
     assert output.getvalue() == TAKE_OVER + drawn("hi   ") + drawn("hi      ") + HAND_BACK
 
 
+async def test_app_starts_at_the_environments_size_until_the_terminal_resizes(
+    terminal: Terminal, unsized_environment: pytest.MonkeyPatch
+) -> None:
+    unsized_environment.setenv("COLUMNS", "3")
+    unsized_environment.setenv("LINES", "1")
+    output = TerminalOutput(terminal)
+    termios.tcsetwinsize(terminal.stream, (2, 5))
+
+    await wait_for(app(resizes_then_quits(terminal), output_stream=output, input_stream=terminal.stream), TIMEOUT)
+
+    assert output.getvalue() == TAKE_OVER + HI + drawn("hi      ") + HAND_BACK
+
+
+async def test_app_takes_the_terminals_size_over_the_environments_after_a_suspension(
+    terminal: Terminal, unsized_environment: pytest.MonkeyPatch
+) -> None:
+    unsized_environment.setenv("COLUMNS", "3")
+    unsized_environment.setenv("LINES", "1")
+    output = TerminalOutput(terminal)
+    termios.tcsetwinsize(terminal.stream, (1, 5))
+
+    await wait_for(
+        app(
+            hi(),
+            output_stream=output,
+            input_stream=terminal.stream,
+            autopilot=[Suspend(handler=lambda streams: None), Quit()],
+        ),
+        TIMEOUT,
+    )
+
+    assert output.getvalue() == TAKE_OVER + HI + HAND_BACK + TAKE_OVER + drawn("hi   ") + HAND_BACK
+
+
+SIZED_ENVIRONMENT = {"COLUMNS": "150", "LINES": "60"}
+
+
 @pytest.mark.parametrize(
-    ("reported", "expected"),
+    ("reported", "environment", "expected"),
     [
-        pytest.param((97, 31), (97, 31), id="both"),
-        pytest.param((0, 0), (80, 24), id="neither"),
-        pytest.param((0, 31), (80, 31), id="no-columns"),
-        pytest.param((97, 0), (97, 24), id="no-rows"),
+        pytest.param((97, 31), {}, (97, 31), id="terminal"),
+        pytest.param((97, 31), SIZED_ENVIRONMENT, (150, 60), id="environment"),
+        pytest.param((97, 31), {"COLUMNS": "150"}, (150, 31), id="environment-columns"),
+        pytest.param((97, 31), {"LINES": "60"}, (97, 60), id="environment-rows"),
+        pytest.param((0, 0), {}, (80, 24), id="neither"),
+        pytest.param((0, 31), {"LINES": "60"}, (80, 60), id="neither-columns"),
     ],
 )
-def test_terminal_dimensions_are_80_by_24_where_the_terminal_reports_0(
-    terminal: Terminal, reported: tuple[int, int], expected: tuple[int, int]
+def test_initial_terminal_dimensions_take_the_environments_over_the_terminals(
+    terminal: Terminal, reported: tuple[int, int], environment: dict[str, str], expected: tuple[int, int]
 ) -> None:
     columns, rows = reported
     termios.tcsetwinsize(terminal.stream, (rows, columns))
 
-    assert terminal_dimensions(terminal.stream) == expected
+    assert initial_terminal_dimensions(terminal.stream, environment) == expected
 
 
-def test_terminal_dimensions_ignore_the_environment(terminal: Terminal, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("COLUMNS", "150")
-    monkeypatch.setenv("LINES", "60")
-    termios.tcsetwinsize(terminal.stream, (31, 97))
+@pytest.mark.parametrize(
+    ("reported", "environment", "expected"),
+    [
+        pytest.param((97, 31), SIZED_ENVIRONMENT, (97, 31), id="terminal"),
+        pytest.param((0, 0), SIZED_ENVIRONMENT, (150, 60), id="environment"),
+        pytest.param((0, 31), SIZED_ENVIRONMENT, (150, 31), id="environment-columns"),
+        pytest.param((97, 0), SIZED_ENVIRONMENT, (97, 60), id="environment-rows"),
+        pytest.param((0, 0), {}, (80, 24), id="neither"),
+        pytest.param((0, 31), {}, (80, 31), id="neither-columns"),
+        pytest.param((97, 0), {}, (97, 24), id="neither-rows"),
+    ],
+)
+def test_terminal_dimensions_take_the_environments_only_where_the_terminal_reports_0(
+    terminal: Terminal, reported: tuple[int, int], environment: dict[str, str], expected: tuple[int, int]
+) -> None:
+    columns, rows = reported
+    termios.tcsetwinsize(terminal.stream, (rows, columns))
 
-    assert terminal_dimensions(terminal.stream) == (97, 31)
+    assert terminal_dimensions(terminal.stream, environment) == expected
 
 
-def test_terminal_dimensions_of_streams_that_are_not_terminals_are_80_by_24(tmp_path: Path) -> None:
+@pytest.mark.parametrize("measure", [initial_terminal_dimensions, terminal_dimensions])
+@pytest.mark.parametrize("value", ["wide", "", "0", "-150", "1.5"])
+def test_dimensions_ignore_an_environment_variable_that_is_not_a_positive_integer(
+    terminal: Terminal, measure: Callable[[TextIO, Mapping[str, str]], tuple[int, int]], value: str
+) -> None:
+    termios.tcsetwinsize(terminal.stream, (0, 0))
+
+    assert measure(terminal.stream, {"COLUMNS": value, "LINES": value}) == (80, 24)
+
+
+def pipe_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """The write end of a pipe, which has a file descriptor that isn't a terminal."""
+    read, write = os.pipe()
+    stack.callback(os.close, read)
+    return stack.enter_context(os.fdopen(write, "w"))
+
+
+def file_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A regular file opened for writing, which has a file descriptor that isn't a terminal."""
+    return stack.enter_context((tmp_path / "file").open("w"))
+
+
+def closed_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A file that's already closed, whose `fileno` raises `ValueError`."""
+    closed = (tmp_path / "closed").open("w")
+    closed.close()
+    return closed
+
+
+def string_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A stream in memory, whose `fileno` raises `io.UnsupportedOperation`."""
+    return io.StringIO()
+
+
+@pytest.mark.parametrize("make_stream", [pipe_stream, file_stream, closed_stream, string_stream])
+def test_streams_that_are_not_terminals_report_0_by_0(
+    tmp_path: Path, make_stream: Callable[[ExitStack, Path], TextIO]
+) -> None:
     with ExitStack() as stack:
-        read, write = os.pipe()
-        stack.callback(os.close, read)
-        pipe = stack.enter_context(os.fdopen(write, "w"))
-        file = stack.enter_context((tmp_path / "file").open("w"))
-        closed = (tmp_path / "closed").open("w")
-        closed.close()
-        streams: list[TextIO] = [pipe, file, closed, io.StringIO()]
+        stream = make_stream(stack, tmp_path)
 
-        assert [terminal_dimensions(stream) for stream in streams] == [(80, 24)] * len(streams)
+        assert reported_dimensions(stream) == (0, 0)
 
 
 async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> None:
