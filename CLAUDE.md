@@ -220,6 +220,36 @@ which pre-commit leaves alone.
 - **pillow**: Decodes images for `Pixels.from_image`, which counterweight itself never imports, and draws the logo's PNGs
 - **fonttools** (dev): Outlines the logo's letters for `codegen/generate_logo.py`
 
+## Pseudo-Terminals on macOS
+
+CI runs the suite on macOS as well as Linux, and CI is the only Mac there is,
+so code and tests that drive a pseudo-terminal have to hold on a terminal driver nobody can run locally.
+macOS's differs from Linux's in ways that pass here and fail there, often only under `-n auto`'s load:
+
+- **Read the user side before the program side's last close.**
+  At that close, macOS waits at most 600 ms for the terminal's output to be read, then discards it,
+  where Linux keeps it readable until the read fails with `EIO`.
+  A test that closes the streams it gave the app and only then reads what the app wrote can read nothing,
+  so read inside the `with` that holds them open, as `Screen` in `tests/test_capture.py` does.
+  For a program `run_pty` starts, `make_controlling_terminal` keeps the program's exit from being that last close.
+- **Keep reading whichever side something writes to, or macOS blocks where Linux doesn't.**
+  `tcsetattr(..., TCSADRAIN)` waits for the echo of typed keys to be read (`read_until_closed` in `tests/conftest.py`),
+  a session leader's exit waits until its terminal's output is read (`run_pty` reads and drops it while hanging up),
+  and writing input blocks once about a kilobyte is waiting (`type_all`, which runs off the event loop).
+- **End of file reads differently:** the user side reads `b""` on macOS once the program side is closed,
+  and fails with `EIO` on Linux, so a read loop handles both (`read_output`, or `suppress(OSError)` in a test).
+- **Process groups:** `killpg` raises `PermissionError` for a group whose members have exited but aren't reaped
+  (`NOTHING_TO_SIGNAL`), and `os.getpgid` fails for a program that has exited.
+- **Terminal attributes:** turning line buffering back on sets `PENDIN` (`Terminal.settings`),
+  and Ctrl+T is the status key until the app puts the terminal in raw mode.
+- **BSD userland:** tools such as `od` lay their output out differently, so split it on whitespace
+  rather than matching its exact text.
+
+A macOS-only flake is a timing window, so make it deterministic rather than `xfail` it:
+`test_run_pty_reads_what_a_program_wrote_before_exiting_while_the_event_loop_was_busy`
+blocks the event loop past the 600 ms window, so it fails every time without the fix rather than now and then.
+A fix only Linux has run is unconfirmed until a macOS CI run passes, so say so.
+
 ## Code Style Guidelines
 - Line length: 120
 - Strict typing: All functions must be fully typed

@@ -298,7 +298,7 @@ async def test_a_print_to_the_same_terminal_as_the_app_goes_above_the_region(ter
                 stdout=same,
                 autopilot=[KEY, Quit()],
             )
-        written = os.read(screen, 2**16).decode()
+            written = os.read(screen, 2**16).decode()
     finally:
         os.close(screen)
 
