@@ -412,6 +412,39 @@ async def test_a_click_above_an_inline_region_is_dropped() -> None:
     assert frames == [["printed", "first", "second", "clicked first", "", ""]]
 
 
+@component
+def dragged() -> Div:
+    """A line that claims each press on it and says where the last one was released, and a print for each key pressed."""
+    released, set_released = use_state("nowhere")
+
+    def on_input(event: InputEvent, _: Receiver) -> tuple[()]:
+        if isinstance(event, MouseUp):
+            set_released(f"row {event.absolute.y}")
+        return ()
+
+    return Div(
+        style=col,
+        on_input=lambda event, _: Print(Text(content="printed")) if isinstance(event, KeyPressed) else None,
+        children=(Text(content=f"released {released}", on_input=on_input),),
+    )
+
+
+async def test_a_press_on_an_inline_region_released_above_it_reaches_the_element_that_claimed_it() -> None:
+    frames = await terminal_frames(
+        dragged(),
+        [
+            KeyPressed(key="x"),
+            MouseDown(absolute=Position(x=1, y=1), button=1),
+            MouseUp(absolute=Position(x=1, y=0), button=1),
+            SHOT,
+        ],
+        dimensions=(16, 4),
+        mouse=True,
+    )
+
+    assert frames == [["printed", "released row -1", "", ""]]
+
+
 async def test_a_click_on_an_inline_region_pushed_to_the_bottom_lands_on_the_element_under_it() -> None:
     frames = await terminal_frames(
         clickable(), [*[KeyPressed(key="x")] * 4, *click_at(3), SHOT], dimensions=(16, 6), mouse=True

@@ -214,3 +214,15 @@ def test_captured_lines_arent_a_terminal_and_take_their_encoding_from_the_stream
     captured = CapturedLines(original, send=lambda line: None)
 
     assert (captured.isatty(), captured.writable(), captured.encoding) == (False, True, "latin-1")
+
+
+def test_captured_lines_write_to_the_stream_they_replaced_once_released() -> None:
+    original = io.StringIO()
+    sent: list[str] = []
+    captured = CapturedLines(original, send=sent.append)
+    captured.write("held")
+
+    partial = captured.release()
+    print("after the app stopped", file=captured, flush=True)
+
+    assert (partial, sent, original.getvalue()) == ("held", [], "after the app stopped\n")

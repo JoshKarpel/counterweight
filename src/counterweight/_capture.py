@@ -19,6 +19,8 @@ class CapturedLines(io.TextIOBase):
     """
     A stream that hands each line written to it, without its newline, to `send`, from whichever thread wrote it,
     and holds the text after the last newline until the next write ends it.
+    Once released, it writes straight to `original`, so code that kept a reference to it,
+    such as a logging handler made while it was `sys.stderr`, doesn't send lines to an app that has stopped.
 
     It isn't a terminal, so a library that colors its output only on a terminal writes plain text to it.
     """
@@ -28,11 +30,16 @@ class CapturedLines(io.TextIOBase):
         self.original = original
         self.send = send
         self.partial = ""
+        self.is_released = False
         self.lock = Lock()
 
     def write(self, text: str) -> int:
         with self.lock:
-            *lines, self.partial = (self.partial + text).split("\n")
+            is_released = self.is_released
+            if not is_released:
+                *lines, self.partial = (self.partial + text).split("\n")
+        if is_released:
+            return self.original.write(text)
         for line in lines:
             self.send(line)
         return len(text)
@@ -47,10 +54,19 @@ class CapturedLines(io.TextIOBase):
     def encoding(self) -> str:  # type: ignore[override]
         return self.original.encoding
 
-    def take_partial(self) -> str:
-        """The text written after the last newline, which no line has sent, leaving none held."""
+    def flush(self) -> None:
+        # Closing this stream flushes it, as collecting it does, by which time `original` may be closed too.
+        if self.is_released and not self.original.closed:
+            self.original.flush()
+
+    def release(self) -> str:
+        """
+        Stops sending lines, so later writes go straight to `original`,
+        and returns the text written after the last newline, which no line has sent.
+        """
         with self.lock:
             partial, self.partial = self.partial, ""
+            self.is_released = True
         return partial
 
 
@@ -81,6 +97,6 @@ def stop_capturing(capture: Capture) -> None:
     sys.stdout = capture.stdout.original
     sys.stderr = capture.stderr.original
     for captured in (capture.stdout, capture.stderr):
-        if partial := captured.take_partial():
+        if partial := captured.release():
             captured.original.write(partial)
             captured.original.flush()

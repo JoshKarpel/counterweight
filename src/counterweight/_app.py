@@ -346,17 +346,19 @@ class RegionTop:
         return RegionTop(top=None, unanswered=self.unanswered)
 
 
-def on_viewport[M: MouseEvent](event: M, viewport: Viewport, region_top: int | None) -> M | None:
+def on_viewport[M: MouseEvent](event: M, viewport: Viewport, region_top: int | None, is_pressed: bool) -> M | None:
     """
     `event`, which the terminal reports where it is on the screen, where it is on what the app draws:
     on an inline region, as far below the region's top as it is, starting on the screen row `region_top`,
-    or `None` if it's above the region, over the scrollback, or the app doesn't know where the region is yet.
+    or `None` if the app doesn't know where the region is yet,
+    or if it's above the region, over the scrollback, unless a press `is_pressed`,
+    whose captor gets the rest of it wherever the pointer goes, as on the web.
     """
     match viewport:
         case FullScreen():
             return event
         case Inline():
-            if region_top is None or event.absolute.y < region_top:
+            if region_top is None or (event.absolute.y < region_top and not is_pressed):
                 return None
             return replace(event, absolute=event.absolute - Position(x=0, y=region_top))
         case _ as unreachable:
@@ -980,19 +982,20 @@ async def render_loop(
                 if should_suspend:
                     logger.debug("Suspending application", extra={"handler": should_suspend.handler})
 
-                    # The program the app hands the terminal to starts where an inline region was.
+                    # What arrived with the suspension prints before the program the app hands the terminal to,
+                    # which starts where an inline region was.
+                    printed, _ = print_pending()
                     if isinstance(viewport, Inline):
-                        write(ERASE_DOWN)
+                        write(ERASE_DOWN + printed)
                     if not headless:
                         stop_reading_keys(key_reader)
                         stop_output(stream=output_stream, viewport=viewport)
-                    print_held()
-                    stop_capture()
-                    if not headless:
                         stop_input_control(stream=input_stream, original=original)
                         stop_handling_resize_signal()
                         stop_handling_interrupt_signal(previous_interrupt_handler)
                     is_suspended = True
+                    print_held()
+                    stop_capture()
                     if recorder is not None:
                         recorder.suspend()
 
@@ -1269,7 +1272,7 @@ async def render_loop(
                         ) as on_screen:
                             if recorder is not None:
                                 recorder.input(on_screen)
-                            m = on_viewport(on_screen, viewport, region_top.top)
+                            m = on_viewport(on_screen, viewport, region_top.top, is_pressed=press is not None)
                             if m is not None:
                                 press, controls = route_mouse(m, press, focused, routing)
                                 for control in controls:
@@ -1304,7 +1307,8 @@ async def render_loop(
     finally:
         logger.info("Application stopping...")
 
-        if isinstance(viewport, Inline) and not is_suspended:
+        # An inline app has an emulator once it knows where its region is, so one that failed before then drew none.
+        if isinstance(viewport, Inline) and emulator is not None and not is_suspended:
             write(leave_region(current_paint.height, keep=viewport.keep_last_frame))
 
         if emulator is not None:
@@ -1317,13 +1321,16 @@ async def render_loop(
             # Stop reading input before handing the terminal back, so it can't take input meant for whatever runs next.
             stop_reading_keys(key_reader)
             stop_output(stream=output_stream, viewport=viewport)
-        if not is_suspended:
-            print_held()
-        stop_capture()
-        if not headless and not is_suspended:
             stop_input_control(stream=input_stream, original=original)
             stop_handling_resize_signal()
             stop_handling_interrupt_signal(previous_interrupt_handler)
+        # The held prints render the app's components, which can raise, after the terminal is handed back,
+        # and before the captured streams write out their unfinished lines, which came after them.
+        try:
+            if not is_suspended:
+                print_held()
+        finally:
+            stop_capture()
 
         logger.info("Application stopped")
 

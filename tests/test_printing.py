@@ -303,6 +303,33 @@ async def test_a_full_screen_app_prints_what_it_held_when_it_hands_the_screen_ba
     assert output.getvalue().count("one") == 1
 
 
+@pytest.mark.parametrize("viewport", [FullScreen(), Inline()])
+async def test_a_print_that_arrives_with_a_suspension_prints_before_the_program_runs(
+    terminal: Terminal, viewport: FullScreen | Inline
+) -> None:
+    output = io.StringIO()
+    during: list[str] = []
+
+    @component
+    def opens() -> Text:
+        def on_input(event: InputEvent, _: Receiver) -> tuple[Print, Suspend]:
+            return Print(Text(content="opening")), Suspend(handler=lambda streams: during.append(output.getvalue()))
+
+        return Text(content="region", on_input=on_input)
+
+    await app(
+        opens(),
+        output_stream=output,
+        input_stream=terminal.stream,
+        dimensions=(16, 4),
+        stdout=output,
+        viewport=viewport,
+        autopilot=[KEY, Quit()],
+    )
+
+    assert "opening" in during[0]
+
+
 async def test_a_headless_full_screen_app_prints_nothing_to_its_terminal() -> None:
     output = io.StringIO()
 

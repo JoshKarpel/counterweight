@@ -79,7 +79,7 @@ def branch_picker() -> Div:
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
             case KeyPressed(key=Key.Down) if shown:
-                set_search(lambda s: replace(s, highlighted=min(s.highlighted + 1, len(shown) - 1)))
+                set_search(lambda s: replace(s, highlighted=min(s.highlighted + 1, len(shown[:SHOWN]) - 1)))
                 return ()
             case KeyPressed(key=Key.Up) if shown:
                 set_search(lambda s: replace(s, highlighted=max(s.highlighted - 1, 0)))

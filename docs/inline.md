@@ -57,6 +57,7 @@ unless it's given `Inline(keep_last_frame=False)`, which erases the region.
 The last frame shows the state the handlers set before the app quit,
 since [`Quit`][counterweight.controls.Quit] stops the app after one more render.
 While the app is [suspended](terminals/programs.md), it erases its region,
+after printing anything printed in the same cycle as the `Suspend`,
 so the program it hands the terminal to starts where the region was,
 and it draws the region again wherever that program left the cursor.
 
@@ -72,7 +73,9 @@ It asks the terminal where the cursor is (`CSI 6 n`) after drawing the region fr
 when it starts and after a resize or a suspension, while the cursor is at the region's top-left,
 and works out where the region is from then on from what each frame prints above it and how tall it draws it.
 Mouse events above the region are over the scrollback, not the app, so they're dropped,
-as are any that arrive before the terminal answers.
+as are any that arrive before the terminal answers,
+except while a press that started in the region is held: its element keeps getting the moves and the release,
+with a negative `y`, as a browser keeps sending a captured pointer's events outside the target.
 The answer, `CSI row ; 1 R`, is also what Ctrl+F3 sends on some terminals, but with a modifier of at least 2
 where the answer has 1, since the app only asks while the cursor is in the first column.
 
@@ -134,6 +137,8 @@ A full-screen app gets the same, printed when it hands the main screen back,
 rather than garbling the alternate screen.
 The streams are put back while the app is suspended and when it stops,
 which writes out any line left without its newline.
+A replaced stream that something kept, such as a `logging.StreamHandler` made while the app ran,
+writes straight to the stream it replaced from then on.
 Pass `capture_output=False` to `app` to leave them alone.
 A program that writes to the terminal itself, such as a subprocess, isn't caught.
 
