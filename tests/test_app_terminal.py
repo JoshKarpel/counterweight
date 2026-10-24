@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import os
+import termios
 from asyncio import CancelledError
 from asyncio import Event
 from asyncio import create_task
@@ -11,14 +12,18 @@ from asyncio import get_running_loop
 from asyncio import wait_for
 from collections.abc import Callable
 from collections.abc import Iterator
+from contextlib import ExitStack
+from pathlib import Path
 from signal import SIGINT
 from signal import SIGWINCH
 from signal import raise_signal
 from signal import signal
+from typing import TextIO
 
 import pytest
 
 from counterweight import app
+from counterweight._app import terminal_dimensions
 from counterweight._output import ALT_SCREEN_OFF
 from counterweight._output import ALT_SCREEN_ON
 from counterweight._output import BRACKETED_PASTE_OFF
@@ -70,12 +75,19 @@ TIMEOUT = 5
 
 TAKE_OVER = ALT_SCREEN_ON + CURSOR_OFF + CLEAR_SCREEN + SAVE_TITLE + SET_ANY_EVENT_MOUSE_SGR_FORMAT + BRACKETED_PASTE_ON
 HAND_BACK = BRACKETED_PASTE_OFF + UNSET_ANY_EVENT_MOUSE_SGR_FORMAT + ALT_SCREEN_OFF + CURSOR_ON + RESTORE_TITLE
-HI = (
-    SYNCHRONIZED_OUTPUT_ON
-    + CLEAR_SCREEN
-    + "\x1b[1;1f\x1b[0m\x1b[38;2;0;0;0m\x1b[48;2;0;0;0mhi \x1b[0m"
-    + SYNCHRONIZED_OUTPUT_OFF
-)
+
+
+def drawn(row: str) -> str:
+    """A frame that clears the screen and draws `row`, in `text_black`, as its only row."""
+    return (
+        SYNCHRONIZED_OUTPUT_ON
+        + CLEAR_SCREEN
+        + f"\x1b[1;1f\x1b[0m\x1b[38;2;0;0;0m\x1b[48;2;0;0;0m{row}\x1b[0m"
+        + SYNCHRONIZED_OUTPUT_OFF
+    )
+
+
+HI = drawn("hi ")
 
 
 class Output(io.StringIO):
@@ -87,6 +99,17 @@ class Output(io.StringIO):
 
     def flush(self) -> None:
         self.flushed.append(self.getvalue())
+
+
+class TerminalOutput(Output):
+    """Output that reports the file descriptor of a terminal, as `/dev/tty` opened for writing would."""
+
+    def __init__(self, terminal: Terminal) -> None:
+        super().__init__()
+        self.terminal = terminal
+
+    def fileno(self) -> int:
+        return self.terminal.stream.fileno()
 
 
 @component
@@ -459,6 +482,100 @@ async def test_a_resize_signal_redraws_the_screen(
     )
 
     assert output.getvalue() == before_resize + HI + HAND_BACK
+
+
+async def test_app_sizes_the_screen_from_the_terminal_its_output_stream_writes_to(terminal: Terminal) -> None:
+    output = TerminalOutput(terminal)
+    termios.tcsetwinsize(terminal.stream, (1, 5))
+    redraws = 0
+
+    @component
+    def root() -> Text:
+        async def resize_then_quit_once_redrawn() -> None:
+            nonlocal redraws
+            redraws += 1
+            if redraws == 1:
+                termios.tcsetwinsize(terminal.stream, (1, 8))
+                raise_signal(SIGWINCH)
+            else:
+                os.write(terminal.keyboard, b"q")
+
+        use_effect(resize_then_quit_once_redrawn)
+        return Text(content="hi", style=text_black, on_input=quit_on_q)
+
+    await wait_for(app(root(), output_stream=output, input_stream=terminal.stream), TIMEOUT)
+
+    assert output.getvalue() == TAKE_OVER + drawn("hi   ") + drawn("hi      ") + HAND_BACK
+
+
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [
+        pytest.param((97, 31), (97, 31), id="both"),
+        pytest.param((0, 0), (80, 24), id="neither"),
+        pytest.param((0, 31), (80, 31), id="no-columns"),
+        pytest.param((97, 0), (97, 24), id="no-rows"),
+    ],
+)
+def test_terminal_dimensions_are_80_by_24_where_the_terminal_reports_0(
+    terminal: Terminal, reported: tuple[int, int], expected: tuple[int, int]
+) -> None:
+    columns, rows = reported
+    termios.tcsetwinsize(terminal.stream, (rows, columns))
+
+    assert terminal_dimensions(terminal.stream) == expected
+
+
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [
+        pytest.param((97, 31), (97, 31), id="terminal"),
+        pytest.param((0, 0), (80, 24), id="unknown"),
+    ],
+)
+def test_terminal_dimensions_ignore_the_environment(
+    terminal: Terminal, monkeypatch: pytest.MonkeyPatch, reported: tuple[int, int], expected: tuple[int, int]
+) -> None:
+    monkeypatch.setenv("COLUMNS", "150")
+    monkeypatch.setenv("LINES", "60")
+    columns, rows = reported
+    termios.tcsetwinsize(terminal.stream, (rows, columns))
+
+    assert terminal_dimensions(terminal.stream) == expected
+
+
+def pipe_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """The write end of a pipe, which has a file descriptor that isn't a terminal."""
+    read, write = os.pipe()
+    stack.callback(os.close, read)
+    return stack.enter_context(os.fdopen(write, "w"))
+
+
+def file_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A regular file opened for writing, which has a file descriptor that isn't a terminal."""
+    return stack.enter_context((tmp_path / "file").open("w"))
+
+
+def closed_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A file that's already closed, whose `fileno` raises `ValueError`."""
+    closed = (tmp_path / "closed").open("w")
+    closed.close()
+    return closed
+
+
+def string_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A stream in memory, whose `fileno` raises `io.UnsupportedOperation`."""
+    return io.StringIO()
+
+
+@pytest.mark.parametrize("make_stream", [pipe_stream, file_stream, closed_stream, string_stream])
+def test_streams_that_are_not_terminals_are_80_by_24(
+    tmp_path: Path, make_stream: Callable[[ExitStack, Path], TextIO]
+) -> None:
+    with ExitStack() as stack:
+        stream = make_stream(stack, tmp_path)
+
+        assert terminal_dimensions(stream) == (80, 24)
 
 
 async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> None:

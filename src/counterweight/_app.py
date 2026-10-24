@@ -3,7 +3,6 @@ from __future__ import annotations
 import gc
 import logging
 import os
-import shutil
 import sys
 from asyncio import Queue
 from asyncio import QueueEmpty
@@ -168,6 +167,25 @@ from counterweight.styles import Style
 from counterweight.styles.utilities import text_wrap_stable
 
 logger = logging.getLogger(__name__)
+
+UNKNOWN_TERMINAL_DIMENSIONS = (80, 24)
+"""The dimensions of a stream that isn't a terminal, and of each that a terminal reports as 0, as `shutil`'s are."""
+
+
+def terminal_dimensions(stream: TextIO) -> tuple[int, int]:
+    """
+    The columns and rows of the terminal `stream` writes to,
+    so an app drawing on `/dev/tty` while its standard output is a pipe, as in `$(picker)`, fills the terminal.
+    Unlike `shutil.get_terminal_size`, which asks standard output, this ignores `COLUMNS` and `LINES`,
+    which describe the terminal when the process started and go stale once it resizes.
+    """
+    try:
+        size = os.get_terminal_size(stream.fileno())
+    # A stream with no file descriptor raises io.UnsupportedOperation, a closed one ValueError, a non-terminal OSError.
+    except OSError, ValueError:
+        return UNKNOWN_TERMINAL_DIMENSIONS
+    columns, rows = UNKNOWN_TERMINAL_DIMENSIONS
+    return size.columns or columns, size.lines or rows
 
 
 def start_handling_resize_signal(put_event: Callable[[AnyEvent], None]) -> None:
@@ -441,11 +459,14 @@ async def app(
         root: The root [component][counterweight.components.component] of the application, already called
             with its arguments, such as `app(root(path))`.
         output_stream: The stream to which the application will write its output.
+            To draw on the terminal while standard output is a pipe, as a picker run in `vim $(picker)` does,
+            pass `/dev/tty` opened for writing.
         input_stream: The stream from which the application will read its input.
         headless: If `True`, the application will not attempt to read from the input stream or write to the output stream.
             This is primarily useful when combined with the `autopilot` parameter.
         dimensions: The dimensions of the terminal window, in characters.
-            If `None`, the dimensions of the terminal window will be used.
+            If `None`, the size of the terminal `output_stream` writes to, read again on each resize,
+            or 80 by 24 if it isn't a terminal. The `COLUMNS` and `LINES` environment variables are ignored.
         autopilot: An iterable of events and controls to be processed by the application,
             and of [`Wait`][counterweight.autopilot.Wait] and [`WaitFor`][counterweight.autopilot.WaitFor],
             which hold the rest back until real time has passed or the screen shows something.
@@ -624,7 +645,7 @@ async def render_loop(
         nonlocal emulator
         nonlocal region_top
 
-        w, h = override or dimensions or shutil.get_terminal_size()
+        w, h = override or dimensions or terminal_dimensions(output_stream)
         should_clear = True
         region_top = region_top.lost()
         if recorder is not None:
