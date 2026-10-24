@@ -9,7 +9,10 @@ from benchmarks import agent
 from benchmarks import agent_markdown
 from benchmarks import agent_typing
 from benchmarks import canvas
+from benchmarks import chat
 from benchmarks import dashboard
+from benchmarks import picker
+from benchmarks import tasks
 from benchmarks import top
 from benchmarks.harness import autopilot
 from benchmarks.harness import run
@@ -151,7 +154,9 @@ async def test_live_workload_renders_until_quit(name: str) -> None:
     assert capture.getvalue().strip()
 
 
-@pytest.mark.parametrize("module", [agent, agent_markdown, canvas, dashboard, top], ids=lambda m: m.__name__)
+@pytest.mark.parametrize(
+    "module", [agent, agent_markdown, canvas, chat, dashboard, picker, tasks, top], ids=lambda m: m.__name__
+)
 def test_workload_steps_to_the_same_models_every_run(module: ModuleType) -> None:
     def models() -> list[object]:
         model = module.initial()

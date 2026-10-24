@@ -52,6 +52,7 @@ from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_collapse
 from counterweight.styles.utilities import border_light
 from counterweight.styles.utilities import col
+from counterweight.styles.utilities import inset_top
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_wrap_stable
 from tests.terminal import Terminal
@@ -178,6 +179,37 @@ async def test_prints_in_one_cycle_keep_their_order_across_both_streams() -> Non
     frames = await terminal_frames(both(), [KEY, SHOT], output_stream=terminal, stdout=terminal, stderr=terminal)
 
     assert frames == [["out 1", "err 1", "out 2", "region"]]
+
+
+async def test_prints_in_one_cycle_are_each_clipped_to_their_own_box_as_alone() -> None:
+    @component
+    def overflowing() -> Text:
+        return Text(
+            content="region",
+            on_input=lambda event, _: (
+                Print(Text(content="first line")),
+                Print(Div(children=(Text(content="X", style=inset_top(-1)),))),
+            ),
+        )
+
+    assert await terminal_frames(overflowing(), [KEY, SHOT], dimensions=(12, 4)) == [["first line", "", "region", ""]]
+
+
+async def test_prints_in_one_cycle_to_a_stream_that_isnt_a_terminal_are_each_as_wide_as_they_are() -> None:
+    @component
+    def boxed() -> Text:
+        return Text(
+            content="region",
+            on_input=lambda event, _: (
+                Print(Div(style=border | border_light, children=(Text(content="ab"),))),
+                Print(Text(content="a longer line")),
+            ),
+        )
+
+    written = io.StringIO()
+    await terminal_frames(boxed(), [KEY], stdout=written)
+
+    assert written.getvalue() == "┌──┐\n│ab│\n└──┘\na longer line\n"
 
 
 async def test_a_printed_components_effects_never_start_and_it_measures_nothing() -> None:

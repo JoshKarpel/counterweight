@@ -18,6 +18,7 @@ from collections.abc import Collection
 from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
+from collections.abc import Sequence
 from contextlib import AbstractContextManager
 from contextlib import contextmanager
 from contextlib import nullcontext
@@ -25,6 +26,7 @@ from dataclasses import dataclass
 from dataclasses import replace
 from datetime import timedelta
 from itertools import chain
+from itertools import groupby
 from signal import SIG_DFL
 from signal import SIGINT
 from signal import SIGWINCH
@@ -739,34 +741,38 @@ async def render_loop(
     # What a full-screen app printed to its own terminal, which it holds until it hands the main screen back.
     held_prints: list[Print] = []
 
-    def rendered(content: Component | AnyElement, width: int | None) -> Paint:
-        """`content`, rendered once at `width` (see `render_once`)."""
+    def rendered(prints: Sequence[Print], width: int | None) -> Paint:
+        """The contents of `prints`, rendered once at `width`, one below another (see `render_once`)."""
         with rendering():
-            return render_once(content, width, read_clock(), cell_aspect_ratio, do_heal_borders)
+            return render_once(
+                [printed.content for printed in prints], width, read_clock(), cell_aspect_ratio, do_heal_borders
+            )
 
     def print_pending() -> tuple[str, int]:
         """
         Prints what's pending, in order, returning the instructions that print what goes above an inline region,
         which go in the frame, and how many rows they print,
         and holding what a full-screen app prints to its own terminal.
+        Each run of prints to the same stream is rendered at once, so a burst of lines builds one tree, not one each.
         """
         above = []
         rows = 0
-        for printed in pending_prints:
-            stream = print_streams[printed.stream]
-            match print_targets[printed.stream]:
+        for name, run in groupby(pending_prints, key=lambda printed: printed.stream):
+            prints = list(run)
+            stream = print_streams[name]
+            match print_targets[name]:
                 case "screen" if isinstance(viewport, Inline):
-                    paint = rendered(printed.content, w)
+                    paint = rendered(prints, w)
                     above.append(printed_rows(paint, "\r\n"))
                     rows += paint.height
                 case "screen":
-                    held_prints.append(printed)
+                    held_prints.extend(prints)
                 case "terminal":
                     width = os.get_terminal_size(stream.fileno()).columns
-                    stream.write(printed_rows(rendered(printed.content, width), "\n"))
+                    stream.write(printed_rows(rendered(prints, width), "\n"))
                     stream.flush()
                 case "text":
-                    stream.write(plain_rows(rendered(printed.content, None)))
+                    stream.write(plain_rows(rendered(prints, None)))
                     stream.flush()
                 case _ as unreachable:
                     assert_never(unreachable)
@@ -796,7 +802,7 @@ async def render_loop(
         A headless app has no main screen to print on.
         """
         if held_prints and not headless:
-            output_stream.write("".join(printed_rows(rendered(printed.content, w), "\r\n") for printed in held_prints))
+            output_stream.write(printed_rows(rendered(held_prints, w), "\r\n"))
             output_stream.flush()
         held_prints.clear()
 
@@ -1390,16 +1396,30 @@ def is_same_terminal(stream: TextIO, other: TextIO) -> bool:
 
 
 def render_once(
-    content: Component | AnyElement, width: int | None, instant: Instant, cell_aspect_ratio: float, heal: bool
+    contents: Sequence[Component | AnyElement],
+    width: int | None,
+    instant: Instant,
+    cell_aspect_ratio: float,
+    heal: bool,
 ) -> Paint:
     """
-    `content` rendered once, as React's `renderToStaticMarkup` does, `width` wide, or as wide as it is if that's `None`,
-    and as tall as it is: its components run with each hook's initial state, and their effects never start.
+    `contents` rendered once, as React's `renderToStaticMarkup` does, one below another,
+    `width` wide, or each as wide as it is if that's `None`, and as tall as they are:
+    their components run with each hook's initial state, and their effects never start.
     Borders are healed if `heal` is set, as the app heals its own.
+
+    Each is laid out as it would be alone, as the root of an inline region,
+    and, among several, clipped to its own box, so nothing it draws outside it lands on another,
+    as it would be dropped alone.
     """
-    shadow = update_shadow(
-        Div(style=region_element_style(width, None), children=(content,)), None, NO_LAYOUTS, instant=instant
-    ).tree
+    style = region_element_style(width, None) | (BATCH_AT_CONTENT_WIDTH if width is None else Style())
+    children = (
+        tuple(contents)
+        if len(contents) == 1
+        else tuple(Div(style=PRINTED_STYLE, children=(content,)) for content in contents)
+    )
+    root = Div(style=style, children=children)
+    shadow = update_shadow(root, None, NO_LAYOUTS, instant=instant).tree
     tree = LayoutTree()
     layouts = tree.compute(layout_changes(None, shadow), shadow, width, None, {})
     border = layouts.by_key[shadow.root.key].border
@@ -1409,6 +1429,22 @@ def render_once(
             paint[position] = cell
     return paint
 
+
+PRINTED_STYLE = Style(
+    layout=waxy.Style(
+        flex_direction=waxy.FlexDirection.Column, overflow_x=waxy.Overflow.Clip, overflow_y=waxy.Overflow.Clip
+    )
+)
+"""
+The style of the box around each of the contents `render_once` renders together:
+a flex column, the context each would be laid out in alone, which clips what it holds to the box.
+"""
+
+BATCH_AT_CONTENT_WIDTH = Style(layout=waxy.Style(align_items=waxy.AlignItems.Start))
+"""
+What keeps each of the contents `render_once` renders at no width as wide as it is alone,
+rather than stretched as wide as the widest.
+"""
 
 SCROLLBACK = 10_000
 """How many rows scrolled off the top of an inline app's terminal a screenshot that includes the scrollback shows."""
