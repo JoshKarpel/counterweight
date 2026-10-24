@@ -526,25 +526,56 @@ def test_terminal_dimensions_are_80_by_24_where_the_terminal_reports_0(
     assert terminal_dimensions(terminal.stream) == expected
 
 
-def test_terminal_dimensions_ignore_the_environment(terminal: Terminal, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [
+        pytest.param((97, 31), (97, 31), id="terminal"),
+        pytest.param((0, 0), (80, 24), id="unknown"),
+    ],
+)
+def test_terminal_dimensions_ignore_the_environment(
+    terminal: Terminal, monkeypatch: pytest.MonkeyPatch, reported: tuple[int, int], expected: tuple[int, int]
+) -> None:
     monkeypatch.setenv("COLUMNS", "150")
     monkeypatch.setenv("LINES", "60")
-    termios.tcsetwinsize(terminal.stream, (31, 97))
+    columns, rows = reported
+    termios.tcsetwinsize(terminal.stream, (rows, columns))
 
-    assert terminal_dimensions(terminal.stream) == (97, 31)
+    assert terminal_dimensions(terminal.stream) == expected
 
 
-def test_terminal_dimensions_of_streams_that_are_not_terminals_are_80_by_24(tmp_path: Path) -> None:
+def pipe_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """The write end of a pipe, which has a file descriptor that isn't a terminal."""
+    read, write = os.pipe()
+    stack.callback(os.close, read)
+    return stack.enter_context(os.fdopen(write, "w"))
+
+
+def file_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A regular file opened for writing, which has a file descriptor that isn't a terminal."""
+    return stack.enter_context((tmp_path / "file").open("w"))
+
+
+def closed_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A file that's already closed, whose `fileno` raises `ValueError`."""
+    closed = (tmp_path / "closed").open("w")
+    closed.close()
+    return closed
+
+
+def string_stream(stack: ExitStack, tmp_path: Path) -> TextIO:
+    """A stream in memory, whose `fileno` raises `io.UnsupportedOperation`."""
+    return io.StringIO()
+
+
+@pytest.mark.parametrize("make_stream", [pipe_stream, file_stream, closed_stream, string_stream])
+def test_streams_that_are_not_terminals_are_80_by_24(
+    tmp_path: Path, make_stream: Callable[[ExitStack, Path], TextIO]
+) -> None:
     with ExitStack() as stack:
-        read, write = os.pipe()
-        stack.callback(os.close, read)
-        pipe = stack.enter_context(os.fdopen(write, "w"))
-        file = stack.enter_context((tmp_path / "file").open("w"))
-        closed = (tmp_path / "closed").open("w")
-        closed.close()
-        streams: list[TextIO] = [pipe, file, closed, io.StringIO()]
+        stream = make_stream(stack, tmp_path)
 
-        assert [terminal_dimensions(stream) for stream in streams] == [(80, 24)] * len(streams)
+        assert terminal_dimensions(stream) == (80, 24)
 
 
 async def test_app_reads_keys_again_after_a_suspension(terminal: Terminal) -> None:
