@@ -16,6 +16,7 @@ import pytest
 from counterweight import app
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import WaitFor
+from counterweight.autopilot import typed
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.elements import Div
@@ -126,6 +127,12 @@ async def test_the_picker_chooses_upward_and_closes_on_escape() -> None:
     closed = await screen(picker.settings(), keys(Key.F2, Key.Escape), (40, 10))
 
     assert ("CPython" in opened, "Python 3.14" in upward, "CPython" in closed) == (True, True, False)
+
+
+async def test_the_picker_stays_open_on_enter_when_nothing_matches() -> None:
+    shown = await screen(picker.settings(), (*keys(Key.F2), *typed("zz"), *keys(Key.Enter)), (40, 10))
+
+    assert ("nothing matches" in shown, "Python 3.15" in shown) == (True, True)
 
 
 async def test_a_draggable_ignores_a_press_of_another_button() -> None:

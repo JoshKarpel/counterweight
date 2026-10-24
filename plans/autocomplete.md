@@ -1,24 +1,25 @@
-# Plan: An Autocomplete Headless Component
+# Plan: Parts for Pickers and Comboboxes
 
 Artifact: https://claude.ai/code/artifact/ad723da1-a0f8-4971-a221-f0be22e0bbe9
 
-This plan adds `use_autocomplete` to `counterweight.headless`, a hook that gives a component
-a text field which narrows a list of options as you type, with a highlighted option
-that keys move and Enter chooses, and leaves drawing the field and the list to the component.
-It adds `autocomplete`, the widget that draws it one way,
-`AutocompleteKeys`, which says which keys do what,
-and `fuzzy_matches` and `substring_matches`, the two matchers the callers so far have written.
-It rebuilds the cookbook's autocomplete and picker snippets on the hook,
-and ends with every picker built on counterweight so far ported onto it.
-It doesn't cover choosing several options (though it shows how marks compose on top),
-loading options asynchronously, or a list you choose from without typing (a `<select>`),
-which is what a future `use_picker` would be.
+This plan adds the parts every counterweight picker has written its own copy of,
+and leaves wiring them to keys, state and drawing to the app.
+It adds `Highlight`, `fuzzy_matches` and `substring_matches` to `counterweight.headless`,
+`get` to `use_state`'s setter, so a handler can read the state as the updates since the last render left it,
+and `combobox`, a widget that wires the parts the one way the WAI-ARIA combobox pattern does.
+Everything else a picker does (an always-open list, Tab cycling, marks, keys of its own, previews)
+is a recipe in the docs, built from the parts.
+It rebuilds the cookbook's autocomplete and picker snippets on the parts,
+and ends with every picker built on counterweight so far ported onto them.
+It doesn't add a hook that wires the parts together (see [Why no wired hook](#why-no-wired-hook)),
+choosing several options as a library feature, loading options asynchronously,
+or a list you choose from without typing (a `<select>`), which `Highlight` serves when it comes.
 
 ## The question
 
 Every counterweight app with a picker has written its own, and the copies have started to drift.
 What part of them is behavior that belongs in the library,
-and what part is drawing, or keys, that each app does its own way?
+and what part is drawing, or keys, or policy, that each app does its own way?
 
 Ten copies exist, in two families.
 
@@ -60,147 +61,193 @@ Beyond those, single copies need more:
 - `zellij-pick-tab`'s digits jump to a tab, where `port-manage`'s and `kube-pick`'s narrow the list.
 - `zellij-pick-tab` and `kube-pick` open on the current item, and draw it differently.
 
-The drift so far:
+## Where the drift lives
 
-- assess dropped Tab as a choosing key, and the command-line family uses it to move instead.
-- `inline_picker.py` stops the highlight at the ends rather than wrapping,
-  and at the last row it shows, since it doesn't scroll.
-- `filter_list` needs a `run_on_mount` component to close when its field loses focus.
-- `shown[query.highlighted]` indexes past the end if the options shrink while the text stays the same,
-  which `filter_list` allows, since the diff's files can change while it's open.
-- Every cookbook-family copy chooses from the options as last rendered,
-  so an Enter that arrives with the keys typed before it, before the next render, chooses from a stale list.
+Sorting the drift by where it lives answers the question:
 
-What differs is drawing (sections under bars, headings, descriptions under options, a popup above or below the field,
-"nothing matches"), what counts as a match, which keys do what,
-what choosing does (fill in the text, set a setting, jump, copy, signal),
-and who owns the state (assess's theme picker keeps it in the app, to preview the highlighted theme behind the dialog).
+| Drift | Kind | Where it lives |
+|---|---|---|
+| `shown[query.highlighted]` indexes past the end when the options shrink and the text stays (`filter_list`) | Bug | Which option is highlighted |
+| `port-manage` needs the highlight held by key as rows refresh | Bug, fixed in one copy | Which option is highlighted |
+| An Enter typed with the text before it chooses from the list as last rendered | Bug | Reading the latest state in a handler |
+| `matches` copied nearly line for line | Duplication | Matching |
+| Tab chooses (cookbook), moves (command-line family), or does nothing (assess) | Preference | Keys |
+| `inline_picker.py` stops at the ends rather than wrapping | Preference | Keys |
+| Escape closes, goes back a step, or leaves the app | Preference | What a key does |
+| Choosing fills in text, sets a setting, jumps, copies, or signals | Preference | What choosing does |
+| assess's theme picker keeps its state in the app, to preview the highlighted theme | Preference | Who owns the state |
+
+The bugs are the same mistake made in each copy, in a part that is the same everywhere.
+The differences are callers wanting different things, in the wiring.
+A hook that wires the parts together fixes the first kind only by taking ownership of the second,
+which is why the design this plan replaced grew a parameter for each wiring choice a caller made differently:
+a key map, an `on_dismiss` that always-open pickers opted out of, an `is_dismissed` they carried and never drew,
+and four focus parameters passed through to the text field it owned.
 
 ## How the web does it
 
-The [WAI-ARIA combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/) is the reference for the keys:
-focus stays in the text box, the highlighted option is marked with `aria-activedescendant`,
+The [WAI-ARIA combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/) defines the widget:
+"A combobox is an input widget that has an associated popup",
+and "the popup is hidden by default".
+Focus stays in the text box, the highlighted option is marked with `aria-activedescendant`,
 Down opens a closed popup, Escape closes an open one,
 Tab moves focus on, and Home and End belong to the text box, not the list.
 Options can be `aria-disabled`, which the highlight skips.
+`aria-autocomplete` says how the suggestions relate to the text (`list`, `inline`, `both`),
+so autocompletion is a property a combobox has, not a widget of its own.
+Completion with no popup, as bash's Tab cycling or fish's ghost text, is outside the pattern.
 
-The headless libraries split along two lines this plan has to pick a side of:
+The headless libraries name the pieces differently, and agree on taking them apart:
 
-- **Who filters.** [Headless UI's `Combobox`](https://headlessui.com/v1/react/combobox)
+- [React Aria's `Autocomplete`](https://react-aria.adobe.com/Autocomplete) "filters a collection component
+  using a TextField or SearchField", where the collection is a separate component
+  (`Menu`, `ListBox`, `GridList`, `Table`), drawn inline or in a popover;
+  its `ComboBox` is for selecting "values from a pre-defined set of options".
+- [Base UI's `Autocomplete`](https://base-ui.com/react/components/autocomplete) is a text field with suggestions
+  whose value is free text, and its `Combobox` is for "when selection state is needed".
+- [Headless UI's `Combobox`](https://headlessui.com/v1/react/combobox)
   and [Downshift's `useCombobox`](https://github.com/downshift-js/downshift/tree/master/src/hooks/useCombobox)
   take the options already filtered, and leave the filter to the app.
-  React Aria takes a filter function.
-- **One component or two.** [React Aria](https://react-aria.adobe.com/Autocomplete) and
-  [Base UI](https://base-ui.com/react/components/autocomplete) both have a `ComboBox`,
-  which selects a value from a fixed set in a popup that closes,
-  and an `Autocomplete`, which filters a collection with a text field, for command palettes and searchable menus.
-  The cookbook's autocomplete is the first; every picker is the second.
+- React Aria tracks the highlighted option by its key (`focusedKey`), so it stays on the same option
+  when the list changes; Downshift tracks an index.
+  Downshift takes `isItemDisabled`, and React Aria `disabledKeys`.
+- Downshift's `stateReducer` lets an app rewrite what any key does to the state,
+  which is what an app writing its own handler from the parts does directly.
 
-And beyond the keys:
+On reading the latest state in a handler:
 
-- **Hover highlights.** Downshift and React Aria move the highlight to the option under the pointer.
-- **Highlight by key.** React Aria tracks the highlighted option by its key (`focusedKey`),
-  so it stays on the same option when the list changes; Downshift tracks an index.
-- **Disabled options.** Downshift takes `isItemDisabled`, and React Aria `disabledKeys`;
-  the highlight passes over them and they can't be chosen.
-- **Control props.** Downshift lets the app control each piece of state on its own
-  (`inputValue`, `highlightedIndex`, `isOpen`), or leave it to the hook.
-- **Changing the keys.** None of them takes a key map.
-  Downshift's `stateReducer` lets an app rewrite what any key does to the state, which is the general form of one.
-- **Several options.** Base UI's `Combobox` takes `multiple`, and React Aria's `ComboBox` doesn't.
-
-HTML's own answer is `<input list>` with a `<datalist>`, which offers no hook into its behavior.
-HTML's "picker" is the popup a control opens without typing:
-[`showPicker()`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/showPicker)
-opens a date, color or file input's, and a customizable `<select>` draws its list in a
-[`::picker(select)`](https://developer.mozilla.org/en-US/docs/Web/CSS/::picker) pseudo-element.
-That's why the hook is `use_autocomplete` rather than `use_picker`: typing to filter is its defining behavior,
-and `use_picker` stays free for a select-like control.
+- React renders between discrete events:
+  "React ensures that for each user-initiated event like a click or a keypress,
+  the DOM is fully updated before the next event"
+  ([React 18's automatic batching](https://github.com/reactwg/react-18/discussions/21)),
+  so a handler sees the state the last key left.
+- ahooks' [`useGetState`](https://github.com/alibaba/hooks/blob/master/packages/hooks/src/useGetState/index.ts)
+  returns `[state, setState, getState]`, where `getState` reads a ref each render refreshes,
+  which sees only the last render; that's enough in React, since it renders between keys.
+- React's [`useEffectEvent`](https://react.dev/reference/react/useEffectEvent) "always accesses the latest
+  committed values from render", and may not be called "during rendering".
+- Solid's `createSignal` returns a getter instead of a value, since its components run once rather than re-render.
 
 Where counterweight differs:
 
+- Several keys can arrive before the next render, as when typing fast or typing before the first frame,
+  and each runs a handler the last render made.
+  A handler that decides from the values it rendered with decides from stale state,
+  and a getter that reads a copy refreshed each render, as ahooks' does, is just as stale.
+  `use_state`'s setter applies an updater immediately, so the state itself is current;
+  `get` reads it there.
 - There's no `aria-activedescendant`, but the same idea applies.
   The highlighted row gets an `ElementHandle`, and `ScrollIntoView` brings it into view.
 - There's no anchor positioning, so a popup can't flip itself above its field when it would overflow;
   the cookbook measures the room with `use_rects` and the screen's height.
-- A browser runs each key's handler against the state the last one left.
-  A counterweight handler is the one the last render made, and several keys can arrive before the next render,
-  so a handler that decides from what it rendered decides from stale state.
-  `use_text_input` reads the latest value through its setter, which applies an updater immediately, and so does this hook.
 - Terminal users expect readline's and fzf's keys (Ctrl+N, Ctrl+P, Tab to move) where a browser has none,
-  so the keys are a value an app can change rather than fixed.
+  which is one more reason the keys stay the app's.
+
+## The spike
+
+The parts were tried by porting two dissimilar callers onto them:
+the cookbook's `picker.py`, which keeps its state in `use_state` and edits with `use_text_input`,
+and `port-manage`, which runs every key through a pure `step` inside its state's updater
+and edits its query by hand.
+
+- Both took `Highlight` and the matchers unchanged.
+  A wired hook could not have taken `port-manage` without rewriting it to the hook's shape.
+- `port-manage`'s self-tests pass unchanged on the parts,
+  and breaking `Highlight`'s lookup by key fails "the highlight stays on its port as a row above it appears".
+  The port deletes more lines than it adds.
+- The picker's stills are byte-identical, and it opens on its current option by key rather than by `names.index`.
+- What wiring is left shares almost nothing between the two: the keys, what choosing does,
+  who owns the state and how the text is edited all differ.
+  The overlap is `edited` (a changed text puts the highlight on the first match), a few lines in each.
+- The one subtle piece the picker needed beyond the parts was reading the latest state in its Enter handler.
+  The spike read it by passing the setter an identity updater, which works only because the setter
+  applies updaters immediately, and reads by writing; `get` replaces it.
+  On a real pseudo-terminal, writing `pypy` and Enter in one write, the picker before the port kept 3.15,
+  choosing from the list as last rendered, and the port chose `pypy3.11`.
+  `port-manage` avoids the problem by doing everything inside the updater,
+  and pays with a queue of pending actions and the effect that carries them out.
+
+Not yet exercised: options the highlight skips (`wt`'s headings), highlighting a row on hover,
+and stopping at the ends (`inline_picker.py`).
 
 ## Decisions
 
 | Question | Choice | What it costs |
 |---|---|---|
-| Who filters | The caller passes a function from the typed text to the options to show; the library exports `fuzzy_matches` and `substring_matches` for it | Every caller writes one line to filter |
-| Which list a key acts on | The one the latest text matches: the hook reads the latest query through `set_query` and calls the caller's function on its text | `set_query` MUST apply an updater before returning, as `use_text_input`'s setter must |
-| Who owns the state | The caller, wholesale, as one `Query`, as `use_text_input`'s caller owns its value | A caller that only wants the text carries a `Query` and reads `query.text` |
-| Highlight by index or by option | By the option's key, and by its index, which is where the highlight lands when its option is gone | Options need a hashable key; and a highlight that has landed on a neighbor returns to its option if that comes back before the next key moves it |
-| Which keys do what | An `AutocompleteKeys` value, defaulting to the combobox pattern's | One more parameter; the command-line family passes its own |
-| One hook or two | One: open and dismissed are part of `Query`, and an always-open picker never draws from them | Pickers carry an `is_dismissed` they don't draw; one that stays open passes an `on_dismiss` that closes it, or `dismiss=frozenset()`, since a dismissed list's choose keys bubble |
-| What choosing does | The caller's `choose` decides, and its response is the hook's; the hook never closes anything itself | The widget and the cookbook autocomplete each write `q.chosen(text)` |
-| Rows the highlight skips | An `is_disabled` predicate, as Downshift's `isItemDisabled` | none beyond the parameter |
-| Several options | Left to the caller, composed on top (see [Marking several options](#marking-several-options)) | Each multi-select picker keeps its own marks and its own mark key |
-| Hover | Highlights the option under the pointer, as Downshift and React Aria do | assess's theme picker previews whatever the pointer passes over |
+| A hook that wires the parts, or the parts | The parts, with one widget and recipes; a hook waits for callers' wiring to converge | Each picker writes its own handler, a screenful, and its keys keep varying |
+| Who filters | The caller, with `fuzzy_matches` and `substring_matches` exported for it | Every caller writes the line that filters |
+| Highlight by index or by option | `Highlight` holds both: the option's key, and its index, which is where it lands when its option goes | Options need a key that isn't `None`, and each of `Highlight`'s methods takes the `key` function |
+| Rows the highlight skips | An `is_disabled` predicate on `Highlight`'s methods, as Downshift's `isItemDisabled` | One more parameter on each method |
+| Reading the latest state in a handler | `get` on `use_state`'s setter, which raises while a component renders | A thing called a setter also reads |
+| Which keys do what | The app's handler, for every caller but the widget | No key map to share; the command-line family's scripts each spell out the same keys |
+| Popup open and dismissed | The widget's own state, and a recipe for apps that build their own | Each popup picker writes the few lines of Escape and reopening |
+| What the widget is called | `combobox`, the APG pattern it implements | none; there's no hook to name, so the always-open list needs no name either |
+| Several options | A recipe, composed on top (see [Marking several options](#marking-several-options)) | Each multi-select picker keeps its own marks and its own mark key |
 
-Owning the state wholesale is Downshift's control props with every prop controlled.
-It's what assess's theme picker needs, and it costs an uncontrolled caller one `use_state` line,
-where per-field control would mean two code paths for every field.
-The matching stays the caller's because the callers disagree on what matches:
-sections match a bar by its title, the cookbook autocomplete shows nothing for an empty text,
-`filter_list` matches paths but draws `FileDiff`s, `port-manage` matches a port, command and directory as one string,
-and the command-line family matches substrings.
+### Why no wired hook
 
-Holding the highlight by key is `port-manage`'s design, and its self-tests are the acceptance cases.
-`port-manage` also moves the key to the neighbor the highlight lands on as soon as a refresh removes its row;
-the hook can't, since it doesn't see the refresh, only the next render,
-and writing state while rendering is the thing hooks don't do.
+A hook that wires the parts fixes the bugs by owning the wiring, and every caller wires differently,
+so each difference becomes a parameter, and a caller that wires the way the hook didn't expect
+(`port-manage`'s `step`) can't use it at all.
+The parts fix the same bugs and leave the wiring where it varies.
+If the ports in [Steps](#steps) find the same subtle lines in several callers' wiring, those lines are the hook,
+found from the code rather than designed ahead of it.
 
-Reading the latest query is what lets every key, Enter included, decide from the state the keys before it left,
-without `port-manage`'s queue of pending actions and the effect that carries them out:
-`choose` runs in the handler, with the option the latest text highlights,
-and returns what to do as a response, such as `CopyToClipboard`.
+### Why `get` on the setter
+
+`use_state` returns a value and a setter in every one of its call sites, in the library, the docs and users' apps,
+so a third element in the tuple breaks them all.
+A second hook that returns a getter makes every component choose between two hooks for one piece of state.
+The setter is already the handle to the state, built once when the state is made,
+so a handle that can also be read says what a handler needs without changing what anyone unpacks.
+
+The value stays what a render reads.
+A render that read the latest state would read a place rather than a value, which is what `check_purity` catches,
+so `get` raises while a component renders, as `useEffectEvent` forbids being called during rendering.
 
 ## Public API
 
-All of it is in `counterweight.headless`, except the widget, which is in `counterweight.widgets`.
+### `Setter.get`
 
-### `Query`
+```python
+class Setter[T](Protocol):
+    def __call__(self, value: Callable[[T], T] | T, /) -> None: ...
+    def get(self) -> T: ...
+```
+
+`Setter` becomes a protocol with the call it has now and `get`,
+the state as every update since the last render left it.
+`get` is for handlers and effects:
+it raises while any component renders (while `_shadow.py` has set `current_hook_state`),
+where the value `use_state` returned is the state to read.
+After the component unmounts, it returns the state as it was when it unmounted.
+
+### `Highlight`
 
 ```python
 @dataclass(frozen=True, slots=True)
-class Query:
-    text: str = ""
-    highlighted_key: Hashable | None = None
-    highlighted_index: int = 0
-    is_dismissed: bool = False
+class Highlight:
+    key: object = None
+    index: int = 0
 
-    def edited(self, text: str) -> Query: ...
-    def chosen(self, text: str) -> Query: ...
-    def highlighted_in[T](
-        self,
-        shown: Sequence[T],
-        key: Callable[[T], Hashable] = ...,
-        is_disabled: Callable[[T], bool] | None = None,
-    ) -> T | None: ...
+    def index_in[T](
+        self, options: Sequence[T], key: Callable[[T], object] = ..., is_disabled: Callable[[T], bool] | None = None
+    ) -> int | None: ...
+    def landed[T](self, options: Sequence[T], key: ..., is_disabled: ...) -> Highlight: ...
+    def moved[T](self, options: Sequence[T], by: int, key: ..., is_disabled: ...) -> Highlight: ...
 ```
 
-What's typed, which option is highlighted, and whether the list was dismissed.
-The caller constructs it, so its fields have defaults: `Query(highlighted_key=current)`
-opens a picker on its current option, wherever the list puts it.
-A query with no `highlighted_key` highlights by index alone until a key, an edit or the pointer moves the highlight,
-so a picker whose rows refresh before the first key, as `port-manage`'s do, passes the key it opens on.
-`edited` returns the query unchanged when the text is the same, and otherwise the new text
-with the first option highlighted and the list no longer dismissed, so moving the cursor leaves the highlight alone.
-`chosen` is the query after choosing an option that fills in `text`: that text, dismissed.
-`highlighted_in` is the highlighted option among `shown`: the one whose key is `highlighted_key`,
-or the one at `highlighted_index`, clamped to the last, or `None` if there are none,
-passing over the options `is_disabled` marks,
-so a parent that previews the highlighted option, passing the hook's `key` and `is_disabled`,
-agrees with the hook about which it is.
-`key` defaults to the option itself.
+Which of a list of options is highlighted: the one whose key is `key`, or, when none is,
+the one at `index`, clamped to the last.
+`Highlight()` highlights the first option, and `Highlight(key=current)` the current one, wherever the list puts it.
+`key` defaults to the option itself, and a key of `None` is no key.
+
+- `index_in` is the highlighted option's index, passing over the options `is_disabled` marks,
+  or `None` if there are none to highlight,
+  so a parent that previews the highlighted option agrees with the component drawing the list about which it is.
+- `landed` is the highlight on the option it's on now, by that option's key and index,
+  so it follows that option rather than the one it held, if that comes back, as `port-manage` does after a refresh.
+- `moved` is the highlight `by` enabled options on, back for a negative `by`, wrapping at either end.
 
 ### `fuzzy_matches` and `substring_matches`
 
@@ -221,152 +268,19 @@ since `fnmatch` folds case only on Windows.
 `key` lets `filter_list` match files by path and get files back,
 and `port-manage` match a listener by its port, command and directory together.
 
-### `AutocompleteKeys`
-
-```python
-@dataclass(frozen=True, slots=True)
-class AutocompleteKeys:
-    highlight_next: frozenset[str] = frozenset({Key.Down})
-    highlight_previous: frozenset[str] = frozenset({Key.Up})
-    choose: frozenset[str] = frozenset({Key.Enter, Key.ControlJ})
-    dismiss: frozenset[str] = frozenset({Key.Escape})
-```
-
-Which keys move the highlight, choose, and dismiss, checked before the text field sees a key,
-so a set can claim a key the field would edit with, as the command-line family's Ctrl+K does.
-The defaults are the combobox pattern's, which leaves Tab to move focus.
-Ctrl+J chooses because a tty turns an Enter typed ahead, before the app makes it raw, into a line feed.
-The cookbook passes `choose=frozenset({Key.Enter, Key.ControlJ, Key.Tab})`, and the command-line family
-`highlight_next=frozenset({Key.Down, Key.Tab, Key.ControlN})` and
-`highlight_previous=frozenset({Key.Up, Key.BackTab, Key.ControlP, Key.ControlK})`.
-
-### `use_autocomplete`
-
-```python
-def use_autocomplete[T](
-    query: Query,
-    set_query: Callable[[Callable[[Query], Query]], None],
-    matching: Callable[[str], Sequence[T]],
-    choose: Callable[[T], InputResponse],
-    key: Callable[[T], Hashable] = ...,
-    is_disabled: Callable[[T], bool] | None = None,
-    on_dismiss: Callable[[], InputResponse] | None = None,
-    keys: AutocompleteKeys = AutocompleteKeys(),
-    highlighted_row: ElementHandle | None = None,
-    auto_focus: bool = False,
-    handle: FocusHandle | None = None,
-    is_focusable: bool = True,
-    in_focus_order: bool = True,
-) -> Autocomplete[T]: ...
-```
-
-- `query` and `set_query` are the caller's state; `set_query` takes an updater, which it MUST apply before returning,
-  as a `use_state` setter does.
-- `matching` is the options to show for a text, in order: the hook calls it on the query it renders with,
-  again on the latest query for each key in `keys`,
-  and on the edited text for each edit that changes it, to record the first enabled option's key with its index,
-  so the highlight follows that option from the first keystroke.
-  Other events, such as cursor moves, don't call it.
-- `choose` is called, in the handler, with the option the latest query highlights, and the hook returns its response,
-  or `()` for `None`, as `on_click` returns for its action, so a `choose` that only sets state still claims the key.
-  It closes nothing; a picker that closes on choosing does that in `choose`.
-- `key` identifies an option across renders, for the highlight to follow; it defaults to the option itself.
-  It MUST NOT return `None`, which `highlighted_key` holds for no option.
-- `is_disabled` marks options the highlight passes over and that can't be chosen, such as headings.
-- `on_dismiss` is called when a dismiss key dismisses the list, after the query is dismissed,
-  and the hook returns its response, or `()` for `None` or no `on_dismiss`,
-  so a dialog around the field doesn't also close on the key that closed the list;
-  a picker passes one that closes it and gives focus back,
-  and `wt` one that goes back a step.
-- `keys` says which keys do what.
-- `highlighted_row` is the handle the highlighted row gets, passed in when whatever opens the list
-  scrolls it into view in the frame it opens in, as `Picking.opened()` does; otherwise the hook makes one.
-- The last four are `use_text_input`'s, passed on to it.
-
-### `Autocomplete`
-
-| Field | What it is |
-|---|---|
-| `field` | The `TextInput` from `use_text_input`, to draw the text and its cursor |
-| `shown` | The options `matching` gives for the rendered text |
-| `is_open` | Whether the field is focused and the list isn't dismissed |
-| `highlighted_index` | The highlighted option's index in `shown`, or `None` if nothing can be highlighted |
-| `highlighted` | That option, or `None` |
-| `highlighted_row` | The `ElementHandle` for the row at `highlighted_index` |
-| `on_input` | The handler for the element the component returns, in place of `field.on_input` |
-| `option_on_input` | A function from an option's index in `shown` to the handler for its row |
-
-### Keys
-
-`on_input` handles nothing while its element isn't focused,
-and decides each key in `keys` from the latest query and the options `matching` gives for its text.
-
-| Key | Open, with an option highlighted | Open, nothing to highlight | Dismissed |
-|---|---|---|---|
-| `highlight_next` | Highlight the next enabled option, wrapping | Bubbles | Reopen, with the first enabled option highlighted if there is one |
-| `highlight_previous` | Highlight the previous enabled option, wrapping | Bubbles | Reopen, with the last enabled option highlighted if there is one |
-| `choose` | Return `choose(option)` | Bubbles | Bubbles |
-| `dismiss` | Dismiss, and return `on_dismiss()` | Dismiss, and return `on_dismiss()` | Bubbles |
-| Anything else | `field.on_input` | `field.on_input` | `field.on_input` |
-
-The keys that move the highlight, and every event `field.on_input` handles,
-return `ScrollIntoView(highlighted_row, block="nearest")` beside whatever else they return,
-so the list scrolls in the frame the highlight moves.
-Reopening a dismissed list follows the combobox pattern.
-A dismiss key on a dismissed list bubbles rather than clearing the text, which the pattern allows,
-so a dialog around the field can close on it.
-A `choose` or `on_dismiss` that returns `None` claims the key, as `on_click`'s action does,
-so `wt`'s Enter with nothing marked does nothing,
-and the widget's Tab chooses without also moving focus.
-PageUp and PageDown aren't handled: the pattern doesn't bind them,
-and how far a page is depends on drawing the hook doesn't do.
-
-### Rows
-
-`option_on_input(index)` highlights the option at `index` when the pointer moves over its row with no button held,
-leaving the query as it is if it's already highlighted,
-and chooses it on a click, as `on_click` does: claiming the left button's press,
-and choosing on its release over the row, so a press dragged off the row chooses nothing.
-Claiming the press keeps focus in the field unless `choose`'s response moves it.
-It does neither for a disabled option.
-
-### Keys of the caller's own
-
-A caller handles keys of its own by putting its handler in front:
-`first(on_digit, autocomplete.on_input)` jumps to a tab on a digit, as `zellij-pick-tab` does,
-and `first(on_ctrl_x, autocomplete.on_input)` signals the highlighted process, as `port-manage` does,
-reading `autocomplete.highlighted`.
-A key the caller's handler takes from the hook decides from the rendered state, not the latest;
-one that needs the latest reads it through `set_query`, as the hook does.
-
-### Marking several options
-
-The hook chooses one option. `wt`'s cleanup picker composes marks on top of it:
-
-- Its state holds the marks beside the `Query`, so the query hiding a marked option leaves it marked,
-  and its header counts every mark.
-- Its handler in front takes Space and toggles the highlighted option's mark,
-  which works because its options can't contain a space; a picker whose options can picks another key.
-- Its `is_disabled`, or a check in that handler, keeps a worktree with changes from being marked.
-- Its `choose` ignores the option and acts on the marks, returning `None` when there are none, so Enter does nothing.
-
-Base UI's `multiple` shows a hook could own marks, but the mark key collides with typing in a way
-each picker settles differently, and one picker needs it, so it waits for a second.
-
-### The `autocomplete` widget
+### The `combobox` widget
 
 ```python
 @component
-def autocomplete(
-    query: Query,
-    set_query: Callable[[Callable[[Query], Query]], None],
+def combobox(
+    value: str,
+    set_value: Callable[[Callable[[str], str]], None],
     options: Sequence[str],
     placeholder: str = "",
     opens: Literal["below", "above"] = "below",
     shown_rows: int = 5,
-    keys: AutocompleteKeys = AutocompleteKeys(choose=frozenset({Key.Enter, Key.ControlJ, Key.Tab})),
     style: Style = ...,
-    styles: AutocompleteStyles = ...,
+    styles: ComboboxStyles = ...,
     auto_focus: bool = False,
     handle: FocusHandle | None = None,
     is_focusable: bool = True,
@@ -376,101 +290,612 @@ def autocomplete(
 
 A `text_input`-style box whose `fuzzy_matches` open in a list over the content below it, or above it,
 clipped only by the screen, at most `shown_rows` tall, scrolling the rest.
+It takes the text as `text_input` does, and keeps the highlight and whether the list is dismissed itself.
 It shows matches once something is typed, as the cookbook does,
-and choosing one sets the query to `query.chosen(option)`.
-Tab chooses by default, as it does in the cookbook and in editors' completion lists,
-since a field that completes as you type has nothing better for Tab to do while its list is open.
-`AutocompleteStyles` holds a `TextFieldStyles` for the box and cursor,
+and choosing one sets the text to it and dismisses the list.
+Its keys are the combobox pattern's, but for Tab, which chooses, as it does in the cookbook and in editors'
+completion lists, since a field that completes as you type has nothing better for Tab to do while its list is open:
+
+| Key | Open, with an option highlighted | Open, nothing to highlight | Dismissed |
+|---|---|---|---|
+| Down, Up | Highlight the next or previous option, wrapping | Bubbles | Reopen, highlighting the first or the last |
+| Enter, Ctrl+J, Tab | Choose it | Bubbles | Bubbles |
+| Escape | Dismiss | Dismiss | Bubbles |
+| Anything else | The text field's | The text field's | The text field's |
+
+A dismiss key on a dismissed list bubbles, so a dialog around the field can close on it.
+Ctrl+J chooses because a tty turns an Enter typed ahead, before the app makes it raw, into a line feed.
+Each key decides from the latest state through `get`.
+Hovering a row highlights it, and clicking it chooses it, keeping focus in the field.
+An app that wants other keys builds its own from the parts, as the docs' recipes do.
+`ComboboxStyles` holds a `TextFieldStyles` for the box and cursor,
 and the styles of the list's box, its rows, and the highlighted row.
 It takes `opens` rather than flipping on its own, because flipping needs the screen's height,
 which only the app's root knows (see [Open questions](#open-questions)).
 
+## Kinds of picker
+
+Every picker is a set of answers to the same few questions,
+and each answer shows up as a specific piece of state or a specific case in the handler.
+The docs' recipes are these examples, one idea each.
+
+### The decisions
+
+| Decision | Choices | How it shows in code |
+|---|---|---|
+| Where the options appear | A popup that opens and closes; a list that's always there; not drawn, cycled into the text; ghost text after the cursor | Popup: an `is_dismissed` beside the highlight, set by Escape and choosing, cleared by Down, Up and edits, with the rows drawn only while open. Always there: no dismissed state, and Escape unhandled, so it reaches whatever closes the dialog. Cycled: no rows; Tab writes the highlighted match into the text, matched against the text as it was when cycling started (`Cycling.stem`). Ghost: no `Highlight` at all; the suggestion is derived from the text, drawn after it, and Right at the end accepts it |
+| What the value is | Free text, which the options suggest; one of the options, with the text only a filter | Free text: the parent owns the text (`text` and `set_text` parameters), and choosing writes an option into it. One of the options: the text is the component's own `use_state`, and choosing calls the parent's callback with the option (`run`, `stop`, `remove`) |
+| What's highlighted after an edit | The first match (the pattern's automatic selection); nothing until Down or Up (manual selection) | Automatic: the state is a `Highlight`, reset to `Highlight()`. Manual: a `Highlight \| None`, reset to `None`, and Enter with `None` acts on the text itself |
+| When matches show | Once something is typed; always, every option for an empty text | `fuzzy_matches(text, PACKAGES) if text else ()`, or the call without the guard |
+| What matches | Letters in order; the text whole; a prefix; anything else | `fuzzy_matches`, `substring_matches`, or an expression of the caller's own (cycling's `startswith`), with `key=` to match on part of a richer option |
+| How the highlight follows changing options | By position; by the option's key | `key` passed to `Highlight`'s methods (`pid_of`), and `landed` after an edit, so the key is recorded from the first keystroke |
+| Rows the highlight skips | None; headings | `is_disabled=` on `Highlight`'s methods, which doesn't exist yet, so no example below runs it |
+| What choosing does | Fill in the text and close; act, and let the parent close; act and stay | The body of the Enter case, and what the parent's callback does |
+| Which keys do what | The combobox pattern's; the command line's; the app's own | The key sets in the `match`'s cases: `Key.Down \| Key.Tab \| Key.ControlN`, a case for Ctrl+X, a case for `" "` |
+| How many | One; several | A `frozenset` of marks beside the highlight, a case that toggles one, and Enter acting on the marks |
+| Who owns the state | The component; its parent | Where the `use_state` calls are: a parent that previews the highlighted option owns the `Highlight` and passes it down with its setter |
+
+How the examples answer them:
+
+| Example | Options appear | Value | After an edit | Matching | Follows | Choosing | Keys | How many |
+|---|---|---|---|---|---|---|---|---|
+| [Combobox](#a-combobox-with-free-text) | Popup | Free text | First match | Fuzzy, once typed | Position | Fills in the text, closes | The pattern's, and Tab | One |
+| [Command palette](#a-command-palette) | Always | An option | First match | Substring, always | Position | Acts; the parent closes | The pattern's | One |
+| [Search box](#a-search-box-with-manual-selection) | While typed | Free text | Nothing | Substring, once typed | Position | Acts on the text or the option | The pattern's | One |
+| [Tab cycling](#tab-cycling) | Not drawn | Free text | Nothing | Prefix | Position | Writes into the text | Tab, Shift+Tab | One |
+| [Inline completion](#inline-completion) | Ghost text | Free text | (derived) | Prefix of history | (none) | Fills in the text | Right | One |
+| [Refreshing rows](#rows-that-refresh-with-keys-of-their-own) | Always | An option | First match | Substring by `key`, always | Key | Acts and stays | The command line's, and Ctrl+X | One |
+| [Marks](#marking-several-options) | Always | Several options | First match | Fuzzy by `key`, always | Key | Acts on the marks | The pattern's, and Space | Several |
+
+The examples were written as a module and type-checked with mypy in strict mode,
+against a stand-in for `Setter.get` that reads through an identity updater,
+and each was driven headless through the keys its section describes.
+Imports are left out; `Setter` is `counterweight.hooks.Setter`, with `get`.
+The module becomes `snippets/options.py` (see [Docs](#docs)).
+
+### Drawing
+
+Every example draws the text and its rows with these two functions,
+so the examples below differ only in their behavior:
+
+```python
+CURSOR = Style(text_style=(text_color("slate", 900) | text_bg("sky", 300)).text_style)
+
+
+def field_row(field: TextInput, ghost: str = "") -> Div:
+    """The text and its cursor, as `text_input` draws them, and `ghost` dimmed after them, starting in the cursor's cell."""
+    at_cursor = field.at_cursor
+    if ghost and not field.after_cursor:
+        at_cursor, ghost = ghost[0], ghost[1:]
+    return Div(
+        style=row | overflow_x_scroll | stick_to_end_x,
+        on_input=field.on_press,
+        children=(
+            Text(content=field.before_cursor, style=text_wrap_none),
+            Text(content=at_cursor, style=text_wrap_none | CURSOR, handle=field.cursor_cell),
+            Text(content=field.after_cursor, style=text_wrap_none),
+            Text(content=ghost, style=text_wrap_none | text_color("slate", 500)),
+        ),
+    )
+
+
+def option_rows[T](
+    shown: Sequence[T],
+    highlighted: int | None,
+    row_handle: ElementHandle,
+    choose: Callable[[T], InputResponse],
+    label: Callable[[T], str] = str,
+) -> Div:
+    """A row per option, the highlighted one marked and given `row_handle`, each choosing its option on a click."""
+    return Div(
+        style=col | max_height(4) | overflow_y_scroll,
+        children=tuple(
+            Text(
+                content=label(option),
+                style=text_wrap_none | (text_bg("sky", 800) if index == highlighted else Style()),
+                handle=row_handle if index == highlighted else None,
+                on_input=on_click(partial(choose, option)),
+            )
+            for index, option in enumerate(shown)
+        ),
+    )
+```
+
+### A combobox with free text
+
+The cookbook's autocomplete, and what the `combobox` widget does:
+the parent owns the text, the matches open in a list once something is typed,
+and Escape or choosing closes it until the next edit, Down or Up.
+
+```python
+@dataclass(frozen=True, slots=True)
+class Suggesting:
+    highlight: Highlight = Highlight()
+    is_dismissed: bool = False
+
+
+@component
+def package_field(text: str, set_text: Setter[str]) -> Div:
+    suggesting, set_suggesting = use_state(Suggesting())
+    row_handle, _ = use_state(ElementHandle)
+    field = use_text_input(text, set_text, auto_focus=True)
+    shown = fuzzy_matches(text, PACKAGES) if text else ()
+    is_open = field.focus.is_focused and not suggesting.is_dismissed and bool(shown)
+
+    def choose(package: str) -> InputResponse:
+        set_text(package)
+        set_suggesting(Suggesting(is_dismissed=True))
+        return ()
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_suggesting.get()
+        now_shown = fuzzy_matches(before, PACKAGES) if before else ()
+        index = now.highlight.index_in(now_shown)
+        match event:
+            case KeyPressed(key=Key.Down | Key.Up as key) if now_shown:
+                by = 1 if key == Key.Down else -1
+                if now.is_dismissed:
+                    highlight = Highlight(index=0 if by == 1 else len(now_shown) - 1)
+                else:
+                    highlight = now.highlight.moved(now_shown, by)
+                set_suggesting(Suggesting(highlight=highlight))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=Key.Enter | Key.ControlJ | Key.Tab) if index is not None and not now.is_dismissed:
+                return choose(now_shown[index])
+            case KeyPressed(key=Key.Escape) if not now.is_dismissed:
+                set_suggesting(replace(now, is_dismissed=True))
+                return ()
+            case _:
+                if (controls := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                if set_text.get() != before:
+                    set_suggesting(Suggesting())
+                return (*controls, ScrollIntoView(row_handle, block="nearest"))
+
+    return Div(
+        style=col | width(24),
+        on_input=on_input,
+        children=(
+            field_row(field),
+            *((option_rows(shown, suggesting.highlight.index_in(shown), row_handle, choose),) if is_open else ()),
+        ),
+    )
+```
+
+### A command palette
+
+An always-open list whose value is one of its options:
+the text is the palette's own, there's no dismissed state,
+and Escape isn't handled, so it bubbles to whatever opened the palette.
+
+```python
+@component
+def command_palette(run: Callable[[str], InputResponse]) -> Div:
+    text, set_text = use_state("")
+    highlight, set_highlight = use_state(Highlight())
+    row_handle, _ = use_state(ElementHandle)
+    field = use_text_input(text, set_text, auto_focus=True)
+    shown = substring_matches(text, COMMANDS)
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_highlight.get()
+        now_shown = substring_matches(before, COMMANDS)
+        index = now.index_in(now_shown)
+        match event:
+            case KeyPressed(key=Key.Down | Key.Up as key):
+                set_highlight(now.moved(now_shown, 1 if key == Key.Down else -1))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=Key.Enter | Key.ControlJ) if index is not None:
+                return run(now_shown[index])
+            case _:
+                if (controls := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                if set_text.get() != before:
+                    set_highlight(Highlight())
+                return (*controls, ScrollIntoView(row_handle, block="nearest"))
+
+    return Div(
+        style=col | width(24) | border | border_lightrounded,
+        on_input=on_input,
+        children=(
+            field_row(field),
+            option_rows(shown, highlight.index_in(shown), row_handle, run),
+        ),
+    )
+```
+
+### A search box with manual selection
+
+Nothing is highlighted until Down or Up, so Enter searches what was typed,
+or the suggestion the keys moved to.
+The highlight's state is `Highlight | None`, and an edit resets it to `None`.
+
+```python
+@component
+def search_box(search: Callable[[str], InputResponse]) -> Div:
+    text, set_text = use_state("")
+    nothing: Highlight | None = None
+    highlight, set_highlight = use_state(nothing)
+    row_handle, _ = use_state(ElementHandle)
+    field = use_text_input(text, set_text, auto_focus=True)
+    shown = substring_matches(text, QUERIES) if text else ()
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_highlight.get()
+        now_shown = substring_matches(before, QUERIES) if before else ()
+        match event:
+            case KeyPressed(key=Key.Down | Key.Up as key) if now_shown:
+                by = 1 if key == Key.Down else -1
+                if now is None:
+                    set_highlight(Highlight(index=0 if by == 1 else len(now_shown) - 1))
+                else:
+                    set_highlight(now.moved(now_shown, by))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=Key.Enter | Key.ControlJ):
+                index = None if now is None else now.index_in(now_shown)
+                return search(before if index is None else now_shown[index])
+            case _:
+                if (controls := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                if set_text.get() != before:
+                    set_highlight(None)
+                return (*controls, ScrollIntoView(row_handle, block="nearest"))
+
+    highlighted = None if highlight is None else highlight.index_in(shown)
+    return Div(
+        style=col | width(24),
+        on_input=on_input,
+        children=(field_row(field), option_rows(shown, highlighted, row_handle, search)),
+    )
+```
+
+### Tab cycling
+
+As bash completes: no list is drawn, and Tab writes the next match into the text.
+The matches come from the text as it was when cycling started, which `Cycling` keeps,
+and any edit ends the cycle.
+
+```python
+@dataclass(frozen=True, slots=True)
+class Cycling:
+    stem: str
+    highlight: Highlight
+
+
+@component
+def command_line() -> Div:
+    text, set_text = use_state("")
+    nothing: Cycling | None = None
+    cycling, set_cycling = use_state(nothing)
+    field = use_text_input(text, set_text, auto_focus=True)
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_cycling.get()
+        match event:
+            case KeyPressed(key=Key.Tab | Key.BackTab as key):
+                by = 1 if key == Key.Tab else -1
+                stem = before if now is None else now.stem
+                matches = tuple(program for program in PROGRAMS if program.startswith(stem))
+                if not matches:
+                    return ()
+                if now is None:
+                    highlight = Highlight(index=0 if by == 1 else len(matches) - 1).landed(matches)
+                else:
+                    highlight = now.highlight.moved(matches, by)
+                set_cycling(Cycling(stem=stem, highlight=highlight))
+                set_text(matches[highlight.index])
+                return ()
+            case _:
+                response = field.on_input(event, receiver)
+                if set_text.get() != before:
+                    set_cycling(None)
+                return response
+
+    return Div(style=row, on_input=on_input, children=(Text(content="$ "), field_row(field)))
+```
+
+### Inline completion
+
+As fish suggests: the rest of the first line from history that starts with the text is drawn dimmed after it,
+and Right at the end of the text accepts it. There's no highlight to keep, since the suggestion is derived.
+
+```python
+@component
+def shell_prompt() -> Div:
+    text, set_text = use_state("")
+    field = use_text_input(text, set_text, auto_focus=True)
+
+    def suggestion(typed: str) -> str | None:
+        return next((line for line in HISTORY if line.startswith(typed) and line != typed), None) if typed else None
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        match event:
+            case KeyPressed(key=Key.Right) if (
+                field.cursor == len(now := set_text.get()) and (line := suggestion(now)) is not None
+            ):
+                set_text(line)
+                return ()
+            case _:
+                return field.on_input(event, receiver)
+
+    ghost = (line or "")[len(text) :] if (line := suggestion(text)) is not None else ""
+    return Div(style=row, on_input=on_input, children=(Text(content="$ "), field_row(field, ghost=ghost)))
+```
+
+### Rows that refresh, with keys of their own
+
+As `port-manage`: the rows come from the parent and change between renders,
+so the highlight follows its row by `pid_of`,
+the keys are the command line's, and Ctrl+X acts on the highlighted row without closing.
+An edit lands the highlight on the first match, so it follows that row from the first keystroke.
+
+```python
+def pid_of(process: Process) -> int:
+    return process.pid
+
+
+@component
+def process_list(processes: tuple[Process, ...], stop: Callable[[Process], InputResponse]) -> Div:
+    text, set_text = use_state("")
+    highlight, set_highlight = use_state(Highlight())
+    row_handle, _ = use_state(ElementHandle)
+    field = use_text_input(text, set_text, auto_focus=True)
+
+    def matching(typed: str) -> tuple[Process, ...]:
+        return substring_matches(typed, processes, key=lambda process: f"{process.pid} {process.command}")
+
+    shown = matching(text)
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_highlight.get()
+        now_shown = matching(before)
+        index = now.index_in(now_shown, pid_of)
+        match event:
+            case KeyPressed(key=Key.Down | Key.Tab | Key.ControlN):
+                set_highlight(now.moved(now_shown, 1, pid_of))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=Key.Up | Key.BackTab | Key.ControlP | Key.ControlK):
+                set_highlight(now.moved(now_shown, -1, pid_of))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=Key.ControlX) if index is not None:
+                return stop(now_shown[index])
+            case _:
+                if (controls := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                if set_text.get() != before:
+                    set_highlight(Highlight().landed(matching(set_text.get()), pid_of))
+                return (*controls, ScrollIntoView(row_handle, block="nearest"))
+
+    return Div(
+        style=col | width(30),
+        on_input=on_input,
+        children=(
+            field_row(field),
+            option_rows(
+                shown,
+                highlight.index_in(shown, pid_of),
+                row_handle,
+                stop,
+                label=lambda process: f"{process.pid:>5} {process.command}",
+            ),
+        ),
+    )
+```
+
+### Marking several options
+
+As `wt`'s cleanup picker: the marks are kept beside the highlight, so the text hiding a marked option leaves it marked,
+and the header counts every mark.
+Space toggles the highlighted option's mark, which works because branch names can't contain a space;
+a picker whose options can picks another key.
+A worktree with changes can't be marked, and Enter acts on the marks, doing nothing when there are none.
+
+```python
+def branch_of(worktree: Worktree) -> str:
+    return worktree.branch
+
+
+@component
+def cleanup(remove: Callable[[frozenset[str]], InputResponse]) -> Div:
+    text, set_text = use_state("")
+    highlight, set_highlight = use_state(Highlight())
+    marked, set_marked = use_state(frozenset[str]())
+    row_handle, _ = use_state(ElementHandle)
+    field = use_text_input(text, set_text, auto_focus=True)
+    shown = fuzzy_matches(text, WORKTREES, key=branch_of)
+
+    def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
+        if not receiver.is_focused:
+            return None
+        before, now = set_text.get(), set_highlight.get()
+        now_shown = fuzzy_matches(before, WORKTREES, key=branch_of)
+        index = now.index_in(now_shown, branch_of)
+        match event:
+            case KeyPressed(key=Key.Down | Key.Up as key):
+                set_highlight(now.moved(now_shown, 1 if key == Key.Down else -1, branch_of))
+                return ScrollIntoView(row_handle, block="nearest")
+            case KeyPressed(key=" ") if index is not None:
+                if not (worktree := now_shown[index]).is_dirty:
+                    set_marked(set_marked.get() ^ {worktree.branch})
+                return ()
+            case KeyPressed(key=Key.Enter | Key.ControlJ):
+                return remove(marks) if (marks := set_marked.get()) else ()
+            case _:
+                if (controls := response_controls(field.on_input(event, receiver))) is None:
+                    return None
+                if set_text.get() != before:
+                    set_highlight(Highlight())
+                return (*controls, ScrollIntoView(row_handle, block="nearest"))
+
+    def label(worktree: Worktree) -> str:
+        return (
+            f"{'x' if worktree.branch in marked else ' '} {worktree.branch}{' (changes)' if worktree.is_dirty else ''}"
+        )
+
+    return Div(
+        style=col | width(30),
+        on_input=on_input,
+        children=(
+            Text(content=f"{len(marked)} marked"),
+            field_row(field),
+            option_rows(shown, highlight.index_in(shown, branch_of), row_handle, lambda _: (), label=label),
+        ),
+    )
+```
+
+Base UI's `multiple` shows a library could own marks, but the mark key collides with typing in a way
+each picker settles differently, and one picker needs it, so it waits for a second.
+
+### What the examples show
+
+- Two blocks recur in most of the handlers.
+  The first, at the top: read the text and the highlight with `get`, match the latest text, and resolve the index.
+  The second, in the last case: pass the event to the text field, reset the highlight if the text changed,
+  and scroll the list.
+  They are the candidates for a part of their own, if the ports in [Steps](#steps) find them too.
+- With `get`, a handler reads the state once and writes plain values rather than updaters,
+  since nothing changes the state between its read and its write.
+- `TextInput.cursor` is the cursor as last rendered, so inline completion's "Right at the end"
+  decides from a stale cursor when keys arrive before a render; `use_text_input` has no `get` for its cursor.
+- Nothing here needed a wired hook's parameters: each kind is a different set of cases,
+  not a different setting of the same ones.
+
 ## Implementation
 
-As the text hooks are, beside their pure cores:
-
-- `src/counterweight/headless/_autocomplete_keys.py`, pure: `Query`, `AutocompleteKeys`,
-  `fuzzy_matches`, `substring_matches`, the highlighted option's resolution by key, then index, past disabled options,
-  and the function from a key, a query, the options shown, which are disabled, whether the list is open, and the keys
-  to what the key does: a new query, choosing an option, dismissing, or nothing.
-- `src/counterweight/headless/_autocomplete.py`: `use_autocomplete` and `Autocomplete`,
-  which call `use_text_input`, read the latest query through `set_query`, carry out what the pure function decides,
-  and add the `ScrollIntoView`s.
-- `src/counterweight/widgets.py`: `autocomplete` and `AutocompleteStyles`,
+- `src/counterweight/hooks/_types.py` and `src/counterweight/hooks/_impls.py`: `Setter` as a protocol,
+  and the setter `UseState` builds as an object with `__call__` and `get`, holding the state weakly as it does now.
+- `src/counterweight/headless/_options.py`, pure: `Highlight`, `fuzzy_matches` and `substring_matches`.
+- `src/counterweight/widgets.py`: `combobox` and `ComboboxStyles`,
   sharing `cursor_chunks` and `placeholder_chunks` with `text_input`.
-- `counterweight.headless.__all__` gains `Autocomplete`, `AutocompleteKeys`, `Query`, `fuzzy_matches`,
-  `substring_matches` and `use_autocomplete`; `counterweight.widgets.__all__` gains `autocomplete` and `AutocompleteStyles`.
+- `counterweight.headless.__all__` gains `Highlight`, `fuzzy_matches` and `substring_matches`;
+  `counterweight.widgets.__all__` gains `combobox` and `ComboboxStyles`.
 
 ## Tests
 
-- `tests/headless/test_autocomplete_keys.py`, on the pure core:
-  wrapping both ways, reopening at the first and the last, each key with nothing to highlight,
-  dismissing open and dismissed, a key set that claims Ctrl+K, and `edited` keeping the query for the same text.
-  The highlight: staying on its option as an option above it appears and as one above it goes,
+- `tests/hooks/test_use_state.py`: `get` reading an update made since the render,
+  and several updates in one handler; raising while a component renders; the state at unmount after it.
+- `tests/headless/test_options.py`, on the parts:
+  the highlight staying on its option as an option before it appears and as one before it goes,
   landing on the option that took its place when its own goes, on the new last when the last goes,
+  `landed` following the option it landed on, moving and wrapping both ways,
   and passing over disabled options, including when every option is disabled.
   The matchers: the exact name first, glob characters matching themselves, `casefold` (`ß` matching `SS`),
   every option for an empty text, order kept, and `key`.
-  Property tests for wrapping (moving next `n` times over `n` enabled options returns to the start)
+  Property tests for wrapping (moving once per enabled option returns to the start)
   and for resolution never landing on a disabled option.
-- `tests/headless/test_use_autocomplete.py`, driving an app: keys typed ahead before the first render,
-  and a run of text and Enter between renders, choosing the option the latest text highlights;
-  the list scrolling in the frame the highlight moves; `choose`'s and `on_dismiss`'s responses coming back;
-  a `choose` returning `None` claiming the key, so Tab chooses without moving focus;
-  an Escape that closes the list not reaching a handler above it; nothing handled while unfocused;
-  Tab moving focus with the default keys; hovering highlighting a row; a click choosing and focus staying;
-  and a `highlighted_row` passed in being the one the highlighted row gets.
-- `tests/test_widgets.py`: the widget opening below and above, choosing filling in the text, Escape and reopening.
-- The ported snippets' existing stills stay byte-identical, which checks the hook against the code it replaces.
+- `tests/test_widgets.py`: the widget opening below and above, choosing filling in the text,
+  Escape and reopening, Tab choosing without moving focus, a hover highlighting, a click choosing with focus kept,
+  and text and Enter arriving before a render choosing from what the text matches.
+- `tests/examples/test_snippets.py`: the picker choosing from the latest text,
+  driven on a pseudo-terminal with the text and Enter in one write, as the spike's probe was;
+  and each kind in `snippets/options.py` driven through its keys, asserting what it shows:
+  the combobox filling in the text with Down and Enter, closing on Escape and reopening on Up;
+  the palette running the option Down moved to;
+  the search box searching the typed text with nothing highlighted, and the suggestion once Down moves to one;
+  Tab cycling writing the matches in turn, wrapping, and an edit ending the cycle;
+  inline completion showing the rest of a history line and Right accepting it;
+  the refreshing rows keeping the highlight on its row as a row appears above it;
+  marks counting, refusing a worktree with changes, and Enter acting on them;
+  headings never highlighted; and the preview following the highlight.
+- The ported snippets' existing stills stay byte-identical, which checks the parts against the code they replace.
 
 ## Docs
 
-- `docs/headless/use_autocomplete.md`, a new page in the Headless components section,
-  from a new snippet, `snippets/use_autocomplete.py`:
-  the hook in a command palette, the keys and changing them, matching (moved from the cookbook),
-  the highlight following its option as the options change, disabled options under headings,
-  the highlight and scrolling (moved from the cookbook's "A long list"), the rows' hover and press,
-  keys of the caller's own, marking several options,
-  a controlled query that previews the highlighted option (a color swatch),
-  and the widget, with stills and a cast.
-- `docs/headless/index.md`: a row for `use_autocomplete` and `autocomplete`.
+- `docs/headless/options.md`, a new page in the Headless components section:
+  the parts, then the [decision table](#the-decisions) and the table placing each example on it,
+  then a section per kind of picker, each with its code, its still, and a cast of someone using it:
+  - [A combobox with free text](#a-combobox-with-free-text), and the `combobox` widget that wires it.
+  - [A command palette](#a-command-palette).
+  - [A search box with manual selection](#a-search-box-with-manual-selection).
+  - [Tab cycling](#tab-cycling).
+  - [Inline completion](#inline-completion).
+  - [Rows that refresh, with keys of their own](#rows-that-refresh-with-keys-of-their-own).
+  - [Marking several options](#marking-several-options).
+  - Headings the highlight skips, with `is_disabled`, and a preview of the highlighted option,
+    with the text and the `Highlight` in a parent (a color swatch),
+    so every row of the decision table has an example; these two aren't written yet.
+
+  Matching and "A long list" move to it from the cookbook.
+- `snippets/options.py` holds every kind on that page as a root in `ROOTS`, each between section markers of its own,
+  which the page shows with `<!-- example: options.py:<kind> -->`,
+  and the drawing functions in one more section, which the page shows once, before the kinds.
+  It's one module rather than one per kind because an example imports only from the library,
+  so a module per kind would each carry its own copy of the drawing functions;
+  the cost is that `counterweight examples copy` hands over every kind at once.
+  The kinds checked for this plan are the start of it.
+  Its `STILLS` has a still per kind, after the keys its section describes, named `options-<kind>`,
+  and its `DEMOS` a `Demo` per kind under the same name, its keys typed at a person's pace with `paced`
+  (typing, moving the highlight, choosing, and for each kind the keys that make it that kind:
+  Escape and Up reopening the combobox, Enter on typed text in the search box, Tab and Shift+Tab cycling,
+  Right accepting a completion, a row appearing above the highlight, Space marking and refusing),
+  which each section plays with `<!-- cast: options-<kind> -->` beside its still.
+- `docs/hooks/use_state.md`: reading the latest state in a handler with `get`, and why a render can't.
+- `docs/headless/index.md`: a row for the parts and `combobox`.
 - `docs/cookbook/autocomplete.md` keeps what's about layout (escaping the panel, inside a scroll container,
-  opening upward, and opening a picker with a key, with its sections and handles), built on the hook,
+  opening upward, and opening a picker with a key, with its sections and handles), built on the parts,
   and links to the new page for matching, keys and scrolling.
-- `docs/inline.md`'s picker, built on the hook with a `choose` that returns the `Print` and `Quit`,
-  links to the new page for the keys and matching.
+- `docs/inline.md`'s picker, built on the parts with an Enter that returns the `Print` and `Quit`,
+  links to the new page.
 - Links to `#a-long-list`, inbound from `input-handling/controls.md` and `layout/scrolling.md`
   and the cookbook page's own "[scrolls](#a-long-list)", point at the new page.
-- `docs/changelog.md`: an Added entry.
+- `docs/changelog.md`: Added entries for the parts, `get`, and the widget.
 
 ## Steps
 
-1. The pure core and its tests.
-2. The hook and its tests.
-3. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the hook,
+1. `Setter.get` and its tests.
+2. The parts, with `is_disabled`, and their tests.
+3. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the parts and `get`,
    with their stills unchanged.
-4. Port every other picker onto it locally, against an editable install, to prove the API before it ships,
-   and fold what they find back into it:
+4. Port every other picker onto them locally, against an editable install, to prove the parts before they ship:
    whats-new's picker and assess's two, and `wt`, `kube-pick`, `port-manage` and `zellij-pick-tab`,
    whose self-tests must pass unchanged but for the code under test.
+   Note the wiring lines that recur across them, which are the evidence a wired hook would need.
 5. The widget, its styles and tests.
-6. The docs page, its snippet, the index row, the trimmed cookbook page, and the changelog.
+6. The docs page, with `snippets/options.py` holding every kind, its stills, casts and tests,
+   the trimmed cookbook page, and the changelog.
 7. After a release: land the ports.
+
+The spike's `_options.py`, its tests and the ported `picker.py` are the start of steps 2 and 3,
+with the picker's identity-updater read to be replaced by `get`.
 
 ## Open questions
 
-1. **Flipping the widget's list.** `opens` puts the choice on the caller.
+1. **Rendering between events instead.** Rendering, without painting, after each event would make every handler
+   current, as React's are, and remove the need for `get` and `use_text_input`'s MUST on its setter.
+   It costs a render per event in a burst (fast typing, keys typed before the first frame), which is unmeasured.
+   Is it worth a benchmark before `get` ships?
+2. **`use_text_input` and `get`.** It reads the latest value by calling `set_value` with an identity updater,
+   as the spike did. Taking a `Setter` would let it use `get`,
+   but a caller that validates by wrapping the setter passes a plain function, which has no `get`.
+3. **Stopping at the ends.** `inline_picker.py` stops rather than wrapping, because it doesn't scroll.
+   A `wrap` parameter on `moved`, or the caller computing the index itself?
+4. **Binding `key` once.** Every `Highlight` method takes `key` and `is_disabled`,
+   which `port-manage` wraps in methods of its own state to avoid repeating.
+5. **Flipping the widget's list.** `opens` puts the choice on the caller.
    The web's answer is CSS anchor positioning's `position-try-fallbacks: flip-block`,
    a layout feature counterweight doesn't have; adding something like it would let the widget flip itself.
-   Is `opens` enough until then?
-2. **Down on an empty widget.** Chrome opens every `<datalist>` option on Down in an empty field.
+6. **Down on an empty widget.** Chrome opens every `<datalist>` option on Down in an empty field.
    The widget could do the same by showing every option once the list is reopened with nothing typed.
-   Worth matching?
-3. **The matchers' names.** `fuzzy_matches` is the common word (fzf, VS Code's quick open),
+7. **The matchers' names.** `fuzzy_matches` is the common word (fzf, VS Code's quick open),
    though "fuzzy" often implies scoring, and this only puts the exact name first.
-4. **A named key set for the command-line family.** All four scripts would pass the same `AutocompleteKeys`.
-   It isn't fzf's (fzf moves on Ctrl+J and Ctrl+K) or readline's, so it has no name to export it under yet;
-   until it does, each script spells it out.
-5. **`filter_list`'s close on blur.** `is_open` covers hiding a list when the field loses focus,
-   but `filter_list` throws its whole state away then, and counterweight has no blur event to hang that on.
-   It keeps its `run_on_mount` for now; an `on_open_change`, as React Aria's `ComboBox` has, would need one.
+8. **`filter_list`'s close on blur.** `filter_list` throws its whole state away when its field loses focus,
+   and counterweight has no blur event to hang that on, so it keeps its `run_on_mount`.
+9. **The recurring handler blocks.** Reading the latest state and matching it, and passing an edit to the field
+   and resetting the highlight, recur across the [examples](#what-the-examples-show).
+   A part for them would be a function over a `TextInput`, a text `Setter` and a highlight `Setter`;
+   whether it's worth one depends on whether the real pickers repeat them as the examples do.
+10. **The cursor's latest position.** `use_text_input` keeps its cursor in state of its own,
+    and `TextInput.cursor` is the one the last render saw.
+    A handler that decides from the cursor, as inline completion's Right does, needs a way to read the latest.

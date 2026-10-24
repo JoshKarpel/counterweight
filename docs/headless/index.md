@@ -39,3 +39,6 @@ with a [`ScrollAreaStyles`][counterweight.widgets.ScrollAreaStyles] for its box 
 ## API
 
 ::: counterweight.widgets.TextFieldStyles
+::: counterweight.headless.Highlight
+::: counterweight.headless.fuzzy_matches
+::: counterweight.headless.substring_matches
