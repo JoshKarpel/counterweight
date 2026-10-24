@@ -1,9 +1,14 @@
 import io
 import json
 import logging
+from asyncio import Event
+from asyncio import TaskGroup
 from asyncio import get_running_loop
+from collections.abc import AsyncIterator
 from collections.abc import Awaitable
 from collections.abc import Callable
+from collections.abc import Mapping
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from time import get_clock_info
@@ -12,25 +17,26 @@ from traceback import TracebackException
 import pytest
 from without_logging import exception_to_dict
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._logging import BASE_LOG_LEVELS
+from counterweight._logging import TAIL_POLL
+from counterweight._logging import app_log_levels
+from counterweight._logging import capturing
+from counterweight._logging import devlog
+from counterweight._logging import format_line
+from counterweight._logging import last_devlog
+from counterweight._logging import render_exception
+from counterweight._logging import render_line
+from counterweight._logging import tail_devlog
+from counterweight._logging import wait_for_more
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Text
-from counterweight.logging import BASE_LOG_LEVELS
-from counterweight.logging import TAIL_POLL
-from counterweight.logging import app_log_levels
-from counterweight.logging import devlog
-from counterweight.logging import format_line
-from counterweight.logging import last_devlog
-from counterweight.logging import render_exception
-from counterweight.logging import render_line
-from counterweight.logging import tail_devlog
-from counterweight.logging import wait_for_more
 
 RECORD = {
     "timestamp": "2026-10-11T03:16:34.779176+00:00",
     "level": "DEBUG",
-    "logger": "counterweight.app",
+    "logger": "counterweight._app",
     "message": "Diffed new paint from current paint",
     "diff_cells": 7,
     "handler": "on_key",
@@ -41,7 +47,7 @@ def test_render_line_shows_local_time_level_logger_message_and_fields() -> None:
     local_time = datetime.fromisoformat(str(RECORD["timestamp"])).astimezone().strftime("%H:%M:%S.%f")
 
     assert render_line(RECORD) == (
-        f"{local_time} DEBUG    counterweight.app Diffed new paint from current paint diff_cells=7 handler='on_key'"
+        f"{local_time} DEBUG    counterweight._app Diffed new paint from current paint diff_cells=7 handler='on_key'"
     )
 
 
@@ -86,12 +92,12 @@ async def test_devlog_captures_counterweight_at_every_level_and_others_from_info
     path = tmp_path / "devlog.jsonl"
 
     async with devlog(path):
-        logging.getLogger("counterweight.app").debug("Ours")
+        logging.getLogger("counterweight._app").debug("Ours")
         logging.getLogger("some_library.parser").debug("Chatty")
         logging.getLogger("some_library.parser").info("Notable")
 
     assert captured(path) == [
-        ("counterweight.app", "DEBUG", "Ours"),
+        ("counterweight._app", "DEBUG", "Ours"),
         ("some_library.parser", "INFO", "Notable"),
     ]
 
@@ -107,7 +113,7 @@ async def test_devlog_levels_override_by_logger_name(tmp_path: Path) -> None:
 
     async with devlog(path, levels=BASE_LOG_LEVELS | {"my_app": logging.DEBUG, "counterweight": logging.WARNING}):
         logging.getLogger("my_app.views").debug("Mine")
-        logging.getLogger("counterweight.app").info("Quiet")
+        logging.getLogger("counterweight._app").info("Quiet")
         logging.getLogger("other").debug("Chatty")
 
     assert captured(path) == [("my_app.views", "DEBUG", "Mine")]
@@ -131,6 +137,217 @@ async def test_devlog_restores_logger_levels_on_exit(tmp_path: Path) -> None:
         assert (root.level, named.level) == (logging.INFO, logging.DEBUG)
 
     assert (root.level, named.level) == before
+
+
+async def test_a_devlog_opened_inside_another_on_the_same_path_keeps_its_records(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+    logger = logging.getLogger("counterweight.outer")
+
+    async with devlog(path):
+        logger.info("Before")
+        async with devlog(path):
+            logger.info("Inside")
+        logger.info("After")
+
+    assert captured(path) == [
+        ("counterweight.outer", "INFO", "Before"),
+        ("counterweight.outer", "INFO", "Inside"),
+        ("counterweight.outer", "INFO", "After"),
+    ]
+
+
+async def test_a_devlog_opened_inside_another_on_the_same_path_captures_through_the_same_handler(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "devlog.jsonl"
+    root = logging.getLogger()
+
+    async with devlog(path):
+        outer_handlers = list(root.handlers)
+        async with devlog(path):
+            inner_handlers = list(root.handlers)
+
+    assert inner_handlers == outer_handlers
+
+
+async def test_a_devlog_opened_by_a_relative_path_inside_one_opened_by_an_absolute_path_shares_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    root = logging.getLogger()
+
+    async with devlog(tmp_path / "devlog.jsonl"):
+        outer_handlers = list(root.handlers)
+        async with devlog(Path("devlog.jsonl")):
+            inner_handlers = list(root.handlers)
+
+    assert inner_handlers == outer_handlers
+
+
+async def test_a_devlog_opened_inside_another_keeps_the_first_ones_levels(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+
+    async with devlog(path), devlog(path, levels={"": logging.DEBUG}):
+        logging.getLogger("some_library").debug("Chatty")
+        logging.getLogger("some_library").info("Notable")
+
+    assert captured(path) == [("some_library", "INFO", "Notable")]
+
+
+async def test_a_devlog_on_another_path_opens_its_own(tmp_path: Path) -> None:
+    outer, inner = tmp_path / "outer.jsonl", tmp_path / "inner.jsonl"
+
+    async with devlog(outer):
+        async with devlog(inner):
+            logging.getLogger("counterweight").info("Both")
+        logging.getLogger("counterweight").info("Outer only")
+
+    assert (captured(outer), captured(inner)) == (
+        [("counterweight", "INFO", "Both"), ("counterweight", "INFO", "Outer only")],
+        [("counterweight", "INFO", "Both")],
+    )
+
+
+async def test_a_shared_devlog_captures_until_the_last_block_exits_whichever_entered_first(tmp_path: Path) -> None:
+    path = tmp_path / "devlog.jsonl"
+    logger = logging.getLogger("counterweight")
+    first_entered, second_entered, first_exited = Event(), Event(), Event()
+
+    async def first() -> None:
+        async with devlog(path):
+            first_entered.set()
+            await second_entered.wait()
+        first_exited.set()
+
+    async def second() -> None:
+        await first_entered.wait()
+        async with devlog(path):
+            second_entered.set()
+            await first_exited.wait()
+            logger.info("Still open")
+        logger.info("Closed")
+
+    async with TaskGroup() as task_group:
+        task_group.create_task(first())
+        task_group.create_task(second())
+
+    assert captured(path) == [("counterweight", "INFO", "Still open")]
+
+
+async def test_a_devlog_closes_with_its_last_block(tmp_path: Path) -> None:
+    handlers = list(logging.getLogger().handlers)
+
+    async with devlog(tmp_path / "devlog.jsonl"), devlog(tmp_path / "devlog.jsonl"):
+        pass
+
+    assert logging.getLogger().handlers == handlers
+
+
+async def test_a_devlog_that_fails_to_open_is_opened_afresh_next_time(tmp_path: Path) -> None:
+    path = tmp_path / "missing" / "devlog.jsonl"
+    with pytest.raises(FileNotFoundError):
+        async with devlog(path):
+            pass  # pragma: never runs
+    path.parent.mkdir()
+
+    async with devlog(path):
+        logging.getLogger("counterweight").info("Opened")
+
+    assert captured(path) == [("counterweight", "INFO", "Opened")]
+
+
+class OpenFailed(Exception):
+    pass
+
+
+def gate_opens(monkeypatch: pytest.MonkeyPatch, gate: Event, failing: int = 0) -> None:
+    """Make opening a devlog wait for `gate`, as one whose setup suspends would, and the first `failing` opens fail."""
+    failures = iter(range(failing))
+
+    @asynccontextmanager
+    async def gated(path: Path, levels: Mapping[str, int]) -> AsyncIterator[None]:
+        await gate.wait()
+        if next(failures, None) is not None:
+            raise OpenFailed
+        async with capturing(path, levels):
+            yield
+
+    monkeypatch.setattr("counterweight._logging.capturing", gated)
+
+
+async def test_a_devlog_entered_while_another_block_opens_it_waits_until_it_captures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, gate, joining = tmp_path / "devlog.jsonl", Event(), Event()
+    gate_opens(monkeypatch, gate)
+
+    async def opener() -> None:
+        async with devlog(path):
+            pass
+
+    async def joiner() -> None:
+        joining.set()
+        async with devlog(path):
+            logging.getLogger("counterweight").info("Joined")
+
+    async with TaskGroup() as task_group:
+        task_group.create_task(opener())
+        task_group.create_task(joiner())
+        await joining.wait()
+        gate.set()
+
+    assert captured(path) == [("counterweight", "INFO", "Joined")]
+
+
+async def test_a_devlog_entered_while_another_block_fails_to_open_it_opens_it_itself(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, gate, joining = tmp_path / "devlog.jsonl", Event(), Event()
+    gate_opens(monkeypatch, gate, failing=1)
+
+    async def opener() -> None:
+        with pytest.raises(OpenFailed):
+            async with devlog(path):
+                pass  # pragma: never runs
+
+    async def joiner() -> None:
+        joining.set()
+        async with devlog(path):
+            logging.getLogger("counterweight").info("Joined")
+
+    async with TaskGroup() as task_group:
+        task_group.create_task(opener())
+        task_group.create_task(joiner())
+        await joining.wait()
+        gate.set()
+
+    assert captured(path) == [("counterweight", "INFO", "Joined")]
+
+
+async def test_a_block_cancelled_while_waiting_for_a_devlog_to_open_leaves_it_to_close_with_the_one_opening_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, gate, joining = tmp_path / "devlog.jsonl", Event(), Event()
+    gate_opens(monkeypatch, gate)
+    handlers = list(logging.getLogger().handlers)
+
+    async def opener() -> None:
+        async with devlog(path):
+            pass
+
+    async def joiner() -> None:
+        joining.set()
+        async with devlog(path):
+            pass  # pragma: never runs
+
+    async with TaskGroup() as task_group:
+        task_group.create_task(opener())
+        waiting = task_group.create_task(joiner())
+        await joining.wait()
+        waiting.cancel()
+        gate.set()
+
+    assert logging.getLogger().handlers == handlers
 
 
 class StopTailing(Exception):

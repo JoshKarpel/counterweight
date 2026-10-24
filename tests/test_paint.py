@@ -6,30 +6,35 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._graphemes import grapheme_width
+from counterweight._layout import MeasurableText
+from counterweight._output import Frame
+from counterweight._paint import BLANK
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import border_fills
+from counterweight._paint import diff_paint
+from counterweight._paint import ellipsized
+from counterweight._paint import line_cells
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.controls import ScrollTo
+from counterweight.elements import Chunk
 from counterweight.elements import Div
+from counterweight.elements import StyledGrapheme
 from counterweight.elements import Text
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
 from counterweight.geometry import Region
-from counterweight.graphemes import grapheme_width
-from counterweight.hooks import ElementHandle
-from counterweight.layout import MeasurableText
-from counterweight.output import Frame
-from counterweight.paint import BLANK
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import border_fills
-from counterweight.paint import diff_paint
-from counterweight.paint import line_cells
+from counterweight.hooks import use_rects
 from counterweight.styles import Style
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import _COLOR_MAP
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_bg
@@ -52,13 +57,17 @@ from counterweight.styles.utilities import overflow_x_hidden
 from counterweight.styles.utilities import overflow_x_scroll
 from counterweight.styles.utilities import overflow_y_hidden
 from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import pad_x
 from counterweight.styles.utilities import padding_color
 from counterweight.styles.utilities import position_absolute
 from counterweight.styles.utilities import size
+from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_overflow_clip
+from counterweight.styles.utilities import text_overflow_ellipsis
 from counterweight.styles.utilities import z
 
-RED = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
-BLUE = resolve_cell_style(CellStyle(foreground=Color.from_name("blue")))
+RED = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))
+BLUE = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("blue"))))
 X = Cell("x", RED)
 Y = Cell("y", RED)
 WIDE = Cell("日", BLUE)
@@ -230,13 +239,13 @@ def test_every_wide_cluster_keeps_its_continuation_through_any_writes(
 )
 def test_a_rows_cells_pad_it_to_the_width_and_run_past_it_whole(width: int, expected: str) -> None:
     (line,) = MeasurableText(cells=Text(content="日本").cells, wrap="none").lines_at(None)
-    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), width)
+    cells = line_cells(line, "left", "clip", as_solid(resolve_cell_style(CellStyle())), width)
     assert "".join(cell.grapheme or "·" for cell in cells) == expected
 
 
 def test_a_rows_cells_draw_no_cell_for_a_zero_width_cluster() -> None:
     (line,) = MeasurableText(cells=Text(content="a\N{ZERO WIDTH SPACE}b").cells, wrap="none").lines_at(None)
-    cells = line_cells(line, "left", resolve_cell_style(CellStyle()), 3)
+    cells = line_cells(line, "left", "clip", as_solid(resolve_cell_style(CellStyle())), 3)
     assert "".join(cell.grapheme for cell in cells) == "ab "
 
 
@@ -297,11 +306,11 @@ def test_items_pairs_cells_with_positions_row_by_row() -> None:
     ]
 
 
-async def render(root: Div, dimensions: tuple[int, int] = (6, 2)) -> Paint:
+async def render(root: Div | Text, dimensions: tuple[int, int] = (6, 2)) -> Paint:
     frames: list[Frame] = []
 
     @component
-    def screen() -> Div:
+    def screen() -> Div | Text:
         return root
 
     await app(
@@ -361,6 +370,29 @@ async def test_margin_with_margin_color_paints_it() -> None:
 
     assert graphemes(paint)[0] == "   xef"
     assert backgrounds(paint, red)[0] == [True, True, True, False, False, False]
+
+
+SLATE = Color.from_name("slategray")
+FILLED = Style(content_color=SLATE, padding_color=SLATE) | pad_x(2) | size(8, 1)
+
+
+async def test_a_texts_glyphs_take_its_own_content_color() -> None:
+    paint = await render(Div(style=FILLED, children=(Text(content="hi", style=Style(content_color=SLATE)),)), (8, 1))
+
+    assert backgrounds(paint, SLATE)[0] == [True] * 8
+
+
+async def test_a_texts_text_bg_wins_over_its_content_color() -> None:
+    red = Color.from_name("red")
+    paint = await render(Text(content="hi", style=Style(content_color=SLATE) | text_bg(red) | size(4, 1)), (4, 1))
+
+    assert backgrounds(paint, red)[0] == [True] * 4
+
+
+async def test_a_texts_glyphs_do_not_take_the_content_color_of_a_box_it_lies_in() -> None:
+    paint = await render(Div(style=FILLED, children=(Text(content="hi"),)), (8, 1))
+
+    assert backgrounds(paint, SLATE)[0] == [True, True, False, False, True, True, True, True]
 
 
 async def test_content_color_fills_the_border_box_but_not_the_margin() -> None:
@@ -520,7 +552,9 @@ def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
     lines = MeasurableText(cells=Text(content="hi").cells, wrap="none").lines_at(None)
 
     assert [
-        "".join(cell.grapheme for cell in line_cells(line, "left", resolve_cell_style(CellStyle()), 0))
+        "".join(
+            cell.grapheme for cell in line_cells(line, "left", "clip", as_solid(resolve_cell_style(CellStyle())), 0)
+        )
         for line in lines
     ] == ["hi"]
 
@@ -528,7 +562,9 @@ def test_a_row_of_text_that_does_not_wrap_runs_past_no_width() -> None:
 def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
     region = Region(left=2, top=0, right=2, bottom=3)
 
-    assert border_fills(BorderKind.Light, resolve_cell_style(CellStyle()), 0, region, (False, False, True, True)) == (
+    assert border_fills(
+        BorderKind.Light, as_solid(resolve_cell_style(CellStyle())), 0, region, (False, False, True, True)
+    ) == (
         (),
         (),
     )
@@ -537,7 +573,9 @@ def test_a_border_around_a_zero_width_region_draws_nothing() -> None:
 def test_a_border_kind_without_joined_parts_draws_its_edges_but_gives_no_healing_hints() -> None:
     region = Region(left=0, top=0, right=3, bottom=3)
 
-    fills, hints = border_fills(BorderKind.Star, resolve_cell_style(CellStyle()), 0, region, (True, True, True, True))
+    fills, hints = border_fills(
+        BorderKind.Star, as_solid(resolve_cell_style(CellStyle())), 0, region, (True, True, True, True)
+    )
 
     assert (len(fills), hints) == (8, ())
 
@@ -562,3 +600,63 @@ async def test_color_utilities_fill_the_margin_border_padding_and_content() -> N
     [frame] = frames
     backgrounds = [frame.paint[x, x].style.background for x in (0, 1, 2, 4)]
     assert backgrounds == [_COLOR_MAP[(color, 500)] for color in ("red", "green", "blue", "amber")]
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        pytest.param("abcd", "abcd  ", id="fits"),
+        pytest.param("abcde", "abcde ", id="fits-exactly"),
+        pytest.param("abcdefgh", "abcd… ", id="too-long"),
+        pytest.param("abcd日", "abcd… ", id="wide-grapheme-past-the-last-cell"),
+        pytest.param("abc日de", "abc … ", id="wide-grapheme-across-the-edge"),
+    ],
+)
+async def test_an_ellipsis_ends_a_line_too_long_for_its_box_at_its_last_cell(content: str, expected: str) -> None:
+    paint = await render(Text(content=content, style=size(5, 1) | text_overflow_ellipsis), (6, 1))
+
+    assert graphemes(paint)[0] == expected
+
+
+async def test_an_ellipsis_is_drawn_in_the_texts_own_style_not_its_chunks() -> None:
+    red = Color.from_name("red")
+    content = (Chunk(content="abcdefgh", style=CellStyle(background=red)),)
+    paint = await render(Text(content=content, style=size(5, 1) | text_overflow_ellipsis), (5, 1))
+
+    assert backgrounds(paint, red)[0] == [True, True, True, True, False]
+
+
+async def test_clip_draws_a_line_too_long_for_its_box_whole() -> None:
+    paint = await render(Text(content="abcdefgh", style=size(5, 1) | text_overflow_clip), (6, 1))
+
+    assert graphemes(paint)[0] == "abcdef"
+
+
+async def test_an_ellipsis_ends_every_line_too_long_for_its_box() -> None:
+    paint = await render(Text(content="abcdefgh\nab\nabcdef", style=size(5, 3) | text_overflow_ellipsis), (5, 3))
+
+    assert graphemes(paint) == ["abcd…", "ab   ", "abcd…"]
+
+
+async def test_an_ellipsis_leaves_the_texts_size_as_it_is() -> None:
+    frames: list[Frame] = []
+    handle = ElementHandle()
+
+    @component
+    def measured() -> Div:
+        rects = use_rects(handle)
+        return Div(
+            style=col | size(6, 2),
+            children=(
+                Text(content="abcdefgh", style=text_overflow_ellipsis, handle=handle),
+                Text(content=f"{rects.border.width}"),
+            ),
+        )
+
+    await app(measured(), headless=True, dimensions=(6, 2), autopilot=[Screenshot(frames.append), Quit()])
+
+    assert frames[0].text(ansi=False) == "abcde…\n6     "
+
+
+def test_an_ellipsis_in_a_box_with_no_room_draws_nothing() -> None:
+    assert ellipsized([StyledGrapheme(grapheme="a")], 0) == []

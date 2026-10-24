@@ -3,7 +3,7 @@ from without_cli import Streams
 from without_cli import Writer
 from without_cli import run
 
-from counterweight.cli import cli
+from counterweight._cli import cli
 
 
 @pytest.mark.parametrize(
@@ -27,8 +27,8 @@ def test_devlog_tails_the_devlog_or_prints_its_last_lines(
     def last(out: Writer, n: int, **kwargs: object) -> None:
         calls.append(("last", out, n, *sorted(kwargs.items())))
 
-    monkeypatch.setattr("counterweight.cli.tail_devlog", tail)
-    monkeypatch.setattr("counterweight.cli.last_devlog", last)
+    monkeypatch.setattr("counterweight._cli.tail_devlog", tail)
+    monkeypatch.setattr("counterweight._cli.last_devlog", last)
 
     code = run(cli, argv=argv, streams=capture.streams)
 

@@ -54,7 +54,9 @@ from counterweight.styles.utilities import pad_left
 from counterweight.styles.utilities import pad_x
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_bg
+from counterweight.styles.utilities import text_bold
 from counterweight.styles.utilities import text_color
+from counterweight.styles.utilities import text_dim
 from counterweight.styles.utilities import text_justify_center
 from counterweight.styles.utilities import text_justify_left
 from counterweight.styles.utilities import text_justify_right
@@ -95,8 +97,6 @@ def wrap_gfm_autolink_rules(parser: MarkdownIt) -> None:
 
 wrap_gfm_autolink_rules(PARSER)
 
-BOLD = CellStyle(bold=True)
-
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MarkdownStyles:
@@ -114,12 +114,12 @@ class MarkdownStyles:
     """Rows between blocks: in the document, a block quote, and a loose list and its items."""
 
     paragraph: Style = text_wrap_stable
-    heading_1: Style = text_wrap_stable | Style(text_style=BOLD) | text_color("sky", 300)
-    heading_2: Style = text_wrap_stable | Style(text_style=BOLD) | text_color("sky", 400)
-    heading_3: Style = text_wrap_stable | Style(text_style=BOLD) | text_color("sky", 500)
-    heading_4: Style = text_wrap_stable | Style(text_style=BOLD)
-    heading_5: Style = text_wrap_stable | Style(text_style=BOLD)
-    heading_6: Style = text_wrap_stable | Style(text_style=BOLD | CellStyle(dim=True))
+    heading_1: Style = text_wrap_stable | text_bold | text_color("sky", 300)
+    heading_2: Style = text_wrap_stable | text_bold | text_color("sky", 400)
+    heading_3: Style = text_wrap_stable | text_bold | text_color("sky", 500)
+    heading_4: Style = text_wrap_stable | text_bold
+    heading_5: Style = text_wrap_stable | text_bold
+    heading_6: Style = text_wrap_stable | text_bold | text_dim
 
     block_quote: Style = border_light | border_left | border_color("slate", 500) | pad_left(1)
     block_quote_text: CellStyle = CellStyle(italic=True) | text_color("slate", 400).text_style
@@ -137,7 +137,7 @@ class MarkdownStyles:
 
     alert: Style = border_light | border_left | pad_left(1)
     """A GitHub alert (`> [!NOTE]`), which is a block quote with a title."""
-    alert_title: Style = text_wrap_stable | Style(text_style=BOLD)
+    alert_title: Style = text_wrap_stable | text_bold
     alert_note: Style = border_color("blue", 400) | text_color("blue", 400)
     """
     Merged over `alert` for a `NOTE` alert, and over `alert_title` for its title,
@@ -170,7 +170,7 @@ class MarkdownStyles:
     Merged over `code_block` for the document's YAML front matter, which is highlighted as YAML.
     Pass `display_none` to hide it.
     """
-    front_matter_text: Style = Style(text_style=CellStyle(dim=True))
+    front_matter_text: Style = text_dim
     """Merged over `code_block_text` for the front matter's text."""
 
     thematic_break: Style = border_light | border_top | border_color("slate", 600)
@@ -178,7 +178,7 @@ class MarkdownStyles:
     """Display math, between `$$` lines, which is shown as written, since a terminal can't typeset it."""
     math_label: Style = text_color("slate", 400)
     """The label of display math written `$$...$$ (label)`, shown as `(label)` to its right."""
-    html_block: Style = Style(text_style=CellStyle(dim=True))
+    html_block: Style = text_dim
     """Raw HTML blocks, which are shown as written."""
 
     table: Style = default
@@ -191,11 +191,11 @@ class MarkdownStyles:
     table_cell: Style = border_light | border | border_color("slate", 600)
     """The `Div` around each cell's text, which draws its border."""
     table_cell_text: Style = pad_x(1) | text_wrap_stable
-    table_header: Style = Style(text_style=BOLD)
+    table_header: Style = text_bold
     """Merged over `table_cell_text` for the header row's cells."""
 
     emphasis: CellStyle = CellStyle(italic=True)
-    strong: CellStyle = BOLD
+    strong: CellStyle = text_bold.text_style
     strikethrough: CellStyle = CellStyle(strikethrough=True)
     code_inline: CellStyle = text_color("rose", 300).text_style | text_bg("slate", 800).text_style
     math_inline: CellStyle = text_color("violet", 300).text_style
@@ -572,3 +572,10 @@ def is_in_image(node: SyntaxTreeNode) -> bool:
     so a link in it, written out or a bare URL, is drawn as the rest of the description is.
     """
     return node.parent is not None and (node.parent.type == "image" or is_in_image(node.parent))
+
+
+__all__ = [
+    "MarkdownStyles",
+    "markdown",
+    "markdown_document",
+]

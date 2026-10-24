@@ -41,6 +41,10 @@ class Key(str, Enum):  # noqa: UP042
     ControlX = "ctrl+x"
     ControlY = "ctrl+y"
     ControlZ = "ctrl+z"
+    ControlBackslash = "ctrl+\\"
+    ControlRightBracket = "ctrl+]"
+    ControlCaret = "ctrl+^"
+    ControlUnderscore = "ctrl+_"  # Also Control-/ in xterm
 
     # Terminals send Ctrl+H, I and M as Backspace, Tab and Enter, so Ctrl+Alt+H, I and M arrive as Alt with those.
     ControlAltA = "ctrl+alt+a"
@@ -66,6 +70,10 @@ class Key(str, Enum):  # noqa: UP042
     ControlAltX = "ctrl+alt+x"
     ControlAltY = "ctrl+alt+y"
     ControlAltZ = "ctrl+alt+z"
+    ControlAltBackslash = "ctrl+alt+\\"
+    ControlAltRightBracket = "ctrl+alt+]"
+    ControlAltCaret = "ctrl+alt+^"
+    ControlAltUnderscore = "ctrl+alt+_"
 
     Left = "left"
     Right = "right"
@@ -201,3 +209,8 @@ class Key(str, Enum):  # noqa: UP042
 
     def __repr__(self) -> str:
         return str(self)
+
+
+__all__ = [
+    "Key",
+]

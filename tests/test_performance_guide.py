@@ -15,8 +15,15 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import INITIAL_RECTS
+from counterweight._layout import NO_LAYOUTS
+from counterweight._shadow import ShadowNode
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import ShadowUpdate
+from counterweight._shadow import update_shadow
 from counterweight.components import Component
+from counterweight.components import ImpureComponent
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import AnyElement
@@ -27,29 +34,21 @@ from counterweight.events import InputEvent
 from counterweight.events import InputHandler
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.examples.snippets import performance_process_table
+from counterweight.examples.snippets import performance_state
+from counterweight.examples.snippets.performance_process_table import PROCESSES
+from counterweight.examples.snippets.performance_process_table import Process
+from counterweight.examples.snippets.performance_process_table import process_row
+from counterweight.examples.snippets.performance_process_table import process_table
 from counterweight.focus import Subtree
+from counterweight.hooks import InconsistentHookExecution
 from counterweight.hooks import Setter
+from counterweight.hooks import StaleMemo
 from counterweight.hooks import use_memo
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import InconsistentHookExecution
-from counterweight.hooks.impls import StaleMemo
-from counterweight.hooks.impls import UseState
+from counterweight.hooks._impls import UseState
 from counterweight.keys import Key
-from counterweight.layout import INITIAL_RECTS
-from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ImpureComponent
-from counterweight.shadow import ShadowNode
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import ShadowUpdate
-from counterweight.shadow import update_shadow
-from docs.examples import performance_process_table
-from docs.examples import performance_state_in_root
-from docs.examples import performance_state_moved_down
-from docs.examples.performance_process_table import PROCESSES
-from docs.examples.performance_process_table import Process
-from docs.examples.performance_process_table import process_row
-from docs.examples.performance_process_table import process_table
 from tests.devlog import devlog_lines
 from tests.rendering import state_set_keys
 from tests.rendering import state_sets
@@ -129,14 +128,14 @@ def press(node: ShadowNode, key: str) -> None:
     ("root", "holder", "expected"),
     [
         pytest.param(
-            performance_state_in_root.dashboard(),
-            performance_state_in_root.dashboard,
-            ["dashboard", *["metric_card"] * 4],
+            performance_state.busy_dashboard(),
+            performance_state.busy_dashboard,
+            ["busy_dashboard", *["metric_card"] * 4],
             id="state-in-root",
         ),
         pytest.param(
-            performance_state_moved_down.dashboard(),
-            performance_state_moved_down.note,
+            performance_state.dashboard(),
+            performance_state.note,
             ["note"],
             id="state-moved-down",
         ),

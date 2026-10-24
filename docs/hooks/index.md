@@ -20,34 +20,34 @@ and each component has its own hooks.
 
 ```python
 from counterweight.components import component
-from counterweight.elements import Div, Text
+from counterweight.elements import Div
 from counterweight.hooks import use_state
 
 
 @component
-def settings(is_advanced: bool) -> Div:
+def settings() -> Div:
+    is_advanced, set_advanced = use_state(False)
     if is_advanced:
         level, set_level = use_state(3)  # wrong: raises when is_advanced changes
     ...
 ```
 
 Here the hook moves into an `advanced_settings` component,
-which the parent renders only when it's needed:
+which `settings` renders only when it's needed:
 
-```python
-@component
-def advanced_settings() -> Text:
-    level, set_level = use_state(3)
-    return Text(content=f"level {level}")
+<!-- example: use_state_advanced_settings.py:example -->
 
+`advanced_settings` takes [focus](use_focus.md) as it mounts, so it receives `+`,
+and `a`, which it doesn't handle, bubbles up from it to `settings`.
 
-@component
-def settings(is_advanced: bool) -> Div:
-    return Div(children=(advanced_settings(),) if is_advanced else ())
-```
+![Settings with Advanced checked, showing a level of 5](../assets/use-state-advanced-settings.svg)
 
 Showing `advanced_settings` mounts it with fresh state, and hiding it unmounts it,
 which discards that state.
+Here the level is raised to 5, and hiding and showing the advanced settings starts it over at 3:
+
+<!-- cast: use-state-advanced-settings -->
+
 If the state should outlive the child, keep it in the parent and pass it down instead.
 
 The same move handles a hook per item:

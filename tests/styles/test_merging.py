@@ -4,15 +4,15 @@ from dataclasses import dataclass
 import pytest
 import waxy
 
-from counterweight.styles.styles import CELL_STYLE_DEFAULTS
-from counterweight.styles.styles import STYLE_DEFAULTS
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import Style
-from counterweight.styles.styles import StyleFragment
-from counterweight.styles.styles import merge
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CELL_STYLE_DEFAULTS
+from counterweight.styles._styles import STYLE_DEFAULTS
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import Style
+from counterweight.styles._styles import StyleFragment
+from counterweight.styles._styles import merge
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_heavy
 from counterweight.styles.utilities import inset_left
@@ -186,6 +186,7 @@ STYLE_FIELD_CASES: tuple[tuple[str, Style, Style], ...] = (
     ("text_style", Style(text_style=CellStyle(italic=True)), Style(text_style=EXPLICIT_DEFAULT_CELL_STYLE)),
     ("text_justify", Style(text_justify="center"), Style(text_justify=STYLE_DEFAULTS.text_justify)),
     ("text_wrap", Style(text_wrap="pretty"), Style(text_wrap=STYLE_DEFAULTS.text_wrap)),
+    ("text_overflow", Style(text_overflow="ellipsis"), Style(text_overflow=STYLE_DEFAULTS.text_overflow)),
     ("clip_to", Style(clip_to="border"), Style(clip_to=STYLE_DEFAULTS.clip_to)),
     ("overflow_anchor", Style(overflow_anchor="none"), Style(overflow_anchor=STYLE_DEFAULTS.overflow_anchor)),
     ("stick_to_end_x", Style(stick_to_end_x=True), Style(stick_to_end_x=STYLE_DEFAULTS.stick_to_end_x)),

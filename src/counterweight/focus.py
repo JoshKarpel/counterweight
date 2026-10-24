@@ -3,15 +3,16 @@ The values that name what a control acts on: which component to focus, which ele
 and which part of the tree to move focus in.
 They live outside the hooks and elements modules, since controls and events name them,
 and those modules import both.
+Beside them are the errors a render raises when two mounted nodes share a handle, or focus won't settle.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import field
 
-if TYPE_CHECKING:
-    from counterweight.hooks.impls import NodeKey
+from counterweight._node_keys import NodeKey
+from counterweight._node_keys import next_node_key
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -60,6 +61,36 @@ class Subtree:
     take one in place of an [`ElementHandle`][counterweight.focus.ElementHandle], to name the element itself,
     so a handler can scroll its own element without a handle.
     A handler gets its own element's from its [`Receiver`][counterweight.events.Receiver].
+
+    `Subtree()` names nothing mounted, as a fresh `FocusHandle` does until a component takes it,
+    so a test can build a `Receiver` to call a handler with directly;
+    a control naming it moves nothing.
     """
 
-    key: NodeKey
+    key: NodeKey = field(default_factory=next_node_key)
+
+
+class DuplicateElementHandle(Exception):
+    """Raised when two mounted elements are given the same `ElementHandle`, which leaves it naming neither."""
+
+
+class DuplicateFocusHandle(Exception):
+    """Raised when two mounted components are given the same `FocusHandle`, which leaves it naming neither."""
+
+
+class UnsettledFocus(Exception):
+    """
+    Raised when re-rendering the components whose focus a render changed changes focus again,
+    which only a component that hides itself because it gained focus can cause:
+    one that lost focus already rendered unfocused if it became unfocusable, and draws nothing if it's hidden.
+    """
+
+
+__all__ = [
+    "DuplicateElementHandle",
+    "DuplicateFocusHandle",
+    "ElementHandle",
+    "FocusHandle",
+    "Subtree",
+    "UnsettledFocus",
+]

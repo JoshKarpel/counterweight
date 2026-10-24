@@ -10,22 +10,14 @@ Use it for:
   component.** A handler defined inline is a new object every render,
   so the `memo` component's arguments never equal last render's.
 
-```python
-from counterweight.components import component
-from counterweight.elements import Div, Text
-from counterweight.hooks import use_memo, use_state
+<!-- example: use_memo_file_list.py:example -->
 
+![A file browser open for 12 seconds, listing five paths from Z to A](../assets/use-memo-file-list.svg)
 
-@component
-def file_list(paths: tuple[str, ...]) -> Div:
-    descending, set_descending = use_state(False)
-
-    ordered = use_memo(lambda: sorted(paths, reverse=descending), deps=(paths, descending))
-
-    return Div(children=tuple(Text(content=path) for path in ordered))
-```
-
-`file_list` sorts `paths` again only when `paths` or `descending` changes,
+`browser` re-runs every second to show how long it's been open,
+and each of those renders re-runs `file_list` with it
+(see [Which components run in a frame?](../performance.md#which-components-run-in-a-frame)).
+`file_list` sorts `paths` again only when `paths` or `descending` changes, as pressing `r` did above,
 not on every render its parent causes.
 
 A handler to keep stable is `use_memo(lambda: handler, deps)`.
@@ -77,7 +69,7 @@ Prefer `lru_cache` when:
 - **The inputs alternate**, such as a sort order toggled back and forth.
   `lru_cache` keeps both results, while `use_memo` keeps one and recomputes on every toggle.
 
-The example above, rewritten that way:
+The `file_list` above, rewritten that way:
 
 ```python
 from functools import lru_cache
@@ -90,9 +82,11 @@ def sorted_paths(paths: tuple[str, ...], descending: bool) -> tuple[str, ...]:
 
 @component
 def file_list(paths: tuple[str, ...]) -> Div:
+    use_focus(auto_focus=True)
     descending, set_descending = use_state(False)
 
-    return Div(children=tuple(Text(content=path) for path in sorted_paths(paths, descending)))
+    ordered = sorted_paths(paths, descending)
+    ...
 ```
 
 Prefer `use_memo` when:
@@ -115,3 +109,4 @@ every render defines a new function with an empty cache, so it never hits.
 ## API
 
 ::: counterweight.hooks.use_memo
+::: counterweight.hooks.StaleMemo

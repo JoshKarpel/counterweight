@@ -32,6 +32,13 @@ def test_screenshot_becomes_image_and_text_tabs() -> None:
     )
 
 
+def test_screenshot_on_a_top_level_page_gets_tabs() -> None:
+    result = add_text_tabs("![Ratios](assets/layout-ratio.svg)\n", TEXT.__getitem__)
+
+    assert '=== "Screenshot"\n\n    ![Ratios](assets/layout-ratio.svg)' in result
+    assert "    │ab│" in result
+
+
 def test_indented_screenshot_keeps_its_indentation() -> None:
     markdown = '=== "Flexbox"\n\n    ![Ratios](../assets/layout-ratio.svg)\n'
 

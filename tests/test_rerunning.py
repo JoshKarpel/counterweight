@@ -17,11 +17,19 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight import app
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Layouts
+from counterweight._shadow import ShadowNode
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import dirty_paths
+from counterweight._shadow import is_dirty
+from counterweight._shadow import update_shadow
 from counterweight._utils import cancel_tasks
 from counterweight._utils import forever
-from counterweight.app import app
 from counterweight.clock import BEGINNING
 from counterweight.components import Component
+from counterweight.components import ImpureComponent
 from counterweight.components import component
 from counterweight.controls import AnyControl
 from counterweight.controls import Quit
@@ -33,27 +41,20 @@ from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import Receiver
 from counterweight.events import TerminalResized
+from counterweight.focus import ElementHandle
+from counterweight.geometry import Rects
 from counterweight.geometry import Region
-from counterweight.hooks import Rects
+from counterweight.hooks import InconsistentHookExecution
 from counterweight.hooks import Setter
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.hooks.hooks import rects_in
-from counterweight.hooks.impls import Hooks
-from counterweight.hooks.impls import InconsistentHookExecution
-from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.impls import UseClock
-from counterweight.hooks.impls import UseRef
-from counterweight.layout import NO_LAYOUTS
-from counterweight.layout import Layouts
-from counterweight.shadow import ImpureComponent
-from counterweight.shadow import ShadowNode
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import dirty_paths
-from counterweight.shadow import is_dirty
-from counterweight.shadow import update_shadow
+from counterweight.hooks._hooks import rects_in
+from counterweight.hooks._impls import Hooks
+from counterweight.hooks._impls import NodeKey
+from counterweight.hooks._impls import UseClock
+from counterweight.hooks._impls import UseRef
 from tests.rendering import effect_tasks
 from tests.rendering import render
 from tests.rendering import state_set_keys
@@ -258,6 +259,43 @@ def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
     assert calls.names == expected
 
 
+NAMED = ElementHandle()
+
+
+@component
+def measures_named(calls: Calls) -> Div:
+    use_rects(NAMED)
+    calls.names.append("measures_named")
+    return Div()
+
+
+@pytest.mark.parametrize(
+    ("moved", "expected"),
+    [
+        pytest.param("named", ["measures_named"], id="named-moved"),
+        pytest.param("own", [], id="own-moved"),
+    ],
+)
+def test_component_calling_use_rects_with_a_handle_reruns_only_when_the_element_it_names_moved(
+    moved: str, expected: list[str]
+) -> None:
+    calls = Calls()
+    root = Div(children=(measures_named(calls), Div(handle=NAMED)))
+    previous = update_shadow(root, None, NO_LAYOUTS).tree
+    reader, named = previous.root.children
+    layouts = Layouts(
+        in_paint_order=(),
+        by_key={(named if moved == "named" else reader).key: MOVED},
+        scrolls={},
+        handles={NAMED: named.key},
+    )
+    calls.names.clear()
+
+    update_shadow(root, previous, layouts)
+
+    assert calls.names == expected
+
+
 @component
 def measures_until_set(calls: Calls) -> Div:
     is_measuring, set_is_measuring = use_state(True)
@@ -348,7 +386,12 @@ def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        hooks.rects = draw(st.sampled_from([None, rects_in(NO_LAYOUTS, hooks.key), MOVED]))
+        read: list[dict[ElementHandle | None, Rects] | None] = [
+            None,
+            {None: rects_in(NO_LAYOUTS, hooks.key)},
+            {None: MOVED},
+        ]
+        hooks.rects = draw(st.sampled_from(read))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,

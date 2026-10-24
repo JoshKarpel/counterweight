@@ -1,13 +1,14 @@
 import pytest
 
-from counterweight.output import HYPERLINK_END
-from counterweight.output import hyperlink
-from counterweight.output import paint_to_str
-from counterweight.output import sgr_from_cell_style
-from counterweight.paint import Cell
-from counterweight.paint import Paint
+from counterweight._output import HYPERLINK_END
+from counterweight._output import hyperlink
+from counterweight._output import paint_to_str
+from counterweight._output import sgr_from_cell_style
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 
 @pytest.mark.parametrize(
@@ -43,16 +44,16 @@ def test_link_that_could_break_out_of_its_escape_sequence_is_rejected(link: str)
 
 
 def test_none_link_unsets_an_inherited_link() -> None:
-    assert resolve_cell_style(CellStyle(link="https://example.com/") | CellStyle(link=None)).link is None
+    assert as_solid(resolve_cell_style(CellStyle(link="https://example.com/") | CellStyle(link=None))).link is None
 
 
 def test_hash_depends_on_link() -> None:
     assert hash(CellStyle(link="https://example.com/a")) != hash(CellStyle(link="https://example.com/b"))
 
 
-A = resolve_cell_style(CellStyle(link="https://example.com/a"))
-B = resolve_cell_style(CellStyle(link="https://example.com/b"))
-PLAIN = resolve_cell_style(CellStyle())
+A = as_solid(resolve_cell_style(CellStyle(link="https://example.com/a")))
+B = as_solid(resolve_cell_style(CellStyle(link="https://example.com/b")))
+PLAIN = as_solid(resolve_cell_style(CellStyle()))
 
 
 def styled(cell: Cell) -> str:

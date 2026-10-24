@@ -12,10 +12,16 @@ from datetime import timezone
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import INITIAL_RECTS
+from counterweight._layout import NO_LAYOUTS
+from counterweight._output import Frame
+from counterweight._shadow import ShadowUpdate
+from counterweight._shadow import until_due
+from counterweight._shadow import update_shadow
+from counterweight.clock import FrozenClock
 from counterweight.clock import Instant
-from counterweight.clock import frozen_clock
-from counterweight.clock import system_clock
+from counterweight.clock import SystemClock
 from counterweight.clock import tick_index
 from counterweight.clock import until_next_tick
 from counterweight.components import component
@@ -30,12 +36,6 @@ from counterweight.events import Receiver
 from counterweight.focus import Subtree
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_state
-from counterweight.layout import INITIAL_RECTS
-from counterweight.layout import NO_LAYOUTS
-from counterweight.output import Frame
-from counterweight.shadow import ShadowUpdate
-from counterweight.shadow import until_due
-from counterweight.shadow import update_shadow
 from tests.rendering import state_set_keys
 from tests.rendering import state_sets
 
@@ -44,7 +44,7 @@ MOUNTED = Instant(wall=datetime(2026, 3, 14, 15, 9, 26, tzinfo=UTC), monotonic=t
 
 
 @component
-def clock_text(interval: timedelta) -> Text:
+def clock_text(interval: timedelta | None) -> Text:
     tick = use_clock(interval)
     return Text(
         content=f"{tick.now:%H:%M:%S.%f} "
@@ -206,6 +206,55 @@ def test_an_unmounted_clock_is_never_due() -> None:
     assert until_due(update.tree, MOUNTED + timedelta(seconds=1)) is None
 
 
+def paused_at(interval: timedelta | None) -> Div:
+    return Div(children=(clock_text(interval).with_key("seconds"),))
+
+
+def test_a_clock_paused_on_mount_reads_the_clock_once() -> None:
+    assert texts(render(paused_at(None), None, MOUNTED)) == ["15:09:26.000000 start=7 mount=0"]
+
+
+def test_a_paused_clock_keeps_its_last_reading() -> None:
+    ticked = render(SECONDS, render(SECONDS, None, MOUNTED), MOUNTED + timedelta(seconds=1))
+
+    update = render(paused_at(None), ticked, MOUNTED + timedelta(seconds=5))
+
+    assert texts(update) == ["15:09:27.000000 start=8 mount=1"]
+
+
+def test_a_paused_clock_never_reruns_its_component() -> None:
+    root = paused_at(None)
+    paused = render(root, render(SECONDS, None, MOUNTED), MOUNTED)
+
+    assert ran(render(root, paused, MOUNTED + timedelta(hours=1))) == []
+
+
+def test_a_tree_whose_only_clock_is_paused_is_never_due() -> None:
+    update = render(paused_at(None), None, MOUNTED)
+
+    assert until_due(update.tree, MOUNTED + timedelta(hours=1)) is None
+
+
+def test_a_paused_clock_doesnt_hold_back_a_running_one() -> None:
+    root = Div(
+        children=(
+            clock_text(None).with_key("paused"),
+            clock_text(timedelta(seconds=10)).with_key("ten-seconds"),
+        )
+    )
+    update = render(root, None, MOUNTED)
+
+    assert until_due(update.tree, MOUNTED + timedelta(seconds=1)) == timedelta(seconds=3)
+
+
+def test_resuming_a_clock_takes_a_fresh_reading_within_its_tick() -> None:
+    paused = render(paused_at(None), render(SECONDS, None, MOUNTED), MOUNTED + timedelta(seconds=0.25))
+
+    update = render(SECONDS, paused, MOUNTED + timedelta(seconds=0.5))
+
+    assert texts(update) == ["15:09:26.500000 start=7.5 mount=0.5"]
+
+
 INDIA = timezone(timedelta(hours=5, minutes=30))
 
 
@@ -257,7 +306,7 @@ async def test_advancing_a_frozen_clock_rerenders_the_components_reading_it() ->
             Quit(),
         ],
         check_purity=True,
-        clock=frozen_clock(MOUNTED.wall),
+        clock=FrozenClock(MOUNTED.wall),
     )
 
     assert frames == [
@@ -278,7 +327,7 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
             ticked_three_times.set()
         return Text(content="")
 
-    task = create_task(app(recorder(), headless=True, dimensions=(20, 1), clock=system_clock))
+    task = create_task(app(recorder(), headless=True, dimensions=(20, 1), clock=SystemClock()))
     try:
         await wait_for(ticked_three_times.wait(), timeout=5)
     finally:
@@ -289,7 +338,7 @@ async def test_the_app_renders_each_tick_without_any_input() -> None:
     assert ticked_three_times.is_set()
 
 
-async def test_advances_add_up_and_time_since_start_counts_from_the_first_reading() -> None:
+async def test_advances_add_up() -> None:
     frames: list[str] = []
 
     def capture(frame: Frame) -> None:
@@ -307,7 +356,7 @@ async def test_advances_add_up_and_time_since_start_counts_from_the_first_readin
             Quit(),
         ],
         check_purity=True,
-        clock=lambda: MOUNTED,
+        clock=FrozenClock(MOUNTED.wall),
     )
 
     assert frames == [

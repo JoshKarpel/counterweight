@@ -5,8 +5,9 @@ import pytest
 from without_cli import Streams
 from without_cli import run
 
-from counterweight.cli import cli
-from counterweight.constants import PACKAGE_NAME
+from counterweight._cli import LOGO
+from counterweight._cli import cli
+from counterweight._constants import PACKAGE_NAME
 
 
 def test_help() -> None:
@@ -16,6 +17,14 @@ def test_help() -> None:
 
     assert code == 0
     assert "check-input" in capture.stdout
+
+
+def test_help_shows_the_logo() -> None:
+    capture = Streams.captured()
+
+    run(cli, argv=("--help",), streams=capture.streams)
+
+    assert LOGO in capture.stdout
 
 
 @pytest.mark.slow

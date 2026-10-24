@@ -1,6 +1,6 @@
 import pytest
 
-from counterweight.output import title_instructions
+from counterweight._output import title_instructions
 
 
 @pytest.mark.parametrize(

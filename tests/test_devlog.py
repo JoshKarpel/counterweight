@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import component
 from counterweight.controls import AnyControl
+from counterweight.controls import CopyToClipboard
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
 from counterweight.controls import Suspend
@@ -13,7 +15,7 @@ from counterweight.elements import Text
 from counterweight.events import KeyPressed
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
-from counterweight.output import Frame
+from counterweight.programs import TerminalStreams
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_collapse
 from counterweight.styles.utilities import row
@@ -29,11 +31,19 @@ def broken_screenshot(frame: Frame) -> None:
     raise ValueError("no screenshot")
 
 
-def suspended() -> None:
+def copied(text: str) -> None:
     pass
 
 
-def broken_suspension() -> None:
+def broken_copy(text: str) -> None:
+    raise ValueError("no copy")
+
+
+def suspended(terminal: TerminalStreams) -> None:
+    pass
+
+
+def broken_suspension(terminal: TerminalStreams) -> None:
     raise ValueError("no suspension")
 
 
@@ -43,21 +53,21 @@ def boxes() -> Div:
 
 
 FRAME = [
-    "DEBUG    counterweight.app Updated shadow tree components_run=2",
-    "DEBUG    counterweight.app Calculated layout",
-    "DEBUG    counterweight.app Generated new paint",
-    "DEBUG    counterweight.app Healed borders in new paint hint_cells=6 diff_cells=2",
-    "DEBUG    counterweight.app Diffed new paint from current paint diff_runs=3 diff_cells=27",
-    "DEBUG    counterweight.app Generated instructions from paint diff",
-    "DEBUG    counterweight.app Reconciled effects",
-    "DEBUG    counterweight.app Completed render cycle",
+    "DEBUG    counterweight._app Updated shadow tree components_run=2",
+    "DEBUG    counterweight._app Calculated layout",
+    "DEBUG    counterweight._app Generated new paint",
+    "DEBUG    counterweight._app Healed borders in new paint hint_cells=6 diff_cells=2",
+    "DEBUG    counterweight._app Diffed new paint from current paint diff_runs=3 diff_cells=27",
+    "DEBUG    counterweight._app Generated instructions from paint diff",
+    "DEBUG    counterweight._app Reconciled effects",
+    "DEBUG    counterweight._app Completed render cycle",
 ]
 
 
 def handled(command: object) -> list[str]:
     return [
-        f"DEBUG    counterweight.app Handled autopilot command command={command!r}",
-        "DEBUG    counterweight.app Handled events num_events=1",
+        f"DEBUG    counterweight._app Handled autopilot command command={command!r}",
+        "DEBUG    counterweight._app Handled events num_events=1",
     ]
 
 
@@ -65,6 +75,8 @@ async def test_the_devlog_records_each_frame_control_and_handler_failure() -> No
     autopilot: list[AnyControl] = [
         Screenshot(handler=screenshot),
         Screenshot(handler=broken_screenshot),
+        CopyToClipboard(text="hi", handler=copied),
+        CopyToClipboard(text="hi", handler=broken_copy),
         Suspend(handler=suspended),
         Suspend(handler=broken_suspension),
         Quit(),
@@ -74,28 +86,32 @@ async def test_the_devlog_records_each_frame_control_and_handler_failure() -> No
         await app(boxes(), headless=True, dimensions=(9, 3), autopilot=autopilot)
 
     assert lines == [
-        "INFO     counterweight.app Application starting...",
+        "INFO     counterweight._app Application starting...",
         *FRAME,
         *handled(autopilot[0]),
-        f"DEBUG    counterweight.app Took screenshot handler={screenshot!r}",
+        f"DEBUG    counterweight._app Took screenshot handler={screenshot!r}",
         *handled(autopilot[1]),
-        "ERROR    counterweight.app Error in screenshot handler "
+        "ERROR    counterweight._app Error in screenshot handler "
         f"error=\"ValueError('no screenshot')\" handler={broken_screenshot!r}",
         *handled(autopilot[2]),
-        f"DEBUG    counterweight.app Suspending application handler={suspended!r}",
-        f"DEBUG    counterweight.app Resuming application handler={suspended!r}",
-        *FRAME,
+        f"DEBUG    counterweight._app Copied text handler={copied!r}",
         *handled(autopilot[3]),
-        f"DEBUG    counterweight.app Suspending application handler={broken_suspension!r}",
-        "ERROR    counterweight.app Error in suspend handler "
-        f"handler={broken_suspension!r} error=\"ValueError('no suspension')\"",
-        f"DEBUG    counterweight.app Resuming application handler={broken_suspension!r}",
-        *FRAME,
+        f"ERROR    counterweight._app Error in copy handler error=\"ValueError('no copy')\" handler={broken_copy!r}",
         *handled(autopilot[4]),
-        "INFO     counterweight.app Quitting application...",
-        "DEBUG    counterweight.app Caught KeyboardInterrupt()",
-        "INFO     counterweight.app Application stopping...",
-        "INFO     counterweight.app Application stopped",
+        f"DEBUG    counterweight._app Suspending application handler={suspended!r}",
+        f"DEBUG    counterweight._app Resuming application handler={suspended!r}",
+        *FRAME,
+        *handled(autopilot[5]),
+        f"DEBUG    counterweight._app Suspending application handler={broken_suspension!r}",
+        "ERROR    counterweight._app Error in suspend handler "
+        f"handler={broken_suspension!r} error=\"ValueError('no suspension')\"",
+        f"DEBUG    counterweight._app Resuming application handler={broken_suspension!r}",
+        *FRAME,
+        *handled(autopilot[6]),
+        "INFO     counterweight._app Quitting application...",
+        "DEBUG    counterweight._app Caught KeyboardInterrupt()",
+        "INFO     counterweight._app Application stopping...",
+        "INFO     counterweight._app Application stopped",
     ]
 
 
@@ -108,7 +124,7 @@ async def test_the_devlog_counts_every_event_a_frame_handles() -> None:
     with devlog_lines() as lines:
         await app(counter(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="a"), Quit()])
 
-    assert "DEBUG    counterweight.app Handled events num_events=2" in lines
+    assert "DEBUG    counterweight._app Handled events num_events=2" in lines
 
 
 async def test_the_devlog_records_the_components_a_frame_runs_again_to_settle_focus() -> None:
@@ -125,10 +141,10 @@ async def test_the_devlog_records_the_components_a_frame_runs_again_to_settle_fo
     with devlog_lines() as lines:
         await app(mounts_on_key(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="t"), Quit()])
 
-    frame = lines[lines.index("DEBUG    counterweight.app Handled events num_events=2") + 1 :][:4]
+    frame = lines[lines.index("DEBUG    counterweight._app Handled events num_events=2") + 1 :][:4]
     assert frame == [
-        "DEBUG    counterweight.app Updated shadow tree components_run=2",
-        "DEBUG    counterweight.app Calculated layout",
-        "DEBUG    counterweight.app Settled focus components_run=1",
-        "DEBUG    counterweight.app Generated new paint",
+        "DEBUG    counterweight._app Updated shadow tree components_run=2",
+        "DEBUG    counterweight._app Calculated layout",
+        "DEBUG    counterweight._app Settled focus components_run=1",
+        "DEBUG    counterweight._app Generated new paint",
     ]

@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import pytest
 
 from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -25,8 +26,7 @@ from counterweight.geometry import Position
 from counterweight.headless import ScrollAxis
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.output import Frame
-from counterweight.styles import Color
+from counterweight.styles import AnyColor
 from counterweight.styles import Style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_color
@@ -97,7 +97,7 @@ def lines(frame: Frame) -> list[str]:
     return [line.rstrip() for line in frame.text(ansi=False).splitlines()]
 
 
-def corner_color(frame: Frame) -> Color | None:
+def corner_color(frame: Frame) -> AnyColor | None:
     return next(iter(frame.paint.rows()))[0].style.foreground
 
 

@@ -1,22 +1,37 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Literal
+from typing import assert_never
+from typing import get_args
 
 import pytest
 import waxy
+from hypothesis import example
+from hypothesis import given
+from hypothesis import strategies as st
+from more_itertools import one
 
-from counterweight.app import screen_element_style
+from counterweight._app import screen_element_style
+from counterweight._layout import NO_LAYOUTS
+from counterweight._layout import Layouts
+from counterweight._layout import LayoutTree
+from counterweight._layout import Lines
+from counterweight._layout import MeasurableText
+from counterweight._layout import cells_width
+from counterweight._layout import layout_changes
+from counterweight._shadow import ShadowNode
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import update_shadow
 from counterweight.elements import AnyElement
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.geometry import Rects
-from counterweight.hooks.impls import Hooks
-from counterweight.layout import Layouts
-from counterweight.layout import LayoutTree
-from counterweight.layout import layout_changes
-from counterweight.shadow import ShadowNode
-from counterweight.shadow import ShadowTree
-from counterweight.styles.styles import Style
+from counterweight.hooks._impls import Hooks
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Style
+from counterweight.styles._styles import TextWrap
 from counterweight.styles.utilities import align_children_center
 from counterweight.styles.utilities import align_children_center_unsafe
 from counterweight.styles.utilities import align_children_end
@@ -62,6 +77,7 @@ from counterweight.styles.utilities import min_content_width
 from counterweight.styles.utilities import min_height
 from counterweight.styles.utilities import min_width
 from counterweight.styles.utilities import pad
+from counterweight.styles.utilities import pad_x
 from counterweight.styles.utilities import percentage
 from counterweight.styles.utilities import position_absolute
 from counterweight.styles.utilities import ratio
@@ -87,7 +103,7 @@ def _layouts(root: ShadowNode, w: int = 60, h: int = 20) -> Layouts:
 
 
 def _layout(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
-    return tuple((element, layout) for _, element, layout, _ in _layouts(root, w, h).in_paint_order)
+    return tuple((element, layout) for _, element, layout, _, _ in _layouts(root, w, h).in_paint_order)
 
 
 def _layout_screened(root: ShadowNode, w: int = 60, h: int = 20) -> tuple[tuple[AnyElement, Rects], ...]:
@@ -369,6 +385,152 @@ def test_text_wrap_stable_measures_correct_height() -> None:
     text_layout = next(rl for el, rl in results if isinstance(el, Text))
 
     assert text_layout.border.height == 2
+
+
+def test_text_with_border_and_padding_wraps_at_its_content_width() -> None:
+    # Width 9 less the border and padding leaves 5 cells: "aaa bbb ccc" wraps to 3 lines, plus 2 for the border.
+    # Wrapped at the border box's 9 cells instead, it would measure 2 lines.
+    text_node = _shadow(Text(content="aaa bbb ccc", style=text_wrap_stable | border | pad_x(1)))
+    container = _shadow(
+        Div(style=col | Style(layout=waxy.Style(size_width=waxy.Length(9)))),
+        children=[text_node],
+    )
+
+    results = _layout(container, w=20, h=20)
+    text_layout = next(rl for el, rl in results if isinstance(el, Text))
+
+    assert text_layout.border.height == 5
+
+
+Sides = tuple[int, int, int, int]
+
+
+def boxed(
+    borders: Sides, paddings: Sides, box_sizing: waxy.BoxSizing, size_width: waxy.Length | waxy.Percent | waxy.Auto
+) -> waxy.Style:
+    """A layout with the given border and padding on its left, right, top and bottom sides."""
+    return waxy.Style(
+        box_sizing=box_sizing,
+        size_width=size_width,
+        border_left=waxy.Length(borders[0]),
+        border_right=waxy.Length(borders[1]),
+        border_top=waxy.Length(borders[2]),
+        border_bottom=waxy.Length(borders[3]),
+        padding_left=waxy.Length(paddings[0]),
+        padding_right=waxy.Length(paddings[1]),
+        padding_top=waxy.Length(paddings[2]),
+        padding_bottom=waxy.Length(paddings[3]),
+    )
+
+
+borders = st.tuples(*[st.integers(0, 1)] * 4)
+paddings = st.tuples(*[st.integers(0, 2)] * 4)
+box_sizings = st.sampled_from([waxy.BoxSizing.BorderBox, waxy.BoxSizing.ContentBox])
+
+TextSizing = Literal[
+    "stretched in a column",
+    "fit to its content in a column",
+    "own width",
+    "percentage of its parent",
+    "shrunk in a row",
+    "squeezed by a sibling in a row",
+]
+WRAPPING: tuple[TextWrap, ...] = ("stable", "pretty", "balance")
+
+
+@dataclass(frozen=True, slots=True)
+class TextInBox:
+    """A text with a border and padding, sized by `width` in the way `sizing` names, for properties of its layout."""
+
+    content: str
+    wrap: TextWrap
+    borders: Sides
+    paddings: Sides
+    box_sizing: waxy.BoxSizing
+    sizing: TextSizing
+    width: int
+
+    def element(self) -> Div:
+        """The text in its parent, beside a sibling as wide as the parent if it's squeezed."""
+        width = waxy.Length(self.width)
+        match self.sizing:
+            case "stretched in a column":
+                return self.parent(col, width, waxy.Auto())
+            case "fit to its content in a column":
+                return self.parent(col | align_children_start, width, waxy.Auto())
+            case "own width":
+                return self.parent(col, waxy.Length(40), width)
+            case "percentage of its parent":
+                return self.parent(col, waxy.Length(40), waxy.Percent(self.width / 40))
+            case "shrunk in a row":
+                return self.parent(row, width, waxy.Auto())
+            case "squeezed by a sibling in a row":
+                sibling = Div(style=Style(layout=waxy.Style(size_width=width, flex_shrink=0.0)))
+                return self.parent(row, width, waxy.Auto(), sibling)
+            case _ as unreachable:
+                assert_never(unreachable)
+
+    def parent(
+        self,
+        style: Style,
+        width: waxy.Length,
+        text_width: waxy.Length | waxy.Percent | waxy.Auto,
+        *siblings: AnyElement,
+    ) -> Div:
+        """The text, `text_width` wide with its border and padding, first in a `width`-wide parent styled `style`."""
+        layout = boxed(self.borders, self.paddings, self.box_sizing, text_width)
+        text = Text(content=self.content, style=Style(text_wrap=self.wrap, layout=layout))
+        return Div(style=style | Style(layout=waxy.Style(size_width=width)), children=(text, *siblings))
+
+    def laid_out(self) -> tuple[Rects, Lines]:
+        """The text's layout and the rows it paints."""
+        shadow = update_shadow(self.element(), None, NO_LAYOUTS).tree
+        layouts = LayoutTree().compute(layout_changes(None, shadow), shadow, 60, 200, {})
+        return one((rects, rows) for _, element, rects, rows, _ in layouts.in_paint_order if isinstance(element, Text))
+
+
+def texts_in_boxes(
+    wraps: Sequence[TextWrap] = get_args(TextWrap), sizings: Sequence[TextSizing] = get_args(TextSizing)
+) -> st.SearchStrategy[TextInBox]:
+    """Texts of words with wide clusters among them, wrapped one of the `wraps` ways and sized one of the `sizings`."""
+    return st.builds(
+        TextInBox,
+        content=st.lists(st.text(alphabet="abあ", min_size=1, max_size=6), min_size=1, max_size=12).map(" ".join),
+        wrap=st.sampled_from(wraps),
+        borders=borders,
+        paddings=paddings,
+        box_sizing=box_sizings,
+        sizing=st.sampled_from(sizings),
+        width=st.integers(1, 30),
+    )
+
+
+@given(texts_in_boxes())
+@example(TextInBox("a", "stable", (0, 0, 0, 0), (0, 1, 0, 0), waxy.BoxSizing.BorderBox, "stretched in a column", 1))
+@example(TextInBox("a", "none", (0, 0, 0, 0), (0, 1, 0, 0), waxy.BoxSizing.BorderBox, "stretched in a column", 1))
+@example(
+    TextInBox(
+        "あaa", "stable", (0, 0, 0, 0), (0, 0, 0, 0), waxy.BoxSizing.BorderBox, "fit to its content in a column", 1
+    )
+)
+def test_text_content_box_is_as_tall_as_the_rows_it_paints(text: TextInBox) -> None:
+    rects, rows = text.laid_out()
+
+    assert len(rows) == rects.content.height
+
+
+@given(texts_in_boxes(wraps=WRAPPING))
+def test_wrapping_text_rows_fit_in_its_content_box_unless_one_cluster_is_wider(text: TextInBox) -> None:
+    rects, rows = text.laid_out()
+
+    assert all(cells_width(line) <= rects.content.width or len(line) == 1 for line in rows)
+
+
+@given(texts_in_boxes(wraps=WRAPPING, sizings=["squeezed by a sibling in a row"]))
+def test_wrapping_text_squeezed_by_a_sibling_is_as_wide_as_its_widest_word(text: TextInBox) -> None:
+    rects, _ = text.laid_out()
+
+    assert rects.content.width == MeasurableText.of((text.content, CellStyle(), text.wrap)).narrowest_width()
 
 
 def test_text_wrap_balance_measures_correct_height() -> None:

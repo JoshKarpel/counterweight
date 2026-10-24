@@ -23,10 +23,11 @@ from counterweight.styles import Color
 from counterweight.styles import Style
 from counterweight.styles.utilities import default
 
-# A Pygments style, by name (any of `pygments.styles.get_all_styles()`) or as a `pygments.style.Style` subclass.
 type CodeTheme = str | type[PygmentsStyle]
+"""A Pygments style, by name (any of `pygments.styles.get_all_styles()`) or as a `pygments.style.Style` subclass."""
 
 DEFAULT_CODE_THEME: CodeTheme = "github-dark"
+"""The theme code is highlighted in unless it's given another."""
 
 
 @lru_cache(maxsize=2**8)
@@ -105,3 +106,12 @@ def cell_style_for_token(pygments_style: type[PygmentsStyle], token: _TokenType)
         italic=definition["italic"] or UNSET,
         underline=definition["underline"] or UNSET,
     )
+
+
+__all__ = [
+    "DEFAULT_CODE_THEME",
+    "CodeTheme",
+    "code_block",
+    "code_style",
+    "highlight",
+]

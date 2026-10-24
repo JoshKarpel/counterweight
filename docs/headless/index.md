@@ -13,6 +13,7 @@ and `counterweight.widgets` draws each one way, for when you don't need your own
 | [`use_text_input`](use_text_input.md)   | `text_input`  | Edits one line of text                      |
 | [`use_text_area`](use_text_area.md)     | `text_area`   | Edits text that wraps onto rows             |
 | [`use_scroll_area`](use_scroll_area.md) | `scroll_area` | Scrolls a box with the keys and the wheel   |
+| [`use_terminal`](../terminals/embedding.md#the-hook) | `terminal` | Runs an interactive program in a box |
 
 ## Styling the widgets
 

@@ -1,9 +1,9 @@
 # Hyperlinks
 
 Any text can be a hyperlink that the terminal opens when it's clicked:
-set [`link`][counterweight.styles.CellStyle] on a `CellStyle`.
+merge in `text_link(uri)`, which sets [`link`][counterweight.styles.CellStyle] on the `text_style`.
 On a `Chunk`'s style, that makes the chunk a link;
-on a `Text`'s `text_style`, it makes all of its text one.
+on a `Text`'s style, it makes all of its text one.
 
 <!-- example: hyperlinks.py:example -->
 
@@ -12,7 +12,7 @@ on a `Text`'s `text_style`, it makes all of its text one.
 A link changes how nothing looks, so style it to look like one,
 as the example does with an underline and a color.
 It merges like any other field, so a `Chunk` inside a linked `Text` can link elsewhere,
-or set `link=None` to not be a link at all.
+or merge in `text_link(None)` to not be a link at all.
 
 ## How terminals handle them
 

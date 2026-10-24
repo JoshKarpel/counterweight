@@ -6,31 +6,36 @@ from copy import copy
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight._graphemes import grapheme_width
+from counterweight._output import HYPERLINK_END
+from counterweight._output import RESET_STYLE
+from counterweight._output import hyperlink
+from counterweight._output import move_to
+from counterweight._output import paint_to_instructions
+from counterweight._output import sgr_from_cell_style
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import diff_paint
+from counterweight._paint import runs_of
 from counterweight.geometry import Position
-from counterweight.graphemes import grapheme_width
-from counterweight.output import HYPERLINK_END
-from counterweight.output import RESET_STYLE
-from counterweight.output import hyperlink
-from counterweight.output import move_to
-from counterweight.output import paint_to_instructions
-from counterweight.output import sgr_from_cell_style
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import diff_paint
-from counterweight.paint import runs_of
 from counterweight.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
-DEFAULT = resolve_cell_style(CellStyle())
-RED_FG = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
-BOLD = resolve_cell_style(CellStyle(bold=True))
-LINKED = resolve_cell_style(CellStyle(link="https://example.com/a"))
-OTHER_LINKED = resolve_cell_style(CellStyle(link="https://example.com/b"))
+DEFAULT = as_solid(resolve_cell_style(CellStyle()))
+RED_FG = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))
+BOLD = as_solid(resolve_cell_style(CellStyle(bold=True)))
+RED_ON_BLUE = as_solid(
+    resolve_cell_style(CellStyle(foreground=Color.from_name("red"), background=Color.from_name("blue")))
+)
+LINKED = as_solid(resolve_cell_style(CellStyle(link="https://example.com/a")))
+OTHER_LINKED = as_solid(resolve_cell_style(CellStyle(link="https://example.com/b")))
 
 A = Cell("A", DEFAULT)
 B = Cell("B", DEFAULT)
 R = Cell("R", RED_FG)
+X = Cell("X", BOLD)
 L = Cell("L", LINKED)
 
 
@@ -50,8 +55,20 @@ def test_run_moves_once_and_sets_style_once() -> None:
 
 
 def test_style_change_mid_run_resets_then_sets_style() -> None:
-    assert paint_to_instructions([(0, 0, [A, R])]) == (
-        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A{RESET_STYLE}{sgr_from_cell_style(RED_FG)}R{RESET_STYLE}"
+    assert paint_to_instructions([(0, 0, [A, X])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A{RESET_STYLE}{sgr_from_cell_style(BOLD)}X{RESET_STYLE}"
+    )
+
+
+def test_a_change_of_only_colors_sets_only_the_colors_that_changed() -> None:
+    assert paint_to_instructions([(0, 0, [A, R, Cell("B", RED_ON_BLUE)])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A\x1b[38;2;255;0;0mR\x1b[48;2;0;0;255mB{RESET_STYLE}"
+    )
+
+
+def test_a_change_of_colors_and_attributes_resets_then_sets_style() -> None:
+    assert paint_to_instructions([(0, 0, [R, X])]) == (
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(RED_FG)}R{RESET_STYLE}{sgr_from_cell_style(BOLD)}X{RESET_STYLE}"
     )
 
 
@@ -80,8 +97,7 @@ def test_style_carries_across_runs() -> None:
 
 def test_link_opens_with_its_style_and_closes_at_the_end() -> None:
     assert paint_to_instructions([(0, 0, [A, L, L])]) == (
-        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A"
-        f"{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}LL{RESET_STYLE}{HYPERLINK_END}"
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}A{hyperlink(LINKED.link)}LL{RESET_STYLE}{HYPERLINK_END}"
     )
 
 
@@ -94,14 +110,33 @@ def test_link_stays_open_across_runs() -> None:
 
 def test_unlinked_cell_after_a_link_closes_it() -> None:
     assert paint_to_instructions([(0, 0, [L, A])]) == (
-        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}L"
-        f"{RESET_STYLE}{sgr_from_cell_style(DEFAULT)}{HYPERLINK_END}A{RESET_STYLE}"
+        f"{mt(0, 0)}{RESET_STYLE}{sgr_from_cell_style(LINKED)}{hyperlink(LINKED.link)}L{HYPERLINK_END}A{RESET_STYLE}"
     )
 
 
 INSTRUCTION = re.compile(r"\x1b\[(\d+);(\d+)f|(\x1b\[[\d;]*m)|\x1b\]8;;(.*?)\x1b\\|(.)", re.DOTALL)
 
-Appearance = tuple[str, str, str | None]
+SGR = re.compile(r"\x1b\[([\d;]*)m")
+
+# The foreground's parameters, the background's, and the other attributes on.
+type Rendition = tuple[str, str, frozenset[str]]
+
+Appearance = tuple[str, Rendition, str | None]
+
+
+def rendition(sgr: str) -> Rendition:
+    """What the SGR sequences in `sgr`, applied in order after a reset, leave each cell drawn in."""
+    foreground = background = ""
+    attributes: set[str] = set()
+    for parameters in SGR.findall(sgr):
+        first = int(parameters.split(";")[0])
+        if 30 <= first <= 39 or 90 <= first <= 97:
+            foreground = parameters
+        elif 40 <= first <= 49 or 100 <= first <= 107:
+            background = parameters
+        else:
+            attributes.add(parameters)
+    return foreground, background, frozenset(attributes)
 
 
 def apply(instructions: str, screen: list[list[Appearance]]) -> str | None:
@@ -130,9 +165,9 @@ def apply(instructions: str, screen: list[list[Appearance]]) -> str | None:
             width = grapheme_width(char)
             for covered in range(x, x + width):
                 erase_other_half(line, covered)
-            line[x] = (char, sgr, link)
+            line[x] = (char, rendition(sgr), link)
             if width == 2:
-                line[x + 1] = ("", sgr, link)
+                line[x + 1] = ("", rendition(sgr), link)
             x += width
     return link
 
@@ -146,11 +181,34 @@ def erase_other_half(line: list[Appearance], x: int) -> None:
 
 
 def appearance(paint: Paint) -> list[list[Appearance]]:
-    return [[(cell.grapheme, sgr_from_cell_style(cell.style), cell.style.link) for cell in row] for row in paint.rows()]
+    return [
+        [(cell.grapheme, rendition(sgr_from_cell_style(cell.style)), cell.style.link) for cell in row]
+        for row in paint.rows()
+    ]
 
 
 narrow_cells = st.sampled_from(
-    [A, B, R, L, Cell("A", BOLD), Cell(" ", BOLD), Cell(" ", DEFAULT), Cell(" ", LINKED), Cell("O", OTHER_LINKED)]
+    [
+        A,
+        B,
+        R,
+        L,
+        Cell("A", BOLD),
+        Cell(" ", BOLD),
+        Cell(" ", DEFAULT),
+        Cell(" ", LINKED),
+        Cell("O", OTHER_LINKED),
+        Cell("B", RED_ON_BLUE),
+        *(
+            Cell("S", as_solid(resolve_cell_style(style)))
+            for style in (
+                CellStyle(dim=True),
+                CellStyle(italic=True),
+                CellStyle(underline=True),
+                CellStyle(strikethrough=True),
+            )
+        ),
+    ]
 )
 wide_cells = st.sampled_from([Cell("日", DEFAULT), Cell("本", DEFAULT), Cell("日", RED_FG), Cell("本", LINKED)])
 
@@ -194,7 +252,7 @@ def test_drawing_the_diff_over_the_current_paint_shows_the_new_paint(pair: tuple
 @given(paint_pairs())
 def test_drawing_every_run_shows_the_paint(pair: tuple[Paint, Paint]) -> None:
     _, paint = pair
-    screen: list[list[Appearance]] = [[("?", "", None)] * paint.width for _ in range(paint.height)]
+    screen: list[list[Appearance]] = [[("?", rendition(""), None)] * paint.width for _ in range(paint.height)]
 
     open_link = apply(paint_to_instructions(runs_of(paint)), screen)
 

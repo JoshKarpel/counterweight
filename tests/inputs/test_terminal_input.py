@@ -14,26 +14,28 @@ from typing import TextIO
 
 import pytest
 
+from counterweight._input import ESCAPE_TIMEOUT
+from counterweight._input import PASTE_TIMEOUT
+from counterweight._input import KeyReader
+from counterweight._input import read_keys
+from counterweight._input import start_input_control
+from counterweight._input import start_reading_keys
+from counterweight._input import stop_input_control
+from counterweight._input import stop_reading_keys
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.events import MouseMoved
 from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input import ESCAPE_TIMEOUT
-from counterweight.input import PASTE_TIMEOUT
-from counterweight.input import KeyReader
-from counterweight.input import read_keys
-from counterweight.input import start_input_control
-from counterweight.input import start_reading_keys
-from counterweight.input import stop_input_control
-from counterweight.input import stop_reading_keys
 from counterweight.keys import Key
 from tests.terminal import Terminal
 
 TIMEOUT = 5
 
 
-def test_input_control_turns_off_echo_and_line_buffering_and_reads_each_byte_at_once(terminal: Terminal) -> None:
+def test_input_control_turns_off_echo_line_buffering_and_signal_keys_and_reads_each_byte_at_once(
+    terminal: Terminal,
+) -> None:
     before = terminal.settings()
 
     original = start_input_control(terminal.stream)
@@ -47,8 +49,7 @@ def test_input_control_turns_off_echo_and_line_buffering_and_reads_each_byte_at_
     assert isinstance(cc, list)
     assert original == before
     assert not iflag & (termios.ICRNL | termios.INLCR | termios.IGNCR)
-    assert not lflag & (termios.ECHO | termios.ICANON)
-    assert lflag & termios.ISIG
+    assert not lflag & (termios.ECHO | termios.ICANON | termios.ISIG)
     assert cc[termios.VMIN] == 1
     assert cc[termios.VTIME] == 0
 
@@ -66,6 +67,28 @@ def test_input_control_turns_off_each_line_ending_translation(terminal: Terminal
     during = terminal.settings()[0]
     assert isinstance(during, int)
     assert not during & translation
+
+
+@pytest.mark.parametrize(
+    ("field", "flag"),
+    [
+        pytest.param(3, termios.ISIG, id="signal-keys"),
+        pytest.param(3, termios.IEXTEN, id="literal-next-and-discard"),
+        pytest.param(0, termios.IXON, id="flow-control"),
+    ],
+)
+def test_input_control_stops_the_terminal_acting_on_keys(terminal: Terminal, field: int, flag: int) -> None:
+    attributes = terminal.settings()
+    flags = attributes[field]
+    assert isinstance(flags, int)
+    attributes[field] = flags | flag
+    termios.tcsetattr(terminal.stream, termios.TCSANOW, attributes)
+
+    start_input_control(terminal.stream)
+
+    during = terminal.settings()[field]
+    assert isinstance(during, int)
+    assert not during & flag
 
 
 def test_stopping_input_control_restores_the_original_attributes(terminal: Terminal) -> None:
@@ -97,7 +120,7 @@ class KeyReading:
 @pytest.fixture
 async def key_reading(terminal: Terminal) -> AsyncIterator[KeyReading]:
     """`read_keys` reading `terminal`, under input control, on the running event loop."""
-    logger = logging.getLogger("counterweight.input")
+    logger = logging.getLogger("counterweight._input")
     records: Queue[logging.LogRecord] = Queue()
     handler = QueueHandler(records)
     previous_level = logger.level

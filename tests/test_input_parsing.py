@@ -5,6 +5,18 @@ from hypothesis import example
 from hypothesis import given
 from hypothesis import strategies as st
 
+from counterweight._input_parsing import ALT
+from counterweight._input_parsing import CONTROL
+from counterweight._input_parsing import CONTROL_KEYS
+from counterweight._input_parsing import CONTROL_SHIFT
+from counterweight._input_parsing import ESC
+from counterweight._input_parsing import PASTE_START
+from counterweight._input_parsing import SHIFT
+from counterweight._input_parsing import Modifier
+from counterweight._input_parsing import alt_name
+from counterweight._input_parsing import modified
+from counterweight._input_parsing import parse_input
+from counterweight._input_parsing import sequence_keys
 from counterweight.events import AnyEvent
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
@@ -16,16 +28,6 @@ from counterweight.events import MouseScrolledUp
 from counterweight.events import MouseUp
 from counterweight.events import Pasted
 from counterweight.geometry import Position
-from counterweight.input_parsing import ALT
-from counterweight.input_parsing import CONTROL
-from counterweight.input_parsing import CONTROL_SHIFT
-from counterweight.input_parsing import PASTE_START
-from counterweight.input_parsing import SHIFT
-from counterweight.input_parsing import Modifier
-from counterweight.input_parsing import alt_name
-from counterweight.input_parsing import modified
-from counterweight.input_parsing import parse_input
-from counterweight.input_parsing import sequence_keys
 from counterweight.keys import Key
 
 
@@ -172,6 +174,10 @@ KEY_SEQUENCES: list[tuple[bytes, Key]] = [
         (b"\x18", [KeyPressed(key=Key.ControlX)]),
         (b"\x19", [KeyPressed(key=Key.ControlY)]),
         (b"\x1a", [KeyPressed(key=Key.ControlZ)]),
+        (b"\x1c", [KeyPressed(key=Key.ControlBackslash)]),
+        (b"\x1d", [KeyPressed(key=Key.ControlRightBracket)]),
+        (b"\x1e", [KeyPressed(key=Key.ControlCaret)]),
+        (b"\x1f", [KeyPressed(key=Key.ControlUnderscore)]),
         (b"\x7f", [KeyPressed(key=Key.Backspace)]),
         (b"\r", [KeyPressed(key=Key.Enter)]),
         # text beyond ASCII, one event per grapheme cluster
@@ -194,6 +200,8 @@ KEY_SEQUENCES: list[tuple[bytes, Key]] = [
         (b"\x1b\x00", [KeyPressed(key=Key.ControlAltSpace)]),
         (b"\x1b\x01", [KeyPressed(key=Key.ControlAltA)]),
         (b"\x1b\x1a", [KeyPressed(key=Key.ControlAltZ)]),
+        (b"\x1b\x1c", [KeyPressed(key=Key.ControlAltBackslash)]),
+        (b"\x1b\x1f", [KeyPressed(key=Key.ControlAltUnderscore)]),
         # or with the key whose escape sequence follows it, as rxvt sends Alt with those keys
         (b"\x1b\x1b[A", [KeyPressed(key=Key.AltUp)]),
         (b"\x1b\x1b[5~", [KeyPressed(key=Key.AltPageUp)]),
@@ -341,11 +349,7 @@ def test_bytes_in_a_paste_that_are_not_utf8_are_skipped() -> None:
             "\x1b[1;é".encode(),
             Parsed(events=(KeyPressed(key="é"),), skipped=(b"\x1b[1;",), remainder=b""),
         ),
-        # control bytes with no key
-        (b"\x1c", Parsed(events=(), skipped=(b"\x1c",), remainder=b"")),
-        (b"\x1dq", Parsed(events=(KeyPressed(key="q"),), skipped=(b"\x1d",), remainder=b"")),
-        # Alt with a control byte with no key, or with a key with no name with Alt
-        (b"\x1b\x1c", Parsed(events=(), skipped=(b"\x1b\x1c",), remainder=b"")),
+        # Alt with a key with no name with Alt
         (b"\x1b[25;3~", Parsed(events=(), skipped=(b"\x1b[25;3~",), remainder=b"")),
         # an ESC before input that is skipped is the Escape key
         (
@@ -555,6 +559,10 @@ def test_input_split_anywhere_parses_to_the_same_text_and_events(buffer: bytes, 
     reads = [buffer[start:end] for start, end in zip([0, *cuts], [*cuts, len(buffer)], strict=True)]
 
     assert join_text(parse_reads(reads)) == join_text(parse_reads([buffer]))
+
+
+def test_every_control_byte_but_escape_is_a_key() -> None:
+    assert set(CONTROL_KEYS) == {*range(0x20), 0x7F} - {ESC}
 
 
 def test_key_repr_is_its_qualified_name() -> None:

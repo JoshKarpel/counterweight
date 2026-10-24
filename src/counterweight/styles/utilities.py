@@ -1,19 +1,56 @@
 from functools import lru_cache
 from typing import Literal
+from typing import cast
+from typing import overload
 
 import waxy
 
+from counterweight.gradients import Gradient
+from counterweight.styles import TERMINAL_DEFAULT
+from counterweight.styles import AnyColor
 from counterweight.styles import BorderKind
 from counterweight.styles import CellStyle
 from counterweight.styles import Color
+from counterweight.styles import IndexedColor
 from counterweight.styles import Style
 
 Side = Literal["top", "bottom", "left", "right"]
+"""One side of a box."""
 
 # Start generated
 
 text_white = Style(text_style=CellStyle(foreground=Color.from_hex("#ffffff")))
 text_black = Style(text_style=CellStyle(foreground=Color.from_hex("#000000")))
+
+text_terminal_default = Style(text_style=CellStyle(foreground=TERMINAL_DEFAULT))
+text_bg_terminal_default = Style(text_style=CellStyle(background=TERMINAL_DEFAULT))
+border_terminal_default = Style(border_style=CellStyle(foreground=TERMINAL_DEFAULT))
+border_bg_terminal_default = Style(border_style=CellStyle(background=TERMINAL_DEFAULT))
+margin_terminal_default = Style(margin_color=TERMINAL_DEFAULT)
+padding_terminal_default = Style(padding_color=TERMINAL_DEFAULT)
+content_terminal_default = Style(content_color=TERMINAL_DEFAULT)
+
+text_bold = Style(text_style=CellStyle(bold=True))
+text_not_bold = Style(text_style=CellStyle(bold=False))
+text_dim = Style(text_style=CellStyle(dim=True))
+text_not_dim = Style(text_style=CellStyle(dim=False))
+text_italic = Style(text_style=CellStyle(italic=True))
+text_not_italic = Style(text_style=CellStyle(italic=False))
+text_underline = Style(text_style=CellStyle(underline=True))
+text_not_underline = Style(text_style=CellStyle(underline=False))
+text_strikethrough = Style(text_style=CellStyle(strikethrough=True))
+text_not_strikethrough = Style(text_style=CellStyle(strikethrough=False))
+
+border_bold = Style(border_style=CellStyle(bold=True))
+border_not_bold = Style(border_style=CellStyle(bold=False))
+border_dim = Style(border_style=CellStyle(dim=True))
+border_not_dim = Style(border_style=CellStyle(dim=False))
+border_italic = Style(border_style=CellStyle(italic=True))
+border_not_italic = Style(border_style=CellStyle(italic=False))
+border_underline = Style(border_style=CellStyle(underline=True))
+border_not_underline = Style(border_style=CellStyle(underline=False))
+border_strikethrough = Style(border_style=CellStyle(strikethrough=True))
+border_not_strikethrough = Style(border_style=CellStyle(strikethrough=False))
 
 slate_50 = Color.from_hex("#f8fafc")
 slate_100 = Color.from_hex("#f1f5f9")
@@ -303,7 +340,10 @@ ColorName = Literal[
     "pink",
     "rose",
 ]
+"""The name of one of the palette's colors, as the color utilities take it, such as `"sky"`."""
+
 Shade = Literal[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
+"""One of the palette's shades, from lightest (`50`) to darkest (`950`), as in Tailwind's palette."""
 
 _COLOR_MAP: dict[tuple[str, int], Color] = {
     ("slate", 50): slate_50,
@@ -732,6 +772,8 @@ text_wrap_none = Style(text_wrap="none")
 text_wrap_stable = Style(text_wrap="stable")
 text_wrap_pretty = Style(text_wrap="pretty")
 text_wrap_balance = Style(text_wrap="balance")
+text_overflow_clip = Style(text_overflow="clip")
+text_overflow_ellipsis = Style(text_overflow="ellipsis")
 
 # Stop generated
 
@@ -1141,43 +1183,667 @@ def pad_sides(top: int, right: int, bottom: int, left: int) -> Style:
     )
 
 
+def _color(color: ColorName | AnyColor | Gradient, shade: Shade | None) -> AnyColor | Gradient:
+    """`color` itself, or the palette color it names, which the color utilities' overloads only pass with a shade."""
+    return _COLOR_MAP[(color, cast(Shade, shade))] if isinstance(color, str) else color
+
+
+@overload
+def text_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def text_color(color: AnyColor | Gradient) -> Style: ...
 @lru_cache(maxsize=256)
-def text_color(color: ColorName, shade: Shade) -> Style:
-    """Color the text with a palette color."""
-    return Style(text_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
+def text_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the text with a palette color, by name and shade, or with any color or gradient."""
+    return Style(text_style=CellStyle(foreground=_color(color, shade)))
+
+
+@overload
+def text_bg(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def text_bg(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def text_bg(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the background behind the text with a palette color, by name and shade, or with any color or gradient."""
+    return Style(text_style=CellStyle(background=_color(color, shade)))
+
+
+@overload
+def border_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def border_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def border_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Color the border characters with a palette color, by name and shade, or with any color or gradient."""
+    return Style(border_style=CellStyle(foreground=_color(color, shade)))
+
+
+@overload
+def border_bg(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def border_bg(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def border_bg(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """
+    Color the background behind the border characters with a palette color, by name and shade,
+    or with any color or gradient.
+    """
+    return Style(border_style=CellStyle(background=_color(color, shade)))
+
+
+@overload
+def margin_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def margin_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def margin_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Fill the margin with a palette color, by name and shade, or with any color or gradient."""
+    return Style(margin_color=_color(color, shade))
+
+
+@overload
+def padding_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def padding_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def padding_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """Fill the padding with a palette color, by name and shade, or with any color or gradient."""
+    return Style(padding_color=_color(color, shade))
+
+
+@overload
+def content_color(color: ColorName, shade: Shade) -> Style: ...
+@overload
+def content_color(color: AnyColor | Gradient) -> Style: ...
+@lru_cache(maxsize=256)
+def content_color(color: ColorName | AnyColor | Gradient, shade: Shade | None = None) -> Style:
+    """
+    Fill the whole box with a palette color, by name and shade, or with any color or gradient,
+    under any margin, padding and border colors.
+    """
+    return Style(content_color=_color(color, shade))
 
 
 @lru_cache(maxsize=256)
-def text_bg(color: ColorName, shade: Shade) -> Style:
-    """Color the background behind the text with a palette color."""
-    return Style(text_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
+def text_link(uri: str | None) -> Style:
+    """
+    Make the text a hyperlink to `uri`, which the terminal opens when it's clicked,
+    or with `None`, not a link.
+    """
+    return Style(text_style=CellStyle(link=uri))
 
 
 @lru_cache(maxsize=256)
-def border_color(color: ColorName, shade: Shade) -> Style:
-    """Color the border characters with a palette color."""
-    return Style(border_style=CellStyle(foreground=_COLOR_MAP[(color, shade)]))
+def text_indexed(index: int) -> Style:
+    """Color the text with entry `index` of the terminal's palette, which follows the user's theme."""
+    return Style(text_style=CellStyle(foreground=IndexedColor(index)))
 
 
 @lru_cache(maxsize=256)
-def border_bg(color: ColorName, shade: Shade) -> Style:
-    """Color the background behind the border characters with a palette color."""
-    return Style(border_style=CellStyle(background=_COLOR_MAP[(color, shade)]))
+def text_bg_indexed(index: int) -> Style:
+    """Color the background behind the text with entry `index` of the terminal's palette."""
+    return Style(text_style=CellStyle(background=IndexedColor(index)))
 
 
 @lru_cache(maxsize=256)
-def margin_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the margin with a palette color."""
-    return Style(margin_color=_COLOR_MAP[(color, shade)])
+def border_indexed(index: int) -> Style:
+    """Color the border characters with entry `index` of the terminal's palette."""
+    return Style(border_style=CellStyle(foreground=IndexedColor(index)))
 
 
 @lru_cache(maxsize=256)
-def padding_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the padding with a palette color."""
-    return Style(padding_color=_COLOR_MAP[(color, shade)])
+def border_bg_indexed(index: int) -> Style:
+    """Color the background behind the border characters with entry `index` of the terminal's palette."""
+    return Style(border_style=CellStyle(background=IndexedColor(index)))
 
 
 @lru_cache(maxsize=256)
-def content_color(color: ColorName, shade: Shade) -> Style:
-    """Fill the whole box with a palette color, under any margin, padding and border colors."""
-    return Style(content_color=_COLOR_MAP[(color, shade)])
+def margin_indexed(index: int) -> Style:
+    """Fill the margin with entry `index` of the terminal's palette."""
+    return Style(margin_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def padding_indexed(index: int) -> Style:
+    """Fill the padding with entry `index` of the terminal's palette."""
+    return Style(padding_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def content_indexed(index: int) -> Style:
+    """Fill the whole box with entry `index` of the terminal's palette, under any margin, padding and border colors."""
+    return Style(content_color=IndexedColor(index))
+
+
+@lru_cache(maxsize=256)
+def text_gradient(gradient: Gradient) -> Style:
+    """Color the text with a gradient, which maps over the content box unless it names another box."""
+    return Style(text_style=CellStyle(foreground=gradient))
+
+
+@lru_cache(maxsize=256)
+def text_bg_gradient(gradient: Gradient) -> Style:
+    """Color the background behind the text with a gradient, which maps over the content box unless it names another."""
+    return Style(text_style=CellStyle(background=gradient))
+
+
+@lru_cache(maxsize=256)
+def border_gradient(gradient: Gradient) -> Style:
+    """Color the border characters with a gradient, which maps over the border box unless it names another."""
+    return Style(border_style=CellStyle(foreground=gradient))
+
+
+@lru_cache(maxsize=256)
+def border_bg_gradient(gradient: Gradient) -> Style:
+    """Color the background behind the border characters with a gradient, over the border box unless it names another."""
+    return Style(border_style=CellStyle(background=gradient))
+
+
+@lru_cache(maxsize=256)
+def margin_gradient(gradient: Gradient) -> Style:
+    """Fill the margin with a gradient, which maps over the margin box unless it names another."""
+    return Style(margin_color=gradient)
+
+
+@lru_cache(maxsize=256)
+def padding_gradient(gradient: Gradient) -> Style:
+    """Fill the padding with a gradient, which maps over the padding box unless it names another."""
+    return Style(padding_color=gradient)
+
+
+@lru_cache(maxsize=256)
+def content_gradient(gradient: Gradient) -> Style:
+    """
+    Fill the whole box with a gradient, under any margin, padding and border colors,
+    which maps over the border box unless it names another.
+    """
+    return Style(content_color=gradient)
+
+
+__all__ = [
+    "ColorName",
+    "Shade",
+    "Side",
+    "align_children_center",
+    "align_children_center_unsafe",
+    "align_children_end",
+    "align_children_end_unsafe",
+    "align_children_start",
+    "align_children_stretch",
+    "align_self_center",
+    "align_self_center_unsafe",
+    "align_self_end",
+    "align_self_end_unsafe",
+    "align_self_start",
+    "align_self_stretch",
+    "amber_50",
+    "amber_100",
+    "amber_200",
+    "amber_300",
+    "amber_400",
+    "amber_500",
+    "amber_600",
+    "amber_700",
+    "amber_800",
+    "amber_900",
+    "amber_950",
+    "aspect_ratio",
+    "blue_50",
+    "blue_100",
+    "blue_200",
+    "blue_300",
+    "blue_400",
+    "blue_500",
+    "blue_600",
+    "blue_700",
+    "blue_800",
+    "blue_900",
+    "blue_950",
+    "border",
+    "border_0",
+    "border_bg",
+    "border_bg_gradient",
+    "border_bg_indexed",
+    "border_bg_terminal_default",
+    "border_bold",
+    "border_bottom",
+    "border_bottom_0",
+    "border_box",
+    "border_collapse",
+    "border_color",
+    "border_contract",
+    "border_dim",
+    "border_double",
+    "border_gradient",
+    "border_heavy",
+    "border_heavyshade",
+    "border_indexed",
+    "border_italic",
+    "border_left",
+    "border_left_0",
+    "border_light",
+    "border_lightangled",
+    "border_lightrounded",
+    "border_lightshade",
+    "border_mcgugan",
+    "border_mediumshade",
+    "border_none",
+    "border_not_bold",
+    "border_not_dim",
+    "border_not_italic",
+    "border_not_strikethrough",
+    "border_not_underline",
+    "border_right",
+    "border_right_0",
+    "border_sides",
+    "border_star",
+    "border_strikethrough",
+    "border_terminal_default",
+    "border_thick",
+    "border_top",
+    "border_top_0",
+    "border_underline",
+    "border_x",
+    "border_x_0",
+    "border_y",
+    "border_y_0",
+    "center_children",
+    "clip_to_border",
+    "clip_to_padding",
+    "clip_to_screen",
+    "col",
+    "col_reverse",
+    "content_box",
+    "content_color",
+    "content_gradient",
+    "content_indexed",
+    "content_terminal_default",
+    "cyan_50",
+    "cyan_100",
+    "cyan_200",
+    "cyan_300",
+    "cyan_400",
+    "cyan_500",
+    "cyan_600",
+    "cyan_700",
+    "cyan_800",
+    "cyan_900",
+    "cyan_950",
+    "default",
+    "display_block",
+    "display_flex",
+    "display_grid",
+    "display_none",
+    "emerald_50",
+    "emerald_100",
+    "emerald_200",
+    "emerald_300",
+    "emerald_400",
+    "emerald_500",
+    "emerald_600",
+    "emerald_700",
+    "emerald_800",
+    "emerald_900",
+    "emerald_950",
+    "fill",
+    "fit_content_height",
+    "fit_content_width",
+    "flex_no_wrap",
+    "flex_wrap",
+    "flex_wrap_reverse",
+    "fr",
+    "fuchsia_50",
+    "fuchsia_100",
+    "fuchsia_200",
+    "fuchsia_300",
+    "fuchsia_400",
+    "fuchsia_500",
+    "fuchsia_600",
+    "fuchsia_700",
+    "fuchsia_800",
+    "fuchsia_900",
+    "fuchsia_950",
+    "full",
+    "full_height",
+    "full_width",
+    "gap",
+    "gap_height",
+    "gap_width",
+    "gray_50",
+    "gray_100",
+    "gray_200",
+    "gray_300",
+    "gray_400",
+    "gray_500",
+    "gray_600",
+    "gray_700",
+    "gray_800",
+    "gray_900",
+    "gray_950",
+    "green_50",
+    "green_100",
+    "green_200",
+    "green_300",
+    "green_400",
+    "green_500",
+    "green_600",
+    "green_700",
+    "green_800",
+    "green_900",
+    "green_950",
+    "grid_auto_flow_column",
+    "grid_auto_flow_column_dense",
+    "grid_auto_flow_row",
+    "grid_auto_flow_row_dense",
+    "grid_column",
+    "grid_row",
+    "grid_template_columns",
+    "grid_template_rows",
+    "grow",
+    "height",
+    "indigo_50",
+    "indigo_100",
+    "indigo_200",
+    "indigo_300",
+    "indigo_400",
+    "indigo_500",
+    "indigo_600",
+    "indigo_700",
+    "indigo_800",
+    "indigo_900",
+    "indigo_950",
+    "inset",
+    "inset_bottom",
+    "inset_bottom_center",
+    "inset_bottom_left",
+    "inset_bottom_right",
+    "inset_center_center",
+    "inset_center_left",
+    "inset_center_right",
+    "inset_left",
+    "inset_right",
+    "inset_sides",
+    "inset_top",
+    "inset_top_center",
+    "inset_top_left",
+    "inset_top_right",
+    "inset_x",
+    "inset_y",
+    "justify_children_center",
+    "justify_children_center_unsafe",
+    "justify_children_end",
+    "justify_children_end_unsafe",
+    "justify_children_space_around",
+    "justify_children_space_between",
+    "justify_children_space_evenly",
+    "justify_children_start",
+    "justify_items_center",
+    "justify_items_center_unsafe",
+    "justify_items_end",
+    "justify_items_end_unsafe",
+    "justify_items_start",
+    "justify_items_stretch",
+    "justify_self_center",
+    "justify_self_center_unsafe",
+    "justify_self_end",
+    "justify_self_end_unsafe",
+    "justify_self_start",
+    "justify_self_stretch",
+    "length",
+    "lime_50",
+    "lime_100",
+    "lime_200",
+    "lime_300",
+    "lime_400",
+    "lime_500",
+    "lime_600",
+    "lime_700",
+    "lime_800",
+    "lime_900",
+    "lime_950",
+    "margin",
+    "margin_auto",
+    "margin_bottom",
+    "margin_bottom_auto",
+    "margin_color",
+    "margin_gradient",
+    "margin_indexed",
+    "margin_left",
+    "margin_left_auto",
+    "margin_right",
+    "margin_right_auto",
+    "margin_sides",
+    "margin_terminal_default",
+    "margin_top",
+    "margin_top_auto",
+    "margin_x",
+    "margin_x_auto",
+    "margin_y",
+    "margin_y_auto",
+    "max_content_height",
+    "max_content_width",
+    "max_height",
+    "max_width",
+    "min_content_height",
+    "min_content_width",
+    "min_height",
+    "min_width",
+    "neutral_50",
+    "neutral_100",
+    "neutral_200",
+    "neutral_300",
+    "neutral_400",
+    "neutral_500",
+    "neutral_600",
+    "neutral_700",
+    "neutral_800",
+    "neutral_900",
+    "neutral_950",
+    "orange_50",
+    "orange_100",
+    "orange_200",
+    "orange_300",
+    "orange_400",
+    "orange_500",
+    "orange_600",
+    "orange_700",
+    "orange_800",
+    "orange_900",
+    "orange_950",
+    "overflow_anchor_auto",
+    "overflow_anchor_none",
+    "overflow_clip",
+    "overflow_hidden",
+    "overflow_scroll",
+    "overflow_visible",
+    "overflow_x_clip",
+    "overflow_x_hidden",
+    "overflow_x_scroll",
+    "overflow_x_visible",
+    "overflow_y_clip",
+    "overflow_y_hidden",
+    "overflow_y_scroll",
+    "overflow_y_visible",
+    "pad",
+    "pad_bottom",
+    "pad_left",
+    "pad_right",
+    "pad_sides",
+    "pad_top",
+    "pad_x",
+    "pad_y",
+    "padding_color",
+    "padding_gradient",
+    "padding_indexed",
+    "padding_terminal_default",
+    "percentage",
+    "pink_50",
+    "pink_100",
+    "pink_200",
+    "pink_300",
+    "pink_400",
+    "pink_500",
+    "pink_600",
+    "pink_700",
+    "pink_800",
+    "pink_900",
+    "pink_950",
+    "position_absolute",
+    "position_relative",
+    "purple_50",
+    "purple_100",
+    "purple_200",
+    "purple_300",
+    "purple_400",
+    "purple_500",
+    "purple_600",
+    "purple_700",
+    "purple_800",
+    "purple_900",
+    "purple_950",
+    "ratio",
+    "red_50",
+    "red_100",
+    "red_200",
+    "red_300",
+    "red_400",
+    "red_500",
+    "red_600",
+    "red_700",
+    "red_800",
+    "red_900",
+    "red_950",
+    "rose_50",
+    "rose_100",
+    "rose_200",
+    "rose_300",
+    "rose_400",
+    "rose_500",
+    "rose_600",
+    "rose_700",
+    "rose_800",
+    "rose_900",
+    "rose_950",
+    "row",
+    "row_reverse",
+    "shrink",
+    "size",
+    "sky_50",
+    "sky_100",
+    "sky_200",
+    "sky_300",
+    "sky_400",
+    "sky_500",
+    "sky_600",
+    "sky_700",
+    "sky_800",
+    "sky_900",
+    "sky_950",
+    "slate_50",
+    "slate_100",
+    "slate_200",
+    "slate_300",
+    "slate_400",
+    "slate_500",
+    "slate_600",
+    "slate_700",
+    "slate_800",
+    "slate_900",
+    "slate_950",
+    "span",
+    "stick_to_end",
+    "stick_to_end_x",
+    "stick_to_end_y",
+    "stone_50",
+    "stone_100",
+    "stone_200",
+    "stone_300",
+    "stone_400",
+    "stone_500",
+    "stone_600",
+    "stone_700",
+    "stone_800",
+    "stone_900",
+    "stone_950",
+    "stretch_height",
+    "stretch_width",
+    "teal_50",
+    "teal_100",
+    "teal_200",
+    "teal_300",
+    "teal_400",
+    "teal_500",
+    "teal_600",
+    "teal_700",
+    "teal_800",
+    "teal_900",
+    "teal_950",
+    "text_bg",
+    "text_bg_gradient",
+    "text_bg_indexed",
+    "text_bg_terminal_default",
+    "text_black",
+    "text_bold",
+    "text_color",
+    "text_dim",
+    "text_gradient",
+    "text_indexed",
+    "text_italic",
+    "text_justify_center",
+    "text_justify_left",
+    "text_justify_right",
+    "text_link",
+    "text_not_bold",
+    "text_not_dim",
+    "text_not_italic",
+    "text_not_strikethrough",
+    "text_not_underline",
+    "text_overflow_clip",
+    "text_overflow_ellipsis",
+    "text_strikethrough",
+    "text_terminal_default",
+    "text_underline",
+    "text_white",
+    "text_wrap_balance",
+    "text_wrap_none",
+    "text_wrap_pretty",
+    "text_wrap_stable",
+    "unstick",
+    "unstick_x",
+    "unstick_y",
+    "violet_50",
+    "violet_100",
+    "violet_200",
+    "violet_300",
+    "violet_400",
+    "violet_500",
+    "violet_600",
+    "violet_700",
+    "violet_800",
+    "violet_900",
+    "violet_950",
+    "width",
+    "yellow_50",
+    "yellow_100",
+    "yellow_200",
+    "yellow_300",
+    "yellow_400",
+    "yellow_500",
+    "yellow_600",
+    "yellow_700",
+    "yellow_800",
+    "yellow_900",
+    "yellow_950",
+    "z",
+    "zinc_50",
+    "zinc_100",
+    "zinc_200",
+    "zinc_300",
+    "zinc_400",
+    "zinc_500",
+    "zinc_600",
+    "zinc_700",
+    "zinc_800",
+    "zinc_900",
+    "zinc_950",
+]

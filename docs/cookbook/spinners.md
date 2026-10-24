@@ -7,6 +7,10 @@ animate a spinner with [`use_clock`](../hooks/use_clock.md):
 
 ![Spinner](../assets/spinner.svg)
 
+Running, it spins at the pace the clock sets:
+
+<!-- cast: spinner -->
+
 `spinner` reads the clock once per frame of the animation,
 and computes which frame to show from how long it has been mounted,
 so the animation keeps pace with real time however long the step takes

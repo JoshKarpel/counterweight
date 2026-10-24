@@ -5,25 +5,37 @@ from dataclasses import dataclass
 from dataclasses import field
 from functools import lru_cache
 from itertools import chain
+from typing import Protocol
 
+from counterweight._graphemes import grapheme_width
+from counterweight._graphemes import graphemes
+from counterweight._graphemes import visible
 from counterweight._utils import flyweight
 from counterweight.events import InputHandler
 from counterweight.focus import ElementHandle
-from counterweight.graphemes import grapheme_width
-from counterweight.graphemes import graphemes
-from counterweight.graphemes import visible
 from counterweight.styles import CellStyle
 from counterweight.styles import Style
-from counterweight.styles.styles import _DEFAULT_CELL_STYLE
+from counterweight.styles._styles import _DEFAULT_CELL_STYLE
 
 _DEFAULT_STYLE = Style()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Div:
+    """
+    A box that lays out its children, as a `<div>` is in HTML:
+    in a flex row or column, or a grid, as its style's layout says.
+    """
+
     style: Style = _DEFAULT_STYLE
+    """How the box is laid out and drawn, and how it lays out its children."""
     children: tuple[Component | AnyElement, ...] = ()
+    """The components and elements inside the box, in order."""
     on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target or as they bubble up from a descendant:
+    key presses and pastes while it or a descendant is focused, and mouse events over the parts of it that are painted.
+    """
     handle: ElementHandle | None = None
     """
     The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
@@ -31,10 +43,23 @@ class Div:
     """
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True, init=False)
 class Chunk:
+    """
+    A run of a `Text`'s content in one style, as a `<span>` is in HTML.
+
+    `style` can be a `CellStyle`, or a `Style` whose `text_style` the chunk takes,
+    so the utilities that style a `Text`'s text, such as `text_bold | text_color("sky", 300)`, style a chunk too.
+    A chunk ignores the rest of a `Style`, as a `<span>` ignores a width,
+    and `Chunk.style` is always the `CellStyle`.
+    """
+
     content: str
-    style: CellStyle = _DEFAULT_CELL_STYLE
+    style: CellStyle
+
+    def __init__(self, *, content: str, style: CellStyle | Style = _DEFAULT_CELL_STYLE) -> None:
+        object.__setattr__(self, "content", content)
+        object.__setattr__(self, "style", style.text_style if isinstance(style, Style) else style)
 
     @property
     def cells(self) -> tuple[StyledGrapheme, ...]:
@@ -55,9 +80,17 @@ NEWLINE = Chunk(content="\n")
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Text:
+    """A leaf element that shows text, sized by its text unless its style sizes it, and wrapped as its style says."""
+
     content: str | tuple[Chunk, ...]
+    """The text, as a string drawn in the style's `text_style`, or as chunks that each style a run of it."""
     style: Style = _DEFAULT_STYLE
+    """How the element is laid out and drawn, and how its text is styled, justified and wrapped."""
     on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target or as they bubble up from a descendant:
+    key presses and pastes while it is focused, and mouse events over the parts of it that are painted.
+    """
     handle: ElementHandle | None = None
     """
     The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
@@ -73,7 +106,82 @@ class Text:
         return text_cells(self.content, self.style.text_style)
 
 
-AnyElement = Div | Text
+class Painter(Protocol):
+    """
+    What draws a [`Canvas`][counterweight.elements.Canvas]'s content box.
+
+    A painter is compared with `==` to the one its canvas had in the last frame,
+    and `draw` isn't called again while it's equal and the box is the same size,
+    so what `draw` returns must depend only on the painter and the size it's given.
+    A frozen dataclass built from the same values in each render is equal to the last one,
+    so a component can build its painter in every render.
+    """
+
+    @property
+    def natural_size(self) -> tuple[int, int]:
+        """
+        The canvas's intrinsic size in cells, as `(width, height)`,
+        which it takes on each axis that its style and its parent's layout leave undetermined.
+        """
+
+    @property
+    def keeps_aspect_ratio(self) -> bool:
+        """
+        Whether a canvas sized on one axis takes its size on the other from the ratio of `natural_size`,
+        as an `<img>` with only a `width` keeps its picture's proportions.
+        A natural size of zero on either axis has no ratio to keep.
+        """
+
+    def draw(self, width: int, height: int) -> Rows:
+        """
+        The rows of cells to show in a `width` by `height` content box, top to bottom,
+        each drawn rightward from the box's left edge.
+
+        Each cell's style is resolved against the canvas's, so whatever a cell leaves unset comes from the canvas:
+        its foreground from the `text_style`, and its background as the `Canvas` describes.
+        Cells past the box's edges are cut off, and any part of the box the rows don't reach shows the canvas's background.
+        It isn't called for a box with no cells.
+        """
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Canvas:
+    """
+    A leaf element whose content box its `painter` draws, cell by cell, instead of laying out text.
+
+    It's sized as HTML's replaced elements (`<img>`, `<canvas>`) are:
+    its painter's `natural_size` is its intrinsic size, which it takes on each axis that its style
+    and its parent's layout leave undetermined, and `draw` is called with the size its content box ends up.
+    A painter that keeps its aspect ratio gives a canvas sized on only one axis the other by that ratio.
+    In a flex row, a canvas shrinks no narrower than its intrinsic width, as an `<img>` doesn't,
+    unless its style sets `min_width(0)`.
+
+    A background that its painter leaves unset is the canvas's `text_style` background if its style sets one,
+    and its `content_color` otherwise, so a cell the painter leaves transparent matches the rest of the box.
+    """
+
+    painter: Painter
+    """What draws the canvas's content box."""
+    style: Style = _DEFAULT_STYLE
+    """How the canvas is laid out and drawn, and the style its painter's cells take wherever they leave theirs unset."""
+    on_input: InputHandler | None = None
+    """
+    The handler for the input events that reach this element, as their target:
+    key presses and pastes while it is focused, and mouse events over the parts of it that are painted.
+    """
+    handle: ElementHandle | None = None
+    """
+    The element handle that names this element for controls such as [`ScrollTo`][counterweight.controls.ScrollTo],
+    and for [`use_scroll`][counterweight.hooks.use_scroll].
+    """
+
+    @property
+    def children(self) -> tuple[Component | AnyElement, ...]:
+        return ()
+
+
+AnyElement = Div | Text | Canvas
+"""Any element: what a component returns, and what a `Div` holds beside components."""
 
 from counterweight.components import Component  # noqa: E402, deferred to avoid circular import
 
@@ -91,6 +199,10 @@ class StyledGrapheme:
         if len(self.grapheme) != 1 and len(graphemes(self.grapheme)) != 1:
             raise ValueError(f"A StyledGrapheme holds exactly one grapheme cluster, not {self.grapheme!r}")
         object.__setattr__(self, "width", grapheme_width(self.grapheme))
+
+
+type Rows = tuple[tuple[StyledGrapheme, ...], ...]
+"""Rows of grapheme clusters, top to bottom, each drawn left to right, as a painter's `draw` returns them."""
 
 
 class _StyledGraphemes(dict[str, StyledGrapheme]):
@@ -138,3 +250,15 @@ def text_pieces(content: str | tuple[Chunk, ...], text_style: CellStyle) -> Iter
 def text_cells(content: str | tuple[Chunk, ...], text_style: CellStyle) -> tuple[StyledGrapheme, ...]:
     """The styled grapheme clusters of a `Text`'s content."""
     return tuple(chain.from_iterable(styled_cells(*piece) for piece in text_pieces(content, text_style)))
+
+
+__all__ = [
+    "AnyElement",
+    "Canvas",
+    "Chunk",
+    "Div",
+    "Painter",
+    "Rows",
+    "StyledGrapheme",
+    "Text",
+]

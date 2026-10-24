@@ -1,19 +1,20 @@
+from asyncio import Queue
 from typing import TYPE_CHECKING
 
 from counterweight import app
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.elements import Div
+from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.hooks import Setter
 from counterweight.hooks import toggle
 from counterweight.hooks import use_state
-from counterweight.hooks.impls import MountStatus
-from counterweight.hooks.impls import NodeKey
-from counterweight.hooks.impls import UseState
-from tests.rendering import state_sets
+from counterweight.hooks._impls import MountStatus
+from counterweight.hooks._impls import NodeKey
+from counterweight.hooks._impls import UseState
 
 
 async def test_use_state() -> None:
@@ -46,20 +47,19 @@ async def test_use_state() -> None:
 
 
 def test_a_setter_outliving_its_state_does_nothing() -> None:
-    with state_sets() as queue:
-        setter = UseState(value=1, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7)).setter
+    queue: Queue[AnyEvent] = Queue()
+    setter = UseState(value=1, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7), queue=queue).setter
 
-        setter(2)
+    setter(2)
 
     assert queue.empty()
 
 
 def test_toggles_set_before_a_render_each_flip_the_latest_value() -> None:
-    with state_sets():
-        state = UseState(value=False, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7))
+    state = UseState(value=False, mount_status=MountStatus(is_mounted=True), node_key=NodeKey(7), queue=Queue())
 
-        for _ in range(3):
-            state.setter(toggle)
+    for _ in range(3):
+        state.setter(toggle)
 
     assert state.value is True
 

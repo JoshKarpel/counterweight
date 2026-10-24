@@ -1,6 +1,6 @@
 [tools]
-just = "1.58.0"
-uv = "0.12.23"
+just = "1.59.0"
+uv = "0.13.1"
 
 [settings]
 # Skip brand-new releases when resolving any fuzzy version, as supply-chain defense.

@@ -11,7 +11,7 @@ alias l := list
 
 [doc('Run a recipe whenever source files change')]
 watch *CMD:
-    uv run watchfiles --verbosity warning '{{ CMD }}' src/ tests/ docs/ examples/
+    uv run watchfiles --verbosity warning '{{ CMD }}' src/ tests/ docs/
 
 alias w := watch
 
@@ -28,20 +28,21 @@ alias p := pre-commit
 [positional-arguments]
 test *ARGS:
     uv run mypy
-    uv run pytest --failed-first "$@" --cov {{ if ARGS == "" { "" } else { "--cov-fail-under=0" } }}
+    uv run pytest -n auto --dist worksteal --failed-first "$@" --cov {{ if ARGS == "" { "" } else { "--cov-fail-under=0" } }}
 
 alias t := test
 
-[doc('Serve documentation locally, restarting when the config, a hook, or a screenshot changes')]
+[doc('Serve documentation locally, restarting when the config, a hook, a screenshot, or the logo changes')]
 docs-serve PORT="8000":
-    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/
+    exec uv run watchfiles --target-type command 'mkdocs serve --dev-addr localhost:{{ PORT }}' mkdocs.yml mkdocs_hooks/ docs/assets/ codegen/generate_logo.py
 
 alias d := docs-serve
 
+# Two workers per CPU, because many tests mostly wait (on a program, a timeout), and a waiting worker holds its slot.
 [doc('Run mutation testing, or re-run only the named mutants (globs work)')]
 [positional-arguments]
 mutate *MUTANTS:
-    uv run mutmut run "$@"
+    uv run mutmut run --max-children $(( {{ num_cpus() }} * 2 )) "$@"
 
 [doc('Build documentation with strict mode')]
 docs-build:
@@ -49,9 +50,10 @@ docs-build:
 
 alias db := docs-build
 
-[doc('Regenerate style utility constants from codegen/generate_utilities.py')]
+[doc('Regenerate the style utility constants and the logo files in docs/assets/')]
 codegen:
     uv run python codegen/generate_utilities.py
+    uv run python codegen/generate_logo.py
 
 alias c := codegen
 

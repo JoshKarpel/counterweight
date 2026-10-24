@@ -95,6 +95,10 @@ though Enter and Tab never stop on it, and Right then shows its next tip:
 
 ![The help panel focused, showing its second tip](../assets/focus-form-help.svg)
 
+The whole walk through the form, from Enter on the first field to the help panel's next tip:
+
+<!-- cast: focus-form -->
+
 ## Moving focus
 
 Focus moves only through [controls](../input-handling/controls.md), `auto_focus`,
@@ -104,7 +108,8 @@ No key or press does anything to focus unless a handler on its path returns a co
 - [`FocusNext`][counterweight.controls.FocusNext] and [`FocusPrevious`][counterweight.controls.FocusPrevious]
   move to the next or previous component in the focus order, which is tree order,
   wrapping at the ends.
-- [`FocusOn`][counterweight.controls.FocusOn] focuses the component with a given [focus handle](#focusing-a-component-you-render).
+- [`FocusOn`][counterweight.controls.FocusOn] focuses the component with a given [focus handle](#focusing-a-component-you-render),
+  including one that mounts in the render its handler causes.
 - [`ClearFocus`][counterweight.controls.ClearFocus] clears focus, so key presses go to the root component's element.
 
 The [library handlers](../input-handling/handlers.md#focus) return these for the common bindings:
@@ -151,6 +156,37 @@ makes `use_focus` raise `ChangedFocusHandle` on the second.
 Two mounted components given the same handle raise `DuplicateFocusHandle`.
 The handle never changes while the component is mounted, so it's safe in an effect's `deps`.
 
+## Focusing a component as it mounts
+
+A handler that adds a component can focus it too:
+it creates the new component's handle, keeps it in state with whatever else describes the component,
+and returns `FocusOn` with it:
+
+```python
+@component
+def notes() -> Div:
+    handles, set_handles = use_state(tuple[FocusHandle, ...]())
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.ControlN):
+                handle = FocusHandle()
+                set_handles(lambda handles: (*handles, handle))
+                return FocusOn(handle)
+            case _:
+                return None
+
+    return Div(on_input=on_input, children=tuple(note(handle) for handle in handles))
+```
+
+The note doesn't exist until the next render, so `FocusOn` waits for it:
+a `FocusOn` whose handle names no component that can take focus yet
+focuses that component in the next render, before the frame is drawn,
+so the new note is focused in the first frame that shows it.
+It's how a browser's `<dialog>` focuses a field inside it as `showModal()` opens it.
+A control that moves focus after it, in the same handler or a later one before that render, wins,
+and a `FocusOn` whose component doesn't take focus in that render does nothing.
+
 ## Moving focus within part of the tree
 
 `FocusNext` and `FocusPrevious` take `within`, a [`Subtree`][counterweight.focus.Subtree]
@@ -196,17 +232,18 @@ because a component [can't call a hook conditionally](index.md).
 
 Every key press in a batch of input is routed with the focus as it is when it arrives,
 so a Tab followed by a letter delivers the letter to the newly focused component.
-A key press that mounts an `auto_focus` component doesn't send the next key press in its batch there,
+A key press that mounts an `auto_focus` component, or that mounts one and returns `FocusOn` for it,
+doesn't send the next key press in its batch there,
 since the component doesn't exist until the next render.
 
 A control that moves focus re-renders the components that gained and lost focus, as a state change would,
 so `is_focused` is current on the next frame.
-When a render moves focus itself, to an `auto_focus` component that mounted,
+When a render moves focus itself, to an `auto_focus` component that mounted or to the component a `FocusOn` waited for,
 or away from a focused component that unmounted, hid, or became unfocusable,
 the components that gained and lost focus re-render before the frame is drawn,
 so an `auto_focus` component is focused in the first frame that shows it.
 An `auto_focus` component that hides itself because it gained focus would move focus again,
-so it raises `UnsettledFocus` instead.
+so it raises `UnsettledFocus` instead, and so does one that a waiting `FocusOn` focuses.
 One that a control focuses and that hides itself because it gained focus loses focus in the same render,
 like any focused component that hides, and is drawn unfocused.
 
@@ -216,3 +253,7 @@ like any focused component that hides, and is drawn unfocused.
 ::: counterweight.hooks.Focus
 ::: counterweight.focus.FocusHandle
 ::: counterweight.focus.Subtree
+::: counterweight.hooks.DuplicateUseFocus
+::: counterweight.hooks.ChangedFocusHandle
+::: counterweight.focus.DuplicateFocusHandle
+::: counterweight.focus.UnsettledFocus

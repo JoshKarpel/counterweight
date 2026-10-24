@@ -8,8 +8,15 @@ from itertools import product
 from counterweight._utils import unordered_range
 
 
+def clamp[C: (int, float)](min_: C, val: C, max_: C) -> C:
+    """`val`, moved into the range from `min_` to `max_`, inclusive, such as a dragged position kept inside a box."""
+    return max(min_, min(val, max_))
+
+
 @dataclass(frozen=True, slots=True, order=True)
 class Position:
+    """A cell's position, `x` columns right of and `y` rows below the top-left corner of the screen or of a box."""
+
     x: int
     y: int
 
@@ -20,6 +27,7 @@ class Position:
         return Position(self.x - other.x, self.y - other.y)
 
     def fill_to(self, other: Position) -> Iterator[Position]:
+        """Every position in the rectangle with this position and `other` at opposite corners, both included."""
         return (
             Position(x, y)
             for x, y in product(
@@ -191,3 +199,12 @@ class Scroll:
             max(0, min(offset.x, self.max_offset.x)),
             max(0, min(offset.y, self.max_offset.y)),
         )
+
+
+__all__ = [
+    "Position",
+    "Rects",
+    "Region",
+    "Scroll",
+    "clamp",
+]

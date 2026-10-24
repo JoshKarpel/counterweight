@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
+import ast
 import subprocess
 from pathlib import Path
 from typing import get_args
 
-from counterweight.styles.styles import BorderKind
-from counterweight.styles.styles import ClipTo
-from counterweight.styles.styles import OverflowAnchor
-from counterweight.styles.styles import TextJustify
-from counterweight.styles.styles import TextWrap
+from counterweight.styles._styles import BorderKind
+from counterweight.styles._styles import ClipTo
+from counterweight.styles._styles import OverflowAnchor
+from counterweight.styles._styles import TextJustify
+from counterweight.styles._styles import TextOverflow
+from counterweight.styles._styles import TextWrap
 
 # From https://github.com/tailwindlabs/tailwindcss/blob/37575ea0bd573a96d10f3ba4d063020abc7c5825/src/public/colors.js
 COLORS = {
@@ -319,6 +321,27 @@ generated_lines.extend(
 )
 generated_lines.append("")
 
+# The terminal's default colors, which follow the user's theme
+generated_lines.extend(
+    (
+        "text_terminal_default = Style(text_style=CellStyle(foreground=TERMINAL_DEFAULT))",
+        "text_bg_terminal_default = Style(text_style=CellStyle(background=TERMINAL_DEFAULT))",
+        "border_terminal_default = Style(border_style=CellStyle(foreground=TERMINAL_DEFAULT))",
+        "border_bg_terminal_default = Style(border_style=CellStyle(background=TERMINAL_DEFAULT))",
+        "margin_terminal_default = Style(margin_color=TERMINAL_DEFAULT)",
+        "padding_terminal_default = Style(padding_color=TERMINAL_DEFAULT)",
+        "content_terminal_default = Style(content_color=TERMINAL_DEFAULT)",
+    )
+)
+generated_lines.append("")
+
+# Each attribute in both places a CellStyle is drawn, with a not_ form that turns it off when merged over one that sets it
+for place in ("text", "border"):
+    for attribute in ("bold", "dim", "italic", "underline", "strikethrough"):
+        generated_lines.append(f"{place}_{attribute} = Style({place}_style=CellStyle({attribute}=True))")
+        generated_lines.append(f"{place}_not_{attribute} = Style({place}_style=CellStyle({attribute}=False))")
+    generated_lines.append("")
+
 # Color constants (raw Color objects)
 for color, shades in COLORS.items():
     for shade, hex in shades.items():
@@ -329,7 +352,14 @@ for color, shades in COLORS.items():
 color_names = ", ".join(f'"{c}"' for c in COLORS)
 shade_values = ", ".join(str(s) for s in next(iter(COLORS.values())))
 generated_lines.append(f"ColorName = Literal[{color_names}]")
+generated_lines.append(
+    '"""The name of one of the palette\'s colors, as the color utilities take it, such as `"sky"`."""'
+)
+generated_lines.append("")
 generated_lines.append(f"Shade = Literal[{shade_values}]")
+generated_lines.append(
+    '"""One of the palette\'s shades, from lightest (`50`) to darkest (`950`), as in Tailwind\'s palette."""'
+)
 generated_lines.append("")
 
 # Color lookup map
@@ -570,20 +600,63 @@ generated_lines.append("")
 
 generated_lines.extend(f'text_wrap_{w} = Style(text_wrap="{w}")' for w in get_args(TextWrap))
 
+# --- Text overflow ---
+
+generated_lines.extend(f'text_overflow_{o} = Style(text_overflow="{o}")' for o in get_args(TextOverflow))
+
 generated_lines.append("")
+
+
+def is_all(node: ast.stmt) -> bool:
+    return isinstance(node, ast.Assign) and any(
+        isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+    )
+
+
+def defined_names(node: ast.stmt) -> list[str]:
+    match node:
+        case ast.FunctionDef(name=name) | ast.ClassDef(name=name) | ast.TypeAlias(name=ast.Name(id=name)):
+            return [name]
+        case ast.Assign(targets=targets):
+            return [target.id for target in targets if isinstance(target, ast.Name)]
+        case ast.AnnAssign(target=ast.Name(id=name)):
+            return [name]
+        case _:
+            return []
+
+
+# __all__ lists every public name the module defines, generated or hand-written,
+# so a star import doesn't also bring in what the module imports.
+module_lines = [*utils_text[: start + 1], *generated_lines, *utils_text[stop:]]
+module = ast.parse("\n".join(module_lines))
+old_all_lines = {
+    line for node in module.body if is_all(node) for line in range(node.lineno - 1, node.end_lineno or node.lineno)
+}
+public_names = sorted(
+    {name for node in module.body if not is_all(node) for name in defined_names(node) if not name.startswith("_")}
+)
 
 output = "\n".join(
     [
-        *utils_text[: start + 1],
-        *generated_lines,
-        *utils_text[stop:],
+        *(line for index, line in enumerate(module_lines) if index not in old_all_lines),
+        "",
+        f"__all__ = {public_names!r}",
         "",
     ]
 )
 
+# ruff sorts __all__ naturally (amber_50 before amber_100), so let it, rather than fight its pre-commit hook.
+sorted_all = subprocess.run(
+    ["uv", "run", "ruff", "check", "--select", "RUF022", "--fix", "--quiet", "--stdin-filename", str(utils_path), "-"],
+    input=output,
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
+
 formatted = subprocess.run(
     ["uv", "run", "ruff", "format", "--stdin-filename", str(utils_path), "-"],
-    input=output,
+    input=sorted_all,
     capture_output=True,
     text=True,
     check=True,

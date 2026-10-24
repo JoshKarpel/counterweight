@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from fnmatch import fnmatchcase
 from types import ModuleType
 from typing import get_args
+from typing import get_overloads
 
 import waxy
 from mkdocs.config.defaults import MkDocsConfig
@@ -86,11 +87,16 @@ def summarize(function: Callable[..., object]) -> str:
     return " ".join(docstring.split("\n\n")[0].splitlines())
 
 
-def signature(function: Callable[..., object]) -> str:
-    """`function`'s signature with its annotations as written in the source, so aliases like `Shade` survive."""
-    return function.__name__ + inspect.signature(function, annotation_format=Format.STRING).format(
-        quote_annotation_strings=False
-    )
+def signatures(function: Callable[..., object]) -> list[str]:
+    """
+    `function`'s signature, or each of its overloads' signatures,
+    with their annotations as written in the source, so aliases like `Shade` survive.
+    """
+    return [
+        function.__name__
+        + inspect.signature(overload, annotation_format=Format.STRING).format(quote_annotation_strings=False)
+        for overload in get_overloads(function) or [function]
+    ]
 
 
 def constants_table(constants: Mapping[str, Style]) -> str:
@@ -102,7 +108,10 @@ def constants_table(constants: Mapping[str, Style]) -> str:
 
 
 def functions_table(functions: Mapping[str, Callable[..., object]]) -> str:
-    rows = [f"| `{signature(function)}` | {summarize(function)} |" for function in functions.values()]
+    rows = [
+        f"| {'<br>'.join(f'`{s}`' for s in signatures(function))} | {summarize(function)} |"
+        for function in functions.values()
+    ]
     return "\n".join(["| Function | Description |", "| --- | --- |", *rows])
 
 

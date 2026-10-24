@@ -12,7 +12,7 @@ from counterweight.geometry import Rects
 from counterweight.geometry import Scroll
 
 if TYPE_CHECKING:
-    from counterweight.hooks.impls import NodeKey
+    from counterweight.hooks._impls import NodeKey
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,11 +22,22 @@ class _Event:
 
 @dataclass(frozen=True, slots=True)
 class TerminalResized(_Event):
+    """
+    The terminal changed size, so the app lays out and draws the whole screen again.
+    The app sends itself one when the terminal reports a resize, and an autopilot can send one to resize a headless app.
+    """
+
     dimensions: tuple[int, int] | None = None
+    """
+    The new size, as `(width, height)` in cells,
+    or `None` for the size the app was given as its `dimensions`, or else the terminal's size.
+    """
 
 
 @dataclass(frozen=True, slots=True)
 class KeyPressed(_Event):
+    """A key press, which goes to the focused element, or the root component's element when nothing is focused."""
+
     key: str
     """
     The `Key` for a control or special key (`Key.Enter`, `Key.Up`, `Key.F1`), or for one pressed with Alt
@@ -40,6 +51,8 @@ class KeyPressed(_Event):
 
 @dataclass(frozen=True, slots=True)
 class Pasted(_Event):
+    """Text pasted into the terminal, which goes where a key press would."""
+
     text: str
     """
     The text pasted into the terminal, whole, with each line break as `"\\n"`
@@ -50,6 +63,8 @@ class Pasted(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseMoved(_Event):
+    """The mouse moved, with or without a button held."""
+
     absolute: Position
     """The absolute position on the screen that the mouse moved to."""
 
@@ -68,11 +83,13 @@ class MouseMoved(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseDown(_Event):
+    """A mouse button went down."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen where the button went down."""
 
     button: int
-    """The mouse button that was pressed during the motion."""
+    """The mouse button that went down: 1 is the primary button, 2 the middle, and 3 the secondary."""
 
     is_shift_held: bool = False
     """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
@@ -86,11 +103,13 @@ class MouseDown(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseUp(_Event):
+    """A mouse button came up."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen where the button came up."""
 
     button: int
-    """The mouse button that was released during the motion."""
+    """The mouse button that came up: 1 is the primary button, 2 the middle, and 3 the secondary."""
 
     is_shift_held: bool = False
     """Whether Shift was held, as the DOM's `MouseEvent.shiftKey` reports it."""
@@ -104,8 +123,10 @@ class MouseUp(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledDown(_Event):
+    """The mouse wheel turned one step down."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen of the pointer as the wheel turned."""
 
     direction: int = 1
     """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
@@ -122,8 +143,10 @@ class MouseScrolledDown(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledUp(_Event):
+    """The mouse wheel turned one step up."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen of the pointer as the wheel turned."""
 
     direction: int = -1
     """The direction that the mouse was scrolled as an integer offset; `-1` for up, `+1` for down."""
@@ -140,8 +163,10 @@ class MouseScrolledUp(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledLeft(_Event):
+    """The mouse wheel turned one step left, as a trackpad's sideways swipe does."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen of the pointer as the wheel turned."""
 
     direction: int = -1
     """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
@@ -158,8 +183,10 @@ class MouseScrolledLeft(_Event):
 
 @dataclass(frozen=True, slots=True)
 class MouseScrolledRight(_Event):
+    """The mouse wheel turned one step right, as a trackpad's sideways swipe does."""
+
     absolute: Position
-    """The absolute position on the screen that the mouse moved to."""
+    """The absolute position on the screen of the pointer as the wheel turned."""
 
     direction: int = 1
     """The direction that the mouse was scrolled as an integer offset; `-1` for left, `+1` for right."""
@@ -181,6 +208,13 @@ class StateSet(_Event):
 
 
 @dataclass(frozen=True, slots=True)
+class ControlSent(_Event):
+    control: AnyControl
+    """The control a [`use_controls`][counterweight.hooks.use_controls] sender sent, which the app handles as it
+    handles a control an input handler returns."""
+
+
+@dataclass(frozen=True, slots=True)
 class Dummy(_Event):
     pass
 
@@ -188,8 +222,10 @@ class Dummy(_Event):
 MouseEvent = (
     MouseMoved | MouseDown | MouseUp | MouseScrolledDown | MouseScrolledUp | MouseScrolledLeft | MouseScrolledRight
 )
+"""Any mouse event, which goes to the element drawn on top at the pointer, unless a press has captured the mouse."""
 
 InputEvent = KeyPressed | Pasted | MouseEvent
+"""Any event an input handler receives."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,8 +276,14 @@ class Receiver:
 
 
 InputResponse = AnyControl | tuple[AnyControl | None, ...] | None
+"""
+What an input handler returns: `None` to pass the event on to the element's parent,
+or a control or a tuple of controls to stop it there and have the app apply them in order, skipping any `None`,
+with `()` to stop it with nothing more to do.
+"""
 
 InputHandler = Callable[[InputEvent, Receiver], InputResponse]
+"""An element's `on_input`: what it does with an input event that reaches it, given the element as a `Receiver`."""
 
 
 def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
@@ -258,4 +300,26 @@ def response_controls(response: InputResponse) -> tuple[AnyControl, ...] | None:
             return (response,)
 
 
-AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | MouseEvent | Dummy
+AnyEvent = TerminalResized | KeyPressed | Pasted | StateSet | ControlSent | MouseEvent | Dummy
+"""Any event the app handles, which an autopilot can send it beside controls."""
+
+
+__all__ = [
+    "AnyEvent",
+    "InputEvent",
+    "InputHandler",
+    "InputResponse",
+    "KeyPressed",
+    "MouseDown",
+    "MouseEvent",
+    "MouseMoved",
+    "MouseScrolledDown",
+    "MouseScrolledLeft",
+    "MouseScrolledRight",
+    "MouseScrolledUp",
+    "MouseUp",
+    "Pasted",
+    "Receiver",
+    "TerminalResized",
+    "response_controls",
+]

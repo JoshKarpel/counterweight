@@ -10,10 +10,10 @@ from signal import SIGINT
 
 import pytest
 
-from counterweight.cli import SIGINT_EXIT
-from counterweight.cli import _check_input
-from counterweight.cli import main
-from counterweight.constants import PACKAGE_NAME
+from counterweight._cli import SIGINT_EXIT
+from counterweight._cli import _check_input
+from counterweight._cli import main
+from counterweight._constants import PACKAGE_NAME
 from tests.terminal import Terminal
 
 TIMEOUT = 5

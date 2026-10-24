@@ -2,24 +2,24 @@ from collections.abc import Callable
 
 import pytest
 
-from counterweight.headless.text_area_editing import DrawnArea
-from counterweight.headless.text_area_editing import drawn
-from counterweight.headless.text_area_editing import key_edit
-from counterweight.headless.text_area_editing import key_edits
-from counterweight.headless.text_area_editing import move_down
-from counterweight.headless.text_area_editing import move_to_cell
-from counterweight.headless.text_area_editing import move_up
-from counterweight.headless.text_area_editing import move_vertically
-from counterweight.headless.text_area_editing import or_further
-from counterweight.headless.text_area_editing import paste_edit
-from counterweight.headless.text_area_editing import previous_row
-from counterweight.headless.text_area_editing import row_end
-from counterweight.headless.text_area_editing import rows
-from counterweight.headless.text_editing import Edit
-from counterweight.headless.text_editing import EditableText
-from counterweight.headless.text_editing import is_text
-from counterweight.headless.text_editing import value_start
-from counterweight.headless.text_editing import word_end
+from counterweight.headless._text_area_editing import DrawnArea
+from counterweight.headless._text_area_editing import drawn
+from counterweight.headless._text_area_editing import key_edit
+from counterweight.headless._text_area_editing import key_edits
+from counterweight.headless._text_area_editing import move_down
+from counterweight.headless._text_area_editing import move_to_cell
+from counterweight.headless._text_area_editing import move_up
+from counterweight.headless._text_area_editing import move_vertically
+from counterweight.headless._text_area_editing import or_further
+from counterweight.headless._text_area_editing import paste_edit
+from counterweight.headless._text_area_editing import previous_row
+from counterweight.headless._text_area_editing import row_end
+from counterweight.headless._text_area_editing import rows
+from counterweight.headless._text_editing import Edit
+from counterweight.headless._text_editing import EditableText
+from counterweight.headless._text_editing import is_text
+from counterweight.headless._text_editing import value_start
+from counterweight.headless._text_editing import word_end
 from counterweight.keys import Key
 
 WIDTH = 8

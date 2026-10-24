@@ -7,6 +7,7 @@ from benchmarks import canvas
 from benchmarks import dashboard
 from benchmarks import dashboard_local
 from benchmarks import document
+from benchmarks import gradients
 from benchmarks import top
 from benchmarks.harness import Runnable
 
@@ -14,6 +15,7 @@ WORKLOADS: dict[str, Runnable] = {
     workload.name: workload
     for workload in (
         canvas.WORKLOAD,
+        canvas.ELEMENT_WORKLOAD,
         top.WORKLOAD,
         top.MEMO_WORKLOAD,
         agent.WORKLOAD,
@@ -28,5 +30,6 @@ WORKLOADS: dict[str, Runnable] = {
         document.WORKLOAD,
         document.LINES_WORKLOAD,
         document.TEXT_AREA_WORKLOAD,
+        gradients.WORKLOAD,
     )
 }

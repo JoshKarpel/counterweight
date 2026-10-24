@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._output import Frame
+from counterweight._output import paint_to_str
+from counterweight._paint import Cell
+from counterweight._paint import Paint
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -14,19 +18,17 @@ from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_controls
 from counterweight.hooks import use_state
-from counterweight.output import Frame
-from counterweight.output import paint_to_str
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 
 @pytest.fixture
 def frame() -> Frame:
-    red = resolve_cell_style(CellStyle(foreground=Color.from_name("red")))
+    red = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"))))
     return Frame(paint=Paint(2, 1, [Cell("h", red), Cell("i", red)]))
 
 
@@ -112,6 +114,45 @@ async def test_frame_does_not_change_after_later_renders() -> None:
     assert [frame.text(ansi=False).strip() for frame in frames] == ["before", "after"]
 
 
+async def test_state_a_screenshot_handler_sets_is_shown_by_the_render_that_follows_without_another() -> None:
+    contents: list[str] = []
+
+    @component
+    def root() -> Text:
+        content, set_content = use_state("before")
+        contents.append(content)
+
+        def on_input(event: InputEvent, _: Receiver) -> Screenshot:
+            set_content("pressed")
+            return Screenshot(handler=lambda frame: set_content("shot"))
+
+        return Text(content=content, on_input=on_input)
+
+    await app(root(), headless=True, dimensions=(10, 1), autopilot=[KeyPressed(key="x"), Quit()])
+
+    assert contents == ["before", "before", "shot"]
+
+
+async def test_controls_a_screenshot_handler_sends_are_handled_in_order_after_the_render_that_follows() -> None:
+    frames: list[Frame] = []
+
+    @component
+    def root() -> Text:
+        content, set_content = use_state("before")
+        send = use_controls()
+
+        def on_shot(frame: Frame) -> None:
+            set_content("after")
+            send(Screenshot(handler=frames.append))
+            send(Screenshot(handler=lambda frame: frames.append(Frame(paint=Paint.blank(1, 1)))))
+
+        return Text(content=content, on_input=lambda event, _: Screenshot(handler=on_shot))
+
+    await app(root(), headless=True, dimensions=(6, 1), autopilot=[KeyPressed(key="x"), Quit()])
+
+    assert [frame.text(ansi=False) for frame in frames] == ["after ", " "]
+
+
 def test_to_file_creates_missing_parent_directories(tmp_path: Path, frame: Frame) -> None:
     path = tmp_path / "outer" / "inner" / "screenshot.txt"
 
@@ -139,8 +180,8 @@ def test_to_stream_flushes_after_printing(frame: Frame) -> None:
 
 
 def test_text_has_escape_codes_by_default() -> None:
-    bold_red = resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True))
-    plain = resolve_cell_style(CellStyle())
+    bold_red = as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True)))
+    plain = as_solid(resolve_cell_style(CellStyle()))
     frame = Frame(paint=Paint(2, 2, [Cell("a", bold_red), Cell("b", plain), Cell("c", plain), Cell("d", bold_red)]))
 
     red_bold = "\x1b[38;2;255;0;0m\x1b[48;2;0;0;0m\x1b[1m"

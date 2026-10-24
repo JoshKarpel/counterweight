@@ -3,12 +3,17 @@
 `use_state` gives a component a value that persists across renders, and a setter that changes it.
 Setting a different value re-renders the component.
 
-```python
-@component
-def counter() -> Text:
-    count, set_count = use_state(0)
-    ...
-```
+<!-- example: use_state_counter.py:counter -->
+
+![A counter showing a count of 3](../assets/use-state-counter.svg)
+
+Each key press sets the count, which renders `counter` again with the new value:
+
+<!-- cast: use-state-counter -->
+
+`+` and `-` pass the setter a function, since the new count depends on the old one
+(see [below](#updating-state-from-its-previous-value)),
+and `0` passes it a value, since the reset doesn't.
 
 ## Updating state from its previous value
 
@@ -36,14 +41,14 @@ Several updates can land before the next render in ways that are easy to miss,
 because each looks like one update when you read the code.
 
 **Two updates in one handler.**
-Each `count + 1` is computed from the same `count`:
+Each `by_value + 1` is computed from the same `by_value`,
+while each function builds on what the one before it returned:
 
-```python
-def on_input(event: InputEvent, _: Receiver) -> InputResponse:
-    set_count(count + 1)
-    set_count(count + 1)  # count goes from 0 to 1, not 2
-    return ()
-```
+<!-- example: use_state_counter.py:twice -->
+
+![After three presses of +, by value shows 3 and by function shows 6](../assets/use-state-plus-two.svg)
+
+After three presses of `+`, `by_value` has gone up by one a press, and `by_function` by two.
 
 **Key presses that arrive together.**
 Counterweight routes every event it has read before rendering again,

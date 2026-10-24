@@ -76,6 +76,12 @@ a.autorefs-external:hover::after {
   height: 100%;
 }
 
+.md-typeset img.wordmark {
+  width: 20rem;
+  max-width: 100%;
+  height: auto;
+}
+
 /*
 Roboto Mono, the code font, has no box-drawing characters, so browsers draw them from a fallback font
 of a different width and borders drift away from the text beside them.

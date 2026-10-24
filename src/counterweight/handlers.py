@@ -305,3 +305,18 @@ def check_page_fraction(fraction: float) -> None:
     """Raises `ValueError` if `fraction` isn't positive, so it can't be a page."""
     if fraction <= 0:
         raise ValueError(f"A page must be a positive fraction of the view, but got {fraction!r}")
+
+
+__all__ = [
+    "clear_focus",
+    "each",
+    "first",
+    "focus_on_press",
+    "focus_receiver_on_press",
+    "on_click",
+    "page_down",
+    "page_up",
+    "scroll_on_keys",
+    "scroll_on_wheel",
+    "tab_focus",
+]

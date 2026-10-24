@@ -59,13 +59,13 @@ For frame times alone, without a profile: `uv run python -m benchmarks run top`.
   as seen by a key handler on the root element,
   which covers the whole loop (events, shadow tree, layout, paint, output, effects)
   and anything else the event loop ran in between, such as the devlog's sink task.
-- **Stages**: samples by the function `counterweight.app.render_loop` called, by other asyncio
+- **Stages**: samples by the function `counterweight._app.render_loop` called, by other asyncio
   task (`task ...`, such as without-logging's `capture.<locals>.run_sink`), and in the event
   loop itself, with each stage's share of the mean frame time.
   Stages come from the call stack, so splitting a stage into named functions inside
   `render_loop` is how to get a finer breakdown.
   `harness.py:...on_input` is the workload's own `step`, not framework time,
-  and it sits under `routing.py:route_key`, so subtract it from that stage to see routing's own cost.
+  and it sits under `_routing.py:route_key`, so subtract it from that stage to see routing's own cost.
   Work moved off the render loop onto another task still costs frame time in these
   saturated runs; it only comes for free in an app with idle time between frames.
 - **Self and inclusive samples** per function below each stage's root.
@@ -98,6 +98,19 @@ which times `parse_input` on whole reads (a key press, a read full of mouse moti
 uv run python -m benchmarks parse --name before   # writes profiles/before.parsing.json
 # make the change
 uv run python -m benchmarks parse --name after
+uv run python -m benchmarks compare before after
+```
+
+## Time emulator snapshots
+
+Snapshotting the terminal emulator (`Emulator.snapshot`) isn't part of any workload either,
+so `snapshot` times it on a 120x40 terminal after pieces of output (a scrolling line, plain, colored or wide,
+a progress bar rewriting its row, and nothing), timing only the snapshots:
+
+```bash
+uv run python -m benchmarks snapshot --name before   # writes profiles/before.snapshots.json
+# make the change
+uv run python -m benchmarks snapshot --name after
 uv run python -m benchmarks compare before after
 ```
 

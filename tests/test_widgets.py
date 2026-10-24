@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import pytest
 
 from counterweight import app
+from counterweight._output import Frame
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
@@ -16,14 +17,13 @@ from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
 from counterweight.events import MouseScrolledUp
 from counterweight.events import Pasted
+from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
 from counterweight.handlers import scroll_on_keys
-from counterweight.hooks import ElementHandle
 from counterweight.hooks import use_state
 from counterweight.keys import Key
-from counterweight.output import Frame
+from counterweight.styles import AnyColor
 from counterweight.styles import CellStyle
-from counterweight.styles import Color
 from counterweight.styles import Style
 from counterweight.styles.utilities import align_self_start
 from counterweight.styles.utilities import border
@@ -54,7 +54,7 @@ CUSTOM = TextFieldStyles(
 )
 
 
-def custom_drawn(frame: Frame) -> tuple[str, Color, bool, bool, bool]:
+def custom_drawn(frame: Frame) -> tuple[str, AnyColor, bool, bool, bool]:
     """
     How a focused field drawn with `CUSTOM` and the placeholder "Name" looks: its top-left corner and that corner's color,
     whether the cursor on the placeholder's first character is bold and italic, and whether the next character is italic.

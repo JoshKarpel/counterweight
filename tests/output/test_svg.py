@@ -1,18 +1,25 @@
 import pytest
 
-from counterweight.output import Frame
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import svg
-from counterweight.paint import svg_text_style
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import Color
-from counterweight.styles.styles import ResolvedCellStyle
-from counterweight.styles.styles import resolve_cell_style
+from counterweight._output import Frame
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import svg
+from counterweight._paint import svg_text_style
+from counterweight.styles._styles import DEFAULT_PALETTE
+from counterweight.styles._styles import TERMINAL_DEFAULT
+from counterweight.styles._styles import AnyColor
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import Color
+from counterweight.styles._styles import IndexedColor
+from counterweight.styles._styles import ResolvedCellStyle
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 
 
-def style(foreground: str = "white", background: str = "black") -> ResolvedCellStyle:
-    return resolve_cell_style(CellStyle(foreground=Color.from_name(foreground), background=Color.from_name(background)))
+def style(foreground: str = "white", background: str = "black") -> ResolvedCellStyle[AnyColor]:
+    return as_solid(
+        resolve_cell_style(CellStyle(foreground=Color.from_name(foreground), background=Color.from_name(background)))
+    )
 
 
 def test_svg_draws_background_runs_as_rectangles_and_skips_blank_cells_and_white_text() -> None:
@@ -75,7 +82,7 @@ def test_svg_draws_background_runs_as_rectangles_and_skips_blank_cells_and_white
 def test_svg_text_style_has_an_attribute_for_each_text_style_that_is_on(
     cell_style: CellStyle, expected: dict[str, str]
 ) -> None:
-    assert svg_text_style(resolve_cell_style(cell_style)) == expected
+    assert svg_text_style(as_solid(resolve_cell_style(cell_style))) == expected
 
 
 def test_svg_draws_each_grapheme_with_its_text_style() -> None:
@@ -83,8 +90,8 @@ def test_svg_draws_each_grapheme_with_its_text_style() -> None:
         width=2,
         height=1,
         cells=[
-            Cell("a", resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True))),
-            Cell("b", resolve_cell_style(CellStyle(italic=True))),
+            Cell("a", as_solid(resolve_cell_style(CellStyle(foreground=Color.from_name("red"), bold=True)))),
+            Cell("b", as_solid(resolve_cell_style(CellStyle(italic=True)))),
         ],
     )
 
@@ -94,3 +101,33 @@ def test_svg_draws_each_grapheme_with_its_text_style() -> None:
         {"x": "0.00em", "fill": "#ff0000", "font-weight": "bold"},
         {"x": "0.55em", "font-style": "italic"},
     ]
+
+
+def test_svg_draws_palette_entries_in_the_default_palette() -> None:
+    paint = Paint(
+        width=1,
+        height=1,
+        cells=[
+            Cell("a", as_solid(resolve_cell_style(CellStyle(foreground=IndexedColor(1), background=IndexedColor(4)))))
+        ],
+    )
+
+    root = svg(paint)
+
+    assert [rect.get("fill") for rect in root.iter("rect")] == ["#000000", DEFAULT_PALETTE[4].hex]
+    assert [tspan.get("fill") for tspan in root.iter("tspan") if tspan.text == "a"] == [DEFAULT_PALETTE[1].hex]
+
+
+def test_svg_draws_the_terminal_defaults_as_white_on_black() -> None:
+    paint = Paint(
+        width=1,
+        height=1,
+        cells=[
+            Cell("a", as_solid(resolve_cell_style(CellStyle(foreground=TERMINAL_DEFAULT, background=TERMINAL_DEFAULT))))
+        ],
+    )
+
+    root = svg(paint)
+
+    assert [rect.get("fill") for rect in root.iter("rect")] == ["#000000", "#000000"]
+    assert [tspan.get("fill") for tspan in root.iter("tspan") if tspan.text == "a"] == [None]

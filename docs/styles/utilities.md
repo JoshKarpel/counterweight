@@ -11,15 +11,20 @@ We recommend a `*` import for ease of use:
 from counterweight.styles.utilities import *
 ```
 
+That brings in the utilities, the palette's colors, and the `ColorName`, `Shade` and `Side` types the utility functions take,
+but not `Style`, `Color` or anything else the module itself imports, which come from `counterweight.styles`.
+
 Each utility is a `Style` that sets just a small set of properties.
 Some are constants (e.g., `border_heavy`, `justify_children_center`),
 and the rest are functions that return one (e.g., `gap(n)`, `margin_x(n)`, `pad(n)`).
-Color utilities take a color name and shade as arguments.
-For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200:
+Color utilities take a color name and shade, or any color.
+For example, `border_color("rose", 200)` returns a `Style` that sets the border color to rose-200,
+as does `border_color(rose_200)`, with the palette's constant for that color:
 ```python
 from counterweight.styles import Style, CellStyle, Color
 
 border_color("rose", 200) == Style(border_style=CellStyle(foreground=Color.from_hex("#fecdd3")))
+border_color(rose_200) == border_color("rose", 200)
 ```
 
 Since they are normal `Style`s, they can be combined to form more complex styles using the `|` operator.
@@ -72,9 +77,19 @@ The functions' tables give their signatures, since what they set depends on thei
 
 ### Colors
 
-The color utilities draw from [Tailwind's color palette](https://tailwindcss.com/docs/colors):
-a `ColorName` such as `"rose"` and a `Shade` from `50` (lightest) to `950` (darkest).
+The color utilities draw from [Tailwind's color palette](https://tailwindcss.com/docs/colors)
+when given a `ColorName` such as `"rose"` and a `Shade` from `50` (lightest) to `950` (darkest).
+Given one color instead, they use it, as Tailwind's arbitrary values such as `text-[#fbbf24]` do:
+a `Color`, such as a palette constant or `Color.from_hex("#fbbf24")`,
+one of the [terminal colors](#terminal-colors), or a [gradient](#gradients).
 `text_white` and `text_black` are outside the palette.
+
+Each utility colors one part of a box.
+In the box below, every part has its own color, matched by the swatch beside the utility that paints it:
+
+<!-- example: styles_colors.py:places -->
+
+![Each color utility painting its part of a box](../assets/styles-color-places.svg)
 
 <!-- utilities: text_white text_black text_color text_bg border_color border_bg margin_color padding_color content_color -->
 
@@ -85,6 +100,57 @@ for style fields that take a `Color` directly.
 Hover over a swatch to see its name and hex code.
 
 <!-- utilities-palette -->
+
+::: counterweight.styles.utilities.ColorName
+::: counterweight.styles.utilities.Shade
+
+#### Terminal colors
+
+A `Color` looks the same in every terminal.
+The terminal's own colors follow the user's theme instead, as the colors of a program run in it do:
+an `IndexedColor` is an entry of the terminal's 256-color palette,
+whose first 16 are the black, red, green, yellow, blue, magenta, cyan and white that themes set, then their bright forms,
+and `TERMINAL_DEFAULT` is the terminal's default foreground where it colors text,
+and its default background where it fills one.
+These utilities set them in each place the color utilities above do,
+the `*_indexed` ones taking a palette index from 0 to 255.
+Screenshots draw them in `DEFAULT_PALETTE`, and the defaults as white on black,
+as the first 16 indexed colors and the defaults are drawn below.
+In a terminal, they take whatever colors its theme gives them.
+
+<!-- example: styles_colors.py:terminal -->
+
+![The first 16 indexed colors and the terminal defaults, as screenshots draw them](../assets/styles-terminal-colors.svg)
+
+<!-- utilities: *_terminal_default *_indexed -->
+
+#### Gradients
+
+A [gradient](gradients.md) in a color place maps over the box that place paints unless the gradient names its own `box`.
+The color utilities above take one, and these put one in each place too.
+
+<!-- utilities: *_gradient -->
+
+### Attributes
+
+The `text_*` attributes draw the text bold, dim, italic, underlined or struck through,
+and the `border_*` ones draw the border characters that way.
+Each has a `not_` form that turns it off when merged over a style that turns it on,
+such as a style for a selected row that isn't bold, merged over a table's bold one.
+`text_link(uri)` makes the text a hyperlink that the terminal opens when it's clicked,
+and `text_link(None)` makes it not a link, inside text that is one.
+They're CSS's `font-weight: bold`, `font-style: italic` and `text-decoration`,
+with dim, which a terminal draws faint, in place of CSS's lighter weights.
+
+<!-- example: styles_attributes.py:example -->
+
+![Each text attribute, a style turning two of its attributes off, and borders drawn bold and dim](../assets/styles-attributes.svg)
+
+How each looks is up to the terminal and its font:
+some can draw bold text in a brighter color as well as, or instead of, a heavier weight,
+and a terminal whose font has no italic face can draw italic text upright.
+
+<!-- utilities: text_bold text_dim text_italic text_underline text_strikethrough text_not_* border_bold border_dim border_italic border_underline border_strikethrough border_not_* text_link -->
 
 ### Direction and wrapping
 
@@ -131,10 +197,21 @@ See [Borders on some sides](../layout/spacing-and-borders.md#borders-on-some-sid
 
 <!-- utilities: border border_top border_bottom border_left border_right border_x border_y border_0 border_*_0 border_sides border_collapse border_contract -->
 
+::: counterweight.styles.utilities.Side
+
 #### Border kinds
 
 The border kind only chooses the characters, and draws nothing without a border width.
 `border_none` removes the border along with its space.
+Every other kind is drawn below, each around its own name:
+
+<!-- example: styles_borders.py:example -->
+
+![Every border kind](../assets/styles-border-kinds.svg)
+
+The light, rounded, heavy and double kinds use box-drawing characters,
+which [border healing](../cookbook/border-healing.md) joins where borders meet.
+The rest don't join, and draw their edges with block elements, shades, slashes or asterisks.
 
 <!-- utilities: border_none border_light border_heavy border_double border_thick border_lightrounded border_lightangled border_lightshade border_mediumshade border_heavyshade border_star border_mcgugan -->
 
@@ -170,6 +247,7 @@ on both axes or, with `_x` or `_y`, on one; `unstick` undoes it.
 
 ### Text
 
-See [Text wrapping](text-wrapping.md) and [Text in layout](../layout/text.md).
+See [Text wrapping](text-wrapping.md), [Ending a line with `…`](text-wrapping.md#ending-a-line-with-an-ellipsis),
+and [Text in layout](../layout/text.md).
 
-<!-- utilities: text_justify_* text_wrap_* -->
+<!-- utilities: text_justify_* text_wrap_* text_overflow_* -->

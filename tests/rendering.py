@@ -6,19 +6,29 @@ from asyncio import Queue
 from asyncio import Task
 from asyncio import TaskGroup
 from asyncio import sleep
+from asyncio import wait_for
+from collections.abc import AsyncIterator
+from collections.abc import Callable
 from collections.abc import Iterator
+from contextlib import asynccontextmanager
 from contextlib import contextmanager
+from dataclasses import dataclass
 
+from counterweight._app import handle_effects
 from counterweight._context_vars import current_event_queue
-from counterweight.app import handle_effects
+from counterweight._context_vars import current_task_group
+from counterweight._layout import NO_LAYOUTS
+from counterweight._shadow import ShadowTree
+from counterweight._shadow import update_shadow
+from counterweight._utils import cancel_tasks
 from counterweight.components import Component
 from counterweight.elements import AnyElement
 from counterweight.events import AnyEvent
 from counterweight.events import StateSet
-from counterweight.hooks.impls import NodeKey
-from counterweight.layout import NO_LAYOUTS
-from counterweight.shadow import ShadowTree
-from counterweight.shadow import update_shadow
+from counterweight.hooks._impls import NodeKey
+
+# Generous, so a loaded machine doesn't fail a test; each test that waits finishes as soon as what it waits for happens.
+TIMEOUT = 10
 
 
 @contextmanager
@@ -58,3 +68,42 @@ async def render(
 def effect_tasks(shadow: ShadowTree) -> list[Task[None]]:
     """The tasks of every effect in the tree, to cancel before the test's task group exits."""
     return [effect.task for node in shadow.nodes for effect in node.hooks.effects if effect.task is not None]
+
+
+@dataclass(slots=True)
+class Mounted:
+    """Renders an element tree, and renders it again as its components set state, as the app loop would."""
+
+    task_group: TaskGroup
+    queue: Queue[AnyEvent]
+    root: Component | AnyElement | None = None
+    tree: ShadowTree | None = None
+
+    async def render(self, root: Component | AnyElement) -> None:
+        self.root = root
+        self.tree = await render(root, self.tree, self.task_group)
+
+    async def wait_until(self, is_done: Callable[[], bool]) -> None:
+        while not is_done():
+            assert self.root is not None
+            first = await wait_for(self.queue.get(), TIMEOUT)
+            assert isinstance(first, StateSet)
+            dirty = state_set_keys(self.queue) | {first.key}
+            self.tree = await render(self.root, self.tree, self.task_group, dirty)
+
+    async def unmount(self) -> None:
+        assert self.tree is not None
+        await cancel_tasks(effect_tasks(self.tree))
+
+
+@asynccontextmanager
+async def mounted() -> AsyncIterator[Mounted]:
+    with state_sets() as queue:
+        async with TaskGroup() as task_group:
+            token = current_task_group.set(task_group)
+            m = Mounted(task_group=task_group, queue=queue)
+            try:
+                yield m
+            finally:
+                await m.unmount()
+                current_task_group.reset(token)

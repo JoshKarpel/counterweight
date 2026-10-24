@@ -6,7 +6,13 @@ from collections.abc import Sequence
 import pytest
 import waxy
 
-from counterweight.app import app
+from counterweight import app
+from counterweight._layout import child_clip
+from counterweight._output import Frame
+from counterweight._paint import BLANK
+from counterweight._paint import Cell
+from counterweight._paint import Paint
+from counterweight._paint import paint_layout
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
@@ -21,16 +27,11 @@ from counterweight.events import Receiver
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
-from counterweight.layout import child_clip
-from counterweight.output import Frame
-from counterweight.paint import BLANK
-from counterweight.paint import Cell
-from counterweight.paint import Paint
-from counterweight.paint import paint_layout
 from counterweight.styles import Style
-from counterweight.styles.styles import CellStyle
-from counterweight.styles.styles import JoinedBorderKind
-from counterweight.styles.styles import resolve_cell_style
+from counterweight.styles._styles import CellStyle
+from counterweight.styles._styles import JoinedBorderKind
+from counterweight.styles._styles import as_solid
+from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_double
 from counterweight.styles.utilities import border_light
@@ -342,21 +343,29 @@ def rects(border_box: Region, clip: Region) -> Rects:
 
 def test_a_clipped_healing_hint_does_not_displace_an_earlier_elements_live_hint_at_the_same_cell() -> None:
     screen = Region(left=0, top=0, right=6, bottom=3)
-    earlier = (Div(style=border | border_light), rects(Region(left=2, top=0, right=5, bottom=3), clip=screen), ())
+    earlier = (
+        "earlier",
+        Div(style=border | border_light),
+        rects(Region(left=2, top=0, right=5, bottom=3), clip=screen),
+        (),
+        True,
+    )
     later = (
+        "later",
         Div(style=border | border_double),
         rects(Region(left=2, top=0, right=6, bottom=3), clip=Region(left=3, top=0, right=6, bottom=3)),
         (),
+        True,
     )
 
-    _, hints = paint_layout([earlier, later], 6, 3)
+    _, hints = paint_layout([earlier, later], 6, 3, {})
 
     assert hints[CORNER] == LIGHT
 
 
 def test_fill_writes_only_inside_its_clip() -> None:
     paint = Paint.blank(4, 3)
-    x = Cell("x", resolve_cell_style(CellStyle()))
+    x = Cell("x", as_solid(resolve_cell_style(CellStyle())))
 
     paint.fill(Region(left=0, top=0, right=4, bottom=3), x, Region(left=1, top=1, right=3, bottom=2))
 
@@ -370,7 +379,7 @@ def test_fill_writes_only_inside_its_clip() -> None:
 @pytest.mark.parametrize(("y", "expected"), [(0, "...."), (1, ".xx."), (2, "....")], ids=["above", "inside", "below"])
 def test_write_row_writes_only_inside_its_clip(y: int, expected: str) -> None:
     paint = Paint.blank(4, 3)
-    x = Cell("x", resolve_cell_style(CellStyle()))
+    x = Cell("x", as_solid(resolve_cell_style(CellStyle())))
 
     paint.write_row(0, y, (x, x, x, x), Region(left=1, top=1, right=3, bottom=2))
 

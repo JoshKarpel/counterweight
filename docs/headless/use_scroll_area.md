@@ -50,7 +50,7 @@ and a button that jumps back to it while it's scrolled back:
 and `to_end` is the [`ScrollTo`](../layout/scrolling.md#scrolling-from-a-handler) that scrolls it there,
 past any end, so it reaches the end of content that grew since the last render.
 `is_at_start` and `to_start` do the same for the start, and `scroll` is the
-[`Scroll`][counterweight.hooks.Scroll] they're read from, as [`use_scroll`](../hooks/use_scroll.md) reports it,
+[`Scroll`][counterweight.geometry.Scroll] they're read from, as [`use_scroll`](../hooks/use_scroll.md) reports it,
 for a readout such as "rows 5-8 of 11".
 Like `use_scroll`, they report the previous frame's scroll,
 so the button appears a frame after the scroll that should show it.
@@ -127,8 +127,36 @@ and in a row, `shrink(0)` keeps an area with no width of its own as wide as its 
 The area scrolls the element with the `viewport` handle,
 so a parent that creates the handle with `use_state(ElementHandle)` and passes it to the hook
 can scroll the area with [`ScrollTo`](../layout/scrolling.md#scrolling-from-a-handler) and `ScrollBy`,
-and read its scroll with `use_scroll(handle)`.
-The [chat](https://github.com/JoshKarpel/counterweight/blob/main/examples/chat.py) example
+and read its scroll with `use_scroll(handle)`,
+as a React parent scrolls a child's element through a ref it passes down.
+
+This reader passes its handle to a [`scroll_area`](#a-styled-scroll-area),
+which takes the hook's parameters,
+and draws a readout of the lines in view beneath it, with buttons that scroll it to the top and a page on.
+`g` and `G` scroll it to the top and the end, as in a pager:
+the area doesn't scroll for them, so they bubble out of it to the reader's handler:
+
+<!-- example: scroll_area.py:outside -->
+
+=== "At the start"
+
+    ![A bordered log showing lines 1 to 4, above the readout "lines 1-4 of 11" and Top and Next buttons](../assets/scroll-area-outside.svg)
+
+=== "After clicking Next"
+
+    ![The log showing lines 5 to 8, and the readout saying so](../assets/scroll-area-outside-next.svg)
+
+=== "After G"
+
+    ![The log showing its last four lines, 8 to 11](../assets/scroll-area-outside-end.svg)
+
+The readout is a frame behind the scroll, as `use_scroll` always is,
+and `[ Next ]` scrolls by the view's height as of that frame.
+A `ScrollTo` past the end, as `G`'s is, scrolls only as far as the content reaches.
+
+<!-- cast: scroll-area-outside -->
+
+The [chat](https://github.com/JoshKarpel/counterweight/blob/main/src/counterweight/examples/apps/chat.py) example
 passes its transcript's handle to the transcript's scroll area,
 so the root jumps the transcript to its end when a message is sent,
 and Shift+PageUp and Shift+PageDown page it while the prompt has focus,

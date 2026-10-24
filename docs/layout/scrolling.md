@@ -49,8 +49,9 @@ so a flex item that scrolls shrinks to fit beside its siblings instead of growin
 That's usually what a scrolling pane wants;
 give it a size, or `shrink(0)`, when it should be as large as its content up to some limit.
 
-A `Text` doesn't scroll its own text, so a `Text` whose overflow is `Scroll` raises `ValueError`:
-put a long `Text` in a `Div` that scrolls.
+A `Text` doesn't scroll its own text, nor a `Canvas` what it draws,
+so either one whose overflow is `Scroll` raises `ValueError`:
+put a long `Text` or a large `Canvas` in a `Div` that scrolls.
 
 ## Scrolling with the wheel
 
@@ -190,7 +191,7 @@ which Counterweight has no design for yet: a fixed number of frames and a fixed 
 
 ## Reading the scroll
 
-[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.hooks.Scroll]: how far the calling component's top-level element is scrolled,
+[`use_scroll`](../hooks/use_scroll.md) returns a [`Scroll`][counterweight.geometry.Scroll]: how far the calling component's top-level element is scrolled,
 how far it can be, and the size of its padding box, the part of the content in view.
 Given an `ElementHandle`, it reports on the element with that handle instead,
 as a React component reads another element's `scrollTop` through a ref
@@ -223,6 +224,29 @@ or, for a node only partly in view, the first of its descendants in view.
 After the layout, it moves its offset so the anchor's top edge is as far from the top of the view as it was.
 Content that changes below the anchor, or inside it, doesn't move the view;
 content that changes above it moves the view with it.
+
+These two feeds show the same alerts, newest first, and a new one arrives at the top every two seconds.
+The wheel scrolls both together, a row a notch.
+The left one anchors, as every scroll container does unless told otherwise;
+the right one has `overflow_anchor_none`, so its offset stays where it was:
+
+<!-- example: scrolling.py:anchoring -->
+
+=== "Scrolled down two rows"
+
+    ![Both feeds showing alerts 6 to 3](../assets/scrolling-anchoring.svg)
+
+=== "Two alerts later"
+
+    ![The anchored feed still showing alerts 6 to 3, and the other showing 8 to 5](../assets/scrolling-anchoring-later.svg)
+
+While they're scrolled to the top, new alerts push the rest down in both, since a container at the top doesn't anchor.
+Once they're scrolled down, the anchored feed keeps showing the alerts it was showing,
+with the new ones arriving out of view above,
+while the other's offset stays put, so each new alert pushes what it shows down a row.
+Scrolling the anchored feed back up reaches the new ones:
+
+<!-- cast: scrolling-anchoring -->
 
 The anchor is a node, so it follows what each node shows from one render to the next.
 Siblings without keys continue the sibling at the same index,
@@ -277,6 +301,10 @@ The web has no property for this:
 a page puts an anchor element after the content, or reverses a column so it starts at its end.
 The [chat composer](../headless/use_text_area.md#using-the-hook) keeps its messages scrolled to the newest this way.
 
+Here it is following, scrolled back, and following again:
+
+<!-- cast: scrolling-tail -->
+
 ## Jumping to the end
 
 Counterweight doesn't draw scrollbars ([#417](https://github.com/JoshKarpel/counterweight/issues/417)), as most terminal apps don't,
@@ -292,6 +320,10 @@ A button over the last line that appears once the log is scrolled back, and jump
 === "After clicking the button"
 
     ![The log at its end again, without the button](../assets/scrolling-jump-clicked.svg)
+
+Scrolling back, then clicking the button:
+
+<!-- cast: scrolling-jump -->
 
 The button is a sibling of the log in a box around it, not a child of the log,
 because a scroll container moves everything inside it by its offset, absolutely positioned elements included,
@@ -315,4 +347,4 @@ as for any box that's [clipped](clipping.md#clipping-and-the-mouse).
 ## API
 
 ::: counterweight.focus.ElementHandle
-::: counterweight.shadow.DuplicateElementHandle
+::: counterweight.focus.DuplicateElementHandle

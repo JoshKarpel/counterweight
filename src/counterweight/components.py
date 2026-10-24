@@ -29,7 +29,7 @@ def component[**P](
             reuses its previous output instead when its arguments equal last render's, as React's `memo` does.
             It still re-runs when its own state changes.
             Its output MUST depend only on its arguments and its hooks,
-            or the output it keeps goes stale; `check_purity` on `counterweight.app.app` catches that in tests.
+            or the output it keeps goes stale; `check_purity` on `counterweight._app.app` catches that in tests.
     """
 
     def decorate(func: Callable[P, AnyElement]) -> Callable[P, Component]:
@@ -76,3 +76,23 @@ class Component:
         Sibling components MUST NOT share a key other than `None`; reconciling them raises `DuplicateKey`.
         """
         return replace(self, key=key)
+
+
+class DuplicateKey(Exception):
+    """Raised when keyed sibling components share a key, which leaves no single previous child for each to continue."""
+
+
+class ImpureComponent(Exception):
+    """
+    Raised when `check_purity` is on and re-running every component builds a different tree from the one a render built,
+    so some component's output depends on something besides its arguments and hooks:
+    the output a render kept for it is stale, or calling it twice doesn't give the same result.
+    """
+
+
+__all__ = [
+    "Component",
+    "DuplicateKey",
+    "ImpureComponent",
+    "component",
+]
