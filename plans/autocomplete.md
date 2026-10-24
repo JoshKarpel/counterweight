@@ -11,9 +11,8 @@ and `fuzzy_matches` and `substring_matches`, the two matchers the callers so far
 It rebuilds the cookbook's autocomplete and picker snippets on the hook,
 and ends with every picker built on counterweight so far ported onto it.
 It doesn't cover choosing several options (though it shows how marks compose on top),
-loading options asynchronously, a list you choose from without typing (a `<select>`),
-which is what a future `use_picker` would be, or `app()` sizing the screen from fd 1 rather than its `output_stream`,
-which is a separate fix.
+loading options asynchronously, or a list you choose from without typing (a `<select>`),
+which is what a future `use_picker` would be.
 
 ## The question
 
@@ -21,10 +20,11 @@ Every counterweight app with a picker has written its own, and the copies have s
 What part of them is behavior that belongs in the library,
 and what part is drawing, or keys, that each app does its own way?
 
-Nine copies exist, in two families.
+Ten copies exist, in two families.
 
 The cookbook family copies the cookbook's autocomplete and builds on `use_text_input`:
-the cookbook's `autocomplete.py` and `picker.py`, whats-new's `components/picker.py`,
+the cookbook's `autocomplete.py` and `picker.py`, the inline apps page's `inline_picker.py`,
+whats-new's `components/picker.py`,
 and assess's `theme_picker.py` and `file_picker.py`'s `filter_list`.
 These parts recur across them, nearly line for line:
 
@@ -63,6 +63,8 @@ Beyond those, single copies need more:
 The drift so far:
 
 - assess dropped Tab as a choosing key, and the command-line family uses it to move instead.
+- `inline_picker.py` stops the highlight at the ends rather than wrapping,
+  and at the last row it shows, since it doesn't scroll.
 - `filter_list` needs a `run_on_mount` component to close when its field loses focus.
 - `shown[query.highlighted]` indexes past the end if the options shrink while the text stays the same,
   which `filter_list` allows, since the diff's files can change while it's open.
@@ -419,7 +421,7 @@ As the text hooks are, beside their pure cores:
   Tab moving focus with the default keys; hovering highlighting a row; a click choosing and focus staying;
   and a `highlighted_row` passed in being the one the highlighted row gets.
 - `tests/test_widgets.py`: the widget opening below and above, choosing filling in the text, Escape and reopening.
-- The cookbook's existing stills stay byte-identical after the port, which checks the hook against the code it replaces.
+- The ported snippets' existing stills stay byte-identical, which checks the hook against the code it replaces.
 
 ## Docs
 
@@ -435,6 +437,8 @@ As the text hooks are, beside their pure cores:
 - `docs/cookbook/autocomplete.md` keeps what's about layout (escaping the panel, inside a scroll container,
   opening upward, and opening a picker with a key, with its sections and handles), built on the hook,
   and links to the new page for matching, keys and scrolling.
+- `docs/inline.md`'s picker, built on the hook with a `choose` that returns the `Print` and `Quit`,
+  links to the new page for the keys and matching.
 - Links to `#a-long-list`, inbound from `input-handling/controls.md` and `layout/scrolling.md`
   and the cookbook page's own "[scrolls](#a-long-list)", point at the new page.
 - `docs/changelog.md`: an Added entry.
@@ -443,7 +447,8 @@ As the text hooks are, beside their pure cores:
 
 1. The pure core and its tests.
 2. The hook and its tests.
-3. Port `snippets/picker.py` and `snippets/autocomplete.py` onto the hook, with their stills unchanged.
+3. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the hook,
+   with their stills unchanged.
 4. Port every other picker onto it locally, against an editable install, to prove the API before it ships,
    and fold what they find back into it:
    whats-new's picker and assess's two, and `wt`, `kube-pick`, `port-manage` and `zellij-pick-tab`,
