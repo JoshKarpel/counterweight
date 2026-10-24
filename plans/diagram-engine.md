@@ -208,7 +208,7 @@ What it established:
   The probe computes x positions, ports, and tracks first,
   then builds and lays out the tree once.
 - Edges merge into node borders as `┬` and `┴`,
-  the same direction-bits idea `border_healing.py` uses.
+  the same direction-bits idea `_border_healing.py` uses.
 
 Known weaknesses:
 
@@ -278,7 +278,7 @@ which has to happen within one frame (across frames, through `use_rects`, it wou
 and a node that wraps text needs a chosen width to measure at.
 
 The render loop already has this shape.
-When focus moves, `app.py` re-renders the components whose focus changed and lays the tree out again,
+When focus moves, `_app.py` re-renders the components whose focus changed and lays the tree out again,
 all before painting, and raises `UnsettledFocus` if the second pass doesn't settle.
 A graph container can follow it: lay out, run the core on the measured sizes,
 re-render the container with its positions, and lay out again.
@@ -444,7 +444,7 @@ That is the piece the editor case needs most.
 - Where it runs: a pass after layout that reads `Layouts.by_key`,
   as border healing reads the paint.
   It needs a module name other than `routing`:
-  `counterweight.routing` routes input events to handlers.
+  `counterweight._routing` routes input events to handlers.
 - How it draws: onto the same line canvas the graph container draws `Path`s on.
   A connector can be a `Path` its component re-renders once it has its endpoints' rects
   (one more settling pass, like the graph container's),
@@ -483,7 +483,7 @@ That is the piece the editor case needs most.
   Within one z, a junction takes the style of the line painted last,
   so an edge drawn after the boxes colors the tee where it meets one.
   Healing today compares only graphemes,
-  with a TODO in `border_healing.py` for styles and z.
+  with a TODO in `_border_healing.py` for styles and z.
 - Dashes: a dashed line (Mermaid's `-.->`, SVG's `stroke-dasharray`)
   draws its straight runs with `┄`/`┆` (light) or `┅`/`┇` (heavy).
   Box drawing has no dashed corners, junctions, or double lines,
@@ -1323,11 +1323,12 @@ import functools
 import sys
 from pathlib import Path
 
-from counterweight.app import app
+from counterweight import app
 from counterweight.components import Component, component
 from counterweight.controls import Quit, Screenshot
 from counterweight.elements import Div, Text
-from counterweight.output import Frame
+from counterweight.paint import Frame
+from counterweight.styles import Style
 from counterweight.styles.utilities import *
 
 import layered
