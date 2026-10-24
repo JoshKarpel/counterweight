@@ -1,5 +1,7 @@
 # Performance Analysis — `profiling/canvas.py`
 
+Artifact: https://claude.ai/code/artifact/791c2879-4f52-4cd4-b6b1-5ac53be8dd3c
+
 **Date:** 2026-03-07
 
 **Workload:** 4 × `random_walkers` canvases, each 30×30 pixels rendered as half-block chars
@@ -1317,3 +1319,77 @@ from other load (load average 10), so they aren't comparable.
 - **`re.Scanner` doesn't fit this parser.** It hands each action only the matched text,
   and stops at the first byte nothing matches, where `parse_input` must tell a sequence cut off by the end of the read,
   which it holds, from one cut off by another byte, which it skips.
+
+### Run 29 — inline apps: chat, tasks, picker and devloop
+
+**Date:** 2026-10-24
+
+**Change:** none; three new `Inline` workloads beside `devloop`, each shaped like an inline app people build:
+`chat` (a coding agent's reply streaming as Markdown into a region that grows, then printed above it),
+`tasks` (parallel downloads, a row each, a line printed as each finishes, the region growing and shrinking),
+and `picker` (an `fzf --height` finder retyping its query, a fixed region, no prints).
+Each profiled with `just profile <workload>`, 500 frames.
+
+| Run | Median | Mean | P95 | Max |
+|---|---|---|---|---|
+| `chat` | 1.339 ms | 2.169 ms | 5.223 ms | 25.824 ms |
+| `tasks` | 1.457 ms | 1.556 ms | 2.461 ms | 5.587 ms |
+| `picker` | 1.162 ms | 1.299 ms | 2.003 ms | 5.659 ms |
+| `devloop` | 1.227 ms | 1.382 ms | 2.080 ms | 8.039 ms |
+
+- **Making the emulator takes about 190 ms, once, before an inline app's first frame**
+  (`handle_screen_size_change` is 13–22% of each run's samples, all of it in `Emulator.__init__`).
+  It's pyghostty's in-line ABI-mode cffi: importing `pyghostty._ffi` parses its cdef with pycparser (about 94 ms),
+  and each type string `Emulator.__init__` passes to `ffi.new` is parsed the first time,
+  after a `typedef` line for every typedef in the cdef (about 4 ms each, about 95 ms for its twenty).
+  The same cdef built out-of-line (`set_source(name, None)`, compiled ahead of time) imports, loads the library
+  and makes those types in 0.8 ms in all, since its types come from a table and its type strings are parsed in C.
+  A full-screen app doesn't make an emulator; `use_terminal` and `use_command` pay the same cost on first use.
+- **Each `Print` is a whole render**: `render_once` builds a shadow tree and a new `LayoutTree` for it,
+  so `print_pending` is 38% of `devloop`'s frame (0.53 ms for three log lines).
+  Layout is most of that (176 of its 346 samples), spread across measuring and placing text, none of it cached.
+  A plain `Text` line, as each line captured from `sys.stdout` is printed, costs about 0.093 ms,
+  so a burst of 1000 lines in one frame holds that frame for 93 ms.
+  Rendering a frame's prints together, as children of one column, costs about half (0.05 ms a line),
+  and draws the same rows: stacked bordered boxes don't heal into each other.
+- **Nothing else inline costs much a frame.** Laying the region out at its max-content height measures as often
+  and takes as long as laying the same view out on the full screen (`tasks`, alternating runs, 0.44–0.47 ms either way).
+  `frame_changes` is `diff_paint`, as for a full-screen frame; `with_height`'s copy is under 1% of a frame,
+  and so is feeding the emulator (`Terminal.feed`).
+- **`chat`'s slowest frames aren't inline's.** They come late in a long summary, which `markdown` parses again
+  every frame as it streams (as in `agent-markdown`); the frames that print a finished reply and its tool calls
+  take a median 2.38 ms against 1.29 ms for the rest.
+
+### Run 30 — a frame's prints rendered together
+
+**Date:** 2026-10-24
+
+**Change:** `print_pending` renders each run of consecutive prints to the same stream with one `render_once`,
+which lays its contents out one below another in one tree, rather than one tree a print.
+Each sits in a flex column, the context it's laid out in alone, and, among several, one that clips it to its box,
+so nothing a print draws outside its box (a negative inset, say) lands on the one before it, as alone it would be dropped.
+At no width (a stream that isn't a terminal), the contents are aligned to the start, so each is as wide as it is alone.
+A full-screen app's held prints are rendered together when it hands the screen back.
+
+**Method:** HEAD and the branch in separate worktrees, alternating unprofiled runs three times, then one profiled run of each.
+`render_once` timed directly, best of 3–5 rounds, on fresh elements.
+
+| Prints in a frame | One at a time | Together | Speedup |
+|---|---|---|---|
+| 1 captured line | 0.118 ms | 0.118 ms | unchanged: a lone print isn't wrapped |
+| 3 captured lines | 0.372 ms | 0.254 ms | 1.46× |
+| 100 captured lines | 14.4 ms | 6.2 ms | 2.31× |
+| 1000 captured lines | 124.7 ms | 66.9 ms | 1.86× |
+| `devloop`'s 3 log lines | 0.489 ms | 0.404 ms | 1.21× |
+
+| Run | Medians (3 alternating runs) |
+|---|---|
+| `devloop`, HEAD | 1.182, 1.234, 1.222 ms |
+| `devloop`, together | 1.100, 1.133, 1.152 ms |
+
+- **`devloop`'s `print_pending` fell 17%** (0.543 to 0.450 ms a frame), and its median frame about 7%.
+  `tasks` and `chat` print too seldom for the change to show above run-to-run noise.
+- **The wrapper costs about 0.02 ms a print**, a fifth of a lone line's render, so a lone print isn't wrapped:
+  it has no neighbor to draw over.
+- **What's left is the per-element pipeline** (about 0.05–0.06 ms a captured line): a shadow node,
+  a layout node measured and placed, and its cells painted, in a tree nothing reuses.

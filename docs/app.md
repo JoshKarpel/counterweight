@@ -27,6 +27,14 @@ which by default Ctrl+C does.
 It restores the terminal before it returns,
 and before an error raised in a component, a handler or an effect propagates out of it.
 
+## Where it draws
+
+`app`'s `viewport` says where on the terminal the app draws.
+[`FullScreen()`][counterweight.FullScreen], the default, fills the alternate screen,
+as `vim` or `htop` do, and leaves the main screen as it found it.
+[`Inline()`][counterweight.Inline] draws in a region below the prompt, as tall as the root's content,
+which leaves its last frame in the terminal when the app stops (see [Inline Apps](inline.md)).
+
 ## What else it takes
 
 The rest of `app`'s parameters each belong to a part of the framework, with its own page:
@@ -43,6 +51,8 @@ The rest of `app`'s parameters each belong to a part of the framework, with its 
 | See other libraries' debug logs in the devlog | `log_levels` | [The devlog](performance.md#the-devlog) |
 | Match a font that isn't twice as tall as it is wide | `cell_aspect_ratio` | [Gradients](styles/gradients.md#what-cells-change) |
 | Draw on a terminal other than standard input and output | `input_stream`, `output_stream` | [Running programs](terminals/programs.md) |
+| Print to streams other than standard output and standard error | `stdout`, `stderr` | [Printing](inline.md#printing) |
+| Leave `sys.stdout` and `sys.stderr` alone | `capture_output` | [Stray prints](inline.md#stray-prints) |
 
 ## Which version is running
 
@@ -52,4 +62,6 @@ which `counterweight version` prints too.
 ## API
 
 ::: counterweight.app
+::: counterweight.FullScreen
+::: counterweight.Inline
 ::: counterweight.__version__

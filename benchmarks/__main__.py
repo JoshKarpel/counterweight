@@ -121,6 +121,7 @@ async def show(streams: Streams, workload: Runnable, fps: float, fixed_size: boo
     await app(
         workload.live_root(timedelta(seconds=1 / fps)),
         dimensions=workload.dimensions if fixed_size else None,
+        viewport=workload.viewport,
     )
     return 0
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## Next
+
+### Added
+
+- [#393](https://github.com/JoshKarpel/counterweight/issues/393)
+  Added inline apps: `app(viewport=Inline())` draws in a region below the prompt, as tall as the root's content,
+  rather than on the alternate screen, and leaves its last frame in the terminal when it stops
+  (see [Inline Apps](inline.md)).
+  `app`'s `viewport` is `FullScreen()` by default, whose `mouse=False` leaves the mouse to the terminal.
+  `Inline(mouse=True)` tracks the mouse over the region, asking the terminal where the region is.
+
+- [#393](https://github.com/JoshKarpel/counterweight/issues/393)
+  Added `Print`, a control that renders a component or an element once and prints it to `app`'s `stdout` or `stderr`:
+  above an inline app's region when the stream is the app's terminal, when a full-screen app hands the screen back,
+  and to the stream as it is otherwise, as plain text if it isn't a terminal.
+  While an app that isn't headless runs, `sys.stdout` and `sys.stderr` print each line written to them the same way,
+  unless `app` is given `capture_output=False`.
+
+- [#393](https://github.com/JoshKarpel/counterweight/issues/393)
+  `Screenshot(include_scrollback=True)` takes everything an inline app's terminal holds,
+  what it printed included, which is how a test reads it headless.
+  `Emulator.history` returns the rows above an emulator's screen as it holds them now, rewrapped by resizes.
+
+### Changed
+
+- [#393](https://github.com/JoshKarpel/counterweight/issues/393)
+  `Quit` renders once more before the app stops, without starting effects,
+  so the last frame shows what the last handlers set.
+
 ## `0.1.1`
 
 Released `2026-10-22`

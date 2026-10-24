@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
+from counterweight import Inline
 from counterweight.components import component
 from counterweight.controls import AdvanceClock
 from counterweight.elements import Text
@@ -34,6 +35,19 @@ async def test_a_still_shows_its_root_after_its_steps_at_the_scene_time() -> Non
     frame = await frame_of(Still("typed", typed(), (14, 1), steps=[KeyPressed(key="h"), KeyPressed(key="i")]))
 
     assert frame.text(ansi=False).rstrip() == f"{SCENE_TIME:%H:%M:%S} hi"
+
+
+async def test_an_inline_still_shows_everything_its_terminal_holds() -> None:
+    frame = await frame_of(Still("typed", typed(), (14, 3), steps=[KeyPressed(key="h")], viewport=Inline()))
+
+    assert [line.rstrip() for line in frame.text(ansi=False).split("\n")] == [f"{SCENE_TIME:%H:%M:%S} h", "", ""]
+
+
+async def test_an_inline_demo_takes_the_terminal_without_the_alternate_screen() -> None:
+    recording = await recording_of(Demo("typed", typed(), (14, 1), steps=[KeyPressed(key="h")], viewport=Inline()))
+
+    _, (_, _, preamble), *_ = (json.loads(line) for line in recording.splitlines())
+    assert "\x1b[?1049h" not in preamble
 
 
 async def test_a_demo_records_its_steps_with_their_input_timed_by_its_clock() -> None:

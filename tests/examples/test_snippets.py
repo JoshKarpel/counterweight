@@ -5,6 +5,7 @@ and the components their pages show without a scene of their own.
 
 from __future__ import annotations
 
+import io
 from asyncio import wait_for
 from collections.abc import Sequence
 from datetime import timedelta
@@ -33,6 +34,7 @@ from counterweight.examples.snippets import autopilot_search
 from counterweight.examples.snippets import commands
 from counterweight.examples.snippets import draggable
 from counterweight.examples.snippets import focus_form
+from counterweight.examples.snippets import inline_picker
 from counterweight.examples.snippets import input_controls
 from counterweight.examples.snippets import input_handlers
 from counterweight.examples.snippets import picker
@@ -94,6 +96,28 @@ async def test_the_autocomplete_highlights_upward_and_closes_on_escape() -> None
     closed = await screen(autocomplete.root(), (*typed, KeyPressed(key=Key.Escape)), (40, 14))
 
     assert ("pydantic" in opened, upward != opened, "pydantic" in closed) == (True, True, False)
+
+
+@pytest.mark.parametrize(
+    ("steps", "printed"),
+    [(keys(Key.Down, Key.Down, Key.Up, Key.Enter), "feature/inline-rendering\n"), (keys(Key.Escape), "")],
+    ids=["upward", "escape"],
+)
+async def test_the_inline_picker_prints_the_branch_picked_or_nothing_on_escape(
+    steps: list[KeyPressed], printed: str
+) -> None:
+    stdout = io.StringIO()
+
+    await app(
+        inline_picker.branch_picker(),
+        headless=True,
+        dimensions=(48, 8),
+        viewport=inline_picker.VIEWPORT,
+        stdout=stdout,
+        autopilot=steps,
+    )
+
+    assert stdout.getvalue() == printed
 
 
 async def test_the_picker_chooses_upward_and_closes_on_escape() -> None:

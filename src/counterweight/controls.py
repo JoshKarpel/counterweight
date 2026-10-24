@@ -29,6 +29,8 @@ from counterweight.programs import run_program
 
 if TYPE_CHECKING:
     from counterweight._output import Frame
+    from counterweight.components import Component
+    from counterweight.elements import AnyElement
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,9 +43,12 @@ class Quit(_Control):
     """
     Cause the application to quit.
 
-    The quit occurs at the beginning of the next render cycle,
+    The quit occurs at the end of the next render cycle,
     so all other events that are due to be processed in the current cycle
-    will be processed before the application exits.
+    will be processed before the application exits,
+    and the last frame shows the state they set.
+    That render starts no effects, since the application stops before they'd run.
+    An [`Inline`][counterweight.Inline] application leaves that frame in the terminal.
     """
 
 
@@ -141,13 +146,24 @@ class Screenshot(_Control):
     so all other events that are due to be processed in the current cycle
     will be processed before the screenshot is taken
     (but the screenshot will still be of the UI from *before* the next render occurs!).
-    Every screenshot requested in the same cycle receives the same frame.
+    Every screenshot requested in the same cycle with the same `include_scrollback` receives the same frame.
     """
 
     handler: Callable[[Frame], Awaitable[None] | None]
+    include_scrollback: bool = False
+    """
+    Whether the frame is everything the app's terminal holds, as a terminal shows it,
+    rather than only what the app draws.
+    For an [`Inline`][counterweight.Inline] app, that's the rows that scrolled off the top of the screen, then the screen,
+    with what the app printed above its region, and the region below it,
+    where without it the frame is the region, whose coordinates [`use_rects`][counterweight.hooks.use_rects] reports.
+    The app's terminal starts empty, with the region at its top, even when the app isn't headless,
+    since the app can't read what the terminal showed before it started.
+    A [`FullScreen`][counterweight.FullScreen] app's alternate screen has no scrollback, so its frame is the same either way.
+    """
 
     @classmethod
-    def to_file(cls, path: Path) -> Screenshot:
+    def to_file(cls, path: Path, include_scrollback: bool = False) -> Screenshot:
         """
         A convenience method for producing a `Screenshot` that writes to the given `path`,
         encoded according to its suffix:
@@ -156,6 +172,7 @@ class Screenshot(_Control):
         Parameters:
             path: The path to write the screenshot to.
                 Parent directories will be created if they do not exist.
+            include_scrollback: Whether the frame is everything the app's terminal holds (see `include_scrollback`).
 
         Raises:
             ValueError: If the path's suffix is neither `.svg` nor `.txt`.
@@ -172,23 +189,60 @@ class Screenshot(_Control):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(encode(frame))
 
-        return cls(handler=handler)
+        return cls(handler=handler, include_scrollback=include_scrollback)
 
     @classmethod
-    def to_stream(cls, stream: TextIO | None = None, ansi: bool = True) -> Screenshot:
+    def to_stream(cls, stream: TextIO | None = None, ansi: bool = True, include_scrollback: bool = False) -> Screenshot:
         """
         A convenience method for producing a `Screenshot` that prints the frame as text to the given `stream`.
 
         Parameters:
             stream: The stream to print to. Defaults to `sys.stderr`.
             ansi: Whether to include ANSI escape codes for colors and styles.
+            include_scrollback: Whether the frame is everything the app's terminal holds (see `include_scrollback`).
         """
         target = stream if stream is not None else sys.stderr
 
         def handler(frame: Frame) -> None:
             print(frame.text(ansi=ansi), file=target, flush=True)
 
-        return cls(handler=handler)
+        return cls(handler=handler, include_scrollback=include_scrollback)
+
+
+type PrintStream = Literal["stdout", "stderr"]
+"""Which of the app's two streams, `app`'s `stdout` or `stderr`, a [`Print`][counterweight.controls.Print] writes to."""
+
+
+@dataclass(frozen=True, slots=True)
+class Print(_Control):
+    """
+    Print `content`, a component or an element, once, to one of the app's streams, as `print` does,
+    where nothing changes it again: finished output, such as a log line, a test that passed,
+    or a chat message that's done streaming.
+
+    `content` is rendered once, as React's `renderToStaticMarkup` does:
+    its components run with each hook's initial state, their effects never start,
+    and [`use_rects`][counterweight.hooks.use_rects] and [`use_scroll`][counterweight.hooks.use_scroll] report nothing.
+    It's laid out as wide as the stream it's printed to and as tall as it is,
+    and each of its rows ends at its last cell that isn't blank, so a narrower terminal doesn't rewrap padding.
+
+    `stream` picks the stream, `app`'s `stdout` or `stderr`, as `print(file=sys.stderr)` does.
+    A stream that is the app's terminal, as both are when a program runs at a prompt with nothing redirected,
+    shows it above an [`Inline`][counterweight.Inline] app's region, in the terminal's scrollback.
+    A [`FullScreen`][counterweight.FullScreen] app's main screen isn't showing,
+    so it holds what it prints there until it hands the screen back, when it stops or is suspended,
+    and lays it out at the width the terminal has then.
+    Any other stream is written to as it is: with its styles if it's a terminal,
+    and as plain text if it isn't, such as a pipe or a file, laid out as wide as its content,
+    since a pipe has no width to wrap at.
+
+    Every `Print` that arrives in a render cycle is printed in that cycle's frame, in order,
+    beside the render the same events caused,
+    so a handler that prints an item and drops it from the state the region shows does both in one frame.
+    """
+
+    content: Component | AnyElement
+    stream: PrintStream = "stdout"
 
 
 @dataclass(frozen=True, slots=True)
@@ -499,6 +553,7 @@ AnyControl = (
     | RestoreTitle
     | CopyToClipboard
     | Screenshot
+    | Print
     | Suspend
     | ToggleBorderHealing
     | FocusNext
@@ -524,6 +579,8 @@ __all__ = [
     "FocusOn",
     "FocusPrevious",
     "Marker",
+    "Print",
+    "PrintStream",
     "Quit",
     "RestoreTitle",
     "Screenshot",

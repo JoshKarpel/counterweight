@@ -34,6 +34,14 @@ so compare it with `agent` to see what a key press costs on a busy screen.
 as a pager would draw a file, `document-lines` draws it as one `Text` per line, as `markdown` draws one per block,
 and `document-text-area` types into it in a `text_area`, which wraps it itself and draws it as a few `Text`s:
 use them to see what content scrolled out of view costs.
+`devloop` is an `Inline` app that prints three log lines a frame above a small status bar:
+use it to see what printing costs (rendering each print once, writing it above the region)
+and what feeding the emulator an inline app keeps of its terminal costs.
+`chat`, `tasks` and `picker` are `Inline` apps too, shaped like the ones people build:
+a coding agent's reply streaming as Markdown into a region that grows, then printed above it;
+parallel downloads, a row each, each printing a line as it finishes, so the region grows and shrinks;
+and an `fzf --height` finder, a region of fixed size with nothing printed.
+An inline app makes its emulator before its first frame, which shows in their stages as `handle_screen_size_change`.
 
 ## Profile a run
 

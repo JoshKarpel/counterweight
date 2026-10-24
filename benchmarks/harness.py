@@ -29,18 +29,23 @@ from time import perf_counter_ns
 from typing import Protocol
 
 import counterweight
+from counterweight import FullScreen
+from counterweight import Inline
 from counterweight import app
 from counterweight._output import Frame
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import AnyControl
+from counterweight.controls import Print
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
 from counterweight.elements import Div
 from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.hooks import use_controls
 from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 
@@ -65,6 +70,9 @@ class Runnable(Protocol):
 
     @property
     def step_key(self) -> str: ...
+
+    @property
+    def viewport(self) -> FullScreen | Inline: ...
 
     def root(self, key_press_times: list[int]) -> Component: ...
 
@@ -96,20 +104,25 @@ class Workload[M]:
     """
     step_key: str = "n"
     """The key the autopilot presses to step the model, which no focused component may stop from bubbling to the root."""
+    viewport: FullScreen | Inline = FullScreen()
+    printed: Callable[[M], tuple[AnyElement, ...]] = lambda model: ()
+    """What each frame prints, from the model it steps to, as the app's handlers would print finished output."""
 
     @component
     def root(self, key_press_times: list[int]) -> Div:
         """
         A root component that renders the model, with a key handler on the view's root that steps it
-        on each press of `step_key` and appends the time to `key_press_times`.
+        on each press of `step_key`, prints what the next model prints, and appends the time to `key_press_times`.
         """
         model, set_model = use_state(self.initial)
 
-        def on_input(event: InputEvent, _: Receiver) -> None:
+        def on_input(event: InputEvent, _: Receiver) -> tuple[Print, ...]:
             if not (isinstance(event, KeyPressed) and event.key == self.step_key):
-                return
+                return ()
             key_press_times.append(perf_counter_ns())
-            set_model(self.step)
+            stepped = self.step(model)
+            set_model(stepped)
+            return tuple(Print(content) for content in self.printed(stepped))
 
         return replace(self.view(model), on_input=on_input)
 
@@ -117,6 +130,7 @@ class Workload[M]:
     def live_root(self, frame_interval: timedelta) -> Div:
         """A root component that renders the model and steps it every `frame_interval`, to watch it run by hand."""
         model, set_model = use_state(self.initial)
+        send = use_controls()
         seconds = frame_interval.total_seconds()
 
         async def tick() -> None:
@@ -124,7 +138,12 @@ class Workload[M]:
                 await asyncio.sleep(seconds)
                 set_model(self.step)
 
+        async def print_model() -> None:
+            for content in self.printed(model):
+                send(Print(content))
+
         use_effect(tick, deps=())
+        use_effect(print_model, deps=(model,))
 
         return self.view(model)
 
@@ -228,6 +247,7 @@ async def run(
         dimensions=dims,
         autopilot=autopilot(frames, snapshot, workload.interjections, workload.cycled_interjections, workload.step_key),
         check_purity=check_purity,
+        viewport=workload.viewport,
     )
     frame_ms = [(end - start) / 1e6 for start, end in pairwise(key_press_times)]
     return Timings(
