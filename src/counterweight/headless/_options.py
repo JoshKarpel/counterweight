@@ -7,11 +7,12 @@ They hold no state and handle no input, so a component wires them to its own sta
 from __future__ import annotations
 
 import glob
+import re
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
-from fnmatch import fnmatchcase
+from fnmatch import translate
 from typing import overload
 
 
@@ -24,7 +25,7 @@ def identity(option: object) -> object:
 class Highlight:
     """
     Which of a list of options is highlighted: the one whose key is `key`, or, when none is,
-    the one at `index`, clamped to the last.
+    the one at `index`, clamped to the first and the last.
     The key keeps the highlight on its option while options before it come and go,
     as React Aria's `focusedKey` does, and the index is where it lands when its own option goes.
     `Highlight()` highlights the first option, and `Highlight(key=current)` the current one, wherever it is.
@@ -42,7 +43,7 @@ class Highlight:
             for index, option in enumerate(options):
                 if key(option) == self.key:
                     return index
-        return min(self.index, len(options) - 1)
+        return max(0, min(self.index, len(options) - 1))
 
     def landed[T](self, options: Sequence[T], key: Callable[[T], object] = identity) -> Highlight:
         """
@@ -62,14 +63,14 @@ class Highlight:
 
 
 @overload
-def fuzzy_matches(text: str, options: Iterable[str]) -> tuple[str, ...]: ...
+def subsequence_matches(text: str, options: Iterable[str]) -> tuple[str, ...]: ...
 
 
 @overload
-def fuzzy_matches[T](text: str, options: Iterable[T], key: Callable[[T], str]) -> tuple[T, ...]: ...
+def subsequence_matches[T](text: str, options: Iterable[T], key: Callable[[T], str]) -> tuple[T, ...]: ...
 
 
-def fuzzy_matches[T](text: str, options: Iterable[T], key: Callable[[T], str] = str) -> tuple[T, ...]:
+def subsequence_matches[T](text: str, options: Iterable[T], key: Callable[[T], str] = str) -> tuple[T, ...]:
     """
     The options whose `key` holds the letters of `text` in order, with anything between them, ignoring case,
     in their own order but for the one `text` names exactly, which comes first,
@@ -77,9 +78,10 @@ def fuzzy_matches[T](text: str, options: Iterable[T], key: Callable[[T], str] = 
     Every option matches an empty `text`.
     """
     folded = text.casefold()
-    # fnmatch folds case only on Windows, so both sides are folded here and compared with fnmatchcase.
-    pattern = f"*{'*'.join(glob.escape(letter) for letter in folded)}*"
-    return exact_first(folded, (option for option in options if fnmatchcase(key(option).casefold(), pattern)), key)
+    # `translate`'s pattern matches case-sensitively on every platform, where `fnmatch` folds case only on Windows,
+    # so both sides are folded here. Compiling it once spares a lookup in fnmatch's pattern cache per option.
+    is_match = re.compile(translate(f"*{'*'.join(glob.escape(letter) for letter in folded)}*")).match
+    return matching(folded, options, key, lambda folded_key: is_match(folded_key) is not None)
 
 
 @overload
@@ -97,9 +99,20 @@ def substring_matches[T](text: str, options: Iterable[T], key: Callable[[T], str
     Every option matches an empty `text`.
     """
     folded = text.casefold()
-    return exact_first(folded, (option for option in options if folded in key(option).casefold()), key)
+    return matching(folded, options, key, lambda folded_key: folded in folded_key)
 
 
-def exact_first[T](folded: str, found: Iterable[T], key: Callable[[T], str]) -> tuple[T, ...]:
-    """`found` in order, but for the option whose folded key is `folded`, which comes first."""
-    return tuple(sorted(found, key=lambda option: key(option).casefold() != folded))
+def matching[T](
+    folded: str, options: Iterable[T], key: Callable[[T], str], is_match: Callable[[str], bool]
+) -> tuple[T, ...]:
+    """
+    The `options` whose folded key `is_match`, in order, but for those whose folded key is `folded`, which come first,
+    folding each key once.
+    """
+    exact: list[T] = []
+    rest: list[T] = []
+    for option in options:
+        folded_key = key(option).casefold()
+        if is_match(folded_key):
+            (exact if folded_key == folded else rest).append(option)
+    return (*exact, *rest)

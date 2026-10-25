@@ -23,7 +23,7 @@ from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.headless import Highlight
-from counterweight.headless import fuzzy_matches
+from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
@@ -77,7 +77,7 @@ def burst(model: Model) -> tuple[AnyEvent, ...]:
 
 
 def shown_for(text: str) -> tuple[str, ...]:
-    return fuzzy_matches(text, PATHS)[:SHOWN]
+    return subsequence_matches(text, PATHS)[:SHOWN]
 
 
 @component
@@ -91,10 +91,7 @@ def picker() -> Div:
         before = latest(set_text)
         match event:
             case KeyPressed(key=Key.Down | Key.Up as key):
-                now_shown = shown_for(before)
-                if not now_shown:
-                    return None
-                set_highlight(latest(set_highlight).moved(now_shown, 1 if key == Key.Down else -1))
+                set_highlight(latest(set_highlight).moved(shown_for(before), 1 if key == Key.Down else -1))
                 return ()
             case _:
                 response = field.on_input(event, receiver)

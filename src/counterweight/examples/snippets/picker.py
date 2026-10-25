@@ -34,7 +34,7 @@ from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import on_click
 from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import Highlight
-from counterweight.headless import fuzzy_matches
+from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
@@ -144,7 +144,7 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
         set_completion(lambda c: c.edited(edit_text(c.text)))
 
     field = use_text_input(completion.text, edit, handle=picking.focus)
-    shown = fuzzy_matches(completion.text, names)
+    shown = subsequence_matches(completion.text, names)
     highlighted = completion.highlight.index_in(shown)
 
     def chosen(name: str) -> InputResponse:
@@ -157,13 +157,15 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
         match event:
             case KeyPressed(key=Key.Down | Key.Up as key):
                 by = 1 if key == Key.Down else -1
-                set_completion(lambda c: replace(c, highlight=c.highlight.moved(fuzzy_matches(c.text, names), by)))
+                set_completion(
+                    lambda c: replace(c, highlight=c.highlight.moved(subsequence_matches(c.text, names), by))
+                )
             # Enter typed ahead with the text before it chooses from what that text matches, not what last rendered.
             case KeyPressed(key=Key.Enter | Key.Tab):
                 now = latest(set_completion)
-                now_shown = fuzzy_matches(now.text, names)
+                now_shown = subsequence_matches(now.text, names)
                 if (index := now.highlight.index_in(now_shown)) is None:
-                    return None
+                    return ()
                 return chosen(now_shown[index])
             case KeyPressed(key=Key.Escape):
                 close()

@@ -49,6 +49,7 @@ from counterweight.examples.snippets import use_controls_first_error
 from counterweight.examples.snippets import use_effect_forecast
 from counterweight.examples.snippets.terminals import PLAIN_SHELL
 from counterweight.geometry import Position
+from counterweight.hooks import use_state
 from counterweight.keys import Key
 from tests.rendering import TIMEOUT
 
@@ -133,6 +134,40 @@ async def test_the_picker_stays_open_on_enter_when_nothing_matches() -> None:
     shown = await screen(picker.settings(), (*keys(Key.F2), *typed("zz"), *keys(Key.Enter)), (40, 10))
 
     assert ("nothing matches" in shown, "Python 3.15" in shown) == (True, True)
+
+
+@component
+def picker_in_a_parent_that_takes_its_keys() -> Div:
+    picking, _ = use_state(picker.Picking(picker.PYTHON))
+    nothing_reached: tuple[str, ...] = ()
+    reached, set_reached = use_state(nothing_reached)
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        match event:
+            case KeyPressed(key=Key.F2):
+                return picking.opened()
+            case KeyPressed(key=key):
+                set_reached(lambda keys: (*keys, key))
+                return ()
+            case _:
+                return None
+
+    return Div(
+        on_input=on_input,
+        children=(
+            Text(content=f"reached: {' '.join(map(str, reached))}"),
+            picker.picker(picking, "3.15", lambda _: None, lambda: None),
+        ),
+    )
+
+
+async def test_the_picker_keeps_its_keys_from_its_parent_when_nothing_matches_until_it_lets_go_of_focus() -> None:
+    kept = (*keys(Key.F2), *typed("zz"), *keys(Key.Down, Key.Up, Key.Enter, Key.Tab))
+    steps = (*kept, *keys(Key.Escape, Key.Tab), *press(0, 0))
+
+    shown = await screen(picker_in_a_parent_that_takes_its_keys(), steps, (40, 10))
+
+    assert shown.splitlines()[0] == "reached: Key.Tab"
 
 
 async def test_a_draggable_ignores_a_press_of_another_button() -> None:

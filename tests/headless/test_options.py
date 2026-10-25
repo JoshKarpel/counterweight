@@ -7,7 +7,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from counterweight.headless import Highlight
-from counterweight.headless import fuzzy_matches
+from counterweight.headless import subsequence_matches
 from counterweight.headless import substring_matches
 
 
@@ -33,9 +33,17 @@ ATLAS = Port(number=8000, command="atlas serve")
         (Highlight(key="coffee"), ("tea", "coffee"), 1),
         (Highlight(key="milk", index=1), ("tea", "coffee", "juice"), 1),
         (Highlight(index=5), ("tea", "coffee"), 1),
+        (Highlight(index=-1), ("tea", "coffee"), 0),
         (Highlight(key="tea"), (), None),
     ],
-    ids=["first", "by key", "by index when the key is gone", "clamped to the last", "nothing to highlight"],
+    ids=[
+        "first",
+        "by key",
+        "by index when the key is gone",
+        "clamped to the last",
+        "clamped to the first",
+        "nothing to highlight",
+    ],
 )
 def test_highlight_index_in(highlight: Highlight, options: tuple[str, ...], expected: int | None) -> None:
     assert highlight.index_in(options) == expected
@@ -102,12 +110,12 @@ def test_moving_once_per_option_returns_to_the_start(options: list[int], start: 
     ],
     ids=["empty keeps every option", "exact first", "letters in order", "case folded", "gaps", "glob characters"],
 )
-def test_fuzzy_matches(text: str, expected: tuple[str, ...]) -> None:
-    assert fuzzy_matches(text, ("testpypi", "pypi", "pytorch-cpu")) == expected
+def test_subsequence_matches(text: str, expected: tuple[str, ...]) -> None:
+    assert subsequence_matches(text, ("testpypi", "pypi", "pytorch-cpu")) == expected
 
 
-def test_fuzzy_matches_a_glob_character_as_itself() -> None:
-    assert fuzzy_matches("*", ("a*b", "ab")) == ("a*b",)
+def test_subsequence_matches_a_glob_character_as_itself() -> None:
+    assert subsequence_matches("*", ("a*b", "ab")) == ("a*b",)
 
 
 @pytest.mark.parametrize(
@@ -128,8 +136,8 @@ def test_matchers_fold_case_rather_than_lowering_it() -> None:
     assert substring_matches("SS", ("straße", "strase")) == ("straße",)
 
 
-def test_fuzzy_matches_by_key_and_returns_the_options() -> None:
-    assert fuzzy_matches("srv", (WEB, CODE, ATLAS), key=lambda port: port.command) == (CODE, ATLAS)
+def test_subsequence_matches_by_key_and_returns_the_options() -> None:
+    assert subsequence_matches("srv", (WEB, CODE, ATLAS), key=lambda port: port.command) == (CODE, ATLAS)
 
 
 def test_substring_matches_by_key_and_returns_the_options() -> None:
