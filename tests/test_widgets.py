@@ -40,6 +40,7 @@ from counterweight.styles.utilities import align_self_start
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_color
 from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import border_none
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import default
 from counterweight.styles.utilities import fill
@@ -47,6 +48,7 @@ from counterweight.styles.utilities import height
 from counterweight.styles.utilities import max_height
 from counterweight.styles.utilities import overflow_y_scroll
 from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import pad_y
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_color
 from counterweight.styles.utilities import width
@@ -532,6 +534,8 @@ def picking(
     opens: Literal["auto", "below", "above"] = "auto",
     opens_on: Literal["input", "focus"] = "input",
     ends: Literal["wrap", "stop", "release"] = "stop",
+    style: Style = width(24),
+    styles: ComboboxStyles = ComboboxStyles(),
 ) -> Component:
     """
     The combobox's value and the keys that reached the root, `top` rows above a combobox,
@@ -564,7 +568,8 @@ def picking(
                     opens_on=opens_on,
                     ends=ends,
                     shown_rows=3,
-                    style=width(24),
+                    style=style,
+                    styles=styles,
                     auto_focus=True,
                 ),
                 text_input(other, set_other, style=width(24)),
@@ -657,6 +662,25 @@ async def test_a_combobox_that_opens_on_focus_is_open_while_focused_and_again_on
     returned = await screenshot(picking(opens_on="focus"), (ESCAPE, TAB, KeyPressed(key=Key.BackTab)), (30, 14))
 
     assert ("mypy" in shown(opened), "mypy" in shown(closed), "mypy" in shown(returned)) == (True, False, True)
+
+
+async def test_tab_on_a_list_that_focus_opened_moves_focus_without_choosing() -> None:
+    frame = await screenshot(picking(opens_on="focus"), (TAB, KeyPressed(key="!")), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=", "│ !                    │")
+
+
+async def test_a_list_under_a_field_without_a_border_opens_against_the_field() -> None:
+    frame = await screenshot(picking(style=width(24) | border_none), TYPED_PY, (30, 14))
+
+    assert lines(frame)[3:5] == ["╭──────────────────────╮", "│ mypy                 │"]
+
+
+async def test_the_list_boxs_padding_leaves_room_for_every_shown_row() -> None:
+    padded = ComboboxStyles(list_box=ComboboxStyles().list_box | pad_y(1))
+    frame = await screenshot(picking(styles=padded), (DOWN,), (30, 14))
+
+    assert lines(frame)[7:10] == ["│ mypy                 │", "│ pydantic             │", "│ pydantic-settings    │"]
 
 
 @pytest.mark.parametrize(

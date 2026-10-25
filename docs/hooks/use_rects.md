@@ -53,8 +53,8 @@ opens_above = below < shown_rows and above > below
 
 There's no anchor positioning to flip the popup in layout, as CSS's `position-try-fallbacks: flip-block` does,
 so the decision comes from the previous frame, and is a frame late when the field moves.
-The screen is the same for every element, and a component that reads it renders again after the terminal resizes,
-even when none of its own boxes move.
+The screen is the same for every element, and a component that reads it renders again when it changes,
+even when none of its own boxes move: after the terminal resizes, and in `Inline`, whenever the root's height does.
 
 ## When it renders again
 

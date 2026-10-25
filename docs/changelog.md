@@ -32,9 +32,6 @@
 - `TextInput` and `TextArea` have `latest_cursor`, where every edit since the render left the cursor,
   beside `cursor`, where the render placed it.
 
-- `Rects` has `screen`, the region the app lays out in, so a component can measure the room around its element
-  (see [Measuring the room around an element](hooks/use_rects.md#measuring-the-room-around-an-element)).
-
 - Added `Highlight`, which of a list of options is highlighted, held by the option's key and by its index,
   so it stays on its option as the options change, skips the options `is_disabled` marks,
   and wraps, stops or releases at the ends,
@@ -56,6 +53,11 @@
   now returns that state as its response, which mypy rejects and the app fails on,
   so write it as a function that returns `()` to claim the event or `None` to let it bubble.
   A parameter typed `Setter[T]` needs nothing; one that spells a setter out as `Callable[..., None]` needs `Setter[T]`.
+
+- **Breaking:** `Rects` has `screen`, the region the app lays out in,
+  so a component can measure the room around its element
+  (see [Measuring the room around an element](hooks/use_rects.md#measuring-the-room-around-an-element)),
+  which code that builds a `Rects` itself, such as a test that hands a handler a `Receiver`, now passes.
 
 - **Breaking:** `use_text_input`, `use_text_area`, `text_input` and `text_area` take `set_value` as an `Editor[str]`,
   which returns the value it settled at, as a `use_state` setter does,

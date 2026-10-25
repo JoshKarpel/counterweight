@@ -20,6 +20,7 @@ from typing import assert_never
 import waxy
 
 from counterweight._graphemes import graphemes
+from counterweight._layout import layout_style
 from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import ScrollIntoView
@@ -284,7 +285,8 @@ def combobox(
 
         opens_on: When the list opens, as React Aria's `menuTrigger` says:
             `"input"` on an edit, and `"focus"` whenever the field is focused,
-            until Escape or choosing closes it, opening again when the field is focused again.
+            until Escape or choosing closes it, opening again when the field is focused again,
+            with nothing highlighted until Down, Up or an edit, so Tab and Enter move on as they would without it.
             In either, Down or Up opens it.
 
         ends: What Down on the last option and Up on the first do, as for
@@ -298,7 +300,7 @@ def combobox(
 
         styles: How the field and the list are drawn.
     """
-    closed = Suggesting(is_open=opens_on == "focus")
+    closed = Suggesting(is_open=opens_on == "focus", highlight=None)
     suggesting, set_suggesting = use_state(closed)
     highlighted_row, _ = use_state(ElementHandle)
     rects = use_rects()
@@ -330,11 +332,11 @@ def combobox(
         if not isinstance(event, KeyPressed):
             return field.on_input(event, receiver)
         now = get_state(set_suggesting)
-        now_shown = subsequence_matches(get_state(set_value), options)
         highlighted_in_view = ScrollIntoView(highlighted_row, block="nearest")
         match event:
             case KeyPressed(key=Key.Down | Key.Up as key):
                 by = 1 if key == Key.Down else -1
+                now_shown = subsequence_matches(get_state(set_value), options)
                 if now.is_open and now.highlight is not None:
                     highlight = now.highlight.moved(now_shown, by, ends=ends)
                 else:
@@ -342,7 +344,7 @@ def combobox(
                 set_suggesting(Suggesting(is_open=True, highlight=highlight))
                 return highlighted_in_view
             case KeyPressed(key=Key.Enter | Key.ControlJ | Key.Tab) if now.is_open:
-                if not now_shown:
+                if not (now_shown := subsequence_matches(get_state(set_value), options)):
                     return ()
                 index = None if now.highlight is None else now.highlight.index_in(now_shown)
                 return None if index is None else choose(now_shown[index])
@@ -376,8 +378,17 @@ def combobox(
             )
             for index, option in enumerate(shown)
         ) or (Text(content="nothing matches", style=text_wrap_none | styles.option | styles.no_matches),)
-        list_border = cells(styles.list_box.layout.border_top) + cells(styles.list_box.layout.border_bottom)
-        list_rows = min(len(rows), shown_rows) + list_border
+        list_layout = layout_style(styles.list_box)
+        list_frame = sum(
+            cells(length)
+            for length in (
+                list_layout.border_top,
+                list_layout.border_bottom,
+                list_layout.padding_top,
+                list_layout.padding_bottom,
+            )
+        )
+        list_rows = min(len(rows), shown_rows) + list_frame
         room_below = rects.screen.bottom - rects.border.bottom
         room_above = rects.border.top - rects.screen.top
         match opens:
@@ -398,7 +409,7 @@ def combobox(
                 | clip_to_screen
                 | col
                 | styles.list_box
-                | max_height(shown_rows + list_border)
+                | max_height(shown_rows + list_frame)
                 | overflow_y_scroll,
                 on_input=scroll_on_wheel(1),
                 children=rows,
@@ -409,7 +420,7 @@ def combobox(
 
 
 def cells(length: waxy.Length | waxy.Percent) -> int:
-    """How many cells a border is wide, which a percentage of nothing isn't."""
+    """How many cells a border or padding is wide, which a percentage of nothing isn't."""
     return int(length.value) if isinstance(length, waxy.Length) else 0
 
 
@@ -418,7 +429,7 @@ def beside_box(box: Style, is_above: bool) -> Style:
     The insets that put an absolutely positioned child of an element styled `box` against its border box,
     as wide as it, and below it or above it, rather than inside its padding box, from which insets are measured.
     """
-    layout = box.layout
+    layout = layout_style(box)
     left, right = cells(layout.border_left), cells(layout.border_right)
     if is_above:
         return Style(
