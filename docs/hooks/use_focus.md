@@ -181,11 +181,12 @@ def notes() -> Div:
 
 The note doesn't exist until the next render, so `FocusOn` waits for it:
 a `FocusOn` whose handle names no component that can take focus yet
-focuses that component in the next render, before the frame is drawn,
+focuses that component in the next frame, before it's drawn,
+even if the component only mounts once the frame re-renders a component whose measurements moved,
 so the new note is focused in the first frame that shows it.
 It's how a browser's `<dialog>` focuses a field inside it as `showModal()` opens it.
 A control that moves focus after it, in the same handler or a later one before that render, wins,
-and a `FocusOn` whose component doesn't take focus in that render does nothing.
+and a `FocusOn` whose component doesn't take focus before that frame is drawn does nothing.
 
 ## Moving focus within part of the tree
 
@@ -244,6 +245,8 @@ the components that gained and lost focus re-render before the frame is drawn,
 so an `auto_focus` component is focused in the first frame that shows it.
 An `auto_focus` component that hides itself because it gained focus would move focus again,
 so it raises `UnsettledFocus` instead, and so does one that a waiting `FocusOn` focuses.
+Those components re-render on their own, before any whose measurements moved in the same frame,
+so whether it raises doesn't depend on what else the frame re-renders.
 One that a control focuses and that hides itself because it gained focus loses focus in the same render,
 like any focused component that hides, and is drawn unfocused.
 

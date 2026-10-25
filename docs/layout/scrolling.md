@@ -199,8 +199,8 @@ as a React component reads another element's `scrollTop` through a ref
 A handler's [`Receiver`][counterweight.events.Receiver] carries the same for a receiving element that's
 a scroll container, which is how `scroll_on_wheel` knows whether its container can move any further.
 
-Like [`use_rects`](../hooks/use_rects.md), `use_scroll` reports the previous frame's scroll,
-and a component that calls it renders again as soon as it changes.
+Like [`use_rects`](../hooks/use_rects.md), `use_scroll` reports the scroll as of the last layout,
+and a component that calls it renders again as soon as it changes, before the frame is painted.
 A list too long to render whole can render only the rows in view, with empty boxes above and below them
 so the content is as tall as every row would make it, as React's windowing libraries do:
 
@@ -329,8 +329,8 @@ The button is a sibling of the log in a box around it, not a child of the log,
 because a scroll container moves everything inside it by its offset, absolutely positioned elements included,
 so a button inside the log would scroll away with the lines.
 Being outside the log, it reads the log's scroll with `use_scroll(log)`.
-That's the previous frame's scroll, so the button appears a frame after the scroll that should show it,
-which nobody notices for a button that comes and goes.
+It renders again as soon as the log scrolls, before the frame is painted,
+so the button appears in the frame that scrolls the log back.
 A wheel event over the button goes to the box around the log, not the log, so the wheel doesn't scroll it there.
 [`use_scroll_area`](../headless/use_scroll_area.md) puts its handler on the box around the part that scrolls,
 so its `is_at_end` and `to_end` make the same button from inside the component,

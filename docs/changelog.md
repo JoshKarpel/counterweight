@@ -25,6 +25,18 @@
 
 ### Changed
 
+- [#449](https://github.com/JoshKarpel/counterweight/issues/449)
+  A component whose `use_rects` or `use_scroll` read goes stale renders again before the frame is painted,
+  rather than in the next frame, as a browser delivers `ResizeObserver` notifications between layout and paint,
+  so no frame shows a component drawn from rectangles or a scroll that have since moved
+  (see [When it renders again](hooks/use_rects.md#when-it-renders-again)).
+  A frame re-renders a few times at most before painting, then leaves the rest to the next frame,
+  logging a warning that isn't repeated until a frame settles,
+  and a `FocusOn` that waits focuses a component that mounts in any of those re-renders.
+  With `check_purity` on, the app raises the new `UnsettledMeasurements` instead,
+  and the purity check runs once a frame, on the tree it paints.
+  The first frame renders each component once, rather than once to lay the tree out and again to paint it.
+
 - [#393](https://github.com/JoshKarpel/counterweight/issues/393)
   `Quit` renders once more before the app stops, without starting effects,
   so the last frame shows what the last handlers set.

@@ -62,7 +62,7 @@ Both drags, as the mouse moves:
 
 <!-- cast: draggable -->
 
-`use_rects` reports the previous frame's rectangles, and empty ones on the first render,
+`use_rects` reports empty rectangles in a component's first render,
 which doesn't matter here, because handlers only run once the parent has been laid out.
 A parent that shrinks, such as when the terminal is resized,
 can leave a component outside it until it's dragged again.

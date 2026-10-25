@@ -140,7 +140,7 @@ async def test_state_a_screenshot_handler_sets_is_shown_by_the_render_that_follo
 
     await app(root(), headless=True, dimensions=(10, 1), autopilot=[KeyPressed(key="x"), Quit()])
 
-    assert contents == ["before", "before", "shot"]
+    assert contents == ["before", "shot"]
 
 
 async def test_controls_a_screenshot_handler_sends_are_handled_in_order_after_the_render_that_follows() -> None:

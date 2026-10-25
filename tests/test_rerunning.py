@@ -18,6 +18,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from counterweight import app
+from counterweight._app import stale_readers
 from counterweight._layout import NO_LAYOUTS
 from counterweight._layout import Layouts
 from counterweight._shadow import ShadowNode
@@ -50,7 +51,6 @@ from counterweight.hooks import use_effect
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_ref
 from counterweight.hooks import use_state
-from counterweight.hooks._hooks import rects_in
 from counterweight.hooks._impls import Hooks
 from counterweight.hooks._impls import NodeKey
 from counterweight.hooks._impls import UseClock
@@ -238,6 +238,15 @@ def measures(calls: Calls) -> Div:
     return Div()
 
 
+def stale_reader_names(shadow: ShadowTree, layouts: Layouts) -> list[str]:
+    """The names of the components in `shadow` whose `use_rects` reads `layouts` makes stale."""
+    return [
+        component.func.__name__
+        for key in stale_readers(shadow, layouts)
+        if (component := shadow.by_key[key].component) is not None
+    ]
+
+
 @pytest.mark.parametrize(
     ("layout", "expected"),
     [
@@ -245,18 +254,14 @@ def measures(calls: Calls) -> Div:
         pytest.param(None, [], id="unmoved"),
     ],
 )
-def test_component_calling_use_rects_reruns_only_when_its_layout_moved(
+def test_component_calling_use_rects_reads_stale_rects_only_when_its_layout_moved(
     layout: Rects | None, expected: list[str]
 ) -> None:
     calls = Calls()
-    root = measures(calls)
-    previous = update_shadow(root, None, NO_LAYOUTS).tree
-    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {previous.root.key: layout}, scrolls={})
-    calls.names.clear()
+    shadow = update_shadow(measures(calls), None, NO_LAYOUTS).tree
+    layouts = Layouts(in_paint_order=(), by_key={} if layout is None else {shadow.root.key: layout}, scrolls={})
 
-    update_shadow(root, previous, layouts)
-
-    assert calls.names == expected
+    assert stale_reader_names(shadow, layouts) == expected
 
 
 NAMED = ElementHandle()
@@ -276,24 +281,20 @@ def measures_named(calls: Calls) -> Div:
         pytest.param("own", [], id="own-moved"),
     ],
 )
-def test_component_calling_use_rects_with_a_handle_reruns_only_when_the_element_it_names_moved(
+def test_component_calling_use_rects_with_a_handle_reads_stale_rects_only_when_the_element_it_names_moved(
     moved: str, expected: list[str]
 ) -> None:
     calls = Calls()
-    root = Div(children=(measures_named(calls), Div(handle=NAMED)))
-    previous = update_shadow(root, None, NO_LAYOUTS).tree
-    reader, named = previous.root.children
+    shadow = update_shadow(Div(children=(measures_named(calls), Div(handle=NAMED))), None, NO_LAYOUTS).tree
+    reader, named = shadow.root.children
     layouts = Layouts(
         in_paint_order=(),
         by_key={(named if moved == "named" else reader).key: MOVED},
         scrolls={},
         handles={NAMED: named.key},
     )
-    calls.names.clear()
 
-    update_shadow(root, previous, layouts)
-
-    assert calls.names == expected
+    assert stale_reader_names(shadow, layouts) == expected
 
 
 @component
@@ -306,25 +307,22 @@ def measures_until_set(calls: Calls) -> Div:
     return Div()
 
 
-def test_component_that_stops_calling_use_rects_does_not_rerun_when_its_layout_moves() -> None:
+def test_component_that_stops_calling_use_rects_reads_no_stale_rects_when_its_layout_moves() -> None:
     calls = Calls()
     root = measures_until_set(calls)
     with state_sets() as queue:
         first = update_shadow(root, None, NO_LAYOUTS).tree
         second = update_shadow(root, first, NO_LAYOUTS, set_state(calls, queue, "measures_until_set")).tree
-    calls.names.clear()
 
-    update_shadow(root, second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}, scrolls={}))
-
-    assert calls.names == []
+    assert list(stale_readers(second, Layouts(in_paint_order=(), by_key={second.root.key: MOVED}, scrolls={}))) == []
 
 
 @pytest.mark.parametrize("memo", [False, True], ids=["plain", "memo"])
 @pytest.mark.parametrize(
     ("autopilot", "expected_renders"),
     [
-        pytest.param((TerminalResized(dimensions=(30, 12)),), 3, id="resize"),
-        pytest.param((ToggleBorderHealing(),), 2, id="no-state-change"),
+        pytest.param((TerminalResized(dimensions=(30, 12)),), 2, id="resize"),
+        pytest.param((ToggleBorderHealing(),), 1, id="no-state-change"),
     ],
 )
 async def test_whole_tree_rerenders_only_on_resize(
@@ -343,7 +341,7 @@ async def test_whole_tree_rerenders_only_on_resize(
 
     await app(root(), headless=True, dimensions=(20, 10), autopilot=(*autopilot, Quit()))
 
-    # The warmup render and the first painted frame each render every component.
+    # The first frame renders every component, once.
     assert len(renders) == expected_renders
 
 
@@ -378,20 +376,11 @@ async def test_effects_start_on_the_first_painted_frame(memo: bool) -> None:
 
 @st.composite
 def dirty_trees(draw: st.DrawFn) -> tuple[ShadowNode, frozenset[NodeKey]]:
-    """
-    A tree of nodes, some with state set, some whose `use_rects` result has moved,
-    and some whose `use_clock` is due at `NOW`, and the set keys.
-    """
+    """A tree of nodes, some with state set and some whose `use_clock` is due at `NOW`, and the set keys."""
     shape = draw(st.recursive(st.just(()), lambda children: st.lists(children, max_size=3).map(tuple), max_leaves=12))
 
     def build(shape: tuple[object, ...]) -> ShadowNode:
         hooks = Hooks()
-        read: list[dict[ElementHandle | None, Rects] | None] = [
-            None,
-            {None: rects_in(NO_LAYOUTS, hooks.key)},
-            {None: MOVED},
-        ]
-        hooks.rects = draw(st.sampled_from(read))
         hooks.clocks = [copy(clock) for clock in draw(st.sampled_from([(), (DUE,), (NOT_DUE,), (NOT_DUE, DUE)]))]
         return ShadowNode(
             component=None,
@@ -418,10 +407,10 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
     tree, dirty = tree_and_dirty
 
     brute_force = frozenset(
-        node.key for node in tree.walk() if any(is_dirty(below, dirty, NO_LAYOUTS, NOW) for below in node.walk())
+        node.key for node in tree.walk() if any(is_dirty(below, dirty, NOW) for below in node.walk())
     )
 
-    _, paths = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS, NOW)
+    _, paths = dirty_paths(ShadowTree(root=tree), dirty, NOW)
 
     assert paths == brute_force
 
@@ -430,9 +419,9 @@ def test_dirty_paths_are_the_nodes_with_a_dirty_node_in_their_subtree(
 def test_dirty_paths_reports_each_dirty_node(tree_and_dirty: tuple[ShadowNode, frozenset[NodeKey]]) -> None:
     tree, dirty = tree_and_dirty
 
-    dirty_nodes, _ = dirty_paths(ShadowTree(root=tree), dirty, NO_LAYOUTS, NOW)
+    dirty_nodes, _ = dirty_paths(ShadowTree(root=tree), dirty, NOW)
 
-    assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NO_LAYOUTS, NOW))
+    assert dirty_nodes == frozenset(node.key for node in tree.walk() if is_dirty(node, dirty, NOW))
 
 
 @given(tree_and_dirty=dirty_trees())
