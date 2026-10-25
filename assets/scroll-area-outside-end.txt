@@ -1,0 +1,7 @@
+╭──────────────────────────────────╮
+│  8 latency p99 within budget     │
+│  9 traffic shifted to 100%       │
+│ 10 old replicas drained          │
+│ 11 deploy finished               │
+╰──────────────────────────────────╯
+ lines 8-11 of 11  [ Top ] [ Next ] 

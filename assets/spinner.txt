@@ -1,0 +1,3 @@
+✓ Read pyproject.toml                   
+✓ Ran the tests                         
+⠹ Fixing the failing test (4s)          

@@ -1,0 +1,4 @@
+┃ FAILED test_paint.py::test_a_border_heals_where_it_meets_another      
+┃ assert '┬' == '┐', the cell at (4, 0)                                 
+██████████████████░░░░░░░░░░░░ 5/8                                      
+4 passed, 1 failed · running test_input.py::test_ctrl_c_quits           

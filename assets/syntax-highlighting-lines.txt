@@ -1,0 +1,7 @@
+                                              
+  1 def mean(values: list[float]) -> float:   
+  2     if not values:                        
+  3         return 0.0                        
+  4                                           
+  5     return sum(values) / len(values)      
+                                              

@@ -1,0 +1,14 @@
+╭─ Add a dependency ───────────────────╮
+│ Package pydantic-settings            │
+│                                      │
+│   Group                              │
+│                                      │
+│  Python                              │
+╰──────────────────────────────────────╯
+                                        
+ Type to see suggestions. Down and      
+ Up move through them, Enter or Tab     
+ chooses one, and Escape closes them.   
+                                        
+                                        
+   just                                 

@@ -1,0 +1,34 @@
+╭─ Examples ───────────────────────╮╭─ To-do list ───────────────────────────────────────────────────────────╮
+│ Apps                             ││ A to-do list, the app the quick start builds.                          │
+│   chat                           │╰────────────────────────────────────────────────────────────────────────╯
+│ ▸ todo                           │╭─ todo ─────────────────────────────────────────────────────────────────╮
+│ Layout                           ││╭──────────────────────────────────────────╮                            │
+│   box-model                      │││ To do (2 left)                           │                            │
+│   layout-splitting:equal-flex    │││                                          │                            │
+│   layout-splitting:equal-grid    │││ ✓ Install Counterweight                  │                            │
+│   layout-splitting:sidebar-flex  │││ ○ Write a component                      │                            │
+│   layout-splitting:sidebar-grid  │││ ○ Try the gallery                        │                            │
+│   layout-splitting:ratio-flex    │││                                          │                            │
+│   layout-splitting:ratio-grid    │││ ╭──────────────────────────────────────╮ │                            │
+│   layout-splitting:ratio-exact   │││ │ What needs doing?                    │ │                            │
+│   layout-splitting:nested-flex   │││ ╰──────────────────────────────────────╯ │                            │
+│   layout-splitting:nested-grid   ││╰──────────────────────────────────────────╯                            │
+│   layout-splitting:overflow-grid ││  enter: add  ·  tab: move  ·  space: done                              │
+│   layout-splitting:percent-gap   ││                                                                        │
+│                                  ││                                                                        │
+│                                  ││                                                                        │
+│                                  ││                                                                        │
+│                                  ││                                                                        │
+│                                  │╰────────────────────────────────────────────────────────────────────────╯
+│                                  │╭─ Source ───────────────────────────────────────────────────────────────╮
+│                                  ││ """                                                                    │
+│                                  ││ To-do list                                                             │
+│                                  ││                                                                        │
+│                                  ││ A to-do list, the app the quick start builds.                          │
+│                                  ││                                                                        │
+│                                  ││ Type a task and press Enter to add it, Tab to move between the tasks, a│
+│                                  ││ """                                                                    │
+│                                  ││                                                                        │
+│                                  ││ import asyncio                                                         │
+╰──────────────────────────────────╯╰────────────────────────────────────────────────────────────────────────╯
+enter: run it  ·  ctrl+]: back to the list  ·  s: source  ·  c: copy  ·  ctrl+c: quit                         

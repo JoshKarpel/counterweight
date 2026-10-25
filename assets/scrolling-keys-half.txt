@@ -1,0 +1,8 @@
+╭────────────────────────────╮
+│ 8 traffic shifted to 100%  │
+│ 9 old replicas drained     │
+│10 deploy finished          │
+│11 deploy started           │
+│12 pulled image web:4.2.0   │
+│13 migrations applied       │
+╰────────────────────────────╯
