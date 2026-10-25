@@ -188,6 +188,14 @@ class StaleMemo(Exception):
     """
 
 
+class UnsettledMeasurements(Exception):
+    """
+    Raised when `check_purity` is on and the components whose `use_rects` or `use_scroll` reads went stale
+    still read stale ones after the frame re-rendered them as often as it does before painting,
+    usually because a component's size depends on what it measures, so it never settles.
+    """
+
+
 @dataclass(slots=True)
 class Hooks:
     data: list[AnyHook] = field(default_factory=list)

@@ -281,7 +281,8 @@ def combobox(
         opens: Where the list opens: `"below"` or `"above"` the field,
             or `"auto"`, below while it fits between the field and the bottom of the screen
             ([`Rects.screen`][counterweight.geometry.Rects.screen]), and otherwise on the side with more room,
-            which it decides from the previous frame, as the web's `position-try-fallbacks: flip-block` does in layout.
+            which it decides from the last layout before the frame is painted,
+            as the web's `position-try-fallbacks: flip-block` does in layout.
 
         opens_on: When the list opens, as React Aria's `menuTrigger` says:
             `"input"` on an edit, and `"focus"` whenever the field is focused,

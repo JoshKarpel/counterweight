@@ -301,12 +301,12 @@ def use_rects(handle: ElementHandle | None = None) -> Rects:
     Returns:
         A recording describing the rectangular areas of the
             `content`, `padding`, `border`, and `margin` of
-            the element *on the previous render cycle*.
-            In the initial render, and for a `handle` that named no visible element in the previous render cycle,
+            the element *as of the last layout*.
+            In a component's first render, and for a `handle` that named no visible element in the last layout,
             the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
-            A component that calls `use_rects` also renders on the next render cycle after any of the rectangles
-            it read move.
+            A component that calls `use_rects` renders again as soon as any of the rectangles it read move,
+            before the frame that moved them is painted.
     """
     hooks = current_hook_state.get()
     rects = rects_in(current_layouts.get(), hooks.key, handle)
@@ -318,11 +318,11 @@ def use_rects(handle: ElementHandle | None = None) -> Rects:
 
 def rects_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None = None) -> Rects:
     """
-    The rectangles `use_rects(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    The rectangles `use_rects(handle)` reports to the node with key `reader`, given the last `layouts`:
     those of the element `handle` names, or of `reader`'s own element if it's `None`.
     """
     key = reader if handle is None else layouts.handles.get(handle)
-    # A node absent from the previous frame's layouts was hidden or not yet mounted.
+    # A node absent from the last layouts was hidden or not yet mounted.
     return INITIAL_RECTS if key is None else layouts.by_key.get(key, INITIAL_RECTS)
 
 
@@ -335,11 +335,11 @@ def use_scroll(handle: ElementHandle | None = None) -> Scroll:
 
     Returns:
         How far the element is scrolled, and how far it can be,
-            if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
+            if it's a [scroll container](../layout/scrolling.md), *as of the last layout*, as `use_rects` does.
             A component that calls `use_scroll` renders again as soon as that scroll changes,
-            whether a control scrolled it or its content changed size.
-            It's all zeros on the initial render, for an element that isn't a scroll container,
-            and for a `handle` that named no visible element in the previous render cycle.
+            whether a control scrolled it or its content changed size, before the frame that scrolled it is painted.
+            It's all zeros in a component's first render, for an element that isn't a scroll container,
+            and for a `handle` that named no visible element in the last layout.
     """
     hooks = current_hook_state.get()
     scroll = scroll_in(current_layouts.get(), hooks.key, handle)
@@ -354,7 +354,7 @@ NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0
 
 def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -> Scroll:
     """
-    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the last `layouts`:
     the scroll of the element `handle` names, or of `reader`'s own element if it's `None`.
     """
     key = reader if handle is None else layouts.handles.get(handle)

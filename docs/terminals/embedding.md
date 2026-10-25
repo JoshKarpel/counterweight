@@ -109,8 +109,8 @@ which is the backpressure a terminal gives.
 
 A component that sizes the terminal from its own box, with `use_rects().content`, resizes the program's terminal along with it,
 which sends the program `SIGWINCH`.
-`use_rects` reports the box as of the last frame, so for one frame after a resize the old screen shows,
-cropped or padded, until the program redraws, as in tmux.
+The program redraws for its new size once it handles the signal, so until it does, the old screen shows,
+cropped or padded, as in tmux.
 
 A program's colors reach the app's terminal as the program chose them (see [Colors](emulators.md#colors)).
 

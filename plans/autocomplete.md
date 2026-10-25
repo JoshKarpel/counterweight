@@ -149,7 +149,7 @@ Where counterweight differs:
   The highlighted row gets an `ElementHandle`, and `ScrollIntoView` brings it into view.
 - There's no anchor positioning, so a popup can't flip itself above its field in layout,
   as CSS's `position-try-fallbacks: flip-block` does.
-  A component flips it from the previous frame's layout instead, with `use_rects`,
+  A component flips it from the last layout instead, with `use_rects`, which settles before the frame is painted,
   whose `Rects` carry the screen beside the element's own boxes,
   as an `IntersectionObserverEntry` carries `rootBounds`, the viewport, beside `boundingClientRect`;
   the cookbook does this today by measuring its root and passing the height down.
@@ -205,7 +205,7 @@ and ends other than wrapping (`inline_picker.py` and the widget stop).
 | Which keys do what | The app's handler, for every caller but the widget | No key map to share; the command-line family's scripts each spell out the same keys |
 | Popup open and dismissed | The widget's own state, and a recipe for apps that build their own | Each popup picker writes the few lines of Escape and reopening |
 | When the widget's list opens | `opens_on`, after React Aria's `menuTrigger`: `"input"` opens it on an edit, `"focus"` while the field is focused; in either, Down or Up opens it, with every option for an empty text, as Chrome's `<datalist>` does | A `"manual"` waits for the widget to have a button to open it with |
-| Flipping the widget's list | `Rects.screen`, and `opens="auto"` by default, which opens below while the list fits there and otherwise on the side with more room | It decides from the previous frame's layout, so it's a frame late when the field moves, where CSS flips in layout with no frame lost |
+| Flipping the widget's list | `Rects.screen`, and `opens="auto"` by default, which opens below while the list fits there and otherwise on the side with more room | It decides from the last layout and re-renders before the frame is painted, so it costs another layout pass where CSS flips in one |
 | Where a component reads the screen's size | `screen` on the `Rects` `use_rects` returns, beside `clip` and `visible`, rather than a hook of its own | A component that wants only the screen, as one that picks a layout by the terminal's width, also renders again whenever its own element moves |
 | Wrapping in the widget | `ends`, defaulting to `"stop"`, as the pattern and fzf do | The cookbook's autocomplete keeps wrapping, `moved`'s default, so it and the widget differ at the ends |
 | The recurring handler blocks | In the recipes, the highlight resets in the text's setter, and a component that owns its text keeps it in one state with the highlight; a library part waits for the ports | Each recipe defines its own small state class |

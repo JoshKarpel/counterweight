@@ -46,7 +46,7 @@ async def test_use_state() -> None:
         ),
     )
 
-    assert recorder == [0, 0, 1]
+    assert recorder == [0, 1]
 
 
 def state(value: object) -> tuple[UseState, Queue[AnyEvent]]:

@@ -1,5 +1,6 @@
 import gc
 import weakref
+from collections.abc import Callable
 from collections.abc import Iterator
 
 import pytest
@@ -33,6 +34,23 @@ def allocations_to_trigger_collections(collections: int) -> list[list[None]]:
     return [[] for _ in range(gc.get_threshold()[0] * collections)]
 
 
+def rerenders_on_input() -> Callable[[InputEvent, Receiver], None]:
+    """
+    A handler that re-renders the calling component, so a component that's otherwise rendered only once,
+    by the app's first render, which runs before its render loop starts and so outside any frame, runs in a frame.
+    """
+    count, set_count = use_state(0)
+
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        set_count(count + 1)
+
+    return on_input
+
+
+# The key press that makes a component calling `rerenders_on_input` run in a frame.
+RERENDER = KeyPressed(key="r")
+
+
 @pytest.mark.parametrize(("collect_garbage_between_frames", "expected"), [(True, False), (False, True)])
 async def test_the_collector_is_disabled_while_a_component_runs_only_with_the_option_on(
     collect_garbage_between_frames: bool, expected: bool
@@ -42,13 +60,17 @@ async def test_the_collector_is_disabled_while_a_component_runs_only_with_the_op
     @component
     def root() -> Div:
         seen.append(gc.isenabled())
-        return Div()
+        return Div(on_input=rerenders_on_input())
 
-    await app(root(), headless=True, autopilot=[Quit()], collect_garbage_between_frames=collect_garbage_between_frames)
+    await app(
+        root(),
+        headless=True,
+        autopilot=[RERENDER, Quit()],
+        collect_garbage_between_frames=collect_garbage_between_frames,
+    )
 
-    # The first run is the warmup render, which lays the tree out before the first frame and paints nothing.
-    warmup, *frames = seen
-    assert (warmup, frames) == (True, [expected])
+    first, *frames = seen
+    assert (first, frames) == (True, [expected])
 
 
 async def test_the_collector_is_paused_while_a_component_runs_by_default() -> None:
@@ -57,9 +79,9 @@ async def test_the_collector_is_paused_while_a_component_runs_by_default() -> No
     @component
     def root() -> Div:
         seen.append(gc.isenabled())
-        return Div()
+        return Div(on_input=rerenders_on_input())
 
-    await app(root(), headless=True, autopilot=[Quit()])
+    await app(root(), headless=True, autopilot=[RERENDER, Quit()])
 
     assert seen[1:] == [False]
 
@@ -78,19 +100,18 @@ async def test_no_collection_starts_during_a_frame_that_allocates_enough_for_sev
     def root() -> Div:
         nonlocal runs, is_rendering
         runs += 1
-        # The first run is the warmup render, before the first frame.
         is_rendering = runs > 1
         allocations_to_trigger_collections(5)
         is_rendering = False
-        return Div()
+        return Div(on_input=rerenders_on_input())
 
     gc.callbacks.append(record)
     try:
-        await app(root(), headless=True, autopilot=[Quit()], collect_garbage_between_frames=True)
+        await app(root(), headless=True, autopilot=[RERENDER, Quit()], collect_garbage_between_frames=True)
     finally:
         gc.callbacks.remove(record)
 
-    # The warmup render's allocations start collections, since it's not a frame, so the callback was reached.
+    # The first render's allocations start collections, since it's not in a frame, so the callback was reached.
     assert runs == 2
     assert started_while_rendering
     assert not any(started_while_rendering)
@@ -114,7 +135,7 @@ async def test_a_cycle_from_a_frame_that_keeps_what_it_allocates_is_collected_be
             del cycle
             kept.append(allocations_to_trigger_collections(2))
         else:
-            # One cycle from the warmup render, and one from the first frame.
+            # The cycle from the first render.
             alive_on_next_frame.append(any(cycle() is not None for cycle in cycles))
 
         def on_input(event: InputEvent, _: Receiver) -> None:
@@ -178,13 +199,13 @@ async def test_the_collector_is_enabled_after_a_component_raises_mid_frame() -> 
     def root() -> Div:
         nonlocal runs
         runs += 1
-        # The first run is the warmup render, before the first frame.
+        on_input = rerenders_on_input()
         if runs == 2:
             raise Boom
-        return Div()
+        return Div(on_input=on_input)
 
     with pytest.raises(Boom):
-        await app(root(), headless=True, autopilot=[Quit()], collect_garbage_between_frames=True)
+        await app(root(), headless=True, autopilot=[RERENDER, Quit()], collect_garbage_between_frames=True)
 
     assert gc.isenabled()
 
@@ -231,5 +252,5 @@ async def test_a_collector_disabled_by_an_effect_after_a_paused_frame_stays_disa
         collect_garbage_between_frames=True,
     )
 
-    # The warmup render, the first frame, which the app paused, and the frame after the effect disabled it.
-    assert (seen, gc.isenabled()) == ([True, False, False], False)
+    # The first render, before any frame, and the frame after the effect disabled it.
+    assert (seen, gc.isenabled()) == ([True, False], False)

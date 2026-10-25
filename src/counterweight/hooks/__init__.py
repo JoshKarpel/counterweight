@@ -21,6 +21,7 @@ from counterweight.hooks._impls import ChangedFocusHandle
 from counterweight.hooks._impls import DuplicateUseFocus
 from counterweight.hooks._impls import InconsistentHookExecution
 from counterweight.hooks._impls import StaleMemo
+from counterweight.hooks._impls import UnsettledMeasurements
 from counterweight.hooks._types import Deps
 from counterweight.hooks._types import Editor
 from counterweight.hooks._types import Getter
@@ -45,6 +46,7 @@ __all__ = [
     "Setup",
     "StaleMemo",
     "Tick",
+    "UnsettledMeasurements",
     "get_state",
     "toggle",
     "use_clock",
