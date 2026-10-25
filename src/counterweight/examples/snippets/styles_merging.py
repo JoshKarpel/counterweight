@@ -53,13 +53,16 @@ HOVERED = text_bg("slate", 700) | padding_color("slate", 700)
 
 
 @component
-def button(label: str, is_selected: bool, select: Callable[[str], None]) -> Text:
+def button(label: str, is_selected: bool, select: Callable[[str], object]) -> Text:
     hovered = use_hovered()
+
+    def choose() -> None:
+        select(label)
 
     return Text(
         content=label,
         style=merge(BUTTON, SELECTED if is_selected else None, HOVERED if hovered.border else None),
-        on_input=on_click(lambda: select(label)),
+        on_input=on_click(choose),
     )
 
 

@@ -133,6 +133,7 @@ nav:
     - headless/use_text_input.md
     - headless/use_text_area.md
     - headless/use_scroll_area.md
+    - headless/options.md
   - Input Handling:
     - input-handling/index.md
     - input-handling/events.md

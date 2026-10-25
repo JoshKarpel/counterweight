@@ -40,7 +40,11 @@ def rerenders_on_input() -> Callable[[InputEvent, Receiver], None]:
     by the app's first render, which runs before its render loop starts and so outside any frame, runs in a frame.
     """
     count, set_count = use_state(0)
-    return lambda event, _: set_count(count + 1)
+
+    def on_input(event: InputEvent, _: Receiver) -> None:
+        set_count(count + 1)
+
+    return on_input
 
 
 # The key press that makes a component calling `rerenders_on_input` run in a frame.

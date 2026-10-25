@@ -175,7 +175,7 @@ and the handle names the element that has it in that render, not the one before.
 A list that moves a highlight with Down puts one element handle on whichever item is highlighted,
 and returns `ScrollIntoView(handle, block="nearest")` beside the state change that moves it:
 the handle has moved to the new item by the time the control applies
-(see the [autocomplete recipe](../cookbook/autocomplete.md#a-long-list)).
+(see [A long list](../headless/options.md#a-long-list) in Pickers).
 [`use_text_area`](../headless/use_text_area.md#keeping-the-cursor-in-view) does the same for its cursor:
 it returns a `cursor_row` element handle for the element the cursor's row is drawn in,
 and its handler returns `ScrollIntoView` for it with `block="nearest"` beside each edit,

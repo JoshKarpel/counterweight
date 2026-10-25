@@ -176,7 +176,7 @@ dialog_box = position_absolute | inset(0) | margin_auto | fit_content_width | fi
 
 
 @component
-def confirmation(close: Callable[[], None], return_to: FocusHandle) -> Div:
+def confirmation(close: Callable[[], object], return_to: FocusHandle) -> Div:
     def close_and_return() -> InputResponse:
         close()
         return FocusOn(return_to)

@@ -10,7 +10,6 @@ from dataclasses import replace
 from datetime import timedelta
 from typing import TYPE_CHECKING
 from typing import assert_never
-from weakref import ref
 
 from counterweight._context_vars import current_event_queue
 from counterweight._context_vars import current_hook_idx
@@ -48,29 +47,23 @@ class MountStatus:
     is_mounted: bool = True
 
 
-@dataclass(slots=True, weakref_slot=True)
+@dataclass(slots=True, eq=False, weakref_slot=True)
 class UseState:
+    """
+    A `use_state` hook's value, and its setter: `use_state` hands out the hook itself as the setter,
+    so every render hands out the same one, which keeps it safe to put in an effect's deps,
+    and a setter that outlives the node still has the state to return, without a cycle between the two.
+    """
+
     value: object
     mount_status: MountStatus
     node_key: NodeKey
     # The queue of the app the state was made in, so its setter reaches that app wherever it's called from.
     queue: Queue[AnyEvent]
-    setter: Setter[object] = field(init=False, repr=False, compare=False)
 
-    def __post_init__(self) -> None:
-        # Built once so every render hands out the same setter, which keeps it safe to put in an effect's deps.
-        # It holds the state weakly: a bound method would form a cycle, so unmounted state would wait for the cyclic GC.
-        state = ref(self)
-
-        def setter(value: object) -> None:
-            if (live_state := state()) is not None:
-                live_state.set(value)
-
-        self.setter = setter
-
-    def set(self, value: object) -> None:
+    def __call__(self, value: object) -> object:
         if not self.mount_status.is_mounted:
-            return
+            return self.value
 
         if callable(value):
             value = value(self.value)
@@ -78,6 +71,8 @@ class UseState:
         if self.value != value:  # avoid unnecessary updates
             self.value = value
             self.queue.put_nowait(StateSet(key=self.node_key))
+
+        return self.value
 
 
 @dataclass(slots=True)
@@ -264,7 +259,7 @@ class Hooks:
 
         current_hook_idx.set(current_hook_idx.get() + 1)
 
-        return hook.value, hook.setter  # type: ignore[return-value]
+        return hook.value, hook  # type: ignore[return-value]
 
     def use_ref[T](self, initial_value: Getter[T] | T) -> Ref[T]:
         try:

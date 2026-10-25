@@ -10,7 +10,8 @@ A frame's time is the interval between two consecutive presses of the workload's
 on the root element. The autopilot sends one event or control per loop iteration, and every key that no focused
 component stops bubbles to the root element's handler, whether or not its component re-ran, so the interval covers
 one whole iteration (the shadow tree, layout, paint, output, effects and events) and one more for each interjection
-the autopilot sent between the two presses. `frames` key presses time `frames - 1` frames.
+the autopilot sent between the two presses, and the handlers of the burst a press queues, which the same iteration runs.
+`frames` key presses time `frames - 1` frames.
 Where that time goes is Tachyon's job (see `benchmarks.stacks`).
 """
 
@@ -32,6 +33,7 @@ import counterweight
 from counterweight import FullScreen
 from counterweight import Inline
 from counterweight import app
+from counterweight._context_vars import current_event_queue
 from counterweight._output import Frame
 from counterweight.components import Component
 from counterweight.components import component
@@ -107,14 +109,22 @@ class Workload[M]:
     viewport: FullScreen | Inline = FullScreen()
     printed: Callable[[M], tuple[AnyElement, ...]] = lambda model: ()
     """What each frame prints, from the model it steps to, as the app's handlers would print finished output."""
+    burst: Callable[[M], tuple[AnyEvent, ...]] = lambda model: ()
+    """
+    The events each frame's key press queues onto the app's event queue, from the model it steps to,
+    which the loop handles in the same batch as that key press, before it renders,
+    as it does keys typed faster than the app renders.
+    """
 
     @component
     def root(self, key_press_times: list[int]) -> Div:
         """
         A root component that renders the model, with a key handler on the view's root that steps it
-        on each press of `step_key`, prints what the next model prints, and appends the time to `key_press_times`.
+        on each press of `step_key`, queues the next model's burst, prints what it prints,
+        and appends the time to `key_press_times`.
         """
         model, set_model = use_state(self.initial)
+        queue = current_event_queue.get()
 
         def on_input(event: InputEvent, _: Receiver) -> tuple[Print, ...]:
             if not (isinstance(event, KeyPressed) and event.key == self.step_key):
@@ -122,6 +132,8 @@ class Workload[M]:
             key_press_times.append(perf_counter_ns())
             stepped = self.step(model)
             set_model(stepped)
+            for queued in self.burst(stepped):
+                queue.put_nowait(queued)
             return tuple(Print(content) for content in self.printed(stepped))
 
         return replace(self.view(model), on_input=on_input)

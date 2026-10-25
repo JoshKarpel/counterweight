@@ -338,6 +338,7 @@ def rects(border_box: Region, clip: Region) -> Rects:
         margin=border_box,
         clip=clip,
         visible=border_box.intersection(clip),
+        screen=SCREEN,
     )
 
 

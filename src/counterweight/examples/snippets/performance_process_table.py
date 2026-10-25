@@ -35,10 +35,13 @@ class Process:
 
 @component(memo=True)
 def process_row(process: Process, is_selected: bool, select: Setter[int]) -> Text:
+    def choose() -> None:
+        select(process.pid)
+
     return Text(
         content=f"{process.pid:>6}  {process.name:<10} {process.cpu:>5.1f}%",
         style=text_bg("slate", 700) if is_selected else text_color("slate", 300),
-        on_input=on_click(lambda: select(process.pid)),
+        on_input=on_click(choose),
     )
 
 

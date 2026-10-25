@@ -53,6 +53,7 @@ RECEIVER = Receiver(
         margin=Region(left=1, top=0, right=23, bottom=6),
         clip=Region(left=0, top=0, right=40, bottom=10),
         visible=CONTENT,
+        screen=Region(left=0, top=0, right=40, bottom=10),
     ),
     is_target=True,
     focus_handle=None,

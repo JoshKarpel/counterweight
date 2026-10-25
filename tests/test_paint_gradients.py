@@ -267,6 +267,7 @@ def element_rects(border_box: Region, clip: Region | None = SCREEN) -> Rects:
         margin=border_box,
         clip=clip,
         visible=None if clip is None else border_box.intersection(clip),
+        screen=SCREEN,
     )
 
 
@@ -394,6 +395,7 @@ def test_a_gradient_element_whose_text_is_clipped_still_draws_its_box() -> None:
         margin=BOX,
         clip=clip,
         visible=BOX.intersection(clip),
+        screen=SCREEN,
     )
     painted = paint(Text(content="ab", style=Style(content_color=DOWN)), {}, rects, lines, lines_are_solid=False)
     assert [row[0] for row in backgrounds(painted)] == [0, 85, 170, 255]
@@ -513,6 +515,7 @@ def boxes(margin: Region, border: Region, clip: Region = SCREEN) -> Rects:
         margin=margin,
         clip=clip,
         visible=border.intersection(clip),
+        screen=SCREEN,
     )
 
 

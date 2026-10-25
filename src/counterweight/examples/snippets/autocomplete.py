@@ -7,11 +7,9 @@ A text input whose suggestions open in a menu over the content below it.
 from __future__ import annotations
 
 import asyncio
-import glob
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import replace
-from fnmatch import fnmatchcase
 from functools import partial
 
 import waxy
@@ -34,7 +32,10 @@ from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import on_click
 from counterweight.handlers import scroll_on_wheel
 from counterweight.handlers import tab_focus
+from counterweight.headless import Highlight
+from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
+from counterweight.hooks import get_state
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
@@ -71,65 +72,61 @@ below = Style(layout=waxy.Style(inset_top=waxy.Percent(1.0)))
 above = Style(layout=waxy.Style(inset_bottom=waxy.Percent(1.0)))
 
 
-def matches(text: str, candidates: tuple[str, ...]) -> list[str]:
-    pattern = f"*{'*'.join(glob.escape(c) for c in text.lower())}*"
-    found = [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
-    # The one the text names exactly first, so typing a whole name and pressing Enter chooses it.
-    return sorted(found, key=lambda candidate: candidate.lower() != text.lower())
-
-
 @dataclass(frozen=True, slots=True)
 class Completion:
     text: str
-    highlighted: int
+    highlight: Highlight
     is_dismissed: bool
 
     def edited(self, text: str) -> Completion:
-        return self if text == self.text else Completion(text=text, highlighted=0, is_dismissed=False)
+        return self if text == self.text else Completion(text=text, highlight=Highlight(), is_dismissed=False)
 
 
 @component
-def autocomplete(
-    candidates: tuple[str, ...],
-    screen_height: int,
-    auto_focus: bool = False,
-    list_clip: Style = clip_to_screen,
-) -> Div:
+def autocomplete(candidates: tuple[str, ...], auto_focus: bool = False, list_clip: Style = clip_to_screen) -> Div:
     rects = use_rects()
-    completion, set_completion = use_state(Completion(text="", highlighted=0, is_dismissed=False))
+    completion, set_completion = use_state(Completion(text="", highlight=Highlight(), is_dismissed=False))
     highlighted_match, _ = use_state(ElementHandle)
 
-    def edit(edit_text: Callable[[str], str]) -> None:
-        set_completion(lambda c: c.edited(edit_text(c.text)))
+    def edit(edit_text: Callable[[str], str]) -> str:
+        return set_completion(lambda c: c.edited(edit_text(c.text))).text
 
     field = use_text_input(completion.text, edit, auto_focus=auto_focus)
 
-    text, highlighted = completion.text, completion.highlighted
-    shown = matches(text, candidates) if text else []
+    def matching(text: str) -> tuple[str, ...]:
+        return subsequence_matches(text, candidates) if text else ()
+
+    shown = matching(completion.text)
+    highlighted = completion.highlight.index_in(shown)
     is_open = field.focus.is_focused and not completion.is_dismissed and bool(shown)
 
     def choose(match: str) -> None:
-        set_completion(Completion(text=match, highlighted=0, is_dismissed=True))
+        set_completion(Completion(text=match, highlight=Highlight(), is_dismissed=True))
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         highlighted_in_view = ScrollIntoView(highlighted_match, block="nearest")
+        # Keys typed ahead of a render decide from the text they follow, not the one last rendered.
+        now = get_state(set_completion)
+        now_shown = matching(now.text)
+        is_showing = not now.is_dismissed and bool(now_shown)
         match event:
-            case KeyPressed(key=Key.Down) if is_open:
-                set_completion(lambda c: replace(c, highlighted=(c.highlighted + 1) % len(shown)))
-            case KeyPressed(key=Key.Up) if is_open:
-                set_completion(lambda c: replace(c, highlighted=(c.highlighted - 1) % len(shown)))
-            case KeyPressed(key=Key.Enter | Key.Tab) if is_open:
-                choose(shown[highlighted])
-            case KeyPressed(key=Key.Escape) if is_open:
-                set_completion(lambda c: replace(c, is_dismissed=True))
+            case KeyPressed(key=Key.Down | Key.Up as key) if is_showing:
+                by = 1 if key == Key.Down else -1
+                set_completion(replace(now, highlight=now.highlight.moved(now_shown, by)))
+            case KeyPressed(key=Key.Enter | Key.Tab) if (
+                is_showing and (index := now.highlight.index_in(now_shown)) is not None
+            ):
+                choose(now_shown[index])
+            case KeyPressed(key=Key.Escape) if is_showing:
+                set_completion(replace(now, is_dismissed=True))
             case _:
                 if (edited := response_controls(field.on_input(event, receiver))) is None:
                     return None
                 return (*edited, highlighted_in_view)
         return highlighted_in_view
 
-    room_above = rects.border.top
-    room_below = screen_height - rects.border.bottom
+    room_above = rects.border.top - rects.screen.top
+    room_below = rects.screen.bottom - rects.border.bottom
     suggestions = Div(
         style=z(1)
         | position_absolute
@@ -183,9 +180,6 @@ def labelled(label: str, field: Component) -> Div:
 
 @component
 def root(list_clip: Style = clip_to_screen) -> Div:
-    screen = use_rects()
-    height = screen.border.height
-
     return Div(
         style=full | col,
         on_input=first(tab_focus, clear_focus),
@@ -198,10 +192,10 @@ def root(list_clip: Style = clip_to_screen) -> Div:
                         style=fill(1) | col | gap(1) | overflow_y_scroll,
                         on_input=scroll_on_wheel(1),
                         children=(
-                            labelled("Package", autocomplete(PACKAGES, height, auto_focus=True, list_clip=list_clip)),
-                            labelled("Group", autocomplete(GROUPS, height, list_clip=list_clip)),
-                            labelled("Python", autocomplete(PYTHONS, height, list_clip=list_clip)),
-                            labelled("Index", autocomplete(INDEXES, height, list_clip=list_clip)),
+                            labelled("Package", autocomplete(PACKAGES, auto_focus=True, list_clip=list_clip)),
+                            labelled("Group", autocomplete(GROUPS, list_clip=list_clip)),
+                            labelled("Python", autocomplete(PYTHONS, list_clip=list_clip)),
+                            labelled("Index", autocomplete(INDEXES, list_clip=list_clip)),
                         ),
                     ),
                 ),
@@ -211,7 +205,7 @@ def root(list_clip: Style = clip_to_screen) -> Div:
                 "Enter or Tab chooses one, and Escape closes them.",
                 style=fill(1) | pad(1) | text_wrap_pretty | text_color("slate", 400),
             ),
-            labelled("just", autocomplete(RECIPES, height, list_clip=list_clip)),
+            labelled("just", autocomplete(RECIPES, list_clip=list_clip)),
         ),
     )
 

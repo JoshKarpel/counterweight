@@ -36,6 +36,27 @@ The handle comes from `use_state(ElementHandle)`, so it's the same on every rend
 A handle that names no visible element reports empty rectangles,
 as a component's first render does.
 
+## Measuring the room around an element
+
+`Rects.screen` is the region the app lays out in, in the same coordinates as the element's own boxes:
+the terminal in [`FullScreen`][counterweight.FullScreen], and the region in [`Inline`][counterweight.Inline].
+Beside the element's border box, it says how much room there is on each side of it,
+as an `IntersectionObserverEntry` carries `rootBounds`, the viewport, beside `boundingClientRect`.
+A popup that opens below its field while it fits there, and above it otherwise, decides from it:
+
+```python
+rects = use_rects()
+below = rects.screen.bottom - rects.border.bottom
+above = rects.border.top - rects.screen.top
+opens_above = below < shown_rows and above > below
+```
+
+There's no anchor positioning to flip the popup in layout, as CSS's `position-try-fallbacks: flip-block` does,
+so the decision comes from the last layout, and the popup moves when the component
+[renders again](#when-it-renders-again), before the frame is painted.
+The screen is the same for every element, and a component that reads it renders again when it changes,
+even when none of its own boxes move: after the terminal resizes, and in `Inline`, whenever the root's height does.
+
 ## When it renders again
 
 `use_rects` reports the rectangles as of the last layout,

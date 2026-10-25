@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16.50em" height="1.13em">
+ <style>svg {
+  dominant-baseline: hanging;
+  font-size: 1rem;
+}
+</style>
+ <g shape-rendering="crispEdges">
+  <rect x="0.00em" y="0.00em" width="16.50em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="3.30em" height="1.13em" fill="#000000" />
+  <rect x="3.30em" y="0.00em" width="0.55em" height="1.13em" fill="#7dd3fc" />
+  <rect x="3.85em" y="0.00em" width="12.65em" height="1.13em" fill="#000000" />
+ </g>
+ <text fill="#ffffff" font-family="monospace">
+  <tspan y="0.00em">
+   <tspan x="0.55em">$</tspan>
+   <tspan x="1.65em">c</tspan>
+   <tspan x="2.20em">a</tspan>
+   <tspan x="2.75em">t</tspan>
+  </tspan>
+ </text>
+</svg>

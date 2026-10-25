@@ -1,16 +1,20 @@
+from counterweight import Inline
 from counterweight import app
 from counterweight._app import stale_readers
 from counterweight._layout import NO_LAYOUTS
 from counterweight._layout import Layouts
 from counterweight._shadow import update_shadow
+from counterweight.components import Component
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
+from counterweight.elements import AnyElement
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
+from counterweight.events import TerminalResized
 from counterweight.focus import ElementHandle
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
@@ -20,6 +24,7 @@ from counterweight.styles.utilities import border
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import display_none
 from counterweight.styles.utilities import margin
+from counterweight.styles.utilities import overflow_hidden
 from counterweight.styles.utilities import pad
 from counterweight.styles.utilities import size
 
@@ -66,6 +71,7 @@ NESTED_BOXES = Rects(
     margin=Region(left=0, top=0, right=11, bottom=9),
     clip=Region(left=0, top=0, right=20, bottom=10),
     visible=Region(left=1, top=1, right=10, bottom=8),
+    screen=Region(left=0, top=0, right=20, bottom=10),
 )
 
 
@@ -166,3 +172,72 @@ def test_stale_readers_are_the_nodes_whose_rects_moved() -> None:
     moved = Layouts(in_paint_order=(), by_key={named.key: NESTED_BOXES}, scrolls={}, handles={HANDLE: named.key})
 
     assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == ([], [reader.key])
+
+
+@component
+def reads_the_screen(recorded: list[Region]) -> Div:
+    recorded.append(use_rects().screen)
+    return Div(style=size(3, 2))
+
+
+async def test_screen_is_the_terminal_in_full_screen_and_empty_on_the_initial_render() -> None:
+    recorded: list[Region] = []
+
+    await app(reads_the_screen(recorded), headless=True, dimensions=(20, 10), autopilot=(Quit(),))
+
+    assert (recorded[0], recorded[-1]) == (EMPTY, Region(left=0, top=0, right=20, bottom=10))
+
+
+@component
+def nests(*children: Component | AnyElement) -> Div:
+    return Div(style=col, children=children)
+
+
+@component
+def clips(*children: Component) -> Div:
+    return Div(style=size(10, 5) | overflow_hidden, children=children)
+
+
+async def test_screen_is_the_region_inline() -> None:
+    recorded: list[Region] = []
+
+    await app(
+        nests(reads_the_screen(recorded)),
+        headless=True,
+        dimensions=(20, 10),
+        viewport=Inline(),
+        autopilot=(Quit(),),
+    )
+
+    assert recorded[-1] == Region(left=0, top=0, right=20, bottom=2)
+
+
+async def test_screen_is_the_same_for_an_element_at_any_depth() -> None:
+    shallow: list[Region] = []
+    deep: list[Region] = []
+
+    await app(
+        nests(
+            reads_the_screen(shallow),
+            Div(style=margin(1) | border | pad(1), children=(Div(style=pad(2), children=(reads_the_screen(deep),)),)),
+        ),
+        headless=True,
+        dimensions=(20, 12),
+        autopilot=(Quit(),),
+    )
+
+    assert deep[-1] == shallow[-1] == Region(left=0, top=0, right=20, bottom=12)
+
+
+async def test_a_component_that_read_the_screen_renders_again_after_a_resize_that_moves_none_of_its_boxes() -> None:
+    recorded: list[Region] = []
+
+    # Inside a parent that clips it, so its clip doesn't change with the screen either.
+    await app(
+        clips(reads_the_screen(recorded)),
+        headless=True,
+        dimensions=(20, 10),
+        autopilot=(TerminalResized(dimensions=(30, 12)), SHOT, Quit()),
+    )
+
+    assert recorded[-1] == Region(left=0, top=0, right=30, bottom=12)

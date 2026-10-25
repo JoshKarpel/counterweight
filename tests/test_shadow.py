@@ -133,7 +133,7 @@ async def test_component_nested_under_replaced_component_starts_with_initial_sta
 
 
 async def test_use_mouse_listener_removed_when_component_replaced_by_element() -> None:
-    listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
+    listeners: WeakSet[Callable[[Mouse], object]] = WeakSet()
     token = current_use_mouse_listeners.set(listeners)
 
     @component
@@ -443,6 +443,8 @@ def test_unmounted_state_is_freed_without_the_cycle_collector() -> None:
     with state_sets():
         shadow = update_shadow(Div(children=(remembers("a", setters, seen),)), None, NO_LAYOUTS).tree
     state = ref(shadow.root.children[0].hooks.data[0])
+    # A setter is its state, so a setter held past the unmount keeps the state to return.
+    setters.clear()
 
     gc.disable()
     try:

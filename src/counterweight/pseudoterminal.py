@@ -194,8 +194,8 @@ async def run_pty(
     argv: Sequence[str],
     columns: int,
     rows: int,
-    on_output: Callable[[bytes], None],
-    on_start: Callable[[PtyConnection], None] = ...,
+    on_output: Callable[[bytes], object],
+    on_start: Callable[[PtyConnection], object] = ...,
     env: Mapping[str, str] = ...,
     clear_env: bool = ...,
     cwd: Path | None = ...,
@@ -210,8 +210,8 @@ async def run_pty(
     argv: Sequence[str],
     columns: int,
     rows: int,
-    on_output: Callable[[bytes], None],
-    on_start: Callable[[PtyConnection], None] = ...,
+    on_output: Callable[[bytes], object],
+    on_start: Callable[[PtyConnection], object] = ...,
     env: Mapping[str, str] = ...,
     clear_env: bool = ...,
     cwd: Path | None = ...,
@@ -225,8 +225,8 @@ async def run_pty(
     argv: Sequence[str],
     columns: int,
     rows: int,
-    on_output: Callable[[bytes], None],
-    on_start: Callable[[PtyConnection], None] = lambda connection: None,
+    on_output: Callable[[bytes], object],
+    on_start: Callable[[PtyConnection], object] = lambda connection: None,
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
     cwd: Path | None = None,
@@ -466,7 +466,7 @@ def use_pty(
     argv: Sequence[str],
     columns: int,
     rows: int,
-    on_output: Callable[[bytes], None],
+    on_output: Callable[[bytes], object],
     env: Mapping[str, str] = frozendict(),
     clear_env: bool = False,
     cwd: Path | None = None,
@@ -489,7 +489,7 @@ def use_pty(
         on_output: Called, from the event loop rather than during a render, with each read of what the program writes.
             The latest render's `on_output` is the one called.
     """
-    output: Ref[Callable[[bytes], None]] = use_ref(lambda: on_output)
+    output: Ref[Callable[[bytes], object]] = use_ref(lambda: on_output)
     output.current = on_output
 
     connection: Ref[PtyConnection | None] = use_ref(None)

@@ -8,12 +8,10 @@ a field that narrows a list of options in sections, chosen with the arrow keys a
 from __future__ import annotations
 
 import asyncio
-import glob
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
-from fnmatch import fnmatchcase
 from functools import partial
 
 from counterweight import app
@@ -35,7 +33,10 @@ from counterweight.handlers import first
 from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import on_click
 from counterweight.handlers import scroll_on_wheel
+from counterweight.headless import Highlight
+from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
+from counterweight.hooks import get_state
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
@@ -44,21 +45,13 @@ from counterweight.styles.utilities import *
 CURSOR = (text_color("slate", 900) | text_bg("sky", 300)).text_style
 
 
-def matches(text: str, candidates: tuple[str, ...]) -> list[str]:
-    pattern = f"*{'*'.join(glob.escape(c) for c in text.lower())}*"
-    found = [candidate for candidate in candidates if fnmatchcase(candidate.lower(), pattern)]
-    # The one the text names exactly first, so typing a whole name and pressing Enter chooses it.
-    return sorted(found, key=lambda candidate: candidate.lower() != text.lower())
-
-
 @dataclass(frozen=True, slots=True)
 class Completion:
     text: str
-    highlighted: int
-    is_dismissed: bool
+    highlight: Highlight
 
     def edited(self, text: str) -> Completion:
-        return self if text == self.text else Completion(text=text, highlighted=0, is_dismissed=False)
+        return self if text == self.text else Completion(text=text, highlight=Highlight())
 
 
 # --8<-- [start:sections]
@@ -130,16 +123,17 @@ class Picking:
 
 
 @component
-def picker(picking: Picking, current: str, choose: Callable[[str], None], close: Callable[[], None]) -> Div:
+def picker(picking: Picking, current: str, choose: Callable[[str], None], close: Callable[[], object]) -> Div:
     choice = picking.choice
     names = choice.names
-    completion, set_completion = use_state(Completion(text="", highlighted=names.index(current), is_dismissed=False))
+    completion, set_completion = use_state(Completion(text="", highlight=Highlight(key=current)))
 
-    def edit(edit_text: Callable[[str], str]) -> None:
-        set_completion(lambda c: c.edited(edit_text(c.text)))
+    def edit(edit_text: Callable[[str], str]) -> str:
+        return set_completion(lambda c: c.edited(edit_text(c.text))).text
 
     field = use_text_input(completion.text, edit, handle=picking.focus)
-    shown = matches(completion.text, names)
+    shown = subsequence_matches(completion.text, names)
+    highlighted = completion.highlight.index_in(shown)
 
     def chosen(name: str) -> InputResponse:
         choose(name)
@@ -149,12 +143,19 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         highlighted_in_view = ScrollIntoView(picking.highlighted, block="nearest")
         match event:
-            case KeyPressed(key=Key.Down) if shown:
-                set_completion(lambda c: replace(c, highlighted=(c.highlighted + 1) % len(shown)))
-            case KeyPressed(key=Key.Up) if shown:
-                set_completion(lambda c: replace(c, highlighted=(c.highlighted - 1) % len(shown)))
-            case KeyPressed(key=Key.Enter | Key.Tab) if shown:
-                return chosen(shown[completion.highlighted])
+            case KeyPressed(key=Key.Down | Key.Up as key):
+                by = 1 if key == Key.Down else -1
+                set_completion(
+                    lambda c: replace(c, highlight=c.highlight.moved(subsequence_matches(c.text, names), by))
+                )
+            # Enter typed ahead with the text before it chooses from what that text matches, not what last rendered.
+            case KeyPressed(key=Key.Enter | Key.Tab):
+                now = get_state(set_completion)
+                now_shown = subsequence_matches(now.text, names)
+                # The picker is modal, so with nothing to choose its keys stay in it, as Tab stays in a web dialog.
+                if (index := now.highlight.index_in(now_shown)) is None:
+                    return ()
+                return chosen(now_shown[index])
             case KeyPressed(key=Key.Escape):
                 close()
                 return ClearFocus()
@@ -171,8 +172,8 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
             content=f"{marker}── {name} ──" if is_bar else f"{marker} {name}",
             style=text_wrap_none
             | (text_bold if is_bar else text_color("slate", 300))
-            | (text_bg("sky", 800) if index == completion.highlighted else Style()),
-            handle=picking.highlighted if index == completion.highlighted else None,
+            | (text_bg("sky", 800) if index == highlighted else Style()),
+            handle=picking.highlighted if index == highlighted else None,
             on_input=on_click(partial(chosen, name)),
         )
 

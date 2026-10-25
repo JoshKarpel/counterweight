@@ -24,6 +24,7 @@ from counterweight.handlers import focus_receiver_on_press
 from counterweight.handlers import scroll_on_wheel
 from counterweight.handlers import tab_focus
 from counterweight.headless import use_text_input
+from counterweight.hooks import Editor
 from counterweight.hooks import Setter
 from counterweight.hooks import use_state
 from counterweight.keys import Key
@@ -90,9 +91,9 @@ def search() -> Div:
 # --8<-- [start:widget]
 
 
-def digits_only(set_value: Setter[str]) -> Callable[[Callable[[str], str]], None]:
-    def set_digits(edit: Callable[[str], str]) -> None:
-        set_value(lambda value: edited if (edited := edit(value)).isdigit() or not edited else value)
+def digits_only(set_value: Setter[str]) -> Editor[str]:
+    def set_digits(edit: Callable[[str], str]) -> str:
+        return set_value(lambda value: edited if (edited := edit(value)).isdigit() or not edited else value)
 
     return set_digits
 

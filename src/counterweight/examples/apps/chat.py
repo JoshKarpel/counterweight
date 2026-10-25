@@ -153,8 +153,8 @@ def root() -> Div:
     def finish_reply(text: str) -> None:
         set_chat(partial(Chat.replied, text=text))
 
-    def edit_draft(edit: Callable[[str], str]) -> None:
-        set_chat(lambda c: replace(c, draft=edit(c.draft)))
+    def edit_draft(edit: Callable[[str], str]) -> str:
+        return set_chat(lambda c: replace(c, draft=edit(c.draft))).draft
 
     def on_key(event: InputEvent, _: Receiver) -> InputResponse:
         match event:

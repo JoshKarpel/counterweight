@@ -115,6 +115,8 @@ asyncio.run(app(branch_picker(), viewport=Inline(keep_last_frame=False), output_
 Enter returns a `Print` of the branch and a `Quit`, and the picker erases itself as it stops,
 so the branch is all that's left, on the line where the picker started,
 when standard output is the terminal too.
+It matches with `subsequence_matches` and moves its `Highlight` with `ends="stop"`, as `fzf` does,
+which [Pickers](headless/options.md) covers, with the other kinds of picker built from the same parts.
 
 ## A test run
 

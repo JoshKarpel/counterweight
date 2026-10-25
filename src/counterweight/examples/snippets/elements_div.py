@@ -24,9 +24,12 @@ SELECTED_CARD = border_heavy | border_color("sky", 400)
 def card(title: str, body: str) -> Div:
     is_selected, set_selected = use_state(False)
 
+    def flip() -> None:
+        set_selected(not is_selected)
+
     return Div(
         style=CARD | (SELECTED_CARD if is_selected else default),
-        on_input=on_click(lambda: set_selected(not is_selected)),
+        on_input=on_click(flip),
         children=(
             Text(style=text_color("sky", 300), content=title),
             Text(style=text_wrap_stable | text_color("slate", 300), content=body),
