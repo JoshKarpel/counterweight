@@ -453,7 +453,10 @@ completion lists, since a field that completes as you type has nothing better fo
 | Escape | Close | Close | Bubbles |
 | Anything else | The text field's | The text field's | The text field's, opening the list on an edit with `opens_on="input"` |
 
-Down and Up bubble when nothing matches the text, since there's no list to open.
+Down and Up open the list even when nothing matches the text, showing that nothing does,
+and an open list that nothing matches keeps Down, Up, Enter, Ctrl+J and Tab, doing nothing with them,
+as the docs' picker does, so a key meant for the list never reaches a parent that has its own use for it.
+That's for now: whether some of them should bubble instead is left to revisit once the widget is in use.
 A close key on a closed list bubbles, so a dialog around the field can close on it.
 Ctrl+J chooses because a tty turns an Enter typed ahead, before the app makes it raw, into a line feed.
 Each key decides from the latest state, read through the setters.
@@ -1015,7 +1018,8 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   choosing filling in the text; Escape closing and Down or Up reopening;
   Down in an empty field listing every option; `opens_on="focus"` open on focus, and again after focus comes back;
   stopping at the ends by default, and each other `ends`;
-  Tab choosing without moving focus; a hover highlighting; a click choosing with focus kept;
+  Tab choosing without moving focus; Down, Up, Enter and Tab not reaching a parent while nothing matches;
+  a hover highlighting; a click choosing with focus kept;
   and text and Enter arriving before a render choosing from what the text matches.
 - `tests/examples/test_snippets.py`: the picker choosing from the latest text,
   driven on a pseudo-terminal with the text and Enter in one write, as the spike's probe was;
