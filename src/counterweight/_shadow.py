@@ -252,8 +252,8 @@ def update_shadow(
     unless it's a `memo` component equal to its previous one (see `continues`).
     A component that doesn't re-run keeps its previous node, whole subtree included,
     unless a dirty node is below it, in which case its children are reconciled again to reach it.
-    `layouts` are the previous frame's, which `use_rects` reads, and `focused` is the focused node's key,
-    which `use_focus` reads.
+    `layouts` are the latest ones, which `use_rects` and `use_scroll` read,
+    and `focused` is the focused node's key, which `use_focus` reads.
     `instant` is this frame's, which `use_clock` reads, with its monotonic time measured from the app's start.
     With `check_purity`, the tree is then built again with every component re-run (see `check_is_pure`).
     """
@@ -409,7 +409,7 @@ def check_is_pure(
 def call_component(component: Component, hooks: Hooks, reconciliation: Reconciliation) -> tuple[AnyElement, int]:
     """
     Calls a component function with `hooks` as the current hook state,
-    and the previous frame's layouts, the focused key, and this frame's instant from `reconciliation`,
+    and the last layouts, the focused key, and this frame's instant from `reconciliation`,
     restoring the outer hook context even if it raises.
     With `check_purity`, each `use_memo` that keeps its cached value also checks it (see `Hooks.use_memo`).
     Returns the element and how many hooks it called.

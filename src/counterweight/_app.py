@@ -93,6 +93,7 @@ from counterweight._routing import named_key
 from counterweight._routing import route_key
 from counterweight._routing import route_mouse
 from counterweight._shadow import ShadowTree
+from counterweight._shadow import check_is_pure
 from counterweight._shadow import until_due
 from counterweight._shadow import update_shadow
 from counterweight._utils import cancel_tasks
@@ -157,6 +158,7 @@ from counterweight.focus import Subtree
 from counterweight.focus import UnsettledFocus
 from counterweight.geometry import Position
 from counterweight.hooks import Mouse
+from counterweight.hooks import UnsettledMeasurements
 from counterweight.hooks._hooks import rects_in
 from counterweight.hooks._hooks import scroll_in
 from counterweight.hooks._impls import Hooks
@@ -170,6 +172,12 @@ logger = logging.getLogger(__name__)
 
 UNKNOWN_TERMINAL_DIMENSIONS = (80, 24)
 """The dimensions of a stream that isn't a terminal, and of each that a terminal reports as 0, as `shutil`'s are."""
+
+SETTLING_PASSES = 5
+"""
+How many times a frame re-renders the components whose focus or measurements changed before it paints anyway,
+which leaves room for a chain of components that each measure what the one before placed, and a focus change on top.
+"""
 
 
 def terminal_dimensions(stream: TextIO) -> tuple[int, int]:
@@ -484,14 +492,16 @@ async def app(
             and their hooks. A render keeps the previous output of every component it doesn't re-run
             (because its state didn't change and its parent didn't re-run, or because it's a `memo` component
             whose arguments didn't change), so an impure one goes stale.
-            With this on, each render is followed by a second one that re-runs every component
-            against copies of its hooks, and if that builds a different tree, the application raises
-            `ImpureComponent`, naming the first component whose output differs.
+            With this on, each frame's tree, once its focus and measurements settle, is built a second time,
+            re-running every component against copies of its hooks, and if that builds a different tree,
+            the application raises `ImpureComponent`, naming the first component whose output differs.
             Elements are compared with `==`, and where that fails, piece by piece,
             so handlers are compared by their code and the values they captured, since a re-run builds new ones.
             The second run also raises `InconsistentHookExecution` for a component that calls a different number
             of hooks, and computes each `use_memo` that keeps its cached value again,
             raising `StaleMemo` if the result differs, naming the component and the hook.
+            A frame whose `use_rects` and `use_scroll` reads don't settle before it paints raises
+            `UnsettledMeasurements`, rather than logging a warning and settling in the next frame.
             It costs as much as a render that re-runs everything, so turn it on in tests rather than in production.
         clock: Where [`use_clock`][counterweight.hooks.use_clock] reads the time, once per render.
             The [`SystemClock`][counterweight.clock.SystemClock] reads the time in UTC unless it's given a timezone.
@@ -854,6 +864,9 @@ async def render_loop(
 
         do_heal_borders = True
 
+        # Whether the last frame painted before its measurements or focus settled.
+        was_unsettled = False
+
         pilot = Autopilot(steps=iter(autopilot))
         started = reading(clock, timedelta())
         clock_offset = timedelta()
@@ -1110,7 +1123,6 @@ async def render_loop(
                                 shadow,
                                 layouts,
                                 frozenset(dirty),
-                                check_purity,
                                 focused=focused,
                                 instant=instant,
                             )
@@ -1129,24 +1141,44 @@ async def render_loop(
                         logger.debug("Calculated layout")
 
                         routing = RoutingTable.of(shadow, layouts)
-                        settled = routing.reconciled_focus(focused, update.mounted, requested_focus)
-                        requested_focus = None
+                        # The layouts the components in `shadow` read, which a purity check has to read too.
+                        read_layouts = previous_layouts
+                        mounted = update.mounted
+                        passes = 0
+                        is_refocus_only = False
 
-                        # Re-render the components whose focus changed before painting,
-                        # so no frame shows focus where it was before the render moved it.
-                        if settled != focused:
+                        # Re-render the components whose focus changed, or whose `use_rects` or `use_scroll` read went
+                        # stale, and lay out again, before painting, as browsers deliver `ResizeObserver` notifications
+                        # before they paint, so no frame shows focus or a measurement from before the render changed it.
+                        while True:
+                            settled = routing.reconciled_focus(focused, mounted, requested_focus)
+                            requested_focus = None
+                            if is_refocus_only and settled != focused:
+                                raise UnsettledFocus(
+                                    "Focus changed again after re-rendering the components that gained and lost it, "
+                                    "so a component hid itself because it gained focus."
+                                )
+                            stale = frozenset(stale_readers(shadow, layouts))
+                            refocused = (
+                                frozenset(key for key in (focused, settled) if key is not None)
+                                if settled != focused
+                                else frozenset()
+                            )
+                            if not (stale or refocused) or passes == SETTLING_PASSES:
+                                break
+
                             with rendering():
-                                refocused = update_shadow(
+                                settling = update_shadow(
                                     root_component,
                                     shadow,
-                                    previous_layouts,
-                                    frozenset(key for key in (focused, settled) if key is not None),
-                                    check_purity,
+                                    layouts,
+                                    stale | refocused,
                                     focused=settled,
                                     instant=instant,
                                 )
-                            previous_shadow, shadow = shadow, refocused.tree
-                            if settled is not None:
+                            read_layouts = layouts
+                            previous_shadow, shadow = shadow, settling.tree
+                            if refocused and settled is not None:
                                 pending_scrolls.append(focus_into_view(settled))
                             layouts = layout_tree.compute(
                                 layout_changes(previous_shadow, shadow),
@@ -1157,18 +1189,51 @@ async def render_loop(
                                 scroll_requests(pending_scrolls, shadow),
                             )
                             routing = RoutingTable.of(shadow, layouts)
-                            if routing.reconciled_focus(settled, refocused.mounted, requested=None) != settled:
-                                raise UnsettledFocus(
-                                    "Focus changed again after re-rendering the components that gained and lost it, "
-                                    "so a component hid itself because it gained focus."
-                                )
-                            update = update.followed_by(refocused)
+                            update = update.followed_by(settling)
+                            mounted = settling.mounted
+                            # Only a pass that re-rendered nothing but focus can be what moved it again.
+                            is_refocus_only = not stale
                             focused = settled
-                            logger.debug("Settled focus", extra={"components_run": len(refocused.ran)})
+                            passes += 1
+                            logger.debug(
+                                "Settled focus and measurements",
+                                extra={"components_run": len(settling.ran), "stale_readers": len(stale)},
+                            )
 
                         pending_scrolls.clear()
-                        for key in stale_readers(shadow, layouts):
-                            event_queue.put_nowait(StateSet(key=key))
+
+                        if check_purity:
+                            with rendering():
+                                check_is_pure(root_component, shadow, read_layouts, focused, instant)
+
+                        # What's still unsettled renders in the next frame, which paints this one first.
+                        if stale or refocused:
+                            if check_purity and stale:
+                                names = sorted(
+                                    {
+                                        reader.func.__qualname__
+                                        for key in stale
+                                        if (reader := shadow.by_key[key].component) is not None
+                                    }
+                                )
+                                raise UnsettledMeasurements(
+                                    f"{', '.join(names)} still read stale measurements after {SETTLING_PASSES} passes "
+                                    "of re-rendering before painting, "
+                                    "so a component's size may depend on what it measures."
+                                )
+                            # Once until a frame settles, since a component that never settles would warn every frame.
+                            if not was_unsettled:
+                                logger.warning(
+                                    f"Painted a frame after {SETTLING_PASSES} passes of re-rendering "
+                                    "without its measurements and focus settling, "
+                                    "so a component's size may depend on what it measures "
+                                    "(not repeated until a frame settles)",
+                                    extra={"stale_readers": len(stale), "is_focus_settled": not refocused},
+                                )
+                            for key in stale:
+                                event_queue.put_nowait(StateSet(key=key))
+                            refocus(settled)
+                        was_unsettled = bool(stale or refocused)
 
                         new_paint, border_healing_hints = paint_layout(
                             layouts.in_paint_order,

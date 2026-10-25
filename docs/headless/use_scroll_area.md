@@ -52,8 +52,8 @@ past any end, so it reaches the end of content that grew since the last render.
 `is_at_start` and `to_start` do the same for the start, and `scroll` is the
 [`Scroll`][counterweight.geometry.Scroll] they're read from, as [`use_scroll`](../hooks/use_scroll.md) reports it,
 for a readout such as "rows 5-8 of 11".
-Like `use_scroll`, they report the previous frame's scroll,
-so the button appears a frame after the scroll that should show it.
+Like `use_scroll`, they report the scroll as of the last layout,
+so the button appears in the frame that scrolls the log back.
 
 The handler is on the element the component returns, so a wheel event or a press anywhere inside it reaches it,
 the button included, and the wheel scrolls the log from over the button too.

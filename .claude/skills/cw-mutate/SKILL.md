@@ -91,7 +91,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   (`update_node`), `ImpureComponent` (`check_is_pure`), `StaleMemo` (`Hooks.use_memo`),
   `place`'s `ValueError` for a `Text` or `Canvas` whose overflow is `Scroll`, the `ValueError`s of `scroll_on_keys`,
   `scroll_on_wheel` and `focus_receiver_on_press`, `use_focus`'s `DuplicateUseFocus` and `ChangedFocusHandle`,
-  `ShadowTree`'s `DuplicateElementHandle` and `DuplicateFocusHandle`, `render_loop`'s `UnsettledFocus`,
+  `ShadowTree`'s `DuplicateElementHandle` and `DuplicateFocusHandle`, `render_loop`'s `UnsettledFocus` and `UnsettledMeasurements`,
   the exception groups of `cancel_tasks`, and `teardown_failure`'s `RuntimeError`.
   Tests pin what each message names (the component, the hook types, the key, the size, the handles), not its wording.
 - **`case _: return None` dropped** from a function that returns `None` without it:

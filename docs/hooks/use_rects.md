@@ -33,22 +33,34 @@ as a React component measures an element through a ref and a `ResizeObserver`.
 That's how a component measures an element a child component draws,
 such as the viewport of a [`scroll_area`](../headless/use_scroll_area.md) it passes the handle to as `viewport`.
 The handle comes from `use_state(ElementHandle)`, so it's the same on every render.
-A handle that named no visible element in the previous render reports empty rectangles,
-as the first render does.
+A handle that names no visible element reports empty rectangles,
+as a component's first render does.
 
 ## When it renders again
 
-`use_rects` reports the previous frame's rectangles,
+`use_rects` reports the rectangles as of the last layout,
 and a component that calls it renders again as soon as any of the rectangles it read move,
 whether its own state changed or something else, such as a sibling growing, moved them.
-In the example, a key press moves the border between the panes in one frame,
-and the labels fit their new widths in the next.
+That happens before the frame is painted,
+as a browser delivers [`ResizeObserver`](https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver)
+notifications between layout and paint:
+the render loop lays the tree out, re-renders the components whose rectangles moved,
+and lays it out again, until nothing they read moves.
+So in the example, the labels fit their new widths in the frame that moves the border between the panes,
+and a component that mounts reads empty rectangles in its first render but is drawn from its real ones.
+
 A component whose size depends on the rectangles it reads should settle:
-one that grows whenever it reads its own size renders without end.
+one that grows whenever it reads its own size never does.
+A frame re-renders a few times at most before it paints anyway,
+leaving the rest to the next frame and logging a warning,
+which it doesn't repeat until a frame settles,
+and with `app`'s `check_purity` on, the app raises
+[`UnsettledMeasurements`][counterweight.hooks.UnsettledMeasurements] instead.
 
 ## API
 
 ::: counterweight.hooks.use_rects
+::: counterweight.hooks.UnsettledMeasurements
 ::: counterweight.geometry.Rects
 ::: counterweight.geometry.Region
 ::: counterweight.geometry.Position
