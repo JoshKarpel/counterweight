@@ -30,7 +30,6 @@ from counterweight.hooks import Getter
 from counterweight.hooks import get_state
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
-from counterweight.hooks._hooks import same
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +204,6 @@ def edited(latest: EditableText, edit: Edit, set_value: Editor[str]) -> Editable
     so a setter that validates or transforms the edit decides the value, and a second edit before the next render
     starts from this one's result, since a state setter applies an updater immediately.
     """
-    before = latest.following(set_value(same))
+    before = latest.following(get_state(set_value))
     after = edit(before)
     return settled(before, after, set_value(lambda _: after.value))

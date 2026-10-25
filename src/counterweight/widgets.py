@@ -267,8 +267,10 @@ def combobox(
 
     Tab chooses, as in editors' completion lists, since a field that completes as you type has nothing better for it
     to do while its list is open.
-    An open list that nothing matches says so, and keeps Down, Up, Enter, Ctrl+J and Tab, doing nothing with them,
-    so a key meant for the list never reaches a parent that has a use of its own for it.
+    An open list that nothing matches says so, and keeps Down and Up,
+    but Enter, Ctrl+J and Tab bubble, as they do with nothing highlighted:
+    the value is free text, so with nothing to choose they do what they would in a field with no list,
+    such as submitting a form or moving focus, as they do from a web page's `<input>`.
     Ctrl+J chooses as Enter does, since a terminal still in cooked mode turns an Enter typed ahead into a line feed.
     Each key decides from the text and the highlight as every key before it left them, even before a render.
     Hovering a row highlights it, and clicking it chooses it, keeping focus in the field.
@@ -301,8 +303,8 @@ def combobox(
 
         styles: How the field and the list are drawn.
     """
-    closed = Suggesting(is_open=opens_on == "focus", highlight=None)
-    suggesting, set_suggesting = use_state(closed)
+    unfocused = Suggesting(is_open=opens_on == "focus", highlight=None)
+    suggesting, set_suggesting = use_state(unfocused)
     highlighted_row, _ = use_state(ElementHandle)
     rects = use_rects()
 
@@ -319,9 +321,9 @@ def combobox(
 
     async def close_on_blur() -> None:
         if not is_focused:
-            set_suggesting(closed)
+            set_suggesting(unfocused)
 
-    use_effect(close_on_blur, deps=(is_focused, closed))
+    use_effect(close_on_blur, deps=(is_focused, unfocused))
 
     def choose(option: str) -> InputResponse:
         set_value(lambda _: option)
@@ -345,8 +347,7 @@ def combobox(
                 set_suggesting(Suggesting(is_open=True, highlight=highlight))
                 return highlighted_in_view
             case KeyPressed(key=Key.Enter | Key.ControlJ | Key.Tab) if now.is_open:
-                if not (now_shown := subsequence_matches(get_state(set_value), options)):
-                    return ()
+                now_shown = subsequence_matches(get_state(set_value), options)
                 index = None if now.highlight is None else now.highlight.index_in(now_shown)
                 return None if index is None else choose(now_shown[index])
             case KeyPressed(key=Key.Escape) if now.is_open:

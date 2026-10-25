@@ -467,9 +467,24 @@ completion lists, since a field that completes as you type has nothing better fo
 | Anything else | The text field's | The text field's | The text field's, opening the list on an edit with `opens_on="input"` |
 
 Down and Up open the list even when nothing matches the text, showing that nothing does,
-and an open list that nothing matches keeps Down, Up, Enter, Ctrl+J and Tab, doing nothing with them,
-as the docs' picker does, so a key meant for the list never reaches a parent that has its own use for it.
-That's for now: whether some of them should bubble instead is left to revisit once the widget is in use.
+and an open list that nothing matches keeps them.
+Enter, Ctrl+J and Tab bubble whenever there's nothing to choose,
+with nothing highlighted or nothing matching alike.
+Which keys a picker keeps when there's nothing to choose follows from its role,
+and this is settled, not open:
+
+- **A form field keeps nothing it can't use.** The combobox's value is free text, so `zz` is a value,
+  and with nothing to choose Enter and Tab do what they would in a field with no list,
+  submitting a form or moving focus, as they do from a web page's `<input>`.
+  Keeping them strands the user in the field until they press Escape.
+  The cost: an Enter typed against a list that matches nothing reaches the parent,
+  so a dialog around the field submits `zz`.
+- **A modal picker keeps every key.** The docs' picker opens on a key, takes focus,
+  floats over the app, and closes only on Escape or a choice, as a dialog does,
+  and a web modal dialog keeps Tab inside it (the ARIA dialog pattern).
+  Letting Tab bubble would move focus to the app behind it and leave the picker open with nothing focused in it.
+  The cost: text that matches nothing leaves Escape as the only way out.
+
 A close key on a closed list bubbles, so a dialog around the field can close on it.
 Ctrl+J chooses because a tty turns an Enter typed ahead, before the app makes it raw, into a line feed.
 Each key decides from the latest state, read through the setters.
@@ -1017,7 +1032,8 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   choosing filling in the text; Escape closing and Down or Up reopening;
   Down in an empty field listing every option; `opens_on="focus"` open on focus, and again after focus comes back;
   stopping at the ends by default, and each other `ends`;
-  Tab choosing without moving focus; Down, Up, Enter and Tab not reaching a parent while nothing matches;
+  Tab choosing without moving focus; Down and Up not reaching a parent while nothing matches,
+  and Enter, Ctrl+J and Tab bubbling;
   a hover highlighting; a click choosing with focus kept;
   and text and Enter arriving before a render choosing from what the text matches.
 - `tests/examples/test_snippets.py`: the picker choosing from the latest text,

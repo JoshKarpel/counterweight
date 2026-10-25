@@ -670,6 +670,17 @@ async def test_tab_on_a_list_that_focus_opened_moves_focus_without_choosing() ->
     assert (lines(frame)[0], lines(frame)[6]) == ("value=", "│ !                    │")
 
 
+async def test_tab_on_a_list_that_focus_opened_moves_focus_even_when_nothing_matches() -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(
+        picking(opens_on="focus"),
+        (*nothing, ESCAPE, TAB, KeyPressed(key=Key.BackTab), TAB, KeyPressed(key="!")),
+        (30, 14),
+    )
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=zz", "│ !                    │")
+
+
 async def test_a_list_under_a_field_without_a_border_opens_against_the_field() -> None:
     frame = await screenshot(picking(style=width(24) | border_none), TYPED_PY, (30, 14))
 
@@ -721,13 +732,26 @@ async def test_tab_on_a_closed_list_moves_focus() -> None:
     assert lines(frame)[6] == "│ !                    │"
 
 
-async def test_the_list_keys_reach_no_parent_while_nothing_matches() -> None:
+async def test_down_and_up_reach_no_parent_while_nothing_matches() -> None:
     nothing = tuple(KeyPressed(key=character) for character in "zz")
-    frame = await screenshot(
-        picking(), (*nothing, DOWN, UP, ENTER, KeyPressed(key=Key.ControlJ), TAB, ESCAPE, ESCAPE), (30, 14)
-    )
+    frame = await screenshot(picking(), (*nothing, DOWN, UP, ESCAPE, ESCAPE), (30, 14))
 
-    assert ("nothing matches" not in shown(frame), "reached=Key.Escape" in shown(frame)) == (True, True)
+    assert ("nothing matches" not in shown(frame), lines(frame)[1]) == (True, "reached=Key.Escape")
+
+
+@pytest.mark.parametrize("key", [Key.Enter, Key.ControlJ])
+async def test_choosing_keys_bubble_while_nothing_matches(key: Key) -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(picking(), (*nothing, KeyPressed(key=key)), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[1]) == ("value=zz", f"reached={key}")
+
+
+async def test_tab_moves_focus_while_nothing_matches() -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(picking(), (*nothing, TAB, KeyPressed(key="!")), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=zz", "│ !                    │")
 
 
 async def test_an_open_list_that_nothing_matches_says_so() -> None:

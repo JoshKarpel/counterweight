@@ -152,6 +152,7 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
             case KeyPressed(key=Key.Enter | Key.Tab):
                 now = get_state(set_completion)
                 now_shown = subsequence_matches(now.text, names)
+                # The picker is modal, so with nothing to choose its keys stay in it, as Tab stays in a web dialog.
                 if (index := now.highlight.index_in(now_shown)) is None:
                     return ()
                 return chosen(now_shown[index])

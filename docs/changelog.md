@@ -79,6 +79,7 @@
   `Suspend.to_edit_text`'s `on_edit`, the handlers of `Screenshot`, `CopyToClipboard` and `Suspend`,
   and `app`'s `clipboard_handler`) may return anything, so a setter can be one, as in `on_exit=set_outcome`;
   one that returns an awaitable is still awaited.
+  So may `run_pty`'s `on_output` and `on_start` and `use_pty`'s `on_output`, whose results are ignored.
 
 ## `0.1.1`
 
