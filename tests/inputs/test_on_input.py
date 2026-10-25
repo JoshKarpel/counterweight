@@ -106,6 +106,7 @@ async def test_receiver_carries_the_receiving_elements_rects() -> None:
             margin=Region(left=4, top=2, right=15, bottom=13),
             clip=SCREEN,
             visible=Region(left=5, top=3, right=14, bottom=12),
+            screen=SCREEN,
         )
     ]
 
@@ -119,6 +120,7 @@ def test_receiver_relative_is_relative_to_the_content_box_top_left() -> None:
             margin=Region(left=4, top=2, right=15, bottom=13),
             clip=SCREEN,
             visible=Region(left=5, top=3, right=14, bottom=12),
+            screen=SCREEN,
         ),
         is_target=True,
         focus_handle=None,

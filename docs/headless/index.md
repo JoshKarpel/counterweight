@@ -14,6 +14,7 @@ and `counterweight.widgets` draws each one way, for when you don't need your own
 | [`use_text_area`](use_text_area.md)     | `text_area`   | Edits text that wraps onto rows             |
 | [`use_scroll_area`](use_scroll_area.md) | `scroll_area` | Scrolls a box with the keys and the wheel   |
 | [`use_terminal`](../terminals/embedding.md#the-hook) | `terminal` | Runs an interactive program in a box |
+| [`Highlight` and the matchers](options.md) | `combobox` | Filters a list of options and highlights one, for a picker |
 
 ## Styling the widgets
 
@@ -39,6 +40,3 @@ with a [`ScrollAreaStyles`][counterweight.widgets.ScrollAreaStyles] for its box 
 ## API
 
 ::: counterweight.widgets.TextFieldStyles
-::: counterweight.headless.Highlight
-::: counterweight.headless.subsequence_matches
-::: counterweight.headless.substring_matches

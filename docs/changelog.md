@@ -23,11 +23,48 @@
   what it printed included, which is how a test reads it headless.
   `Emulator.history` returns the rows above an emulator's screen as it holds them now, rewrapped by resizes.
 
+- Added `get_state`, which reads state through a `use_state` setter, or any `Editor` that wraps one,
+  as every update since the last render left it,
+  for a handler that decides from it, without changing it or queueing a render
+  (see [Deciding from the latest state](hooks/use_state.md#deciding-from-the-latest-state)),
+  and `Editor`, the half of a `Setter` that takes a function, which the text hooks and widgets take as `set_value`.
+
+- `TextInput` and `TextArea` have `latest_cursor`, where every edit since the render left the cursor,
+  beside `cursor`, where the render placed it.
+
+- `Rects` has `screen`, the region the app lays out in, so a component can measure the room around its element
+  (see [Measuring the room around an element](hooks/use_rects.md#measuring-the-room-around-an-element)).
+
+- Added `Highlight`, which of a list of options is highlighted, held by the option's key and by its index,
+  so it stays on its option as the options change, skips the options `is_disabled` marks,
+  and wraps, stops or releases at the ends,
+  and `subsequence_matches`, `substring_matches` and `prefix_matches`, which filter options by a typed text,
+  with a page of the pickers built from them: a combobox, a command palette, a search box, Tab cycling,
+  inline completion, rows that refresh, marks, headings and a preview (see [Pickers](headless/options.md)).
+
+- Added the `combobox` widget and its `ComboboxStyles`: a text input whose text suggests options in a list
+  that opens below it, or above it near the bottom of the screen, with the WAI-ARIA combobox pattern's keys.
+
 ### Changed
 
 - [#393](https://github.com/JoshKarpel/counterweight/issues/393)
   `Quit` renders once more before the app stops, without starting effects,
   so the last frame shows what the last handlers set.
+
+- **Breaking:** a `use_state` setter returns the state as it settled: the value it was given, or what the function returned.
+  A handler written as a `lambda` whose body is a setter call, such as `lambda event, _: set_count(count + 1)`,
+  now returns that state as its response, which mypy rejects and the app fails on,
+  so write it as a function that returns `()` to claim the event or `None` to let it bubble.
+  A parameter typed `Setter[T]` needs nothing; one that spells a setter out as `Callable[..., None]` needs `Setter[T]`.
+
+- **Breaking:** `use_text_input`, `use_text_area`, `text_input` and `text_area` take `set_value` as an `Editor[str]`,
+  which returns the value it settled at, as a `use_state` setter does,
+  so a wrapper that validates an edit returns what its setter returns.
+
+- Callbacks whose result the app ignores (`Suspend.to_program`'s and `Suspend.to_edit_file`'s `on_exit`,
+  `Suspend.to_edit_text`'s `on_edit`, the handlers of `Screenshot`, `CopyToClipboard` and `Suspend`,
+  and `app`'s `clipboard_handler`) may return anything, so a setter can be one, as in `on_exit=set_outcome`;
+  one that returns an awaitable is still awaited.
 
 ## `0.1.1`
 

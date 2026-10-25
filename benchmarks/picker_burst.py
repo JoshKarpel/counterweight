@@ -25,7 +25,7 @@ from counterweight.events import Receiver
 from counterweight.headless import Highlight
 from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
-from counterweight.hooks import Setter
+from counterweight.hooks import get_state
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import col
@@ -37,18 +37,6 @@ from counterweight.styles.utilities import text_wrap_none
 
 SHOWN = 15
 MOVES = 3
-
-
-def latest[T](set_state: Setter[T]) -> T:
-    """The state as the updates since the last render left it, read through its setter, which applies an updater at once."""
-    seen: list[T] = []
-
-    def read(value: T) -> T:
-        seen.append(value)
-        return value
-
-    set_state(read)
-    return seen[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,14 +76,14 @@ def picker() -> Div:
     shown = shown_for(text)
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        before = latest(set_text)
+        before = get_state(set_text)
         match event:
             case KeyPressed(key=Key.Down | Key.Up as key):
-                set_highlight(latest(set_highlight).moved(shown_for(before), 1 if key == Key.Down else -1))
+                set_highlight(get_state(set_highlight).moved(shown_for(before), 1 if key == Key.Down else -1))
                 return ()
             case _:
                 response = field.on_input(event, receiver)
-                if latest(set_text) != before:
+                if get_state(set_text) != before:
                     set_highlight(Highlight())
                 return response
 

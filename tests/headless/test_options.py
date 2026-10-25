@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+from typing import Literal
+from typing import assert_type
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from counterweight.headless import Highlight
+from counterweight.headless import prefix_matches
 from counterweight.headless import subsequence_matches
 from counterweight.headless import substring_matches
 
@@ -98,6 +102,124 @@ def test_moving_once_per_option_returns_to_the_start(options: list[int], start: 
     assert moved == highlight
 
 
+def test_highlight_lands_on_the_new_last_when_the_last_goes() -> None:
+    highlight = Highlight().moved((WEB, CODE, ATLAS), -1, number_of)
+
+    assert highlight.index_in((WEB, CODE), number_of) == 1
+
+
+@pytest.mark.parametrize(
+    ("start", "by", "expected"),
+    [(0, 1, "coffee"), (2, 1, "juice"), (0, -1, "tea"), (0, 3, "juice"), (2, -5, "tea")],
+    ids=["next", "stays on the last", "stays on the first", "End", "Home"],
+)
+def test_highlight_moved_stopping_at_the_ends(start: int, by: int, expected: str) -> None:
+    options = ("tea", "coffee", "juice")
+
+    assert Highlight(index=start).moved(options, by, ends="stop") == Highlight(
+        key=expected, index=options.index(expected)
+    )
+
+
+@pytest.mark.parametrize(
+    ("start", "by", "expected"),
+    [(0, 1, Highlight(key="coffee", index=1)), (2, 1, None), (0, -1, None), (1, -1, Highlight(key="tea", index=0))],
+    ids=["next", "past the last", "past the first", "back to the first"],
+)
+def test_highlight_moved_releasing_past_the_ends(start: int, by: int, expected: Highlight | None) -> None:
+    assert Highlight(index=start).moved(("tea", "coffee", "juice"), by, ends="release") == expected
+
+
+HEADING_LIST = ("# drinks", "tea", "coffee", "# food", "toast", "# empty")
+
+
+def is_heading(option: str) -> bool:
+    return option.startswith("#")
+
+
+@pytest.mark.parametrize(
+    ("highlight", "expected"),
+    [
+        (Highlight(), 1),
+        (Highlight(index=3), 4),
+        (Highlight(index=5), 4),
+        (Highlight(key="# food"), 4),
+        (Highlight(key="coffee"), 2),
+    ],
+    ids=[
+        "the first enabled option",
+        "forward from a disabled option",
+        "backward when nothing enabled follows",
+        "forward from a disabled option's key",
+        "an enabled option's key",
+    ],
+)
+def test_highlight_index_in_skips_disabled_options(highlight: Highlight, expected: int) -> None:
+    assert highlight.index_in(HEADING_LIST, is_disabled=is_heading) == expected
+
+
+@pytest.mark.parametrize(
+    ("ends", "by", "expected"),
+    [("wrap", 1, "toast"), ("wrap", 2, "tea"), ("stop", 5, "toast"), ("release", 2, None)],
+    ids=["over a heading", "wrapping over headings", "stopping on the last enabled", "releasing past the last"],
+)
+def test_highlight_moved_passes_over_disabled_options(
+    ends: Literal["wrap", "stop", "release"], by: int, expected: str | None
+) -> None:
+    moved = Highlight(key="coffee").moved(HEADING_LIST, by, is_disabled=is_heading, ends=ends)
+
+    assert moved == (None if expected is None else Highlight(key=expected, index=HEADING_LIST.index(expected)))
+
+
+def test_with_every_option_disabled_nothing_is_highlighted() -> None:
+    highlight = Highlight(key="# food", index=1)
+    headings = ("# drinks", "# food")
+
+    assert (
+        highlight.index_in(headings, is_disabled=is_heading),
+        highlight.moved(headings, 1, is_disabled=is_heading),
+        highlight.landed(headings, is_disabled=is_heading),
+    ) == (None, highlight, Highlight())
+
+
+@given(st.lists(st.booleans(), min_size=1, max_size=20), st.integers(min_value=-25, max_value=25))
+def test_resolving_never_lands_on_a_disabled_option(disabled: list[bool], start: int) -> None:
+    options = list(range(len(disabled)))
+
+    index = Highlight(index=start).index_in(options, is_disabled=lambda option: disabled[option])
+
+    assert (index is None) == all(disabled)
+    assert index is None or not disabled[index]
+
+
+@given(st.lists(st.booleans(), min_size=1, max_size=20), st.integers(min_value=0, max_value=19))
+def test_moving_once_per_enabled_option_returns_to_the_start(disabled: list[bool], start: int) -> None:
+    options = list(range(len(disabled)))
+
+    def is_disabled(option: int) -> bool:
+        return disabled[option]
+
+    highlight = Highlight(index=start).landed(options, is_disabled=is_disabled)
+    moved = highlight
+    for _ in range(disabled.count(False)):
+        moved = moved.moved(options, 1, is_disabled=is_disabled)
+
+    assert moved == highlight
+
+
+@given(
+    st.lists(st.booleans(), min_size=1, max_size=20),
+    st.integers(min_value=0, max_value=19),
+    st.integers(min_value=-25, max_value=25),
+)
+def test_stopping_never_leaves_the_enabled_options(disabled: list[bool], start: int, by: int) -> None:
+    options = list(range(len(disabled)))
+
+    moved = Highlight(index=start).moved(options, by, is_disabled=lambda option: disabled[option], ends="stop")
+
+    assert all(disabled) or not disabled[moved.index]
+
+
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
@@ -142,3 +264,35 @@ def test_subsequence_matches_by_key_and_returns_the_options() -> None:
 
 def test_substring_matches_by_key_and_returns_the_options() -> None:
     assert substring_matches("serve", (WEB, CODE, ATLAS), key=lambda port: port.command) == (CODE, ATLAS)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("", ("testpypi", "pypi", "pytorch-cpu")),
+        ("py", ("pypi", "pytorch-cpu")),
+        ("pypi", ("pypi",)),
+        ("PYT", ("pytorch-cpu",)),
+        ("pi", ()),
+    ],
+    ids=["empty keeps every option", "only the options that start with it", "exact", "case folded", "not a prefix"],
+)
+def test_prefix_matches(text: str, expected: tuple[str, ...]) -> None:
+    assert prefix_matches(text, ("testpypi", "pypi", "pytorch-cpu")) == expected
+
+
+def test_prefix_matches_put_the_exact_option_first() -> None:
+    assert prefix_matches("git", ("git-lfs", "git")) == ("git", "git-lfs")
+
+
+def test_prefix_matches_by_key_and_returns_the_options() -> None:
+    assert prefix_matches("co", (WEB, CODE, ATLAS), key=lambda port: port.command) == (CODE,)
+
+
+if TYPE_CHECKING:
+
+    def moves(highlight: Highlight, ends: Literal["wrap", "stop", "release"]) -> None:
+        assert_type(highlight.moved(("tea",), 1), Highlight)
+        assert_type(highlight.moved(("tea",), 1, ends="stop"), Highlight)
+        assert_type(highlight.moved(("tea",), 1, ends="release"), Highlight | None)
+        assert_type(highlight.moved(("tea",), 1, ends=ends), Highlight | None)

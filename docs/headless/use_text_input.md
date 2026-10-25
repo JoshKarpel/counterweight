@@ -25,6 +25,11 @@ except that `at_cursor` is a space when the cursor is at the end of the value,
 so there's always a cell to draw the cursor in.
 The hook also returns `cursor`, the cursor's offset into the value in code points,
 so `value[:cursor]` is the text before it.
+That's where this render placed the cursor, for drawing.
+A handler that decides from where the cursor is, such as one that accepts a suggestion on Right
+only at the end of the text, calls `latest_cursor()` instead,
+which is where every edit since the render left it,
+since several key presses can arrive before the next render, as the DOM's `selectionStart` is always current.
 Here the cursor is a highlighted cell, drawn only while the search box is focused:
 
 ![An empty search box, focused, above every fruit](../assets/text-input-search.svg)
@@ -148,7 +153,8 @@ rather than with the edited value.
 Several key presses can arrive between renders, as when typing fast,
 and each edit has to apply to the result of the one before,
 which the value the component rendered with doesn't have yet.
-A [`use_state`](../hooks/use_state.md) setter takes such a function and applies it right away.
+A [`use_state`](../hooks/use_state.md) setter takes such a function, applies it right away,
+and returns the value it settled at, which is what the hook needs: an [`Editor`][counterweight.hooks.Editor].
 
 To validate or transform an edit, wrap the setter in one that applies the edit itself
 and decides what to keep.

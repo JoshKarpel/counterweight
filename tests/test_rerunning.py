@@ -228,6 +228,7 @@ MOVED = Rects(
     margin=Region(left=1, top=2, right=3, bottom=4),
     clip=Region(left=0, top=0, right=10, bottom=10),
     visible=Region(left=1, top=2, right=3, bottom=4),
+    screen=Region(left=0, top=0, right=10, bottom=10),
 )
 
 

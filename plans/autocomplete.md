@@ -57,10 +57,10 @@ Beyond those, single copies need more:
   the key keeps it on its port as rows above come and go, and the position is where it lands when its own row goes.
   Its self-test "the highlight stays on its port as a row above it appears" fails with an index alone.
   Enter copies a URL and Ctrl+X signals a process, both without closing.
-- `wt` lists rows under headings the highlight skips, and its cleanup picker marks several worktrees:
+- `wt` lists rows under headings the highlight skips, and Escape goes back a step in its two-step flow.
+- `git-manage`, a fifth script beside them, marks several worktrees to remove:
   marks kept apart from the highlight, rows that can't be marked, Space to mark (branch names can't hold spaces),
   marks the query hides still counting, and Enter acting on the marks, doing nothing when there are none.
-  Escape goes back a step in its two-step flow.
 - `zellij-pick-tab`'s digits jump to a tab, where `port-manage`'s and `kube-pick`'s narrow the list.
 - `zellij-pick-tab` and `kube-pick` open on the current item, and draw it differently.
 
@@ -184,8 +184,9 @@ and edits its query by hand.
   `port-manage` avoids the problem by doing everything inside the updater,
   and pays with a queue of pending actions and the effect that carries them out.
 
-Not yet exercised: options the highlight skips (`wt`'s headings), highlighting a row on hover,
-and ends other than wrapping (`inline_picker.py` stops).
+The spike left three things unexercised, which the steps below have since covered:
+options the highlight skips (the docs' headings), highlighting a row on hover (the widget),
+and ends other than wrapping (`inline_picker.py` and the widget stop).
 
 ## Decisions
 
@@ -198,7 +199,7 @@ and ends other than wrapping (`inline_picker.py` stops).
 | Rows the highlight skips | An `is_disabled` predicate on `Highlight`'s methods, as Downshift's `isItemDisabled` | One more parameter on each method |
 | Binding `key` and `is_disabled` once | No: each method takes them, and a view of the list bound to them waits for the ports in [Steps](#steps) to show its shape | A picker with a key passes it to every call, three or four times a handler |
 | What moving does at the ends | `ends` on `moved`: `"wrap"`, `"stop"`, or `"release"`, which moves past an end to no highlight, the pattern's "returns focus to the combobox" | One more parameter, and an overload, since `"release"` can return `None` |
-| Reading the latest state in a handler | `use_state`'s setter returns the state it settled at, so an identity updater reads it | Reading is a write that changes nothing; a parameter written out as `Callable[..., None]` rather than `Setter[T]` stops accepting a setter |
+| Reading the latest state in a handler | `use_state`'s setter returns the state it settled at, so an identity updater reads it | Reading is a write that changes nothing; a handler written as a `lambda` whose body is a setter call returns the state as its response, so it has to become a function that says whether it claims the event; a parameter written out as `Callable[..., None]` rather than `Setter[T]` stops accepting a setter |
 | Reading the latest cursor in a handler | `latest_cursor` on `TextInput` and `TextArea`, read through the hook's own setter, as the DOM's `selectionStart` is live | A `TextInput` holds two cursors, and a handler has to know which one it wants |
 | Rendering between events, as React does | No: a handler reads where a decision needs the latest state (see [Why not render between events](#why-not-render-between-events)) | A handler that decides from what it rendered with decides from stale state when keys arrive before a render |
 | Which keys do what | The app's handler, for every caller but the widget | No key map to share; the command-line family's scripts each spell out the same keys |
@@ -234,7 +235,12 @@ which costs a frame and the queue, and still can't put off whether a key bubbles
 
 So the setter returns the state it settled at, and an identity updater reads the latest state,
 which `get_state(setter)` names, so a handler doesn't spell the updater out.
-Every caller discards the setter's return value today, so returning the state changes nothing at runtime.
+A handler written as a `lambda` whose body is a setter call, as `lambda event, _: set_count(count + 1)`,
+returned `None` and so let every event it acted on bubble, which its author rarely meant.
+Now it returns the state, which isn't a response, so mypy rejects it and the app fails on it,
+and it becomes a function that says whether it claims the event, which is better said out loud.
+A callback whose result the app ignores (`Suspend.to_program`'s `on_exit`, `Screenshot`'s handler) returns `object`,
+so a setter still passes as one.
 A return value also passes through a function that wraps the setter, as `lambda edit: set_value(...)` does,
 where a method such as `get` wouldn't, so `use_text_input`'s validating callers keep working.
 An updater that returns a result beside the next state, as Haskell's `atomicModifyIORef` does, adds nothing:
@@ -290,15 +296,22 @@ and since that leaves the state equal, it queues no render.
 After the component unmounts, it ignores updates and returns the state as it was when the component unmounted.
 
 ```python
-def get_state[T](set_state: Setter[T]) -> T: ...
+def get_state[T](set_state: Editor[T]) -> T: ...
 ```
 
 `get_state` is the state as every update since the last render left it, read by calling `set_state` with
 an updater that returns the state it's given, so it changes nothing and queues no render.
+`set_state` is any `Editor` (below): a `use_state` setter, or a parent's setter wrapped to edit one field.
 It's for handlers and effects; a render reads the value `use_state` returned.
 
+```python
+type Editor[T] = Callable[[Callable[[T], T]], T]
+```
+
+`Editor` is the half of a `Setter` that takes a function: every `Setter[T]` is an `Editor[T]`,
+and so is a wrapper that validates each edit, which never has to handle a plain value.
 `use_text_input`, `use_text_area`, `text_input` and `text_area` take
-`set_value: Callable[[Callable[[str], str]], str]`, a function that applies an edit and returns the value it settled at,
+`set_value: Editor[str]`, a function that applies an edit and returns the value it settled at,
 so a wrapper that validates (`lambda edit: set_value(...)`) passes the result through,
 and the hooks read the latest value and the edited one from what it returns.
 A parameter annotated `-> None` won't accept a function that returns a value under mypy,
@@ -416,7 +429,7 @@ It's empty on the initial render, as the other rectangles are.
 @component
 def combobox(
     value: str,
-    set_value: Callable[[Callable[[str], str]], str],
+    set_value: Editor[str],
     options: Sequence[str],
     placeholder: str = "",
     opens: Literal["auto", "below", "above"] = "auto",
@@ -482,7 +495,7 @@ The docs' recipes are these examples, one idea each.
 | When matches show | Once something is typed; always, every option for an empty text | `subsequence_matches(text, PACKAGES) if text else ()`, or the call without the guard |
 | What matches | Letters in order; the text whole; a prefix; anything else | `subsequence_matches`, `substring_matches`, `prefix_matches`, or an expression of the caller's own (inline completion's `startswith`, which keeps history's case), with `key=` to match on part of a richer option |
 | How the highlight follows changing options | By position; by the option's key | `key` passed to `Highlight`'s methods (`pid_of`), and `landed` after an edit, so the key is recorded from the first keystroke |
-| Rows the highlight skips | None; headings | `is_disabled=` on `Highlight`'s methods, which doesn't exist yet, so no example below runs it |
+| Rows the highlight skips | None; headings | `is_disabled=` on `Highlight`'s methods |
 | What choosing does | Fill in the text and close; act, and let the parent close; act and stay | The body of the Enter case, and what the parent's callback does |
 | Which keys do what | The combobox pattern's; the command line's; the app's own | The key sets in the `match`'s cases: `Key.Down \| Key.Tab \| Key.ControlN`, a case for Ctrl+X, a case for `" "` |
 | How many | One; several | A `frozenset` of marks beside the highlight, a case that toggles one, and Enter acting on the marks |
@@ -500,11 +513,11 @@ How the examples answer them:
 | [Refreshing rows](#rows-that-refresh-with-keys-of-their-own) | Always | An option | First match | Wrap | Substring by `key`, always | Key | Acts and stays | The command line's, and Ctrl+X | One |
 | [Marks](#marking-several-options) | Always | Several options | First match | Wrap | Subsequence by `key`, always | Key | Acts on the marks | The pattern's, and Space | Several |
 
-The examples were written as a module and type-checked with mypy in strict mode,
-against stand-ins for `use_state` and `use_text_input` whose setters return the state,
-and each was driven headless through the keys its section describes.
-Imports are left out; `Setter` and `get_state` are `counterweight.hooks`'s.
-The module becomes `snippets/options.py` (see [Docs](#docs)).
+The examples are `snippets/options.py` (see [Docs](#docs)), type-checked with mypy in strict mode,
+and each is driven headless through the keys its section describes in `tests/examples/test_snippets.py`.
+Imports are left out here; `Setter` and `get_state` are `counterweight.hooks`'s.
+The module also holds the two kinds not shown here, headings the highlight skips and a preview,
+whose code is on the docs page.
 
 ### Shared functions
 
@@ -606,8 +619,6 @@ def package_field(text: str, set_text: Setter[str]) -> Div:
         return ()
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         now = get_state(set_suggesting)
         now_shown = subsequence_matches(get_state(set_text), PACKAGES)
         is_showing = now.is_open and bool(now_shown)
@@ -656,8 +667,6 @@ def command_palette(run: Callable[[str], InputResponse]) -> Div:
     shown = substring_matches(query.text, COMMANDS)
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         now = get_state(set_query)
         now_shown = substring_matches(now.text, COMMANDS)
         index = now.highlight.index_in(now_shown)
@@ -707,8 +716,6 @@ def search_box(search: Callable[[str], InputResponse]) -> Div:
     shown = substring_matches(query.text, QUERIES) if query.text else ()
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         now = get_state(set_query)
         now_shown = substring_matches(now.text, QUERIES) if now.text else ()
         match event:
@@ -767,8 +774,6 @@ def command_line() -> Div:
     )
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         match event:
             case KeyPressed(key=Key.Tab | Key.BackTab as key):
                 now = get_state(set_line)
@@ -805,8 +810,6 @@ def shell_prompt() -> Div:
         return next((line for line in HISTORY if line.startswith(typed) and line != typed), None) if typed else None
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         match event:
             case KeyPressed(key=Key.Right) if (
                 field.latest_cursor() == len(now := get_state(set_text)) and (line := suggestion(now)) is not None
@@ -853,8 +856,6 @@ def process_list(processes: tuple[Process, ...], stop: Callable[[Process], Input
     shown = matching(query.text)
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         now = get_state(set_query)
         now_shown = matching(now.text)
         index = now.highlight.index_in(now_shown, pid_of)
@@ -890,7 +891,7 @@ def process_list(processes: tuple[Process, ...], stop: Callable[[Process], Input
 
 ### Marking several options
 
-As `wt`'s cleanup picker: the marks are kept beside the query, so the text hiding a marked option leaves it marked,
+As `git-manage`'s picker: the marks are kept beside the query, so the text hiding a marked option leaves it marked,
 and the header counts every mark.
 Space toggles the highlighted option's mark, which works because branch names can't contain a space;
 a picker whose options can picks another key.
@@ -910,8 +911,6 @@ def cleanup(remove: Callable[[frozenset[str]], InputResponse]) -> Div:
     shown = subsequence_matches(query.text, WORKTREES, key=branch_of)
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
-        if not receiver.is_focused:
-            return None
         now = get_state(set_query)
         now_shown = subsequence_matches(now.text, WORKTREES, key=branch_of)
         index = now.highlight.index_in(now_shown, branch_of)
@@ -970,14 +969,14 @@ each picker settles differently, and one picker needs it, so it waits for a seco
 
 ## Implementation
 
-- `src/counterweight/hooks/_types.py` and `src/counterweight/hooks/_impls.py`: `Setter` returning `T`,
-  and the setter `UseState` builds holding the value itself, with the mount status, the node key and the queue,
-  rather than holding the `UseState` weakly, so it still has a state to return once the `UseState` is collected,
-  and forms no cycle with it.
+- `src/counterweight/hooks/_types.py` and `src/counterweight/hooks/_impls.py`: `Setter` returning `T`, and `Editor`;
+  the `UseState` hook is its own setter, rather than building a closure that holds it weakly,
+  so a setter that outlives its node still has a state to return, and forms no cycle with it.
+- `src/counterweight/controls.py` and `src/counterweight/_app.py`: callbacks whose result is ignored return `object`.
 - `src/counterweight/headless/_text_input.py`, `_text_area.py` and `src/counterweight/widgets.py`:
   `set_value` returns the value it settled at, and the hooks read the latest value and the edited one from it;
   `TextInput` and `TextArea` gain `latest_cursor`.
-- `src/counterweight/hooks/`: `get_state`, joining `counterweight.hooks.__all__`.
+- `src/counterweight/hooks/`: `get_state` and `Editor`, joining `counterweight.hooks.__all__`.
 - `src/counterweight/geometry.py` and `src/counterweight/_layout.py`: `Rects` gains `screen`,
   which `place` fills from the screen region it's already given, one `Region` shared by every node's `Rects`,
   and `INITIAL_RECTS` holds an empty one.
@@ -1051,7 +1050,7 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   - [Marking several options](#marking-several-options).
   - Headings the highlight skips, with `is_disabled`, and a preview of the highlighted option,
     with the text and the `Highlight` in a parent (a color swatch),
-    so every row of the decision table has an example; these two aren't written yet.
+    so every row of the decision table has an example.
 
   Matching and "A long list" move to it from the cookbook.
 - `snippets/options.py` holds every kind on that page as a root in `ROOTS`, each between section markers of its own,
@@ -1085,6 +1084,54 @@ each picker settles differently, and one picker needs it, so it waits for a seco
   Changed entries for the setter returning the state, and for the text hooks' `set_value` returning the value,
   each saying that a parameter typed `Setter[T]` needs nothing, and one written out as `Callable[..., None]` needs `Setter[T]`.
 
+## What the ports found
+
+Step 5 ported every picker onto the parts, each in a `counterweight-parts` worktree of its repository,
+against an editable install of this branch, with nothing committed:
+the dotfiles' `wt`, `kube-pick`, `port-manage`, `zellij-pick-tab` and `git-manage`,
+assess's theme picker and `filter_list`, and whats-new's picker.
+Every self-test and suite passes, mypy reports nothing new, and every recording and frame is byte-identical.
+Breaking `Highlight`'s lookup by key fails exactly `port-manage`'s
+"the highlight stays on its port as a row above it appears",
+and assess has a new test for `filter_list`'s `shown[query.highlighted]` bug,
+which fails with `IndexError` on the old indexing.
+
+The evidence the plan asked for:
+
+- **A wired hook: none.** The dotfiles scripts run every key through a pure `step` inside the updater,
+  so their recurring lines (moving, the guard that picks the highlighted option, the edit's reset)
+  are in pure functions, not handlers, and they use `get_state` nowhere.
+  The cookbook family repeats the top block of the handler (read the state, match the latest text,
+  resolve the index) and the setter wrapper that resets the highlight,
+  which stays the candidate for a part of its own.
+- **A view of the list bound to `key` and `is_disabled`: none.**
+  `port-manage` alone passes `key`, three times, always with the same options and `key_of`.
+  Nothing passes `is_disabled`: `wt` and `git-manage` project their headings away before highlighting,
+  which keeps the option's type, where `is_disabled` leaves a union the caller has to narrow.
+  The docs' headings example keeps `is_disabled` exercised, with rows of one type.
+
+What the ports changed that the plan didn't expect:
+
+- **Exact first changes behavior.** The hand-rolled matchers kept list order,
+  so `kube-pick` typing `dev` and Enter over `dev-a, dev` chose `dev-a`, and now chooses `dev`.
+- **`moved` records the option's key,** so a highlight moved by Down follows its option as the list refreshes,
+  where it stayed at its index before. That's what `port-manage` wants, and what `filter_list` now does too.
+- **`Highlight(key=current)` with `current` missing highlights the first option,**
+  where `names.index(current)` raised.
+- **Every hand-written `set_value` wrapper has to return the value it settled at,**
+  not only parameters annotated `Callable[..., None]`, and a wrapper over a nested optional state
+  (assess's `picking_theme`, `naming`, `renaming`) has to invent one for when the slot is empty.
+  No suite reaches those branches; a component that owns its state avoids them,
+  since its setter returns the state as it was when it unmounted.
+- **`get_state` takes an `Editor`,** since assess's pickers get their state as one from their parents,
+  and reading through it only ever passes a function.
+- None of the ports' handlers was a `lambda` ending in a setter call;
+  the callbacks typed `Callable[[], None]` that were given one became `Callable[[], object]`.
+
+The ports land after a release (step 8): against released `0.1.1` they fail to import `Highlight`,
+and the dotfiles' self-test hook runs them on commit,
+so each needs its floor raised to the release, and assess's and whats-new's worktrees drop their `[tool.uv.sources]`.
+
 ## Steps
 
 1. The setter returning the state, `get_state`, the text hooks reading through the setter, `latest_cursor`, and their tests.
@@ -1093,7 +1140,7 @@ each picker settles differently, and one picker needs it, so it waits for a seco
 4. Port `snippets/picker.py`, `snippets/autocomplete.py` and `snippets/inline_picker.py` onto the parts and the setter's return value,
    the autocomplete onto `Rects.screen` and the inline picker onto `ends="stop"`, with their stills unchanged.
 5. Port every other picker onto them locally, against an editable install, to prove the parts before they ship:
-   whats-new's picker and assess's two, and `wt`, `kube-pick`, `port-manage` and `zellij-pick-tab`,
+   whats-new's picker and assess's two, and `wt`, `kube-pick`, `port-manage`, `zellij-pick-tab` and `git-manage`,
    whose self-tests must pass unchanged but for the code under test.
    Note the wiring lines that recur across them, which are the evidence a wired hook would need,
    and how often each passes `key` and `is_disabled`, which is the evidence a view of the list bound to them would need.

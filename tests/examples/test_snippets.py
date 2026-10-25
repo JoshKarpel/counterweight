@@ -6,6 +6,7 @@ and the components their pages show without a scene of their own.
 from __future__ import annotations
 
 import io
+import os
 from asyncio import wait_for
 from collections.abc import Sequence
 from datetime import timedelta
@@ -16,9 +17,14 @@ import pytest
 from counterweight import app
 from counterweight.autopilot import AutopilotStep
 from counterweight.autopilot import WaitFor
+from counterweight.autopilot import showing
 from counterweight.autopilot import typed
 from counterweight.components import Component
 from counterweight.components import component
+from counterweight.controls import AdvanceClock
+from counterweight.controls import FocusOn
+from counterweight.controls import Quit
+from counterweight.controls import Screenshot
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
@@ -38,20 +44,28 @@ from counterweight.examples.snippets import focus_form
 from counterweight.examples.snippets import inline_picker
 from counterweight.examples.snippets import input_controls
 from counterweight.examples.snippets import input_handlers
+from counterweight.examples.snippets import options
+from counterweight.examples.snippets import performance_process_table
 from counterweight.examples.snippets import picker
 from counterweight.examples.snippets import prefix_keys
 from counterweight.examples.snippets import programs
 from counterweight.examples.snippets import pseudoterminals
 from counterweight.examples.snippets import scrolling
+from counterweight.examples.snippets import styles_merging
 from counterweight.examples.snippets import terminals
 from counterweight.examples.snippets import text_input
 from counterweight.examples.snippets import use_controls_first_error
 from counterweight.examples.snippets import use_effect_forecast
 from counterweight.examples.snippets.terminals import PLAIN_SHELL
 from counterweight.geometry import Position
+from counterweight.hooks import use_controls
+from counterweight.hooks import use_effect
 from counterweight.hooks import use_state
 from counterweight.keys import Key
+from counterweight.paint import Frame
+from counterweight.styles.utilities import text_bg
 from tests.rendering import TIMEOUT
+from tests.terminal import Terminal
 
 
 async def screen(root: Component, steps: Sequence[AutopilotStep] = (), dimensions: tuple[int, int] = (60, 16)) -> str:
@@ -356,3 +370,256 @@ async def test_the_autopilot_pages_demo_records_its_chapters(monkeypatch: pytest
     await autopilot_search.record_demo()
 
     assert (tmp_path / "search.cast").read_text().count('"m"') == 3
+
+
+async def test_a_toolbar_button_is_selected_by_a_click() -> None:
+    shown = await screen(styles_merging.toolbar(), press(28, 1), (35, 3))
+
+    assert shown.splitlines()[0] == "╭──────╮ ╭──────╮ ╭──────╮ ┏━━━━━━┓"
+
+
+async def test_a_process_row_is_selected_by_a_click() -> None:
+    root = performance_process_table.root()
+    clicked = await frame_of(Still("test", root, (32, 7), steps=press(4, 3)))
+    moved = await frame_of(Still("test", root, (32, 7), steps=keys(Key.Down, Key.Down)))
+
+    assert clicked.text(ansi=True) == moved.text(ansi=True)
+
+
+async def test_the_picker_chooses_from_the_text_typed_with_enter_in_one_write(terminal: Terminal) -> None:
+    chosen: list[str] = []
+
+    @component
+    def opened() -> Div:
+        picking, _ = use_state(lambda: picker.Picking(picker.PYTHON))
+        send = use_controls()
+
+        async def type_ahead() -> None:
+            send(FocusOn(picking.focus))
+            os.write(terminal.keyboard, b"pypy\r")
+
+        use_effect(type_ahead, deps=())
+
+        def choose(name: str) -> None:
+            chosen.append(name)
+            send(Quit())
+
+        return Div(children=(picker.picker(picking, "3.15", choose, lambda: None),))
+
+    await wait_for(
+        app(opened(), output_stream=io.StringIO(), input_stream=terminal.stream, dimensions=(40, 10)), TIMEOUT
+    )
+
+    assert chosen == ["PyPy"]
+
+
+SKY_800 = text_bg("sky", 800).text_style.background
+
+
+async def frame(root: Component, steps: Sequence[AutopilotStep], dimensions: tuple[int, int]) -> Frame:
+    return await frame_of(Still("test", root, dimensions, steps))
+
+
+def highlighted(shown: Frame) -> list[str]:
+    """The text of each row with a cell in the pickers' highlight color."""
+    return [
+        "".join(cell.grapheme for cell in row).strip(" │")
+        for row in shown.paint.rows()
+        if any(cell.style.background == SKY_800 for cell in row)
+    ]
+
+
+def text_of(shown: Frame) -> str:
+    return "\n".join(line.rstrip() for line in shown.text(ansi=False).splitlines())
+
+
+async def test_the_combobox_recipe_fills_in_the_text_with_down_and_enter() -> None:
+    shown = await frame(options.add_package(), (*typed("py"), *keys(Key.Down, Key.Enter)), (30, 7))
+
+    assert text_of(shown).splitlines()[1:3] == [" pydantic", ""]
+
+
+async def test_the_combobox_recipe_stops_at_the_last_option() -> None:
+    shown = await frame(options.add_package(), (*typed("pyt"), *keys(Key.Down, Key.Down, Key.Down, Key.Down)), (30, 7))
+
+    assert highlighted(shown) == ["pytest-asyncio"]
+
+
+async def test_the_combobox_recipe_closes_on_escape_and_reopens_on_up_with_the_last_option() -> None:
+    closed = await frame(options.add_package(), (*typed("py"), *keys(Key.Escape)), (30, 7))
+    reopened = await frame(options.add_package(), (*typed("py"), *keys(Key.Escape, Key.Up)), (30, 7))
+
+    assert ("mypy" in text_of(closed), highlighted(reopened)) == (False, ["pytest-asyncio"])
+
+
+async def test_the_combobox_recipe_lists_every_option_on_down_in_an_empty_field() -> None:
+    shown = await frame(options.add_package(), keys(Key.Down), (30, 7))
+
+    assert highlighted(shown) == ["counterweight"]
+
+
+async def test_the_palette_runs_the_command_down_moved_to() -> None:
+    shown = await frame(options.palette(), (*typed("f"), *keys(Key.Down, Key.Enter)), (30, 10))
+
+    assert "Ran: Format document" in text_of(shown)
+
+
+async def test_the_palette_wraps_from_the_first_command_to_the_last() -> None:
+    shown = await frame(options.palette(), keys(Key.Up, Key.Enter), (30, 10))
+
+    assert "Ran: Split right" in text_of(shown)
+
+
+@pytest.mark.parametrize(
+    ("moves", "searched"),
+    [((), "python"), ((Key.Down,), "python asyncio"), ((Key.Down,) * 4, "python")],
+    ids=["the typed text", "the suggestion moved to", "the typed text once released past the last"],
+)
+async def test_the_search_box_searches(moves: tuple[str, ...], searched: str) -> None:
+    shown = await frame(options.searches(), (*typed("python"), *keys(*moves, Key.Enter)), (30, 6))
+
+    assert f"Searched: {searched}" in text_of(shown)
+
+
+@pytest.mark.parametrize(
+    ("steps", "line"),
+    [
+        (keys(Key.Tab), "$ cargo"),
+        (keys(Key.Tab, Key.Tab), "$ cat"),
+        (keys(*(Key.Tab,) * 6), "$ cargo"),
+        (keys(Key.Tab, Key.BackTab), "$ chown"),
+        ((*keys(Key.Tab), *typed(" "), *keys(Key.Tab)), "$ cargo"),
+    ],
+    ids=["first match", "next match", "wraps", "back", "an edit ends the cycle"],
+)
+async def test_tab_cycling(steps: Sequence[KeyPressed], line: str) -> None:
+    shown = await frame(options.command_line(), (*typed("c"), *steps), (30, 1))
+
+    assert text_of(shown) == f" {line}"
+
+
+@pytest.mark.parametrize(
+    ("steps", "line"),
+    [
+        (typed("git s"), "$ git status"),
+        ((*typed("git s"), *keys(Key.Right), *typed("!")), "$ git status!"),
+        ((*typed("git s"), *keys(Key.Left, Key.Right), *typed("!")), "$ git s!"),
+    ],
+    ids=["shows the rest of a history line", "right at the end accepts it", "right before the end only moves"],
+)
+async def test_inline_completion(steps: Sequence[KeyPressed], line: str) -> None:
+    shown = await frame(options.shell_prompt(), steps, (40, 1))
+
+    assert text_of(shown) == f" {line}"
+
+
+async def test_inline_completion_reads_the_cursor_a_left_moved_before_a_render(terminal: Terminal) -> None:
+    frames: list[Frame] = []
+
+    @component
+    def typed_ahead() -> Div:
+        async def type_the_start() -> None:
+            os.write(terminal.keyboard, b"git s")
+
+        use_effect(type_the_start, deps=())
+
+        # Once a render has drawn the cursor at the end, Left, Right and ! arrive in one read, before the next.
+        # The prompt claims every key typed, so only the autopilot's F12 bubbles here.
+        def type_the_rest(event: InputEvent, _: Receiver) -> InputResponse:
+            os.write(terminal.keyboard, b"\x1b[D\x1b[C!")
+            return ()
+
+        return Div(on_input=type_the_rest, children=(options.shell_prompt(),))
+
+    await wait_for(
+        app(
+            typed_ahead(),
+            output_stream=io.StringIO(),
+            input_stream=terminal.stream,
+            dimensions=(40, 1),
+            autopilot=[
+                showing("git status"),
+                KeyPressed(key=Key.F12),
+                showing("!"),
+                Screenshot(handler=frames.append),
+                Quit(),
+            ],
+        ),
+        TIMEOUT,
+    )
+
+    assert text_of(frames[-1]) == " $ git s!"
+
+
+async def test_the_refreshing_rows_keep_the_highlight_on_its_row_as_a_row_appears_above_it() -> None:
+    before = await frame(options.processes(), keys(Key.Down), (32, 7))
+    after = await frame(options.processes(), (*keys(Key.Down), AdvanceClock(by=timedelta(seconds=4))), (32, 7))
+
+    assert (highlighted(before), highlighted(after), "uvicorn" in text_of(after)) == (
+        ["1203 nginx"],
+        ["1203 nginx"],
+        True,
+    )
+
+
+async def test_ctrl_x_stops_the_highlighted_process_and_stays() -> None:
+    shown = await frame(options.processes(), keys(Key.Down, Key.ControlX), (32, 7))
+
+    assert ("nginx" in text_of(shown), highlighted(shown)) == (False, ["2048 postgres"])
+
+
+async def test_marks_count_refuse_a_worktree_with_changes_and_enter_acts_on_them() -> None:
+    shown = await frame(options.worktrees(), keys(" ", Key.Down, " ", Key.Down, " ", Key.Enter), (40, 7))
+
+    assert (text_of(shown).splitlines()[0], "Removed: feature/pickers, fix/resize" in text_of(shown)) == (
+        " 2 marked",
+        True,
+    )
+
+
+async def test_enter_with_no_marks_does_nothing() -> None:
+    shown = await frame(options.worktrees(), keys(Key.Enter), (32, 7))
+
+    assert "Removed: nothing yet" in text_of(shown)
+
+
+async def test_headings_are_never_highlighted() -> None:
+    steps = [*keys(*(Key.Down,) * 4)]
+    down = await frame(options.pythons(), steps, (22, 10))
+    up = await frame(options.pythons(), [*steps, *keys(Key.Up)], (22, 10))
+    chosen = await frame(options.pythons(), [*steps, *keys(Key.Enter)], (22, 10))
+
+    assert (highlighted(down), highlighted(up), "Python pypy3.10" in text_of(chosen)) == (
+        ["pypy3.10"],
+        ["3.15t"],
+        True,
+    )
+
+
+async def test_the_preview_follows_the_highlight() -> None:
+    moved = await frame(options.swatches(), keys(Key.Down, Key.Down), (30, 6))
+    typed_after = await frame(options.swatches(), (*keys(Key.Down, Key.Down), *typed("i"), *keys(Key.Down)), (30, 6))
+
+    assert (text_of(moved).splitlines()[0].split(), text_of(typed_after).splitlines()[0].split()) == (
+        ["amber"],
+        ["i", "indigo"],
+    )
+
+
+async def test_typing_into_the_refreshing_rows_narrows_them_and_up_moves_back() -> None:
+    narrowed = await frame(options.processes(), typed("n"), (32, 7))
+    up = await frame(options.processes(), keys(Key.Up), (32, 7))
+
+    assert (highlighted(narrowed), highlighted(up)) == (["1203 nginx"], ["1203 nginx"])
+
+
+async def test_typing_into_the_marks_narrows_the_worktrees() -> None:
+    shown = await frame(options.worktrees(), typed("fix"), (32, 7))
+
+    assert highlighted(shown) == ["fix/cursor (changes)"]
+
+
+async def test_clicking_a_color_highlights_it() -> None:
+    shown = await frame(options.swatches(), press(2, 3), (30, 6))
+
+    assert text_of(shown).splitlines()[0].split() == ["amber"]

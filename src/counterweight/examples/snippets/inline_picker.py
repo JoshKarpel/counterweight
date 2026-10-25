@@ -25,7 +25,10 @@ from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.handlers import first
+from counterweight.headless import Highlight
+from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
+from counterweight.hooks import get_state
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
@@ -48,44 +51,42 @@ SHOWN = 5
 CURSOR = (text_color("slate", 900) | text_bg("sky", 300)).text_style
 
 
-def matches(typed: str, branches: tuple[str, ...]) -> tuple[str, ...]:
-    """The branches that hold the letters typed, in order, as `fzf` matches."""
-
-    def holds(branch: str) -> bool:
-        letters = iter(branch)
-        return all(letter in letters for letter in typed)
-
-    return tuple(branch for branch in branches if holds(branch))
-
-
 @dataclass(frozen=True, slots=True)
 class Search:
     typed: str
-    highlighted: int
+    highlight: Highlight
 
     def edited(self, typed: str) -> Search:
-        return self if typed == self.typed else Search(typed=typed, highlighted=0)
+        return self if typed == self.typed else Search(typed=typed, highlight=Highlight())
 
 
 # --8<-- [start:picker]
 
 
+def shown_for(typed: str) -> tuple[str, ...]:
+    """The branches that hold the letters typed, in order, as `fzf` matches, as many as the picker shows."""
+    return subsequence_matches(typed, BRANCHES)[:SHOWN]
+
+
 @component
 def branch_picker() -> Div:
-    search, set_search = use_state(Search(typed="", highlighted=0))
-    field = use_text_input(search.typed, lambda edit: set_search(lambda s: s.edited(edit(s.typed))), auto_focus=True)
-    shown = matches(search.typed, BRANCHES)
+    search, set_search = use_state(Search(typed="", highlight=Highlight()))
+    field = use_text_input(
+        search.typed, lambda edit: set_search(lambda s: s.edited(edit(s.typed))).typed, auto_focus=True
+    )
+    matched = subsequence_matches(search.typed, BRANCHES)
+    highlighted = search.highlight.index_in(matched[:SHOWN])
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        now = get_state(set_search)
+        now_shown = shown_for(now.typed)
         match event:
-            case KeyPressed(key=Key.Down) if shown:
-                set_search(lambda s: replace(s, highlighted=min(s.highlighted + 1, len(shown[:SHOWN]) - 1)))
+            case KeyPressed(key=Key.Down | Key.Up as key) if now_shown:
+                by = 1 if key == Key.Down else -1
+                set_search(replace(now, highlight=now.highlight.moved(now_shown, by, ends="stop")))
                 return ()
-            case KeyPressed(key=Key.Up) if shown:
-                set_search(lambda s: replace(s, highlighted=max(s.highlighted - 1, 0)))
-                return ()
-            case KeyPressed(key=Key.Enter) if shown:
-                return Print(Text(content=shown[search.highlighted])), Quit()
+            case KeyPressed(key=Key.Enter) if (index := now.highlight.index_in(now_shown)) is not None:
+                return Print(Text(content=now_shown[index])), Quit()
             case KeyPressed(key=Key.Escape):
                 return Quit()
             case _:
@@ -106,13 +107,13 @@ def branch_picker() -> Div:
             ),
             *(
                 Text(
-                    content=f"{'▸' if index == search.highlighted else ' '} {branch}",
+                    content=f"{'▸' if index == highlighted else ' '} {branch}",
                     style=text_wrap_none
-                    | (text_bg("sky", 800) | text_bold if index == search.highlighted else text_color("slate", 300)),
+                    | (text_bg("sky", 800) | text_bold if index == highlighted else text_color("slate", 300)),
                 )
-                for index, branch in enumerate(shown[:SHOWN])
+                for index, branch in enumerate(matched[:SHOWN])
             ),
-            Text(content=f"  {len(shown)}/{len(BRANCHES)}", style=text_color("slate", 500)),
+            Text(content=f"  {len(matched)}/{len(BRANCHES)}", style=text_color("slate", 500)),
         ),
     )
 

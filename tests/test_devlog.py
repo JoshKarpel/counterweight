@@ -12,7 +12,10 @@ from counterweight.controls import Screenshot
 from counterweight.controls import Suspend
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
+from counterweight.events import Receiver
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.programs import TerminalStreams
@@ -119,7 +122,12 @@ async def test_the_devlog_counts_every_event_a_frame_handles() -> None:
     @component
     def counter() -> Text:
         count, set_count = use_state(0)
-        return Text(content=str(count), on_input=lambda event, _: set_count(count + 1))
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            set_count(count + 1)
+            return None
+
+        return Text(content=str(count), on_input=on_input)
 
     with devlog_lines() as lines:
         await app(counter(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="a"), Quit()])
@@ -136,7 +144,12 @@ async def test_the_devlog_records_the_components_a_frame_runs_again_to_settle_fo
     @component
     def mounts_on_key() -> Div:
         is_mounted, set_mounted = use_state(False)
-        return Div(on_input=lambda event, _: set_mounted(True), children=(label(),) if is_mounted else ())
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            set_mounted(True)
+            return None
+
+        return Div(on_input=on_input, children=(label(),) if is_mounted else ())
 
     with devlog_lines() as lines:
         await app(mounts_on_key(), headless=True, dimensions=(3, 1), autopilot=[KeyPressed(key="t"), Quit()])

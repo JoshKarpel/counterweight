@@ -61,6 +61,7 @@ INITIAL_RECTS = Rects(
     margin=_EMPTY_REGION,
     clip=None,
     visible=None,
+    screen=_EMPTY_REGION,
 )
 
 
@@ -71,7 +72,7 @@ type TextSource = tuple[str | tuple[Chunk, ...], CellStyle, TextWrap]
 type Lines = Rows
 
 # Everything a node's `Rects` depend on: its absolute position, its layout, its clip, and the scroll offsets above it.
-type Placement = tuple[waxy.Point, waxy.Layout, Region | None, int, int]
+type Placement = tuple[waxy.Point, waxy.Layout, Region | None, int, int, Region]
 
 
 def text_source(text: Text) -> TextSource:
@@ -579,13 +580,13 @@ def place(
             position, layout = boxes[node.key]
         except KeyError:
             continue
-        placement = (position, layout, clip, scrolled_x, scrolled_y)
+        placement = (position, layout, clip, scrolled_x, scrolled_y, screen)
         prior = previous.get(node.key)
         if prior is not None and prior[0] == placement:
             rects = prior[1]
             placements[node.key] = prior
         else:
-            rects = _resolve_layout(position, layout, clip, scrolled_x, scrolled_y)
+            rects = _resolve_layout(position, layout, clip, scrolled_x, scrolled_y, screen)
             placements[node.key] = (placement, rects)
         placed[node.key] = rects
         style = node.element.style
@@ -646,7 +647,7 @@ def settled_scroll(
         int(layout.scroll_width()) if scrolls_x else 0,
         int(layout.scroll_height()) if scrolls_y else 0,
     )
-    padding = _resolve_layout(position, layout, None, 0, 0).padding
+    padding = _resolve_layout(position, layout, None, 0, 0, _EMPTY_REGION).padding
     return scroll_of(requested_offset(prior, boxes, padding.top, max_offset, style.resolved), max_offset, padding)
 
 
@@ -697,7 +698,7 @@ def requested_scrolls(
                 for key, style in scroll_containers_above(request.key, shadow):
                     scroll = scroll_before(key, style)
                     container_position, container_layout = boxes[key]
-                    view = _resolve_layout(container_position, container_layout, None, 0, 0).padding
+                    view = _resolve_layout(container_position, container_layout, None, 0, 0, _EMPTY_REGION).padding
                     offset = scroll.clamp(
                         Position(
                             aligned(inline, left, right, view.left, view.right, scroll.offset.x),
@@ -1053,12 +1054,12 @@ def _min_content_width(cells: Iterable[StyledGrapheme], wrap: TextWrap) -> int |
 
 
 def _resolve_layout(
-    position: waxy.Point, layout: waxy.Layout, clip: Region | None, scrolled_x: int, scrolled_y: int
+    position: waxy.Point, layout: waxy.Layout, clip: Region | None, scrolled_x: int, scrolled_y: int, screen: Region
 ) -> Rects:
     """
     The cell regions of one node's boxes, from its absolute border-box position,
     moved left by `scrolled_x` and up by `scrolled_y`, the sum of the offsets of the scroll containers above it,
-    inside `clip`.
+    inside `clip`, on `screen`.
 
     Taffy's rounding snaps each absolute edge to a whole cell, so every value here is already
     integral and adjacent boxes share edges without gaps or overlaps.
@@ -1102,6 +1103,7 @@ def _resolve_layout(
         margin=margin,
         clip=clip,
         visible=None if clip is None else border.intersection(clip),
+        screen=screen,
     )
 
 

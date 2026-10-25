@@ -13,6 +13,8 @@ from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
 from fnmatch import translate
+from typing import Literal
+from typing import assert_never
 from typing import overload
 
 
@@ -28,42 +30,118 @@ class Highlight:
     the one at `index`, clamped to the first and the last.
     The key keeps the highlight on its option while options before it come and go,
     as React Aria's `focusedKey` does, and the index is where it lands when its own option goes.
-    `Highlight()` highlights the first option, and `Highlight(key=current)` the current one, wherever it is.
+    `Highlight()` highlights the first option, `Highlight(index=len(options) - 1)` the last,
+    and `Highlight(key=current)` the current one, wherever it is.
     A key of `None` is no key, so options MUST NOT have `None` as their key.
+
+    Each method takes the options, `key`, which is each option's key and defaults to the option itself,
+    and `is_disabled`, which marks the options the highlight skips, such as headings,
+    as Downshift's `isItemDisabled` does; with no `is_disabled`, every option is enabled.
     """
 
     key: object = None
     index: int = 0
 
-    def index_in[T](self, options: Sequence[T], key: Callable[[T], object] = identity) -> int | None:
-        """The highlighted option's index in `options`, or `None` if there are none."""
+    def index_in[T](
+        self,
+        options: Sequence[T],
+        key: Callable[[T], object] = identity,
+        is_disabled: Callable[[T], bool] | None = None,
+    ) -> int | None:
+        """
+        The highlighted option's index in `options`, or `None` if there are no enabled options to highlight.
+        A key or an index on a disabled option resolves to the next enabled option after it,
+        or, when none follows, the last enabled one before it,
+        so `Highlight()` is the first enabled option and `Highlight(index=len(options) - 1)` the last.
+        """
         if not options:
             return None
+        index = max(0, min(self.index, len(options) - 1))
         if self.key is not None:
-            for index, option in enumerate(options):
-                if key(option) == self.key:
-                    return index
-        return max(0, min(self.index, len(options) - 1))
+            index = next((at for at, option in enumerate(options) if key(option) == self.key), index)
+        if is_disabled is None or not is_disabled(options[index]):
+            return index
+        after = (at for at in range(index + 1, len(options)) if not is_disabled(options[at]))
+        before = (at for at in range(index - 1, -1, -1) if not is_disabled(options[at]))
+        return next(after, next(before, None))
 
-    def landed[T](self, options: Sequence[T], key: Callable[[T], object] = identity) -> Highlight:
+    def landed[T](
+        self,
+        options: Sequence[T],
+        key: Callable[[T], object] = identity,
+        is_disabled: Callable[[T], bool] | None = None,
+    ) -> Highlight:
         """
         The highlight on the option it's on in `options`, by that option's key and index,
         so it follows that option from now on, rather than the one it held before, if that comes back.
         """
-        index = self.index_in(options, key)
+        index = self.index_in(options, key, is_disabled)
         return Highlight() if index is None else Highlight(key=key(options[index]), index=index)
 
-    def moved[T](self, options: Sequence[T], by: int, key: Callable[[T], object] = identity) -> Highlight:
-        """The highlight `by` options on in `options`, back for a negative `by`, wrapping at either end."""
-        index = self.index_in(options, key)
+    @overload
+    def moved[T](
+        self,
+        options: Sequence[T],
+        by: int,
+        key: Callable[[T], object] = ...,
+        is_disabled: Callable[[T], bool] | None = ...,
+        *,
+        ends: Literal["wrap", "stop"] = "wrap",
+    ) -> Highlight: ...
+
+    @overload
+    def moved[T](
+        self,
+        options: Sequence[T],
+        by: int,
+        key: Callable[[T], object] = ...,
+        is_disabled: Callable[[T], bool] | None = ...,
+        *,
+        ends: Literal["wrap", "stop", "release"],
+    ) -> Highlight | None: ...
+
+    def moved[T](
+        self,
+        options: Sequence[T],
+        by: int,
+        key: Callable[[T], object] = identity,
+        is_disabled: Callable[[T], bool] | None = None,
+        *,
+        ends: Literal["wrap", "stop", "release"] = "wrap",
+    ) -> Highlight | None:
+        """
+        The highlight `by` enabled options on in `options`, back for a negative `by`.
+        At either end, `ends="wrap"` carries on from the other end;
+        `"stop"` stays on the first or the last enabled option, so `by=len(options)` is End;
+        and `"release"` is `None` for a move past either end, no highlight,
+        as the combobox pattern's Down on the last option "returns focus to the combobox".
+        With no enabled option to highlight, it's the highlight unchanged.
+        """
+        index = self.index_in(options, key, is_disabled)
         if index is None:
             return self
-        moved = (index + by) % len(options)
+        enabled = (
+            range(len(options))
+            if is_disabled is None
+            else [at for at, option in enumerate(options) if not is_disabled(option)]
+        )
+        target = enabled.index(index) + by
+        match ends:
+            case "wrap":
+                moved = enabled[target % len(enabled)]
+            case "stop":
+                moved = enabled[max(0, min(target, len(enabled) - 1))]
+            case "release":
+                if not 0 <= target < len(enabled):
+                    return None
+                moved = enabled[target]
+            case _ as unreachable:
+                assert_never(unreachable)
         return Highlight(key=key(options[moved]), index=moved)
 
 
 @overload
-def subsequence_matches(text: str, options: Iterable[str]) -> tuple[str, ...]: ...
+def subsequence_matches[S: str](text: str, options: Iterable[S]) -> tuple[S, ...]: ...
 
 
 @overload
@@ -73,7 +151,7 @@ def subsequence_matches[T](text: str, options: Iterable[T], key: Callable[[T], s
 def subsequence_matches[T](text: str, options: Iterable[T], key: Callable[[T], str] = str) -> tuple[T, ...]:
     """
     The options whose `key` holds the letters of `text` in order, with anything between them, ignoring case,
-    in their own order but for the one `text` names exactly, which comes first,
+    as fzf matches, though without ranking them, in their own order but for the one `text` names exactly, which comes first,
     so typing a whole name and choosing the first match chooses it.
     Every option matches an empty `text`.
     """
@@ -85,7 +163,7 @@ def subsequence_matches[T](text: str, options: Iterable[T], key: Callable[[T], s
 
 
 @overload
-def substring_matches(text: str, options: Iterable[str]) -> tuple[str, ...]: ...
+def substring_matches[S: str](text: str, options: Iterable[S]) -> tuple[S, ...]: ...
 
 
 @overload
@@ -100,6 +178,24 @@ def substring_matches[T](text: str, options: Iterable[T], key: Callable[[T], str
     """
     folded = text.casefold()
     return matching(folded, options, key, lambda folded_key: folded in folded_key)
+
+
+@overload
+def prefix_matches[S: str](text: str, options: Iterable[S]) -> tuple[S, ...]: ...
+
+
+@overload
+def prefix_matches[T](text: str, options: Iterable[T], key: Callable[[T], str]) -> tuple[T, ...]: ...
+
+
+def prefix_matches[T](text: str, options: Iterable[T], key: Callable[[T], str] = str) -> tuple[T, ...]:
+    """
+    The options whose `key` starts with `text`, ignoring case, as Tab completion matches,
+    in their own order but for the one `text` names exactly, which comes first.
+    Every option matches an empty `text`.
+    """
+    folded = text.casefold()
+    return matching(folded, options, key, lambda folded_key: folded_key.startswith(folded))
 
 
 def matching[T](

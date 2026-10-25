@@ -31,6 +31,7 @@ NESTED_BOXES = Rects(
     margin=Region(left=0, top=0, right=11, bottom=9),
     clip=Region(left=0, top=0, right=20, bottom=10),
     visible=Region(left=1, top=1, right=10, bottom=8),
+    screen=Region(left=0, top=0, right=20, bottom=10),
 )
 CLIPPED_AT_COLUMN_3 = replace(
     NESTED_BOXES, clip=Region(left=0, top=0, right=3, bottom=10), visible=Region(left=1, top=1, right=3, bottom=8)
@@ -46,7 +47,7 @@ def records_mouse(label: str, recorded: list[Mouse]) -> Text:
 
 def test_use_mouse_reads_off_screen_and_still_before_the_mouse_moves() -> None:
     recorded: list[Mouse] = []
-    token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], None]]())
+    token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], object]]())
 
     try:
         with state_sets():
@@ -59,7 +60,7 @@ def test_use_mouse_reads_off_screen_and_still_before_the_mouse_moves() -> None:
 
 async def test_use_mouse_keeps_its_subscription_when_the_component_reruns() -> None:
     recorded: list[Mouse] = []
-    token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], None]]())
+    token = current_use_mouse_listeners.set(WeakSet[Callable[[Mouse], object]]())
 
     try:
         with state_sets():
@@ -120,7 +121,7 @@ async def test_use_hovered_reports_which_of_its_boxes_the_mouse_is_in_inside_its
     rects: Rects, position: Position, expected: Hovered
 ) -> None:
     recorded: list[Hovered] = []
-    listeners = WeakSet[Callable[[Mouse], None]]()
+    listeners = WeakSet[Callable[[Mouse], object]]()
     token = current_use_mouse_listeners.set(listeners)
 
     @component

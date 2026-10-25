@@ -27,6 +27,7 @@ from counterweight.geometry import Rects
 from counterweight.geometry import Scroll
 from counterweight.hooks._impls import NodeKey
 from counterweight.hooks._types import Deps
+from counterweight.hooks._types import Editor
 from counterweight.hooks._types import Getter
 from counterweight.hooks._types import Ref
 from counterweight.hooks._types import Setter
@@ -62,11 +63,33 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
             (see [Updating state from its previous value](../hooks/use_state.md#updating-state-from-its-previous-value)).
             If the value is not equal to the current of the state,
             Counterweight will trigger a render cycle.
+            It returns the state as it settled: the value it was given, or what the function returned,
+            so a handler can read the latest state with [`get_state`][counterweight.hooks.get_state].
             It is the same object on every render,
             so it can be left out of an effect's `deps`, and including it never reruns the effect.
-            Once the component unmounts, calling it does nothing.
+            Once the component unmounts, calling it changes nothing,
+            and returns the state as it was when the component unmounted.
     """
     return current_hook_state.get().use_state(initial_value)
+
+
+def get_state[T](set_state: Editor[T]) -> T:
+    """
+    The state as every update since the last render left it, read by calling `set_state`
+    with a function that returns the state it's given, so it changes nothing and queues no render.
+    `set_state` is a [`use_state`][counterweight.hooks.use_state] setter, or any [`Editor`][counterweight.hooks.Editor],
+    such as a parent's setter wrapped to edit one field of its state.
+    Several key presses can arrive before the next render, and each runs a handler the last render made,
+    so a handler that decides something from the state (whether to claim a key, which option to choose)
+    reads it here, where the value [`use_state`][counterweight.hooks.use_state] returned is the one that render saw.
+    It's for handlers and effects; a render reads the value `use_state` returned.
+    """
+    return set_state(same)
+
+
+def same[T](value: T) -> T:
+    """An updater that leaves the state as it is, which a setter applies to hand back the latest state."""
+    return value
 
 
 def toggle(value: bool) -> bool:

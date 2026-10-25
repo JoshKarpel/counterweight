@@ -36,7 +36,7 @@ from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import Highlight
 from counterweight.headless import subsequence_matches
 from counterweight.headless import use_text_input
-from counterweight.hooks import Setter
+from counterweight.hooks import get_state
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import Style
@@ -52,18 +52,6 @@ class Completion:
 
     def edited(self, text: str) -> Completion:
         return self if text == self.text else Completion(text=text, highlight=Highlight())
-
-
-def latest[T](set_state: Setter[T]) -> T:
-    """The state as the updates since the last render left it, read through its setter, which applies an updater at once."""
-    seen: list[T] = []
-
-    def read(value: T) -> T:
-        seen.append(value)
-        return value
-
-    set_state(read)
-    return seen[0]
 
 
 # --8<-- [start:sections]
@@ -135,13 +123,13 @@ class Picking:
 
 
 @component
-def picker(picking: Picking, current: str, choose: Callable[[str], None], close: Callable[[], None]) -> Div:
+def picker(picking: Picking, current: str, choose: Callable[[str], None], close: Callable[[], object]) -> Div:
     choice = picking.choice
     names = choice.names
     completion, set_completion = use_state(Completion(text="", highlight=Highlight(key=current)))
 
-    def edit(edit_text: Callable[[str], str]) -> None:
-        set_completion(lambda c: c.edited(edit_text(c.text)))
+    def edit(edit_text: Callable[[str], str]) -> str:
+        return set_completion(lambda c: c.edited(edit_text(c.text))).text
 
     field = use_text_input(completion.text, edit, handle=picking.focus)
     shown = subsequence_matches(completion.text, names)
@@ -162,7 +150,7 @@ def picker(picking: Picking, current: str, choose: Callable[[str], None], close:
                 )
             # Enter typed ahead with the text before it chooses from what that text matches, not what last rendered.
             case KeyPressed(key=Key.Enter | Key.Tab):
-                now = latest(set_completion)
+                now = get_state(set_completion)
                 now_shown = subsequence_matches(now.text, names)
                 if (index := now.highlight.index_in(now_shown)) is None:
                     return ()

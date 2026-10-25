@@ -11,7 +11,6 @@ from asyncio import get_running_loop
 from asyncio import sleep
 from asyncio import timeout
 from collections import deque
-from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Collection
 from collections.abc import Iterable
@@ -447,7 +446,7 @@ async def app(
     unclaimed_keys: Mapping[str, AnyControl] = DEFAULT_UNCLAIMED_KEYS,
     cell_aspect_ratio: float = DEFAULT_CELL_ASPECT_RATIO,
     recording: Recording | None = None,
-    clipboard_handler: Callable[[str], Awaitable[None] | None] | None = None,
+    clipboard_handler: Callable[[str], object] | None = None,
     collect_garbage_between_frames: bool = True,
     viewport: FullScreen | Inline = FullScreen(),
     stdout: TextIO = sys.stdout,
@@ -615,7 +614,7 @@ async def render_loop(
     unclaimed_keys: Mapping[str, AnyControl],
     cell_aspect_ratio: float,
     recording: Recording | None,
-    clipboard_handler: Callable[[str], Awaitable[None] | None] | None,
+    clipboard_handler: Callable[[str], object] | None,
     collect_garbage_between_frames: bool,
     viewport: Viewport,
     print_streams: Mapping[PrintStream, TextIO],
@@ -691,7 +690,7 @@ async def render_loop(
     logger.info("Application starting...")
 
     event_queue: Queue[AnyEvent] = Queue()
-    use_mouse_listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
+    use_mouse_listeners: WeakSet[Callable[[Mouse], object]] = WeakSet()
     # Made before the warmup render, so the hooks can capture it, and entered before any effect starts in it.
     task_group = TaskGroup()
 

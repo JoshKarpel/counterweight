@@ -28,11 +28,12 @@ from counterweight.handlers import each
 from counterweight.handlers import first
 from counterweight.headless import TextArea
 from counterweight.headless import use_text_area
+from counterweight.hooks import Editor
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles.utilities import height
 
-type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]
+type Wrap = Callable[[Editor[str]], Editor[str]]
 
 WIDTH = 8
 
@@ -157,23 +158,23 @@ async def test_edits_before_the_next_render_each_start_from_the_one_before() -> 
 async def test_a_paste_inserts_its_text_with_its_line_breaks_in_one_edit() -> None:
     edits: list[Callable[[str], str]] = []
 
-    def counted(set_value: Callable[[Callable[[str], str]], None]) -> Callable[[Callable[[str], str]], None]:
-        def set_counted(edit: Callable[[str], str]) -> None:
+    def counted(set_value: Editor[str]) -> Editor[str]:
+        def set_counted(edit: Callable[[str], str]) -> str:
             edits.append(edit)
-            set_value(edit)
+            return set_value(edit)
 
         return set_counted
 
     shown = await run((*typed("<>"), KeyPressed(key=Key.Left), Pasted(text="one\ntwo")), wrap=counted)
 
     assert shown[-1] == Shown(value="<one\ntwo>", before="<one\ntwo", at=">", after="", cursor=8)
-    # Each edit reads the value before and after, so a paste is three calls, as one key press is.
-    assert len(edits) == 3 * 4
+    # Each edit reads the value, then writes the edited one, so a paste is two calls, as one key press is.
+    assert len(edits) == 2 * 4
 
 
-def digits_only(set_value: Callable[[Callable[[str], str]], None]) -> Callable[[Callable[[str], str]], None]:
-    def set_digits(edit: Callable[[str], str]) -> None:
-        set_value(lambda value: edited if (edited := edit(value)).isdigit() else value)
+def digits_only(set_value: Editor[str]) -> Editor[str]:
+    def set_digits(edit: Callable[[str], str]) -> str:
+        return set_value(lambda value: edited if (edited := edit(value)).isdigit() else value)
 
     return set_digits
 
@@ -185,7 +186,11 @@ async def test_an_edit_the_setter_rejects_leaves_the_value_and_the_cursor() -> N
 
 
 async def test_a_setter_that_ignores_edits_leaves_the_cursor() -> None:
-    shown = await run((KeyPressed(key=Key.Left), *typed("x")), initial="ab", wrap=lambda set_value: lambda edit: None)
+    shown = await run(
+        (KeyPressed(key=Key.Left), *typed("x")),
+        initial="ab",
+        wrap=lambda set_value: lambda edit: set_value(lambda value: value),
+    )
 
     assert shown[-1] == Shown(value="ab", before="a", at="b", after="", cursor=1)
 
@@ -465,3 +470,35 @@ async def test_a_press_focuses_the_field_and_scrolls_the_cursor_row_into_view() 
     )
 
     assert responses == [(FocusOn(fields[0].focus.handle), ScrollIntoView(fields[0].cursor_row, block="nearest"))]
+
+
+async def cursors_seen(events: Sequence[InputEvent], initial: str = "ab\ncd") -> list[tuple[int, int]]:
+    """
+    The rendered and the latest cursor a field's handler sees after the field handles each event,
+    where `!` replaces the value other than by an edit.
+    """
+    seen: list[tuple[int, int]] = []
+
+    @component
+    def field() -> Text:
+        value, set_value = use_state(initial)
+        text_area = use_text_area(value, set_value, width=WIDTH, auto_focus=True)
+
+        def record(event: InputEvent, _: Receiver) -> InputResponse:
+            if event == KeyPressed(key="!"):
+                set_value("wx\nyz\n")
+            seen.append((text_area.cursor, text_area.latest_cursor()))
+            return None
+
+        return Text(content=value, on_input=each(text_area.on_input, record))
+
+    await app(field(), headless=True, dimensions=(20, 5), autopilot=(*events, Quit()))
+    return seen
+
+
+async def test_latest_cursor_reads_a_move_made_since_the_render() -> None:
+    assert await cursors_seen((KeyPressed(key=Key.Up),)) == [(5, 2)]
+
+
+async def test_latest_cursor_is_at_the_end_once_the_value_changes_other_than_by_an_edit() -> None:
+    assert await cursors_seen((KeyPressed(key=Key.Up), KeyPressed(key="!"))) == [(5, 2), (2, 6)]

@@ -23,6 +23,9 @@ so the component draws them with `text_wrap_none`, without wrapping them again:
 
 <!-- example: text_area.py:hook -->
 
+As for [`use_text_input`](use_text_input.md), `cursor` is where this render placed the cursor,
+and `latest_cursor()` is where every edit since then left it, for a handler that decides from it.
+
 Enter isn't an edit, so it [bubbles](../input-handling/events.md#routing-input-events),
 and here the composer takes it to send the draft.
 Alt+Enter and Ctrl+J insert a line break:

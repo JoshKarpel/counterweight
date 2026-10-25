@@ -32,6 +32,7 @@ from counterweight.elements import Text
 from counterweight.events import AnyEvent
 from counterweight.events import InputEvent
 from counterweight.events import InputHandler
+from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.examples.snippets import performance_process_table
@@ -96,8 +97,18 @@ def find(tree: ShadowNode, func: Callable[..., Component]) -> ShadowNode:
     )
 
 
+def incrementing(set_count: Setter[int], count: int) -> InputHandler:
+    """A handler that sets `count` one past the value it captured, on every event."""
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        set_count(count + 1)
+        return ()
+
+    return on_input
+
+
 def setter_of(node: ShadowNode) -> Setter[object]:
-    return next(hook.setter for hook in node.hooks.data if isinstance(hook, UseState))
+    return next(hook for hook in node.hooks.data if isinstance(hook, UseState))
 
 
 def content(node: ShadowNode) -> object:
@@ -296,7 +307,7 @@ def title_with_accent(text: str, accent: str) -> Text:
 def page(use_argument: bool) -> Div:
     count, set_count = use_state(0)
     child = title_with_accent("Processes", SETTINGS["accent"]) if use_argument else title("Processes")
-    return Div(on_input=lambda event, _: set_count(count + 1), children=(child, Text(content=str(count))))
+    return Div(on_input=incrementing(set_count, count), children=(child, Text(content=str(count))))
 
 
 @pytest.mark.parametrize(("use_argument", "is_stale"), [(False, True), (True, False)], ids=["hidden", "argument"])
@@ -344,7 +355,7 @@ def log_view(lines: tuple[str, ...], comparisons: list[str], keep: bool) -> Div:
         return tuple(Line(text=line.upper(), comparisons=comparisons) for line in lines)
 
     argument = use_memo(upper, deps=(lines,)) if keep else upper()
-    return Div(on_input=lambda event, _: set_count(count + 1), children=(line_list(argument),))
+    return Div(on_input=incrementing(set_count, count), children=(line_list(argument),))
 
 
 @pytest.mark.parametrize(("keep", "expected"), [(False, 3), (True, 0)], ids=["rebuilt", "kept"])
@@ -394,14 +405,19 @@ def test_a_dependency_missing_from_use_memo_keeps_its_value_stale(
 @component
 def counter_capturing() -> Text:
     count, set_count = use_state(0)
-    on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
+    on_input = use_memo(lambda: incrementing(set_count, count), deps=())
     return Text(content=str(count), on_input=on_input)
 
 
 @component
 def counter() -> Text:
     count, set_count = use_state(0)
-    on_input = use_memo(lambda: lambda event, _: set_count(lambda count: count + 1), deps=())
+
+    def on_input_for_latest(event: InputEvent, _: Receiver) -> InputResponse:
+        set_count(lambda count: count + 1)
+        return ()
+
+    on_input = use_memo(lambda: on_input_for_latest, deps=())
     return Text(content=str(count), on_input=on_input)
 
 
@@ -437,7 +453,7 @@ def test_a_cached_handler_with_a_functional_update_counts_every_press() -> None:
 
 
 @component
-def search(on_submit: Callable[[str], None], log: list[str]) -> Text:
+def search(on_submit: Callable[[str], object], log: list[str]) -> Text:
     def submit() -> InputHandler:
         log.append("compute")
 
