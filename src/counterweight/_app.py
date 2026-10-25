@@ -54,6 +54,7 @@ from counterweight._input_parsing import parse_input
 from counterweight._layout import NO_LAYOUTS
 from counterweight._layout import Layouts
 from counterweight._layout import LayoutTree
+from counterweight._layout import PriorScroll
 from counterweight._layout import ScrollRequest
 from counterweight._layout import layout_changes
 from counterweight._layout import prior_scrolls
@@ -93,6 +94,7 @@ from counterweight._routing import named_key
 from counterweight._routing import route_key
 from counterweight._routing import route_mouse
 from counterweight._shadow import ShadowTree
+from counterweight._shadow import ShadowUpdate
 from counterweight._shadow import check_is_pure
 from counterweight._shadow import until_due
 from counterweight._shadow import update_shadow
@@ -175,8 +177,13 @@ UNKNOWN_TERMINAL_DIMENSIONS = (80, 24)
 
 SETTLING_PASSES = 5
 """
-How many times a frame re-renders the components whose focus or measurements changed before it paints anyway,
-which leaves room for a chain of components that each measure what the one before placed, and a focus change on top.
+How many passes a frame re-renders the components whose measurements went stale before it paints anyway,
+which leaves room for a chain of components that each measure what the one before placed.
+Browsers bound their `ResizeObserver` loop by depth instead, delivering each round only to observers of elements
+deeper than the last round's, but that stops a component that measures itself after one round.
+A reader goes stale when any of its rectangles move, so a component that sizes its rows from its own width
+and so changes its own height, as `text_area` does, would paint stale in every frame it mounts in;
+a count lets it settle on its second pass, at the cost of cutting off a longer chain of components.
 """
 
 
@@ -702,7 +709,7 @@ async def render_loop(
 
     event_queue: Queue[AnyEvent] = Queue()
     use_mouse_listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
-    # Made before the warmup render, so the hooks can capture it, and entered before any effect starts in it.
+    # Made before the first render, so the hooks can capture it, and entered before any effect starts in it.
     task_group = TaskGroup()
 
     def rendering() -> AbstractContextManager[None]:
@@ -892,30 +899,26 @@ async def render_loop(
                 preamble=output_control_start(viewport),
             )
 
-        # Warmup: render and lay out once without painting so that use_rects()
-        # returns real dimensions on the first visible render.
+        # The first render, laid out before the loop so the loop always has a tree to render from.
+        # The first frame paints it, settling it as any frame settles its render,
+        # and starts its effects, which `unstarted` holds until then, as React starts effects after the first paint.
         layout_tree = LayoutTree()
         with rendering():
-            warmup = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
-        shadow = warmup.tree
+            first = update_shadow(root_component, None, NO_LAYOUTS, instant=read_clock())
+        unstarted: ShadowUpdate | None = first
+        shadow = first.tree
         layouts = layout_tree.compute(layout_changes(None, shadow), shadow, w, layout_height(viewport, h), {})
         routing = RoutingTable.of(shadow, layouts)
-        focused = routing.reconciled_focus(None, warmup.mounted, requested=None)
+        focused: NodeKey | None = None
         # The handle of a `FocusOn` that named no focusable component when it arrived,
-        # which the next render focuses if a component with it can take focus then.
+        # which the next frame focuses if a component with it can take focus before the frame paints.
         requested_focus: FocusHandle | None = None
-        # The scroll controls to apply in the next layout, in order, including the ones focus moving adds.
-        pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = (
-            [] if focused is None else [focus_into_view(focused)]
-        )
+        # The scroll controls to apply in the next layout, in order.
+        pending_scrolls: list[ScrollTo | ScrollBy | ScrollIntoView] = []
 
         def rerun_everything() -> None:
             """Marks every node dirty, so the next render re-runs every component, `memo` ones included."""
             dirty.update(node.key for node in shadow.nodes)
-
-        # The warmup started no effects, so the first painted frame has to re-run every component to start them.
-        # It re-runs them with the focus the warmup reconciled, too.
-        rerun_everything()
 
         def refocus(key: NodeKey | None) -> None:
             """
@@ -1114,7 +1117,6 @@ async def render_loop(
                 if should_render or until_due(shadow, instant) == timedelta():
                     # Nothing in the block awaits, so no other task runs with the collector paused.
                     with collection_paused() if collect_garbage_between_frames else nullcontext():
-                        previous_layouts = layouts
                         # Picked from the frame on screen, before the update below changes what's in it.
                         priors = prior_scrolls(layouts)
                         with rendering():
@@ -1126,114 +1128,64 @@ async def render_loop(
                                 focused=focused,
                                 instant=instant,
                             )
-                        dirty.clear()
-                        previous_shadow, shadow = shadow, update.tree
-                        logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
+                            dirty.clear()
+                            if unstarted is not None:
+                                update, unstarted = unstarted.followed_by(update), None
+                            logger.debug("Updated shadow tree", extra={"components_run": len(update.ran)})
 
-                        layouts = layout_tree.compute(
-                            layout_changes(previous_shadow, shadow),
-                            shadow,
-                            w,
-                            layout_height(viewport, h),
-                            priors,
-                            scroll_requests(pending_scrolls, shadow),
-                        )
-                        logger.debug("Calculated layout")
-
-                        routing = RoutingTable.of(shadow, layouts)
-                        # The layouts the components in `shadow` read, which a purity check has to read too.
-                        read_layouts = previous_layouts
-                        mounted = update.mounted
-                        passes = 0
-                        is_refocus_only = False
-
-                        # Re-render the components whose focus changed, or whose `use_rects` or `use_scroll` read went
-                        # stale, and lay out again, before painting, as browsers deliver `ResizeObserver` notifications
-                        # before they paint, so no frame shows focus or a measurement from before the render changed it.
-                        while True:
-                            settled = routing.reconciled_focus(focused, mounted, requested_focus)
-                            requested_focus = None
-                            if is_refocus_only and settled != focused:
-                                raise UnsettledFocus(
-                                    "Focus changed again after re-rendering the components that gained and lost it, "
-                                    "so a component hid itself because it gained focus."
-                                )
-                            stale = frozenset(stale_readers(shadow, layouts))
-                            refocused = (
-                                frozenset(key for key in (focused, settled) if key is not None)
-                                if settled != focused
-                                else frozenset()
-                            )
-                            if not (stale or refocused) or passes == SETTLING_PASSES:
-                                break
-
-                            with rendering():
-                                settling = update_shadow(
-                                    root_component,
-                                    shadow,
-                                    layouts,
-                                    stale | refocused,
-                                    focused=settled,
-                                    instant=instant,
-                                )
-                            read_layouts = layouts
-                            previous_shadow, shadow = shadow, settling.tree
-                            if refocused and settled is not None:
-                                pending_scrolls.append(focus_into_view(settled))
-                            layouts = layout_tree.compute(
-                                layout_changes(previous_shadow, shadow),
+                            settled = settle(
+                                root_component,
                                 shadow,
-                                w,
-                                layout_height(viewport, h),
+                                update,
+                                layout_tree,
+                                (w, layout_height(viewport, h)),
                                 priors,
-                                scroll_requests(pending_scrolls, shadow),
+                                pending_scrolls,
+                                focused,
+                                requested_focus,
+                                instant,
                             )
-                            routing = RoutingTable.of(shadow, layouts)
-                            update = update.followed_by(settling)
-                            mounted = settling.mounted
-                            # Only a pass that re-rendered nothing but focus can be what moved it again.
-                            is_refocus_only = not stale
-                            focused = settled
-                            passes += 1
-                            logger.debug(
-                                "Settled focus and measurements",
-                                extra={"components_run": len(settling.ran), "stale_readers": len(stale)},
-                            )
-
+                        update = settled.update
+                        shadow = update.tree
+                        layouts = settled.layouts
+                        routing = settled.routing
+                        focused = settled.focused
+                        requested_focus = None
                         pending_scrolls.clear()
 
+                        if check_purity and settled.unsettled:
+                            names = sorted(
+                                {
+                                    reader.func.__qualname__
+                                    for key in settled.unsettled
+                                    if (reader := shadow.by_key[key].component) is not None
+                                }
+                            )
+                            raise UnsettledMeasurements(
+                                f"{', '.join(names)} still read stale measurements after {SETTLING_PASSES} passes "
+                                "of re-rendering before painting, "
+                                "so a component's size may depend on what it measures."
+                            )
+
+                        # With no reader stale, what every component read is what it would read from `layouts`.
                         if check_purity:
                             with rendering():
-                                check_is_pure(root_component, shadow, read_layouts, focused, instant)
+                                check_is_pure(root_component, shadow, layouts, focused, instant)
 
-                        # What's still unsettled renders in the next frame, which paints this one first.
-                        if stale or refocused:
-                            if check_purity and stale:
-                                names = sorted(
-                                    {
-                                        reader.func.__qualname__
-                                        for key in stale
-                                        if (reader := shadow.by_key[key].component) is not None
-                                    }
-                                )
-                                raise UnsettledMeasurements(
-                                    f"{', '.join(names)} still read stale measurements after {SETTLING_PASSES} passes "
-                                    "of re-rendering before painting, "
-                                    "so a component's size may depend on what it measures."
-                                )
+                        # What's still stale renders in the next frame, which paints this one first.
+                        if settled.unsettled:
                             # Once until a frame settles, since a component that never settles would warn every frame.
                             if not was_unsettled:
                                 logger.warning(
-                                    f"Painted a frame after {SETTLING_PASSES} passes of re-rendering "
-                                    "without its measurements and focus settling, "
+                                    f"Painted a frame with stale measurements after {SETTLING_PASSES} passes "
+                                    "of re-rendering, which render again in the next frame, "
                                     "so a component's size may depend on what it measures "
                                     "(not repeated until a frame settles)",
-                                    extra={"stale_readers": len(stale), "is_focus_settled": not refocused},
+                                    extra={"stale_readers": len(settled.unsettled)},
                                 )
-                            for key in stale:
+                            for key in settled.unsettled:
                                 event_queue.put_nowait(StateSet(key=key))
-                            refocus(settled)
-                        was_unsettled = bool(stale or refocused)
+                        was_unsettled = bool(settled.unsettled)
 
                         new_paint, border_healing_hints = paint_layout(
                             layouts.in_paint_order,
@@ -1570,6 +1522,96 @@ def stale_readers(shadow: ShadowTree, layouts: Layouts) -> Iterator[NodeKey]:
         if any(scroll != scroll_in(layouts, node.key, handle) for handle, scroll in (node.hooks.scrolls or {}).items())
     )
     return chain(stale_rects, stale_scrolls)
+
+
+@dataclass(frozen=True, slots=True)
+class Settled:
+    """
+    What `settle` leaves a frame to paint: its update, laid out, with the focus it settled on,
+    and the readers whose `use_rects` or `use_scroll` reads are still stale, which render again in the next frame.
+    """
+
+    update: ShadowUpdate
+    layouts: Layouts
+    routing: RoutingTable
+    focused: NodeKey | None
+    unsettled: frozenset[NodeKey]
+
+
+def settle(
+    root: Component,
+    previous: ShadowTree,
+    update: ShadowUpdate,
+    layout_tree: LayoutTree,
+    dimensions: tuple[int, int | None],
+    priors: Mapping[NodeKey, PriorScroll],
+    scrolls: Sequence[ScrollTo | ScrollBy | ScrollIntoView],
+    focused: NodeKey | None,
+    requested: FocusHandle | None,
+    instant: Instant,
+) -> Settled:
+    """
+    Lays out `update`, a frame's render of `root` built from `previous`, which `layout_tree` last laid out,
+    on a screen of `dimensions` with `priors` and `scrolls` (see `LayoutTree.compute`),
+    then re-renders the components whose focus changed or whose `use_rects` or `use_scroll` reads went stale,
+    and lays out again, before the frame paints, as a browser delivers `ResizeObserver` notifications before it paints.
+
+    Focus settles in passes of its own, which re-render only the components that gained and lost it,
+    so focus that moves again right after one can only be a component that hid itself because it gained focus,
+    which raises `UnsettledFocus`.
+    `requested` is the handle of a `FocusOn` that named no focusable component, which any pass focuses once it can.
+    Each other pass re-renders the components whose reads went stale, in at most `SETTLING_PASSES` such passes,
+    leaving any still stale to the next frame, as a browser leaves the notifications it couldn't deliver.
+    """
+    width, height = dimensions
+    scrolls = list(scrolls)
+    layouts = layout_tree.compute(
+        layout_changes(previous, update.tree), update.tree, width, height, priors, scroll_requests(scrolls, update.tree)
+    )
+    logger.debug("Calculated layout")
+    routing = RoutingTable.of(update.tree, layouts)
+    mounted = update.mounted
+    passes = 0
+    is_refocus_pass = False
+
+    while True:
+        settled = routing.reconciled_focus(focused, mounted, requested)
+        if requested is not None and requested in routing.focus_keys:
+            requested = None
+        if settled != focused:
+            if is_refocus_pass:
+                raise UnsettledFocus(
+                    "Focus changed again after re-rendering the components that gained and lost it, "
+                    "so a component hid itself because it gained focus."
+                )
+            dirty = frozenset(key for key in (focused, settled) if key is not None)
+            if settled is not None:
+                scrolls.append(focus_into_view(settled))
+            is_refocus_pass = True
+        else:
+            dirty = frozenset(stale_readers(update.tree, layouts))
+            if not dirty or passes == SETTLING_PASSES:
+                return Settled(update=update, layouts=layouts, routing=routing, focused=focused, unsettled=dirty)
+            passes += 1
+            is_refocus_pass = False
+
+        settling = update_shadow(root, update.tree, layouts, dirty, focused=settled, instant=instant)
+        layouts = layout_tree.compute(
+            layout_changes(update.tree, settling.tree),
+            settling.tree,
+            width,
+            height,
+            priors,
+            scroll_requests(scrolls, settling.tree),
+        )
+        routing = RoutingTable.of(settling.tree, layouts)
+        update = update.followed_by(settling)
+        mounted = settling.mounted
+        focused = settled
+        logger.debug(
+            "Settled focus" if is_refocus_pass else "Settled measurements",
+            extra={"components_run": len(settling.ran)},
+        )
 
 
 async def handle_effects(ran: Collection[Hooks], unmounted: Collection[Hooks], task_group: TaskGroup) -> None:

@@ -57,6 +57,19 @@ which it doesn't repeat until a frame settles,
 and with `app`'s `check_purity` on, the app raises
 [`UnsettledMeasurements`][counterweight.hooks.UnsettledMeasurements] instead.
 
+Browsers bound that loop differently:
+each round of `ResizeObserver` notifications reaches only the observers of elements
+deeper in the tree than the shallowest the last round reached,
+so a chain of elements nested inside each other settles however long it is,
+but an element observed again at the same depth waits for the next frame,
+with the "ResizeObserver loop completed with undelivered notifications" error.
+A component re-renders when any of the rectangles it read move,
+so one that lays out its rows from its own width, and so changes its own height,
+as [`text_area`](../headless/use_text_area.md#a-styled-text-area) does,
+would wait for the next frame every time it mounted.
+Counting passes lets it settle on its second,
+at the cost of cutting off a longer chain of components that each measure the last.
+
 ## API
 
 ::: counterweight.hooks.use_rects

@@ -145,6 +145,6 @@ async def test_the_devlog_records_the_components_a_frame_runs_again_to_settle_fo
     assert frame == [
         "DEBUG    counterweight._app Updated shadow tree components_run=2",
         "DEBUG    counterweight._app Calculated layout",
-        "DEBUG    counterweight._app Settled focus and measurements components_run=1 stale_readers=0",
+        "DEBUG    counterweight._app Settled focus components_run=1",
         "DEBUG    counterweight._app Generated new paint",
     ]

@@ -27,7 +27,6 @@ from counterweight.focus import DuplicateElementHandle
 from counterweight.focus import DuplicateFocusHandle
 from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
-from counterweight.hooks._hooks import rects_in
 from counterweight.hooks._impls import Hooks
 from counterweight.hooks._impls import InconsistentHookExecution
 from counterweight.hooks._impls import NodeKey
@@ -82,7 +81,7 @@ class ShadowTree:
     """The key of each node's parent, by the node's key, with `None` for the root's."""
     measured: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
     """
-    The nodes whose last run called `use_rects`.
+    The nodes whose last run called `use_rects`, which the render loop re-renders when their rectangles move.
     A node's `rects` change only when it runs, which only happens while building the next tree.
     """
     scroll_readers: tuple[ShadowNode, ...] = field(init=False, repr=False, compare=False)
@@ -171,32 +170,28 @@ class ShadowUpdate:
         )
 
 
-def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], layouts: Layouts, instant: Instant) -> bool:
+def is_dirty(node: ShadowNode, dirty: frozenset[NodeKey], instant: Instant) -> bool:
     """
     Whether `node` has to re-run whatever its parent does:
-    its state was set, the rectangles `use_rects` last returned to it have moved since,
+    it's in `dirty`, because its state was set, its focus changed, or a measurement it read went stale,
     or one of its `use_clock` hooks is due a new reading at `instant`.
     """
-    return (
-        node.key in dirty
-        or any(rects != rects_in(layouts, node.key, handle) for handle, rects in (node.hooks.rects or {}).items())
-        or any(clock.is_due(instant) for clock in node.hooks.clocks)
-    )
+    return node.key in dirty or any(clock.is_due(instant) for clock in node.hooks.clocks)
 
 
 def dirty_paths(
-    tree: ShadowTree, dirty: frozenset[NodeKey], layouts: Layouts, instant: Instant
+    tree: ShadowTree, dirty: frozenset[NodeKey], instant: Instant
 ) -> tuple[frozenset[NodeKey], frozenset[NodeKey]]:
     """
     The keys of every dirty node in `tree` (see `is_dirty`),
     and the paths to them: those keys and the keys of all their ancestors.
-    Only a node in `dirty` or one that called `use_rects` or `use_clock` can be dirty,
+    Only a node in `dirty` or one that called `use_clock` can be dirty,
     so it visits only those and their ancestors, not the whole tree.
     """
     dirty_nodes = frozenset(
         chain(
             (key for key in dirty if key in tree.parents),
-            (node.key for node in chain(tree.measured, tree.clocked) if is_dirty(node, dirty, layouts, instant)),
+            (node.key for node in tree.clocked if is_dirty(node, dirty, instant)),
         )
     )
 
@@ -247,7 +242,7 @@ def update_shadow(
 ) -> ShadowUpdate:
     """
     Builds the next shadow tree from `previous`, re-running only the components that have to:
-    those in `dirty`, whose rectangles moved, or whose clock is due (see `is_dirty`),
+    those in `dirty` or whose clock is due (see `is_dirty`),
     and those whose parent passed them a new `Component`,
     unless it's a `memo` component equal to its previous one (see `continues`).
     A component that doesn't re-run keeps its previous node, whole subtree included,
@@ -257,9 +252,7 @@ def update_shadow(
     `instant` is this frame's, which `use_clock` reads, with its monotonic time measured from the app's start.
     With `check_purity`, the tree is then built again with every component re-run (see `check_is_pure`).
     """
-    dirty_nodes, paths = (
-        (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, layouts, instant)
-    )
+    dirty_nodes, paths = (frozenset(), frozenset()) if previous is None else dirty_paths(previous, dirty, instant)
     reconciliation = Reconciliation(
         layouts=layouts, focused=focused, instant=instant, dirty_nodes=dirty_nodes, paths=paths, check_purity=False
     )

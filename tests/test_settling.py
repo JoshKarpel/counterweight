@@ -10,6 +10,7 @@ from counterweight.asciicast import Recording
 from counterweight.autopilot import AutopilotStep
 from counterweight.components import Component
 from counterweight.components import component
+from counterweight.controls import FocusOn
 from counterweight.controls import Quit
 from counterweight.controls import ScrollBy
 from counterweight.elements import Div
@@ -19,6 +20,8 @@ from counterweight.events import InputEvent
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.focus import ElementHandle
+from counterweight.focus import FocusHandle
+from counterweight.focus import UnsettledFocus
 from counterweight.hooks import UnsettledMeasurements
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_rects
@@ -30,6 +33,8 @@ from counterweight.styles.utilities import overflow_y_scroll
 from counterweight.styles.utilities import size
 
 HANDLE = ElementHandle()
+SIZED = ElementHandle()
+FIELD = FocusHandle()
 WIDTH, HEIGHT = 8, 3
 
 
@@ -100,8 +105,8 @@ async def test_a_component_reading_a_scroll_that_moved_is_drawn_from_it_in_the_f
 
 
 def unsettled_warnings(caplog: pytest.LogCaptureFixture) -> int:
-    """How many times the app warned that it painted a frame whose measurements or focus hadn't settled."""
-    return sum(record.getMessage().startswith("Painted a frame after") for record in caplog.records)
+    """How many times the app warned that it painted a frame whose measurements hadn't settled."""
+    return sum(record.getMessage().startswith("Painted a frame with stale measurements") for record in caplog.records)
 
 
 @component
@@ -111,7 +116,7 @@ def grows(widths: list[int]) -> Div:
     return Div(style=size(width + 1, 1))
 
 
-async def test_a_component_that_grows_whenever_it_measures_itself_paints_after_the_bound_and_warns_once(
+async def test_a_component_that_grows_whenever_it_measures_itself_paints_stale_and_warns_once(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     widths: list[int] = []
@@ -121,7 +126,8 @@ async def test_a_component_that_grows_whenever_it_measures_itself_paints_after_t
 
     # Each render reads the width the one before it set, across frames as well as within them.
     assert widths == list(range(len(widths)))
-    assert len(widths) > 2 * (1 + SETTLING_PASSES)
+    # More renders than one frame's, so frames after the first carry on from where the last left off.
+    assert len(widths) > 1 + SETTLING_PASSES
     assert unsettled_warnings(caplog) == 1
 
 
@@ -181,3 +187,75 @@ async def test_a_measurement_that_hides_a_component_that_just_gained_focus_moves
         )
 
     assert (await painted(tmp_path, root(), [KeyPressed(key="m")]))[-1] == ["", "", ""]
+
+
+@component
+def sized_from_handle() -> Div:
+    width = use_rects(HANDLE).border.width
+    return Div(handle=SIZED, style=size(width, 1), children=(Text(content="=" * width),))
+
+
+@component
+def width_of_sized() -> Text:
+    return Text(content=str(use_rects(SIZED).border.width))
+
+
+async def test_a_chain_of_components_that_each_measure_the_one_before_settles_before_the_first_frame_paints(
+    tmp_path: Path,
+) -> None:
+    @component
+    def root() -> Div:
+        return Div(
+            style=col,
+            children=(
+                Div(handle=HANDLE, style=size(3, 1), children=(Text(content="###"),)),
+                sized_from_handle(),
+                width_of_sized(),
+            ),
+        )
+
+    assert await painted(tmp_path, root(), []) == [["###", "===", "3"]]
+
+
+async def test_an_auto_focus_component_that_hides_itself_once_focused_raises_beside_a_stale_measurement() -> None:
+    @component
+    def hides_once_focused() -> Text:
+        focus = use_focus(auto_focus=True)
+        return Text(content="shy", style=display_none if focus.is_focused else col)
+
+    @component
+    def root() -> Div:
+        return Div(style=col, children=(hides_once_focused(), Div(handle=HANDLE, style=size(2, 1)), width_of_handle()))
+
+    with pytest.raises(UnsettledFocus, match="hid itself"):
+        await app(root(), headless=True, dimensions=(WIDTH, HEIGHT), autopilot=[Quit()])
+
+
+async def test_a_waiting_focus_on_focuses_a_component_that_a_measurement_mounts_before_the_frame_paints(
+    tmp_path: Path,
+) -> None:
+    @component
+    def field() -> Text:
+        focus = use_focus(handle=FIELD)
+        return Text(content="on" if focus.is_focused else "off")
+
+    @component
+    def mounts_once_measured() -> Div:
+        is_measured = use_rects(HANDLE).border.width > 0
+        return Div(children=(field(),) if is_measured else ())
+
+    @component
+    def root() -> Div:
+        is_mounted, set_mounted = use_state(False)
+
+        def on_input(event: InputEvent, _: Receiver) -> FocusOn:
+            set_mounted(True)
+            return FocusOn(FIELD)
+
+        return Div(
+            style=col,
+            on_input=on_input,
+            children=(mounts_once_measured(), Div(handle=HANDLE, style=size(2, 1))) if is_mounted else (),
+        )
+
+    assert (await painted(tmp_path, root(), [KeyPressed(key="m")]))[-1] == ["on", "", ""]

@@ -35,7 +35,7 @@ def measured(is_hidden: bool, recorded: list[Rects]) -> Div:
     return Div(style=(size(7, 4) | display_none) if is_hidden else size(7, 4))
 
 
-async def test_use_rects_reports_the_previous_frames_layout_and_empty_regions_once_hidden() -> None:
+async def test_use_rects_reports_the_last_layout_and_empty_regions_once_hidden() -> None:
     recorded: list[Rects] = []
 
     @component

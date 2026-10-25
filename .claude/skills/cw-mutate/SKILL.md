@@ -137,21 +137,16 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   after a frame, and `FocusPrevious`'s `is_forward=None`: each is only read for truthiness.
 - **`render_loop`'s initial `should_clear`, `None` or `False`.** `handle_screen_size_change` sets it to `True`
   before the first frame reads it, and the `finally` block never reads it.
-- **The warmup's pending scroll when nothing is focused** (`(focused is None) and False`, queueing
-  `focus_into_view(None)`): `scroll_requests` drops a control whose `Subtree` key is `None`,
-  and the first frame clears `pending_scrolls`.
 - **`handle_control`'s `case None: pass` dropped.** A `match` with no matching case does nothing.
 - **`Dummy()` replaced by `None` in the event queue.** It only wakes the loop, and `None` matches no case either.
-- **The available size, `None` or dropped**, in `render_loop` (warmup and frames) and `LayoutTree.compute`.
+- **The available size, `None` or dropped**, in `render_loop` (the first render and `settle`) and `LayoutTree.compute`.
   The screen element has an explicit size and grid tracks, so the space offered to it changes nothing.
 - **`screen_element_style`'s `size_width` and `size_height`, `None` or dropped.**
   The explicit grid tracks already size the screen element.
-- **The warmup's `instant=read_clock()` dropped** (reading `BEGINNING`). `use_clock` uses its mount reading
-  only through its monotonic time, which is zero at the start either way,
-  and the first painted frame's wall time is in a later tick, so it takes a fresh reading.
 - **`layout_changes(None, shadow)` in place of the previous shadow.** Every node is created again,
   which lays out the same; it only throws away taffy's cached layout.
-- **`render_loop`'s `requested_focus = ""`** (initially, in `refocus`, after a render, and when nothing renders).
+- **`render_loop`'s `requested_focus = ""`** (initially, in `refocus`, after a render, and when nothing renders),
+  and `settle`'s `requested = ""`.
   It's only read by `reconciled_focus`, whose `focus_keys.get("")` misses as `None` does,
   since a `FocusHandle` is equal only to itself.
 
