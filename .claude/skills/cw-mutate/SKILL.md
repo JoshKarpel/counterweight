@@ -103,9 +103,6 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
   (`layouts.scrolls.get(None, NO_SCROLL)`), `rects_in`'s (`layouts.by_key.get(None, INITIAL_RECTS)`)
   and `captured`'s `press.captor is None` (`deliver` finds no handler for `None`).
   All three are keyed by `NodeKey`; the guards narrow the type for the checker.
-- **`check`'s labels in libghostty calls** (`None`, `XX` wraps, case changes), throughout `emulator.py`:
-  pyghostty's `check` formats the label only into the `GhosttyError` for a call that returns non-zero,
-  and libghostty returns success for every call these arguments make.
 
 ### State
 
@@ -277,29 +274,8 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 
 ### Emulator
 
-- **`__init__`'s palette set replaced by `check(None, ...)`**: libghostty's default palette is byte-for-byte
-  `DEFAULT_PALETTE` (probed), so setting it changes nothing; a palette that differs is killed.
-- **`__init__`'s initial `converted = None`**: a render state's first update marks every row dirty, and they stay dirty
-  until a snapshot cleans them, so the first snapshot never calls `previous.get`.
-- **`__init__`'s initial `last_scrolled_off = ""`**: it's only read as `last in ids`, which neither `None` nor `""` is.
-- **`rows_per_page`'s `3**16` and `2**17`**: a larger line limit only keeps more rows in libghostty than `scrolled_off`
-  ever reads. A smaller one (`2**10`) is killed.
-- **`update`'s `requested * 3`** in the search for the last row set aside: the factor only changes how many rounds
-  the search takes; the rows it returns are the same, and the request after the loop leaves `overscan.above` at
-  `needed` either way.
 - **`is_unchanged`'s `zip(..., strict=True)`** dropped, `False` or `None`: the `len` comparison before it already
   returned `False` for rows of different lengths.
-- **`convert_row`'s `cast("q")`**: libghostty packs a cell's fields into its low 48 bits (probed with every attribute
-  set), so a signed read gives the same non-negative ints.
-- **`convert_row`'s spacer-tail cache: `= None`, or always `plain` or always `seen`** (`and False`, `or True`).
-  A `None` entry reads as a miss, so the cell is classified again and gives no cells again,
-  and a spacer tail's cells are `()` whatever its style.
-- **`convert_row`'s `len(plain) > PLAIN_CELLS_KEPT`**: keeping one more entry before clearing only bounds memory.
-- **`convert_row`'s `length >= len(self.grapheme_buffer)`**: a cluster exactly the buffer's size only gets
-  a new buffer of the same size.
-- **`convert_row`'s `styles.get(None)`**: every lookup misses, so each styled cell's style is read again, the same.
-- **`convert_row`'s `cells_for("XX XX", ...)` for an erased cell**: the text is wider than any cell's 1 or 2 columns,
-  so `cells_for` draws it as spaces, as it does `" "`.
 
 ### Pseudo-terminals
 
@@ -325,7 +301,7 @@ Each is equivalent for the reason given; recheck the reason, not just the shape,
 - **`use_command`'s `apply_width` with `deps=None` or none**: running it every render assigns the same positive
   width and sets an event that's already set, or returns for a width that isn't positive.
 - **`use_command`'s `use_memo(..., None)` for `run` and `cancel`**: as for `use_pty`'s `write`.
-- **`Transcript.of`'s `on_reply=None`.** pyghostty's `on_reply(None)` stops reporting replies,
+- **`Transcript.of`'s `on_reply=None`.** evp's `Terminal(on_write_pty=None)` drops replies,
   so a query's reply is dropped as `ignore_reply` drops it (probed with a query in the output).
 
 ### Embedded terminals and input encoding

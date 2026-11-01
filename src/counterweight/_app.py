@@ -41,10 +41,6 @@ from weakref import WeakSet
 import waxy
 
 from counterweight._border_healing import heal_borders
-from counterweight._capture import Capture
-from counterweight._capture import resume_capturing
-from counterweight._capture import start_capturing
-from counterweight._capture import stop_capturing
 from counterweight._context_vars import app_scope
 from counterweight._input import start_input_control
 from counterweight._input import start_reading_keys
@@ -101,8 +97,6 @@ from counterweight._utils import maybe_await
 from counterweight._viewports import FullScreen
 from counterweight._viewports import Inline
 from counterweight._viewports import Viewport
-from counterweight.asciicast import Recorder
-from counterweight.asciicast import Recording
 from counterweight.autopilot import Autopilot
 from counterweight.autopilot import AutopilotStep
 from counterweight.clock import Clock
@@ -135,7 +129,6 @@ from counterweight.controls import _Control
 from counterweight.elements import AnyElement
 from counterweight.elements import Div
 from counterweight.elements import Text
-from counterweight.emulator import Emulator
 from counterweight.events import AnyEvent
 from counterweight.events import ControlSent
 from counterweight.events import CursorPositionReported
@@ -162,9 +155,16 @@ from counterweight.hooks._hooks import scroll_in
 from counterweight.hooks._impls import Hooks
 from counterweight.hooks._impls import NodeKey
 from counterweight.keys import Key
-from counterweight.programs import TerminalStreams
 from counterweight.styles import Style
 from counterweight.styles.utilities import text_wrap_stable
+lazy from counterweight._capture import Capture
+lazy from counterweight._capture import resume_capturing
+lazy from counterweight._capture import start_capturing
+lazy from counterweight._capture import stop_capturing
+lazy from counterweight.asciicast import Recorder
+lazy from counterweight.asciicast import Recording
+lazy from counterweight.emulator import Emulator
+lazy from counterweight.programs import TerminalStreams
 
 logger = logging.getLogger(__name__)
 

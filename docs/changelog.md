@@ -25,6 +25,14 @@
 
 ### Changed
 
+- `counterweight.emulator` runs libghostty-vt through [evp](https://github.com/JoshKarpel/evp) rather than pyghostty.
+  Making the first emulator takes about a millisecond rather than about 180 ms,
+  and a snapshot after the program scrolls takes a fifth to a fortieth as long.
+
+- `import counterweight` takes about a quarter less time:
+  it no longer imports what only some apps use, such as gradients, programs, recordings and the emulator,
+  until something uses them, and looks its version up only when `__version__` is read.
+
 - [#393](https://github.com/JoshKarpel/counterweight/issues/393)
   `Quit` renders once more before the app stops, without starting effects,
   so the last frame shows what the last handlers set.

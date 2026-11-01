@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import subprocess
-import sys
 from collections import Counter
 from types import ModuleType
 
@@ -87,22 +85,6 @@ def test_a_snippet_whose_title_names_no_section_fails() -> None:
 
     with pytest.raises(ValueError, match="section"):
         example_of(module, "snippet")
-
-
-def test_listing_the_examples_does_no_work_that_loads_the_emulator() -> None:
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from counterweight.examples.catalog import examples; examples();"
-            " print('pyghostty._ffi' in sys.modules)",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-    assert result.stdout.strip() == "False"
 
 
 SOURCE = '''"""Title"""

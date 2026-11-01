@@ -7,7 +7,7 @@ from without_cli import run
 
 from counterweight._cli import cli
 from counterweight._constants import PACKAGE_NAME
-from counterweight._constants import __version__
+from counterweight._version import __version__
 
 
 @pytest.mark.parametrize("argv", [("version",), ("--version",)])

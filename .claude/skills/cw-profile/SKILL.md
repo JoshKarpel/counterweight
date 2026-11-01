@@ -122,6 +122,25 @@ uv run python -m benchmarks snapshot --name after
 uv run python -m benchmarks compare before after
 ```
 
+## Time startup
+
+A workload's frames are timed after a warmup, in a process that has already imported everything,
+so none of them show how long a short-lived app's user waits for its first frame.
+`startup` launches workloads in fresh processes (`picker`, inline, and `top`, full-screen, by default),
+each through its first frame, and splits each launch into the interpreter's startup, imports
+(counterweight and the workload's own module), the first frame (an inline app's emulator included), and exit:
+
+```bash
+uv run python -m benchmarks startup --name before            # writes profiles/before.startup.json
+uv run python -m benchmarks startup tasks chat --name before  # or name the workloads to launch
+# make the change
+uv run python -m benchmarks startup --name after
+uv run python -m benchmarks compare before after
+```
+
+It reports each stage's median over `--repeat` launches (10), since a launch's time varies more than a frame's.
+Imports dominate it: to see which, run `uv run python -X importtime -c "import counterweight"`.
+
 ## Record results
 
 Add a section to `plans/performance-analysis.md`, numbered after the last run and with a

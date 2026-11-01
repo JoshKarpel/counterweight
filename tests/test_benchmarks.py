@@ -33,6 +33,11 @@ from benchmarks.stacks import Frame
 from benchmarks.stacks import parse_collapsed
 from benchmarks.stacks import parse_frame
 from benchmarks.stacks import summarize
+from benchmarks.startup import Launch
+from benchmarks.startup import StartupTimings
+from benchmarks.startup import defined_at
+from benchmarks.startup import startup_table
+from benchmarks.startup import time_startup
 from benchmarks.tables import Column
 from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
@@ -310,3 +315,62 @@ def test_snapshots_table_compares_only_the_scenarios_both_runs_timed() -> None:
     table = snapshots_table({"before": before, "after": after})
 
     assert [row.split() for row in table.splitlines()[3:]] == [["plain-line", "400.0", "300.0", "-25%"]]
+
+
+@pytest.mark.parametrize(
+    ("name", "module", "attribute"),
+    [("picker", "benchmarks.picker", "WORKLOAD"), ("top-memo", "benchmarks.top", "MEMO_WORKLOAD")],
+)
+def test_a_workload_is_launched_from_the_module_that_defines_it(name: str, module: str, attribute: str) -> None:
+    assert defined_at(WORKLOADS[name]) == (module, attribute)
+
+
+def test_time_startup_launches_each_workload_through_its_first_frame() -> None:
+    timings = time_startup([WORKLOADS["picker"]], repeat=1)
+
+    (launch,) = timings.launches["picker"]
+    assert min(launch.interpreter_ms, launch.imports_ms, launch.first_frame_ms, launch.exit_ms) > 0
+
+
+def test_a_launch_reaches_its_first_frame_through_the_interpreter_its_imports_and_the_app() -> None:
+    launch = Launch(interpreter_ms=9.0, imports_ms=150.0, first_frame_ms=12.5, exit_ms=30.0)
+
+    assert launch.to_first_frame_ms == 171.5
+
+
+def test_startup_timings_load_what_they_dump(tmp_path: Path) -> None:
+    timings = StartupTimings(
+        source="src",
+        launches={"picker": [Launch(interpreter_ms=9.0, imports_ms=150.0, first_frame_ms=12.5, exit_ms=30.0)]},
+    )
+    timings.dump(tmp_path / "run.startup.json")
+
+    assert StartupTimings.load(tmp_path / "run.startup.json") == timings
+
+
+def test_startup_table_compares_each_stages_median_for_only_the_workloads_both_runs_launched() -> None:
+    before = StartupTimings(
+        source="a",
+        launches={
+            "picker": [
+                Launch(interpreter_ms=10.0, imports_ms=100.0, first_frame_ms=200.0, exit_ms=30.0),
+                Launch(interpreter_ms=12.0, imports_ms=140.0, first_frame_ms=220.0, exit_ms=50.0),
+                Launch(interpreter_ms=90.0, imports_ms=900.0, first_frame_ms=900.0, exit_ms=90.0),
+            ],
+            "top": [Launch(interpreter_ms=10.0, imports_ms=100.0, first_frame_ms=50.0, exit_ms=30.0)],
+        },
+    )
+    after = StartupTimings(
+        source="b",
+        launches={"picker": [Launch(interpreter_ms=12.0, imports_ms=140.0, first_frame_ms=11.0, exit_ms=50.0)]},
+    )
+
+    table = startup_table({"before": before, "after": after})
+
+    assert [[cell.strip() for cell in row.split("  ") if cell.strip()] for row in table.splitlines()[3:]] == [
+        ["picker", "interpreter", "12.0", "12.0", "+0%"],
+        ["picker", "imports", "140.0", "140.0", "+0%"],
+        ["picker", "first frame", "220.0", "11.0", "-95%"],
+        ["picker", "exit", "50.0", "50.0", "+0%"],
+        ["picker", "to first frame", "372.0", "163.0", "-56%"],
+    ]

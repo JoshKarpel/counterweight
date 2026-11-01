@@ -97,7 +97,7 @@ It has two layers, as waxy does.
   and returns what the loop would have, so it's never the only way to get something.
 
 ```python
-terminal = Terminal(columns=120, rows=40, scrollback_lines=10_000, on_write_pty=pty.write)
+terminal = Terminal(columns=120, rows=40, max_scrollback_bytes=10_000_000, on_write_pty=pty.write)
 terminal.feed(output)
 terminal.resize(columns=100, rows=30)
 
@@ -153,7 +153,7 @@ and kitty graphics (`kitty_graphics.h`), which counterweight's [#441](https://gi
   The binding documents it, as the C API does, rather than hiding it.
 
 **What stays in counterweight** is what depends on counterweight: matching libghostty's columns to counterweight's own
-`grapheme_width` (see "The screen painter" in [canvas-and-embedding](canvas-and-embedding.md)),
+`grapheme_width` (see "The screen painter" in [canvas-and-embedding](https://github.com/JoshKarpel/counterweight/blob/bf1c8c7a7f47de9aa952f9dab0f2ce287fd85447/plans/canvas-and-embedding.md)),
 colors as `Color` and `IndexedColor`, and the swapped colors of inverse and invisible cells.
 It runs once per changed row, as now.
 Whether counterweight's `input_encoding` gives way to the binding's encoders is a separate decision, after this plan:
@@ -253,8 +253,8 @@ with a release of the binding between them.
    Delete the cffi code, the row and cell caches the binding replaces, and the overscan search.
    Run `benchmarks snapshot` against today's numbers, the inline workloads for startup,
    and a mutation testing pass over the new `emulator.py`.
-4. **Drop pyghostty**: remove the dependency, and update `CLAUDE.md`'s Key Dependencies,
-   `emulator.py`'s module docstring, and the emulator notes in [canvas-and-embedding](canvas-and-embedding.md).
+4. **Drop pyghostty**: remove the dependency, and update `CLAUDE.md`'s Key Dependencies
+   and `emulator.py`'s module docstring.
 
 ## Open decisions
 

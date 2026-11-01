@@ -203,7 +203,7 @@ which pre-commit leaves alone.
   - **styles/**: Styling system with utilities
   - **examples/**: The apps and the docs' snippets, which ship in the wheel
 - **tests/**: Test suites organized by module
-- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing and emulator snapshot timings (see the `cw-profile` skill)
+- **benchmarks/**: Deterministic render-loop workloads, profiled with `just profile`, and input-parsing, emulator snapshot and startup timings (see the `cw-profile` skill)
 - **docs/**: MkDocs documentation with examples and API reference
 
 ## Key Dependencies
@@ -216,7 +216,7 @@ which pre-commit leaves alone.
 - **markdown-it-py**: Parses Markdown for `counterweight.markdown`
 - **mdit-py-plugins**: The GitHub Flavored Markdown, math, and front matter rules `counterweight.markdown` parses with
 - **pygments**: Lexes and colors source code for `counterweight.highlighting`
-- **pyghostty**: libghostty-vt's cffi bindings, the terminal emulator behind `counterweight.emulator`
+- **evp**: Python bindings to libghostty-vt, Ghostty's terminal emulator, behind `counterweight.emulator`
 - **pillow**: Decodes images for `Pixels.from_image`, which counterweight itself never imports, and draws the logo's PNGs
 - **fonttools** (dev): Outlines the logo's letters for `codegen/generate_logo.py`
 
@@ -255,6 +255,8 @@ A fix only Linux has run is unconfirmed until a macOS CI run passes, so say so.
 - Strict typing: All functions must be fully typed
 - Formatting and linting: Run `just pre-commit` to enforce
 - Use pathlib instead of os.path
+- Import a module that only some apps use with `lazy from` (PEP 810), so `import counterweight` stays fast for a short-lived app:
+  `tests/test_startup.py` lists what importing it must leave unimported, and `benchmarks startup` measures the cost (see the `cw-profile` skill)
 - Follow PEP 8 conventions for naming
 - Frozen, slotted dataclasses for data modeling
 - Use pytest for testing

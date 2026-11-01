@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import subprocess
-import sys
-
 import pytest
 
 from counterweight.elements import Rows
 from counterweight.elements import StyledGrapheme
 from counterweight.emulator import MAX_SCROLLBACK
-from counterweight.emulator import PLAIN_CELLS_KEPT
 from counterweight.emulator import Emulator
 from counterweight.emulator import Modes
 from counterweight.emulator import MouseTracking
 from counterweight.emulator import Screen
+from counterweight.emulator import cells_for
 from counterweight.geometry import Position
 from counterweight.styles import CellStyle
 from counterweight.styles._styles import UNSET
@@ -22,6 +19,9 @@ from counterweight.styles._styles import IndexedColor
 
 FOREGROUND = Color(230, 220, 210)
 BACKGROUND = Color(10, 20, 30)
+
+# More distinct cells than the emulator's shared cache of them keeps.
+CELLS_KEPT = cells_for.cache_info().maxsize or 0
 
 
 def ignore_replies(data: bytes) -> None:
@@ -193,7 +193,7 @@ def test_a_wide_character_is_one_cell_and_takes_two_columns() -> None:
 
 @pytest.mark.parametrize("style", ["", "\x1b[32m"], ids=["plain", "styled"])
 def test_a_character_repeated_in_a_row_is_the_same_cell_however_many_cells_come_between(style: str) -> None:
-    between = "".join(chr(0x4E00 + index) for index in range(PLAIN_CELLS_KEPT))
+    between = "".join(chr(0x4E00 + index) for index in range(CELLS_KEPT))
     line = snapshot(f"{style}a\x1b[31m{between}\x1b[0m{style}a", columns=2 * len(between) + 2, rows=1).lines[0]
 
     assert line[-1] is line[0]
@@ -431,7 +431,7 @@ def test_resizing_reflows_the_screen() -> None:
 
 
 def test_more_distinct_plain_characters_than_are_kept_are_all_drawn() -> None:
-    characters = "".join(chr(0x4E00 + index) for index in range(PLAIN_CELLS_KEPT + 1))
+    characters = "".join(chr(0x4E00 + index) for index in range(CELLS_KEPT + 1))
     columns = 200
     rows = -(-len(characters) * 2 // columns)
 
@@ -558,23 +558,7 @@ def test_scrolled_off_returns_every_row_since_the_last_call_up_to_its_scrollback
     assert rows_text(newest) == [str(number) for number in range(9_999 - scrollback, 9_999)]
 
 
-@pytest.mark.parametrize(
-    ("scrolled", "captured"),
-    [(0, 4), (2, 4), (3, 8), (5, 16), (40, 50)],
-)
-def test_the_next_update_captures_twice_the_rows_that_scrolled_off_rounded_up_to_the_screens_rows_times_a_power_of_two(
-    scrolled: int, captured: int
-) -> None:
-    with Emulator(10, 4, ignore_replies, scrollback=50) as emulator:
-        emulator.feed(numbered_lines(0, 6))
-        emulator.scrolled_off()
-        emulator.feed(numbered_lines(6, 6 + scrolled))
-        emulator.scrolled_off()
-
-        assert emulator.overscan.above == captured
-
-
-def test_an_emulators_scrollback_can_hold_as_many_rows_as_libghostty_captures_at_once() -> None:
+def test_an_emulators_scrollback_can_hold_max_scrollback_rows() -> None:
     lines = MAX_SCROLLBACK + 1_000
     with Emulator(6, 2, ignore_replies, scrollback=MAX_SCROLLBACK) as emulator:
         emulator.feed(b"".join(b"%d\r\n" % number for number in range(lines)))
@@ -584,17 +568,6 @@ def test_an_emulators_scrollback_can_hold_as_many_rows_as_libghostty_captures_at
 
 
 @pytest.mark.parametrize("scrollback", [-1, MAX_SCROLLBACK + 1])
-def test_an_emulators_scrollback_must_fit_what_libghostty_captures_at_once(scrollback: int) -> None:
+def test_an_emulators_scrollback_must_be_from_zero_to_max_scrollback(scrollback: int) -> None:
     with pytest.raises(ValueError, match="scrollback"):
         Emulator(10, 2, ignore_replies, scrollback=scrollback)
-
-
-def test_importing_the_app_does_not_load_the_emulators_bindings() -> None:
-    result = subprocess.run(
-        [sys.executable, "-c", "import sys, counterweight._app; print('pyghostty._ffi' in sys.modules)"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-    assert result.stdout.strip() == "False"

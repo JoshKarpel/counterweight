@@ -28,7 +28,6 @@ from without_cli import run
 
 from counterweight._app import app
 from counterweight._constants import PACKAGE_NAME
-from counterweight._constants import __version__
 from counterweight._input import start_input_control
 from counterweight._input import start_reading_keys
 from counterweight._input import stop_input_control
@@ -40,6 +39,7 @@ from counterweight._output import start_bracketed_paste
 from counterweight._output import start_mouse_tracking
 from counterweight._output import stop_bracketed_paste
 from counterweight._output import stop_mouse_tracking
+from counterweight._version import __version__
 from counterweight.components import component
 from counterweight.controls import Quit
 from counterweight.controls import Screenshot
