@@ -24,13 +24,13 @@ from pathlib import Path
 from shutil import get_terminal_size
 from tempfile import gettempdir
 
-from without_cli import Writer
 from without_logging import Level
 from without_logging import capture
 from without_logging import render_json
 from without_logging import to_stream
 from without_streams.wiring import compose
 from without_streams.wiring import offload
+lazy from without_cli import Writer
 
 from counterweight._constants import PACKAGE_NAME
 

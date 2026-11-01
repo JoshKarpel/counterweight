@@ -450,7 +450,7 @@ Following the project's cache placement rules:
   They're keyed by one node's geometry, and how many are live grows with the app.
   `LayoutTree.drawings` already keeps each canvas's rows by node
   with the painter and size that drew them, and reuses them while both compare equal
-  (see the [Canvas plan](canvas-and-embedding.md#the-element-and-its-painter)).
+  (see the [Canvas plan](https://github.com/JoshKarpel/counterweight/blob/bf1c8c7a7f47de9aa952f9dab0f2ce287fd85447/plans/canvas-and-embedding.md#the-element-and-its-painter)).
   Fields follow it: a `LayoutTree.fields` keeps each node's fields
   by the gradient and the box each maps over, so each distinct chunk gradient in a text gets its own,
   with the box size, the aspect ratio and the painted region each was built for.

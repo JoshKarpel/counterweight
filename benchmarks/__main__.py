@@ -4,7 +4,8 @@ The benchmark CLI: `uv run python -m benchmarks --help`.
 A workload run named `NAME` leaves its files in the output directory: `NAME.json` (frame times),
 `NAME.txt` (the last frame), and, under `just profile`, `NAME.bin` (the Tachyon profile)
 and `NAME.html` (its flamegraph). A `parse` run leaves `NAME.parsing.json` (time per read of input),
-and a `snapshot` run `NAME.snapshots.json` (time per emulator snapshot).
+a `snapshot` run `NAME.snapshots.json` (time per emulator snapshot),
+and a `startup` run `NAME.startup.json` (each launch's stages, up to its first frame).
 `report` and `compare` read runs back by name.
 """
 
@@ -26,6 +27,7 @@ from without_cli import command
 from without_cli import default
 from without_cli import flag
 from without_cli import group
+from without_cli import many
 from without_cli import once
 from without_cli import option
 from without_cli import optional
@@ -46,6 +48,9 @@ from benchmarks.stacks import STARTUP
 from benchmarks.stacks import Summary
 from benchmarks.stacks import parse_collapsed
 from benchmarks.stacks import summarize
+from benchmarks.startup import StartupTimings
+from benchmarks.startup import startup_table
+from benchmarks.startup import time_startup
 from benchmarks.tables import Column
 from benchmarks.tables import render_table
 from benchmarks.workloads import WORKLOADS
@@ -156,6 +161,23 @@ async def snapshot(streams: Streams, name: str, repeat: int, number: int, output
 
 
 @command(
+    "startup",
+    argument(
+        "workloads", many(WORKLOAD), summary="The workloads to launch (default picker, inline, and top, full-screen)."
+    ),
+    option("--name", default("startup", STR), summary="The run's name (default startup)."),
+    option("--repeat", default(10, INT), summary="Launches of each workload (default 10)."),
+    OUTPUT,
+)
+async def startup(streams: Streams, workloads: tuple[Runnable, ...], name: str, repeat: int, output: Path) -> int:
+    """Time fresh processes launching workloads through their first frames, then write and print each stage's time."""
+    timings = time_startup(workloads or (WORKLOADS["picker"], WORKLOADS["top"]), repeat=repeat)
+    timings.dump(output / f"{name}.startup.json")
+    streams.stdout.write(startup_table({name: timings}))
+    return 0
+
+
+@command(
     "report",
     argument("name", once(STR), summary="The run to report on."),
     option("--top", default(25, INT), summary="Functions to show in each hotspot table (default 25)."),
@@ -198,7 +220,8 @@ async def report(streams: Streams, name: str, top: int, output: Path) -> int:
 async def compare(streams: Streams, before: str, after: str, output: Path) -> int:
     """
     Compare two workload runs' frame times and, if both were profiled, their stages,
-    two `parse` runs' times per read, or two `snapshot` runs' times per snapshot.
+    two `parse` runs' times per read, two `snapshot` runs' times per snapshot,
+    or two `startup` runs' times in each stage of a launch.
     """
     parsing = {name: output / f"{name}.parsing.json" for name in (before, after)}
     if all(path.exists() for path in parsing.values()):
@@ -208,6 +231,11 @@ async def compare(streams: Streams, before: str, after: str, output: Path) -> in
     snapshots = {name: output / f"{name}.snapshots.json" for name in (before, after)}
     if all(path.exists() for path in snapshots.values()):
         streams.stdout.write(snapshots_table({name: SnapshotTimings.load(path) for name, path in snapshots.items()}))
+        return 0
+
+    startups = {name: output / f"{name}.startup.json" for name in (before, after)}
+    if all(path.exists() for path in startups.values()):
+        streams.stdout.write(startup_table({name: StartupTimings.load(path) for name, path in startups.items()}))
         return 0
 
     timings = {name: Timings.load(output / f"{name}.json") for name in (before, after)}
@@ -304,8 +332,8 @@ def percent(part: float, whole: float) -> str:
 
 cli = group(
     "benchmarks",
-    commands=(list_workloads, run_workload, show, parse, snapshot, report, compare),
-    summary="Run, profile, and compare the render-loop benchmark workloads, and time input parsing and emulator snapshots.",
+    commands=(list_workloads, run_workload, show, parse, snapshot, startup, report, compare),
+    summary="Run, profile, and compare the render-loop benchmark workloads, and time input parsing, emulator snapshots and startup.",
 )
 
 raise SystemExit(run_cli(cli))

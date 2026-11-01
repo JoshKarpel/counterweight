@@ -5,7 +5,6 @@ from typing import overload
 
 import waxy
 
-from counterweight.gradients import Gradient
 from counterweight.styles import TERMINAL_DEFAULT
 from counterweight.styles import AnyColor
 from counterweight.styles import BorderKind
@@ -13,6 +12,7 @@ from counterweight.styles import CellStyle
 from counterweight.styles import Color
 from counterweight.styles import IndexedColor
 from counterweight.styles import Style
+lazy from counterweight.gradients import Gradient
 
 Side = Literal["top", "bottom", "left", "right"]
 """One side of a box."""

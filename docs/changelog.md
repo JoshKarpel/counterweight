@@ -1,6 +1,19 @@
 # Changelog
 
-## Next
+## `0.2.0`
+
+Released `2026-11-01`
+
+Counterweight `0.2.0` adds inline apps, which draw in a region below the prompt rather than on the alternate screen,
+and `Print`, which writes rendered content above that region or to the app's streams.
+It also adds the pieces pickers are built from (`Highlight` and the matchers) and the `combobox` widget on top of them,
+renders a component whose rectangles or scroll went stale before the frame is painted rather than a frame later,
+and makes the emulator and `import counterweight` faster.
+
+A few changes break apps written for `0.1.1`, each marked **Breaking:** below:
+a `use_state` setter returns the state it settled at, so a `lambda` handler that calls one returns it too,
+`Rects` has a `screen` that code building one passes,
+and the text hooks and widgets take `set_value` as an `Editor[str]`.
 
 ### Added
 
@@ -43,6 +56,14 @@
   that opens below it, or above it near the bottom of the screen, with the WAI-ARIA combobox pattern's keys.
 
 ### Changed
+
+- `counterweight.emulator` runs libghostty-vt through [evp](https://github.com/JoshKarpel/evp) rather than pyghostty.
+  Making the first emulator takes about a millisecond rather than about 180 ms,
+  and a snapshot after the program scrolls takes a fifth to a fortieth as long.
+
+- `import counterweight` takes about a quarter less time:
+  it no longer imports what only some apps use, such as gradients, programs, recordings and the emulator,
+  until something uses them, and looks its version up only when `__version__` is read.
 
 - [#449](https://github.com/JoshKarpel/counterweight/issues/449)
   A component whose `use_rects` or `use_scroll` read goes stale renders again before the frame is painted,

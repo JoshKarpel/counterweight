@@ -19,12 +19,12 @@ from counterweight.focus import ElementHandle
 from counterweight.focus import FocusHandle
 from counterweight.focus import Subtree
 from counterweight.geometry import Position
-from counterweight.programs import EditOutcome
-from counterweight.programs import ProgramOutcome
-from counterweight.programs import TerminalStreams
-from counterweight.programs import edit_file
-from counterweight.programs import edit_text
-from counterweight.programs import run_program
+lazy from counterweight.programs import EditOutcome
+lazy from counterweight.programs import ProgramOutcome
+lazy from counterweight.programs import TerminalStreams
+lazy from counterweight.programs import edit_file
+lazy from counterweight.programs import edit_text
+lazy from counterweight.programs import run_program
 
 if TYPE_CHECKING:
     from counterweight._output import Frame

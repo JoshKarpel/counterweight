@@ -33,13 +33,6 @@ from counterweight.elements import StyledGrapheme
 from counterweight.geometry import Position
 from counterweight.geometry import Rects
 from counterweight.geometry import Region
-from counterweight.gradients import Box
-from counterweight.gradients import Gradient
-from counterweight.gradients import Indices
-from counterweight.gradients import Ramp
-from counterweight.gradients import field_indices
-from counterweight.gradients import ramp
-from counterweight.painters._frames import PaintView
 from counterweight.styles._styles import CELL_STYLE_DEFAULTS
 from counterweight.styles._styles import TERMINAL_DEFAULT
 from counterweight.styles._styles import UNSET
@@ -59,6 +52,13 @@ from counterweight.styles._styles import is_solid_color
 from counterweight.styles._styles import resolve_cell_style
 from counterweight.styles._styles import rgb_of
 from counterweight.styles._styles import with_colors
+lazy from counterweight.gradients import Box
+lazy from counterweight.gradients import Gradient
+lazy from counterweight.gradients import Indices
+lazy from counterweight.gradients import Ramp
+lazy from counterweight.gradients import field_indices
+lazy from counterweight.gradients import ramp
+lazy from counterweight.painters._frames import PaintView
 
 logger = logging.getLogger(__name__)
 
