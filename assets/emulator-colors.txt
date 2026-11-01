@@ -1,0 +1,7 @@
+The emulator's defaults       The theme's colors          
+ palette                       palette                    
+ bright                        bright                     
+ 256                           256                        
+ rgb                           rgb                        
+ default plain text            default plain text         
+ inverse  swapped              inverse  swapped           

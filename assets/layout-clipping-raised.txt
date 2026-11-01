@@ -1,0 +1,7 @@
+┌────────────────────────────┐                  
+│File  Edit  View            │                  
+│┏━━━━━━━━┓                  │                  
+│┃Open…   ┃                  │                  
+└────────────────────────────┘                  
+The menu is cut off inside the box's border,    
+however high its z.                             

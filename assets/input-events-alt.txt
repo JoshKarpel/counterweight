@@ -1,0 +1,11 @@
+╭──────────────────────────────────────────────────────────────────────╮
+│ Press keys, paste, or use the mouse. Ctrl+C quits.                   │
+│ KeyPressed(key=Key.AltEnter)                                         │
+│ KeyPressed(key='alt+b')                                              │
+│ KeyPressed(key='alt+B')                                              │
+│ KeyPressed(key=Key.ControlAltA)                                      │
+│ KeyPressed(key=Key.AltUp)                                            │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯

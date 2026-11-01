@@ -1,0 +1,9 @@
+╭────────────────────────────╮
+│ Open for 12 s              │
+│ Z to A (r reverses)        │
+│ tests/test_app.py          │
+│ src/app.py                 │
+│ pyproject.toml             │
+│ mkdocs.yml                 │
+│ docs/index.md              │
+╰────────────────────────────╯

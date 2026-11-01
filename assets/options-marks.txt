@@ -1,0 +1,7 @@
+ 2 marked                       
+                                
+ x feature/pickers              
+   fix/cursor (changes)         
+ x fix/resize                   
+   docs/inline                  
+ Removed: nothing yet           

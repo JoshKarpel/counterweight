@@ -1,0 +1,8 @@
+┌──────────────┐        ┌──────────────┐
+│line 1 of a lo│        │line 1 of a lon
+│line 2 of a lo│        │line 2 of a lon
+└line 3 of a lo┘        └──────────────┘
+ line 4 of a lo                         
+ line 5 of a lo                         
+ line 6 of a lo                         
+                                        
