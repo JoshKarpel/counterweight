@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import signal
 import sys
-from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
@@ -125,7 +124,7 @@ class CopyToClipboard(_Control):
     """
 
     text: str
-    handler: Callable[[str], Awaitable[None] | None] | None = None
+    handler: Callable[[str], object] | None = None
 
 
 # How Screenshot.to_file encodes a frame, by the suffix of the path it writes to.
@@ -149,7 +148,7 @@ class Screenshot(_Control):
     Every screenshot requested in the same cycle with the same `include_scrollback` receives the same frame.
     """
 
-    handler: Callable[[Frame], Awaitable[None] | None]
+    handler: Callable[[Frame], object]
     include_scrollback: bool = False
     """
     Whether the frame is everything the app's terminal holds, as a terminal shows it,
@@ -257,7 +256,7 @@ class Suspend(_Control):
     will be processed before the application is suspended.
     """
 
-    handler: Callable[[TerminalStreams], Awaitable[None] | None]
+    handler: Callable[[TerminalStreams], object]
 
     @classmethod
     def to_shell(cls) -> Suspend:
@@ -276,7 +275,7 @@ class Suspend(_Control):
     def to_program(
         cls,
         argv: Sequence[str],
-        on_exit: Callable[[ProgramOutcome], Awaitable[None] | None] = lambda outcome: None,
+        on_exit: Callable[[ProgramOutcome], object] = lambda outcome: None,
         env: Mapping[str, str] = frozendict(),
         clear_env: bool = False,
         cwd: Path | None = None,
@@ -295,7 +294,7 @@ class Suspend(_Control):
     def to_edit_file(
         cls,
         path: Path,
-        on_exit: Callable[[ProgramOutcome], Awaitable[None] | None] = lambda outcome: None,
+        on_exit: Callable[[ProgramOutcome], object] = lambda outcome: None,
         editor: Sequence[str] | None = None,
     ) -> Suspend:
         """
@@ -314,7 +313,7 @@ class Suspend(_Control):
     def to_edit_text(
         cls,
         text: str,
-        on_edit: Callable[[EditOutcome], Awaitable[None] | None],
+        on_edit: Callable[[EditOutcome], object],
         file_name: str = "edit.txt",
         editor: Sequence[str] | None = None,
     ) -> Suspend:
@@ -344,7 +343,7 @@ def stop_process_group(terminal: TerminalStreams) -> None:
 async def report_program(
     terminal: TerminalStreams,
     argv: tuple[str, ...],
-    on_exit: Callable[[ProgramOutcome], Awaitable[None] | None],
+    on_exit: Callable[[ProgramOutcome], object],
     env: Mapping[str, str],
     clear_env: bool,
     cwd: Path | None,
@@ -356,7 +355,7 @@ async def report_program(
 async def report_file_edit(
     terminal: TerminalStreams,
     path: Path,
-    on_exit: Callable[[ProgramOutcome], Awaitable[None] | None],
+    on_exit: Callable[[ProgramOutcome], object],
     editor: tuple[str, ...] | None,
 ) -> None:
     """The handler of `Suspend.to_edit_file`: edits `path` on `terminal`, then passes `on_exit` how the editor ended."""
@@ -366,7 +365,7 @@ async def report_file_edit(
 async def report_edit(
     terminal: TerminalStreams,
     text: str,
-    on_edit: Callable[[EditOutcome], Awaitable[None] | None],
+    on_edit: Callable[[EditOutcome], object],
     file_name: str,
     editor: tuple[str, ...] | None,
 ) -> None:

@@ -1,4 +1,8 @@
+import io
+import os
+from asyncio import wait_for
 from collections.abc import Sequence
+from typing import Literal
 
 import pytest
 
@@ -13,13 +17,20 @@ from counterweight.controls import ScrollBy
 from counterweight.elements import Div
 from counterweight.elements import Text
 from counterweight.events import InputEvent
+from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import MouseDown
+from counterweight.events import MouseMoved
+from counterweight.events import MouseScrolledDown
 from counterweight.events import MouseScrolledUp
+from counterweight.events import MouseUp
 from counterweight.events import Pasted
+from counterweight.events import Receiver
 from counterweight.focus import ElementHandle
 from counterweight.geometry import Position
+from counterweight.handlers import first
 from counterweight.handlers import scroll_on_keys
+from counterweight.handlers import tab_focus
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 from counterweight.styles import AnyColor
@@ -29,6 +40,7 @@ from counterweight.styles.utilities import align_self_start
 from counterweight.styles.utilities import border
 from counterweight.styles.utilities import border_color
 from counterweight.styles.utilities import border_heavy
+from counterweight.styles.utilities import border_none
 from counterweight.styles.utilities import col
 from counterweight.styles.utilities import default
 from counterweight.styles.utilities import fill
@@ -36,12 +48,17 @@ from counterweight.styles.utilities import height
 from counterweight.styles.utilities import max_height
 from counterweight.styles.utilities import overflow_y_scroll
 from counterweight.styles.utilities import pad_x
+from counterweight.styles.utilities import pad_y
 from counterweight.styles.utilities import row
 from counterweight.styles.utilities import text_color
 from counterweight.styles.utilities import width
+from counterweight.widgets import ComboboxStyles
 from counterweight.widgets import TextFieldStyles
+from counterweight.widgets import combobox
 from counterweight.widgets import text_area
 from counterweight.widgets import text_input
+from tests.rendering import TIMEOUT
+from tests.terminal import Terminal
 
 CURSOR = TextFieldStyles().cursor
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
@@ -506,3 +523,292 @@ async def test_paging_in_a_text_area_leaves_the_pane_around_it_where_it_is() -> 
     frame = await screenshot(root(), events=(KeyPressed(key=Key.PageDown),), dimensions=(14, 5))
 
     assert lines(frame)[0] == "╭──────────╮"
+
+
+PACKAGES = ("mypy", "pydantic", "pydantic-settings", "pytest", "ruff")
+HIGHLIGHTED = ComboboxStyles().highlighted_option.text_style.background
+
+
+def picking(
+    top: int = 0,
+    opens: Literal["auto", "below", "above"] = "auto",
+    opens_on: Literal["input", "focus"] = "input",
+    ends: Literal["wrap", "stop", "release"] = "stop",
+    style: Style = width(24),
+    styles: ComboboxStyles = ComboboxStyles(),
+) -> Component:
+    """
+    The combobox's value and the keys that reached the root, `top` rows above a combobox,
+    which a second field follows.
+    """
+
+    @component
+    def root() -> Div:
+        value, set_value = use_state("")
+        other, set_other = use_state("")
+        reached, set_reached = use_state("")
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            if isinstance(event, KeyPressed):
+                set_reached(lambda keys: f"{keys} {event.key}".strip())
+            return None
+
+        return Div(
+            style=col,
+            on_input=first(tab_focus, on_input),
+            children=(
+                Text(content=f"value={value}"),
+                Text(content=f"reached={reached}"),
+                Div(style=height(top)),
+                combobox(
+                    value,
+                    set_value,
+                    PACKAGES,
+                    opens=opens,
+                    opens_on=opens_on,
+                    ends=ends,
+                    shown_rows=3,
+                    style=style,
+                    styles=styles,
+                    auto_focus=True,
+                ),
+                text_input(other, set_other, style=width(24)),
+            ),
+        )
+
+    return root()
+
+
+def highlighted_rows(frame: Frame) -> list[str]:
+    """The text of each row drawn in the highlighted option's colors."""
+    return [
+        "".join(cell.grapheme for cell in row).strip(" │")
+        for row in frame.paint.rows()
+        if any(cell.style.background == HIGHLIGHTED for cell in row)
+    ]
+
+
+def shown(frame: Frame) -> str:
+    return "\n".join(lines(frame))
+
+
+TYPED_PY = tuple(KeyPressed(key=character) for character in "py")
+DOWN = KeyPressed(key=Key.Down)
+UP = KeyPressed(key=Key.Up)
+ENTER = KeyPressed(key=Key.Enter)
+ESCAPE = KeyPressed(key=Key.Escape)
+TAB = KeyPressed(key=Key.Tab)
+
+
+async def test_a_combobox_opens_its_list_below_on_an_edit() -> None:
+    frame = await screenshot(picking(), TYPED_PY, (30, 14))
+
+    assert lines(frame)[5:8] == ["╭──────────────────────╮", "│ mypy                 │", "│ pydantic             │"]
+    assert highlighted_rows(frame) == ["mypy"]
+
+
+async def test_a_combobox_stays_closed_until_an_edit() -> None:
+    frame = await screenshot(picking(), (), (30, 14))
+
+    assert "mypy" not in shown(frame)
+
+
+async def test_a_combobox_opens_above_when_told_to() -> None:
+    frame = await screenshot(picking(top=6, opens="above"), TYPED_PY, (30, 14))
+
+    assert lines(frame)[3:5] == ["╭──────────────────────╮", "│ mypy                 │"]
+
+
+async def test_a_combobox_flips_its_list_above_near_the_bottom_of_the_screen() -> None:
+    frame = await screenshot(picking(top=5), TYPED_PY, (30, 13))
+
+    assert lines(frame)[2:4] == ["╭──────────────────────╮", "│ mypy                 │"]
+
+
+async def test_a_combobox_opens_below_near_the_bottom_when_told_to() -> None:
+    frame = await screenshot(picking(top=5, opens="below"), TYPED_PY, (30, 13))
+
+    assert lines(frame)[10:12] == ["╭──────────────────────╮", "│ mypy                 │"]
+
+
+async def test_choosing_fills_in_the_text_and_closes_the_list() -> None:
+    frame = await screenshot(picking(), (*TYPED_PY, DOWN, ENTER), (30, 14))
+
+    assert ("value=pydantic" in shown(frame), "pytest" in shown(frame)) == (True, False)
+
+
+async def test_escape_closes_the_list_and_up_reopens_it_on_the_last_option() -> None:
+    closed = await screenshot(picking(), (*TYPED_PY, ESCAPE), (30, 14))
+    reopened = await screenshot(picking(), (*TYPED_PY, ESCAPE, UP), (30, 14))
+
+    assert ("mypy" in shown(closed), highlighted_rows(reopened)) == (False, ["pytest"])
+
+
+async def test_escape_on_a_closed_list_bubbles() -> None:
+    frame = await screenshot(picking(), (*TYPED_PY, ESCAPE, ESCAPE), (30, 14))
+
+    assert "reached=Key.Escape" in shown(frame)
+
+
+async def test_down_in_an_empty_field_lists_every_option() -> None:
+    frame = await screenshot(picking(), (DOWN,), (30, 14))
+
+    assert (highlighted_rows(frame), "pydantic-settings" in shown(frame)) == (["mypy"], True)
+
+
+async def test_a_combobox_that_opens_on_focus_is_open_while_focused_and_again_once_focus_returns() -> None:
+    opened = await screenshot(picking(opens_on="focus"), (), (30, 14))
+    closed = await screenshot(picking(opens_on="focus"), (ESCAPE,), (30, 14))
+    returned = await screenshot(picking(opens_on="focus"), (ESCAPE, TAB, KeyPressed(key=Key.BackTab)), (30, 14))
+
+    assert ("mypy" in shown(opened), "mypy" in shown(closed), "mypy" in shown(returned)) == (True, False, True)
+
+
+async def test_tab_on_a_list_that_focus_opened_moves_focus_without_choosing() -> None:
+    frame = await screenshot(picking(opens_on="focus"), (TAB, KeyPressed(key="!")), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=", "│ !                    │")
+
+
+async def test_tab_on_a_list_that_focus_opened_moves_focus_even_when_nothing_matches() -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(
+        picking(opens_on="focus"),
+        (*nothing, ESCAPE, TAB, KeyPressed(key=Key.BackTab), TAB, KeyPressed(key="!")),
+        (30, 14),
+    )
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=zz", "│ !                    │")
+
+
+async def test_a_list_under_a_field_without_a_border_opens_against_the_field() -> None:
+    frame = await screenshot(picking(style=width(24) | border_none), TYPED_PY, (30, 14))
+
+    assert lines(frame)[3:5] == ["╭──────────────────────╮", "│ mypy                 │"]
+
+
+async def test_the_list_boxs_padding_leaves_room_for_every_shown_row() -> None:
+    padded = ComboboxStyles(list_box=ComboboxStyles().list_box | pad_y(1))
+    frame = await screenshot(picking(styles=padded), (DOWN,), (30, 14))
+
+    assert lines(frame)[7:10] == ["│ mypy                 │", "│ pydantic             │", "│ pydantic-settings    │"]
+
+
+@pytest.mark.parametrize(
+    ("ends", "moves", "expected"),
+    [
+        ("stop", (DOWN,) * 5, ["pytest"]),
+        ("stop", (UP,), ["mypy"]),
+        ("wrap", (DOWN,) * 4, ["mypy"]),
+        ("wrap", (UP,), ["pytest"]),
+        ("release", (DOWN,) * 4, []),
+        ("release", (DOWN,) * 5, ["mypy"]),
+    ],
+    ids=["stops on the last", "stops on the first", "wraps to the first", "wraps to the last", "releases", "re-enters"],
+)
+async def test_moving_past_the_ends_does_what_ends_says(
+    ends: Literal["wrap", "stop", "release"], moves: tuple[KeyPressed, ...], expected: list[str]
+) -> None:
+    frame = await screenshot(picking(ends=ends), (*TYPED_PY, *moves), (30, 14))
+
+    assert highlighted_rows(frame) == expected
+
+
+async def test_enter_with_nothing_highlighted_bubbles() -> None:
+    frame = await screenshot(picking(ends="release"), (*TYPED_PY, UP, ENTER), (30, 14))
+
+    assert ("value=py" in shown(frame), "reached=Key.Enter" in shown(frame)) == (True, True)
+
+
+async def test_tab_chooses_without_moving_focus() -> None:
+    frame = await screenshot(picking(), (*TYPED_PY, TAB, KeyPressed(key="!")), (30, 14))
+
+    assert "value=mypy!" in shown(frame)
+
+
+async def test_tab_on_a_closed_list_moves_focus() -> None:
+    frame = await screenshot(picking(), (TAB, KeyPressed(key="!")), (30, 14))
+
+    assert lines(frame)[6] == "│ !                    │"
+
+
+async def test_down_and_up_reach_no_parent_while_nothing_matches() -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(picking(), (*nothing, DOWN, UP, ESCAPE, ESCAPE), (30, 14))
+
+    assert ("nothing matches" not in shown(frame), lines(frame)[1]) == (True, "reached=Key.Escape")
+
+
+@pytest.mark.parametrize("key", [Key.Enter, Key.ControlJ])
+async def test_choosing_keys_bubble_while_nothing_matches(key: Key) -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(picking(), (*nothing, KeyPressed(key=key)), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[1]) == ("value=zz", f"reached={key}")
+
+
+async def test_tab_moves_focus_while_nothing_matches() -> None:
+    nothing = tuple(KeyPressed(key=character) for character in "zz")
+    frame = await screenshot(picking(), (*nothing, TAB, KeyPressed(key="!")), (30, 14))
+
+    assert (lines(frame)[0], lines(frame)[6]) == ("value=zz", "│ !                    │")
+
+
+async def test_an_open_list_that_nothing_matches_says_so() -> None:
+    frame = await screenshot(picking(), tuple(KeyPressed(key=character) for character in "zz"), (30, 14))
+
+    assert "│ nothing matches      │" in lines(frame)
+
+
+async def test_hovering_an_option_highlights_it() -> None:
+    frame = await screenshot(picking(), (*TYPED_PY, MouseMoved(absolute=Position(4, 7), button=None)), (30, 14))
+
+    assert highlighted_rows(frame) == ["pydantic"]
+
+
+async def test_clicking_an_option_chooses_it_and_keeps_focus_in_the_field() -> None:
+    clicked = (
+        MouseDown(absolute=Position(4, 7), button=1),
+        MouseUp(absolute=Position(4, 7), button=1),
+        KeyPressed(key="!"),
+    )
+    frame = await screenshot(picking(), (*TYPED_PY, *clicked), (30, 14))
+
+    assert "value=pydantic!" in shown(frame)
+
+
+async def test_the_wheel_scrolls_the_list() -> None:
+    frame = await screenshot(picking(), (DOWN, MouseScrolledDown(absolute=Position(4, 7))), (30, 14))
+
+    assert lines(frame)[6] == "│ pydantic             │"
+
+
+async def test_text_and_enter_typed_before_a_render_choose_from_what_the_text_matches(terminal: Terminal) -> None:
+    values: list[str] = []
+
+    @component
+    def root() -> Div:
+        value, set_value = use_state("")
+        values.append(value)
+
+        def quit_on_a_key_the_combobox_lets_bubble(event: InputEvent, _: Receiver) -> InputResponse:
+            return Quit() if isinstance(event, KeyPressed) else None
+
+        return Div(
+            on_input=quit_on_a_key_the_combobox_lets_bubble,
+            children=(combobox(value, set_value, PACKAGES, auto_focus=True),),
+        )
+
+    # Written before the app makes the terminal raw, so the terminal turns the Enter into a line feed, Ctrl+J.
+    # Enter chooses, and then the Tab on the closed list bubbles; Enter decided from the last render would bubble.
+    os.write(terminal.keyboard, b"pyd\r\t")
+
+    await wait_for(app(root(), output_stream=io.StringIO(), input_stream=terminal.stream, dimensions=(30, 10)), TIMEOUT)
+
+    assert values[-1] == "pydantic"
+
+
+async def test_a_paste_opens_the_list() -> None:
+    frame = await screenshot(picking(), (Pasted(text="pyt"),), (30, 14))
+
+    assert highlighted_rows(frame) == ["pydantic"]

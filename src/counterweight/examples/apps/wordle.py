@@ -37,6 +37,7 @@ from counterweight.events import KeyPressed
 from counterweight.events import Pasted
 from counterweight.events import Receiver
 from counterweight.handlers import on_click
+from counterweight.hooks import get_state
 from counterweight.hooks import use_clock
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_hovered
@@ -114,7 +115,7 @@ def root() -> Div:
     today = use_clock(timedelta(days=1)).now.date()
 
     def stop_playing() -> None:
-        return set_playing(False)
+        set_playing(False)
 
     solution, set_solution = use_state(choice(SOLUTION_WORDS))
 
@@ -203,20 +204,9 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
     board, set_board = use_state(Board(solution=solution))
 
     def move(change: Callable[[Board], Board]) -> InputResponse:
-        """
-        Makes a move on the latest board, ringing the bell if the game refuses it.
-        The setter calls `apply` before it returns, so `is_refused` is set by then.
-        """
-        is_refused = False
-
-        def apply(latest: Board) -> Board:
-            nonlocal is_refused
-            moved = change(latest)
-            is_refused = moved == latest
-            return moved
-
-        set_board(apply)
-        return Bell() if is_refused else ()
+        """Makes a move on the latest board, ringing the bell if the game refuses it."""
+        before = get_state(set_board)
+        return Bell() if set_board(change) == before else ()
 
     def type_letters(letters: str) -> InputResponse:
         return move(lambda b: b.typed(letters))
@@ -226,6 +216,9 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
 
     def submit_guess() -> InputResponse:
         return move(Board.guessed)
+
+    def clear_board() -> None:
+        set_board(Board.cleared)
 
     def on_input(event: InputEvent, _: Receiver) -> InputResponse:
         match event:
@@ -286,7 +279,7 @@ def play(solution: str, stop_playing: Callable[[], None]) -> Div:
                 on_letter=type_letters,
                 on_submit=submit_guess,
                 on_backspace=delete_letter,
-                on_clear=lambda: set_board(Board.cleared),
+                on_clear=clear_board,
                 on_exit=stop_playing,
             ),
         ),

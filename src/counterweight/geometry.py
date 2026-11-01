@@ -168,6 +168,16 @@ class Rects:
     """
     visible: Region | None
     """The part of the border box inside `clip`, or `None` when none of it is."""
+    screen: Region
+    """
+    The region the app lays the element out in, from `(0, 0)`, in the coordinates of the element's other regions:
+    the terminal in [`FullScreen`][counterweight.FullScreen],
+    and in [`Inline`][counterweight.Inline], the region, as tall as the root's content.
+    It's what `clip_to="screen"` clips to, and the root's `clip`,
+    so a component can see how much room there is beyond its own boxes, as a popup that flips to the side with room does,
+    as an `IntersectionObserverEntry`'s `rootBounds` shows the viewport beside the element's `boundingClientRect`.
+    It's the same for every element in a frame.
+    """
 
 
 ORIGIN = Position(0, 0)

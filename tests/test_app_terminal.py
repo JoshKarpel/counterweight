@@ -168,7 +168,12 @@ async def test_a_later_frame_draws_only_what_changed_in_one_synchronized_update(
     @component
     def root() -> Text:
         content, set_content = use_state("hi")
-        return Text(content=content, style=text_black, on_input=lambda event, _: set_content("ho"))
+
+        def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+            set_content("ho")
+            return None
+
+        return Text(content=content, style=text_black, on_input=on_input)
 
     await app(
         root(),
@@ -370,12 +375,12 @@ async def typed_into_text_input(terminal: Terminal, typed: bytes) -> str:
     def root() -> Text:
         value, set_value = use_state("")
 
-        def set_recorded(edit: Callable[[str], str]) -> None:
+        def set_recorded(edit: Callable[[str], str]) -> str:
             def recorded(latest: str) -> str:
                 values.append(edit(latest))
                 return values[-1]
 
-            set_value(recorded)
+            return set_value(recorded)
 
         field = use_text_input(value, set_recorded, auto_focus=True)
         return Text(content=value, on_input=first(field.on_input, lambda event, _: Quit()))

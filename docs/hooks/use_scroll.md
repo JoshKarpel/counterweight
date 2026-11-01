@@ -22,9 +22,10 @@ Called without a handle, `use_scroll` reports on the calling component's own top
 `max_offset` is how far the content reaches past the view, so it's 0 when everything fits,
 which is why `percent` checks it before dividing.
 
-`use_scroll` reports the previous frame's scroll,
-and a component that calls it renders again as soon as that scroll changes,
-so the counts catch up in the frame after the one the wheel scrolled.
+`use_scroll` reports the scroll as of the last layout,
+and a component that calls it renders again as soon as that scroll changes, before the frame is painted,
+as [`use_rects`](use_rects.md#when-it-renders-again) does,
+so the counts change in the frame the wheel scrolls.
 See [Scrolling](../layout/scrolling.md#reading-the-scroll) for an example that renders only the rows in view,
 and [Jumping to the end](../layout/scrolling.md#jumping-to-the-end) for a button that appears once the reader scrolls back.
 

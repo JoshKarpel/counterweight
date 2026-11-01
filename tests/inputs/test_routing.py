@@ -221,6 +221,7 @@ def unclipped(box: Region, screen: Region) -> Rects:
         margin=box,
         clip=screen,
         visible=box,
+        screen=screen,
     )
 
 

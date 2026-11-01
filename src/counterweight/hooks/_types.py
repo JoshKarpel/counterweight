@@ -9,10 +9,20 @@ from datetime import timedelta
 type Getter[T] = Callable[[], T]
 """A function that computes a value, such as the initial state `use_state` computes only on the first render."""
 
-type Setter[T] = Callable[[Callable[[T], T] | T], None]
+type Setter[T] = Callable[[Callable[[T], T] | T], T]
 """
 What `use_state` returns to set its state: given a value, the next state,
 or given a function, the next state computed from the latest one.
+It returns the state as it settled: the value it was given, or what the function returned.
+"""
+
+type Editor[T] = Callable[[Callable[[T], T]], T]
+"""
+The half of a [`Setter`][counterweight.hooks.Setter] that takes a function:
+given a function from the latest value to the next, it applies it and returns the value it settled at.
+A `use_state` setter is one, and so is a wrapper around one that validates or transforms each edit,
+such as `lambda edit: set_value(lambda v: new if (new := edit(v)).isdigit() or not new else v)`,
+which never has to handle a plain value, since nothing passes it one.
 """
 
 type Setup = Callable[[], Coroutine[None, None, None]]

@@ -28,10 +28,11 @@ from counterweight.handlers import each
 from counterweight.handlers import first
 from counterweight.headless import TextInput
 from counterweight.headless import use_text_input
+from counterweight.hooks import Editor
 from counterweight.hooks import use_state
 from counterweight.keys import Key
 
-type Wrap = Callable[[Callable[[Callable[[str], str]], None]], Callable[[Callable[[str], str]], None]]
+type Wrap = Callable[[Editor[str]], Editor[str]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,23 +120,23 @@ async def test_edits_before_the_next_render_each_start_from_the_one_before() -> 
 async def test_a_paste_inserts_its_text_in_one_edit() -> None:
     edits: list[Callable[[str], str]] = []
 
-    def counted(set_value: Callable[[Callable[[str], str]], None]) -> Callable[[Callable[[str], str]], None]:
-        def set_counted(edit: Callable[[str], str]) -> None:
+    def counted(set_value: Editor[str]) -> Editor[str]:
+        def set_counted(edit: Callable[[str], str]) -> str:
             edits.append(edit)
-            set_value(edit)
+            return set_value(edit)
 
         return set_counted
 
     shown = await run((*typed("<>"), KeyPressed(key=Key.Left), Pasted(text="one\ntwo")), wrap=counted)
 
     assert shown[-1] == Shown(value="<one two>", before="<one two", at=">", after="")
-    # Each edit reads the value before and after, so a paste is three calls, as one key press is.
-    assert len(edits) == 3 * 4
+    # Each edit reads the value, then writes the edited one, so a paste is two calls, as one key press is.
+    assert len(edits) == 2 * 4
 
 
-def digits_only(set_value: Callable[[Callable[[str], str]], None]) -> Callable[[Callable[[str], str]], None]:
-    def set_digits(edit: Callable[[str], str]) -> None:
-        set_value(lambda value: edited if (edited := edit(value)).isdigit() else value)
+def digits_only(set_value: Editor[str]) -> Editor[str]:
+    def set_digits(edit: Callable[[str], str]) -> str:
+        return set_value(lambda value: edited if (edited := edit(value)).isdigit() else value)
 
     return set_digits
 
@@ -147,7 +148,11 @@ async def test_an_edit_the_setter_rejects_leaves_the_value_and_the_cursor() -> N
 
 
 async def test_a_setter_that_ignores_edits_leaves_the_cursor() -> None:
-    shown = await run((KeyPressed(key=Key.Left), *typed("x")), initial="ab", wrap=lambda set_value: lambda edit: None)
+    shown = await run(
+        (KeyPressed(key=Key.Left), *typed("x")),
+        initial="ab",
+        wrap=lambda set_value: lambda edit: set_value(lambda value: value),
+    )
 
     assert shown[-1] == Shown(value="ab", before="a", at="b", after="")
 
@@ -403,3 +408,35 @@ async def test_a_press_focuses_the_field_and_scrolls_the_cursor_cell_into_view()
     assert responses == [
         (FocusOn(field.focus.handle), ScrollIntoView(field.cursor_cell, block="nearest", inline="nearest"))
     ]
+
+
+async def cursors_seen(events: Sequence[InputEvent], initial: str = "abc") -> list[tuple[int, int]]:
+    """
+    The rendered and the latest cursor a field's handler sees after the field handles each event,
+    where `!` replaces the value other than by an edit.
+    """
+    seen: list[tuple[int, int]] = []
+
+    @component
+    def field() -> Text:
+        value, set_value = use_state(initial)
+        text_input = use_text_input(value, set_value, auto_focus=True)
+
+        def record(event: InputEvent, _: Receiver) -> InputResponse:
+            if event == KeyPressed(key="!"):
+                set_value("wxyz")
+            seen.append((text_input.cursor, text_input.latest_cursor()))
+            return None
+
+        return Text(content=value, on_input=each(text_input.on_input, record))
+
+    await app(field(), headless=True, dimensions=(20, 3), autopilot=(*events, Quit()))
+    return seen
+
+
+async def test_latest_cursor_reads_a_move_made_since_the_render() -> None:
+    assert await cursors_seen((KeyPressed(key=Key.Left),)) == [(3, 2)]
+
+
+async def test_latest_cursor_is_at_the_end_once_the_value_changes_other_than_by_an_edit() -> None:
+    assert await cursors_seen((KeyPressed(key=Key.Left), KeyPressed(key="!"))) == [(3, 2), (2, 4)]

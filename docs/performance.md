@@ -289,7 +289,14 @@ List every value `compute` reads: `deps=(processes, threshold)`.
 
 ```python
 count, set_count = use_state(0)
-on_input = use_memo(lambda: lambda event, _: set_count(count + 1), deps=())
+
+
+def increment(event: InputEvent, _: Receiver) -> InputResponse:
+    set_count(count + 1)
+    return ()
+
+
+on_input = use_memo(lambda: increment, deps=())
 ```
 
 Every key press sets `count` to 1.

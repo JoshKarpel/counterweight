@@ -42,6 +42,10 @@ a coding agent's reply streaming as Markdown into a region that grows, then prin
 parallel downloads, a row each, each printing a line as it finishes, so the region grows and shrinks;
 and an `fzf --height` finder, a region of fixed size with nothing printed.
 An inline app makes its emulator before its first frame, which shows in their stages as `handle_screen_size_change`.
+`picker-burst` is a fuzzy picker over the same paths, typed into faster than it renders:
+each frame's key press queues a burst of edits and moves (the `Workload`'s `burst`), which the loop handles in one batch
+before it renders once, so its frames measure the handlers of keys typed ahead plus one render.
+Use it for anything that changes how a batch of events is handled, or what a handler costs per key.
 
 ## Profile a run
 

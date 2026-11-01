@@ -22,7 +22,9 @@ from tests.rendering import state_set_keys
 from tests.rendering import state_sets
 
 
-def render_after_each(root: Component, steps: list[Callable[[], None]], check_purity: bool = False) -> list[ShadowTree]:
+def render_after_each(
+    root: Component, steps: list[Callable[[], object]], check_purity: bool = False
+) -> list[ShadowTree]:
     """Renders `root`, then calls each step and renders again with the state it set, returning every tree."""
     with state_sets() as queue:
         trees = [update_shadow(root, None, NO_LAYOUTS).tree]
@@ -49,7 +51,7 @@ def memoizes(deps: Callable[[int, int], tuple[object, ...]], log: list[object], 
     return Div()
 
 
-def step(setters: dict[str, Setter[int]], name: str) -> Callable[[], None]:
+def step(setters: dict[str, Setter[int]], name: str) -> Callable[[], object]:
     return lambda: setters[name](lambda value: value + 1)
 
 

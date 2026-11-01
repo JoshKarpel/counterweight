@@ -103,9 +103,44 @@ The setter is the same object on every render,
 so a handler that updates state only through functions captures nothing that goes stale,
 and can be built once with [`use_memo`](use_memo.md) or passed to a `memo` component.
 
+## Deciding from the latest state
+
+A function passed to the setter moves the state along,
+but a handler often has to decide something from the state as well:
+whether to claim a key or let it bubble, which controls to return, or which option to hand its parent.
+Those decisions are made when the handler returns, before the next render,
+so they can't be left to a render or an effect.
+
+The setter returns the state as it settled, the value it was given or what the function returned,
+and [`get_state`][counterweight.hooks.get_state] reads the latest state without changing it.
+A handler that decides from the state reads it once, at the top,
+since nothing else changes it between that read and the handler's own writes:
+
+```python
+board, set_board = use_state(Board())
+
+
+def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+    match event:
+        case KeyPressed(key=Key.Enter):
+            before = get_state(set_board)
+            return Bell() if set_board(Board.guessed) == before else ()
+        case _:
+            return None
+```
+
+Enter rings the bell when the board refuses the guess, which the handler learns from what the setter settled at,
+even when the keys before it arrived in the same batch and no render has shown their board yet.
+
+Since the setter returns the state, a handler written as a `lambda` whose body is a setter call
+returns that state as its response, which isn't one a handler can return.
+Write the handler as a function that says whether it claims the event: `()` claims it, and `None` lets it bubble.
+
 ## API
 
 ::: counterweight.hooks.use_state
+::: counterweight.hooks.get_state
 ::: counterweight.hooks.toggle
 ::: counterweight.hooks.Getter
 ::: counterweight.hooks.Setter
+::: counterweight.hooks.Editor

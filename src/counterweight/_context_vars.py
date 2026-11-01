@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 current_event_queue: ContextVar[Queue[AnyEvent]] = ContextVar("current_event_queue")
 # The task group the app runs effects in, so an effect can leave its teardown to finish in the background.
 current_task_group: ContextVar[TaskGroup] = ContextVar("current_task_group")
-current_use_mouse_listeners: ContextVar[WeakSet[Callable[[Mouse], None]]] = ContextVar("current_use_mouse_listeners")
+current_use_mouse_listeners: ContextVar[WeakSet[Callable[[Mouse], object]]] = ContextVar("current_use_mouse_listeners")
 
 current_hook_idx: ContextVar[int] = ContextVar("current_hook_idx")
 current_hook_state: ContextVar[Hooks] = ContextVar("current_hook_state")
@@ -39,7 +39,7 @@ current_purity_checked: ContextVar[Component | None] = ContextVar("current_purit
 def app_scope(
     event_queue: Queue[AnyEvent],
     task_group: TaskGroup,
-    use_mouse_listeners: WeakSet[Callable[[Mouse], None]],
+    use_mouse_listeners: WeakSet[Callable[[Mouse], object]],
 ) -> Iterator[None]:
     """
     Makes one app's queue, task group and mouse listeners current for the block, then restores what was current before,

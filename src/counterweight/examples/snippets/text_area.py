@@ -21,6 +21,7 @@ from counterweight.events import Receiver
 from counterweight.handlers import first
 from counterweight.handlers import scroll_on_wheel
 from counterweight.headless import use_text_area
+from counterweight.hooks import Editor
 from counterweight.hooks import use_rects
 from counterweight.hooks import use_state
 from counterweight.keys import Key
@@ -39,7 +40,7 @@ class Conversation:
 
 
 @component
-def composer(draft: str, edit_draft: Callable[[Callable[[str], str]], None], send: Callable[[], None]) -> Text:
+def composer(draft: str, edit_draft: Editor[str], send: Callable[[], None]) -> Text:
     rects = use_rects()
     field = use_text_area(draft, edit_draft, width=rects.content.width, auto_focus=True)
 
@@ -66,8 +67,8 @@ def composer(draft: str, edit_draft: Callable[[Callable[[str], str]], None], sen
 def chat() -> Div:
     conversation, set_conversation = use_state(Conversation(messages=(), draft=""))
 
-    def edit_draft(edit: Callable[[str], str]) -> None:
-        set_conversation(lambda c: Conversation(messages=c.messages, draft=edit(c.draft)))
+    def edit_draft(edit: Callable[[str], str]) -> str:
+        return set_conversation(lambda c: Conversation(messages=c.messages, draft=edit(c.draft))).draft
 
     def send() -> None:
         set_conversation(lambda c: Conversation(messages=(*c.messages, c.draft), draft=""))

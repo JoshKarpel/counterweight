@@ -2,6 +2,7 @@ from counterweight.hooks._hooks import ControlSender
 from counterweight.hooks._hooks import Focus
 from counterweight.hooks._hooks import Hovered
 from counterweight.hooks._hooks import Mouse
+from counterweight.hooks._hooks import get_state
 from counterweight.hooks._hooks import toggle
 from counterweight.hooks._hooks import use_clock
 from counterweight.hooks._hooks import use_controls
@@ -20,7 +21,9 @@ from counterweight.hooks._impls import ChangedFocusHandle
 from counterweight.hooks._impls import DuplicateUseFocus
 from counterweight.hooks._impls import InconsistentHookExecution
 from counterweight.hooks._impls import StaleMemo
+from counterweight.hooks._impls import UnsettledMeasurements
 from counterweight.hooks._types import Deps
+from counterweight.hooks._types import Editor
 from counterweight.hooks._types import Getter
 from counterweight.hooks._types import Ref
 from counterweight.hooks._types import Setter
@@ -32,6 +35,7 @@ __all__ = [
     "ControlSender",
     "Deps",
     "DuplicateUseFocus",
+    "Editor",
     "Focus",
     "Getter",
     "Hovered",
@@ -42,6 +46,8 @@ __all__ = [
     "Setup",
     "StaleMemo",
     "Tick",
+    "UnsettledMeasurements",
+    "get_state",
     "toggle",
     "use_clock",
     "use_controls",

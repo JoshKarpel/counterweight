@@ -36,8 +36,9 @@ is outside all four boxes
 `use_hovered` is built on [`use_mouse`](use_mouse.md) and [`use_rects`](use_rects.md),
 so a component that calls it renders again on every move of the mouse, wherever it is on the screen,
 and whenever its boxes move.
-It reports where the boxes were in the previous frame, as `use_rects` does,
-so the mouse over a box that just moved is checked against where it was drawn.
+It checks the mouse against the boxes as the last layout placed them,
+and renders again before a frame that moves them is painted, as `use_rects` does,
+so it checks against where the boxes are drawn.
 
 ## API
 

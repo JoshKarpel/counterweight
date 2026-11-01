@@ -31,6 +31,8 @@ from counterweight.controls import Screenshot
 from counterweight.elements import AnyElement
 from counterweight.elements import Div
 from counterweight.elements import Text
+from counterweight.events import InputEvent
+from counterweight.events import InputResponse
 from counterweight.events import KeyPressed
 from counterweight.events import Receiver
 from counterweight.focus import Subtree
@@ -109,8 +111,13 @@ def test_each_new_reading_measures_from_the_mount() -> None:
 def clock_with_counter() -> Div:
     count, set_count = use_state(0)
     tick = use_clock(timedelta(minutes=1))
+
+    def on_input(event: InputEvent, _: Receiver) -> InputResponse:
+        set_count(count + 1)
+        return None
+
     return Div(
-        on_input=lambda event, receiver: set_count(count + 1),
+        on_input=on_input,
         children=(Text(content=f"{count} {tick.now:%H:%M:%S}"),),
     )
 

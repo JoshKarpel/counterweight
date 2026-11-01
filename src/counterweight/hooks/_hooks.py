@@ -27,6 +27,7 @@ from counterweight.geometry import Rects
 from counterweight.geometry import Scroll
 from counterweight.hooks._impls import NodeKey
 from counterweight.hooks._types import Deps
+from counterweight.hooks._types import Editor
 from counterweight.hooks._types import Getter
 from counterweight.hooks._types import Ref
 from counterweight.hooks._types import Setter
@@ -62,11 +63,33 @@ def use_state[T](initial_value: Getter[T] | T) -> tuple[T, Setter[T]]:
             (see [Updating state from its previous value](../hooks/use_state.md#updating-state-from-its-previous-value)).
             If the value is not equal to the current of the state,
             Counterweight will trigger a render cycle.
+            It returns the state as it settled: the value it was given, or what the function returned,
+            so a handler can read the latest state with [`get_state`][counterweight.hooks.get_state].
             It is the same object on every render,
             so it can be left out of an effect's `deps`, and including it never reruns the effect.
-            Once the component unmounts, calling it does nothing.
+            Once the component unmounts, calling it changes nothing,
+            and returns the state as it was when the component unmounted.
     """
     return current_hook_state.get().use_state(initial_value)
+
+
+def get_state[T](set_state: Editor[T]) -> T:
+    """
+    The state as every update since the last render left it, read by calling `set_state`
+    with a function that returns the state it's given, so it changes nothing and queues no render.
+    `set_state` is a [`use_state`][counterweight.hooks.use_state] setter, or any [`Editor`][counterweight.hooks.Editor],
+    such as a parent's setter wrapped to edit one field of its state.
+    Several key presses can arrive before the next render, and each runs a handler the last render made,
+    so a handler that decides something from the state (whether to claim a key, which option to choose)
+    reads it here, where the value [`use_state`][counterweight.hooks.use_state] returned is the one that render saw.
+    It's for handlers and effects; a render reads the value `use_state` returned.
+    """
+    return set_state(same)
+
+
+def same[T](value: T) -> T:
+    """An updater that leaves the state as it is, which a setter applies to hand back the latest state."""
+    return value
 
 
 def toggle(value: bool) -> bool:
@@ -278,12 +301,12 @@ def use_rects(handle: ElementHandle | None = None) -> Rects:
     Returns:
         A recording describing the rectangular areas of the
             `content`, `padding`, `border`, and `margin` of
-            the element *on the previous render cycle*.
-            In the initial render, and for a `handle` that named no visible element in the previous render cycle,
+            the element *as of the last layout*.
+            In a component's first render, and for a `handle` that named no visible element in the last layout,
             the returned rectangles will all be positioned
             at the top-left corner of the screen with `0` width and height.
-            A component that calls `use_rects` also renders on the next render cycle after any of the rectangles
-            it read move.
+            A component that calls `use_rects` renders again as soon as any of the rectangles it read move,
+            before the frame that moved them is painted.
     """
     hooks = current_hook_state.get()
     rects = rects_in(current_layouts.get(), hooks.key, handle)
@@ -295,11 +318,11 @@ def use_rects(handle: ElementHandle | None = None) -> Rects:
 
 def rects_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None = None) -> Rects:
     """
-    The rectangles `use_rects(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    The rectangles `use_rects(handle)` reports to the node with key `reader`, given the last `layouts`:
     those of the element `handle` names, or of `reader`'s own element if it's `None`.
     """
     key = reader if handle is None else layouts.handles.get(handle)
-    # A node absent from the previous frame's layouts was hidden or not yet mounted.
+    # A node absent from the last layouts was hidden or not yet mounted.
     return INITIAL_RECTS if key is None else layouts.by_key.get(key, INITIAL_RECTS)
 
 
@@ -312,11 +335,11 @@ def use_scroll(handle: ElementHandle | None = None) -> Scroll:
 
     Returns:
         How far the element is scrolled, and how far it can be,
-            if it's a [scroll container](../layout/scrolling.md), *as of the previous render cycle*, as `use_rects` does.
+            if it's a [scroll container](../layout/scrolling.md), *as of the last layout*, as `use_rects` does.
             A component that calls `use_scroll` renders again as soon as that scroll changes,
-            whether a control scrolled it or its content changed size.
-            It's all zeros on the initial render, for an element that isn't a scroll container,
-            and for a `handle` that named no visible element in the previous render cycle.
+            whether a control scrolled it or its content changed size, before the frame that scrolled it is painted.
+            It's all zeros in a component's first render, for an element that isn't a scroll container,
+            and for a `handle` that named no visible element in the last layout.
     """
     hooks = current_hook_state.get()
     scroll = scroll_in(current_layouts.get(), hooks.key, handle)
@@ -331,7 +354,7 @@ NO_SCROLL = Scroll(offset=ORIGIN, max_offset=ORIGIN, view_width=0, view_height=0
 
 def scroll_in(layouts: Layouts, reader: NodeKey, handle: ElementHandle | None) -> Scroll:
     """
-    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the previous frame's `layouts`:
+    The scroll `use_scroll(handle)` reports to the node with key `reader`, given the last `layouts`:
     the scroll of the element `handle` names, or of `reader`'s own element if it's `None`.
     """
     key = reader if handle is None else layouts.handles.get(handle)

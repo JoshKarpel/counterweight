@@ -11,6 +11,7 @@ from benchmarks import devloop
 from benchmarks import document
 from benchmarks import gradients
 from benchmarks import picker
+from benchmarks import picker_burst
 from benchmarks import tasks
 from benchmarks import top
 from benchmarks.harness import Runnable
@@ -35,6 +36,7 @@ WORKLOADS: dict[str, Runnable] = {
         chat.WORKLOAD,
         tasks.WORKLOAD,
         picker.WORKLOAD,
+        picker_burst.WORKLOAD,
         document.WORKLOAD,
         document.LINES_WORKLOAD,
         document.TEXT_AREA_WORKLOAD,

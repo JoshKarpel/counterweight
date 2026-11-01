@@ -343,8 +343,8 @@ async def test_scrolling_does_not_rerun_components_that_do_not_read_where_they_a
 
     await frames_of(container, (8, 4), [ScrollBy(HANDLE, y=1), ScrollBy(HANDLE, y=1)], check_purity=False)
 
-    # Once for the warmup, and once on the first painted frame, which re-runs everything to start effects.
-    assert runs.count("item 0") == 2
+    # Once, in the first frame.
+    assert runs.count("item 0") == 1
 
 
 @component
@@ -617,10 +617,7 @@ def test_stale_readers_are_the_nodes_whose_scroll_changed() -> None:
     _, _, third = shadow.root.children
     moved = Layouts(in_paint_order=(), by_key={}, scrolls={third.key: SCROLLS[KEY]})
 
-    assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == (
-        [],
-        [third.key],
-    )
+    assert (list(stale_readers(shadow, NO_LAYOUTS)), list(stale_readers(shadow, moved))) == ([], [third.key])
 
 
 def test_key_of_names_the_element_a_handle_or_subtree_names() -> None:

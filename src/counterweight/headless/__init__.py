@@ -5,6 +5,10 @@ and [React Aria](https://react-spectrum.adobe.com/react-aria/hooks.html) do for 
 `counterweight.widgets` draws each of them one way.
 """
 
+from counterweight.headless._options import Highlight
+from counterweight.headless._options import prefix_matches
+from counterweight.headless._options import subsequence_matches
+from counterweight.headless._options import substring_matches
 from counterweight.headless._scroll_area import ScrollArea
 from counterweight.headless._scroll_area import ScrollAxis
 from counterweight.headless._scroll_area import use_scroll_area
@@ -17,10 +21,14 @@ from counterweight.headless._text_input import use_text_input
 
 __all__ = [
     "EmbeddedTerminal",
+    "Highlight",
     "ScrollArea",
     "ScrollAxis",
     "TextArea",
     "TextInput",
+    "prefix_matches",
+    "subsequence_matches",
+    "substring_matches",
     "use_scroll_area",
     "use_terminal",
     "use_text_area",

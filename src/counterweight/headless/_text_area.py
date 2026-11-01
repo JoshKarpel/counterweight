@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 from counterweight.controls import FocusOn
@@ -31,7 +30,10 @@ from counterweight.headless._text_editing import Edit
 from counterweight.headless._text_editing import EditableText
 from counterweight.headless._text_input import cell_pressed
 from counterweight.headless._text_input import edited
+from counterweight.hooks import Editor
 from counterweight.hooks import Focus
+from counterweight.hooks import Getter
+from counterweight.hooks import get_state
 from counterweight.hooks import use_focus
 from counterweight.hooks import use_state
 from counterweight.keys import Key
@@ -54,7 +56,17 @@ class TextArea:
     """The text of the cursor's row after `at_cursor`, then each row after it, following a line break."""
 
     cursor: int
-    """How many of the value's code points come before the cursor, so `value[:cursor]` is the text before it."""
+    """
+    How many of the value's code points come before the cursor, so `value[:cursor]` is the text before it,
+    where this render placed it, for drawing.
+    """
+
+    latest_cursor: Getter[int]
+    """
+    Where the cursor is after every edit since this render, as the DOM's `selectionStart` is,
+    for a handler that decides from it, since several key presses can arrive before the next render.
+    A value the calling component changed other than by an edit puts it at the end, as a render would.
+    """
 
     cursor_row: ElementHandle
     """
@@ -96,7 +108,7 @@ class TextArea:
 
 def use_text_area(
     value: str,
-    set_value: Callable[[Callable[[str], str]], None],
+    set_value: Editor[str],
     width: int,
     enter_inserts_newline: bool = False,
     tab_size: int = 4,
@@ -114,7 +126,7 @@ def use_text_area(
         value: The text being edited.
 
         set_value: Called with a function from the latest value to the edited one for each edit,
-            as for [`use_text_input`][counterweight.headless.use_text_input].
+            returning the value it settled at, as for [`use_text_input`][counterweight.headless.use_text_input].
 
         width: How many cells wide each row is, such as the content width
             [`use_rects`][counterweight.hooks.use_rects] reports for the element the text is drawn in.
@@ -149,7 +161,10 @@ def use_text_area(
     cursor_row, _ = use_state(ElementHandle)
 
     def apply(edit: Edit) -> None:
-        set_text(lambda latest: edited(latest, edit, value, set_value))
+        set_text(lambda latest: edited(latest, edit, set_value))
+
+    def latest_cursor() -> int:
+        return get_state(set_text).following(get_state(set_value)).cursor
 
     def on_input(event: InputEvent, receiver: Receiver) -> InputResponse:
         if not receiver.is_focused:
@@ -194,6 +209,7 @@ def use_text_area(
         at_cursor=shown.at_cursor,
         after_cursor=shown.after_cursor,
         cursor=cursor,
+        latest_cursor=latest_cursor,
         cursor_row=cursor_row,
         focus=focus,
         on_input=on_input,

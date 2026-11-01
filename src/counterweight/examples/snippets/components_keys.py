@@ -25,7 +25,10 @@ from counterweight.styles.utilities import *
 def todo_row(title: str) -> Text:
     done, set_done = use_state(False)
 
-    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_click(lambda: set_done(not done)))
+    def flip() -> None:
+        set_done(not done)
+
+    return Text(content=f"[{'x' if done else ' '}] {title}", on_input=on_click(flip))
 
 
 # --8<-- [end:row]

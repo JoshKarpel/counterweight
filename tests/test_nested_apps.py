@@ -82,7 +82,7 @@ async def test_a_setter_called_while_another_app_runs_reaches_its_own_app() -> N
 
 async def test_an_app_leaves_whatever_its_caller_had_current() -> None:
     queue: Queue[AnyEvent] = Queue()
-    listeners: WeakSet[Callable[[Mouse], None]] = WeakSet()
+    listeners: WeakSet[Callable[[Mouse], object]] = WeakSet()
 
     async with TaskGroup() as task_group:
         with app_scope(queue, task_group, listeners):
