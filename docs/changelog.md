@@ -1,6 +1,19 @@
 # Changelog
 
-## Next
+## `0.2.0`
+
+Released `2026-11-01`
+
+Counterweight `0.2.0` adds inline apps, which draw in a region below the prompt rather than on the alternate screen,
+and `Print`, which writes rendered content above that region or to the app's streams.
+It also adds the pieces pickers are built from (`Highlight` and the matchers) and the `combobox` widget on top of them,
+renders a component whose rectangles or scroll went stale before the frame is painted rather than a frame later,
+and makes the emulator and `import counterweight` faster.
+
+A few changes break apps written for `0.1.1`, each marked **Breaking:** below:
+a `use_state` setter returns the state it settled at, so a `lambda` handler that calls one returns it too,
+`Rects` has a `screen` that code building one passes,
+and the text hooks and widgets take `set_value` as an `Editor[str]`.
 
 ### Added
 
