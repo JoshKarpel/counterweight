@@ -1,0 +1,9 @@
+┌────────────────┐  ┌────────────────┐        
+│ without keys   │  │ with keys      │        
+│ [x] a          │  │ [x] a          │        
+│ [ ] b          │  │ [ ] b          │        
+│ [ ] c          │  │ [ ] c          │        
+│ [ ] d          │  │ [ ] d          │        
+└────────────────┘  └────────────────┘        
+                                              
+click: check  x: remove the first  r: rotate  

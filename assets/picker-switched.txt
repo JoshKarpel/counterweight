@@ -1,0 +1,10 @@
+ Python 3.15                            
+ Index  pypi       ╭──────────────────╮ 
+ F2 picks the Pytho│ Index            │ 
+                   │ > cpu            │ 
+                   │   pytorch-cpu    │ 
+                   ╰──────────────────╯ 
+                                        
+                                        
+                                        
+                                        

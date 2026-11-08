@@ -1,0 +1,24 @@
+ github-dark                                      
+                                                  
+ @component                                       
+ def greeting(name: str) -> Text:                 
+     """Say hello."""                             
+     return Text(content=f"Hello, {name}!")       
+                                                  
+                                                  
+ monokai                                          
+                                                  
+ @component                                       
+ def greeting(name: str) -> Text:                 
+     """Say hello."""                             
+     return Text(content=f"Hello, {name}!")       
+                                                  
+                                                  
+ solarized-light                                  
+                                                  
+ @component                                       
+ def greeting(name: str) -> Text:                 
+     """Say hello."""                             
+     return Text(content=f"Hello, {name}!")       
+                                                  
+                                                  

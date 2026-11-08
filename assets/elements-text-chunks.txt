@@ -1,0 +1,2 @@
+A plain string, in the Text's text_style  
+error: config.toml not found              

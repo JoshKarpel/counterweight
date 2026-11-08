@@ -1,0 +1,5 @@
+╭──────────────────────╮  ┏━━━━━━━━━━━━━━━━━━━━━━┓  ╭──────────────────────╮
+│ Inbox                │  ┃ Drafts               ┃  │ Archive              │
+│ Messages waiting for │  ┃ Messages you started ┃  │ Everything else.     │
+│ a reply.             │  ┃ and haven't sent.    ┃  │                      │
+╰──────────────────────╯  ┗━━━━━━━━━━━━━━━━━━━━━━┛  ╰──────────────────────╯

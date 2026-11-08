@@ -1,0 +1,4 @@
+ ○ apples           
+ ● bread            
+ ○ cheese           
+ ● dates            

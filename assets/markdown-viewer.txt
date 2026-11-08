@@ -1,0 +1,30 @@
+╭─ markdown_samples/ ──────────╮╭─ blocks/code.md ─────────────────────────────────────────────────╮
+│ ▾ blocks/                    ││ Code                                                             │
+│     alerts.md                ││                                                                  │
+│     block-quotes.md          ││  def tallest(peaks):                                             │
+│     breaks-and-html.md       ││      return max(peaks, key=lambda p: p.height)                   │
+│     code.md                  ││                                                                  │
+│     lists.md                 ││  Indented code isn't highlighted.                                │
+│     tables.md                ││                                                                  │
+│     task-lists.md            ││                                                                  │
+│ ▸ extensions/                ││                                                                  │
+│ ▸ text/                      ││                                                                  │
+│   README.md                  ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+│                              ││                                                                  │
+╰──────────────────────────────╯╰──────────────────────────────────────────────────────────────────╯

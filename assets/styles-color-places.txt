@@ -1,0 +1,9 @@
+                                                            
+ ┏━━━━━━━━━━━━━━━━━━━━━━━━┓   ██ margin_color("indigo", 900)
+ ┃                        ┃   ██ border_color("amber", 400) 
+ ┃                        ┃   ██ border_bg("slate", 600)    
+ ┃        Some text       ┃   ██ padding_color("teal", 700) 
+ ┃                        ┃   ██ content_color("rose", 900) 
+ ┃                        ┃   ██ text_color("lime", 300)    
+ ┗━━━━━━━━━━━━━━━━━━━━━━━━┛   ██ text_bg("sky", 800)        
+                                                            

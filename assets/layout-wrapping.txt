@@ -1,0 +1,12 @@
+┌──────────────────────┐                                                            
+│Text stays on one line unless its style sets a wrap mode, however narrow its box.  
+└──────────────────────┘                                                            
+┌──────────────────────┐                                                            
+│Text stays on one line│                                                            
+└──────────────────────┘                                                            
+┌──────────────────────┐                                                            
+│Text stays on one line│                                                            
+│unless its style sets │                                                            
+│a wrap mode, however  │                                                            
+│narrow its box.       │                                                            
+└──────────────────────┘                                                            

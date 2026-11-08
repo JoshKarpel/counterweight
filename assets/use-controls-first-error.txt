@@ -1,0 +1,7 @@
+╭────────────────────────────────────────╮
+│ ok   tests/test_geometry.py            │
+│ ok   tests/test_hooks.py               │
+│ FAIL tests/test_layout.py::test_wraps  │
+│      expected 3 lines, got 4           │
+│ ok   tests/test_output.py              │
+╰────────────────────────────────────────╯

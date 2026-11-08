@@ -1,0 +1,7 @@
+ Ctrl+X stops a process         
+                                
+  3301 uvicorn                  
+  2048 postgres                 
+  1203 nginx                    
+                                
+                                

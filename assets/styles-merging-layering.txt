@@ -1,0 +1,15 @@
+text_color("red", 500) | text_bg("slate", 800)                                    
+                                                                                  
+text_color("red", 500) | text_color("sky", 400)                                   
+                                                                                  
+Style(text_style=CellStyle(bold=True)) | Style(text_style=CellStyle(italic=True)) 
+                                                                                  
+┏━━━━━━━━━━━━━━━━━━━━━┓                                                           
+┃border | border_heavy┃                                                           
+┗━━━━━━━━━━━━━━━━━━━━━┛                                                           
+                                                                                  
+╔═════════════════════════════════════╗                                           
+║border | border_heavy | border_double║                                           
+╚═════════════════════════════════════╝                                           
+                                                                                  
+border | border_heavy | border_none                                               
