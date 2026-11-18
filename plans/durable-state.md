@@ -54,9 +54,17 @@ keyed read 2.2 us
 - **`data_version` moves only for the other connection.** Connection `a` wrote, and only `b`'s value changed.
   So polling our own connection's `data_version` sees exactly the other processes' writes, never our own.
 - **[`PRAGMA query_only`](https://www.sqlite.org/pragma.html#pragma_query_only) refuses writes.**
-  The store turns it on around each read in render, and once around each batch of re-runs,
+  The store turns it on once around a render's reads and once around each batch of re-runs,
   so a `read` that writes fails loudly instead of slipping past invalidation.
-  Each toggle is a statement of its own, which the keyed read's 2.2 µs doesn't include.
+  Each toggle is a statement of its own, which the keyed read's 2.2 µs doesn't include,
+  so toggling per read would triple the statements a thousand mounting rows run.
+  Each of those batches also runs in one read transaction, so every read in it sees one snapshot:
+  outside a transaction each `SELECT` takes its own,
+  and another instance's commit between two of them would draw a frame that mixes its before and after.
+- **[`set_authorizer`](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.set_authorizer)
+  can refuse a statement by kind.** Denying `SQLITE_TRANSACTION` makes `COMMIT` and `ROLLBACK` raise
+  `DatabaseError('not authorized')`, and setting an authorizer re-prepares cached statements,
+  so a statement prepared before it is checked too (probed against SQLite 3.53.1).
 - **A commit costs about 32 µs** with WAL and
   [`synchronous=NORMAL`](https://www.sqlite.org/pragma.html#pragma_synchronous),
   and 0.8 ms with `FULL`, which fsyncs every commit.
@@ -77,7 +85,11 @@ class Store:
 `app(root, store=Store(Path("notes.db")))` opens one connection before the first render,
 since mounting components read from it,
 and closes it when the app stops.
-Opening sets WAL mode, `synchronous=NORMAL` and a short busy timeout
+Opening raises if SQLite is older than 3.37, which `STRICT` tables need,
+since a system Python can link an older library than the 3.53.1 probed here.
+It connects with `autocommit=True`, so Python opens no transaction of its own
+and the store's `BEGIN IMMEDIATE` is the only one,
+sets WAL mode, `synchronous=NORMAL` and a short busy timeout
 (see [Waiting for the write lock](#waiting-for-the-write-lock)),
 and creates `counterweight_durable_state` if it's missing.
 `":memory:"` is for tests and has to be asked for; a durable hook in an app given no store raises `NoStore`.
@@ -91,8 +103,12 @@ The poll interval lives on `Store` rather than as an `app()` parameter,
 since it means nothing without one, as `Recording` carries its own options.
 
 The app's own tables are the app's to create.
-It opens the file with `sqlite3` before calling `app()` and runs its migrations there
-(the docs show a `PRAGMA user_version` recipe), so the store needs no setup hook.
+It opens the file with `sqlite3` before calling `app()`, runs its migrations there
+(the docs show a `PRAGMA user_version` recipe), and commits and closes that connection before `app()`,
+so the store needs no setup hook.
+The recipe commits explicitly because Python's default `isolation_level` opens a transaction on the first `INSERT`,
+and a migration or seed left uncommitted holds the write lock the store's first commit waits on
+(see [Waiting for the write lock](#waiting-for-the-write-lock)).
 
 ### `use_durable(read, deps)`
 
@@ -131,9 +147,13 @@ A handler returns `Transact(lambda db: db.execute("INSERT INTO notes (body) VALU
 The control queues `write`; the loop runs every write a pass queued in one transaction (see below).
 A `write` that raises rolls the whole transaction back and stops the app with its error,
 as an error in a handler does.
-A `write` gets the connection itself, so one that calls `commit()` or `rollback()` would split the batch
-and leave the rollback above undoing only what came after;
-the store checks `in_transaction` after each `write` and raises if it ended the transaction.
+A `write` gets the connection itself, so one that runs `COMMIT` or `ROLLBACK` would split the batch
+and leave the rollback above undoing only what came after.
+Checking `in_transaction` after each `write` can't catch that,
+since a `write` that commits and then inserts has a transaction open again by the time it returns.
+So the store sets an authorizer for the batch that denies `SQLITE_TRANSACTION`,
+and a `write` that tries to end the transaction raises at that statement.
+On an `autocommit=True` connection, `commit()` and `rollback()` do nothing, so they can't split it either.
 
 ### `use_durable_state(key, default, codec)`
 
@@ -194,9 +214,12 @@ without `PRAGMA user_version`, which is the app's.
 ### When writes commit
 
 Each pass of the render loop commits everything queued since the last one, in order,
-in one `BEGIN IMMEDIATE` transaction,
-after taking the queued events and before deciding whether to render
-(`src/counterweight/_app.py:1103-1115`), then re-runs the reads.
+in one `BEGIN IMMEDIATE` transaction, then re-runs the reads.
+It commits first thing in the pass, before it runs the `Suspend`, screenshots or copy the last pass's handlers asked for,
+and before it takes the queued events and decides whether to render.
+A `Suspend` hands the terminal to another program, often for minutes in an editor,
+so committing after it would leave a `Transact` returned beside it uncommitted all that time,
+lost if the app is killed meanwhile and invisible to the program it runs.
 
 ```mermaid
 flowchart LR
@@ -216,6 +239,10 @@ It buys three things:
 
 - **One ordered batch.** A handler that sets the draft and then returns a `Transact` that saves it and clears the draft
   has to commit in that order; splitting setters (after the frame) from `Transact`s (before it) would reorder them.
+  The order is the order writes were queued: a setter queues when it's called,
+  and a `Transact` when the loop handles the control, after the handlers for its event return.
+  So a set always precedes a `Transact` from the same handler, wherever the handler built it,
+  and under `each(save, type_into_draft)` the second handler's set precedes the first one's `Transact`.
 - **The frame shows the write.** A `Transact`'s effect has no in-memory copy to show,
   so it's visible only once committed and re-read;
   after the frame it would show a frame late.
@@ -227,7 +254,7 @@ The writes still batch per pass, so a burst of key presses handled together comm
 How the app stops decides whether what's queued commits.
 A clean stop (`Quit`, Ctrl+C, the root returning) commits it,
 so the edit a handler made in the pass that quit survives.
-A stop by an exception (a handler, render, or a `read` raising) discards it.
+A stop by an exception in a handler discards it.
 The queue may hold half of what the raising handler meant to do,
 and a durable half outlives the restart that would have cleared an in-memory one:
 the next launch reads it, and crashes again if it's what tripped the bug.
@@ -235,7 +262,19 @@ Discarding loses at most what was queued since the last pass's commit, typically
 So the pass is the unit that lands whole:
 a handler that sets the draft and returns a `Transact` that saves the note commits both or neither,
 whether the `write` raises (rolling the transaction back) or the handler raises before it returns (discarding the queue).
-A `Transact` can write durable keys too, with `set_durable_state`, so the save and the clear can also be one `Transact`.
+
+Discarding doesn't cover an exception in render or in a `read`:
+those run after the pass's commit, so the state that tripped them is already durable,
+and stored state that crashes a render crashes every launch until something changes it.
+`UndecodableState` is one such crash, and the recovery is the same for all of them:
+the app forgets or migrates the key on its own connection before `app()`,
+which the docs page on resuming shows.
+
+A `Transact` can write durable keys too, with `set_durable_state`,
+but a key it sets is invisible to the setters until the commit (see [Outside a hook](#outside-a-hook)),
+so a key the user keeps editing, such as the draft, is cleared with its setter.
+Were the save and the clear one `Transact`, a key press handled later in the same pass
+would apply its edit to the uncleared draft and commit it after the clear, restoring the draft.
 
 ### When reads run again
 
@@ -246,7 +285,8 @@ Any write runs every live read again, the issue's simple rule:
   checking every `poll_interval` (2 µs a check), so another instance's writes appear within it;
   `None` turns polling off, for a single-instance app or a test.
 
-Re-running means turning `query_only` on, calling each live hook's latest `read`, comparing with `==`,
+Re-running means opening a read transaction with `query_only` on,
+calling each live hook's latest `read`, comparing with `==`,
 and marking the nodes whose results changed dirty, so a write that changes nothing a component reads re-renders nothing.
 The poll is control-plane work on its own task, off the render path; it queues an event only when something changed.
 
@@ -275,8 +315,14 @@ which Python's default `isolation_level` opens on the first `INSERT`.
 The last is a deadlock inside one process, and the log line is what makes it findable.
 
 A `SIGINT` during the wait is a clean stop, which commits, so it keeps waiting for the lock.
-A second `SIGINT` during that wait discards the queue and stops the app,
-so an app stuck behind a lock that never clears stops on a second `kill -INT` from another terminal,
+The first `SIGINT` hands the next one to the handler it replaced (`start_handling_interrupt_signal`),
+which under `asyncio.run` cancels the app's task and otherwise raises `KeyboardInterrupt`,
+so a second `SIGINT` during that wait ends it with one or the other.
+Only a pass commits, never the way out, so the stop path,
+which treats `KeyboardInterrupt` as a clean stop, doesn't try the lock again:
+the wait logs, as it's abandoned, how many queued writes it discards,
+and closing the connection leaves them uncommitted.
+So an app stuck behind a lock that never clears stops on a second `kill -INT` from another terminal,
 losing only what was queued since the last commit, and the log says so.
 A Ctrl+C key press during the wait stays a key press, queued like any other:
 an app may claim Ctrl+C for a handler of its own, so the input reader doesn't turn it into a `SIGINT`.
@@ -300,6 +346,11 @@ def forget_durable_state(db: sqlite3.Connection, keys: Iterable[str]) -> None: .
 def durable_state_keys(db: sqlite3.Connection, prefix: str = "") -> tuple[StoredKey, ...]: ...
 def expire_durable_state(db: sqlite3.Connection, written_before: datetime) -> tuple[str, ...]: ...
 ```
+
+Before `app()`, on a file no store has opened, the table doesn't exist yet,
+so the functions that write (`set_durable_state`, `forget_durable_state`, `expire_durable_state`) create it if it's missing,
+and the ones that read (`get_durable_state`, `durable_state_keys`) find no keys in a file without it
+rather than failing with `no such table`.
 
 A hook's setter queues a `set_durable_state`, so a value is written one way wherever it comes from.
 A key a `Transact` sets or forgets shows in that pass's frame,
@@ -330,21 +381,26 @@ and read the file back with their own connection.
 
 ### 1. Open a store, and read it with `use_durable`
 
-- [ ] `counterweight.store`: `Store` and `NoStore`; `_store.py`: opening, pragmas, the counterweight table, closing.
+- [ ] `counterweight.store`: `Store` and `NoStore`; `_store.py`: opening, the SQLite version check, `autocommit=True`,
+  pragmas, the counterweight table, closing.
 - [ ] `app(store=...)`, made current through `app_scope`.
-- [ ] `use_durable(read, deps)`: the hook slot, its detached copy, `query_only` around reads, the tree's durable nodes.
-- [ ] `Transact`, the per-pass commit, waiting for the write lock, and re-running reads after it.
+- [ ] `use_durable(read, deps)`: the hook slot, its detached copy, `query_only` and one read transaction around a render's reads,
+  the tree's durable nodes.
+- [ ] `Transact`, the authorizer that keeps a `write` from ending the batch,
+  the per-pass commit before a `Suspend` runs, waiting for the write lock, and re-running reads after it.
 - [ ] `docs/hooks/use_durable.md`, with a snippet that lists rows and adds one.
 
 Tests: the first frame shows rows written before the app started;
 a `Transact` shows in the frame after the key press that sent it;
 a read whose deps change runs again in render;
 a write that changes nothing a component reads doesn't re-render it;
-a `write` that commits or rolls back raises;
+a `write` that commits or rolls back raises, including one that commits and then inserts;
+a `Transact` returned beside a `Suspend` commits before the program runs;
 a `read` that writes raises; a `write` that raises rolls back and stops the app;
 a write queued in the pass that quits commits, and one queued by a handler that raises doesn't;
 a commit waits for a lock the test's connection holds, with other tasks running, and lands once it's released;
-a `SIGINT` while it waits keeps waiting, and a second discards the queue and stops;
+a `SIGINT` while it waits keeps waiting, and a second discards the queue and stops without waiting again;
+a store on a SQLite older than 3.37 raises on open;
 a durable hook with no store raises `NoStore`;
 an app with no store doesn't import `sqlite3`.
 
@@ -354,7 +410,8 @@ an app with no store doesn't import `sqlite3`.
 - [ ] `use_durable_state`, with its own slot, and the store's per-key pending values.
 - [ ] The table, `STRICT`, with `written_at` set on every write,
   so step 4 adds no column to tables a release of this step created.
-- [ ] `get_durable_state` and `set_durable_state`, which the setter queues.
+- [ ] `get_durable_state` and `set_durable_state`, which the setter queues,
+  and which find no keys in, and create the table in, a file no store has opened.
 - [ ] `docs/hooks/use_durable_state.md`.
 
 Tests: a value set in one run is the first frame's value in the next; two key presses in one pass both apply;
@@ -365,7 +422,8 @@ setting an equal value queues nothing; a stored value the codec rejects raises `
 a set followed by a `Transact` in one handler commits in that order;
 a set and a `Transact` from one handler share a transaction, so a `write` that raises leaves the set uncommitted;
 a key a `Transact` sets with `set_durable_state` shows in the frame after it;
-a value seeded with `set_durable_state` before `app()` is the first frame's.
+a value seeded with `set_durable_state` before `app()`, on a file no store has opened, is the first frame's;
+`get_durable_state` on such a file returns its default.
 
 ### 3. See other processes' writes
 
@@ -394,6 +452,8 @@ a key the test's connection forgets while the app runs shows its hook's default 
 - A frame that writes pays a commit, about 32 µs measured here, plus every live read, before it paints.
   Unmeasured with many reads; step 5 measures it.
 - UI state gains a schema and migrations, which an in-memory app never needed.
+- Stored state that crashes a render crashes every launch until the app forgets or migrates it before `app()`,
+  where a restart clears in-memory state that does.
 - While another connection holds the write lock, the screen keeps its last frame and no handler runs,
   for as long as the lock is held.
 - `poll_interval` is a new knob, and polling wakes the event loop four times a second by default.
