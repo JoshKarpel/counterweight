@@ -1,0 +1,7 @@
+╭──────────────────────────────────╮
+│  5 traffic shifted to 10%        │
+│  6 error rate nominal            │
+│  7 traffic shifted to 50%        │
+│  8 latency p99 within budget     │
+╰──────────────────────────────────╯
+ lines 5-8 of 11   [ Top ] [ Next ] 

@@ -1,0 +1,7 @@
+[ Top ]  [ Bottom ]           
+                              
+╭────────────────────────────╮
+│ 9 traffic shifted to 100%  │
+│10 old replicas drained     │
+│11 deploy finished          │
+╰────────────────────────────╯

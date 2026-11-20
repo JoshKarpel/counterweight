@@ -1,0 +1,18 @@
+                                                                                
+  Every slide runs a command                                                    
+                                                                                
+  Each slide runs its command when it's shown, in a scratch directory of a few  
+  files.                                                                        
+                                                                                
+  $ ls -1F                                                                      
+                                                                                
+  ╭──────────────────────────────────────────────────────────────────────────╮  
+  │ about.md                                                                 │  
+  │ notes/                                                                   │  
+  │ peaks.csv                                                                │  
+  │                                                                          │  
+  │                                                                          │  
+  ╰──────────────────────────────────────────────────────────────────────────╯  
+  exited 0                                                                      
+                                                                                
+ 1 / 5  ·  e: edit the notes                                                    

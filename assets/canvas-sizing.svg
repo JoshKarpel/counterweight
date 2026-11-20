@@ -1,0 +1,480 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36.30em" height="12.43em">
+ <style>svg {
+  dominant-baseline: hanging;
+  font-size: 1rem;
+}
+</style>
+ <g shape-rendering="crispEdges">
+  <rect x="0.00em" y="0.00em" width="36.30em" height="12.43em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="36.30em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="1.13em" width="36.30em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="2.26em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="2.26em" width="8.80em" height="1.13em" fill="#302247" />
+  <rect x="9.35em" y="2.26em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="11.55em" y="2.26em" width="4.40em" height="1.13em" fill="#55313e" />
+  <rect x="15.95em" y="2.26em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="18.15em" y="2.26em" width="2.20em" height="1.13em" fill="#8c4730" />
+  <rect x="20.35em" y="2.26em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="24.20em" y="2.26em" width="5.50em" height="1.13em" fill="#422a42" />
+  <rect x="29.70em" y="2.26em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="3.39em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="3.39em" width="8.80em" height="1.13em" fill="#55313e" />
+  <rect x="9.35em" y="3.39em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="11.55em" y="3.39em" width="4.40em" height="1.13em" fill="#9e4e2c" />
+  <rect x="15.95em" y="3.39em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="18.15em" y="3.39em" width="2.20em" height="1.13em" fill="#0e7490" />
+  <rect x="20.35em" y="3.39em" width="3.85em" height="1.13em" fill="#000000" />
+  <rect x="24.20em" y="3.39em" width="5.50em" height="1.13em" fill="#794035" />
+  <rect x="29.70em" y="3.39em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="4.52em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="4.52em" width="8.80em" height="1.13em" fill="#794035" />
+  <rect x="9.35em" y="4.52em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="11.55em" y="4.52em" width="1.10em" height="1.13em" fill="#e76c1a" />
+  <rect x="12.65em" y="4.52em" width="2.20em" height="1.13em" fill="#fde047" />
+  <rect x="14.85em" y="4.52em" width="1.10em" height="1.13em" fill="#e76c1a" />
+  <rect x="15.95em" y="4.52em" width="8.25em" height="1.13em" fill="#000000" />
+  <rect x="24.20em" y="4.52em" width="2.20em" height="1.13em" fill="#b05628" />
+  <rect x="26.40em" y="4.52em" width="1.10em" height="1.13em" fill="#fde047" />
+  <rect x="27.50em" y="4.52em" width="2.20em" height="1.13em" fill="#b05628" />
+  <rect x="29.70em" y="4.52em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="5.65em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="5.65em" width="8.80em" height="1.13em" fill="#9e4e2c" />
+  <rect x="9.35em" y="5.65em" width="2.20em" height="1.13em" fill="#000000" />
+  <rect x="11.55em" y="5.65em" width="4.40em" height="1.13em" fill="#0e7490" />
+  <rect x="15.95em" y="5.65em" width="8.25em" height="1.13em" fill="#000000" />
+  <rect x="24.20em" y="5.65em" width="5.50em" height="1.13em" fill="#0e7490" />
+  <rect x="29.70em" y="5.65em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="6.78em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="6.78em" width="2.75em" height="1.13em" fill="#c25d23" />
+  <rect x="3.30em" y="6.78em" width="3.30em" height="1.13em" fill="#fde047" />
+  <rect x="6.60em" y="6.78em" width="2.75em" height="1.13em" fill="#c25d23" />
+  <rect x="9.35em" y="6.78em" width="14.85em" height="1.13em" fill="#000000" />
+  <rect x="24.20em" y="6.78em" width="5.50em" height="1.13em" fill="#0e7490" />
+  <rect x="29.70em" y="6.78em" width="6.60em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="7.91em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="7.91em" width="2.20em" height="1.13em" fill="#e76c1a" />
+  <rect x="2.75em" y="7.91em" width="4.40em" height="1.13em" fill="#fde047" />
+  <rect x="7.15em" y="7.91em" width="2.20em" height="1.13em" fill="#e76c1a" />
+  <rect x="9.35em" y="7.91em" width="26.95em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="9.04em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="9.04em" width="8.80em" height="1.13em" fill="#0e7490" />
+  <rect x="9.35em" y="9.04em" width="26.95em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="10.17em" width="0.55em" height="1.13em" fill="#000000" />
+  <rect x="0.55em" y="10.17em" width="8.80em" height="1.13em" fill="#0e7490" />
+  <rect x="9.35em" y="10.17em" width="26.95em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="11.30em" width="36.30em" height="1.13em" fill="#000000" />
+ </g>
+ <text fill="#ffffff" font-family="monospace">
+  <tspan y="0.00em">
+   <tspan x="0.00em">n</tspan>
+   <tspan x="0.55em">a</tspan>
+   <tspan x="1.10em">t</tspan>
+   <tspan x="1.65em">u</tspan>
+   <tspan x="2.20em">r</tspan>
+   <tspan x="2.75em">a</tspan>
+   <tspan x="3.30em">l</tspan>
+   <tspan x="4.40em">s</tspan>
+   <tspan x="4.95em">i</tspan>
+   <tspan x="5.50em">z</tspan>
+   <tspan x="6.05em">e</tspan>
+   <tspan x="11.00em">w</tspan>
+   <tspan x="11.55em">i</tspan>
+   <tspan x="12.10em">d</tspan>
+   <tspan x="12.65em">t</tspan>
+   <tspan x="13.20em">h</tspan>
+   <tspan x="13.75em">(</tspan>
+   <tspan x="14.30em">1</tspan>
+   <tspan x="14.85em">0</tspan>
+   <tspan x="15.40em">)</tspan>
+   <tspan x="17.60em">h</tspan>
+   <tspan x="18.15em">e</tspan>
+   <tspan x="18.70em">i</tspan>
+   <tspan x="19.25em">g</tspan>
+   <tspan x="19.80em">h</tspan>
+   <tspan x="20.35em">t</tspan>
+   <tspan x="20.90em">(</tspan>
+   <tspan x="21.45em">4</tspan>
+   <tspan x="22.00em">)</tspan>
+   <tspan x="23.65em">m</tspan>
+   <tspan x="24.20em">i</tspan>
+   <tspan x="24.75em">n</tspan>
+   <tspan x="25.30em">_</tspan>
+   <tspan x="25.85em">w</tspan>
+   <tspan x="26.40em">i</tspan>
+   <tspan x="26.95em">d</tspan>
+   <tspan x="27.50em">t</tspan>
+   <tspan x="28.05em">h</tspan>
+   <tspan x="28.60em">(</tspan>
+   <tspan x="29.15em">0</tspan>
+   <tspan x="29.70em">)</tspan>
+  </tspan>
+  <tspan y="1.13em">
+   <tspan x="0.00em">┌</tspan>
+   <tspan x="0.55em">─</tspan>
+   <tspan x="1.10em">─</tspan>
+   <tspan x="1.65em">─</tspan>
+   <tspan x="2.20em">─</tspan>
+   <tspan x="2.75em">─</tspan>
+   <tspan x="3.30em">─</tspan>
+   <tspan x="3.85em">─</tspan>
+   <tspan x="4.40em">─</tspan>
+   <tspan x="4.95em">─</tspan>
+   <tspan x="5.50em">─</tspan>
+   <tspan x="6.05em">─</tspan>
+   <tspan x="6.60em">─</tspan>
+   <tspan x="7.15em">─</tspan>
+   <tspan x="7.70em">─</tspan>
+   <tspan x="8.25em">─</tspan>
+   <tspan x="8.80em">─</tspan>
+   <tspan x="9.35em">┐</tspan>
+   <tspan x="11.00em">┌</tspan>
+   <tspan x="11.55em">─</tspan>
+   <tspan x="12.10em">─</tspan>
+   <tspan x="12.65em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">─</tspan>
+   <tspan x="14.30em">─</tspan>
+   <tspan x="14.85em">─</tspan>
+   <tspan x="15.40em">─</tspan>
+   <tspan x="15.95em">┐</tspan>
+   <tspan x="17.60em">┌</tspan>
+   <tspan x="18.15em">─</tspan>
+   <tspan x="18.70em">─</tspan>
+   <tspan x="19.25em">─</tspan>
+   <tspan x="19.80em">─</tspan>
+   <tspan x="20.35em">┐</tspan>
+   <tspan x="23.65em">┌</tspan>
+   <tspan x="24.20em">─</tspan>
+   <tspan x="24.75em">─</tspan>
+   <tspan x="25.30em">─</tspan>
+   <tspan x="25.85em">─</tspan>
+   <tspan x="26.40em">─</tspan>
+   <tspan x="26.95em">─</tspan>
+   <tspan x="27.50em">─</tspan>
+   <tspan x="28.05em">─</tspan>
+   <tspan x="28.60em">─</tspan>
+   <tspan x="29.15em">─</tspan>
+   <tspan x="29.70em">┐</tspan>
+  </tspan>
+  <tspan y="2.26em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#1e1b4b">▀</tspan>
+   <tspan x="1.10em" fill="#1e1b4b">▀</tspan>
+   <tspan x="1.65em" fill="#1e1b4b">▀</tspan>
+   <tspan x="2.20em" fill="#1e1b4b">▀</tspan>
+   <tspan x="2.75em" fill="#1e1b4b">▀</tspan>
+   <tspan x="3.30em" fill="#1e1b4b">▀</tspan>
+   <tspan x="3.85em" fill="#1e1b4b">▀</tspan>
+   <tspan x="4.40em" fill="#1e1b4b">▀</tspan>
+   <tspan x="4.95em" fill="#1e1b4b">▀</tspan>
+   <tspan x="5.50em" fill="#1e1b4b">▀</tspan>
+   <tspan x="6.05em" fill="#1e1b4b">▀</tspan>
+   <tspan x="6.60em" fill="#1e1b4b">▀</tspan>
+   <tspan x="7.15em" fill="#1e1b4b">▀</tspan>
+   <tspan x="7.70em" fill="#1e1b4b">▀</tspan>
+   <tspan x="8.25em" fill="#1e1b4b">▀</tspan>
+   <tspan x="8.80em" fill="#1e1b4b">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="11.00em">│</tspan>
+   <tspan x="11.55em" fill="#302247">▀</tspan>
+   <tspan x="12.10em" fill="#302247">▀</tspan>
+   <tspan x="12.65em" fill="#302247">▀</tspan>
+   <tspan x="13.20em" fill="#302247">▀</tspan>
+   <tspan x="13.75em" fill="#302247">▀</tspan>
+   <tspan x="14.30em" fill="#302247">▀</tspan>
+   <tspan x="14.85em" fill="#302247">▀</tspan>
+   <tspan x="15.40em" fill="#302247">▀</tspan>
+   <tspan x="15.95em">│</tspan>
+   <tspan x="17.60em">│</tspan>
+   <tspan x="18.15em" fill="#422a42">▀</tspan>
+   <tspan x="18.70em" fill="#422a42">▀</tspan>
+   <tspan x="19.25em" fill="#422a42">▀</tspan>
+   <tspan x="19.80em" fill="#422a42">▀</tspan>
+   <tspan x="20.35em">│</tspan>
+   <tspan x="23.65em">│</tspan>
+   <tspan x="24.20em" fill="#1e1b4b">▀</tspan>
+   <tspan x="24.75em" fill="#1e1b4b">▀</tspan>
+   <tspan x="25.30em" fill="#1e1b4b">▀</tspan>
+   <tspan x="25.85em" fill="#1e1b4b">▀</tspan>
+   <tspan x="26.40em" fill="#1e1b4b">▀</tspan>
+   <tspan x="26.95em" fill="#1e1b4b">▀</tspan>
+   <tspan x="27.50em" fill="#1e1b4b">▀</tspan>
+   <tspan x="28.05em" fill="#1e1b4b">▀</tspan>
+   <tspan x="28.60em" fill="#1e1b4b">▀</tspan>
+   <tspan x="29.15em" fill="#1e1b4b">▀</tspan>
+   <tspan x="29.70em">│</tspan>
+  </tspan>
+  <tspan y="3.39em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#422a42">▀</tspan>
+   <tspan x="1.10em" fill="#422a42">▀</tspan>
+   <tspan x="1.65em" fill="#422a42">▀</tspan>
+   <tspan x="2.20em" fill="#422a42">▀</tspan>
+   <tspan x="2.75em" fill="#422a42">▀</tspan>
+   <tspan x="3.30em" fill="#422a42">▀</tspan>
+   <tspan x="3.85em" fill="#422a42">▀</tspan>
+   <tspan x="4.40em" fill="#422a42">▀</tspan>
+   <tspan x="4.95em" fill="#422a42">▀</tspan>
+   <tspan x="5.50em" fill="#422a42">▀</tspan>
+   <tspan x="6.05em" fill="#422a42">▀</tspan>
+   <tspan x="6.60em" fill="#422a42">▀</tspan>
+   <tspan x="7.15em" fill="#422a42">▀</tspan>
+   <tspan x="7.70em" fill="#422a42">▀</tspan>
+   <tspan x="8.25em" fill="#422a42">▀</tspan>
+   <tspan x="8.80em" fill="#422a42">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="11.00em">│</tspan>
+   <tspan x="11.55em" fill="#794035">▀</tspan>
+   <tspan x="12.10em" fill="#794035">▀</tspan>
+   <tspan x="12.65em" fill="#794035">▀</tspan>
+   <tspan x="13.20em" fill="#794035">▀</tspan>
+   <tspan x="13.75em" fill="#794035">▀</tspan>
+   <tspan x="14.30em" fill="#794035">▀</tspan>
+   <tspan x="14.85em" fill="#794035">▀</tspan>
+   <tspan x="15.40em" fill="#794035">▀</tspan>
+   <tspan x="15.95em">│</tspan>
+   <tspan x="17.60em">│</tspan>
+   <tspan x="18.15em" fill="#d4641f">▀</tspan>
+   <tspan x="18.70em" fill="#fde047">▀</tspan>
+   <tspan x="19.25em" fill="#fde047">▀</tspan>
+   <tspan x="19.80em" fill="#d4641f">▀</tspan>
+   <tspan x="20.35em">│</tspan>
+   <tspan x="23.65em">│</tspan>
+   <tspan x="24.20em" fill="#673839">▀</tspan>
+   <tspan x="24.75em" fill="#673839">▀</tspan>
+   <tspan x="25.30em" fill="#673839">▀</tspan>
+   <tspan x="25.85em" fill="#673839">▀</tspan>
+   <tspan x="26.40em" fill="#673839">▀</tspan>
+   <tspan x="26.95em" fill="#673839">▀</tspan>
+   <tspan x="27.50em" fill="#673839">▀</tspan>
+   <tspan x="28.05em" fill="#673839">▀</tspan>
+   <tspan x="28.60em" fill="#673839">▀</tspan>
+   <tspan x="29.15em" fill="#673839">▀</tspan>
+   <tspan x="29.70em">│</tspan>
+  </tspan>
+  <tspan y="4.52em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#673839">▀</tspan>
+   <tspan x="1.10em" fill="#673839">▀</tspan>
+   <tspan x="1.65em" fill="#673839">▀</tspan>
+   <tspan x="2.20em" fill="#673839">▀</tspan>
+   <tspan x="2.75em" fill="#673839">▀</tspan>
+   <tspan x="3.30em" fill="#673839">▀</tspan>
+   <tspan x="3.85em" fill="#673839">▀</tspan>
+   <tspan x="4.40em" fill="#673839">▀</tspan>
+   <tspan x="4.95em" fill="#673839">▀</tspan>
+   <tspan x="5.50em" fill="#673839">▀</tspan>
+   <tspan x="6.05em" fill="#673839">▀</tspan>
+   <tspan x="6.60em" fill="#673839">▀</tspan>
+   <tspan x="7.15em" fill="#673839">▀</tspan>
+   <tspan x="7.70em" fill="#673839">▀</tspan>
+   <tspan x="8.25em" fill="#673839">▀</tspan>
+   <tspan x="8.80em" fill="#673839">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="11.00em">│</tspan>
+   <tspan x="11.55em" fill="#c25d23">▀</tspan>
+   <tspan x="12.10em" fill="#c25d23">▀</tspan>
+   <tspan x="12.65em" fill="#fde047">▀</tspan>
+   <tspan x="13.20em" fill="#fde047">▀</tspan>
+   <tspan x="13.75em" fill="#fde047">▀</tspan>
+   <tspan x="14.30em" fill="#c25d23">▀</tspan>
+   <tspan x="14.85em" fill="#c25d23">▀</tspan>
+   <tspan x="15.40em" fill="#c25d23">▀</tspan>
+   <tspan x="15.95em">│</tspan>
+   <tspan x="17.60em">└</tspan>
+   <tspan x="18.15em">─</tspan>
+   <tspan x="18.70em">─</tspan>
+   <tspan x="19.25em">─</tspan>
+   <tspan x="19.80em">─</tspan>
+   <tspan x="20.35em">┘</tspan>
+   <tspan x="23.65em">│</tspan>
+   <tspan x="24.20em" fill="#9e4e2c">▀</tspan>
+   <tspan x="24.75em" fill="#9e4e2c">▀</tspan>
+   <tspan x="25.30em" fill="#9e4e2c">▀</tspan>
+   <tspan x="25.85em" fill="#9e4e2c">▀</tspan>
+   <tspan x="26.40em" fill="#9e4e2c">▀</tspan>
+   <tspan x="26.95em" fill="#9e4e2c">▀</tspan>
+   <tspan x="27.50em" fill="#9e4e2c">▀</tspan>
+   <tspan x="28.05em" fill="#9e4e2c">▀</tspan>
+   <tspan x="28.60em" fill="#9e4e2c">▀</tspan>
+   <tspan x="29.15em" fill="#9e4e2c">▀</tspan>
+   <tspan x="29.70em">│</tspan>
+  </tspan>
+  <tspan y="5.65em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#8c4730">▀</tspan>
+   <tspan x="1.10em" fill="#8c4730">▀</tspan>
+   <tspan x="1.65em" fill="#8c4730">▀</tspan>
+   <tspan x="2.20em" fill="#8c4730">▀</tspan>
+   <tspan x="2.75em" fill="#8c4730">▀</tspan>
+   <tspan x="3.30em" fill="#8c4730">▀</tspan>
+   <tspan x="3.85em" fill="#8c4730">▀</tspan>
+   <tspan x="4.40em" fill="#8c4730">▀</tspan>
+   <tspan x="4.95em" fill="#8c4730">▀</tspan>
+   <tspan x="5.50em" fill="#8c4730">▀</tspan>
+   <tspan x="6.05em" fill="#8c4730">▀</tspan>
+   <tspan x="6.60em" fill="#8c4730">▀</tspan>
+   <tspan x="7.15em" fill="#8c4730">▀</tspan>
+   <tspan x="7.70em" fill="#8c4730">▀</tspan>
+   <tspan x="8.25em" fill="#8c4730">▀</tspan>
+   <tspan x="8.80em" fill="#8c4730">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="11.00em">│</tspan>
+   <tspan x="11.55em" fill="#0e7490">▀</tspan>
+   <tspan x="12.10em" fill="#0e7490">▀</tspan>
+   <tspan x="12.65em" fill="#0e7490">▀</tspan>
+   <tspan x="13.20em" fill="#0e7490">▀</tspan>
+   <tspan x="13.75em" fill="#0e7490">▀</tspan>
+   <tspan x="14.30em" fill="#0e7490">▀</tspan>
+   <tspan x="14.85em" fill="#0e7490">▀</tspan>
+   <tspan x="15.40em" fill="#0e7490">▀</tspan>
+   <tspan x="15.95em">│</tspan>
+   <tspan x="23.65em">│</tspan>
+   <tspan x="24.20em" fill="#d4641f">▀</tspan>
+   <tspan x="24.75em" fill="#d4641f">▀</tspan>
+   <tspan x="25.30em" fill="#fde047">▀</tspan>
+   <tspan x="25.85em" fill="#fde047">▀</tspan>
+   <tspan x="26.40em" fill="#fde047">▀</tspan>
+   <tspan x="26.95em" fill="#fde047">▀</tspan>
+   <tspan x="27.50em" fill="#fde047">▀</tspan>
+   <tspan x="28.05em" fill="#d4641f">▀</tspan>
+   <tspan x="28.60em" fill="#d4641f">▀</tspan>
+   <tspan x="29.15em" fill="#d4641f">▀</tspan>
+   <tspan x="29.70em">│</tspan>
+  </tspan>
+  <tspan y="6.78em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#b05628">▀</tspan>
+   <tspan x="1.10em" fill="#b05628">▀</tspan>
+   <tspan x="1.65em" fill="#b05628">▀</tspan>
+   <tspan x="2.20em" fill="#b05628">▀</tspan>
+   <tspan x="2.75em" fill="#b05628">▀</tspan>
+   <tspan x="3.30em" fill="#b05628">▀</tspan>
+   <tspan x="3.85em" fill="#fde047">▀</tspan>
+   <tspan x="4.40em" fill="#fde047">▀</tspan>
+   <tspan x="4.95em" fill="#fde047">▀</tspan>
+   <tspan x="5.50em" fill="#fde047">▀</tspan>
+   <tspan x="6.05em" fill="#b05628">▀</tspan>
+   <tspan x="6.60em" fill="#b05628">▀</tspan>
+   <tspan x="7.15em" fill="#b05628">▀</tspan>
+   <tspan x="7.70em" fill="#b05628">▀</tspan>
+   <tspan x="8.25em" fill="#b05628">▀</tspan>
+   <tspan x="8.80em" fill="#b05628">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="11.00em">└</tspan>
+   <tspan x="11.55em">─</tspan>
+   <tspan x="12.10em">─</tspan>
+   <tspan x="12.65em">─</tspan>
+   <tspan x="13.20em">─</tspan>
+   <tspan x="13.75em">─</tspan>
+   <tspan x="14.30em">─</tspan>
+   <tspan x="14.85em">─</tspan>
+   <tspan x="15.40em">─</tspan>
+   <tspan x="15.95em">┘</tspan>
+   <tspan x="23.65em">│</tspan>
+   <tspan x="24.20em" fill="#0e7490">▀</tspan>
+   <tspan x="24.75em" fill="#0e7490">▀</tspan>
+   <tspan x="25.30em" fill="#0e7490">▀</tspan>
+   <tspan x="25.85em" fill="#0e7490">▀</tspan>
+   <tspan x="26.40em" fill="#0e7490">▀</tspan>
+   <tspan x="26.95em" fill="#0e7490">▀</tspan>
+   <tspan x="27.50em" fill="#0e7490">▀</tspan>
+   <tspan x="28.05em" fill="#0e7490">▀</tspan>
+   <tspan x="28.60em" fill="#0e7490">▀</tspan>
+   <tspan x="29.15em" fill="#0e7490">▀</tspan>
+   <tspan x="29.70em">│</tspan>
+  </tspan>
+  <tspan y="7.91em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#d4641f">▀</tspan>
+   <tspan x="1.10em" fill="#d4641f">▀</tspan>
+   <tspan x="1.65em" fill="#d4641f">▀</tspan>
+   <tspan x="2.20em" fill="#d4641f">▀</tspan>
+   <tspan x="2.75em" fill="#fde047">▀</tspan>
+   <tspan x="3.30em" fill="#fde047">▀</tspan>
+   <tspan x="3.85em" fill="#fde047">▀</tspan>
+   <tspan x="4.40em" fill="#fde047">▀</tspan>
+   <tspan x="4.95em" fill="#fde047">▀</tspan>
+   <tspan x="5.50em" fill="#fde047">▀</tspan>
+   <tspan x="6.05em" fill="#fde047">▀</tspan>
+   <tspan x="6.60em" fill="#fde047">▀</tspan>
+   <tspan x="7.15em" fill="#d4641f">▀</tspan>
+   <tspan x="7.70em" fill="#d4641f">▀</tspan>
+   <tspan x="8.25em" fill="#d4641f">▀</tspan>
+   <tspan x="8.80em" fill="#d4641f">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+   <tspan x="23.65em">└</tspan>
+   <tspan x="24.20em">─</tspan>
+   <tspan x="24.75em">─</tspan>
+   <tspan x="25.30em">─</tspan>
+   <tspan x="25.85em">─</tspan>
+   <tspan x="26.40em">─</tspan>
+   <tspan x="26.95em">─</tspan>
+   <tspan x="27.50em">─</tspan>
+   <tspan x="28.05em">─</tspan>
+   <tspan x="28.60em">─</tspan>
+   <tspan x="29.15em">─</tspan>
+   <tspan x="29.70em">┘</tspan>
+  </tspan>
+  <tspan y="9.04em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#0e7490">▀</tspan>
+   <tspan x="1.10em" fill="#0e7490">▀</tspan>
+   <tspan x="1.65em" fill="#0e7490">▀</tspan>
+   <tspan x="2.20em" fill="#0e7490">▀</tspan>
+   <tspan x="2.75em" fill="#0e7490">▀</tspan>
+   <tspan x="3.30em" fill="#0e7490">▀</tspan>
+   <tspan x="3.85em" fill="#0e7490">▀</tspan>
+   <tspan x="4.40em" fill="#0e7490">▀</tspan>
+   <tspan x="4.95em" fill="#0e7490">▀</tspan>
+   <tspan x="5.50em" fill="#0e7490">▀</tspan>
+   <tspan x="6.05em" fill="#0e7490">▀</tspan>
+   <tspan x="6.60em" fill="#0e7490">▀</tspan>
+   <tspan x="7.15em" fill="#0e7490">▀</tspan>
+   <tspan x="7.70em" fill="#0e7490">▀</tspan>
+   <tspan x="8.25em" fill="#0e7490">▀</tspan>
+   <tspan x="8.80em" fill="#0e7490">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+  </tspan>
+  <tspan y="10.17em">
+   <tspan x="0.00em">│</tspan>
+   <tspan x="0.55em" fill="#0e7490">▀</tspan>
+   <tspan x="1.10em" fill="#0e7490">▀</tspan>
+   <tspan x="1.65em" fill="#0e7490">▀</tspan>
+   <tspan x="2.20em" fill="#0e7490">▀</tspan>
+   <tspan x="2.75em" fill="#0e7490">▀</tspan>
+   <tspan x="3.30em" fill="#0e7490">▀</tspan>
+   <tspan x="3.85em" fill="#0e7490">▀</tspan>
+   <tspan x="4.40em" fill="#0e7490">▀</tspan>
+   <tspan x="4.95em" fill="#0e7490">▀</tspan>
+   <tspan x="5.50em" fill="#0e7490">▀</tspan>
+   <tspan x="6.05em" fill="#0e7490">▀</tspan>
+   <tspan x="6.60em" fill="#0e7490">▀</tspan>
+   <tspan x="7.15em" fill="#0e7490">▀</tspan>
+   <tspan x="7.70em" fill="#0e7490">▀</tspan>
+   <tspan x="8.25em" fill="#0e7490">▀</tspan>
+   <tspan x="8.80em" fill="#0e7490">▀</tspan>
+   <tspan x="9.35em">│</tspan>
+  </tspan>
+  <tspan y="11.30em">
+   <tspan x="0.00em">└</tspan>
+   <tspan x="0.55em">─</tspan>
+   <tspan x="1.10em">─</tspan>
+   <tspan x="1.65em">─</tspan>
+   <tspan x="2.20em">─</tspan>
+   <tspan x="2.75em">─</tspan>
+   <tspan x="3.30em">─</tspan>
+   <tspan x="3.85em">─</tspan>
+   <tspan x="4.40em">─</tspan>
+   <tspan x="4.95em">─</tspan>
+   <tspan x="5.50em">─</tspan>
+   <tspan x="6.05em">─</tspan>
+   <tspan x="6.60em">─</tspan>
+   <tspan x="7.15em">─</tspan>
+   <tspan x="7.70em">─</tspan>
+   <tspan x="8.25em">─</tspan>
+   <tspan x="8.80em">─</tspan>
+   <tspan x="9.35em">┘</tspan>
+  </tspan>
+ </text>
+</svg>

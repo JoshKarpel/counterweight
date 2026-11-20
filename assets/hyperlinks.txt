@@ -1,0 +1,7 @@
+ Counterweight is on GitHub, and its docs are at  
+ counterweight.dev.                               
+                                                  
+ ╭──────────────────────────────────────────────╮ 
+ │ This whole Text is one link.                 │ 
+ ╰──────────────────────────────────────────────╯ 
+                                                  

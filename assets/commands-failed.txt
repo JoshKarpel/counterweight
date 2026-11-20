@@ -1,0 +1,7 @@
+╭──────────────────────────────────────╮
+│ ===== test session starts =====      │
+│ tests/test_math.py .F.               │
+│ FAILED test_math.py::test_divide     │
+│ ===== 1 failed, 2 passed =====       │
+╰──────────────────────────────────────╯
+exited 1                                

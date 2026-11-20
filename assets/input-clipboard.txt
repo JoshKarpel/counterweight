@@ -1,0 +1,7 @@
+╭──────────────────────────────────────╮  
+│ $ git status                         │  
+│ $ git log --oneline --graph          │  
+│ $ uv run pytest -x                   │  
+│ $ just docs-serve                    │  
+╰──────────────────────────────────────╯  
+ Copied: git log --oneline --graph        

@@ -1,0 +1,14 @@
+╭─ Add a dependency ───────────────────╮
+│ Package py                           │
+│         ╭──────────────────────╮     │
+│   Group │ pydantic             │     │
+│         │ pydantic-settings    │     │
+│  Python │ pytest               │     │
+╰─────────│ pytest-asyncio       │─────╯
+          │ pytest-xdist         │      
+ Type to s╰──────────────────────╯      
+ Up move through them, Enter or Tab     
+ chooses one, and Escape closes them.   
+                                        
+                                        
+   just                                 

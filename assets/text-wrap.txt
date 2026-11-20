@@ -1,0 +1,14 @@
+┌─ none ─────────────────────┐┌─ stable ───────────────────┐┌─ pretty ───────────────────┐┌─ balance ──────────────────┐
+│ It was the best of times,  ││ It was the best of times,  ││ It was the best of times,  ││ It was the best of         │
+│                            ││ it was the worst of times, ││ it was the worst of        ││ times, it was the worst    │
+│                            ││ it was the age of wisdom,  ││ times, it was the age of   ││ of times, it was the       │
+│                            ││ it was the age of          ││ wisdom, it was the age of  ││ age of wisdom, it was      │
+│                            ││ foolishness.               ││ foolishness.               ││ the age of foolishness.    │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+│                            ││                            ││                            ││                            │
+└────────────────────────────┘└────────────────────────────┘└────────────────────────────┘└────────────────────────────┘

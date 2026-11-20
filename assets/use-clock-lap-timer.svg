@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="11.00em" height="1.13em">
+ <style>svg {
+  dominant-baseline: hanging;
+  font-size: 1rem;
+}
+</style>
+ <g shape-rendering="crispEdges">
+  <rect x="0.00em" y="0.00em" width="11.00em" height="1.13em" fill="#000000" />
+  <rect x="0.00em" y="0.00em" width="11.00em" height="1.13em" fill="#000000" />
+ </g>
+ <text fill="#ffffff" font-family="monospace">
+  <tspan y="0.00em">
+   <tspan x="0.00em" fill="#94a3b8">L</tspan>
+   <tspan x="0.55em" fill="#94a3b8">a</tspan>
+   <tspan x="1.10em" fill="#94a3b8">p</tspan>
+   <tspan x="2.20em" fill="#94a3b8">2</tspan>
+   <tspan x="2.75em" fill="#94a3b8">:</tspan>
+   <tspan x="3.85em">4</tspan>
+   <tspan x="4.40em">2</tspan>
+   <tspan x="5.50em">s</tspan>
+  </tspan>
+ </text>
+</svg>

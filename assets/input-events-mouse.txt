@@ -1,0 +1,11 @@
+╭──────────────────────────────────────────────────────────────────────╮
+│ Press keys, paste, or use the mouse. Ctrl+C quits.                   │
+│ MouseMoved(absolute=Position(x=1, y=0), button=None)                 │
+│ MouseDown(absolute=Position(x=1, y=0), button=1)                     │
+│ MouseMoved(absolute=Position(x=1, y=1), button=1)                    │
+│ MouseUp(absolute=Position(x=1, y=1), button=1)                       │
+│ MouseDown(absolute=Position(x=1, y=1), button=3)                     │
+│ MouseUp(absolute=Position(x=2, y=2), button=3)                       │
+│ MouseScrolledDown(absolute=Position(x=2, y=2), is_control_held=True) │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯

@@ -1,0 +1,5 @@
+╭─ Top-Left Title ──────── Top-Center Title ─────── Top-Right Title ─╮
+│                                                                    │
+│      Lorem ipsum dolor sit amet, consectetur adipiscing elit.      │
+│                                                                    │
+╰─ Bottom-Left Title ──── Bottom-Center Title ── Bottom-Right Title ─╯

@@ -1,0 +1,6 @@
+╭──────────────────────╮ ╭──────────────────────╮
+│ deploy started       │ │image: str, steps: tup│
+│ pulled image web:4.2.│ │cent in steps:        │
+│ migrations applied   │ │ft_traffic(image, perc│
+│ health check passed  │ │                      │
+╰──────────────────────╯ ╰──────────────────────╯

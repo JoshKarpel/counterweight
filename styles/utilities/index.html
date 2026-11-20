@@ -1,0 +1,5116 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://www.counterweight.dev/styles/utilities/">
+      
+      
+        <link rel="prev" href="../gradients/">
+      
+      
+        <link rel="next" href="../../terminals/commands/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Utilities - Counterweight</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/style.css">
+    
+      <link rel="stylesheet" href="../../assets/vendor/asciinema-player-3.17.0/asciinema-player.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link rel="icon" href="../../assets/logo/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/logo/apple-touch-icon.png">
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#utilities" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Counterweight" class="md-header__button md-logo" aria-label="Counterweight" data-md-component="logo">
+      
+  <img src="../../assets/logo/favicon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Counterweight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Utilities
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/JoshKarpel/counterweight" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Counterweight" class="md-nav__button md-logo" aria-label="Counterweight" data-md-component="logo">
+      
+  <img src="../../assets/logo/favicon.svg" alt="logo">
+
+    </a>
+    Counterweight
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/JoshKarpel/counterweight" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ecosystem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ecosystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../inline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inline Apps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../components/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../elements/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elements
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Elements
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../elements/div/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Div
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../elements/text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../elements/canvas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canvas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../hooks/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_state
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_effect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_effect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_ref/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_ref
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_memo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_memo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_clock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_clock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/animation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_mouse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_mouse
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_rects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_rects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_scroll/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_scroll
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_focus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_focus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hooks/use_hovered/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_hovered
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../headless/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Headless Components
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Headless Components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../headless/use_text_input/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_text_input
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../headless/use_text_area/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_text_area
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../headless/use_scroll_area/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    use_scroll_area
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../headless/options/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pickers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../input-handling/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Handling
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_11" id="__nav_11_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Input Handling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../input-handling/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../input-handling/handlers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Handlers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../input-handling/controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_12" id="__nav_12_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/choosing-a-layout-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Layout Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/how-layout-sizes-things/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How Layout Sizes Things
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/splitting-space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splitting Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/sizing-one-box/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing One Box
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment and Distribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/spacing-and-borders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing and Borders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/layering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/clipping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/scrolling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scrolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/grids-and-wrapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grids and Wrapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text in Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout/app-shells/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App Shells
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Styles
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_13" id="__nav_13_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Styles
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../text-wrapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Text Wrapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gradients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gradients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Colors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Colors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.ColorName" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorName
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.Shade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shade
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shade">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#terminal-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminal colors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradients
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direction-and-wrapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction and wrapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splitting-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splitting space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spacing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spacing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#borders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Borders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.Side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Side
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Side">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#border-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Border kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#display-and-grids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Display and grids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#positioning-and-layering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning and layering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overflow-clipping-and-scrolling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overflow, clipping and scrolling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Text
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Terminals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminals/commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    One-Shot Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminals/programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Programs on the App's Terminal
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminals/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedded Terminals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../terminals/emulators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Emulators and Pseudo-Terminals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rich Text
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rich Text
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rich-text/hyperlinks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hyperlinks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rich-text/syntax-highlighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Highlighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rich-text/markdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cookbook
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/autocomplete/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autocomplete
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/border-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Border Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/border-healing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Border Healing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/draggable-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Draggable Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/prefix-keys/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefix Keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/sortable-tables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sortable Tables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/spinners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spinners
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../autopilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autopilot and Recording
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_19" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../under-the-hood/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Under the Hood
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_19_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_19">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Under the Hood
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Colors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Colors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.ColorName" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorName
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.Shade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shade
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shade">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#terminal-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminal colors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradients
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direction-and-wrapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction and wrapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splitting-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splitting space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spacing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spacing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#borders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Borders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counterweight.styles.utilities.Side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Side
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Side">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#border-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Border kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#display-and-grids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Display and grids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#positioning-and-layering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning and layering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overflow-clipping-and-scrolling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overflow, clipping and scrolling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Text
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="utilities">Utilities</h1>
+<p>To avoid the tedium of writing out styles explicitly over and over,
+Counterweight provides a variety of <a href="https://tailwindcss.com/">Tailwind-inspired</a> "utility styles".
+These utilities are pre-defined styles that can be combined to form more complex styles.</p>
+<p>The utilities can be imported from the <code>counterweight.styles.utilities</code> module.
+We recommend a <code>*</code> import for ease of use:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.styles.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+</code></pre></div>
+<p>That brings in the utilities, the palette's colors, and the <code>ColorName</code>, <code>Shade</code> and <code>Side</code> types the utility functions take,
+but not <code>Style</code>, <code>Color</code> or anything else the module itself imports, which come from <code>counterweight.styles</code>.</p>
+<p>Each utility is a <code>Style</code> that sets just a small set of properties.
+Some are constants (e.g., <code>border_heavy</code>, <code>justify_children_center</code>),
+and the rest are functions that return one (e.g., <code>gap(n)</code>, <code>margin_x(n)</code>, <code>pad(n)</code>).
+Color utilities take a color name and shade, or any color.
+For example, <code>border_color("rose", 200)</code> returns a <code>Style</code> that sets the border color to rose-200,
+as does <code>border_color(rose_200)</code>, with the palette's constant for that color:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.styles</span><span class="w"> </span><span class="kn">import</span> <span class="n">Style</span><span class="p">,</span> <span class="n">CellStyle</span><span class="p">,</span> <span class="n">Color</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">border_color</span><span class="p">(</span><span class="s2">"rose"</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span> <span class="o">==</span> <span class="n">Style</span><span class="p">(</span><span class="n">border_style</span><span class="o">=</span><span class="n">CellStyle</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">Color</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s2">"#fecdd3"</span><span class="p">)))</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">border_color</span><span class="p">(</span><span class="n">rose_200</span><span class="p">)</span> <span class="o">==</span> <span class="n">border_color</span><span class="p">(</span><span class="s2">"rose"</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+</code></pre></div></p>
+<p>Since they are normal <code>Style</code>s, they can be combined to form more complex styles using the <code>|</code> operator.
+Here we make a new <code>Style</code> for a <code>rose_200</code>-colored heavy border on the top and bottom sides:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.styles.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">border_heavy_top_bottom_rose_200</span> <span class="o">=</span> <span class="n">border_y</span> <span class="o">|</span> <span class="n">border_heavy</span> <span class="o">|</span> <span class="n">border_color</span><span class="p">(</span><span class="s2">"rose"</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+</code></pre></div>
+<p>Actually giving a name to the new style is optional.
+We can also use the expression directly in our component:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.styles.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.components</span><span class="w"> </span><span class="kn">import</span> <span class="n">component</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">counterweight.elements</span><span class="w"> </span><span class="kn">import</span> <span class="n">Text</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nd">@component</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_component</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Text</span><span class="p">:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="k">return</span> <span class="n">Text</span><span class="p">(</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">content</span><span class="o">=</span><span class="s2">"Hello, world!"</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">style</span><span class="o">=</span><span class="n">border_y</span> <span class="o">|</span> <span class="n">border_heavy</span> <span class="o">|</span> <span class="n">border_color</span><span class="p">(</span><span class="s2">"rose"</span><span class="p">,</span> <span class="mi">200</span><span class="p">),</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="p">)</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Performance Considerations</p>
+<p>If you have an expression like <code>border_y | border_heavy | border_color("rose", 200)</code> in your component,
+it will be evaluated every time the component is rendered.
+Merging styles with <code>|</code> does take some time, though it is aggressively cached inside the framework.
+If you find that this is causing performance issues,
+you should create the style just once,
+ideally outside your component (i.e., at module scope),
+so that it runs only once.</p>
+</div>
+<h2 id="reference">Reference</h2>
+<p>Each table below is built from the utilities module when the docs are built.
+The constants' tables list every field each one sets.
+Fields not listed are left unset, so merging the utility into another style leaves them alone
+(see <a href="../#merging">Merging</a>).
+The functions' tables give their signatures, since what they set depends on their arguments.</p>
+<p><code>default</code> is the empty style, a starting point that sets nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default</code></td>
+<td>Nothing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="colors">Colors</h3>
+<p>The color utilities draw from <a href="https://tailwindcss.com/docs/colors">Tailwind's color palette</a>
+when given a <code>ColorName</code> such as <code>"rose"</code> and a <code>Shade</code> from <code>50</code> (lightest) to <code>950</code> (darkest).
+Given one color instead, they use it, as Tailwind's arbitrary values such as <code>text-[#fbbf24]</code> do:
+a <code>Color</code>, such as a palette constant or <code>Color.from_hex("#fbbf24")</code>,
+one of the <a href="#terminal-colors">terminal colors</a>, or a <a href="#gradients">gradient</a>.
+<code>text_white</code> and <code>text_black</code> are outside the palette.</p>
+<p>Each utility colors one part of a box.
+In the box below, every part has its own color, matched by the swatch beside the utility that paints it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">PLACES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ColorName</span><span class="p">,</span> <span class="n">Shade</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="p">(</span><span class="s2">"margin_color"</span><span class="p">,</span> <span class="s2">"indigo"</span><span class="p">,</span> <span class="mi">900</span><span class="p">),</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="p">(</span><span class="s2">"border_color"</span><span class="p">,</span> <span class="s2">"amber"</span><span class="p">,</span> <span class="mi">400</span><span class="p">),</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="p">(</span><span class="s2">"border_bg"</span><span class="p">,</span> <span class="s2">"slate"</span><span class="p">,</span> <span class="mi">600</span><span class="p">),</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="p">(</span><span class="s2">"padding_color"</span><span class="p">,</span> <span class="s2">"teal"</span><span class="p">,</span> <span class="mi">700</span><span class="p">),</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="p">(</span><span class="s2">"content_color"</span><span class="p">,</span> <span class="s2">"rose"</span><span class="p">,</span> <span class="mi">900</span><span class="p">),</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">(</span><span class="s2">"text_color"</span><span class="p">,</span> <span class="s2">"lime"</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="p">(</span><span class="s2">"text_bg"</span><span class="p">,</span> <span class="s2">"sky"</span><span class="p">,</span> <span class="mi">800</span><span class="p">),</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="p">)</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="k">def</span><span class="w"> </span><span class="nf">legend_line</span><span class="p">(</span><span class="n">utility</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="n">ColorName</span><span class="p">,</span> <span class="n">shade</span><span class="p">:</span> <span class="n">Shade</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Text</span><span class="p">:</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="k">return</span> <span class="n">Text</span><span class="p">(</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="n">content</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>            <span class="n">Chunk</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"██ "</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">text_color</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">shade</span><span class="p">)</span><span class="o">.</span><span class="n">text_style</span><span class="p">),</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>            <span class="n">Chunk</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">utility</span><span class="si">}</span><span class="s1">("</span><span class="si">{</span><span class="n">color</span><span class="si">}</span><span class="s1">", </span><span class="si">{</span><span class="n">shade</span><span class="si">}</span><span class="s1">)'</span><span class="p">),</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>        <span class="p">)</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="nd">@component</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="k">def</span><span class="w"> </span><span class="nf">places</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Div</span><span class="p">:</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="k">return</span> <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        <span class="n">style</span><span class="o">=</span><span class="n">row</span> <span class="o">|</span> <span class="n">gap</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">align_children_center</span><span class="p">,</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        <span class="n">children</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>            <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>                <span class="n">style</span><span class="o">=</span><span class="n">width</span><span class="p">(</span><span class="mi">26</span><span class="p">)</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>                <span class="o">|</span> <span class="n">height</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>                <span class="o">|</span> <span class="n">center_children</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>                <span class="o">|</span> <span class="n">margin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>                <span class="o">|</span> <span class="n">margin_color</span><span class="p">(</span><span class="s2">"indigo"</span><span class="p">,</span> <span class="mi">900</span><span class="p">)</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>                <span class="o">|</span> <span class="n">border</span>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>                <span class="o">|</span> <span class="n">border_heavy</span>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>                <span class="o">|</span> <span class="n">border_color</span><span class="p">(</span><span class="s2">"amber"</span><span class="p">,</span> <span class="mi">400</span><span class="p">)</span>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>                <span class="o">|</span> <span class="n">border_bg</span><span class="p">(</span><span class="s2">"slate"</span><span class="p">,</span> <span class="mi">600</span><span class="p">)</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>                <span class="o">|</span> <span class="n">pad_x</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>                <span class="o">|</span> <span class="n">pad_y</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>                <span class="o">|</span> <span class="n">padding_color</span><span class="p">(</span><span class="s2">"teal"</span><span class="p">,</span> <span class="mi">700</span><span class="p">)</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>                <span class="o">|</span> <span class="n">content_color</span><span class="p">(</span><span class="s2">"rose"</span><span class="p">,</span> <span class="mi">900</span><span class="p">),</span>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>                <span class="n">children</span><span class="o">=</span><span class="p">(</span><span class="n">Text</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">text_color</span><span class="p">(</span><span class="s2">"lime"</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span> <span class="o">|</span> <span class="n">text_bg</span><span class="p">(</span><span class="s2">"sky"</span><span class="p">,</span> <span class="mi">800</span><span class="p">),</span> <span class="n">content</span><span class="o">=</span><span class="s2">"Some text"</span><span class="p">),),</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>            <span class="p">),</span>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>            <span class="n">Div</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">children</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">legend_line</span><span class="p">(</span><span class="o">*</span><span class="n">place</span><span class="p">)</span> <span class="k">for</span> <span class="n">place</span> <span class="ow">in</span> <span class="n">PLACES</span><span class="p">)),</span>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>        <span class="p">),</span>
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>    <span class="p">)</span>
+</code></pre></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Screenshot</label><label for="__tabbed_1_2">Text</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><img alt="Each color utility painting its part of a box" src="../../assets/styles-color-places.svg" /></p>
+</div>
+<div class="tabbed-block">
+<div class="screenshot-text highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a> ┏━━━━━━━━━━━━━━━━━━━━━━━━┓   ██ margin_color("indigo", 900)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a> ┃                        ┃   ██ border_color("amber", 400) 
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a> ┃                        ┃   ██ border_bg("slate", 600)    
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a> ┃        Some text       ┃   ██ padding_color("teal", 700) 
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a> ┃                        ┃   ██ content_color("rose", 900) 
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a> ┃                        ┃   ██ text_color("lime", 300)    
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a> ┗━━━━━━━━━━━━━━━━━━━━━━━━┛   ██ text_bg("sky", 800)        
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_white</code></td>
+<td><code>text_style.foreground = #ffffff</code></td>
+</tr>
+<tr>
+<td><code>text_black</code></td>
+<td><code>text_style.foreground = #000000</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_color(color: ColorName, shade: Shade) -&gt; Style</code><br><code>text_color(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Color the text with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>text_bg(color: ColorName, shade: Shade) -&gt; Style</code><br><code>text_bg(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Color the background behind the text with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>border_color(color: ColorName, shade: Shade) -&gt; Style</code><br><code>border_color(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Color the border characters with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>border_bg(color: ColorName, shade: Shade) -&gt; Style</code><br><code>border_bg(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Color the background behind the border characters with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>margin_color(color: ColorName, shade: Shade) -&gt; Style</code><br><code>margin_color(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Fill the margin with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>padding_color(color: ColorName, shade: Shade) -&gt; Style</code><br><code>padding_color(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Fill the padding with a palette color, by name and shade, or with any color or gradient.</td>
+</tr>
+<tr>
+<td><code>content_color(color: ColorName, shade: Shade) -&gt; Style</code><br><code>content_color(color: AnyColor | Gradient) -&gt; Style</code></td>
+<td>Fill the whole box with a palette color, by name and shade, or with any color or gradient, under any margin, padding and border colors.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="palette">Palette</h4>
+<p>Every palette color is also a <code>Color</code> constant named <code>&lt;color&gt;_&lt;shade&gt;</code>, such as <code>rose_200</code>,
+for style fields that take a <code>Color</code> directly.
+Hover over a swatch to see its name and hex code.</p>
+<div class="utility-palette">
+<table class="palette">
+<thead><tr><th></th><th>50</th><th>100</th><th>200</th><th>300</th><th>400</th><th>500</th><th>600</th><th>700</th><th>800</th><th>900</th><th>950</th></tr></thead>
+<tbody>
+<tr><th>slate</th><td><span class="swatch" style="background-color: #f8fafc" title="slate_50 #f8fafc"></span></td><td><span class="swatch" style="background-color: #f1f5f9" title="slate_100 #f1f5f9"></span></td><td><span class="swatch" style="background-color: #e2e8f0" title="slate_200 #e2e8f0"></span></td><td><span class="swatch" style="background-color: #cbd5e1" title="slate_300 #cbd5e1"></span></td><td><span class="swatch" style="background-color: #94a3b8" title="slate_400 #94a3b8"></span></td><td><span class="swatch" style="background-color: #64748b" title="slate_500 #64748b"></span></td><td><span class="swatch" style="background-color: #475569" title="slate_600 #475569"></span></td><td><span class="swatch" style="background-color: #334155" title="slate_700 #334155"></span></td><td><span class="swatch" style="background-color: #1e293b" title="slate_800 #1e293b"></span></td><td><span class="swatch" style="background-color: #0f172a" title="slate_900 #0f172a"></span></td><td><span class="swatch" style="background-color: #020617" title="slate_950 #020617"></span></td></tr>
+<tr><th>gray</th><td><span class="swatch" style="background-color: #f9fafb" title="gray_50 #f9fafb"></span></td><td><span class="swatch" style="background-color: #f3f4f6" title="gray_100 #f3f4f6"></span></td><td><span class="swatch" style="background-color: #e5e7eb" title="gray_200 #e5e7eb"></span></td><td><span class="swatch" style="background-color: #d1d5db" title="gray_300 #d1d5db"></span></td><td><span class="swatch" style="background-color: #9ca3af" title="gray_400 #9ca3af"></span></td><td><span class="swatch" style="background-color: #6b7280" title="gray_500 #6b7280"></span></td><td><span class="swatch" style="background-color: #4b5563" title="gray_600 #4b5563"></span></td><td><span class="swatch" style="background-color: #374151" title="gray_700 #374151"></span></td><td><span class="swatch" style="background-color: #1f2937" title="gray_800 #1f2937"></span></td><td><span class="swatch" style="background-color: #111827" title="gray_900 #111827"></span></td><td><span class="swatch" style="background-color: #030712" title="gray_950 #030712"></span></td></tr>
+<tr><th>zinc</th><td><span class="swatch" style="background-color: #fafafa" title="zinc_50 #fafafa"></span></td><td><span class="swatch" style="background-color: #f4f4f5" title="zinc_100 #f4f4f5"></span></td><td><span class="swatch" style="background-color: #e4e4e7" title="zinc_200 #e4e4e7"></span></td><td><span class="swatch" style="background-color: #d4d4d8" title="zinc_300 #d4d4d8"></span></td><td><span class="swatch" style="background-color: #a1a1aa" title="zinc_400 #a1a1aa"></span></td><td><span class="swatch" style="background-color: #71717a" title="zinc_500 #71717a"></span></td><td><span class="swatch" style="background-color: #52525b" title="zinc_600 #52525b"></span></td><td><span class="swatch" style="background-color: #3f3f46" title="zinc_700 #3f3f46"></span></td><td><span class="swatch" style="background-color: #27272a" title="zinc_800 #27272a"></span></td><td><span class="swatch" style="background-color: #18181b" title="zinc_900 #18181b"></span></td><td><span class="swatch" style="background-color: #09090b" title="zinc_950 #09090b"></span></td></tr>
+<tr><th>neutral</th><td><span class="swatch" style="background-color: #fafafa" title="neutral_50 #fafafa"></span></td><td><span class="swatch" style="background-color: #f5f5f5" title="neutral_100 #f5f5f5"></span></td><td><span class="swatch" style="background-color: #e5e5e5" title="neutral_200 #e5e5e5"></span></td><td><span class="swatch" style="background-color: #d4d4d4" title="neutral_300 #d4d4d4"></span></td><td><span class="swatch" style="background-color: #a3a3a3" title="neutral_400 #a3a3a3"></span></td><td><span class="swatch" style="background-color: #737373" title="neutral_500 #737373"></span></td><td><span class="swatch" style="background-color: #525252" title="neutral_600 #525252"></span></td><td><span class="swatch" style="background-color: #404040" title="neutral_700 #404040"></span></td><td><span class="swatch" style="background-color: #262626" title="neutral_800 #262626"></span></td><td><span class="swatch" style="background-color: #171717" title="neutral_900 #171717"></span></td><td><span class="swatch" style="background-color: #0a0a0a" title="neutral_950 #0a0a0a"></span></td></tr>
+<tr><th>stone</th><td><span class="swatch" style="background-color: #fafaf9" title="stone_50 #fafaf9"></span></td><td><span class="swatch" style="background-color: #f5f5f4" title="stone_100 #f5f5f4"></span></td><td><span class="swatch" style="background-color: #e7e5e4" title="stone_200 #e7e5e4"></span></td><td><span class="swatch" style="background-color: #d6d3d1" title="stone_300 #d6d3d1"></span></td><td><span class="swatch" style="background-color: #a8a29e" title="stone_400 #a8a29e"></span></td><td><span class="swatch" style="background-color: #78716c" title="stone_500 #78716c"></span></td><td><span class="swatch" style="background-color: #57534e" title="stone_600 #57534e"></span></td><td><span class="swatch" style="background-color: #44403c" title="stone_700 #44403c"></span></td><td><span class="swatch" style="background-color: #292524" title="stone_800 #292524"></span></td><td><span class="swatch" style="background-color: #1c1917" title="stone_900 #1c1917"></span></td><td><span class="swatch" style="background-color: #0c0a09" title="stone_950 #0c0a09"></span></td></tr>
+<tr><th>red</th><td><span class="swatch" style="background-color: #fef2f2" title="red_50 #fef2f2"></span></td><td><span class="swatch" style="background-color: #fee2e2" title="red_100 #fee2e2"></span></td><td><span class="swatch" style="background-color: #fecaca" title="red_200 #fecaca"></span></td><td><span class="swatch" style="background-color: #fca5a5" title="red_300 #fca5a5"></span></td><td><span class="swatch" style="background-color: #f87171" title="red_400 #f87171"></span></td><td><span class="swatch" style="background-color: #ef4444" title="red_500 #ef4444"></span></td><td><span class="swatch" style="background-color: #dc2626" title="red_600 #dc2626"></span></td><td><span class="swatch" style="background-color: #b91c1c" title="red_700 #b91c1c"></span></td><td><span class="swatch" style="background-color: #991b1b" title="red_800 #991b1b"></span></td><td><span class="swatch" style="background-color: #7f1d1d" title="red_900 #7f1d1d"></span></td><td><span class="swatch" style="background-color: #450a0a" title="red_950 #450a0a"></span></td></tr>
+<tr><th>orange</th><td><span class="swatch" style="background-color: #fff7ed" title="orange_50 #fff7ed"></span></td><td><span class="swatch" style="background-color: #ffedd5" title="orange_100 #ffedd5"></span></td><td><span class="swatch" style="background-color: #fed7aa" title="orange_200 #fed7aa"></span></td><td><span class="swatch" style="background-color: #fdba74" title="orange_300 #fdba74"></span></td><td><span class="swatch" style="background-color: #fb923c" title="orange_400 #fb923c"></span></td><td><span class="swatch" style="background-color: #f97316" title="orange_500 #f97316"></span></td><td><span class="swatch" style="background-color: #ea580c" title="orange_600 #ea580c"></span></td><td><span class="swatch" style="background-color: #c2410c" title="orange_700 #c2410c"></span></td><td><span class="swatch" style="background-color: #9a3412" title="orange_800 #9a3412"></span></td><td><span class="swatch" style="background-color: #7c2d12" title="orange_900 #7c2d12"></span></td><td><span class="swatch" style="background-color: #431407" title="orange_950 #431407"></span></td></tr>
+<tr><th>amber</th><td><span class="swatch" style="background-color: #fffbeb" title="amber_50 #fffbeb"></span></td><td><span class="swatch" style="background-color: #fef3c7" title="amber_100 #fef3c7"></span></td><td><span class="swatch" style="background-color: #fde68a" title="amber_200 #fde68a"></span></td><td><span class="swatch" style="background-color: #fcd34d" title="amber_300 #fcd34d"></span></td><td><span class="swatch" style="background-color: #fbbf24" title="amber_400 #fbbf24"></span></td><td><span class="swatch" style="background-color: #f59e0b" title="amber_500 #f59e0b"></span></td><td><span class="swatch" style="background-color: #d97706" title="amber_600 #d97706"></span></td><td><span class="swatch" style="background-color: #b45309" title="amber_700 #b45309"></span></td><td><span class="swatch" style="background-color: #92400e" title="amber_800 #92400e"></span></td><td><span class="swatch" style="background-color: #78350f" title="amber_900 #78350f"></span></td><td><span class="swatch" style="background-color: #451a03" title="amber_950 #451a03"></span></td></tr>
+<tr><th>yellow</th><td><span class="swatch" style="background-color: #fefce8" title="yellow_50 #fefce8"></span></td><td><span class="swatch" style="background-color: #fef9c3" title="yellow_100 #fef9c3"></span></td><td><span class="swatch" style="background-color: #fef08a" title="yellow_200 #fef08a"></span></td><td><span class="swatch" style="background-color: #fde047" title="yellow_300 #fde047"></span></td><td><span class="swatch" style="background-color: #facc15" title="yellow_400 #facc15"></span></td><td><span class="swatch" style="background-color: #eab308" title="yellow_500 #eab308"></span></td><td><span class="swatch" style="background-color: #ca8a04" title="yellow_600 #ca8a04"></span></td><td><span class="swatch" style="background-color: #a16207" title="yellow_700 #a16207"></span></td><td><span class="swatch" style="background-color: #854d0e" title="yellow_800 #854d0e"></span></td><td><span class="swatch" style="background-color: #713f12" title="yellow_900 #713f12"></span></td><td><span class="swatch" style="background-color: #422006" title="yellow_950 #422006"></span></td></tr>
+<tr><th>lime</th><td><span class="swatch" style="background-color: #f7fee7" title="lime_50 #f7fee7"></span></td><td><span class="swatch" style="background-color: #ecfccb" title="lime_100 #ecfccb"></span></td><td><span class="swatch" style="background-color: #d9f99d" title="lime_200 #d9f99d"></span></td><td><span class="swatch" style="background-color: #bef264" title="lime_300 #bef264"></span></td><td><span class="swatch" style="background-color: #a3e635" title="lime_400 #a3e635"></span></td><td><span class="swatch" style="background-color: #84cc16" title="lime_500 #84cc16"></span></td><td><span class="swatch" style="background-color: #65a30d" title="lime_600 #65a30d"></span></td><td><span class="swatch" style="background-color: #4d7c0f" title="lime_700 #4d7c0f"></span></td><td><span class="swatch" style="background-color: #3f6212" title="lime_800 #3f6212"></span></td><td><span class="swatch" style="background-color: #365314" title="lime_900 #365314"></span></td><td><span class="swatch" style="background-color: #1a2e05" title="lime_950 #1a2e05"></span></td></tr>
+<tr><th>green</th><td><span class="swatch" style="background-color: #f0fdf4" title="green_50 #f0fdf4"></span></td><td><span class="swatch" style="background-color: #dcfce7" title="green_100 #dcfce7"></span></td><td><span class="swatch" style="background-color: #bbf7d0" title="green_200 #bbf7d0"></span></td><td><span class="swatch" style="background-color: #86efac" title="green_300 #86efac"></span></td><td><span class="swatch" style="background-color: #4ade80" title="green_400 #4ade80"></span></td><td><span class="swatch" style="background-color: #22c55e" title="green_500 #22c55e"></span></td><td><span class="swatch" style="background-color: #16a34a" title="green_600 #16a34a"></span></td><td><span class="swatch" style="background-color: #15803d" title="green_700 #15803d"></span></td><td><span class="swatch" style="background-color: #166534" title="green_800 #166534"></span></td><td><span class="swatch" style="background-color: #14532d" title="green_900 #14532d"></span></td><td><span class="swatch" style="background-color: #052e16" title="green_950 #052e16"></span></td></tr>
+<tr><th>emerald</th><td><span class="swatch" style="background-color: #ecfdf5" title="emerald_50 #ecfdf5"></span></td><td><span class="swatch" style="background-color: #d1fae5" title="emerald_100 #d1fae5"></span></td><td><span class="swatch" style="background-color: #a7f3d0" title="emerald_200 #a7f3d0"></span></td><td><span class="swatch" style="background-color: #6ee7b7" title="emerald_300 #6ee7b7"></span></td><td><span class="swatch" style="background-color: #34d399" title="emerald_400 #34d399"></span></td><td><span class="swatch" style="background-color: #10b981" title="emerald_500 #10b981"></span></td><td><span class="swatch" style="background-color: #059669" title="emerald_600 #059669"></span></td><td><span class="swatch" style="background-color: #047857" title="emerald_700 #047857"></span></td><td><span class="swatch" style="background-color: #065f46" title="emerald_800 #065f46"></span></td><td><span class="swatch" style="background-color: #064e3b" title="emerald_900 #064e3b"></span></td><td><span class="swatch" style="background-color: #022c22" title="emerald_950 #022c22"></span></td></tr>
+<tr><th>teal</th><td><span class="swatch" style="background-color: #f0fdfa" title="teal_50 #f0fdfa"></span></td><td><span class="swatch" style="background-color: #ccfbf1" title="teal_100 #ccfbf1"></span></td><td><span class="swatch" style="background-color: #99f6e4" title="teal_200 #99f6e4"></span></td><td><span class="swatch" style="background-color: #5eead4" title="teal_300 #5eead4"></span></td><td><span class="swatch" style="background-color: #2dd4bf" title="teal_400 #2dd4bf"></span></td><td><span class="swatch" style="background-color: #14b8a6" title="teal_500 #14b8a6"></span></td><td><span class="swatch" style="background-color: #0d9488" title="teal_600 #0d9488"></span></td><td><span class="swatch" style="background-color: #0f766e" title="teal_700 #0f766e"></span></td><td><span class="swatch" style="background-color: #115e59" title="teal_800 #115e59"></span></td><td><span class="swatch" style="background-color: #134e4a" title="teal_900 #134e4a"></span></td><td><span class="swatch" style="background-color: #042f2e" title="teal_950 #042f2e"></span></td></tr>
+<tr><th>cyan</th><td><span class="swatch" style="background-color: #ecfeff" title="cyan_50 #ecfeff"></span></td><td><span class="swatch" style="background-color: #cffafe" title="cyan_100 #cffafe"></span></td><td><span class="swatch" style="background-color: #a5f3fc" title="cyan_200 #a5f3fc"></span></td><td><span class="swatch" style="background-color: #67e8f9" title="cyan_300 #67e8f9"></span></td><td><span class="swatch" style="background-color: #22d3ee" title="cyan_400 #22d3ee"></span></td><td><span class="swatch" style="background-color: #06b6d4" title="cyan_500 #06b6d4"></span></td><td><span class="swatch" style="background-color: #0891b2" title="cyan_600 #0891b2"></span></td><td><span class="swatch" style="background-color: #0e7490" title="cyan_700 #0e7490"></span></td><td><span class="swatch" style="background-color: #155e75" title="cyan_800 #155e75"></span></td><td><span class="swatch" style="background-color: #164e63" title="cyan_900 #164e63"></span></td><td><span class="swatch" style="background-color: #083344" title="cyan_950 #083344"></span></td></tr>
+<tr><th>sky</th><td><span class="swatch" style="background-color: #f0f9ff" title="sky_50 #f0f9ff"></span></td><td><span class="swatch" style="background-color: #e0f2fe" title="sky_100 #e0f2fe"></span></td><td><span class="swatch" style="background-color: #bae6fd" title="sky_200 #bae6fd"></span></td><td><span class="swatch" style="background-color: #7dd3fc" title="sky_300 #7dd3fc"></span></td><td><span class="swatch" style="background-color: #38bdf8" title="sky_400 #38bdf8"></span></td><td><span class="swatch" style="background-color: #0ea5e9" title="sky_500 #0ea5e9"></span></td><td><span class="swatch" style="background-color: #0284c7" title="sky_600 #0284c7"></span></td><td><span class="swatch" style="background-color: #0369a1" title="sky_700 #0369a1"></span></td><td><span class="swatch" style="background-color: #075985" title="sky_800 #075985"></span></td><td><span class="swatch" style="background-color: #0c4a6e" title="sky_900 #0c4a6e"></span></td><td><span class="swatch" style="background-color: #082f49" title="sky_950 #082f49"></span></td></tr>
+<tr><th>blue</th><td><span class="swatch" style="background-color: #eff6ff" title="blue_50 #eff6ff"></span></td><td><span class="swatch" style="background-color: #dbeafe" title="blue_100 #dbeafe"></span></td><td><span class="swatch" style="background-color: #bfdbfe" title="blue_200 #bfdbfe"></span></td><td><span class="swatch" style="background-color: #93c5fd" title="blue_300 #93c5fd"></span></td><td><span class="swatch" style="background-color: #60a5fa" title="blue_400 #60a5fa"></span></td><td><span class="swatch" style="background-color: #3b82f6" title="blue_500 #3b82f6"></span></td><td><span class="swatch" style="background-color: #2563eb" title="blue_600 #2563eb"></span></td><td><span class="swatch" style="background-color: #1d4ed8" title="blue_700 #1d4ed8"></span></td><td><span class="swatch" style="background-color: #1e40af" title="blue_800 #1e40af"></span></td><td><span class="swatch" style="background-color: #1e3a8a" title="blue_900 #1e3a8a"></span></td><td><span class="swatch" style="background-color: #172554" title="blue_950 #172554"></span></td></tr>
+<tr><th>indigo</th><td><span class="swatch" style="background-color: #eef2ff" title="indigo_50 #eef2ff"></span></td><td><span class="swatch" style="background-color: #e0e7ff" title="indigo_100 #e0e7ff"></span></td><td><span class="swatch" style="background-color: #c7d2fe" title="indigo_200 #c7d2fe"></span></td><td><span class="swatch" style="background-color: #a5b4fc" title="indigo_300 #a5b4fc"></span></td><td><span class="swatch" style="background-color: #818cf8" title="indigo_400 #818cf8"></span></td><td><span class="swatch" style="background-color: #6366f1" title="indigo_500 #6366f1"></span></td><td><span class="swatch" style="background-color: #4f46e5" title="indigo_600 #4f46e5"></span></td><td><span class="swatch" style="background-color: #4338ca" title="indigo_700 #4338ca"></span></td><td><span class="swatch" style="background-color: #3730a3" title="indigo_800 #3730a3"></span></td><td><span class="swatch" style="background-color: #312e81" title="indigo_900 #312e81"></span></td><td><span class="swatch" style="background-color: #1e1b4b" title="indigo_950 #1e1b4b"></span></td></tr>
+<tr><th>violet</th><td><span class="swatch" style="background-color: #f5f3ff" title="violet_50 #f5f3ff"></span></td><td><span class="swatch" style="background-color: #ede9fe" title="violet_100 #ede9fe"></span></td><td><span class="swatch" style="background-color: #ddd6fe" title="violet_200 #ddd6fe"></span></td><td><span class="swatch" style="background-color: #c4b5fd" title="violet_300 #c4b5fd"></span></td><td><span class="swatch" style="background-color: #a78bfa" title="violet_400 #a78bfa"></span></td><td><span class="swatch" style="background-color: #8b5cf6" title="violet_500 #8b5cf6"></span></td><td><span class="swatch" style="background-color: #7c3aed" title="violet_600 #7c3aed"></span></td><td><span class="swatch" style="background-color: #6d28d9" title="violet_700 #6d28d9"></span></td><td><span class="swatch" style="background-color: #5b21b6" title="violet_800 #5b21b6"></span></td><td><span class="swatch" style="background-color: #4c1d95" title="violet_900 #4c1d95"></span></td><td><span class="swatch" style="background-color: #2e1065" title="violet_950 #2e1065"></span></td></tr>
+<tr><th>purple</th><td><span class="swatch" style="background-color: #faf5ff" title="purple_50 #faf5ff"></span></td><td><span class="swatch" style="background-color: #f3e8ff" title="purple_100 #f3e8ff"></span></td><td><span class="swatch" style="background-color: #e9d5ff" title="purple_200 #e9d5ff"></span></td><td><span class="swatch" style="background-color: #d8b4fe" title="purple_300 #d8b4fe"></span></td><td><span class="swatch" style="background-color: #c084fc" title="purple_400 #c084fc"></span></td><td><span class="swatch" style="background-color: #a855f7" title="purple_500 #a855f7"></span></td><td><span class="swatch" style="background-color: #9333ea" title="purple_600 #9333ea"></span></td><td><span class="swatch" style="background-color: #7e22ce" title="purple_700 #7e22ce"></span></td><td><span class="swatch" style="background-color: #6b21a8" title="purple_800 #6b21a8"></span></td><td><span class="swatch" style="background-color: #581c87" title="purple_900 #581c87"></span></td><td><span class="swatch" style="background-color: #3b0764" title="purple_950 #3b0764"></span></td></tr>
+<tr><th>fuchsia</th><td><span class="swatch" style="background-color: #fdf4ff" title="fuchsia_50 #fdf4ff"></span></td><td><span class="swatch" style="background-color: #fae8ff" title="fuchsia_100 #fae8ff"></span></td><td><span class="swatch" style="background-color: #f5d0fe" title="fuchsia_200 #f5d0fe"></span></td><td><span class="swatch" style="background-color: #f0abfc" title="fuchsia_300 #f0abfc"></span></td><td><span class="swatch" style="background-color: #e879f9" title="fuchsia_400 #e879f9"></span></td><td><span class="swatch" style="background-color: #d946ef" title="fuchsia_500 #d946ef"></span></td><td><span class="swatch" style="background-color: #c026d3" title="fuchsia_600 #c026d3"></span></td><td><span class="swatch" style="background-color: #a21caf" title="fuchsia_700 #a21caf"></span></td><td><span class="swatch" style="background-color: #86198f" title="fuchsia_800 #86198f"></span></td><td><span class="swatch" style="background-color: #701a75" title="fuchsia_900 #701a75"></span></td><td><span class="swatch" style="background-color: #4a044e" title="fuchsia_950 #4a044e"></span></td></tr>
+<tr><th>pink</th><td><span class="swatch" style="background-color: #fdf2f8" title="pink_50 #fdf2f8"></span></td><td><span class="swatch" style="background-color: #fce7f3" title="pink_100 #fce7f3"></span></td><td><span class="swatch" style="background-color: #fbcfe8" title="pink_200 #fbcfe8"></span></td><td><span class="swatch" style="background-color: #f9a8d4" title="pink_300 #f9a8d4"></span></td><td><span class="swatch" style="background-color: #f472b6" title="pink_400 #f472b6"></span></td><td><span class="swatch" style="background-color: #ec4899" title="pink_500 #ec4899"></span></td><td><span class="swatch" style="background-color: #db2777" title="pink_600 #db2777"></span></td><td><span class="swatch" style="background-color: #be185d" title="pink_700 #be185d"></span></td><td><span class="swatch" style="background-color: #9d174d" title="pink_800 #9d174d"></span></td><td><span class="swatch" style="background-color: #831843" title="pink_900 #831843"></span></td><td><span class="swatch" style="background-color: #500724" title="pink_950 #500724"></span></td></tr>
+<tr><th>rose</th><td><span class="swatch" style="background-color: #fff1f2" title="rose_50 #fff1f2"></span></td><td><span class="swatch" style="background-color: #ffe4e6" title="rose_100 #ffe4e6"></span></td><td><span class="swatch" style="background-color: #fecdd3" title="rose_200 #fecdd3"></span></td><td><span class="swatch" style="background-color: #fda4af" title="rose_300 #fda4af"></span></td><td><span class="swatch" style="background-color: #fb7185" title="rose_400 #fb7185"></span></td><td><span class="swatch" style="background-color: #f43f5e" title="rose_500 #f43f5e"></span></td><td><span class="swatch" style="background-color: #e11d48" title="rose_600 #e11d48"></span></td><td><span class="swatch" style="background-color: #be123c" title="rose_700 #be123c"></span></td><td><span class="swatch" style="background-color: #9f1239" title="rose_800 #9f1239"></span></td><td><span class="swatch" style="background-color: #881337" title="rose_900 #881337"></span></td><td><span class="swatch" style="background-color: #4c0519" title="rose_950 #4c0519"></span></td></tr>
+</tbody>
+</table>
+</div>
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="counterweight.styles.utilities.ColorName" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">counterweight.styles.utilities.ColorName</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ColorName</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">"slate"</span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="s2">"gray"</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s2">"zinc"</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">"neutral"</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="s2">"stone"</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="s2">"red"</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="s2">"orange"</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="s2">"amber"</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="s2">"yellow"</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="s2">"lime"</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="s2">"green"</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="s2">"emerald"</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="s2">"teal"</span><span class="p">,</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="s2">"cyan"</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="s2">"sky"</span><span class="p">,</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="s2">"blue"</span><span class="p">,</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="s2">"indigo"</span><span class="p">,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="s2">"violet"</span><span class="p">,</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="s2">"purple"</span><span class="p">,</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="s2">"fuchsia"</span><span class="p">,</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="s2">"pink"</span><span class="p">,</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="s2">"rose"</span><span class="p">,</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>The name of one of the palette's colors, as the color utilities take it, such as <code>"sky"</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="counterweight.styles.utilities.Shade" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">counterweight.styles.utilities.Shade</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Shade</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">900</span><span class="p">,</span> <span class="mi">950</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>One of the palette's shades, from lightest (<code>50</code>) to darkest (<code>950</code>), as in Tailwind's palette.</p>
+
+    </div>
+
+</div><h4 id="terminal-colors">Terminal colors</h4>
+<p>A <code>Color</code> looks the same in every terminal.
+The terminal's own colors follow the user's theme instead, as the colors of a program run in it do:
+an <code>IndexedColor</code> is an entry of the terminal's 256-color palette,
+whose first 16 are the black, red, green, yellow, blue, magenta, cyan and white that themes set, then their bright forms,
+and <code>TERMINAL_DEFAULT</code> is the terminal's default foreground where it colors text,
+and its default background where it fills one.
+These utilities set them in each place the color utilities above do,
+the <code>*_indexed</code> ones taking a palette index from 0 to 255.
+Screenshots draw them in <code>DEFAULT_PALETTE</code>, and the defaults as white on black,
+as the first 16 indexed colors and the defaults are drawn below.
+In a terminal, they take whatever colors its theme gives them.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">swatch</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Text</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="k">return</span> <span class="n">Text</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">text_bg_indexed</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">|</span> <span class="n">width</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="o">|</span> <span class="n">text_justify_center</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nd">@component</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">terminal_colors</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Div</span><span class="p">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="k">return</span> <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="n">style</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="n">children</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>            <span class="n">Div</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">row</span><span class="p">,</span> <span class="n">children</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">swatch</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">))),</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>            <span class="n">Div</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">row</span><span class="p">,</span> <span class="n">children</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">swatch</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">))),</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>            <span class="n">Text</span><span class="p">(</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                <span class="n">style</span><span class="o">=</span><span class="n">text_terminal_default</span> <span class="o">|</span> <span class="n">text_bg_terminal_default</span> <span class="o">|</span> <span class="n">margin_top</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">pad_x</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>                <span class="n">content</span><span class="o">=</span><span class="s2">"text_terminal_default | text_bg_terminal_default"</span><span class="p">,</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>            <span class="p">),</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        <span class="p">),</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    <span class="p">)</span>
+</code></pre></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Screenshot</label><label for="__tabbed_2_2">Text</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><img alt="The first 16 indexed colors and the terminal defaults, as screenshots draw them" src="../../assets/styles-terminal-colors.svg" /></p>
+</div>
+<div class="tabbed-block">
+<div class="screenshot-text highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>   0     1     2     3     4     5     6     7    
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>   8     9    10    11    12    13    14    15    
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a> text_terminal_default | text_bg_terminal_default 
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_terminal_default</code></td>
+<td><code>text_style.foreground = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>text_bg_terminal_default</code></td>
+<td><code>text_style.background = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>border_terminal_default</code></td>
+<td><code>border_style.foreground = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>border_bg_terminal_default</code></td>
+<td><code>border_style.background = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>margin_terminal_default</code></td>
+<td><code>margin_color = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>padding_terminal_default</code></td>
+<td><code>padding_color = TerminalDefault()</code></td>
+</tr>
+<tr>
+<td><code>content_terminal_default</code></td>
+<td><code>content_color = TerminalDefault()</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_indexed(index: int) -&gt; Style</code></td>
+<td>Color the text with entry <code>index</code> of the terminal's palette, which follows the user's theme.</td>
+</tr>
+<tr>
+<td><code>text_bg_indexed(index: int) -&gt; Style</code></td>
+<td>Color the background behind the text with entry <code>index</code> of the terminal's palette.</td>
+</tr>
+<tr>
+<td><code>border_indexed(index: int) -&gt; Style</code></td>
+<td>Color the border characters with entry <code>index</code> of the terminal's palette.</td>
+</tr>
+<tr>
+<td><code>border_bg_indexed(index: int) -&gt; Style</code></td>
+<td>Color the background behind the border characters with entry <code>index</code> of the terminal's palette.</td>
+</tr>
+<tr>
+<td><code>margin_indexed(index: int) -&gt; Style</code></td>
+<td>Fill the margin with entry <code>index</code> of the terminal's palette.</td>
+</tr>
+<tr>
+<td><code>padding_indexed(index: int) -&gt; Style</code></td>
+<td>Fill the padding with entry <code>index</code> of the terminal's palette.</td>
+</tr>
+<tr>
+<td><code>content_indexed(index: int) -&gt; Style</code></td>
+<td>Fill the whole box with entry <code>index</code> of the terminal's palette, under any margin, padding and border colors.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="gradients">Gradients</h4>
+<p>A <a href="../gradients/">gradient</a> in a color place maps over the box that place paints unless the gradient names its own <code>box</code>.
+The color utilities above take one, and these put one in each place too.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Color the text with a gradient, which maps over the content box unless it names another box.</td>
+</tr>
+<tr>
+<td><code>text_bg_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Color the background behind the text with a gradient, which maps over the content box unless it names another.</td>
+</tr>
+<tr>
+<td><code>border_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Color the border characters with a gradient, which maps over the border box unless it names another.</td>
+</tr>
+<tr>
+<td><code>border_bg_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Color the background behind the border characters with a gradient, over the border box unless it names another.</td>
+</tr>
+<tr>
+<td><code>margin_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Fill the margin with a gradient, which maps over the margin box unless it names another.</td>
+</tr>
+<tr>
+<td><code>padding_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Fill the padding with a gradient, which maps over the padding box unless it names another.</td>
+</tr>
+<tr>
+<td><code>content_gradient(gradient: Gradient) -&gt; Style</code></td>
+<td>Fill the whole box with a gradient, under any margin, padding and border colors, which maps over the border box unless it names another.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="attributes">Attributes</h3>
+<p>The <code>text_*</code> attributes draw the text bold, dim, italic, underlined or struck through,
+and the <code>border_*</code> ones draw the border characters that way.
+Each has a <code>not_</code> form that turns it off when merged over a style that turns it on,
+such as a style for a selected row that isn't bold, merged over a table's bold one.
+<code>text_link(uri)</code> makes the text a hyperlink that the terminal opens when it's clicked,
+and <code>text_link(None)</code> makes it not a link, inside text that is one.
+They're CSS's <code>font-weight: bold</code>, <code>font-style: italic</code> and <code>text-decoration</code>,
+with dim, which a terminal draws faint, in place of CSS's lighter weights.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">TEXT_ATTRIBUTES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Style</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="p">(</span><span class="s2">"text_bold"</span><span class="p">,</span> <span class="n">text_bold</span><span class="p">),</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="p">(</span><span class="s2">"text_dim"</span><span class="p">,</span> <span class="n">text_dim</span><span class="p">),</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="p">(</span><span class="s2">"text_italic"</span><span class="p">,</span> <span class="n">text_italic</span><span class="p">),</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="p">(</span><span class="s2">"text_underline"</span><span class="p">,</span> <span class="n">text_underline</span><span class="p">),</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="p">(</span><span class="s2">"text_strikethrough"</span><span class="p">,</span> <span class="n">text_strikethrough</span><span class="p">),</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="p">)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">EMPHASIS</span> <span class="o">=</span> <span class="n">text_bold</span> <span class="o">|</span> <span class="n">text_italic</span> <span class="o">|</span> <span class="n">text_underline</span> <span class="o">|</span> <span class="n">text_color</span><span class="p">(</span><span class="s2">"amber"</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="k">def</span><span class="w"> </span><span class="nf">bordered</span><span class="p">(</span><span class="n">utility</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="n">Style</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Text</span><span class="p">:</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="k">return</span> <span class="n">Text</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">utility</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">border</span> <span class="o">|</span> <span class="n">border_heavy</span> <span class="o">|</span> <span class="n">border_color</span><span class="p">(</span><span class="s2">"sky"</span><span class="p">,</span> <span class="mi">400</span><span class="p">)</span> <span class="o">|</span> <span class="n">pad_x</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">style</span><span class="p">)</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="nd">@component</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">attributes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Div</span><span class="p">:</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="k">return</span> <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        <span class="n">style</span><span class="o">=</span><span class="n">col</span> <span class="o">|</span> <span class="n">gap</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        <span class="n">children</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>            <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>                <span class="n">style</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>                <span class="n">children</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">Text</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">utility</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">)</span> <span class="k">for</span> <span class="n">utility</span><span class="p">,</span> <span class="n">style</span> <span class="ow">in</span> <span class="n">TEXT_ATTRIBUTES</span><span class="p">),</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>            <span class="p">),</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>            <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>                <span class="n">style</span><span class="o">=</span><span class="n">col</span><span class="p">,</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>                <span class="n">children</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>                    <span class="n">Text</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"EMPHASIS"</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">EMPHASIS</span><span class="p">),</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>                    <span class="n">Text</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"EMPHASIS | text_not_italic"</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">EMPHASIS</span> <span class="o">|</span> <span class="n">text_not_italic</span><span class="p">),</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>                    <span class="n">Text</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"EMPHASIS | text_not_underline"</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="n">EMPHASIS</span> <span class="o">|</span> <span class="n">text_not_underline</span><span class="p">),</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>                <span class="p">),</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>            <span class="p">),</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>            <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>                <span class="n">style</span><span class="o">=</span><span class="n">row</span> <span class="o">|</span> <span class="n">gap</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>                <span class="n">children</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>                    <span class="n">bordered</span><span class="p">(</span><span class="s2">"border_bold"</span><span class="p">,</span> <span class="n">border_bold</span><span class="p">),</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>                    <span class="n">bordered</span><span class="p">(</span><span class="s2">"border_dim"</span><span class="p">,</span> <span class="n">border_dim</span><span class="p">),</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>                    <span class="n">bordered</span><span class="p">(</span><span class="s2">"border_dim | border_not_dim"</span><span class="p">,</span> <span class="n">border_dim</span> <span class="o">|</span> <span class="n">border_not_dim</span><span class="p">),</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>                <span class="p">),</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>            <span class="p">),</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>        <span class="p">),</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>    <span class="p">)</span>
+</code></pre></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Screenshot</label><label for="__tabbed_3_2">Text</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><img alt="Each text attribute, a style turning two of its attributes off, and borders drawn bold and dim" src="../../assets/styles-attributes.svg" /></p>
+</div>
+<div class="tabbed-block">
+<div class="screenshot-text highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>text_bold                                                     
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>text_dim                                                      
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>text_italic                                                   
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>text_underline                                                
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>text_strikethrough                                            
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>EMPHASIS                                                      
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>EMPHASIS | text_not_italic                                    
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>EMPHASIS | text_not_underline                                 
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>┏━━━━━━━━━━━━━┓ ┏━━━━━━━━━━━━┓ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>┃ border_bold ┃ ┃ border_dim ┃ ┃ border_dim | border_not_dim ┃
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>┗━━━━━━━━━━━━━┛ ┗━━━━━━━━━━━━┛ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>How each looks is up to the terminal and its font:
+some can draw bold text in a brighter color as well as, or instead of, a heavier weight,
+and a terminal whose font has no italic face can draw italic text upright.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_bold</code></td>
+<td><code>text_style.bold = True</code></td>
+</tr>
+<tr>
+<td><code>text_not_bold</code></td>
+<td><code>text_style.bold = False</code></td>
+</tr>
+<tr>
+<td><code>text_dim</code></td>
+<td><code>text_style.dim = True</code></td>
+</tr>
+<tr>
+<td><code>text_not_dim</code></td>
+<td><code>text_style.dim = False</code></td>
+</tr>
+<tr>
+<td><code>text_italic</code></td>
+<td><code>text_style.italic = True</code></td>
+</tr>
+<tr>
+<td><code>text_not_italic</code></td>
+<td><code>text_style.italic = False</code></td>
+</tr>
+<tr>
+<td><code>text_underline</code></td>
+<td><code>text_style.underline = True</code></td>
+</tr>
+<tr>
+<td><code>text_not_underline</code></td>
+<td><code>text_style.underline = False</code></td>
+</tr>
+<tr>
+<td><code>text_strikethrough</code></td>
+<td><code>text_style.strikethrough = True</code></td>
+</tr>
+<tr>
+<td><code>text_not_strikethrough</code></td>
+<td><code>text_style.strikethrough = False</code></td>
+</tr>
+<tr>
+<td><code>border_bold</code></td>
+<td><code>border_style.bold = True</code></td>
+</tr>
+<tr>
+<td><code>border_not_bold</code></td>
+<td><code>border_style.bold = False</code></td>
+</tr>
+<tr>
+<td><code>border_dim</code></td>
+<td><code>border_style.dim = True</code></td>
+</tr>
+<tr>
+<td><code>border_not_dim</code></td>
+<td><code>border_style.dim = False</code></td>
+</tr>
+<tr>
+<td><code>border_italic</code></td>
+<td><code>border_style.italic = True</code></td>
+</tr>
+<tr>
+<td><code>border_not_italic</code></td>
+<td><code>border_style.italic = False</code></td>
+</tr>
+<tr>
+<td><code>border_underline</code></td>
+<td><code>border_style.underline = True</code></td>
+</tr>
+<tr>
+<td><code>border_not_underline</code></td>
+<td><code>border_style.underline = False</code></td>
+</tr>
+<tr>
+<td><code>border_strikethrough</code></td>
+<td><code>border_style.strikethrough = True</code></td>
+</tr>
+<tr>
+<td><code>border_not_strikethrough</code></td>
+<td><code>border_style.strikethrough = False</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_link(uri: str | None) -&gt; Style</code></td>
+<td>Make the text a hyperlink to <code>uri</code>, which the terminal opens when it's clicked, or with <code>None</code>, not a link.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="direction-and-wrapping">Direction and wrapping</h3>
+<p>These set the flexbox main axis, and whether children wrap onto more lines when they don't fit.
+See <a href="../../layout/choosing-a-layout-model/">Choosing a layout model</a>
+and <a href="../../layout/grids-and-wrapping/#wrapping-without-a-grid">Wrapping without a grid</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>row</code></td>
+<td><code>layout.flex_direction = FlexDirection.Row</code></td>
+</tr>
+<tr>
+<td><code>col</code></td>
+<td><code>layout.flex_direction = FlexDirection.Column</code></td>
+</tr>
+<tr>
+<td><code>row_reverse</code></td>
+<td><code>layout.flex_direction = FlexDirection.RowReverse</code></td>
+</tr>
+<tr>
+<td><code>col_reverse</code></td>
+<td><code>layout.flex_direction = FlexDirection.ColumnReverse</code></td>
+</tr>
+<tr>
+<td><code>flex_no_wrap</code></td>
+<td><code>layout.flex_wrap = FlexWrap.NoWrap</code></td>
+</tr>
+<tr>
+<td><code>flex_wrap</code></td>
+<td><code>layout.flex_wrap = FlexWrap.Wrap</code></td>
+</tr>
+<tr>
+<td><code>flex_wrap_reverse</code></td>
+<td><code>layout.flex_wrap = FlexWrap.WrapReverse</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="splitting-space">Splitting space</h3>
+<p>These size children along their parent's main axis.
+See <a href="../../layout/splitting-space/">Splitting space</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>grow(n: float) -&gt; Style</code></td>
+<td>Take <code>n</code> shares of the free space along the parent's main axis (<code>flex_grow</code>).</td>
+</tr>
+<tr>
+<td><code>shrink(n: float) -&gt; Style</code></td>
+<td>Give up <code>n</code> shares of the overflow along the parent's main axis when the children don't fit (<code>flex_shrink</code>).</td>
+</tr>
+<tr>
+<td><code>length(n: int) -&gt; Style</code></td>
+<td>Take exactly <code>n</code> cells along the parent's main axis, whatever the content (ratatui's <code>Length</code>).</td>
+</tr>
+<tr>
+<td><code>percentage(p: float) -&gt; Style</code></td>
+<td>Take <code>p</code> percent of the parent's main axis, whatever the content (ratatui's <code>Percentage</code>).</td>
+</tr>
+<tr>
+<td><code>ratio(numerator: int, denominator: int) -&gt; Style</code></td>
+<td>Take <code>numerator / denominator</code> of the parent's main axis, whatever the content (ratatui's <code>Ratio</code>).</td>
+</tr>
+<tr>
+<td><code>fill(n: float = 1) -&gt; Style</code></td>
+<td>Share the parent's free main-axis space in proportion to <code>n</code>, whatever the content (ratatui's <code>Fill</code>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="alignment">Alignment</h3>
+<p><code>justify_children_*</code> distributes children along the main axis, <code>align_children_*</code> places them on the cross axis,
+and <code>align_self_*</code> overrides that for one child.
+<code>justify_items_*</code> and <code>justify_self_*</code> place grid items within their cells along the row.
+The <code>center</code> and <code>end</code> forms are safe: content that doesn't fit overflows past the end edge only.
+The <code>_unsafe</code> forms overflow both edges.
+See <a href="../../layout/alignment/">Alignment and distribution</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>justify_children_start</code></td>
+<td><code>layout.justify_content = AlignContent.Start</code></td>
+</tr>
+<tr>
+<td><code>justify_children_center</code></td>
+<td><code>layout.justify_content = AlignContent.SafeCenter</code></td>
+</tr>
+<tr>
+<td><code>justify_children_end</code></td>
+<td><code>layout.justify_content = AlignContent.SafeEnd</code></td>
+</tr>
+<tr>
+<td><code>justify_children_space_between</code></td>
+<td><code>layout.justify_content = AlignContent.SpaceBetween</code></td>
+</tr>
+<tr>
+<td><code>justify_children_space_around</code></td>
+<td><code>layout.justify_content = AlignContent.SpaceAround</code></td>
+</tr>
+<tr>
+<td><code>justify_children_space_evenly</code></td>
+<td><code>layout.justify_content = AlignContent.SpaceEvenly</code></td>
+</tr>
+<tr>
+<td><code>justify_children_center_unsafe</code></td>
+<td><code>layout.justify_content = AlignContent.Center</code></td>
+</tr>
+<tr>
+<td><code>justify_children_end_unsafe</code></td>
+<td><code>layout.justify_content = AlignContent.End</code></td>
+</tr>
+<tr>
+<td><code>align_children_start</code></td>
+<td><code>layout.align_items = AlignItems.Start</code></td>
+</tr>
+<tr>
+<td><code>align_children_center</code></td>
+<td><code>layout.align_items = AlignItems.SafeCenter</code></td>
+</tr>
+<tr>
+<td><code>align_children_end</code></td>
+<td><code>layout.align_items = AlignItems.SafeEnd</code></td>
+</tr>
+<tr>
+<td><code>align_children_stretch</code></td>
+<td><code>layout.align_items = AlignItems.Stretch</code></td>
+</tr>
+<tr>
+<td><code>align_children_center_unsafe</code></td>
+<td><code>layout.align_items = AlignItems.Center</code></td>
+</tr>
+<tr>
+<td><code>align_children_end_unsafe</code></td>
+<td><code>layout.align_items = AlignItems.End</code></td>
+</tr>
+<tr>
+<td><code>align_self_start</code></td>
+<td><code>layout.align_self = AlignItems.Start</code></td>
+</tr>
+<tr>
+<td><code>align_self_center</code></td>
+<td><code>layout.align_self = AlignItems.SafeCenter</code></td>
+</tr>
+<tr>
+<td><code>align_self_end</code></td>
+<td><code>layout.align_self = AlignItems.SafeEnd</code></td>
+</tr>
+<tr>
+<td><code>align_self_stretch</code></td>
+<td><code>layout.align_self = AlignItems.Stretch</code></td>
+</tr>
+<tr>
+<td><code>align_self_center_unsafe</code></td>
+<td><code>layout.align_self = AlignItems.Center</code></td>
+</tr>
+<tr>
+<td><code>align_self_end_unsafe</code></td>
+<td><code>layout.align_self = AlignItems.End</code></td>
+</tr>
+<tr>
+<td><code>justify_items_start</code></td>
+<td><code>layout.justify_items = AlignItems.Start</code></td>
+</tr>
+<tr>
+<td><code>justify_items_center</code></td>
+<td><code>layout.justify_items = AlignItems.SafeCenter</code></td>
+</tr>
+<tr>
+<td><code>justify_items_end</code></td>
+<td><code>layout.justify_items = AlignItems.SafeEnd</code></td>
+</tr>
+<tr>
+<td><code>justify_items_stretch</code></td>
+<td><code>layout.justify_items = AlignItems.Stretch</code></td>
+</tr>
+<tr>
+<td><code>justify_items_center_unsafe</code></td>
+<td><code>layout.justify_items = AlignItems.Center</code></td>
+</tr>
+<tr>
+<td><code>justify_items_end_unsafe</code></td>
+<td><code>layout.justify_items = AlignItems.End</code></td>
+</tr>
+<tr>
+<td><code>justify_self_start</code></td>
+<td><code>layout.justify_self = AlignItems.Start</code></td>
+</tr>
+<tr>
+<td><code>justify_self_center</code></td>
+<td><code>layout.justify_self = AlignItems.SafeCenter</code></td>
+</tr>
+<tr>
+<td><code>justify_self_end</code></td>
+<td><code>layout.justify_self = AlignItems.SafeEnd</code></td>
+</tr>
+<tr>
+<td><code>justify_self_stretch</code></td>
+<td><code>layout.justify_self = AlignItems.Stretch</code></td>
+</tr>
+<tr>
+<td><code>justify_self_center_unsafe</code></td>
+<td><code>layout.justify_self = AlignItems.Center</code></td>
+</tr>
+<tr>
+<td><code>justify_self_end_unsafe</code></td>
+<td><code>layout.justify_self = AlignItems.End</code></td>
+</tr>
+<tr>
+<td><code>center_children</code></td>
+<td><code>layout.align_items = AlignItems.SafeCenter</code><br><code>layout.justify_content = AlignContent.SafeCenter</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sizing">Sizing</h3>
+<p>See <a href="../../layout/sizing-one-box/">Sizing one box</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>content_box</code></td>
+<td><code>layout.box_sizing = BoxSizing.ContentBox</code></td>
+</tr>
+<tr>
+<td><code>border_box</code></td>
+<td><code>layout.box_sizing = BoxSizing.BorderBox</code></td>
+</tr>
+<tr>
+<td><code>min_content_width</code></td>
+<td><code>layout.size_width = MinContent()</code></td>
+</tr>
+<tr>
+<td><code>max_content_width</code></td>
+<td><code>layout.size_width = MaxContent()</code></td>
+</tr>
+<tr>
+<td><code>fit_content_width</code></td>
+<td><code>layout.size_width = FitContentKeyword()</code></td>
+</tr>
+<tr>
+<td><code>stretch_width</code></td>
+<td><code>layout.size_width = Stretch()</code></td>
+</tr>
+<tr>
+<td><code>min_content_height</code></td>
+<td><code>layout.size_height = MinContent()</code></td>
+</tr>
+<tr>
+<td><code>max_content_height</code></td>
+<td><code>layout.size_height = MaxContent()</code></td>
+</tr>
+<tr>
+<td><code>fit_content_height</code></td>
+<td><code>layout.size_height = FitContentKeyword()</code></td>
+</tr>
+<tr>
+<td><code>stretch_height</code></td>
+<td><code>layout.size_height = Stretch()</code></td>
+</tr>
+<tr>
+<td><code>full_width</code></td>
+<td><code>layout.size_width = Stretch()</code></td>
+</tr>
+<tr>
+<td><code>full_height</code></td>
+<td><code>layout.size_height = Stretch()</code></td>
+</tr>
+<tr>
+<td><code>full</code></td>
+<td><code>layout.size_height = Stretch()</code><br><code>layout.size_width = Stretch()</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>width(n: int) -&gt; Style</code></td>
+<td>Make the box <code>n</code> cells wide.</td>
+</tr>
+<tr>
+<td><code>height(n: int) -&gt; Style</code></td>
+<td>Make the box <code>n</code> cells tall.</td>
+</tr>
+<tr>
+<td><code>size(w: int, h: int) -&gt; Style</code></td>
+<td>Make the box <code>w</code> cells wide and <code>h</code> cells tall.</td>
+</tr>
+<tr>
+<td><code>min_width(n: int) -&gt; Style</code></td>
+<td>Keep the box at least <code>n</code> cells wide.</td>
+</tr>
+<tr>
+<td><code>min_height(n: int) -&gt; Style</code></td>
+<td>Keep the box at least <code>n</code> cells tall.</td>
+</tr>
+<tr>
+<td><code>max_width(n: int) -&gt; Style</code></td>
+<td>Keep the box at most <code>n</code> cells wide.</td>
+</tr>
+<tr>
+<td><code>max_height(n: int) -&gt; Style</code></td>
+<td>Keep the box at most <code>n</code> cells tall.</td>
+</tr>
+<tr>
+<td><code>aspect_ratio(ratio: float) -&gt; Style</code></td>
+<td>Keep the box's width divided by its height at <code>ratio</code>, so either one sets the other.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="spacing">Spacing</h3>
+<p>See <a href="../../layout/spacing-and-borders/#gap-margin-and-padding">Gap, margin and padding</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>margin_auto</code></td>
+<td><code>layout.margin_bottom = Auto()</code><br><code>layout.margin_left = Auto()</code><br><code>layout.margin_right = Auto()</code><br><code>layout.margin_top = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_x_auto</code></td>
+<td><code>layout.margin_left = Auto()</code><br><code>layout.margin_right = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_y_auto</code></td>
+<td><code>layout.margin_bottom = Auto()</code><br><code>layout.margin_top = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_top_auto</code></td>
+<td><code>layout.margin_top = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_bottom_auto</code></td>
+<td><code>layout.margin_bottom = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_left_auto</code></td>
+<td><code>layout.margin_left = Auto()</code></td>
+</tr>
+<tr>
+<td><code>margin_right_auto</code></td>
+<td><code>layout.margin_right = Auto()</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>margin_top(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin above the box.</td>
+</tr>
+<tr>
+<td><code>margin_bottom(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin below the box.</td>
+</tr>
+<tr>
+<td><code>margin_left(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin left of the box.</td>
+</tr>
+<tr>
+<td><code>margin_right(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin right of the box.</td>
+</tr>
+<tr>
+<td><code>margin_x(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin left and right of the box.</td>
+</tr>
+<tr>
+<td><code>margin_y(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin above and below the box.</td>
+</tr>
+<tr>
+<td><code>margin(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of margin on all four sides of the box.</td>
+</tr>
+<tr>
+<td><code>margin_sides(top: int, right: int, bottom: int, left: int) -&gt; Style</code></td>
+<td>Put margin on each side of the box separately, in the order of CSS's four-value <code>margin</code>.</td>
+</tr>
+<tr>
+<td><code>gap_width(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells between children placed side by side.</td>
+</tr>
+<tr>
+<td><code>gap_height(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells between children placed one above another.</td>
+</tr>
+<tr>
+<td><code>gap(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells between children in both directions.</td>
+</tr>
+<tr>
+<td><code>pad(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on all four sides.</td>
+</tr>
+<tr>
+<td><code>pad_x(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the left and right.</td>
+</tr>
+<tr>
+<td><code>pad_y(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the top and bottom.</td>
+</tr>
+<tr>
+<td><code>pad_top(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the top.</td>
+</tr>
+<tr>
+<td><code>pad_bottom(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the bottom.</td>
+</tr>
+<tr>
+<td><code>pad_left(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the left.</td>
+</tr>
+<tr>
+<td><code>pad_right(n: int) -&gt; Style</code></td>
+<td>Put <code>n</code> cells of padding inside the border on the right.</td>
+</tr>
+<tr>
+<td><code>pad_sides(top: int, right: int, bottom: int, left: int) -&gt; Style</code></td>
+<td>Put padding inside the border on each side separately, in the order of CSS's four-value <code>padding</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="borders">Borders</h3>
+<p>A side is drawn where its border width is 1, and each width utility has a <code>_0</code> form that takes its sides away.
+See <a href="../../layout/spacing-and-borders/#borders-on-some-sides">Borders on some sides</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>border</code></td>
+<td><code>layout.border_bottom = Length(1)</code><br><code>layout.border_left = Length(1)</code><br><code>layout.border_right = Length(1)</code><br><code>layout.border_top = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_top</code></td>
+<td><code>layout.border_top = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_bottom</code></td>
+<td><code>layout.border_bottom = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_left</code></td>
+<td><code>layout.border_left = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_right</code></td>
+<td><code>layout.border_right = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_x</code></td>
+<td><code>layout.border_left = Length(1)</code><br><code>layout.border_right = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_y</code></td>
+<td><code>layout.border_bottom = Length(1)</code><br><code>layout.border_top = Length(1)</code></td>
+</tr>
+<tr>
+<td><code>border_0</code></td>
+<td><code>layout.border_bottom = Length(0)</code><br><code>layout.border_left = Length(0)</code><br><code>layout.border_right = Length(0)</code><br><code>layout.border_top = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_top_0</code></td>
+<td><code>layout.border_top = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_bottom_0</code></td>
+<td><code>layout.border_bottom = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_left_0</code></td>
+<td><code>layout.border_left = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_right_0</code></td>
+<td><code>layout.border_right = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_x_0</code></td>
+<td><code>layout.border_left = Length(0)</code><br><code>layout.border_right = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_y_0</code></td>
+<td><code>layout.border_bottom = Length(0)</code><br><code>layout.border_top = Length(0)</code></td>
+</tr>
+<tr>
+<td><code>border_collapse</code></td>
+<td><code>layout.gap_height = Length(-1)</code><br><code>layout.gap_width = Length(-1)</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>border_contract(n: int) -&gt; Style</code></td>
+<td>Stop each border edge <code>n</code> cells short at an end next to a side that isn't drawn.</td>
+</tr>
+<tr>
+<td><code>border_sides(sides: frozenset[Side]) -&gt; Style</code></td>
+<td>Draw the border on exactly the given sides.</td>
+</tr>
+</tbody>
+</table>
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="counterweight.styles.utilities.Side" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">counterweight.styles.utilities.Side</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Side</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s1">'top'</span><span class="p">,</span> <span class="s1">'bottom'</span><span class="p">,</span> <span class="s1">'left'</span><span class="p">,</span> <span class="s1">'right'</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>One side of a box.</p>
+
+    </div>
+
+</div><h4 id="border-kinds">Border kinds</h4>
+<p>The border kind only chooses the characters, and draws nothing without a border width.
+<code>border_none</code> removes the border along with its space.
+Every other kind is drawn below, each around its own name:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">KINDS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Style</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="p">(</span><span class="s2">"border_light"</span><span class="p">,</span> <span class="n">border_light</span><span class="p">),</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="p">(</span><span class="s2">"border_lightrounded"</span><span class="p">,</span> <span class="n">border_lightrounded</span><span class="p">),</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="p">(</span><span class="s2">"border_lightangled"</span><span class="p">,</span> <span class="n">border_lightangled</span><span class="p">),</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="p">(</span><span class="s2">"border_heavy"</span><span class="p">,</span> <span class="n">border_heavy</span><span class="p">),</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="p">(</span><span class="s2">"border_double"</span><span class="p">,</span> <span class="n">border_double</span><span class="p">),</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="p">(</span><span class="s2">"border_thick"</span><span class="p">,</span> <span class="n">border_thick</span><span class="p">),</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="p">(</span><span class="s2">"border_mcgugan"</span><span class="p">,</span> <span class="n">border_mcgugan</span><span class="p">),</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="p">(</span><span class="s2">"border_lightshade"</span><span class="p">,</span> <span class="n">border_lightshade</span><span class="p">),</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="p">(</span><span class="s2">"border_mediumshade"</span><span class="p">,</span> <span class="n">border_mediumshade</span><span class="p">),</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="p">(</span><span class="s2">"border_heavyshade"</span><span class="p">,</span> <span class="n">border_heavyshade</span><span class="p">),</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="p">(</span><span class="s2">"border_star"</span><span class="p">,</span> <span class="n">border_star</span><span class="p">),</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="p">)</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="nd">@component</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">gallery</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Div</span><span class="p">:</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    <span class="k">return</span> <span class="n">Div</span><span class="p">(</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>        <span class="n">style</span><span class="o">=</span><span class="n">display_grid</span> <span class="o">|</span> <span class="n">grid_template_columns</span><span class="p">(</span><span class="n">fr</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">fr</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">fr</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">|</span> <span class="n">gap</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>        <span class="n">children</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">Text</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="n">border</span> <span class="o">|</span> <span class="n">kind</span> <span class="o">|</span> <span class="n">pad</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">text_justify_center</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">kind</span> <span class="ow">in</span> <span class="n">KINDS</span><span class="p">),</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    <span class="p">)</span>
+</code></pre></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Screenshot</label><label for="__tabbed_4_2">Text</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><img alt="Every border kind" src="../../assets/styles-border-kinds.svg" /></p>
+</div>
+<div class="tabbed-block">
+<div class="screenshot-text highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>┌──────────────────────┐ ╭──────────────────────╮ /▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔╲
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>│                      │ │                      │ ▏                      ▕
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>│     border_light     │ │  border_lightrounded │ ▏  border_lightangled  ▕
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>│                      │ │                      │ ▏                      ▕
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>└──────────────────────┘ ╰──────────────────────╯ ╲▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁/
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>┏━━━━━━━━━━━━━━━━━━━━━━┓ ╔══════════════════════╗ ▛▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▜
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>┃                      ┃ ║                      ║ ▌                      ▐
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>┃     border_heavy     ┃ ║     border_double    ║ ▌     border_thick     ▐
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>┃                      ┃ ║                      ║ ▌                      ▐
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>┗━━━━━━━━━━━━━━━━━━━━━━┛ ╚══════════════════════╝ ▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▟
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a> ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁  ░░░░░░░░░░░░░░░░░░░░░░░░ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>▕                      ▏ ░                      ░ ▒                      ▒
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>▕    border_mcgugan    ▏ ░   border_lightshade  ░ ▒  border_mediumshade  ▒
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>▕                      ▏ ░                      ░ ▒                      ▒
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a> ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔  ░░░░░░░░░░░░░░░░░░░░░░░░ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ************************                         
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>▓                      ▓ *                      *                         
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>▓   border_heavyshade  ▓ *      border_star     *                         
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>▓                      ▓ *                      *                         
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ************************                         
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>The light, rounded, heavy and double kinds use box-drawing characters,
+which <a href="../../cookbook/border-healing/">border healing</a> joins where borders meet.
+The rest don't join, and draw their edges with block elements, shades, slashes or asterisks.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>border_none</code></td>
+<td><code>border_kind = None</code></td>
+</tr>
+<tr>
+<td><code>border_light</code></td>
+<td><code>border_kind = BorderKind.Light</code></td>
+</tr>
+<tr>
+<td><code>border_lightrounded</code></td>
+<td><code>border_kind = BorderKind.LightRounded</code></td>
+</tr>
+<tr>
+<td><code>border_lightangled</code></td>
+<td><code>border_kind = BorderKind.LightAngled</code></td>
+</tr>
+<tr>
+<td><code>border_heavy</code></td>
+<td><code>border_kind = BorderKind.Heavy</code></td>
+</tr>
+<tr>
+<td><code>border_double</code></td>
+<td><code>border_kind = BorderKind.Double</code></td>
+</tr>
+<tr>
+<td><code>border_thick</code></td>
+<td><code>border_kind = BorderKind.Thick</code></td>
+</tr>
+<tr>
+<td><code>border_mcgugan</code></td>
+<td><code>border_kind = BorderKind.McGugan</code></td>
+</tr>
+<tr>
+<td><code>border_lightshade</code></td>
+<td><code>border_kind = BorderKind.LightShade</code></td>
+</tr>
+<tr>
+<td><code>border_mediumshade</code></td>
+<td><code>border_kind = BorderKind.MediumShade</code></td>
+</tr>
+<tr>
+<td><code>border_heavyshade</code></td>
+<td><code>border_kind = BorderKind.HeavyShade</code></td>
+</tr>
+<tr>
+<td><code>border_star</code></td>
+<td><code>border_kind = BorderKind.Star</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="display-and-grids">Display and grids</h3>
+<p><code>display_none</code> hides a box and everything in it: they take no space and aren't drawn.
+See <a href="../../layout/grids-and-wrapping/">Grids and wrapping</a> for the grid utilities.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>display_flex</code></td>
+<td><code>layout.display = Display.Flex</code></td>
+</tr>
+<tr>
+<td><code>display_block</code></td>
+<td><code>layout.display = Display.Block</code></td>
+</tr>
+<tr>
+<td><code>display_grid</code></td>
+<td><code>layout.display = Display.Grid</code></td>
+</tr>
+<tr>
+<td><code>display_none</code></td>
+<td><code>layout.display = Display.Nil</code></td>
+</tr>
+<tr>
+<td><code>grid_auto_flow_row</code></td>
+<td><code>layout.grid_auto_flow = GridAutoFlow.Row</code></td>
+</tr>
+<tr>
+<td><code>grid_auto_flow_column</code></td>
+<td><code>layout.grid_auto_flow = GridAutoFlow.Column</code></td>
+</tr>
+<tr>
+<td><code>grid_auto_flow_row_dense</code></td>
+<td><code>layout.grid_auto_flow = GridAutoFlow.RowDense</code></td>
+</tr>
+<tr>
+<td><code>grid_auto_flow_column_dense</code></td>
+<td><code>layout.grid_auto_flow = GridAutoFlow.ColumnDense</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fr(n: float = 1) -&gt; waxy.Minmax</code></td>
+<td>A grid track taking <code>n</code> shares of the free space, whatever the content (<code>minmax(0, n fr)</code>).</td>
+</tr>
+<tr>
+<td><code>span(n: int) -&gt; waxy.GridSpan</code></td>
+<td>A grid placement spanning <code>n</code> tracks, for <code>grid_row</code> and <code>grid_column</code>.</td>
+</tr>
+<tr>
+<td><code>grid_template_rows(*tracks: waxy.GridTrackValue | int) -&gt; Style</code></td>
+<td>Define the grid's rows, one track each, with an <code>int</code> meaning that many cells.</td>
+</tr>
+<tr>
+<td><code>grid_template_columns(*tracks: waxy.GridTrackValue | int) -&gt; Style</code></td>
+<td>Define the grid's columns, one track each, with an <code>int</code> meaning that many cells.</td>
+</tr>
+<tr>
+<td><code>grid_row(start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None) -&gt; Style</code></td>
+<td>Place a grid item between row lines <code>start</code> and <code>end</code>, with an <code>int</code> meaning that line.</td>
+</tr>
+<tr>
+<td><code>grid_column(start: waxy.GridPlacementValue | int | None = None, end: waxy.GridPlacementValue | int | None = None) -&gt; Style</code></td>
+<td>Place a grid item between column lines <code>start</code> and <code>end</code>, with an <code>int</code> meaning that line.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="positioning-and-layering">Positioning and layering</h3>
+<p>See <a href="../../layout/layering/">Layering</a>.
+The <code>inset_*</code> utilities with a <code>center</code> axis, such as <code>inset_bottom_center</code>, center a box on that axis
+only in a parent that centers its children, such as with <code>center_children</code>.
+To center a box in any parent, see <a href="../../layout/layering/#a-dialog-centered-over-the-app">A dialog centered over the app</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inset_top_left</code></td>
+<td><code>layout.inset_left = Length(0)</code><br><code>layout.inset_top = Length(0)</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_top_center</code></td>
+<td><code>layout.inset_left = Auto()</code><br><code>layout.inset_right = Auto()</code><br><code>layout.inset_top = Length(0)</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_top_right</code></td>
+<td><code>layout.inset_right = Length(0)</code><br><code>layout.inset_top = Length(0)</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_center_left</code></td>
+<td><code>layout.inset_bottom = Auto()</code><br><code>layout.inset_left = Length(0)</code><br><code>layout.inset_top = Auto()</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_center_center</code></td>
+<td><code>layout.inset_bottom = Auto()</code><br><code>layout.inset_left = Auto()</code><br><code>layout.inset_right = Auto()</code><br><code>layout.inset_top = Auto()</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_center_right</code></td>
+<td><code>layout.inset_bottom = Auto()</code><br><code>layout.inset_right = Length(0)</code><br><code>layout.inset_top = Auto()</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_bottom_left</code></td>
+<td><code>layout.inset_bottom = Length(0)</code><br><code>layout.inset_left = Length(0)</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_bottom_center</code></td>
+<td><code>layout.inset_bottom = Length(0)</code><br><code>layout.inset_left = Auto()</code><br><code>layout.inset_right = Auto()</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>inset_bottom_right</code></td>
+<td><code>layout.inset_bottom = Length(0)</code><br><code>layout.inset_right = Length(0)</code><br><code>layout.position = Position.Absolute</code></td>
+</tr>
+<tr>
+<td><code>position_relative</code></td>
+<td><code>layout.position = Position.Relative</code></td>
+</tr>
+<tr>
+<td><code>position_absolute</code></td>
+<td><code>layout.position = Position.Absolute</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inset_top(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the top.</td>
+</tr>
+<tr>
+<td><code>inset_bottom(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the bottom.</td>
+</tr>
+<tr>
+<td><code>inset_left(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the left.</td>
+</tr>
+<tr>
+<td><code>inset_right(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the right.</td>
+</tr>
+<tr>
+<td><code>inset_x(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the left and right.</td>
+</tr>
+<tr>
+<td><code>inset_y(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from the top and bottom.</td>
+</tr>
+<tr>
+<td><code>inset(n: int) -&gt; Style</code></td>
+<td>Inset a positioned box <code>n</code> cells from all four sides.</td>
+</tr>
+<tr>
+<td><code>inset_sides(top: int, right: int, bottom: int, left: int) -&gt; Style</code></td>
+<td>Inset a positioned box from each side separately, in the order of CSS's four-value <code>inset</code>.</td>
+</tr>
+<tr>
+<td><code>z(z: int = 0) -&gt; Style</code></td>
+<td>Draw the box and its descendants as one layer at <code>z</code> among the boxes of the stacking context it belongs to, where the higher <code>z</code> is drawn on top, and make it a stacking context for its descendants' own <code>z</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="overflow-clipping-and-scrolling">Overflow, clipping and scrolling</h3>
+<p><code>overflow_hidden</code>, <code>overflow_clip</code> and <code>overflow_scroll</code> clip a box's children (and a <code>Text</code>'s own lines) to its padding box, on both axes or, with <code>_x</code> or <code>_y</code>, on one,
+and <code>overflow_scroll</code> makes the box a <a href="../../layout/scrolling/">scroll container</a> there.
+<code>clip_to_border</code> lets a child, such as a border title, draw on its parent's border instead,
+and <code>clip_to_screen</code> lets one, such as a dropdown, escape every clip above it.
+See <a href="../../layout/clipping/">Clipping</a>.</p>
+<p><code>overflow_anchor_none</code> turns off <a href="../../layout/scrolling/#keeping-the-content-in-view">scroll anchoring</a>,
+and <code>stick_to_end</code> makes a scroll container <a href="../../layout/scrolling/#following-the-end">follow its end</a>,
+on both axes or, with <code>_x</code> or <code>_y</code>, on one; <code>unstick</code> undoes it.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>overflow_visible</code></td>
+<td><code>layout.overflow_x = Overflow.Visible</code><br><code>layout.overflow_y = Overflow.Visible</code></td>
+</tr>
+<tr>
+<td><code>overflow_x_visible</code></td>
+<td><code>layout.overflow_x = Overflow.Visible</code></td>
+</tr>
+<tr>
+<td><code>overflow_y_visible</code></td>
+<td><code>layout.overflow_y = Overflow.Visible</code></td>
+</tr>
+<tr>
+<td><code>overflow_hidden</code></td>
+<td><code>layout.overflow_x = Overflow.Hidden</code><br><code>layout.overflow_y = Overflow.Hidden</code></td>
+</tr>
+<tr>
+<td><code>overflow_x_hidden</code></td>
+<td><code>layout.overflow_x = Overflow.Hidden</code></td>
+</tr>
+<tr>
+<td><code>overflow_y_hidden</code></td>
+<td><code>layout.overflow_y = Overflow.Hidden</code></td>
+</tr>
+<tr>
+<td><code>overflow_clip</code></td>
+<td><code>layout.overflow_x = Overflow.Clip</code><br><code>layout.overflow_y = Overflow.Clip</code></td>
+</tr>
+<tr>
+<td><code>overflow_x_clip</code></td>
+<td><code>layout.overflow_x = Overflow.Clip</code></td>
+</tr>
+<tr>
+<td><code>overflow_y_clip</code></td>
+<td><code>layout.overflow_y = Overflow.Clip</code></td>
+</tr>
+<tr>
+<td><code>overflow_scroll</code></td>
+<td><code>layout.overflow_x = Overflow.Scroll</code><br><code>layout.overflow_y = Overflow.Scroll</code></td>
+</tr>
+<tr>
+<td><code>overflow_x_scroll</code></td>
+<td><code>layout.overflow_x = Overflow.Scroll</code></td>
+</tr>
+<tr>
+<td><code>overflow_y_scroll</code></td>
+<td><code>layout.overflow_y = Overflow.Scroll</code></td>
+</tr>
+<tr>
+<td><code>clip_to_padding</code></td>
+<td><code>clip_to = 'padding'</code></td>
+</tr>
+<tr>
+<td><code>clip_to_border</code></td>
+<td><code>clip_to = 'border'</code></td>
+</tr>
+<tr>
+<td><code>clip_to_screen</code></td>
+<td><code>clip_to = 'screen'</code></td>
+</tr>
+<tr>
+<td><code>overflow_anchor_auto</code></td>
+<td><code>overflow_anchor = 'auto'</code></td>
+</tr>
+<tr>
+<td><code>overflow_anchor_none</code></td>
+<td><code>overflow_anchor = 'none'</code></td>
+</tr>
+<tr>
+<td><code>stick_to_end</code></td>
+<td><code>stick_to_end_x = True</code><br><code>stick_to_end_y = True</code></td>
+</tr>
+<tr>
+<td><code>stick_to_end_x</code></td>
+<td><code>stick_to_end_x = True</code></td>
+</tr>
+<tr>
+<td><code>stick_to_end_y</code></td>
+<td><code>stick_to_end_y = True</code></td>
+</tr>
+<tr>
+<td><code>unstick</code></td>
+<td><code>stick_to_end_x = False</code><br><code>stick_to_end_y = False</code></td>
+</tr>
+<tr>
+<td><code>unstick_x</code></td>
+<td><code>stick_to_end_x = False</code></td>
+</tr>
+<tr>
+<td><code>unstick_y</code></td>
+<td><code>stick_to_end_y = False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="text">Text</h3>
+<p>See <a href="../text-wrapping/">Text wrapping</a>, <a href="../text-wrapping/#ending-a-line-with-an-ellipsis">Ending a line with <code>…</code></a>,
+and <a href="../../layout/text/">Text in layout</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Utility</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text_justify_left</code></td>
+<td><code>text_justify = 'left'</code></td>
+</tr>
+<tr>
+<td><code>text_justify_center</code></td>
+<td><code>text_justify = 'center'</code></td>
+</tr>
+<tr>
+<td><code>text_justify_right</code></td>
+<td><code>text_justify = 'right'</code></td>
+</tr>
+<tr>
+<td><code>text_wrap_none</code></td>
+<td><code>text_wrap = 'none'</code></td>
+</tr>
+<tr>
+<td><code>text_wrap_stable</code></td>
+<td><code>text_wrap = 'stable'</code></td>
+</tr>
+<tr>
+<td><code>text_wrap_pretty</code></td>
+<td><code>text_wrap = 'pretty'</code></td>
+</tr>
+<tr>
+<td><code>text_wrap_balance</code></td>
+<td><code>text_wrap = 'balance'</code></td>
+</tr>
+<tr>
+<td><code>text_overflow_clip</code></td>
+<td><code>text_overflow = 'clip'</code></td>
+</tr>
+<tr>
+<td><code>text_overflow_ellipsis</code></td>
+<td><code>text_overflow = 'ellipsis'</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/JoshKarpel/counterweight" target="_blank" rel="noopener" title="Counterweight on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "toc.follow", "content.code.annotate", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../assets/vendor/asciinema-player-3.17.0/asciinema-player.min.js"></script>
+      
+        <script src="../../assets/casts.js"></script>
+      
+    
+  </body>
+</html>

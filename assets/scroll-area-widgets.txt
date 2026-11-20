@@ -1,0 +1,6 @@
+╭──────────────────────╮ ╭──────────────────────╮
+│ deploy started       │ │ def deploy(image: str│
+│ pulled image web:4.2.│ │     for percent in st│
+│ migrations applied   │ │         shift_traffic│
+│ health check passed  │ │                      │
+╰──────────────────────╯ ╰──────────────────────╯

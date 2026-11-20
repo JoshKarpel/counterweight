@@ -1,0 +1,7 @@
+╭──────────────────────────────────╮
+│  1 deploy started                │
+│  2 pulled image web:4.2.0        │
+│  3 migrations applied            │
+│  4 health check passed           │
+╰──────────────────────────────────╯
+ lines 1-4 of 11   [ Top ] [ Next ] 

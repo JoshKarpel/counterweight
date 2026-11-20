@@ -1,0 +1,9 @@
+and Ctrl+J starts a line          
+                                  
+Older messages scroll up          
+                                  
+as new ones arrive                
+                                  
+╭────────────────────────────────╮
+│                                │
+╰────────────────────────────────╯

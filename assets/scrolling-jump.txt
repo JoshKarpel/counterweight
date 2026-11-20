@@ -1,0 +1,6 @@
+╭────────────────────────────╮
+│ 6 error rate nominal       │
+│ 7 traffic shifted to 50%   │
+│ 8 latency p99 within budget│
+│ 9 traff ↓ Jump to end 00%  │
+╰────────────────────────────╯
