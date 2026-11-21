@@ -1,0 +1,11 @@
+╭──────────────────────────────────────────────────────────────────────╮
+│ Press keys, paste, or use the mouse. Ctrl+C quits.                   │
+│ KeyPressed(key='a')                                                  │
+│ KeyPressed(key='é')                                                  │
+│ KeyPressed(key=Key.Enter)                                            │
+│ KeyPressed(key=Key.ControlJ)                                         │
+│ KeyPressed(key=Key.Up)                                               │
+│ KeyPressed(key=Key.F1)                                               │
+│ KeyPressed(key=Key.ControlS)                                         │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯

@@ -1,0 +1,30 @@
+ │                                                                                                  
+ │ • reverse() when you don't need the original order again                                         
+ │ • peaks[::-1] for a reversed copy                                                                
+ │ • reversed(peaks) to loop backwards without copying                                              
+                                                                                                    
+ │ you                                                                                              
+ │ Which sort should I use?                                                                         
+                                                                                                    
+ │ bot                                                                                              
+ │ Here's how the common sorts compare:                                                             
+ │                                                                                                  
+ │ ┌────────────────┬─────────┬─────────┬────────┐                                                  
+ │ │ Algorithm      │   Best  │  Worst  │ Stable │                                                  
+ │ ├────────────────┼─────────┼─────────┼────────┤                                                  
+ │ │ Insertion sort │    n    │    n²   │   yes  │                                                  
+ │ ├────────────────┼─────────┼─────────┼────────┤                                                  
+ │ │ Merge sort     │ n log n │ n log n │   yes  │                                                  
+ │ ├────────────────┼─────────┼─────────┼────────┤                                                  
+ │ │ Quicksort      │ n log n │    n²   │   no   │                                                  
+ │ ├────────────────┼─────────┼─────────┼────────┤                                                  
+ │ │ Timsort        │    n    │ n log n │   yes  │                                                  
+ │ └────────────────┴─────────┴─────────┴────────┘                                                  
+ │                                                                                                  
+ │ Python's sorted is Timsort, so it's stable: items that compare equal keep their order, which     
+ │ lets you sort by several keys in turn.                                                           
+                                                                                                    
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────╮ 
+ │ Message the bot                                                                                │ 
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────╯ 
+   enter: send  ·  alt+enter: new line  ·  shift+pgup/pgdn or ctrl+↑/↓: scroll  ·  tab: transcript  

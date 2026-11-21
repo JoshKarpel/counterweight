@@ -1,0 +1,3 @@
+┌────────────────────────────┐
+│ inset_top=Percent(1.0)     │
+└─ on the border row ────────┘

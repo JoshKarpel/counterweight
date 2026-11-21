@@ -1,0 +1,18 @@
+                                                                                
+  Colors come through                                                           
+                                                                                
+  The command runs on a terminal, so it colors its output as it would in        
+  yours.                                                                        
+                                                                                
+  $ printf '\033[32mgreen\033[0m and \033[1;33mbold yellow\033[0m\n'            
+                                                                                
+  ╭──────────────────────────────────────────────────────────────────────────╮  
+  │ green and bold yellow                                                    │  
+  │                                                                          │  
+  │                                                                          │  
+  │                                                                          │  
+  │                                                                          │  
+  ╰──────────────────────────────────────────────────────────────────────────╯  
+  exited 0                                                                      
+                                                                                
+ 3 / 5  ·  e: edit the notes                                                    

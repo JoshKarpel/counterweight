@@ -1,0 +1,10 @@
+                        
+ ╭─────────────╮        
+ │             │        
+ │ content no  │        
+ │ padding yes │        
+ │ border  yes │        
+ │ margin  yes │        
+ │             │        
+ ╰─────────────╯        
+                        

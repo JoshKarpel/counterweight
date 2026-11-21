@@ -1,0 +1,4 @@
+branch> fix                                     
+▸ fix/rewrap-on-resize                          
+  fix/mouse-offset                              
+  2/7                                           

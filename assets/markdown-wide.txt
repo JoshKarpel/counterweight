@@ -1,0 +1,3 @@
+ Install it with:                       
+                                        
+  uv add counterweight markdown-it-py m 

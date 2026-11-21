@@ -1,0 +1,7 @@
+ Add a package                
+ py                           
+ mypy                         
+ pydantic                     
+ pydantic-settings            
+ pytest                       
+                              

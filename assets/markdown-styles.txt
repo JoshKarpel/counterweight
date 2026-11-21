@@ -1,0 +1,17 @@
+ Peaks                                                      
+ The fourteen peaks above 8000 m are all in Asia; see the   
+ list.                                                      
+ │ Because it's there.                                      
+ • Himalayas                                                
+   ◦ Everest                                                
+   ◦ Kangchenjunga                                          
+ • Karakoram                                                
+   ◦ K2                                                     
+ ┌─────────┬────────────┐                                   
+ │ Peak    │ Height (m) │                                   
+ ├─────────┼────────────┤                                   
+ │ Everest │       8849 │                                   
+ ├─────────┼────────────┤                                   
+ │ K2      │       8611 │                                   
+ └─────────┴────────────┘                                   
+  tallest = max(peaks, key=lambda p: p.height)              

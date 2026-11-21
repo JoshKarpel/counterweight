@@ -1,0 +1,9 @@
+ ┌──────────────────┐  ┌──────────────────┐   
+ │clip              │  │ellipsis          │   
+ │README.md         │  │README.md         │   
+ │src/counterweight/│  │src/counterweight…│   
+ │docs/styles/text-w│  │docs/styles/text-…│   
+ │tests/日本語/e2eテ│  │tests/日本語/e2e …│   
+ └──────────────────┘  └──────────────────┘   
+                                              
+ ~/projects/counterweight/sr… Ln 12, Col 4    
